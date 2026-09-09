@@ -89,14 +89,18 @@ from .routers import (
     admin_console,
     agents,
     analytics,
+    anticipation,
     applications,
     audit,
     auth,
     billing,
     chat,
+    cognition,
     connectors,
+    council,
     documents,
     events,
+    federation,
     gmail,
     health,
     iam,
@@ -104,12 +108,15 @@ from .routers import (
     knowledge_graph,
     memory,
     notifications,
+    opportunities,
     plugins,
+    profile,
     provider_keys,
     recommendations,
     resumes,
     scheduler,
     search,
+    sovereignty,
     temporal as temporal_router,
     webhooks,
     workspaces,
@@ -252,11 +259,6 @@ app.add_middleware(
     window_seconds=settings.rate_limit_window,
     api_key_rate_limit=settings.api_key_rate_limit,
 )
-# Guard against DoS via oversized request bodies (FIND-SEC-020).
-app.add_middleware(
-    BodySizeLimitMiddleware,
-    max_bytes=getattr(settings, "max_request_body_bytes", 25 * 1024 * 1024),
-)
 # Tenant must be inner than Auth (added before Auth so Auth outer) → fixes RLS never-set bug (audit CRITICAL 2026-08-21)
 app.add_middleware(TenantMiddleware)
 app.add_middleware(AuthMiddleware)
@@ -267,6 +269,11 @@ app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(APIVersionMiddleware)
 app.add_middleware(PromptInjectionMiddleware)
 app.add_middleware(IdempotencyMiddleware)
+# Guard against DoS via oversized request bodies (FIND-SEC-020). Outer to PromptInjection to prevent unbounded RAM buffering.
+app.add_middleware(
+    BodySizeLimitMiddleware,
+    max_bytes=getattr(settings, "max_request_body_bytes", 25 * 1024 * 1024),
+)
 
 # IP allowlist always mounted (ADR-031) — no-op when empty, enforce when configured
 app.add_middleware(IPAllowlistMiddleware, allowlist_raw=settings.ip_allowlist or "")
@@ -356,6 +363,13 @@ _safe_include(agent_costs_router, "/api/v1", ["agents"])
 _safe_include(gmail.router, "/api/v1", ["gmail"])
 _safe_include(provider_keys.router, "/api/v1/provider-keys", ["provider-keys"])
 _safe_include(temporal_router.router, "/api/v1/temporal", ["temporal"])
+_safe_include(profile.router, "/api/v1/profile", ["profile"])
+_safe_include(opportunities.router, "/api/v1/opportunities", ["opportunities"])
+_safe_include(council.router, "/api/v1/council", ["council"])
+_safe_include(cognition.router, "/api/v1/cognition", ["cognition"])
+_safe_include(sovereignty.router, "/api/v1/sovereignty", ["sovereignty"])
+_safe_include(anticipation.router, "/api/v1/anticipation", ["anticipation"])
+_safe_include(federation.router, "/api/v1/federation", ["federation"])
 
 # ── Enterprise routes (CF-06 / R6) ──────────────────────────────────
 # Out of MVP scope. Mounted only when explicitly enabled via

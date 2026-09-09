@@ -93,8 +93,13 @@ class PromptInjectionMiddleware(BaseHTTPMiddleware):
     async def _get_body(self, request: Request) -> str | None:
         content_type = request.headers.get("content-type", "")
         if "application/json" in content_type or "application/x-www-form-urlencoded" in content_type:
+            content_length = request.headers.get("content-length")
+            if content_length and content_length.isdigit() and int(content_length) > 512 * 1024:
+                return None
             try:
                 body_bytes = await request.body()
+                if len(body_bytes) > 512 * 1024:
+                    return None
                 body_str = body_bytes.decode("utf-8", errors="replace")
                 return body_str
             except Exception:

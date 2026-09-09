@@ -46,6 +46,72 @@ class LLMTransientError(LLMProviderError):
         self.status_code = status_code
 
 
+# ── Deterministic provider failure injection (Muse fallback completion) ──
+# Test/development hook ONLY: armed explicitly via inject_provider_failure(),
+# never from request data. Checked at the provider boundary inside
+# _openai_completion / _anthropic_completion so the FULL runtime path
+# (router → BYOK → provider → classifier → fallback → provenance) executes.
+# Armed entries raise inside the real path; disarmed (default) = zero behavior
+# change. Each entry: {"status_code": int, "error": str, "terminal": bool}.
+_FAILURE_INJECTION: dict[str, dict[str, Any]] = {}
+
+
+def inject_provider_failure(
+    provider: str,
+    *,
+    status_code: int = 503,
+    error: str = "injected provider failure",
+    terminal: bool = False,
+) -> None:
+    """Arm deterministic failure for one provider (tests only)."""
+    _FAILURE_INJECTION[provider.strip().lower()] = {
+        "status_code": status_code, "error": error, "terminal": terminal,
+    }
+
+
+def clear_provider_failure_injection(provider: str | None = None) -> None:
+    """Disarm injection (single provider or all)."""
+    if provider is None:
+        _FAILURE_INJECTION.clear()
+    else:
+        _FAILURE_INJECTION.pop(provider.strip().lower(), None)
+
+
+def _check_failure_injection(provider: str) -> None:
+    """Raise the armed failure for this provider, if any (provider boundary)."""
+    entry = _FAILURE_INJECTION.get((provider or "").strip().lower())
+    if not entry:
+        return
+    msg = f"injected {provider} failure: {entry['status_code']} {entry['error']}"
+    if entry.get("terminal"):
+        raise LLMProviderError(msg)
+    raise LLMTransientError(msg, status_code=int(entry.get("status_code", 503)))
+
+
+def _classify_exc(exc: BaseException) -> dict[str, Any]:
+    """Classify any provider-call exception into the failure taxonomy."""
+    import httpx as _httpx
+
+    try:
+        from .inference_policy import classify_provider_failure as _classify
+    except Exception:  # pragma: no cover
+        return {"category": "unknown", "fallback_allowed": True, "retry_same": True,
+                "try_different_provider": True, "terminal": False}
+    if isinstance(exc, LLMTransientError):
+        return _classify(status_code=exc.status_code, error_text=str(exc),
+                         exception_type=type(exc).__name__)
+    if isinstance(exc, (_httpx.TimeoutException,)):
+        return _classify(status_code=None, error_text=str(exc), exception_type="TimeoutException")
+    if isinstance(exc, (_httpx.NetworkError,)):
+        return _classify(status_code=None, error_text=str(exc), exception_type="NetworkError")
+    # LLMProviderError carries the HTTP status inside its message
+    # ("... failed: 401 ..."). Extract it so terminal errors short-circuit.
+    import re as _re
+    m = _re.search(r"\b(4\d\d|5\d\d)\b", str(exc)[:300])
+    code = int(m.group(1)) if m else None
+    return _classify(status_code=code, error_text=str(exc), exception_type=type(exc).__name__)
+
+
 class LLMService:
     def __init__(self) -> None:
         self.provider = settings.llm_provider
@@ -264,11 +330,23 @@ class LLMService:
         api_key_override: str | None = None,
         provider_override: str | None = None,
         json_mode: bool = False,
+        correlation_id: str | None = None,
+        fallback_time_budget_s: float = 90.0,
     ) -> dict[str, Any]:
         """Generate a completion. json_mode=True requests provider-native JSON
         enforcement (Phase B §11): OpenAI/Groq get response_format json_object;
         Anthropic gets an explicit JSON-only system instruction (no native
-        equivalent). The result carries json_mode metadata for provenance."""
+        equivalent). The result carries json_mode metadata for provenance.
+
+        Cross-provider fallback (Muse completion): the chain fails over across
+        provider boundaries on RETRYABLE failures only (timeout/rate-limit/5xx/
+        network). TERMINAL failures (auth/invalid-request/context-limit/
+        unsupported-capability) abort immediately — fallback cannot help and
+        must not burn budget. Every result carries full provenance
+        (requested/primary/final provider+model, failure category, attempt
+        count, correlation ID). Spend + time budgets are re-checked before each
+        fallback hop so primary+fallback retries can never silently overrun.
+        """
         # ── P1b: auto-infer task_type from agent_name when caller left it as general
         # This wires model routing without touching 22 handler call-sites (MODEL-001 full wiring)
         if task_type == "general" and agent_name and agent_name != "unknown":
@@ -328,12 +406,45 @@ class LLMService:
 
         result: dict[str, Any] | None = None
         last_exc: Exception | None = None
+        requested_model = fallback_candidates[0]
+        requested_provider = provider_override or _infer_provider_from_model(requested_model)
+        failure_category: str | None = None
+        attempt_count = 0
+        corr_id = correlation_id or f"llm-{int(start * 1000)}"
 
-        for candidate_model in fallback_candidates:
+        for hop, candidate_model in enumerate(fallback_candidates):
             candidate_provider = provider_override or _infer_provider_from_model(candidate_model)
+            # Capability-aware: skip candidates that cannot hold the request
+            # (context-window preservation) or cannot generate (embeddings).
+            _ccfg = MODEL_CATALOG.get(candidate_model)
+            if "embedding" in candidate_model:
+                continue
+            if _ccfg is not None and max_tokens > _ccfg.max_tokens:
+                import logging as _lg
+                _lg.getLogger(__name__).warning(
+                    f"FALLBACK_SKIP correlation={corr_id} model={candidate_model} "
+                    f"reason=context_window max_tokens={max_tokens} capacity={_ccfg.max_tokens}")
+                continue
+            # Budget-aware: re-check spend + elapsed-time before every fallback hop
+            # (hop 0 already passed the loop pre-act gate; hops burn extra calls).
+            if hop > 0:
+                try:
+                    from .agent_costs import agent_cost_tracker as _tracker
+                    if workspace_id:
+                        _bstat = await _tracker.check_budget(workspace_id)
+                        if not _bstat.get("allowed", True):
+                            from .agent_costs import BudgetExceededError as _BE
+                            raise _BE(f"Workspace spend budget exhausted before fallback hop {hop}")
+                except Exception as _be:
+                    if type(_be).__name__ == "BudgetExceededError":
+                        raise
+                if (time.monotonic() - start) > fallback_time_budget_s:
+                    raise LLMProviderError(
+                        f"Fallback time budget exhausted ({fallback_time_budget_s}s) after {hop} hops")
             _prov, effective_key = await self._resolve_api_key(
                 candidate_provider, user_id=user_id, workspace_id=workspace_id, db=db, explicit_key=api_key_override
             )
+            _hop_start = time.monotonic()
             try:
                 result = await self._generate_completion_with_retry(
                     messages=messages,
@@ -345,28 +456,69 @@ class LLMService:
                     json_mode=json_mode,
                 )
                 effective_model = candidate_model
+                try:
+                    from .inference_policy import record_provider_outcome as _rpo
+                    _rpo(candidate_provider, success=True,
+                         latency_ms=(time.monotonic() - _hop_start) * 1000,
+                         served_after_fallback=(hop > 0))
+                except Exception:
+                    pass
                 break
             except (LLMProviderError, httpx.TimeoutException, httpx.NetworkError) as exc:
                 last_exc = exc
+                attempt_count += 1
+                _policy = _classify_exc(exc)
+                failure_category = _policy["category"]
+                try:
+                    from .inference_policy import record_provider_outcome as _rpo
+                    _rpo(candidate_provider, success=False,
+                         latency_ms=(time.monotonic() - _hop_start) * 1000,
+                         failure_category=failure_category, fallback_hop=True)
+                except Exception:
+                    pass
                 import logging as _lg
-                _lg.getLogger(__name__).warning(f"Model {candidate_model} failed ({exc}); attempting failover...")
+                _lg.getLogger(__name__).warning(
+                    f"FALLBACK_HOP correlation={corr_id} agent={agent_name} "
+                    f"primary={requested_model} failed_model={candidate_model} "
+                    f"provider={candidate_provider} category={failure_category} "
+                    f"terminal={_policy['terminal']} hop={hop} attempt={attempt_count}")
+                if _policy.get("terminal"):
+                    # Terminal failures (auth/invalid/context/capability) must
+                    # NOT fail over — raise immediately with category attached.
+                    exc._failure_category = failure_category  # type: ignore[attr-defined]
+                    raise
                 continue
 
         if result is None:
             if last_exc:
+                try:
+                    last_exc._failure_category = failure_category  # type: ignore[attr-defined]
+                except Exception:
+                    pass
                 raise last_exc
             raise LLMProviderError("All model tier candidates failed to generate completion")
 
 
         # Model downgrade observability (Phase B §12): callers can see whether
-        # the requested model served or a fallback tier won.
+        # the requested model served or a fallback tier won. Full provenance
+        # block answers: who was requested, who failed how, who ultimately served.
         try:
             result["model"] = effective_model
             result["fallback_chain"] = list(fallback_candidates[: fallback_candidates.index(effective_model) + 1])
             result["downgraded"] = effective_model != fallback_candidates[0]
+            result["requested_model"] = requested_model
+            result["primary_provider"] = requested_provider
+            result["final_provider"] = _infer_provider_from_model(effective_model)
+            result["final_model"] = effective_model
+            result["failure_category"] = failure_category
+            result["fallback_provider"] = result["final_provider"] if result["downgraded"] else None
+            result["fallback_model"] = effective_model if result["downgraded"] else None
+            result["attempt_count"] = attempt_count + 1
+            result["correlation_id"] = corr_id
             if result["downgraded"]:
                 from .inference_policy import record_fallback as _record_fallback
-                _record_fallback(agent_name, task_type, result["fallback_chain"], "tier failover")
+                _record_fallback(agent_name, task_type, result["fallback_chain"],
+                                 f"failover category={failure_category}")
         except Exception:
             pass
 
@@ -415,6 +567,7 @@ class LLMService:
         pname = "Groq" if provider == "groq" else "OpenAI"
         if not key:
             raise LLMProviderError(f"Missing {pname} API key — configure in Settings > API Keys (BYOK)")
+        _check_failure_injection(provider)
         url = "https://api.groq.com/openai/v1/chat/completions" if provider == "groq" else "https://api.openai.com/v1/chat/completions"
         body: dict[str, Any] = {"model": model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens}
         if json_mode:
@@ -468,6 +621,7 @@ class LLMService:
         key = api_key or self.api_key
         if not key:
             raise LLMProviderError("Missing Anthropic API key — configure in Settings > API Keys (BYOK)")
+        _check_failure_injection("anthropic")
 
         headers = {
             "x-api-key": key,
@@ -518,13 +672,26 @@ class LLMService:
         db=None,
         api_key_override: str | None = None,
         provider_override: str | None = None,
+        correlation_id: str | None = None,
+        fallback_time_budget_s: float = 90.0,
+        max_tokens: int = 4096,
     ) -> dict[str, Any]:
         """Tool-calling completion with capability-aware fallback (Phase B §12).
 
         Never falls back to a model that cannot satisfy tool calling:
-        embedding-only models are excluded from candidates. Downgrades stay
+        embedding-only models are excluded from candidates, and candidates
+        whose context window cannot hold max_tokens are skipped. Downgrades stay
         within tool-capable chat models and are recorded in the result
-        (fallback_chain / downgraded) for provenance.
+        (fallback_chain / downgraded + full provenance) for audit.
+
+        Fallback policy mirrors generate_completion: RETRYABLE failures
+        (timeout/rate-limit/5xx/network) fail over across provider boundaries;
+        TERMINAL failures (auth/invalid-request/context-limit/unsupported
+        capability) abort immediately. Spend + time budgets are re-checked
+        before each hop. Tool side effects are NOT duplicated by fallback: the
+        hop happens BEFORE any tool executes (model selection), and every
+        downstream tool execution carries a deterministic idempotency key
+        (inference_policy.idempotency_key + tool_idempotency UNIQUE).
         """
         from .model_router import MODEL_CATALOG as _CAT
 
@@ -552,36 +719,105 @@ class LLMService:
                       if "embedding" not in c and not (c in seen or seen.add(c))]
 
         last_exc: Exception | None = None
-        for candidate_model in candidates:
+        requested_provider = provider_override or _infer_provider_from_model(requested)
+        failure_category: str | None = None
+        attempt_count = 0
+        _tool_start = time.monotonic()
+        corr_id = correlation_id or f"llm-tool-{int(_tool_start * 1000)}"
+        for hop, candidate_model in enumerate(candidates):
             candidate_provider = provider_override or _infer_provider_from_model(candidate_model)
+            # Capability-aware: context-window preservation (tool-capable only
+            # already enforced by candidate construction + embedding exclusion).
+            _ccfg = _CAT.get(candidate_model)
+            if _ccfg is not None and max_tokens > _ccfg.max_tokens:
+                import logging as _lg
+                _lg.getLogger(__name__).warning(
+                    f"FALLBACK_SKIP correlation={corr_id} model={candidate_model} "
+                    f"reason=context_window max_tokens={max_tokens} capacity={_ccfg.max_tokens}")
+                continue
+            if hop > 0:
+                try:
+                    from .agent_costs import agent_cost_tracker as _tracker
+                    if workspace_id:
+                        _bstat = await _tracker.check_budget(workspace_id)
+                        if not _bstat.get("allowed", True):
+                            from .agent_costs import BudgetExceededError as _BE
+                            raise _BE(f"Workspace spend budget exhausted before tool fallback hop {hop}")
+                except Exception as _be:
+                    if type(_be).__name__ == "BudgetExceededError":
+                        raise
+                if (time.monotonic() - _tool_start) > fallback_time_budget_s:
+                    raise LLMProviderError(
+                        f"Tool fallback time budget exhausted ({fallback_time_budget_s}s) after {hop} hops")
             _prov, effective_key = await self._resolve_api_key(
                 candidate_provider, user_id=user_id, workspace_id=workspace_id, db=db, explicit_key=api_key_override
             )
+            _hop_start = time.monotonic()
             try:
                 if candidate_provider in ("openai", "groq"):
                     result = await self._openai_tool_completion(messages, tools, candidate_model, temperature, api_key=effective_key, provider=candidate_provider)
                 else:
                     result = await self._anthropic_tool_completion(messages, tools, candidate_model, temperature, api_key=effective_key)
+                try:
+                    from .inference_policy import record_provider_outcome as _rpo
+                    _rpo(candidate_provider, success=True,
+                         latency_ms=(time.monotonic() - _hop_start) * 1000,
+                         served_after_fallback=(hop > 0))
+                except Exception:
+                    pass
                 result["model"] = candidate_model
                 result["fallback_chain"] = list(candidates[: candidates.index(candidate_model) + 1])
                 result["downgraded"] = candidate_model != candidates[0]
+                result["requested_model"] = requested
+                result["primary_provider"] = requested_provider
+                result["final_provider"] = candidate_provider
+                result["final_model"] = candidate_model
+                result["failure_category"] = failure_category
+                result["fallback_provider"] = candidate_provider if result["downgraded"] else None
+                result["fallback_model"] = candidate_model if result["downgraded"] else None
+                result["attempt_count"] = attempt_count + 1
+                result["correlation_id"] = corr_id
                 if result["downgraded"]:
                     import logging as _lg
                     _lg.getLogger(__name__).warning(
-                        f"Tool-call model downgraded {candidates[0]} -> {candidate_model} (capability-preserving fallback)")
+                        f"FALLBACK_HOP correlation={corr_id} tool-call downgraded {candidates[0]} -> {candidate_model} "
+                        f"(capability-preserving, category={failure_category})")
                     try:
                         from .inference_policy import record_fallback as _record_fallback
                         _record_fallback("unknown", "tool_calling", result["fallback_chain"],
-                                         "tool-capability-preserving failover")
+                                         f"tool-capability-preserving failover category={failure_category}")
                     except Exception:
                         pass
                 return result
             except (LLMProviderError, LLMTransientError, httpx.TimeoutException, httpx.NetworkError) as exc:
                 last_exc = exc
+                attempt_count += 1
+                _policy = _classify_exc(exc)
+                failure_category = _policy["category"]
+                try:
+                    from .inference_policy import record_provider_outcome as _rpo
+                    _rpo(candidate_provider, success=False,
+                         latency_ms=(time.monotonic() - _hop_start) * 1000,
+                         failure_category=failure_category, fallback_hop=True)
+                except Exception:
+                    pass
                 import logging as _lg
-                _lg.getLogger(__name__).warning(f"Tool-call model {candidate_model} failed ({exc}); attempting capability-preserving failover...")
+                _lg.getLogger(__name__).warning(
+                    f"FALLBACK_HOP correlation={corr_id} tool-call model={candidate_model} "
+                    f"provider={candidate_provider} category={failure_category} "
+                    f"terminal={_policy['terminal']} hop={hop} attempt={attempt_count}")
+                if _policy.get("terminal"):
+                    try:
+                        exc._failure_category = failure_category  # type: ignore[attr-defined]
+                    except Exception:
+                        pass
+                    raise
                 continue
         if last_exc:
+            try:
+                last_exc._failure_category = failure_category  # type: ignore[attr-defined]
+            except Exception:
+                pass
             raise last_exc
         raise LLMProviderError("All tool-capable model candidates failed")
 
@@ -611,6 +847,7 @@ class LLMService:
         pname = "Groq" if provider == "groq" else "OpenAI"
         if not key:
             raise LLMProviderError(f"Missing {pname} API key — configure BYOK")
+        _check_failure_injection(provider)
         url = "https://api.groq.com/openai/v1/chat/completions" if provider == "groq" else "https://api.openai.com/v1/chat/completions"
         norm_messages = self._normalize_openai_messages(messages)
         async with httpx.AsyncClient(timeout=120.0) as client:
@@ -658,6 +895,7 @@ class LLMService:
         key = api_key or self.api_key
         if not key:
             raise LLMProviderError("Missing Anthropic API key — configure BYOK")
+        _check_failure_injection("anthropic")
         headers = {
             "x-api-key": key,
             "anthropic-version": "2023-06-01",
@@ -704,14 +942,24 @@ class LLMService:
         *,
         api_key_override: str | None = None,
         provider_override: str | None = None,
+        user_id: str | None = None,
+        workspace_id: str | None = None,
+        db=None,
+        correlation_id: str | None = None,
     ) -> AsyncGenerator[dict[str, Any], None]:
         """Streaming variant of generate_completion_with_tools (true SSE token streaming).
 
         Yields typed events:
           {"type": "text_delta", "text": "..."}       — incremental assistant text as it arrives
           {"type": "tool_calls", "tool_calls": [...]} — complete accumulated tool calls
-                                                        (same OpenAI-style shape as the buffered path)
+                                                         (same OpenAI-style shape as the buffered path)
           {"type": "done", "finish_reason": "..."}    — terminal event
+
+        BYOK/auth context (user_id/workspace_id/db) is resolved per call so the
+        stream uses the workspace key, never a foreign key. Streaming performs a
+        SINGLE provider attempt (no mid-stream hop — a hop would corrupt the
+        token stream); retryable stream failures are explicit errors and the
+        caller falls back to the buffered path with full fallback semantics.
 
         When no API key is resolvable (tests / unconfigured), delegates to the buffered
         generate_completion_with_tools and emits its result as single-shot events so
@@ -720,7 +968,8 @@ class LLMService:
         effective_model = model or self.model
         inferred_provider = provider_override or _infer_provider_from_model(effective_model)
         _prov, effective_key = await self._resolve_api_key(
-            inferred_provider, explicit_key=api_key_override
+            inferred_provider, user_id=user_id, workspace_id=workspace_id, db=db,
+            explicit_key=api_key_override
         )
         if not effective_key:
             # No key — fall back to the buffered path (mocked in tests, raises clearly in prod)
@@ -731,6 +980,10 @@ class LLMService:
                 temperature=temperature,
                 api_key_override=api_key_override,
                 provider_override=provider_override,
+                user_id=user_id,
+                workspace_id=workspace_id,
+                db=db,
+                correlation_id=correlation_id,
             )
             content = result.get("content", "")
             if isinstance(content, list):  # Anthropic block style
@@ -761,6 +1014,7 @@ class LLMService:
         pname = "Groq" if provider == "groq" else "OpenAI"
         if not key:
             raise LLMProviderError(f"Missing {pname} API key — configure BYOK")
+        _check_failure_injection(provider)
         url = "https://api.groq.com/openai/v1/chat/completions" if provider == "groq" else "https://api.openai.com/v1/chat/completions"
         # Accumulate tool_call fragments by index: {"index": 0, "id"?, "function": {"name"?, "arguments"?}}
         fragments: dict[int, dict[str, Any]] = {}
@@ -836,6 +1090,7 @@ class LLMService:
         key = api_key or self.api_key
         if not key:
             raise LLMProviderError("Missing Anthropic API key — configure BYOK")
+        _check_failure_injection("anthropic")
         headers = {
             "x-api-key": key,
             "anthropic-version": "2023-06-01",
@@ -919,6 +1174,7 @@ class LLMService:
         pname = "Groq" if provider == "groq" else "OpenAI"
         if not key:
             raise LLMProviderError(f"Missing {pname} API key — configure BYOK")
+        _check_failure_injection(provider)
         url = "https://api.groq.com/openai/v1/chat/completions" if provider == "groq" else "https://api.openai.com/v1/chat/completions"
         async with httpx.AsyncClient(timeout=120.0) as client:
             async with client.stream(
@@ -967,6 +1223,7 @@ class LLMService:
         key = api_key or self.api_key
         if not key:
             raise LLMProviderError("Missing Anthropic API key — configure BYOK")
+        _check_failure_injection("anthropic")
         headers = {
             "x-api-key": key,
             "anthropic-version": "2023-06-01",

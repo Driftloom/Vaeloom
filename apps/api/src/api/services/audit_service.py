@@ -109,13 +109,29 @@ class AuditService:
 
         return result, total
 
-    async def get_event(self, event_id: str, db=None) -> dict | None:
+    async def get_event(
+        self,
+        event_id: str,
+        tenant_id: str | None = None,
+        actor_id: str | None = None,
+        db=None,
+    ) -> dict | None:
+        conditions = ["id = :id"]
+        params = {"id": event_id}
+        if tenant_id:
+            conditions.append("tenant_id = :tenant_id")
+            params["tenant_id"] = tenant_id
+        if actor_id:
+            conditions.append("actor_id = :actor_id")
+            params["actor_id"] = actor_id
+
+        where_clause = " AND ".join(conditions)
         result = await db.execute(
-            text("""
+            text(f"""
                 SELECT id, actor_id, action, resource, resource_id, tenant_id, metadata, created_at
-                FROM audit_events WHERE id = :id
+                FROM audit_events WHERE {where_clause}
             """),
-            {"id": event_id},
+            params,
         )
         r = result.fetchone()
         if not r:
@@ -143,7 +159,8 @@ class AuditService:
         date_from: str | None,
         date_to: str | None,
         format: str,
-        tenant_id: str | None,
+        tenant_id: str | None = None,
+        actor_id: str | None = None,
         db=None,
     ) -> str:
         params: dict = {}
@@ -151,6 +168,9 @@ class AuditService:
         if tenant_id:
             conditions.append("tenant_id = :tenant_id")
             params["tenant_id"] = tenant_id
+        if actor_id:
+            conditions.append("actor_id = :actor_id")
+            params["actor_id"] = actor_id
         if date_from:
             conditions.append("created_at >= :date_from")
             params["date_from"] = date_from
@@ -203,9 +223,10 @@ class AuditService:
 
     async def compliance_report(
         self,
-        tenant_id: str | None,
-        date_from: str | None,
-        date_to: str | None,
+        tenant_id: str | None = None,
+        actor_id: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
         db=None,
     ) -> dict:
         params: dict = {}
@@ -213,6 +234,9 @@ class AuditService:
         if tenant_id:
             conditions.append("tenant_id = :tenant_id")
             params["tenant_id"] = tenant_id
+        if actor_id:
+            conditions.append("actor_id = :actor_id")
+            params["actor_id"] = actor_id
         if date_from:
             conditions.append("created_at >= :date_from")
             params["date_from"] = date_from

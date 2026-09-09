@@ -20,6 +20,72 @@ class SearchIndex(ABC):
     @abstractmethod
     async def clear(self) -> None: ...
 
+class AlgoliaIndex(SearchIndex):
+    def __init__(self, app_id: str | None = None, api_key: str | None = None, index_name: str = "vaeloom"):
+        self._app_id = app_id or os.environ.get("ALGOLIA_APP_ID", "")
+        self._api_key = api_key or os.environ.get("ALGOLIA_ADMIN_API_KEY") or os.environ.get("ALGOLIA_API_KEY", "")
+        self._index_name = index_name
+        self._base_url = f"https://{self._app_id}-dsn.algolia.net/1/indexes/{self._index_name}" if self._app_id else ""
+
+    def _headers(self) -> dict[str, str]:
+        return {
+            "X-Algolia-Application-Id": self._app_id,
+            "X-Algolia-API-Key": self._api_key,
+            "Content-Type": "application/json",
+        }
+
+    async def index(self, documents: list[dict[str, Any]]) -> None:
+        if not self._app_id or not self._api_key:
+            return
+        import httpx
+        records = []
+        for doc in documents:
+            rec = dict(doc)
+            if "objectID" not in rec:
+                rec["objectID"] = str(rec.get("id", ""))
+            records.append({"action": "updateObject", "body": rec})
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            await client.post(
+                f"{self._base_url}/batch",
+                headers=self._headers(),
+                json={"requests": records},
+            )
+
+    async def search(self, query: str, options: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        if not self._app_id or not self._api_key:
+            return []
+        import httpx
+        opts = dict(options or {})
+        payload: dict[str, Any] = {"query": query}
+        if "limit" in opts:
+            payload["hitsPerPage"] = opts["limit"]
+        if "filters" in opts:
+            payload["filters"] = opts["filters"]
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                f"{self._base_url}/query",
+                headers=self._headers(),
+                json=payload,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                return data.get("hits", [])
+        return []
+
+    async def delete(self, id: str) -> None:
+        if not self._app_id or not self._api_key:
+            return
+        import httpx
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            await client.delete(f"{self._base_url}/{id}", headers=self._headers())
+
+    async def clear(self) -> None:
+        if not self._app_id or not self._api_key:
+            return
+        import httpx
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            await client.post(f"{self._base_url}/clear", headers=self._headers())
+
 
 class MeilisearchIndex(SearchIndex):
     def __init__(self, url: str | None = None, api_key: str | None = None, index_name: str = "vaeloom"):
@@ -161,6 +227,12 @@ class NoopSearchIndex(SearchIndex):
 
 
 def get_search_index(session_factory=None) -> SearchIndex:
+    # 1. Algolia Cloud (Primary fast instant search)
+    algolia_app_id = os.environ.get("ALGOLIA_APP_ID")
+    if algolia_app_id:
+        return AlgoliaIndex(app_id=algolia_app_id)
+
+    # 2. Meilisearch (Legacy placeholder)
     meili_url = os.environ.get("MEILISEARCH_URL")
     if meili_url:
         try:
@@ -168,4 +240,6 @@ def get_search_index(session_factory=None) -> SearchIndex:
             return MeilisearchIndex(url=meili_url)
         except ImportError:
             pass
+
+    # 3. PostgreSQL Native Fallback (Zero external dependencies)
     return PostgresFallbackIndex(session_factory=session_factory)

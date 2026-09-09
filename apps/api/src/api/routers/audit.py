@@ -47,8 +47,21 @@ async def query_events(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     tenant_id = current_user.get("tenant_id")
+    user_id = str(current_user.get("sub") or current_user.get("user_id", ""))
+    roles = current_user.get("roles", []) or current_user.get("realm_access", {}).get("roles", [])
+    is_admin = bool({"admin", "owner", "superadmin"}.intersection(roles))
+
+    # Zero-trust scoping: non-admins or users without tenant default to viewing their own events
+    if not is_admin:
+        if actor_id and actor_id != user_id:
+            scoped_actor_id = actor_id
+        else:
+            scoped_actor_id = user_id
+    else:
+        scoped_actor_id = actor_id
+
     filters = {
-        "actor_id": actor_id,
+        "actor_id": scoped_actor_id,
         "action": action,
         "resource": resource,
         "tenant_id": tenant_id,
@@ -68,7 +81,18 @@ async def get_event(
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    event = await audit_service.get_event(event_id=event_id, db=db)
+    tenant_id = current_user.get("tenant_id")
+    user_id = str(current_user.get("sub") or current_user.get("user_id", ""))
+    roles = current_user.get("roles", []) or current_user.get("realm_access", {}).get("roles", [])
+    is_admin = bool({"admin", "owner", "superadmin"}.intersection(roles))
+    scoped_actor_id = user_id if (not is_admin or not tenant_id) else None
+
+    event = await audit_service.get_event(
+        event_id=event_id,
+        tenant_id=tenant_id,
+        actor_id=scoped_actor_id,
+        db=db,
+    )
     if not event:
         raise HTTPException(status_code=404, detail="Audit event not found")
     return AuditEventResponse(**event)
@@ -85,7 +109,19 @@ async def export_events(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     tenant_id = current_user.get("tenant_id")
-    content = await audit_service.export_events(date_from=date_from, date_to=date_to, format=format, tenant_id=tenant_id, db=db)
+    user_id = str(current_user.get("sub") or current_user.get("user_id", ""))
+    roles = current_user.get("roles", []) or current_user.get("realm_access", {}).get("roles", [])
+    is_admin = bool({"admin", "owner", "superadmin"}.intersection(roles))
+    scoped_actor_id = user_id if (not is_admin or not tenant_id) else None
+
+    content = await audit_service.export_events(
+        date_from=date_from,
+        date_to=date_to,
+        format=format,
+        tenant_id=tenant_id,
+        actor_id=scoped_actor_id,
+        db=db,
+    )
     media_type = "text/csv" if format == "csv" else "application/json"
     return PlainTextResponse(content=content, media_type=media_type)
 
@@ -100,5 +136,16 @@ async def compliance_report(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     tenant_id = current_user.get("tenant_id")
-    report = await audit_service.compliance_report(tenant_id=tenant_id, date_from=date_from, date_to=date_to, db=db)
+    user_id = str(current_user.get("sub") or current_user.get("user_id", ""))
+    roles = current_user.get("roles", []) or current_user.get("realm_access", {}).get("roles", [])
+    is_admin = bool({"admin", "owner", "superadmin"}.intersection(roles))
+    scoped_actor_id = user_id if (not is_admin or not tenant_id) else None
+
+    report = await audit_service.compliance_report(
+        tenant_id=tenant_id,
+        actor_id=scoped_actor_id,
+        date_from=date_from,
+        date_to=date_to,
+        db=db,
+    )
     return ComplianceReport(**report)

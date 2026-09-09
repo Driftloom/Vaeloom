@@ -105,18 +105,65 @@ class MemoryConsolidatorAgent(BaseAgent):
         feedback: str | None = None,
         corrections: list[dict[str, Any]] | None = None,
         session: Any | None = None,
+        event_id: str | None = None,
+        tenant_id: str | None = None,
+        correlation_id: str | None = None,
+        source: str = "trajectory_feedback",
     ) -> dict[str, Any]:
-        """Process an execution trajectory and extract new or corrected entities/preferences."""
-        if not workspace_id:
-            return {"status": "skipped", "reason": "missing_workspace_id", "consolidated_count": 0}
+        """Process an execution trajectory and extract new or corrected entities/preferences.
+
+        Zero-trust admission (Muse learning completion):
+          - workspace_id must be a valid UUID (fail-closed; NEVER random-UUID fallback).
+          - every candidate passes services/learning_gate.validate_learning_signal
+            (schema + tenant/workspace binding + source + caps + scope + safety
+            + confidence). Rejections are counted, never persisted.
+          - when event_id is given, a durable learning_events row is claimed
+            FIRST under UNIQUE(workspace_id, event_id): concurrent duplicates race
+            on INSERT and exactly one wins (atomic idempotency, restart-safe).
+          - learned state persists in workspace-scoped Entity rows; Entity upsert
+            handles IntegrityError (concurrent dedup → re-read → merge).
+          - structured LEARNING_* logs carry correlation/tenant/workspace/signal/
+            decision/persistence on every call. Learning is best-effort: failures
+            return explicit skipped/error statuses, never phantom success.
+        """
+        import uuid as _uuid
+
+        corr = (correlation_id or event_id or str(_uuid.uuid4()))[:128]
+        # Fail closed on workspace binding (was: random-UUID fallback — removed).
+        try:
+            w_uuid = _uuid.UUID(str(workspace_id))
+        except Exception:
+            logger.warning(
+                "LEARNING_REJECTED correlation=%s workspace=%s reason=missing_or_invalid_workspace_id",
+                corr, str(workspace_id)[:16],
+            )
+            return {"status": "skipped", "reason": "missing_or_invalid_workspace_id",
+                    "consolidated_count": 0, "correlation_id": corr}
+        ws_str = str(w_uuid)
+
+        # Payload caps before extraction (oversized → reject, never silent-truncate).
+        try:
+            from api.services.learning_gate import validate_signal_texts
+            ok, why = validate_signal_texts(
+                correction=(corrections[0].get("correction") or corrections[0].get("value", ""))
+                if corrections and isinstance(corrections, list) and corrections else None,
+                feedback=feedback,
+            )
+            if not ok:
+                logger.warning("LEARNING_REJECTED correlation=%s workspace=%s reason=%s",
+                               corr, ws_str[:8], why)
+                return {"status": "rejected", "reason": why, "consolidated_count": 0,
+                        "correlation_id": corr}
+        except Exception:
+            pass
 
         learned_items: list[dict[str, Any]] = []
 
         # 1. Process explicit corrections
         if corrections:
-            for corr in corrections:
-                field = corr.get("field", "general")
-                val = corr.get("correction") or corr.get("value")
+            for correction_item in corrections:
+                field = correction_item.get("field", "general")
+                val = correction_item.get("correction") or correction_item.get("value")
                 if val:
                     learned_items.append({
                         "type": "preference" if "pref" in field.lower() else "skill" if "skill" in field.lower() else "career",
@@ -131,7 +178,9 @@ class MemoryConsolidatorAgent(BaseAgent):
 
         # 3. If LLM is available and we have feedback, extract semantic entities
         if feedback and len(feedback.strip()) > 10:
-            llm_extracted = await self._extract_with_llm(feedback)
+            llm_extracted = await self._extract_with_llm(
+                feedback, workspace_id=ws_str, user_id=user_id,
+            )
             learned_items.extend(llm_extracted)
 
         # 4. Upsert into database (de-duplicate against learned_items)
@@ -143,18 +192,71 @@ class MemoryConsolidatorAgent(BaseAgent):
 
         persisted_count = 0
         rejected_items: list[dict[str, Any]] = []
-        if deduped and workspace_id:
+        admitted_events = 0
+        duplicate_event = False
+        if deduped:
             try:
-                try:
-                    w_uuid = uuid.UUID(str(workspace_id))
-                except Exception:
-                    w_uuid = uuid.uuid4()
-
                 async def _persist_to_session(sess):
                     from datetime import UTC, datetime
+
+                    from sqlalchemy.exc import IntegrityError
+
+                    from api.services.learning_gate import validate_learning_signal, verify_workspace_tenant
+
                     count = 0
                     rejected: list[dict[str, Any]] = []
+                    # Tenant/workspace ownership: fail closed on PROVEN mismatch.
+                    _ok, _why = await verify_workspace_tenant(sess, w_uuid, tenant_id)
+                    if not _ok:
+                        logger.warning(
+                            "LEARNING_REJECTED correlation=%s workspace=%s tenant=%s reason=%s",
+                            corr, ws_str[:8], str(tenant_id)[:8], _why,
+                        )
+                        try:
+                            await sess.rollback()
+                        except Exception:
+                            pass
+                        return "REJECTED", [{"reason": _why}]
+                    elif _why == "unverified_owner" and tenant_id:
+                        logger.debug("LEARNING tenant unverified correlation=%s workspace=%s",
+                                     corr, ws_str[:8])
+                    # Atomic idempotency claim FIRST (when event_id given): exactly
+                    # one concurrent winner; losers return duplicate (no phantom).
+                    if event_id:
+                        try:
+                            from api.models.schema import LearningEvent
+                            claim = LearningEvent(
+                                id=_uuid.uuid4(),
+                                workspace_id=w_uuid,
+                                tenant_id=_uuid.UUID(str(tenant_id)) if tenant_id else None,
+                                event_id=event_id[:128],
+                                signal_type="trajectory",
+                                source=source,
+                                payload={"agent": agent_name, "items": len(deduped)},
+                                confidence=None,
+                                status="admitted",
+                                reason="claimed",
+                                correlation_id=corr,
+                            )
+                            sess.add(claim)
+                            await sess.flush()
+                        except Exception as ie:
+                            # UNIQUE violation (or driver equivalent) → duplicate.
+                            try:
+                                await sess.rollback()
+                            except Exception:
+                                pass
+                            if "uq_learning_events_ws_event" in str(ie) or "UNIQUE" in str(ie).upper() or isinstance(ie, IntegrityError):
+                                logger.info(
+                                    "LEARNING_DUPLICATE correlation=%s workspace=%s event=%s",
+                                    corr, ws_str[:8], str(event_id)[:32],
+                                )
+                                return "DUPLICATE", []
+                            # Ledger table may not exist yet (migration pending) —
+                            # fall through to Entity path (dedup still enforced).
+                            logger.debug(f"learning ledger claim skipped: {ie}")
                     for (etype, ename), item in deduped.items():
+                        item_source = str((item.get("metadata") or {}).get("source", source))
                         stmt = (
                             select(Entity)
                             .where(Entity.workspace_id == w_uuid)
@@ -164,17 +266,34 @@ class MemoryConsolidatorAgent(BaseAgent):
                         )
                         res = await sess.execute(stmt)
                         existing = res.scalars().first()
-                        source = str((item.get("metadata") or {}).get("source", "heuristic_preference"))
-                        score, decision = admission_score(source, is_novel=existing is None, name=item.get("name", ""))
+                        # Strict admission gate per candidate (fail-closed).
+                        accepted, decision = validate_learning_signal(
+                            workspace_id=ws_str,
+                            tenant_id=tenant_id,
+                            source=item_source if item_source else source,
+                            learn_type=etype,
+                            name=item.get("name", ""),
+                            event_id=event_id,
+                            correlation_id=corr,
+                            is_novel=existing is None,
+                        )
                         meta = dict(item.get("metadata") or {})
                         meta.update({
-                            "admission_score": score,
-                            "admission_decision": decision,
+                            "admission_score": decision.get("admission_score"),
+                            "admission_decision": decision.get("reason"),
                             "admitted_at": datetime.now(UTC).isoformat(),
+                            "correlation_id": corr,
+                            "signal_id": decision.get("signal_id"),
                         })
                         item["metadata"] = meta
-                        if existing is None and decision == "rejected-low-signal":
-                            rejected.append({"type": etype, "name": item["name"], "score": score})
+                        if not accepted:
+                            rejected.append({"type": etype, "name": item["name"],
+                                             "reason": decision.get("reason")})
+                            logger.info(
+                                "LEARNING_REJECTED correlation=%s workspace=%s signal=%s type=%s reason=%s",
+                                corr, ws_str[:8], decision.get("signal_id", "?")[:8],
+                                etype, decision.get("reason"),
+                            )
                             continue
                         if existing:
                             meta_old = existing.metadata_ or {}
@@ -208,23 +327,123 @@ class MemoryConsolidatorAgent(BaseAgent):
                             )
                             sess.add(new_ent)
                         count += 1
-                    await sess.commit()
+                    try:
+                        await sess.commit()
+                    except IntegrityError as cie:
+                        # Concurrent duplicate Entity insert (no DB unique on
+                        # entities): roll back, re-read winners, merge instead.
+                        try:
+                            await sess.rollback()
+                        except Exception:
+                            pass
+                        logger.info("LEARNING_CONCURRENT_MERGE correlation=%s workspace=%s detail=%s",
+                                    corr, ws_str[:8], str(cie)[:120])
+                        for (etype2, ename2), item2 in deduped.items():
+                            try:
+                                r2 = await sess.execute(
+                                    select(Entity)
+                                    .where(Entity.workspace_id == w_uuid)
+                                    .where(Entity.type == etype2)
+                                    .where(Entity.canonical_name.ilike(ename2))
+                                    .limit(1)
+                                )
+                                if r2.scalars().first() is None:
+                                    sess.add(Entity(
+                                        id=uuid.uuid4(), workspace_id=w_uuid,
+                                        type=etype2, canonical_name=item2["name"],
+                                        metadata_=item2.get("metadata", {}),
+                                    ))
+                            except Exception:
+                                continue
+                        try:
+                            await sess.commit()
+                        except Exception:
+                            try:
+                                await sess.rollback()
+                            except Exception:
+                                pass
                     return count, rejected
 
                 if session is not None:
-                    persisted_count, rejected_items = await _persist_to_session(session)
+                    _pres = await _persist_to_session(session)
                 else:
                     async with async_session_factory() as sess:
-                        persisted_count, rejected_items = await _persist_to_session(sess)
+                        _pres = await _persist_to_session(sess)
+                if isinstance(_pres, tuple) and _pres and _pres[0] == "DUPLICATE":
+                    duplicate_event = True
+                elif isinstance(_pres, tuple) and _pres and _pres[0] == "REJECTED":
+                    rejected_items = _pres[1]
+                else:
+                    persisted_count, rejected_items = _pres
+                    admitted_events = 1 if event_id else 0
+                logger.info(
+                    "LEARNING_DECIDED correlation=%s tenant=%s workspace=%s agent=%s "
+                    "persisted=%d rejected=%d duplicate=%s",
+                    corr, str(tenant_id)[:8] if tenant_id else "-",
+                    ws_str[:8], agent_name, persisted_count,
+                    len(rejected_items), duplicate_event,
+                )
             except Exception as exc:
-                logger.warning(f"MemoryConsolidator upsert error (non-blocking): {exc}")
+                # Best-effort by design (the caller's primary op stays correct),
+                # but the outcome is EXPLICIT: error status, never phantom success.
+                import traceback as _tb
+                logger.warning("LEARNING_FAILED correlation=%s workspace=%s agent=%s error=%s\n%s",
+                               corr, ws_str[:8], agent_name, exc, _tb.format_exc(limit=6))
+                return {
+                    "status": "error",
+                    "reason": f"persistence_failed: {type(exc).__name__}",
+                    "consolidated_count": 0,
+                    "items": [],
+                    "rejected_count": 0,
+                    "rejected": [],
+                    "correlation_id": corr,
+                    "event_id": event_id,
+                }
 
+        if duplicate_event:
+            return {
+                "status": "duplicate",
+                "reason": "duplicate_event_id",
+                "consolidated_count": 0,
+                "items": [],
+                "rejected_count": 0,
+                "rejected": [],
+                "correlation_id": corr,
+                "event_id": event_id,
+            }
+        if rejected_items and "foreign_workspace" in {r.get("reason") for r in rejected_items}:
+            return {
+                "status": "rejected",
+                "reason": "foreign_workspace",
+                "consolidated_count": 0,
+                "items": [],
+                "rejected_count": len(rejected_items),
+                "rejected": rejected_items[:20],
+                "correlation_id": corr,
+                "event_id": event_id,
+            }
+        if not deduped:
+            logger.info("LEARNING_DECIDED correlation=%s workspace=%s agent=%s "
+                        "persisted=0 rejected=0 duplicate=False reason=no_signal",
+                        corr, ws_str[:8], agent_name)
+            return {
+                "status": "success",
+                "consolidated_count": 0,
+                "items": [],
+                "rejected_count": 0,
+                "rejected": [],
+                "correlation_id": corr,
+                "event_id": event_id,
+            }
         return {
             "status": "success",
             "consolidated_count": persisted_count,
             "items": list(deduped.values()),
             "rejected_count": len(rejected_items),
             "rejected": rejected_items[:20],
+            "correlation_id": corr,
+            "event_id": event_id,
+            "admitted_events": admitted_events,
         }
 
     def _extract_heuristics(self, text: str) -> list[dict[str, Any]]:
@@ -265,7 +484,8 @@ class MemoryConsolidatorAgent(BaseAgent):
 
         return items
 
-    async def _extract_with_llm(self, feedback: str) -> list[dict[str, Any]]:
+    async def _extract_with_llm(self, feedback: str, workspace_id: str | None = None,
+                                  user_id: str | None = None) -> list[dict[str, Any]]:
         """Extract learned preferences or corrections via LLM when available."""
         import json
         from api.config import settings
@@ -286,6 +506,8 @@ class MemoryConsolidatorAgent(BaseAgent):
                 ],
                 temperature=0.0,
                 max_tokens=256,
+                workspace_id=workspace_id,
+                user_id=user_id,
             )
             content = resp.get("content", "").strip()
             match = re.search(r"\[.*\]", content, re.DOTALL)

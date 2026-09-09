@@ -28,6 +28,7 @@ class AgentContextLoader:
         workspace_id: str,
         user_id: str | None = None,
         rag_context: dict[str, Any] | None = None,
+        db: Any = None,
     ) -> AgentContext:
         context = AgentContext(
             workspace_id=workspace_id,
@@ -43,11 +44,84 @@ class AgentContextLoader:
             return context
 
         try:
-            async with async_session_factory() as session:
-                # 1. Load User Profile
-                if user_id:
+            if db is not None:
+                await self._hydrate_context(context, workspace_id, user_id, db)
+            else:
+                async with async_session_factory() as session:
+                    await self._hydrate_context(context, workspace_id, user_id, session)
+        except Exception as exc:
+            logger.warning(f"AgentContextLoader non-blocking error: {exc}")
+
+        # Ensure minimal required fields for safe execution
+        context.profile.setdefault("name", "User")
+        context.profile.setdefault("email", "user@example.com")
+        context.profile.setdefault("education", [])
+        context.profile.setdefault("experience", [])
+        context.profile.setdefault("skills", [])
+
+        return context
+
+    async def _hydrate_context(
+        self,
+        context: AgentContext,
+        workspace_id: str,
+        user_id: str | None,
+        session: Any,
+    ) -> None:
+                # 1. Load User Profile & Workspace Memory via profile_service
+                resolved_user_id = user_id
+                if not resolved_user_id:
                     try:
-                        u_uid = uuid.UUID(str(user_id))
+                        from ..models.schema import WorkspaceUser
+                        wu_stmt = select(WorkspaceUser.user_id).where(WorkspaceUser.workspace_id == uuid.UUID(str(workspace_id))).limit(1)
+                        wu_res = await session.execute(wu_stmt)
+                        resolved_user_id = wu_res.scalar_one_or_none()
+                    except Exception:
+                        resolved_user_id = None
+
+                profile_loaded = False
+                if resolved_user_id:
+                    try:
+                        from ..services.profile_service import profile_service
+                        prof_res = await profile_service.get_profile(
+                            user_id=str(resolved_user_id),
+                            workspace_id=str(workspace_id),
+                            db=session,
+                        )
+                        if prof_res:
+                            context.profile = {
+                                "id": prof_res.id,
+                                "name": prof_res.display_name or "User",
+                                "display_name": prof_res.display_name or "User",
+                                "email": prof_res.email,
+                                "bio": prof_res.bio,
+                                "headline": prof_res.headline,
+                                "location": prof_res.location,
+                                "phone": prof_res.phone,
+                                "job_title": prof_res.job_title,
+                                "social_links": prof_res.social_links or {},
+                                "skills": [s.name for s in prof_res.skills],
+                                "skills_detailed": [s.model_dump() for s in prof_res.skills],
+                                "career_history": [c.model_dump() for c in prof_res.career_history],
+                                "job_preferences": prof_res.job_preferences.model_dump() if prof_res.job_preferences else {},
+                                "preferences": prof_res.preferences or {},
+                                "years_experience": prof_res.years_experience,
+                            }
+                            if prof_res.job_preferences:
+                                context.preferences = [
+                                    {"name": "job_types", "value": prof_res.job_preferences.job_types},
+                                    {"name": "salary_range", "value": prof_res.job_preferences.salary_range},
+                                    {"name": "preferred_industries", "value": prof_res.job_preferences.preferred_industries},
+                                    {"name": "dealbreakers", "value": prof_res.job_preferences.dealbreakers},
+                                    {"name": "remote_preference", "value": prof_res.job_preferences.remote_preference},
+                                ]
+                            profile_loaded = True
+                    except Exception as e:
+                        logger.debug(f"Profile service context loading skipped: {e}")
+
+                if not profile_loaded and resolved_user_id:
+                    try:
+                        u_uid = uuid.UUID(str(resolved_user_id))
                         user = await session.get(User, u_uid)
                         if user:
                             context.profile = {
@@ -56,7 +130,7 @@ class AgentContextLoader:
                                 "preferences": user.preferences or {},
                             }
                     except Exception as e:
-                        logger.debug(f"User profile fetch skipped: {e}")
+                        logger.debug(f"Fallback user profile fetch skipped: {e}")
 
                 try:
                     w_uuid = uuid.UUID(str(workspace_id))
@@ -130,18 +204,6 @@ class AgentContextLoader:
                         }
                 except Exception as e:
                     logger.debug(f"Resume document load skipped: {e}")
-
-        except Exception as exc:
-            logger.warning(f"AgentContextLoader non-blocking error: {exc}")
-
-        # Ensure minimal required fields for safe execution
-        context.profile.setdefault("name", "User")
-        context.profile.setdefault("email", "user@example.com")
-        context.profile.setdefault("education", [])
-        context.profile.setdefault("experience", [])
-        context.profile.setdefault("skills", [])
-
-        return context
 
 
 context_loader = AgentContextLoader()

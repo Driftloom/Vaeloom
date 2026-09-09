@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import get_db
 from ..dependencies import get_current_user, get_tenant_id
 from ..services.webhook_service import webhook_service
+from ..utils.url_guard import DnsResolutionError, UrlBlockedError
 
 router = APIRouter()
 
@@ -95,14 +96,17 @@ async def create_webhook(
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    webhook = await webhook_service.create(
-        tenant_id=tenant_id,
-        name=dto.name,
-        url=dto.url,
-        secret=dto.secret,
-        events=dto.events,
-        db=db,
-    )
+    try:
+        webhook = await webhook_service.create(
+            tenant_id=tenant_id,
+            name=dto.name,
+            url=dto.url,
+            secret=dto.secret,
+            events=dto.events,
+            db=db,
+        )
+    except (UrlBlockedError, DnsResolutionError) as e:
+        raise HTTPException(status_code=400, detail=f"SSRF policy violation: {e}")
     return WebhookResponse.model_validate(webhook)
 
 
@@ -147,7 +151,10 @@ async def update_webhook(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     updates = dict(dto.model_dump(exclude_none=True).items())
-    webhook = await webhook_service.update(webhook_id, tenant_id, updates, db)
+    try:
+        webhook = await webhook_service.update(webhook_id, tenant_id, updates, db)
+    except (UrlBlockedError, DnsResolutionError) as e:
+        raise HTTPException(status_code=400, detail=f"SSRF policy violation: {e}")
     if not webhook:
         raise HTTPException(status_code=404, detail="Webhook not found")
     return WebhookResponse.model_validate(webhook)

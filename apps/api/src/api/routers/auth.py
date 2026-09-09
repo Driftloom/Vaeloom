@@ -51,6 +51,9 @@ async def logout(
 ):
     from sqlalchemy import text
     user_id = current_user.get("sub")
+    jti = current_user.get("jti")
+    if jti:
+        auth_service.revoke_token(jti=jti)
     if user_id:
         await db.execute(
             text("UPDATE auth_sessions SET status = 'REVOKED' WHERE user_id = :uid AND status = 'ACTIVE'"),  # nosec B608

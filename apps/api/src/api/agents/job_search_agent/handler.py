@@ -24,6 +24,8 @@ class JobResult(BaseModel):
     fit_score: float
     fit_reason: str
     is_remote: bool = False
+    why_you: str | None = None
+    match_score: float | None = None
 
 
 class JobSearchAgent(BaseAgent):
@@ -79,6 +81,7 @@ class JobSearchAgent(BaseAgent):
         rejected_job_ids: list[str],
         location: str | None = None,
         workspace_id: str | None = None,
+        preferences: dict[str, Any] | list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         raw_jobs = None
 
@@ -96,9 +99,45 @@ class JobSearchAgent(BaseAgent):
 
         filtered = [j for j in raw_jobs if j["id"] not in rejected_job_ids]
 
+        # Parse and apply user profile preferences
+        prefs_dict: dict[str, Any] = {}
+        if isinstance(preferences, dict):
+            prefs_dict = preferences
+        elif isinstance(preferences, list):
+            for item in preferences:
+                if isinstance(item, dict) and "name" in item:
+                    prefs_dict[item["name"]] = item.get("value") or item.get("metadata")
+
+        dealbreakers = prefs_dict.get("dealbreakers") or []
+        remote_pref = str(prefs_dict.get("remote_preference") or prefs_dict.get("remotePreference") or "").lower()
+        preferred_industries = [str(ind).lower() for ind in (prefs_dict.get("preferred_industries") or prefs_dict.get("preferredIndustries") or []) if ind]
+
+        # Filter out roles containing dealbreaker terms
+        if dealbreakers:
+            clean_db = [str(d).strip().lower() for d in dealbreakers if str(d).strip()]
+            def violates_dealbreaker(job_item: dict[str, Any]) -> bool:
+                combined = f"{job_item.get('title', '')} {job_item.get('company', '')} {' '.join(job_item.get('required_skills', []))}".lower()
+                return any(db_word in combined for db_word in clean_db)
+            filtered = [j for j in filtered if not violates_dealbreaker(j)]
+
         results = []
         for job in filtered:
             fit_score, fit_reason = await self._score_fit(job, user_skills, keywords)
+            is_job_remote = job.get("location", "").lower() == "remote"
+
+            # Profile preference boosts
+            if remote_pref in ("remote", "remote_only", "fully_remote") and is_job_remote:
+                fit_score = min(1.0, round(fit_score + 0.15, 2))
+                fit_reason = f"{fit_reason} • Matches remote preference"
+            elif remote_pref in ("onsite", "in_person") and is_job_remote:
+                fit_score = max(0.1, round(fit_score - 0.1, 2))
+
+            if preferred_industries:
+                job_desc = f"{job.get('title', '')} {job.get('company', '')}".lower()
+                if any(ind in job_desc for ind in preferred_industries):
+                    fit_score = min(1.0, round(fit_score + 0.1, 2))
+                    fit_reason = f"{fit_reason} • Target industry match"
+
             results.append(JobResult(
                 job_id=job["id"],
                 title=job["title"],
@@ -106,7 +145,9 @@ class JobSearchAgent(BaseAgent):
                 location=job.get("location", ""),
                 fit_score=fit_score,
                 fit_reason=fit_reason,
-                is_remote=job.get("location", "").lower() == "remote",
+                is_remote=is_job_remote,
+                why_you=fit_reason,
+                match_score=fit_score,
             ))
 
         results.sort(key=lambda r: r.fit_score, reverse=True)
@@ -169,6 +210,20 @@ class JobSearchAgent(BaseAgent):
                 return round(data.get("score", 0.5), 2), data.get("reason", "Fit analyzed by AI")
             except Exception as e:
                 logger.warning(f"LLM fit scoring failed: {e}")
+
+        # PIOS Opportunity Matcher (matcher_core formula)
+        try:
+            from api.services.opportunity_matcher import opportunity_matcher
+            skills_payload = [
+                {"name": s, "confidence": 0.85, "validation_tier": "V1", "decay_factor": 1.0}
+                if isinstance(s, str) else s
+                for s in user_skills
+            ]
+            match_res = opportunity_matcher.calculate_match(job, user_skills=skills_payload)
+            if match_res.matched_skills or match_res.missing_skills:
+                return round(match_res.match_score, 2), match_res.why_you
+        except Exception as exc:
+            logger.debug("PIOS opportunity matcher fallback: %s", exc)
 
         return self._keyword_score_fit(job, user_skills, keywords)
 

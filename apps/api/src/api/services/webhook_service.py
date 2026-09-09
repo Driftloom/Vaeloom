@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.schema import Webhook, WebhookDelivery
 from ..services.encryption import decrypt_value, encrypt_value, is_encrypted
+from ..utils.url_guard import DnsResolutionError, UrlBlockedError, assert_public_http_url
 
 _SENSITIVE_RE = re.compile(
     r"(?i)(authorization|api[_-]?key|access[_-]?token|secret|password|token)"
@@ -30,6 +31,7 @@ def _redact_body(body: str) -> str:
 
 class WebhookService:
     async def create(self, tenant_id: str | None, name: str, url: str, secret: str, events: list[str], db: AsyncSession) -> Webhook:
+        url = await assert_public_http_url(url)
         tid = uuid.UUID(tenant_id) if tenant_id else uuid.uuid4()
         # Encrypt secret at rest
         encrypted_secret = encrypt_value(secret)
@@ -69,6 +71,8 @@ class WebhookService:
         for key, value in updates.items():
             if key not in self._ALLOWED_UPDATE_FIELDS:
                 continue
+            if key == "url" and isinstance(value, str):
+                value = await assert_public_http_url(value)
             # Re-encrypt secret if it's being updated with a new plaintext value
             if key == "secret" and isinstance(value, str) and not is_encrypted(value):
                 value = encrypt_value(value)
@@ -142,11 +146,20 @@ class WebhookService:
 
         signature = await self._compute_signature(body, webhook.secret)
 
+        try:
+            target_url = await assert_public_http_url(webhook.url)
+        except (UrlBlockedError, DnsResolutionError) as ssrf_err:
+            delivery.status = "FAILED"
+            delivery.completed_at = datetime.now(UTC)
+            delivery.response_body = _redact_body(f"SSRF policy blocked: {ssrf_err}")
+            await db.commit()
+            return
+
         for attempt in range(1, delivery.max_attempts + 1):
             try:
                 async with httpx.AsyncClient(timeout=webhook.timeout_ms / 1000) as client:
                     resp = await client.post(
-                        webhook.url,
+                        target_url,
                         content=body,
                         headers={
                             "Content-Type": "application/json",

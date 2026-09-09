@@ -85,13 +85,42 @@ async def reflection_scan() -> int:
         return 0
 
 
-async def process_user_correction(workspace_id: str, correction_text: str, source: str = "manual") -> str | None:
+async def process_user_correction(workspace_id: str, correction_text: str, source: str = "manual",
+                                   tenant_id: str | None = None,
+                                   event_id: str | None = None,
+                                   correlation_id: str | None = None) -> str | None:
     """Direct learning entry-point for tests and manual corrections.
 
     Stores a workspace-scoped preference Entity (bounded, reversible) that ranking can use.
     Returns the created Entity id or existing id. Workspace isolation enforced.
+    Fail-closed: invalid workspace, oversized payload, unsupported source, or
+    instruction-injection content returns None (never persists, never random-UUID).
     """
-    if not correction_text or not workspace_id.strip():
+    import uuid as _uuid
+
+    corr = (correlation_id or event_id or str(_uuid.uuid4()))[:128]
+    try:
+        from api.services.learning_gate import validate_learning_signal, validate_signal_texts
+        ok, why = validate_signal_texts(correction=correction_text)
+        if not ok:
+            logger.warning("LEARNING_REJECTED correlation=%s workspace=%s reason=%s",
+                           corr, str(workspace_id)[:8], why)
+            return None
+        hint = (correction_text or "").strip()[:120]
+        if not hint:
+            return None
+        accepted, decision = validate_learning_signal(
+            workspace_id=workspace_id, tenant_id=tenant_id, source=source,
+            learn_type="preference", name=hint, event_id=event_id,
+            correlation_id=corr, is_novel=True,
+        )
+        if not accepted:
+            logger.warning("LEARNING_REJECTED correlation=%s workspace=%s reason=%s",
+                           corr, str(workspace_id)[:8], decision.get("reason"))
+            return None
+        ws_uuid = _uuid.UUID(decision["workspace_uuid"])
+    except Exception as e:
+        logger.warning(f"process_user_correction gate failed: {e}")
         return None
     try:
         from sqlalchemy import select
@@ -99,19 +128,24 @@ async def process_user_correction(workspace_id: str, correction_text: str, sourc
         from api.models.schema import Entity
         import uuid
 
-        ws_uuid = uuid.UUID(workspace_id)
-        hint = correction_text.strip()[:120]
         async with async_session_factory() as session:
+            from api.services.learning_gate import verify_workspace_tenant
+            _ok, _why = await verify_workspace_tenant(session, ws_uuid, tenant_id)
+            if not _ok:
+                logger.warning("LEARNING_REJECTED correlation=%s workspace=%s reason=%s",
+                               corr, str(ws_uuid)[:8], _why)
+                return None
             # Deduplicate
             existing = await session.execute(select(Entity).where(Entity.workspace_id == ws_uuid, Entity.type == "preference", Entity.canonical_name == hint).limit(1))
             ex = existing.scalar_one_or_none()
             if ex:
                 return str(ex.id)
-            ent = Entity(workspace_id=ws_uuid, type="preference", canonical_name=hint, aliases=[], metadata_={"source": source, "bounded": True})
+            ent = Entity(workspace_id=ws_uuid, type="preference", canonical_name=hint, aliases=[], metadata_={"source": source, "bounded": True, "correlation_id": corr, "signal_id": decision.get("signal_id")})
             session.add(ent)
             await session.commit()
             await session.refresh(ent)
-            logger.info(f"LEARNING manual preference ws={workspace_id[:8]} '{hint[:40]}'")
+            logger.info(f"LEARNING_ADMITTED correlation={corr} workspace={str(ws_uuid)[:8]} "
+                        f"source={source} hint='{hint[:40]}'")
             return str(ent.id)
     except Exception as e:
         logger.warning(f"process_user_correction failed: {e}")

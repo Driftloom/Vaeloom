@@ -4,6 +4,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.responses import JSONResponse, Response
 
 from ..config import settings
+from ..services.auth_service import auth_service
 
 PUBLIC_PATHS = frozenset({
     "/health",
@@ -24,6 +25,8 @@ PUBLIC_PATHS = frozenset({
 PUBLIC_PREFIXES = frozenset({
     "/api/v1/auth/sso/",
     "/scim/",
+    "/api/v1/profile/avatar/",
+    "/api/v1/profile/public/",
 })
 
 
@@ -52,8 +55,16 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 algorithms=[settings.jwt_algorithm],
                 options={"require": ["exp", "sub"]},
             )
+            jti = payload.get("jti")
+            user_id = payload.get("sub") or payload.get("user_id")
+            iat = payload.get("iat")
+            iat_val = float(iat) if isinstance(iat, (int, float)) else None
+
+            if auth_service.is_token_revoked(jti=jti, user_id=str(user_id) if user_id else None, iat=iat_val):
+                return JSONResponse(status_code=401, content={"detail": "Token has been revoked"})
+
             request.state.user = payload
-            request.state.user_id = payload.get("sub") or payload.get("user_id")
+            request.state.user_id = user_id
             request.state.tenant_id = payload.get("tenant_id")
         except jwt.ExpiredSignatureError:
             return JSONResponse(status_code=401, content={"detail": "Token expired"})

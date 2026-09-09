@@ -147,6 +147,26 @@ class AuthService:
             return user
         return None
 
+    _revoked_tokens: set[str] = set()
+    _revoked_users_before: dict[str, int] = {}
+
+    def revoke_token(self, jti: str | None = None) -> None:
+        if jti:
+            self._revoked_tokens.add(str(jti))
+
+    def revoke_all_user_tokens(self, user_id: str) -> None:
+        import time
+        self._revoked_users_before[str(user_id)] = int(time.time())
+
+    def is_token_revoked(self, jti: str | None = None, user_id: str | None = None, iat: float | None = None) -> bool:
+        if jti and str(jti) in self._revoked_tokens:
+            return True
+        if user_id and str(user_id) in self._revoked_users_before:
+            cutoff = self._revoked_users_before[str(user_id)]
+            if iat is not None and int(iat) < cutoff:
+                return True
+        return False
+
     def _create_jwt(self, user_id: str, email: str, tenant_id: str | None = None):
         now = datetime.now(UTC)
         payload = {

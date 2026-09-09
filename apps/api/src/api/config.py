@@ -67,6 +67,18 @@ class Settings(BaseSettings):
 
     job_board_api_url: str = ""
     job_board_api_key: str = ""
+    github_token: str = ""
+
+    # Algolia Cloud Instant Search
+    algolia_app_id: str = ""
+    algolia_admin_api_key: str = ""
+    algolia_search_key: str = ""
+    algolia_index_prefix: str = "vaeloom"
+
+    # Qdrant Cloud Vector Store
+    qdrant_url: str = ""
+    qdrant_api_key: str = ""
+    vector_store: str = "pgvector"
 
     sso_providers: dict[str, Any] = {}
 
@@ -85,6 +97,8 @@ class Settings(BaseSettings):
     rate_limit_requests: int = 100
     rate_limit_window: int = 60
     api_key_rate_limit: int = 1000
+    
+    profile_avatar_max_bytes: int = 5 * 1024 * 1024  # 5MB
 
     # Consequential HTTP idempotency (middleware/idempotency.py): when True,
     # a storage lookup failure BEFORE the side effect executes returns 503
@@ -293,13 +307,15 @@ def validate_settings() -> dict[str, list[str]]:
     if not settings.rate_limit_redis_url:
         warnings.append("RATE_LIMIT_REDIS_URL is not set — rate limiting will use in-memory fallback")
 
-    meilisearch_url = os.environ.get("MEILISEARCH_URL")
-    if not meilisearch_url:
-        warnings.append("MEILISEARCH_URL is not set — search will use database fallback")
+    search_configured = bool(
+        getattr(settings, "algolia_app_id", "") or os.environ.get("ALGOLIA_APP_ID") or os.environ.get("MEILISEARCH_URL")
+    )
+    if not search_configured:
+        warnings.append("Search service (ALGOLIA_APP_ID / MEILISEARCH_URL) is not set — search will use database fallback")
 
-    qdrant_url = os.environ.get("QDRANT_URL")
+    qdrant_url = getattr(settings, "qdrant_url", "") or os.environ.get("QDRANT_URL")
     if not qdrant_url:
-        warnings.append("QDRANT_URL is not set — vector search will use in-process fallback")
+        warnings.append("QDRANT_URL is not set — vector search will use in-process/pgvector fallback")
 
     if not settings.storage_endpoint or "localhost" in settings.storage_endpoint:
         warnings.append("STORAGE_ENDPOINT is set to localhost — verify this is intentional for non-production")

@@ -24,6 +24,7 @@ class PublicUser(BaseModel):
     id: uuid.UUID
     email: str
     display_name: str
+    avatar_url: str | None = None
     auth_provider: str = "email"
     created_at: datetime
 

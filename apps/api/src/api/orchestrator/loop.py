@@ -51,10 +51,11 @@ def _get_circuit_breaker(agent_name: str) -> CircuitBreaker:
 
 # ── Spend & Quota Gate (Wave 1, 2026-09-06) ──────────────────────────
 
-async def _check_spend_and_quota(workspace_id: str, agent_name: str) -> str | None:
+async def _check_spend_and_quota(workspace_id: str, agent_name: str) -> tuple[str | None, str]:
     """Enforce daily request quota + USD spend budget before LLM work.
 
-    Returns an error summary string when the loop must stop, else None.
+    Returns (error summary or None, ceiling kind). Kind is a LoopState
+    termination reason: "policy_stop" for quota, "cost_budget" for spend.
     Quota reuses temporal/quota.py (one system, both loop paths). Spend uses
     services/agent_costs.py budgets. Fail-open locally, fail-closed in
     non-local environments (mirrors quota.py semantics).
@@ -66,12 +67,13 @@ async def _check_spend_and_quota(workspace_id: str, agent_name: str) -> str | No
         allowed, cur = await check_and_reserve(workspace_id, metric="requests", increment=1)
         if not allowed:
             logger.warning(f"Quota gate: workspace={workspace_id} agent={agent_name} daily requests exhausted ({cur})")
-            return f"Daily request quota exhausted for this workspace ({cur} used). Please try again tomorrow."
+            return (f"Daily request quota exhausted for this workspace ({cur} used). Please try again tomorrow.",
+                    "policy_stop")
     except ImportError as e:
         logger.error(f"Quota gate: temporal.quota unavailable: {e}")
         try:
             if settings.service_environment != "local":
-                return "Quota service unavailable — loop halted (fail-closed in non-local)."
+                return ("Quota service unavailable — loop halted (fail-closed in non-local).", "policy_stop")
         except Exception:
             pass
     except Exception as e:
@@ -89,15 +91,21 @@ async def _check_spend_and_quota(workspace_id: str, agent_name: str) -> str | No
             return (
                 f"Workspace LLM spend budget exhausted "
                 f"(${status.get('spent_usd', 0):.4f} / ${status.get('limit_usd', 0):.4f}). "
-                f"Please raise the budget or try again in the next period."
+                f"Please raise the budget or try again in the next period.",
+                "cost_budget",
             )
     except Exception as e:
         logger.warning(f"Budget gate check failed (non-blocking): {e}")
-    return None
+    return None, "cost_budget"
 
 
-def _ceiling_error_card(agent_name: str, summary: str) -> dict[str, Any]:
-    """User-facing error card for ceiling/quota/budget stops (matches rate-limit shape)."""
+def _ceiling_error_card(agent_name: str, summary: str, kind: str = "cost_budget") -> dict[str, Any]:
+    """User-facing error card for ceiling/quota/budget stops (matches rate-limit shape).
+
+    kind is a LoopState termination reason ("cost_budget" for spend, "policy_stop"
+    for quota). Carried in result._ceiling so the run loops can terminate with
+    the truthful reason instead of decaying into no_progress/escalated.
+    """
     return {
         "agent_name": agent_name,
         "action": "error",
@@ -107,6 +115,7 @@ def _ceiling_error_card(agent_name: str, summary: str) -> dict[str, Any]:
             "details": None,
             "proposals": [],
             "questions": [],
+            "_ceiling": kind,
         },
     }
 
@@ -369,7 +378,7 @@ async def lookup_approval(
 
 
 class AgentRequest:
-    def __init__(self, agent: BaseAgent, request_id: str, message: str, workspace_id: str, agent_name: str = "", db: Any = None, correlation_id: str | None = None):
+    def __init__(self, agent: BaseAgent, request_id: str, message: str, workspace_id: str, agent_name: str = "", db: Any = None, correlation_id: str | None = None, user_id: str | None = None, tenant_id: str | None = None):
         self.agent = agent
         self.id = request_id
         self.message = message
@@ -378,6 +387,10 @@ class AgentRequest:
         self.db = db
         # §29 trace correlation (middleware/queue/envelope or run id).
         self.correlation_id = correlation_id or request_id
+        # BYOK/auth context for model fallback resolution (fail-safe: system key when absent).
+        self.user_id = user_id
+        # Tenant binding for policy/observability (middleware context authoritative).
+        self.tenant_id = tenant_id
 
     def _derive_agent_name(self) -> str:
         name = type(self.agent).__name__
@@ -765,6 +778,7 @@ async def plan_phase(request: AgentRequest, state: LoopState) -> dict[str, Any]:
             from .context_loader import context_loader
             agent_context = await context_loader.load_context(
                 workspace_id=request.workspace_id,
+                user_id=getattr(request, "user_id", None),
                 rag_context=rag_context,
             )
         except Exception as e:
@@ -795,6 +809,86 @@ def _build_context_prompt(rag: dict[str, Any]) -> str:
 
 # ── Dynamic ReAct Tool Loop ─────────────────────────────────────
 
+async def _react_approval_gate(
+    tool_name: str,
+    payload_args: dict[str, Any],
+    agent_name: str,
+    workspace_id: str,
+    user_id: str | None,
+    db: Any | None,
+    correlation_id: str,
+) -> dict[str, Any]:
+    """Approval parity for ReAct-selected tools (mirrors static `_dispatch_with_approval`).
+
+    Canonical payload is {"tool": name, "args": cleaned_args}. Execution is
+    allowed ONLY after an atomic consume + hash/HMAC verify at this moment
+    (`lookup_approval`), so an approval can never become stale authorization.
+    Otherwise a PENDING request is created (idempotent-ish: an existing PENDING
+    row for the same agent/action is reused) and the loop pauses with its id.
+    Returns {"approved": bool, "approval_id": str|None, "error": str|None}.
+    Fail-closed: any infrastructure failure refuses execution.
+    """
+    payload = {"tool": tool_name, "args": payload_args}
+    try:
+        hit = await lookup_approval(
+            workspace_id=workspace_id, agent_name=agent_name, action_type=tool_name,
+            payload=payload, consume=True, db=db,
+        )
+        if hit is not None and hit.get("status") in ("APPROVED", "CONSUMED"):
+            logger.info(f"REACT_APPROVAL_CONSUMED correlation={correlation_id} approval={hit.get('id')} tool={tool_name}")
+            return {"approved": True, "approval_id": hit.get("id"), "error": None}
+    except Exception as _le:
+        logger.debug(f"ReAct approval lookup skipped: {_le}")
+    # No usable approval: create a PENDING request (reuse an existing one).
+    # requested_by is UUID-typed in the ledger: pass the user id only when it
+    # parses as UUID, else NULL (fail-open identity here would corrupt the ledger).
+    _requested_by: str | None = None
+    try:
+        import uuid as _uuid
+        _requested_by = str(_uuid.UUID(str(user_id))) if user_id else None
+    except Exception:
+        _requested_by = None
+    try:
+        from ..services.approval import ApprovalManager
+        mgr = ApprovalManager()
+        if db is not None:
+            try:
+                existing = await mgr.list_approvals(db, status="PENDING", workspace_id=workspace_id)
+                for item in (existing.items or []):
+                    try:
+                        if (item.agent_name == agent_name and item.action_type == tool_name
+                                and (item.payload or {}) == payload):
+                            return {"approved": False, "approval_id": str(item.id), "error": None}
+                    except Exception:
+                        continue
+            except Exception:
+                pass
+            resp = await mgr.request_approval(
+                agent_name, tool_name, payload,
+                f"ReAct tool '{tool_name}' requires approval", workspace_id,
+                _requested_by, 60, db)
+            try:
+                await db.commit()
+            except Exception:
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
+                return {"approved": False, "approval_id": None, "error": "approval store unavailable"}
+            return {"approved": False, "approval_id": str(resp.id), "error": None}
+        from ..database import async_session_factory as _af
+        async with _af() as _sess:
+            resp = await mgr.request_approval(
+                agent_name, tool_name, payload,
+                f"ReAct tool '{tool_name}' requires approval", workspace_id,
+                _requested_by, 60, _sess)
+            await _sess.commit()
+            return {"approved": False, "approval_id": str(resp.id), "error": None}
+    except Exception as _ce:
+        logger.warning(f"REACT_APPROVAL_REFUSED correlation={correlation_id} tool={tool_name} error={_ce}")
+        return {"approved": False, "approval_id": None, "error": str(_ce)[:200]}
+
+
 async def _try_react_loop(
     agent: BaseAgent,
     message: str,
@@ -802,10 +896,23 @@ async def _try_react_loop(
     agent_name: str,
     on_token: Any = None,
     context: Any | None = None,
+    user_id: str | None = None,
+    db: Any | None = None,
+    correlation_id: str | None = None,
+    request_id: str | None = None,
+    state: Any | None = None,
+    tenant_id: str | None = None,
 ) -> dict[str, Any] | None:
     """Attempt dynamic LLM-driven tool calling with AgentCard prompt and schema contracts.
 
-    Returns result dict or None to fallback.
+    Production ReAct mode (opt-in via `agent_react_enabled`): the model proposes
+    tools, but every proposal passes the full Muse enforcement ladder —
+    existence → arg-schema validation → scope → AgentCard contract → approval
+    (lookup-consume or request-and-pause) → budgets → idempotent execution —
+    with per-round checkpointing (resume without re-execution), durable
+    cancellation, per-round provider failover, and an explicit
+    termination_reason on every return. Returns result dict or None to fall
+    back to static dispatch (deliberate best-effort ladder, observed).
     """
     if not settings.agent_react_enabled:
         return None
@@ -815,6 +922,129 @@ async def _try_react_loop(
     # Skip for very short messages to avoid overhead — still allow via explicit flag
     if len(message.strip()) < 3:
         return None
+    import time as _rt
+    from .react_policy import (
+        ReactRunRecord,
+        build_resume_messages,
+        check_react_cancel,
+        compact_messages,
+        estimate_tokens,
+        record_react_run,
+        redact_secrets,
+    )
+    _react_start = _rt.monotonic()
+    run_id = request_id or __import__("uuid").uuid4().hex[:12]
+    corr = correlation_id or run_id
+    # Tenant binding: explicit param wins, middleware context is authoritative.
+    _tenant = tenant_id
+    if not _tenant:
+        try:
+            from ..middleware.tenant import TenantContext as _TC
+            _tenant = _TC.get_tenant_id()
+        except Exception:
+            _tenant = None
+    _run_budgets: dict[str, float] = {}
+    try:
+        _run_budgets = dict(getattr(state, "budgets", None) or {})
+    except Exception:
+        pass
+    if not _run_budgets:
+        try:
+            from .state import DEFAULT_RUN_BUDGETS as _DRB
+            _run_budgets = dict(_DRB)
+        except Exception:
+            _run_budgets = {"max_iterations": 3, "max_tool_calls": 12, "max_tokens": 12000,
+                            "max_cost_usd": 0.50, "max_duration_s": 120.0}
+    _deadline = _react_start + float(_run_budgets.get("max_duration_s", 120.0))
+    _max_tools = int(_run_budgets.get("max_tool_calls", 12))
+    _max_tokens = int(_run_budgets.get("max_tokens", 12000))
+    _rec = ReactRunRecord(correlation_id=corr, run_id=str(run_id), agent_name=agent_name,
+                          workspace_id=str(workspace_id), tenant_id=_tenant)
+    _seen_tool_calls: list[dict[str, Any]] = []
+    _round_records: list[dict[str, Any]] = []
+    # Defined up-front so exception paths (before the compiler block) can
+    # still build honest terminal cards.
+    prompt_manifest: dict[str, Any] = {"compiler": "prompt_compiler/v1", "compiled": False}
+    try:
+        _rec.model_name = getattr(settings, "llm_model", "")
+        _rec.model_provider = getattr(settings, "llm_provider", "")
+    except Exception:
+        pass
+
+    async def _finish(termination: str, card: dict[str, Any] | None,
+                      snapshot_status: str = "terminal") -> dict[str, Any] | None:
+        """Attach termination + react metadata, checkpoint terminal status, record."""
+        from .react_policy import REACT_TERMINATION_MAP
+        _rec.termination = termination
+        _rec.duration_ms = (_rt.monotonic() - _react_start) * 1000
+        try:
+            record_react_run(_rec)
+        except Exception:
+            pass
+        if card is not None:
+            try:
+                card["termination_reason"] = REACT_TERMINATION_MAP.get(termination, termination)
+                _react_meta = card.get("react") if isinstance(card.get("react"), dict) else {}
+                _react_meta.update({"run_id": str(run_id), "rounds": _rec.rounds,
+                                    "tool_calls": _rec.tool_calls, "termination": termination,
+                                    "resumed": _rec.resumed,
+                                    "provider_fallbacks": _rec.provider_fallbacks})
+                card["react"] = _react_meta
+                # Outer-loop budget/cycle accounting: expose provider tool_calls
+                # so LoopSafetyTracker + SSE tool_start events see ReAct work.
+                try:
+                    if "tool_calls" not in card and _seen_tool_calls:
+                        card["tool_calls"] = list(_seen_tool_calls)
+                except Exception:
+                    pass
+            except Exception:
+                pass
+        # Checkpoint even on ladder-fallthrough (card None): the rounds ledger
+        # stays observable and resumable; returning None claims nothing.
+        if state is not None and request_id:
+            try:
+                _rounds = []
+                try:
+                    _snap = (getattr(state, "phases", {}) or {}).get(f"react_run_{request_id}") or {}
+                    _rounds = _snap.get("rounds") or []
+                except Exception:
+                    pass
+                state.add_phase(f"react_run_{request_id}",
+                                {"status": snapshot_status, "termination": termination,
+                                 "rounds": _rounds, "run_id": str(run_id)})
+                await _save_react_checkpoint(state)
+            except Exception as _cke:
+                logger.debug(f"ReAct terminal checkpoint skipped: {_cke}")
+        return card
+
+    async def _save_react_checkpoint(_st: Any) -> None:
+        try:
+            await save_checkpoint(_st)
+        except Exception as _ce:
+            logger.warning(f"ReAct checkpoint save failed (run continues in-memory): {_ce}")
+
+    async def _terminal_card(summary: str, reason: str, action: str = "error",
+                       confidence: float = 0.0, extra: dict[str, Any] | None = None) -> dict[str, Any]:
+        _card: dict[str, Any] = {
+            "agent_name": agent_name,
+            "action": action,
+            "confidence": confidence,
+            "result": {"summary": summary, "details": None, "proposals": [], "questions": []},
+            "prompt_manifest": prompt_manifest,
+        }
+        # Budget/timeout terminations propagate the ceiling marker so the OUTER
+        # run loop terminates with the truthful reason (never no_progress).
+        try:
+            from .react_policy import REACT_TERMINATION_MAP
+            _mapped = REACT_TERMINATION_MAP.get(reason, reason)
+            if _mapped in ("cost_budget", "policy_stop", "timeout", "tool_budget", "token_budget"):
+                _card["result"]["_ceiling"] = _mapped
+        except Exception:
+            pass
+        if extra:
+            _card.update(extra)
+        return await _finish(reason, _card)
+
     try:
         from ..services.llm_service import llm_service
         import json
@@ -855,10 +1085,8 @@ async def _try_react_loop(
             system_content = (getattr(agent, "mission", "") or f"You are the {agent_name} agent.").strip()
             system_content += " You have access to tools. Call them when they help answer the user's request. After tool results, synthesise a helpful answer."
 
-        messages: list[dict[str, Any]] = [
-            {"role": "system", "content": system_content},
-            {"role": "user", "content": message},
-        ]
+        # (messages are built after the prompt manifest so resume-replay can
+        # reuse the exact same system/user content — see below.)
 
         # Phase B §9: PromptCompiler manifest for provenance. The compiler runs
         # over the same parts (trusted system + quarantined untrusted context)
@@ -866,7 +1094,6 @@ async def _try_react_loop(
         # injection flag — is attached to results. Message content is unchanged
         # (no behavior change); the manifest makes construction deterministic
         # enough for replay/provenance.
-        prompt_manifest: dict[str, Any] = {"compiler": "prompt_compiler/v1", "compiled": False}
         try:
             from ..services.prompt_compiler import PromptCompiler, PromptLayers
             _tool_desc = "\n".join(f"- {td.name}: {td.description}" for td in ordered[:12])
@@ -897,21 +1124,103 @@ async def _try_react_loop(
         card_max = getattr(card, "max_react_rounds", None) if card else None
         max_rounds = max(1, int(card_max or getattr(settings, "agent_max_react_rounds", 5) or 5))
 
+        # Resume-from-checkpoint (§17): replay fully-recorded rounds WITHOUT
+        # re-executing tools. A crashed run continues; completed side effects
+        # are never replayed (executor durable idempotency is the second net).
+        messages: list[dict[str, Any]] = [
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": message},
+        ]
+        _replayed_fps: list[str] = []
+        if state is not None and request_id:
+            try:
+                _replayed, _done = build_resume_messages(
+                    getattr(state, "phases", {}) or {}, request_id, system_content, message)
+                if _replayed is not None:
+                    messages = _replayed
+                    _rec.resumed = True
+                    for _rm in _replayed[2:]:
+                        if isinstance(_rm, dict) and _rm.get("role") == "assistant":
+                            for _rtc in (_rm.get("tool_calls") or []):
+                                _fn = ((_rtc.get("function") or {}).get("name", ""))
+                                _ag = ((_rtc.get("function") or {}).get("arguments", {}))
+                                try:
+                                    from .loop_safety import tool_fingerprint as _tfp
+                                    _replayed_fps.append(_tfp(_fn, _ag if isinstance(_ag, dict) else {}))
+                                except Exception:
+                                    pass
+                    _rec.tool_calls = len(_replayed_fps)
+                    logger.info(f"REACT_RESUME correlation={corr} run={run_id} replayed={len(_replayed_fps)} rounds (no re-execution)")
+            except Exception as _re:
+                logger.debug(f"ReAct resume skipped: {_re}")
+
+        # Inner-run safety tracker: repeat/cycle + budget detection scoped to
+        # this ReAct execution (the outer loop tracks outer iterations only).
+        from .loop_safety import LoopSafetyTracker
+        _tracker = LoopSafetyTracker(
+            max_iterations=max_rounds,
+            max_tool_calls=_max_tools,
+            max_tokens=_max_tokens,
+            max_cost_usd=float(_run_budgets.get("max_cost_usd", 0.50)),
+            max_duration_s=float(_run_budgets.get("max_duration_s", 120.0)),
+        )
+        try:
+            for _fp in _replayed_fps:
+                _tracker.tool_fingerprints.append(_fp)
+                _tracker.tool_calls += 1
+        except Exception:
+            pass
+        _consecutive_denials = 0
+        _tokens_est = 0
+        try:
+            _tokens_est = estimate_tokens(system_content + message)
+        except Exception:
+            pass
+
         for _round in range(max_rounds):
+            # ── Durable cancellation first: no new side effects after cancel.
+            if await check_react_cancel(request_id):
+                logger.info(f"REACT_CANCELLED correlation={corr} run={run_id} round={_round}")
+                return await _terminal_card("ReAct run cancelled by user request.", "cancelled")
+            _rec.rounds += 1
+            # ── Wall-clock / tool-call / token budgets (deterministic stops).
+            if _rt.monotonic() >= _deadline:
+                return await _terminal_card(f"ReAct run exceeded wall-clock budget ({_run_budgets.get('max_duration_s')}s).", "budget_time")
+            if _rec.tool_calls >= _max_tools:
+                return await _terminal_card(f"ReAct run exceeded tool-call budget ({_max_tools}).", "budget_tools")
+            if _tokens_est >= _max_tokens:
+                return await _terminal_card(f"ReAct run exceeded token budget ({_max_tokens}).", "budget_tokens")
+            # ── Repeat/cycle detection: the model must never loop forever.
+            try:
+                if _tracker.detect_cycle() == "cycle_detected":
+                    return await _terminal_card("ReAct run stopped: repeated action cycle detected with no progress.", "cycle")
+            except Exception:
+                pass
             # Per-round spend re-check: every round burns an LLM call. On
             # exhaustion return the card directly (NOT None) so we don't fall
             # through to static dispatch and spend more. Round 0 already passed
             # the act-phase gate.
             if _round > 0:
-                ceiling_msg = await _check_spend_and_quota(workspace_id, agent_name)
+                ceiling_msg, ceiling_kind = await _check_spend_and_quota(workspace_id, agent_name)
                 if ceiling_msg:
-                    return _ceiling_error_card(agent_name, ceiling_msg)
+                    return await _terminal_card(ceiling_msg, ceiling_kind)
+            # Context bound: compact history before every provider call.
+            try:
+                messages, _compacted = compact_messages(messages)
+                if _compacted:
+                    _rec.compacted = True
+            except Exception:
+                pass
             # Streaming round — real text deltas forwarded via on_token as they arrive
             content_str = ""
             tool_calls: list[dict[str, Any]] = []
+            _round_model = _rec.model_name
+            _round_provider = _rec.model_provider
             try:
                 async for evt in llm_service.generate_completion_with_tools_stream(
-                    messages=messages, tools=tool_schemas
+                    messages=messages, tools=tool_schemas,
+                    user_id=user_id, workspace_id=workspace_id, db=db,
+                    correlation_id=corr,
                 ):
                     etype = evt.get("type")
                     if etype == "text_delta":
@@ -927,8 +1236,52 @@ async def _try_react_loop(
                     elif etype == "done":
                         pass
             except Exception as e:
-                logger.warning(f"ReAct LLM call failed (round {_round}): {e}")
-                return None
+                # Per-round provider failover (§18): the stream path is
+                # single-attempt by design (a mid-stream hop would corrupt
+                # tokens). On RETRYABLE provider failures, take exactly one
+                # buffered round through generate_completion_with_tools — the
+                # completed cross-provider fallback chain — and continue the
+                # loop. Terminal failures fall through to static (None).
+                _fell_back = False
+                try:
+                    from ..services.llm_service import _classify_exc
+                    _pol = _classify_exc(e)
+                    _rec.failure_category = _pol.get("category")
+                    logger.warning(f"ReAct LLM stream failed (round {_round}): {e} category={_pol.get('category')} terminal={_pol.get('terminal')}")
+                    if not _pol.get("terminal"):
+                        from ..services.llm_service import llm_service as _fb_llm
+                        _fb = await _fb_llm.generate_completion_with_tools(
+                            messages=messages, tools=tool_schemas, temperature=0.7,
+                            user_id=user_id, workspace_id=workspace_id, db=db,
+                            correlation_id=corr,
+                        )
+                        _fell_back = True
+                        _rec.provider_fallbacks += 1
+                        _round_model = str(_fb.get("model") or _round_model)
+                        try:
+                            from ..services.llm_service import _infer_provider_from_model as _ipm
+                            _round_provider = _ipm(_round_model)
+                        except Exception:
+                            pass
+                        _fb_content = _fb.get("content", "")
+                        if isinstance(_fb_content, list):
+                            content_str = " ".join(b.get("text", "") for b in _fb_content if isinstance(b, dict))
+                        else:
+                            content_str = str(_fb_content or "")
+                        tool_calls = _fb.get("tool_calls") or []
+                except Exception as _fbe:
+                    logger.warning(f"ReAct fallback round failed: {_fbe}")
+                if not _fell_back and not tool_calls and not content_str.strip():
+                    await _finish("provider_down", None)
+                    return None
+                # If the buffered round produced tool calls, fall through to
+                # the tool-execution section below with them.
+
+            # Token estimate for the run budget (streams carry no usage block).
+            try:
+                _tokens_est += estimate_tokens(content_str)
+            except Exception:
+                pass
 
             # No tool calls → LLM produced direct answer
             if not tool_calls:
@@ -977,6 +1330,8 @@ async def _try_react_loop(
                                 from ..services.llm_service import llm_service as _repair_llm
                                 _repair = await _repair_llm.generate_completion(
                                     messages=messages, temperature=0.0, max_tokens=800,
+                                    user_id=user_id, workspace_id=workspace_id, db=db,
+                                    correlation_id=correlation_id,
                                 )
                                 _repaired = (_repair.get("content") or "").strip()
                                 if _repaired.startswith("{") and _repaired.endswith("}"):
@@ -995,22 +1350,14 @@ async def _try_react_loop(
                             except Exception as _re:
                                 logger.warning(f"ReAct: validation repair call failed: {_re}")
                             if not _ok:
-                                return {
-                                    "agent_name": agent_name,
-                                    "action": "error",
-                                    "confidence": 0.0,
-                                    "result": {
-                                        "summary": "Response validation failed — output did not match the agent contract.",
-                                        "details": "; ".join(_errs[:5]),
-                                        "proposals": [],
-                                        "questions": [],
-                                    },
-                                    "validation_errors": _errs[:10],
-                                    "prompt_manifest": prompt_manifest,
-                                }
+                                return await _terminal_card(
+                                    "Response validation failed — output did not match the agent contract.",
+                                    "validation_failed",
+                                    extra={"validation_errors": _errs[:10]},
+                                )
 
                         if "summary" in parsed_json or "proposals" in parsed_json:
-                            return {
+                            return await _finish("answered_structured", {
                                 "agent_name": agent_name,
                                 "action": parsed_json.get("action", getattr(card, "autonomy", "suggest") if card else "suggest"),
                                 "confidence": 0.92,
@@ -1021,21 +1368,76 @@ async def _try_react_loop(
                                     "questions": parsed_json.get("questions", []),
                                 },
                                 "prompt_manifest": prompt_manifest,
-                            }
+                            })
 
-                    return {
+                    return await _finish("answered", {
                         "agent_name": agent_name,
                         "action": getattr(card, "autonomy", "suggest") if card else "suggest",
                         "confidence": 0.88,
                         "result": {"summary": content_str[:800], "details": content_str, "proposals": [], "questions": []},
                         "prompt_manifest": prompt_manifest,
-                    }
+                    })
+                await _finish("failure", None)
                 return None
 
-            # Execute each tool call sequentially (preserving order)
+            # Execute each tool call sequentially (preserving order) through the
+            # full enforcement ladder. Model proposals are untrusted input.
+            from .react_policy import (
+                REACT_CHECKPOINT_OBS_CHARS as _OBS_CAP,
+                validate_tool_arguments as _validate_args,
+            )
+            from .loop_safety import tool_fingerprint as _tool_fp
+
+            async def _snapshot_running() -> None:
+                if state is None or not request_id:
+                    return
+                try:
+                    state.add_phase(f"react_run_{request_id}",
+                                    {"status": "running", "run_id": str(run_id),
+                                     "agent": agent_name, "rounds": list(_round_records)})
+                    await _save_react_checkpoint(state)
+                except Exception as _se:
+                    logger.debug(f"ReAct running checkpoint skipped: {_se}")
+
+            def _record_round(tname: str, tc_id: str, fp: str, args_red: Any,
+                              status: str, observation: str, assistant_text: str) -> None:
+                try:
+                    _obs = str(observation or "")
+                    if len(_obs) > _OBS_CAP:
+                        _obs = _obs[:_OBS_CAP] + " …[checkpoint-truncated]"
+                    _obs_red, _ = redact_secrets(_obs)
+                    try:
+                        _args_blob = json.dumps(args_red, default=str)
+                        _args_stored: Any = args_red if len(_args_blob) <= 2000 else {"_truncated": True, "fp": fp}
+                    except Exception:
+                        _args_stored = {"_truncated": True, "fp": fp}
+                    _asst = str(assistant_text or "")
+                    if len(_asst) > 2000:
+                        _asst = _asst[:2000] + " …[checkpoint-truncated]"
+                    _asst_red, _ = redact_secrets(_asst)
+                    _round_records.append({
+                        "tool": tname, "tool_call_id": tc_id, "args_fp": fp,
+                        "args_redacted": _args_stored, "result_status": status,
+                        "observation": _obs_red if isinstance(_obs_red, str) else str(_obs_red),
+                        "assistant_text": _asst_red if isinstance(_asst_red, str) else str(_asst_red),
+                        "model": _round_model, "provider": _round_provider,
+                        "at": __import__("datetime").datetime.now(__import__("datetime").UTC).isoformat(),
+                    })
+                except Exception as _rre:
+                    logger.debug(f"ReAct round record skipped: {_rre}")
+
             for tc in tool_calls:
+                # Durable cancellation before every consequential step.
+                if await check_react_cancel(request_id):
+                    logger.info(f"REACT_CANCELLED correlation={corr} run={run_id} during-tools")
+                    return await _terminal_card("ReAct run cancelled by user request.", "cancelled")
+                if _rt.monotonic() >= _deadline:
+                    return await _terminal_card("ReAct run exceeded wall-clock budget.", "budget_time")
+                if _rec.tool_calls >= _max_tools:
+                    return await _terminal_card(f"ReAct run exceeded tool-call budget ({_max_tools}).", "budget_tools")
                 func = tc.get("function", {}) or {}
                 tname = func.get("name", "")
+                tc_id = tc.get("id", tname) or tname
                 args = func.get("arguments", {})
                 if isinstance(args, str):
                     try:
@@ -1044,6 +1446,11 @@ async def _try_react_loop(
                         args = {}
                 if not isinstance(args, dict):
                     args = {}
+                # SSE/budget honesty: _seen_tool_calls feeds outer-budget
+                # accounting + SSE tool_start events, so entries are appended
+                # ONLY when execution is actually attempted below (denied /
+                # unknown / rejected / paused proposals never "started").
+                # The checkpoint ledger records every proposal regardless.
                 # Merged lookup: static ALL_TOOLS ∪ dynamic MCP — fixes bug where mcp__* tools
                 # were offered in tool_schemas but missed here (were incorrectly skipped).
                 try:
@@ -1055,8 +1462,37 @@ async def _try_react_loop(
                     logger.warning(f"ReAct: unknown tool '{tname}' requested by LLM — skipping")
                     # Feed back an error so LLM can self-correct in next round
                     messages.append({"role": "assistant", "content": content_str or None, "tool_calls": [tc]})
-                    messages.append({"role": "tool", "tool_call_id": tc.get("id", tname), "content": json.dumps({"status": "error", "tool": tname, "result": f"Unknown tool '{tname}' — not in available tool list"})[:4000]})
+                    messages.append({"role": "tool", "tool_call_id": tc_id, "content": json.dumps({"status": "error", "tool": tname, "result": f"Unknown tool '{tname}' — not in available tool list"})[:4000]})
+                    try:
+                        _fp0 = _tool_fp(tname, {})
+                        _tracker.tool_fingerprints.append(_fp0)
+                        _record_round(tname, tc_id, _fp0, {}, "unknown_tool",
+                                      f"Unknown tool '{tname}' — not in available tool list", content_str)
+                        await _snapshot_running()
+                    except Exception:
+                        pass
                     continue
+                # ── Argument validation (§8): schema/types/required/binding/size.
+                _ok_args, _clean_args, _arg_errs = _validate_args(
+                    td, args, workspace_id=str(workspace_id), tenant_id=_tenant, user_id=user_id)
+                if not _ok_args:
+                    logger.warning(f"ReAct: tool '{tname}' arguments rejected: {_arg_errs}")
+                    try:
+                        state.record_policy("react_arg_rejected", f"{tname}: {'; '.join(_arg_errs)[:300]}") if state is not None else None
+                    except Exception:
+                        pass
+                    messages.append({"role": "assistant", "content": content_str or None, "tool_calls": [tc]})
+                    messages.append({"role": "tool", "tool_call_id": tc_id, "content": json.dumps({"status": "error", "tool": tname, "result": f"Invalid arguments: {'; '.join(_arg_errs[:4])}"})[:4000]})
+                    try:
+                        _fp1 = _tool_fp(tname, args if isinstance(args, dict) else {})
+                        _tracker.tool_fingerprints.append(_fp1)
+                        _record_round(tname, tc_id, _fp1, {}, "arg_rejected",
+                                      f"Invalid arguments: {'; '.join(_arg_errs[:4])}", content_str)
+                        await _snapshot_running()
+                    except Exception:
+                        pass
+                    continue
+                args = _clean_args
                 # Enforce least-privilege: LLM output is untrusted, check against agent's allowed scopes (PATI/OWASP LLM06)
                 from ..tools.executor import check_permission
                 allowed = await check_permission(agent_allowed_scopes, td.required_scope)
@@ -1084,17 +1520,111 @@ async def _try_react_loop(
                     if _contract_denied is not None:
                         result = {"status": "error", "tool": tname, "result": _contract_denied}
                     else:
-                        # Approval gate for high-risk writes — fail closed, require human (OWASP LLM06 excessive autonomy)
+                        # Approval parity with the static path (§14): consume a
+                        # pre-existing approval for this exact tool+args, else
+                        # create a PENDING request and pause with a durable card.
+                        # Revalidation is inherent: execution happens only after
+                        # an atomic consume + hash/HMAC verify at this moment.
                         from ..tools.executor import approval_gated_tools
 
                         if tname in approval_gated_tools():
-                            logger.info(f"ReAct: tool '{tname}' requires approval — not auto-executing")
-                            result = {"status": "error", "tool": tname, "result": f"Approval required for {tname} — awaiting user approval", "requires_approval": True}
+                            _appr = await _react_approval_gate(
+                                tname, args, agent_name, str(workspace_id), user_id, db, corr)
+                            if _appr.get("approved"):
+                                _rec.approvals_consumed += 1
+                                try:
+                                    if state is not None:
+                                        state.approvals_consumed.append(str(_appr.get("approval_id") or ""))
+                                except Exception:
+                                    pass
+                                try:
+                                    _seen_tool_calls.append({"id": tc_id, "type": "function",
+                                                             "function": {"name": tname, "arguments": args}})
+                                except Exception:
+                                    pass
+                                try:
+                                    result = await _exec_tool(td, args, agent_id=agent_name, agent_scopes=agent_allowed_scopes, workspace_id=workspace_id)
+                                except Exception as e:
+                                    from .react_policy import classify_tool_failure as _ctf
+                                    _cls, _why = _ctf(e)
+                                    result = {"status": "error", "tool": tname, "result": str(e)[:2000], "failure_class": _cls}
+                            elif _appr.get("approval_id"):
+                                _rec.approvals_requested += 1
+                                try:
+                                    if state is not None:
+                                        state.record_policy("react_approval_requested",
+                                                            f"{tname}:{_appr.get('approval_id')}")
+                                except Exception:
+                                    pass
+                                logger.info(f"REACT_APPROVAL_PAUSE correlation={corr} run={run_id} tool={tname} approval={_appr.get('approval_id')}")
+                                try:
+                                    _record_round(tname, tc_id, _tool_fp(tname, args), args,
+                                                  "approval_pending",
+                                                  f"Tool '{tname}' requires approval — awaiting approval.",
+                                                  content_str)
+                                except Exception:
+                                    pass
+                                _pause: dict[str, Any] = {
+                                    "agent_name": agent_name,
+                                    "action": "request_approval",
+                                    "confidence": 0.9,
+                                    "result": {
+                                        "summary": f"Tool '{tname}' requires approval — awaiting approval.",
+                                        "details": None,
+                                        "proposals": [{"tool": tname, "approval_id": _appr.get("approval_id"),
+                                                       "requires_approval": True, "approval_type": tname}],
+                                        "questions": [],
+                                    },
+                                    "prompt_manifest": prompt_manifest,
+                                    "approval": {"approval_id": _appr.get("approval_id"), "tool": tname, "status": "pending"},
+                                }
+                                return await _finish("approval_paused", _pause, snapshot_status="awaiting_approval")
+                            else:
+                                result = {"status": "error", "tool": tname, "result": f"Approval required for {tname} — approval service unavailable, refusing (fail-closed)"}
                         else:
+                            try:
+                                _seen_tool_calls.append({"id": tc_id, "type": "function",
+                                                         "function": {"name": tname, "arguments": args}})
+                            except Exception:
+                                pass
                             try:
                                 result = await _exec_tool(td, args, agent_id=agent_name, agent_scopes=agent_allowed_scopes, workspace_id=workspace_id)
                             except Exception as e:
-                                result = {"status": "error", "tool": tname, "result": str(e)}
+                                from .react_policy import classify_tool_failure as _ctf
+                                _cls, _why = _ctf(e)
+                                result = {"status": "error", "tool": tname, "result": str(e)[:2000], "failure_class": _cls}
+                # Post-execution bookkeeping: fingerprints, budgets, mirror, checkpoint.
+                _status = str(result.get("status", "error"))
+                try:
+                    _fp2 = _tool_fp(tname, args)
+                    _tracker.tool_fingerprints.append(_fp2)
+                    _tracker.tool_calls += 1
+                    _rec.tool_calls += 1
+                    try:
+                        _tokens_est += estimate_tokens(json.dumps(result, default=str)[:8000])
+                    except Exception:
+                        pass
+                    if _status != "success":
+                        _rec.tool_failures += 1
+                    else:
+                        _consecutive_denials = 0
+                    if _status == "error" and ("denied" in str(result.get("result", "")).lower()
+                                              or "not allowed" in str(result.get("result", "")).lower()):
+                        _consecutive_denials += 1
+                    if state is not None:
+                        try:
+                            state.record_tool_call(tname, _fp2, _status)
+                        except Exception:
+                            pass
+                except Exception:
+                    _fp2 = ""
+                if _consecutive_denials >= 3:
+                    try:
+                        if state is not None:
+                            state.record_policy("react_policy_stop", f"{tname} denied x3")
+                    except Exception:
+                        pass
+                    return await _terminal_card(f"ReAct run stopped: tool '{tname}' repeatedly denied by policy.", "policy_denied")
                 # Feed tool result back to LLM — TOOL-002: sanitize tool output, never treat as instructions
                 # OpenAI expects assistant with tool_calls + tool role; Anthropic uses tool_result blocks — we add both forms for compat
                 try:
@@ -1112,19 +1642,50 @@ async def _try_react_loop(
                 except Exception:
                     quarantined_tool_output = f"<untrusted-data source=\"tool:{tname}\">\n{sanitized_content}\n</untrusted-data>"
                 messages.append({"role": "assistant", "content": content_str or None, "tool_calls": [tc]})
-                messages.append({"role": "tool", "tool_call_id": tc.get("id", tname), "content": quarantined_tool_output})
+                messages.append({"role": "tool", "tool_call_id": tc_id, "content": quarantined_tool_output})
+                # Durable per-tool checkpoint (resume replays, never re-executes).
+                try:
+                    if state is not None:
+                        try:
+                            state.record_observation(quarantined_tool_output)
+                        except Exception:
+                            pass
+                    _record_round(tname, tc_id, _fp2, args, _status, quarantined_tool_output, content_str)
+                    await _snapshot_running()
+                except Exception:
+                    pass
                 # Keep content for next round's synthesis
 
             # Loop continues — LLM will synthesise after seeing tool outputs
+            try:
+                _obs_tail = ""
+                for _m in reversed(messages):
+                    if isinstance(_m, dict) and _m.get("role") == "tool":
+                        _obs_tail = str(_m.get("content", ""))
+                        break
+                if _obs_tail:
+                    from .loop_safety import fingerprint as _fp3
+                    _tracker.observation_fingerprints.append(_fp3(_obs_tail))
+                    if _tracker.detect_no_progress(len(_round_records)) == "no_progress":
+                        return await _terminal_card("ReAct run stopped: no progress across tool observations.", "no_progress")
+            except Exception:
+                pass
+        # Rounds exhausted without an answer: deterministic stop. Returning None
+        # claims nothing and lets the static ladder attempt the task.
+        await _finish("max_rounds", None)
         return None
     except Exception as e:
         logger.warning(f"ReAct loop exception: {e}")
+        try:
+            await _finish("failure", None)
+        except Exception:
+            pass
         return None
 
 
 # ── Act ─────────────────────────────────────────────────────────────
 
-async def act_phase(plan: dict[str, Any], request: AgentRequest, on_token: Any = None) -> dict[str, Any]:
+async def act_phase(plan: dict[str, Any], request: AgentRequest, on_token: Any = None, state: Any | None = None) -> dict[str, Any]:
     # Otel span for act phase (mirrors plan_phase)
     _act_cm = None
     try:
@@ -1136,10 +1697,10 @@ async def act_phase(plan: dict[str, Any], request: AgentRequest, on_token: Any =
         import contextlib as _cl2
         _act_cm = _cl2.nullcontext()
     with _act_cm:
-        return await _act_phase_inner(plan, request, on_token)
+        return await _act_phase_inner(plan, request, on_token, state)
 
 
-async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token: Any = None) -> dict[str, Any]:
+async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token: Any = None, state: Any | None = None) -> dict[str, Any]:
     agent = request.agent
     message = plan.get("message", request.message)
     # Enrich message with RAG context if available (plan_phase injected it)
@@ -1166,6 +1727,22 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
     logger.info(f"ACT: dispatching to {agent_type}")
 
     # ── Rate limit check ────────────────────────────────────────
+    # P1 (ReAct productionization): EVERY post-acquire return path must
+    # release exactly once. The ReAct-success and ceiling early-returns below
+    # used to bypass the static path's finally-release, leaking one
+    # concurrency slot per successful ReAct act (self-DoS after 5 calls).
+    _act_released = False
+
+    async def _act_release_once() -> None:
+        nonlocal _act_released
+        if _act_released:
+            return
+        _act_released = True
+        try:
+            await _rate_limiter.release(agent_name)
+        except Exception:
+            pass
+
     if not await _rate_limiter.acquire(agent_name):
         return {
             "agent_name": agent_name,
@@ -1180,9 +1757,10 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
         }
 
     # ── Spend & quota gate (Wave 1) — one check covers static + ReAct + stream ──
-    ceiling_msg = await _check_spend_and_quota(request.workspace_id, agent_name)
+    ceiling_msg, ceiling_kind = await _check_spend_and_quota(request.workspace_id, agent_name)
     if ceiling_msg:
-        return _ceiling_error_card(agent_name, ceiling_msg)
+        await _act_release_once()
+        return _ceiling_error_card(agent_name, ceiling_msg, ceiling_kind)
 
     # ── MODEL-001: auto-route per-agent task_type → model hint (logged, does not override explicit model)
     try:
@@ -1207,9 +1785,16 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
                 agent_name,
                 on_token=on_token,
                 context=agent_context,
+                user_id=getattr(request, "user_id", None),
+                db=getattr(request, "db", None),
+                correlation_id=getattr(request, "correlation_id", None),
+                request_id=str(getattr(request, "id", "")) or None,
+                state=state,
+                tenant_id=getattr(request, "tenant_id", None),
             )
             if react_result is not None:
                 logger.info(f"ACT: ReAct loop succeeded for {agent_name}")
+                await _act_release_once()
                 return react_result
         except Exception as e:
             logger.warning(f"ReAct dispatch failed, falling back to static: {e}")
@@ -1285,7 +1870,7 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
             "result": {"summary": f"Execution error: {exc}", "details": None, "proposals": [], "questions": []},
         }
     finally:
-        await _rate_limiter.release(agent_name)
+        await _act_release_once()
 
 
 def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: AgentRequest, context: Any | None = None):
@@ -1376,7 +1961,21 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
     if agent_type == "JobSearchAgent" or registry_key == "job_search":
         profile_skills = context.profile.get("skills") if (context and hasattr(context, "profile") and isinstance(context.profile, dict)) else None
         user_skills = profile_skills or keywords
-        return agent.search(keywords=keywords, user_skills=user_skills, rejected_job_ids=[])
+        loc = None
+        job_prefs = None
+        if context and hasattr(context, "profile") and isinstance(context.profile, dict):
+            loc = context.profile.get("location")
+            job_prefs = context.profile.get("job_preferences") or context.profile.get("preferences")
+        if not job_prefs and context and hasattr(context, "preferences"):
+            job_prefs = context.preferences
+        return agent.search(
+            keywords=keywords,
+            user_skills=user_skills,
+            rejected_job_ids=[],
+            location=loc,
+            workspace_id=request.workspace_id,
+            preferences=job_prefs,
+        )
 
     if agent_type == "ApplicationAgent" or registry_key == "application":
         company_name = "Specified Company"
@@ -1501,11 +2100,16 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
 
     if agent_type == "RecommendationAgent" or registry_key == "recommendation":
         rec_skills = (context.profile.get("skills") if (context and hasattr(context, "profile") and isinstance(context.profile, dict)) else None) or keywords or [message[:40]]
+        rec_prefs = (
+            context.profile.get("job_preferences")
+            if (context and hasattr(context, "profile") and isinstance(context.profile, dict))
+            else None
+        ) or (context.preferences if context and hasattr(context, "preferences") else None)
         if any(kw in msg_lower for kw in ["connection", "network", "mentor"]):
             return agent.suggest_connections(profile={"title": message[:60], "industry": "General"})
         if any(kw in msg_lower for kw in ["content", "article", "curate"]):
             return agent.curate_content(interests=keywords or [message[:40]])
-        return agent.match_jobs(profile={"skills": rec_skills, "experience": message[:120]})
+        return agent.match_jobs(profile={"skills": rec_skills, "experience": message[:120]}, preferences=rec_prefs)
 
     if agent_type == "ReflectionAgent" or registry_key == "reflection":
         if any(kw in msg_lower for kw in ["goal", "track goal"]):
@@ -1659,9 +2263,34 @@ async def improve_phase(state: LoopState, request: AgentRequest) -> AgentRespons
             break
 
     # Wave 5: Memory Learning Closure (Self-Improvement)
+    # Best-effort by design: the primary op stays correct when learning fails,
+    # but every learning outcome is explicitly observable (LEARNING_* logs +
+    # learning_events ledger), never silently swallowed.
     try:
         from ..agents.memory.consolidator import memory_consolidator
 
+        # Best-effort tenant resolution for learning binding (workspace-owned).
+        _learn_tenant: str | None = None
+        try:
+            _db = getattr(request, "db", None)
+            if _db is not None:
+                from sqlalchemy import select as _sel
+                from ..models.schema import Workspace as _WS
+                import uuid as _uuid
+                try:
+                    _wrow = await _db.execute(
+                        _sel(_WS.user_id).where(_WS.id == _uuid.UUID(str(request.workspace_id)))
+                    )
+                    _u = _wrow.scalar_one_or_none()
+                    _learn_tenant = str(_u) if _u else None
+                except Exception:
+                    _learn_tenant = None
+        except Exception:
+            _learn_tenant = None
+        _learn_corr = getattr(request, "correlation_id", None) or request.id
+        _learn_event = f"traj:{request.id}"
+        logger.info("LEARNING_IMPROVE_QUEUED correlation=%s workspace=%s agent=%s event=%s",
+                    _learn_corr, str(request.workspace_id)[:8], request.agent_name, _learn_event)
         # Non-blocking trajectory consolidation into persistent workspace memory
         asyncio.create_task(
             memory_consolidator.consolidate_trajectory(
@@ -1669,10 +2298,15 @@ async def improve_phase(state: LoopState, request: AgentRequest) -> AgentRespons
                 agent_name=request.agent_name,
                 user_prompt=request.message,
                 summary=str(final_summary),
+                event_id=_learn_event,
+                tenant_id=_learn_tenant,
+                correlation_id=_learn_corr,
+                source="trajectory_feedback",
             )
         )
     except Exception as exc:
-        logger.debug(f"Learning trajectory consolidation skipped (non-blocking): {exc}")
+        logger.warning(f"LEARNING_IMPROVE_FAILED correlation={getattr(request, 'correlation_id', '?')} "
+                       f"workspace={str(getattr(request, 'workspace_id', '?'))[:8]} error={exc}")
 
     return AgentResponse(status="success", final_result=final_summary)
 
@@ -1707,6 +2341,26 @@ async def run_agent_loop_stream(request: AgentRequest) -> AsyncGenerator[dict[st
     for iteration in range(3):
         logger.info(f"--- Stream Iteration {iteration + 1}/3 ---")
 
+        # §31 cooperative cancellation (stream path): same durable flag the
+        # buffered loop honors. No new side effects after this point.
+        try:
+            _fresh = await load_or_create_state(request.id)
+            if _fresh.cancel_requested:
+                state.cancel_requested = True
+                state.cancel_requested_at = _fresh.cancel_requested_at
+        except Exception:
+            pass
+        if state.cancel_requested:
+            try:
+                state.terminate("cancelled", "user_cancel")
+            except Exception:
+                pass
+            await save_checkpoint(state)
+            logger.info(f"CANCELLED stream run={request.id} iter={iteration} — no further side effects")
+            yield {"event": "error", "data": {"status": "cancelled", "result": "Run cancelled by user request"}}
+            yield {"event": "done", "data": {"status": "cancelled", "result": "Run cancelled by user request"}}
+            return
+
         plan = await plan_phase(request, state)
         state.add_phase(f"plan_{iteration}", plan)
         await save_checkpoint(state)
@@ -1720,7 +2374,7 @@ async def run_agent_loop_stream(request: AgentRequest) -> AsyncGenerator[dict[st
 
         async def _run_act(plan=plan, token_q=token_q) -> None:
             try:
-                res = await act_phase(plan, request, on_token=lambda t: token_q.put_nowait(("token", t)))
+                res = await act_phase(plan, request, on_token=lambda t: token_q.put_nowait(("token", t)), state=state)
             except BaseException as exc:
                 token_q.put_nowait(("error", exc))
                 raise
@@ -1746,6 +2400,22 @@ async def run_agent_loop_stream(request: AgentRequest) -> AsyncGenerator[dict[st
 
         if act_result is None:
             act_result = {"agent_name": request.agent_name, "action": "error", "confidence": 0.0, "result": {"summary": "Act phase produced no result"}}
+        # Ceiling short-circuit (stream path mirrors run_agent_loop).
+        try:
+            from .state import TERMINATION_REASONS as _TR2
+            _ck2 = (act_result.get("result", {}) or {}).get("_ceiling") if isinstance(act_result, dict) else None
+            if _ck2 in _TR2:
+                _csum = ((act_result.get("result", {}) or {}).get("summary") or f"Run stopped: {_ck2}")
+                try:
+                    state.terminate("failed", _ck2)
+                except Exception:
+                    pass
+                await save_checkpoint(state)
+                yield {"event": "error", "data": {"status": "failed", "result": str(_csum), "termination_reason": _ck2}}
+                yield {"event": "done", "data": {"status": "failed", "result": str(_csum), "termination_reason": _ck2}}
+                return
+        except Exception:
+            pass
         state.add_phase(f"act_{iteration}", act_result)
         await save_checkpoint(state)
         yield {"event": "act", "data": {"iteration": iteration, "result": act_result}}
@@ -2001,7 +2671,23 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
         state.add_phase(f"plan_{iteration}", plan)
         await save_checkpoint(state)
 
-        act_result = await act_phase(plan, request)
+        act_result = await act_phase(plan, request, state=state)
+        # Ceiling short-circuit: a spend/quota/timeout/tool/token stop carries
+        # result._ceiling — terminate with the truthful reason immediately
+        # instead of decaying into no_progress/escalated across retries.
+        try:
+            from .state import TERMINATION_REASONS as _TR
+            _ck = (act_result.get("result", {}) or {}).get("_ceiling") if isinstance(act_result, dict) else None
+            if _ck in _TR:
+                _csummary = ((act_result.get("result", {}) or {}).get("summary") or f"Run stopped: {_ck}")
+                state.terminate("failed", _ck)
+                state.add_phase(f"terminated_{iteration}", {"reason": _ck})
+                await save_checkpoint(state)
+                logger.warning(f"CEILING run={request.id} iter={iteration} reason={_ck} — terminating")
+                return AgentResponse(status=state.status, final_result=str(_csummary),
+                                     termination_reason=state.termination_reason)
+        except Exception as _cke:
+            logger.debug(f"Ceiling check skipped: {_cke}")
         # Record tool/observation fingerprints for cycle + progress detection.
         try:
             for _tc in (act_result.get("tool_calls") or []):

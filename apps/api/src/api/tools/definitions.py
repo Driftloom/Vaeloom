@@ -998,6 +998,30 @@ NOTIFY_USER = ToolDefinition(
     category="system",
 )
 
+QUERY_NOTEBOOKLM = ToolDefinition(
+    name="query_notebooklm",
+    description="Query NotebookLM / Gemini Notebook (defaulting to the PIOS Blueprint) for grounded answers, citations, and architectural insights.",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "prompt": {"type": "string", "description": "The question or research query"},
+            "notebook_id": {"type": "string", "description": "Optional Notebook ID (defaults to PIOS Blueprint 610611eb-a7df-4315-b717-c7398df55441)"},
+        },
+        "required": ["prompt"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "success": {"type": "boolean"},
+            "answer": {"type": "string"},
+            "citations": {"type": "array", "items": {"type": "object"}},
+            "notebook_id": {"type": "string"},
+        },
+    },
+    required_scope="connector.read",
+    category="connector_read",
+)
+
 
 # ── Registry ───────────────────────────────────────────────────────
 
@@ -1022,6 +1046,7 @@ ALL_TOOLS: dict[str, ToolDefinition] = {
         FETCH_GITHUB_REPO, CREATE_GITHUB_ISSUE, SEARCH_GITHUB_REPOS, GET_GITHUB_PROFILE, LIST_GITHUB_ISSUES, READ_GITHUB_FILE, CREATE_GITHUB_PULL_REQUEST,
         SEND_SLACK_MESSAGE,
         SYNC_NOTION_PAGES, EXECUTE_CODE_SANDBOX,
+        QUERY_NOTEBOOKLM,
     ]
 }
 

@@ -336,7 +336,9 @@ async def chat_stream(
                 yield f"event: done\ndata: {{}}\n\n"
                 return
             agent = agent_cls()
-            agent_req = AgentRequest(agent=agent, request_id=req_id, message=dto.message, workspace_id=dto.workspaceId, agent_name=agent_name)
+            agent_req = AgentRequest(agent=agent, request_id=req_id, message=dto.message, workspace_id=dto.workspaceId, agent_name=agent_name,
+                                     db=db, user_id=(current_user.get("sub") or current_user.get("user_id")) if current_user else None,
+                                     correlation_id=req_id)
 
             final_summary = ""
             async for evt in run_agent_loop_stream(agent_req):

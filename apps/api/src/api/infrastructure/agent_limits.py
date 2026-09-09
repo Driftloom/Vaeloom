@@ -48,7 +48,9 @@ class ConcurrencySlot:
             return True
 
     def release(self) -> None:
-        self._current -= 1
+        # Floored at zero: a double-release must never grant phantom capacity.
+        if self._current > 0:
+            self._current -= 1
 
 
 class AgentRateLimiter:

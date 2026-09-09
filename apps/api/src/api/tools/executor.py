@@ -66,11 +66,24 @@ TOOL_TIMEOUT_OVERRIDES = {
     "compile_resume_pdf": 30,
     "compile_resume_docx": 15,
     "compile_cover_letter": 30,
-    "search_github_repos": 10,
-    "get_github_profile": 10,
-    "list_github_issues": 10,
-    "read_github_file": 10,
+    "search_github_repos": 15,
+    "fetch_github_repo": 15,
+    "get_github_profile": 15,
+    "list_github_issues": 15,
+    "read_github_file": 15,
+    "create_github_issue": 15,
     "create_github_pull_request": 15,
+    "search_gmail": 15,
+    "draft_email": 15,
+    "list_calendar_events": 15,
+    "create_calendar_event": 15,
+    "list_drive_files": 15,
+    "search_drive": 15,
+    "download_drive_file": 20,
+    "create_google_doc": 15,
+    "read_google_doc": 15,
+    "append_google_doc": 15,
+    "replace_google_doc_text": 15,
     "search_greenhouse_jobs": 10,
     "search_lever_jobs": 10,
     "search_jobs_board": 15,
@@ -1931,8 +1944,9 @@ async def _get_workspace_connector_token(workspace_id: str | None, connector_typ
 
 async def _resolve_github_token(workspace_id: str | None = None) -> str:
     import os
+    from api.config import settings
     user_token = await _get_workspace_connector_token(workspace_id, ["github", "git"])
-    return user_token or os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_API_KEY") or ""
+    return user_token or getattr(settings, "github_token", "") or os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_API_KEY") or ""
 
 
 async def _execute_fetch_github_repo(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
@@ -2531,6 +2545,43 @@ async def _execute_verify_application_link(params: dict[str, Any], workspace_id:
         }
 
 
+async def _execute_query_notebooklm(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    prompt = params.get("prompt", "").strip()
+    if not prompt:
+        return {
+            "status": "error",
+            "tool": "query_notebooklm",
+            "result": "Missing 'prompt' parameter for query_notebooklm",
+        }
+    notebook_id = params.get("notebook_id")
+    try:
+        from ..services.notebooklm_service import notebooklm_service
+        res = await notebooklm_service.query(prompt=prompt, notebook_id=notebook_id)
+        if not res.get("success"):
+            return {
+                "status": "error",
+                "tool": "query_notebooklm",
+                "result": res.get("error", "NotebookLM query failed"),
+                "notebook_id": res.get("notebook_id"),
+            }
+        return {
+            "status": "success",
+            "tool": "query_notebooklm",
+            "result": {
+                "answer": res.get("answer", ""),
+                "citations": res.get("citations", []),
+                "notebook_id": res.get("notebook_id"),
+            },
+        }
+    except Exception as e:
+        logger.warning("query_notebooklm error: %s", e)
+        return {
+            "status": "error",
+            "tool": "query_notebooklm",
+            "result": f"NotebookLM query execution failed: {e}",
+        }
+
+
 async def _execute_mock(tool: ToolDefinition, params: dict[str, Any]) -> dict[str, Any]:
     return {
         "status": "error",
@@ -2595,6 +2646,7 @@ TOOL_DISPATCH: dict[str, Any] = {
     "send_slack_message": _execute_send_slack_message,
     "sync_notion_pages": _execute_sync_notion_pages,
     "execute_code_sandbox": _execute_execute_code_sandbox,
+    "query_notebooklm": _execute_query_notebooklm,
 }
 
 
