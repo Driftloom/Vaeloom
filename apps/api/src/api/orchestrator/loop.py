@@ -477,7 +477,7 @@ async def _assemble_rag_context(
         return {"entities": [], "documents": [], "preferences": []}
     try:
         from sqlalchemy import or_, select
-        from api.models.schema import Document, Entity
+        from api.models.schema import Document, DocumentChunk, Entity
 
         read_types = getattr(getattr(agent, "memory_scopes", None), "read_types", []) or []
         keywords = [w for w in query.split() if len(w) > 2][:5]
@@ -535,10 +535,21 @@ async def _assemble_rag_context(
                                         ent = await session.get(Entity, _uuid.UUID(sid))
                                         if ent and not any(e["id"] == sid for e in entities):
                                             entities.append({"id": sid, "name": ent.canonical_name, "type": ent.type, "aliases": ent.aliases})
-                                    elif stype in ('document', 'document_chunk') and len(documents) < 8:
+                                    elif stype == 'document' and len(documents) < 8:
                                         doc = await session.get(Document, _uuid.UUID(sid))
                                         if doc and not any(d["id"] == sid for d in documents):
                                             documents.append({"id": sid, "path": doc.path, "summary": (doc.summary or "")[:300]})
+                                    elif stype == 'document_chunk' and len(documents) < 8:
+                                        chunk = await session.get(DocumentChunk, _uuid.UUID(sid))
+                                        if chunk and chunk.document_id:
+                                            doc = await session.get(Document, chunk.document_id)
+                                            if doc and not any(d["id"] == str(doc.id) for d in documents):
+                                                documents.append({
+                                                    "id": str(doc.id),
+                                                    "path": doc.path,
+                                                    "summary": (doc.summary or "")[:300],
+                                                    "chunk_content": (chunk.content or "")[:500],
+                                                })
                                 except Exception:
                                     continue
                             if entities or documents:
@@ -801,7 +812,11 @@ def _build_context_prompt(rag: dict[str, Any]) -> str:
     for ent in (rag.get("entities") or [])[:5]:
         parts.append(f"Entity: {ent.get('name')} ({ent.get('type')})")
     for doc in (rag.get("documents") or [])[:3]:
-        parts.append(f"Doc: {doc.get('path')} — {doc.get('summary','')[:120]}")
+        doc_text = doc.get("summary", "")[:500]
+        chunk = doc.get("chunk_content", "")
+        if chunk:
+            doc_text += f"\nRelevant excerpt: {chunk[:800]}"
+        parts.append(f"Doc: {doc.get('path')} — {doc_text}")
     for pref in (rag.get("preferences") or [])[:3]:
         parts.append(f"Preference: {pref.get('name')}")
     return "\n".join(parts) if parts else ""
@@ -1094,13 +1109,14 @@ async def _try_react_loop(
         # injection flag — is attached to results. Message content is unchanged
         # (no behavior change); the manifest makes construction deterministic
         # enough for replay/provenance.
+        _compiled_messages = None
         try:
             from ..services.prompt_compiler import PromptCompiler, PromptLayers
             _tool_desc = "\n".join(f"- {td.name}: {td.description}" for td in ordered[:12])
             _layers = PromptLayers(
                 platform_policy="Vaeloom agent runtime: least-privilege tools, approval gates, workspace isolation.",
                 safety_policy="\n".join(getattr(card, "safety_guidelines", []) or []) if card else "",
-                agent_contract=getattr(card, "description", "") or getattr(agent, "mission", ""),
+                agent_contract=system_content or getattr(card, "description", "") or getattr(agent, "mission", ""),
                 task_contract=message[:2000],
                 user_intent=message[:2000],
                 memory_context="",
@@ -1117,6 +1133,8 @@ async def _try_react_loop(
                 untrusted_sources={"tool_context": "tool-registry", "evidence": "rag_context"},
             )
             prompt_manifest = {**_compiled.manifest, "compiled": True}
+            if _compiled.messages:
+                _compiled_messages = _compiled.messages
         except Exception as _pc_exc:
             logger.debug(f"PromptCompiler manifest skipped: {_pc_exc}")
 
@@ -1127,7 +1145,7 @@ async def _try_react_loop(
         # Resume-from-checkpoint (§17): replay fully-recorded rounds WITHOUT
         # re-executing tools. A crashed run continues; completed side effects
         # are never replayed (executor durable idempotency is the second net).
-        messages: list[dict[str, Any]] = [
+        messages: list[dict[str, Any]] = _compiled_messages if _compiled_messages else [
             {"role": "system", "content": system_content},
             {"role": "user", "content": message},
         ]
@@ -1426,7 +1444,166 @@ async def _try_react_loop(
                 except Exception as _rre:
                     logger.debug(f"ReAct round record skipped: {_rre}")
 
-            for tc in tool_calls:
+            def _is_tool_read_only(tname: str, td: Any | None) -> bool:
+                if not td:
+                    return False
+                try:
+                    from ..tools.executor import approval_gated_tools
+                    if tname in approval_gated_tools():
+                        return False
+                except Exception:
+                    pass
+                cat = getattr(td, "category", "") or ""
+                scope = getattr(td, "required_scope", "") or ""
+                return (
+                    cat in ("memory_read", "connector_read")
+                    or scope.endswith(".read")
+                    or getattr(td, "read_only", False) is True
+                )
+
+            # EV-11: Batch read-only tools for concurrent execution via asyncio.gather
+            _batches: list[list[dict[str, Any]]] = []
+            _curr_ro: list[dict[str, Any]] = []
+            for _tc in tool_calls:
+                _fn = (_tc.get("function") or {}).get("name", "")
+                try:
+                    from ..tools.executor import get_tool_definition as _get_td_chk
+                    _td_chk = _get_td_chk(_fn)
+                except Exception:
+                    _td_chk = ALL_TOOLS.get(_fn)
+                if _is_tool_read_only(_fn, _td_chk):
+                    _curr_ro.append(_tc)
+                else:
+                    if _curr_ro:
+                        _batches.append(_curr_ro)
+                        _curr_ro = []
+                    _batches.append([_tc])
+            if _curr_ro:
+                _batches.append(_curr_ro)
+
+            for _batch in _batches:
+                if len(_batch) > 1:
+                    # Parallel execution of read-only tools
+                    async def _exec_one_ro(tc_item: dict[str, Any]):
+                        if await check_react_cancel(request_id):
+                            return {"_cancelled": True}
+                        if _rt.monotonic() >= _deadline:
+                            return {"_deadline": True}
+                        if _rec.tool_calls >= _max_tools:
+                            return {"_budget": True}
+                        _f = tc_item.get("function", {}) or {}
+                        _tn = _f.get("name", "")
+                        _tcid = tc_item.get("id", _tn) or _tn
+                        _a = _f.get("arguments", {})
+                        if isinstance(_a, str):
+                            try:
+                                _a = json.loads(_a)
+                            except Exception:
+                                _a = {}
+                        if not isinstance(_a, dict):
+                            _a = {}
+                        try:
+                            from ..tools.executor import get_tool_definition as _gtd
+                            _td = _gtd(_tn)
+                        except Exception:
+                            _td = ALL_TOOLS.get(_tn)
+                        if not _td:
+                            return {"tc": tc_item, "tname": _tn, "tc_id": _tcid, "args": _a, "td": None,
+                                    "result": {"status": "error", "tool": _tn, "result": f"Unknown tool '{_tn}' — not in available tool list"}}
+                        _ok, _clean, _errs = _validate_args(_td, _a, workspace_id=str(workspace_id), tenant_id=_tenant, user_id=user_id)
+                        if not _ok:
+                            return {"tc": tc_item, "tname": _tn, "tc_id": _tcid, "args": _a, "td": _td,
+                                    "result": {"status": "error", "tool": _tn, "result": f"Invalid arguments: {'; '.join(_errs[:4])}"}}
+                        _a = _clean
+                        from ..tools.executor import check_permission
+                        if not await check_permission(agent_allowed_scopes, _td.required_scope):
+                            return {"tc": tc_item, "tname": _tn, "tc_id": _tcid, "args": _a, "td": _td,
+                                    "result": {"status": "error", "tool": _tn, "result": f"Permission denied: scope {_td.required_scope} not allowed for agent {agent_name}"}}
+                        try:
+                            _res = await _exec_tool(_td, _a, agent_id=agent_name, agent_scopes=agent_allowed_scopes, workspace_id=workspace_id)
+                        except Exception as _e:
+                            from .react_policy import classify_tool_failure as _ctf
+                            _cls, _why = _ctf(_e)
+                            _res = {"status": "error", "tool": _tn, "result": str(_e)[:2000], "failure_class": _cls}
+                        return {"tc": tc_item, "tname": _tn, "tc_id": _tcid, "args": _a, "td": _td, "result": _res}
+
+                    _ro_results = await asyncio.gather(*[_exec_one_ro(_tc) for _tc in _batch])
+                    for _out in _ro_results:
+                        if _out.get("_cancelled"):
+                            logger.info(f"REACT_CANCELLED correlation={corr} run={run_id} during-tools")
+                            return await _terminal_card("ReAct run cancelled by user request.", "cancelled")
+                        if _out.get("_deadline"):
+                            return await _terminal_card("ReAct run exceeded wall-clock budget.", "budget_time")
+                        if _out.get("_budget"):
+                            return await _terminal_card(f"ReAct run exceeded tool-call budget ({_max_tools}).", "budget_tools")
+                        _tc = _out["tc"]
+                        tname = _out["tname"]
+                        tc_id = _out["tc_id"]
+                        args = _out["args"]
+                        td = _out["td"]
+                        result = _out["result"]
+                        try:
+                            _seen_tool_calls.append({"id": tc_id, "type": "function", "function": {"name": tname, "arguments": args}})
+                        except Exception:
+                            pass
+                        _status = str(result.get("status", "error"))
+                        try:
+                            _fp2 = _tool_fp(tname, args)
+                            _tracker.tool_fingerprints.append(_fp2)
+                            _tracker.tool_calls += 1
+                            _rec.tool_calls += 1
+                            try:
+                                _tokens_est += estimate_tokens(json.dumps(result, default=str)[:8000])
+                            except Exception:
+                                pass
+                            if _status != "success":
+                                _rec.tool_failures += 1
+                            else:
+                                _consecutive_denials = 0
+                            if _status == "error" and ("denied" in str(result.get("result", "")).lower() or "not allowed" in str(result.get("result", "")).lower()):
+                                _consecutive_denials += 1
+                            if state is not None:
+                                try:
+                                    state.record_tool_call(tname, _fp2, _status)
+                                except Exception:
+                                    pass
+                        except Exception:
+                            _fp2 = ""
+                        if _consecutive_denials >= 3:
+                            if state is not None:
+                                try:
+                                    state.record_policy("react_policy_stop", f"{tname} denied x3")
+                                except Exception:
+                                    pass
+                            return await _terminal_card(f"ReAct run stopped: tool '{tname}' repeatedly denied by policy.", "policy_denied")
+                        try:
+                            from ..utils.sanitize import looks_like_prompt_injection, sanitize_tool_output
+                            raw_tool_str = json.dumps(result)
+                            if looks_like_prompt_injection(raw_tool_str):
+                                logger.warning(f"ReAct: tool '{tname}' output flagged as potential prompt injection — sanitizing")
+                            sanitized_content = sanitize_tool_output(raw_tool_str, tool_name=tname)
+                        except Exception:
+                            sanitized_content = json.dumps(result)[:4000]
+                        try:
+                            from ..services.prompt_compiler import quarantine
+                            quarantined_tool_output, _ = quarantine(sanitized_content, source=f"tool:{tname}")
+                        except Exception:
+                            quarantined_tool_output = f"<untrusted-data source=\"tool:{tname}\">\n{sanitized_content}\n</untrusted-data>"
+                        messages.append({"role": "assistant", "content": content_str or None, "tool_calls": [_tc]})
+                        messages.append({"role": "tool", "tool_call_id": tc_id, "content": quarantined_tool_output})
+                        try:
+                            if state is not None:
+                                try:
+                                    state.record_observation(quarantined_tool_output)
+                                except Exception:
+                                    pass
+                            _record_round(tname, tc_id, _fp2, args, _status, quarantined_tool_output, content_str)
+                            await _snapshot_running()
+                        except Exception:
+                            pass
+                    continue
+
+                tc = _batch[0]
                 # Durable cancellation before every consequential step.
                 if await check_react_cancel(request_id):
                     logger.info(f"REACT_CANCELLED correlation={corr} run={run_id} during-tools")

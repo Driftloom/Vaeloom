@@ -654,13 +654,29 @@ async def handle(request: UserRequest) -> dict[str, Any]:
 
     max_qa_retries = 3
     for attempt in range(max_qa_retries):
-        qa_result: QAValidationResult = await qa.validate(agent_output)
+        qa_result: QAValidationResult = await qa.validate(agent_output, context=getattr(loop_response, 'context', None))
         if qa_result.decision == "approved":
             logger.info("QA APPROVED (attempt %d)", attempt + 1)
             await _attach_pending_approvals(agent_output, request.workspace_id)
             return agent_output
         logger.warning("QA REJECTED (attempt %d): %s", attempt + 1, qa_result.issues)
 
+    # Fail-closed on critical safety issues (PII, harm, injection, grounding)
+    _CRITICAL_MARKERS = {"PII", "Harmful", "injection", "Grounding violation"}
+    if any(
+        any(m.lower() in issue.lower() for m in _CRITICAL_MARKERS)
+        for issue in qa_result.issues
+    ):
+        logger.error(
+            "QA FAIL-CLOSED: critical issues after retries: %s",
+            qa_result.issues,
+        )
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=500,
+            detail="Response failed quality validation — blocked for safety",
+        )
+    # Non-critical issues: deliver with warning flag
     logger.warning("QA retries exhausted — delivering best-effort with flag")
     agent_output["qa_flag"] = "best_effort_after_retries"
     await _attach_pending_approvals(agent_output, request.workspace_id)

@@ -232,6 +232,12 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
     await engine.dispose()
+    # EV-10: Close persistent LLM HTTP client
+    try:
+        from .services.llm_service import llm_service
+        await llm_service.close()
+    except Exception:
+        pass
     logger.info("Backend shutdown complete")
 
 

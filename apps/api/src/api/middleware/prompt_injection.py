@@ -104,6 +104,22 @@ class PromptInjectionMiddleware(BaseHTTPMiddleware):
                 return body_str
             except Exception:
                 return None
+        if "multipart/form-data" in content_type:
+            try:
+                form = await request.form()
+                text_parts: list[str] = []
+                for key, value in form.items():
+                    if isinstance(value, str):
+                        text_parts.append(f"{key}: {value}")
+                    elif hasattr(value, "filename") and hasattr(value, "content_type"):
+                        if value.content_type and value.content_type.startswith("text/"):
+                            content = await value.read()
+                            if len(content) <= 64 * 1024:
+                                text_parts.append(content.decode("utf-8", errors="replace"))
+                await form.close()
+                return "\n".join(text_parts) if text_parts else None
+            except Exception:
+                return None
         return None
 
     def _scan(self, text: str) -> str | None:

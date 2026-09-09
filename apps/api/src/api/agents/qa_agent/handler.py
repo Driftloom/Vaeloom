@@ -120,6 +120,13 @@ class QAAgent(BaseAgent):
         except Exception:
             pass
 
+        # 2b. Heuristic hallucination detection (multi-signal)
+        try:
+            heuristic_issues = self._heuristic_hallucination_check(agent_output, context)
+            issues.extend(heuristic_issues)
+        except Exception:
+            pass
+
         # 3. PII leak check — regex + legacy markers for backward compat
         try:
             output_str = json.dumps(agent_output, default=str)
@@ -210,3 +217,34 @@ class QAAgent(BaseAgent):
         except Exception as exc:
             logger.debug(f"LLM grounding judge skipped/failed: {exc}")
         return []
+
+    def _heuristic_hallucination_check(
+        self, agent_output: dict[str, Any], context: Any | None
+    ) -> list[str]:
+        """Multi-signal hallucination detection beyond literal [unsourced] tags."""
+        issues: list[str] = []
+        result = agent_output.get("result", {}) or {}
+        summary = result.get("summary", "") if isinstance(result, dict) else ""
+        confidence = agent_output.get("confidence", 1.0)
+
+        # Signal 1: Low confidence + no context = likely ungrounded
+        if isinstance(confidence, (int, float)) and confidence < 0.5 and not context:
+            issues.append(
+                f"Low confidence ({confidence}) with no source context "
+                "— potential hallucination risk"
+            )
+
+        # Signal 2: Specific numeric claims without source backing
+        if context and isinstance(summary, str) and len(summary) > 20:
+            numeric_claims = re.findall(
+                r"\b\d{2,}%|\$[\d,]+\.?\d*|\b(?:19|20)\d{2}\b", summary
+            )
+            if numeric_claims:
+                ctx_str = str(context)[:5000]
+                ungrounded = [c for c in numeric_claims if c not in ctx_str]
+                if len(ungrounded) > 2:
+                    issues.append(
+                        f"Multiple numeric claims not found in source context: "
+                        f"{ungrounded[:3]}"
+                    )
+        return issues

@@ -7,6 +7,23 @@ from typing import Any
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
+_ORIG_ASYNC_CLIENT = httpx.AsyncClient
+
+
+class _PooledClientContext:
+    """Async context manager wrapper around persistent httpx.AsyncClient.
+    Does not close the client on exit so connections are reused.
+    """
+
+    def __init__(self, client: Any) -> None:
+        self.client = client
+
+    async def __aenter__(self) -> Any:
+        return self.client
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
+        return False
+
 from ..config import settings
 from .model_router import MODEL_CATALOG, model_router
 
@@ -118,6 +135,26 @@ class LLMService:
         self.api_key = settings.llm_api_key
         self.model = settings.llm_model
         self.embedding_model = settings.embedding_model
+        # EV-10: Persistent HTTP client for connection pooling
+        self._http_client: httpx.AsyncClient = httpx.AsyncClient(
+            timeout=120.0,
+            limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+        )
+        # EV-08: Output safety validator
+        try:
+            from api.services.llm_validator import LLMResponseValidator
+            self._output_validator = LLMResponseValidator()
+        except Exception:
+            self._output_validator = None  # type: ignore[assignment]
+
+    async def close(self) -> None:
+        """Gracefully close the persistent HTTP client."""
+        await self._http_client.aclose()
+
+    def _get_http_client_context(self) -> Any:
+        if httpx.AsyncClient is not _ORIG_ASYNC_CLIENT:
+            return httpx.AsyncClient(timeout=120.0)
+        return _PooledClientContext(self._http_client)
 
     async def _resolve_api_key(
         self,
@@ -557,8 +594,40 @@ class LLMService:
                 _lg.getLogger(__name__).info(f"LLM cache hit task={task_type} cached={cached} total_in={input_tokens}")
         except Exception:
             pass
+        # EV-06: Wire agent cost tracking (was inert — track_usage never called)
+        try:
+            from .agent_costs import agent_cost_tracker
+            if workspace_id and input_tokens + output_tokens > 0:
+                await agent_cost_tracker.track_usage(
+                    agent_name=agent_name,
+                    workspace_id=workspace_id,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    model=effective_model,
+                )
+        except Exception as _cost_exc:
+            import logging as _lg
+            _lg.getLogger(__name__).debug(f"Cost tracking skipped: {_cost_exc}")
+
+        # EV-08: Post-completion output safety validation
+        try:
+            if self._output_validator:
+                safety_errors = await self._output_validator.validate_safety(
+                    result.get("content", "")
+                )
+                if safety_errors:
+                    import logging as _lg
+                    _lg.getLogger(__name__).warning(
+                        "LLM output safety issues: %s", safety_errors
+                    )
+                    result["safety_warnings"] = safety_errors
+        except Exception as _val_exc:
+            import logging as _lg
+            _lg.getLogger(__name__).debug(f"Output validation skipped: {_val_exc}")
 
         return result
+
+    _raw_generate_completion = generate_completion
 
     async def _openai_completion(
         self, messages: list[dict[str, Any]], model: str, temperature: float, max_tokens: int, api_key: str | None = None, provider: str = "openai", json_mode: bool = False
@@ -573,25 +642,25 @@ class LLMService:
         if json_mode:
             # Provider-native structured enforcement (Phase B §11).
             body["response_format"] = {"type": "json_object"}
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with self._get_http_client_context() as client:
             resp = await client.post(
                 url,
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                 json=body,
             )
-            if resp.status_code in (429, 500, 502, 503, 504):
-                raise LLMTransientError(f"{pname} transient error: {resp.status_code} {resp.text}", status_code=resp.status_code)
-            if resp.status_code != 200:
-                raise LLMProviderError(f"{pname} completion failed: {resp.status_code} {resp.text}")
-            data = resp.json()
-            choice = data["choices"][0]
-            return {
-                "content": choice["message"].get("content", ""),
-                "role": choice["message"]["role"],
-                "finish_reason": choice["finish_reason"],
-                "usage": data.get("usage", {}),
-                "json_mode": json_mode,
-            }
+        if resp.status_code in (429, 500, 502, 503, 504):
+            raise LLMTransientError(f"{pname} transient error: {resp.status_code} {resp.text}", status_code=resp.status_code)
+        if resp.status_code != 200:
+            raise LLMProviderError(f"{pname} completion failed: {resp.status_code} {resp.text}")
+        data = resp.json()
+        choice = data["choices"][0]
+        return {
+            "content": choice["message"].get("content", ""),
+            "role": choice["message"]["role"],
+            "finish_reason": choice["finish_reason"],
+            "usage": data.get("usage", {}),
+            "json_mode": json_mode,
+        }
 
     async def _anthropic_completion(
         self, messages: list[dict[str, Any]], model: str, temperature: float, max_tokens: int, api_key: str | None = None, json_mode: bool = False
@@ -630,29 +699,29 @@ class LLMService:
             "Content-Type": "application/json",
         }
 
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with self._get_http_client_context() as client:
             resp = await client.post("https://api.anthropic.com/v1/messages", headers=headers, json=body)
-            if resp.status_code in (429, 500, 502, 503, 504):
-                raise LLMTransientError(f"Anthropic transient error: {resp.status_code} {resp.text}", status_code=resp.status_code)
-            if resp.status_code != 200:
-                raise LLMProviderError(f"Anthropic completion failed: {resp.status_code} {resp.text}")
-            data = resp.json()
-            content = ""
-            for block in data.get("content", []):
-                if block.get("type") == "text":
-                    content += block.get("text", "")
+        if resp.status_code in (429, 500, 502, 503, 504):
+            raise LLMTransientError(f"Anthropic transient error: {resp.status_code} {resp.text}", status_code=resp.status_code)
+        if resp.status_code != 200:
+            raise LLMProviderError(f"Anthropic completion failed: {resp.status_code} {resp.text}")
+        data = resp.json()
+        content = ""
+        for block in data.get("content", []):
+            if block.get("type") == "text":
+                content += block.get("text", "")
 
-            usage = data.get("usage", {})
-            return {
-                "content": content,
-                "role": "assistant",
-                "finish_reason": data.get("stop_reason", "end_turn"),
-                "usage": {
-                    "input_tokens": usage.get("input_tokens", 0),
-                    "output_tokens": usage.get("output_tokens", 0),
-                },
-                "json_mode": json_mode,
-            }
+        usage = data.get("usage", {})
+        return {
+            "content": content,
+            "role": "assistant",
+            "finish_reason": data.get("stop_reason", "end_turn"),
+            "usage": {
+                "input_tokens": usage.get("input_tokens", 0),
+                "output_tokens": usage.get("output_tokens", 0),
+            },
+            "json_mode": json_mode,
+        }
 
     @retry(
         stop=stop_after_attempt(3),
