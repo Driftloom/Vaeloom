@@ -163,6 +163,12 @@ class ApprovalManager:
             conditions.append("status = :status")
             params["status"] = status
         if workspace_id:
+            # Zero-trust fix (FINAL-02): a caller-supplied workspace_id must
+            # itself be within the caller's accessible set. Previously the
+            # explicit filter SKIPPED the membership predicate, leaking
+            # foreign-workspace approval rows to any authenticated caller.
+            if user_workspaces is not None and str(workspace_id) not in user_workspaces:
+                return ApprovalListResponse(items=[], total=0, page=page, page_size=page_size)
             conditions.append("workspace_id = :workspace_id")
             params["workspace_id"] = workspace_id
         elif user_workspaces is not None:
@@ -227,12 +233,15 @@ class ApprovalManager:
         except Exception:
             pass
         now = datetime.now(UTC)
-        await db.execute(
+        # Zero-trust fix (FINAL-03): guard the transition itself against
+        # concurrent deciders (TOCTOU). Previously two simultaneous approves
+        # both passed the PENDING read-check and both UPDATEed.
+        res = await db.execute(
             text("""
                 UPDATE agent_approvals
                 SET status = :decision, decided_by = :decided_by, decision_note = :note,
                     decided_at = :decided_at, updated_at = :updated_at
-                WHERE id = :id
+                WHERE id = :id AND status = 'PENDING'
             """),
             {
                 "id": approval_id,
@@ -243,6 +252,9 @@ class ApprovalManager:
                 "updated_at": now,
             },
         )
+        if res.rowcount == 0:
+            current = await self.get_approval(approval_id, db, user_workspaces=user_workspaces)
+            raise HTTPException(status_code=409, detail=f"Approval already {current.status.lower()}")
         return await self.get_approval(approval_id, db, user_workspaces=user_workspaces)
 
     async def _expire_stale(self, db: AsyncSession) -> None:
@@ -434,6 +446,12 @@ async def request_approval(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     actor = str(current_user.get("sub"))
+    # Zero-trust fix (FINAL-02b): the requested workspace must belong to the
+    # actor. Previously an arbitrary workspace_id could be attached at create.
+    if dto.workspace_id:
+        actor_ws = await _get_user_workspace_ids(actor, db)
+        if actor_ws is not None and str(dto.workspace_id) not in actor_ws:
+            raise HTTPException(status_code=404, detail="Workspace not found")
     approval = await approval_manager.request_approval(
         agent_name=dto.agent_name,
         action_type=dto.action_type,

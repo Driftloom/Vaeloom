@@ -871,7 +871,15 @@ async def _revalidate_approval_for_execution(
 
 @_activity.defn
 async def execute_approved_action(payload: dict[str, Any]) -> dict[str, Any]:
-    """Re-validates permission at execution time (§14) then executes."""
+    """Re-validates permission at execution time (§14) then single-consumes.
+
+    Zero-trust fix (FINAL-04): this activity is a consume-gate, NOT an effect
+    executor — it performs no tool/model/memory side effect itself (effects
+    execute in-band via the loop/graph consume path). Previously it returned
+    ``executed: True`` on every call without consuming, so one APPROVED row
+    could be "executed" N times. Now the APPROVED→CONSUMED transition is
+    atomic (single winner); replays report executed: False.
+    """
     try:
         from .metrics import _inc_activity_started
 
@@ -888,13 +896,38 @@ async def execute_approved_action(payload: dict[str, Any]) -> dict[str, Any]:
 
         async with async_session_factory() as db:
             recheck = await _revalidate_approval_for_execution(db, approval_id, decision)
-        if not recheck.get("ok"):
-            logger.warning(
-                "execute_approved_action refusal: approval=%s reason=%s",
-                approval_id,
-                recheck.get("error"),
-            )
-            return {"approval_id": approval_id, "executed": False, "error": recheck.get("error")}
+            if not recheck.get("ok"):
+                logger.warning(
+                    "execute_approved_action refusal: approval=%s reason=%s",
+                    approval_id,
+                    recheck.get("error"),
+                )
+                return {"approval_id": approval_id, "executed": False, "error": recheck.get("error")}
+            # Atomic single-consume: only the first execution wins. Mirrors
+            # the loop/graph consume path (lookup_approval consume=True).
+            try:
+                from datetime import UTC, datetime
+
+                from sqlalchemy import text as _t_consume
+
+                now = datetime.now(UTC)
+                consume_res = await db.execute(
+                    _t_consume("""
+                        UPDATE agent_approvals
+                        SET status = 'CONSUMED', updated_at = :now
+                        WHERE id = :id AND status = 'APPROVED'
+                    """),
+                    {"id": approval_id, "now": now},
+                )
+                await db.commit()
+                if consume_res.rowcount == 0:
+                    return {"approval_id": approval_id, "executed": False, "error": "already consumed"}
+            except Exception as ce:
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
+                return {"approval_id": approval_id, "executed": False, "error": f"consume failed: {ce}"[:200]}
 
         logger.info("execute_approved_action approved=%s decision=%s", approval_id, decision.get("decision"))
         return {"approval_id": approval_id, "executed": True}

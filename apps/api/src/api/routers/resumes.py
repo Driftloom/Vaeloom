@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import get_db
 from ..dependencies import get_current_user
 from ..middleware.rate_limit import rate_limit
-from ..models.schema import Workspace
+from ..models.schema import Workspace, WorkspaceUser
 from ..schemas.resume import (
     CompileResumeRequest,
     CompileTypstRequest,
@@ -34,7 +34,13 @@ router = APIRouter()
 
 
 async def _verify_workspace_access(workspace_id: str, user_id: str, db: AsyncSession) -> None:
-    """Verify user owns this workspace. Raises 404 if not."""
+    """Verify user owns or is a member of this workspace. Raises 404 if not.
+
+    Zero-trust fix (FINAL-01): previously owner-only AND not called on
+    list/master/generate paths, allowing any authenticated user to read
+    foreign workspaces' resumes. Now owner-or-member, consistent with
+    TenantMiddleware admission and memory/agents/chat authorization.
+    """
     from uuid import UUID as _UUID
 
     try:
@@ -43,7 +49,12 @@ async def _verify_workspace_access(workspace_id: str, user_id: str, db: AsyncSes
     except (ValueError, TypeError):
         raise HTTPException(status_code=400, detail="Invalid ID format")
     result = await db.execute(select(Workspace).where(Workspace.id == wid, Workspace.user_id == uid))
-    if not result.scalar_one_or_none():
+    if result.scalar_one_or_none() is not None:
+        return
+    member = await db.execute(
+        select(WorkspaceUser).where(WorkspaceUser.workspace_id == wid, WorkspaceUser.user_id == uid)
+    )
+    if member.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
 
 
@@ -57,6 +68,8 @@ async def list_resumes(
         raise HTTPException(status_code=400, detail="workspace_id is required")
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    user_id = current_user.get("sub") or current_user.get("user_id")
+    await _verify_workspace_access(workspace_id, user_id, db)
     resumes = await resume_service.list_for_workspace(workspace_id=workspace_id, db=db)
     return [ResumeResponse.model_validate(r) for r in resumes]
 
@@ -69,6 +82,8 @@ async def get_master_resume(
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    user_id = current_user.get("sub") or current_user.get("user_id")
+    await _verify_workspace_access(workspace_id, user_id, db)
     resume = await resume_service.get_master(workspace_id=workspace_id, db=db)
     if not resume:
         raise HTTPException(status_code=404, detail="Master resume not found")
@@ -85,6 +100,10 @@ async def generate_resume(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = current_user.get("sub") or current_user.get("user_id")
+    # Zero-trust fix (FINAL-01): generate previously read ANY resume by id.
+    # Verify accessor owns or belongs to the base resume's workspace first.
+    base = await resume_service.get_by_id(resume_id, None, db=db)
+    await _verify_workspace_access(str(base.workspace_id), user_id, db)
     resume = await resume_service.generate_variant(resume_id=resume_id, dto=dto, user_id=user_id, db=db)
     return ResumeResponse.model_validate(resume)
 
