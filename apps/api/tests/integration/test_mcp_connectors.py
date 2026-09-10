@@ -104,15 +104,15 @@ class TestMcpConnectorRoutes:
         ]
         calls = {"list": 0, "bridge": 0, "call": None}
 
-        async def fake_list(cid, tid, db=None, refresh=False):
+        async def fake_list(cid, tid, db=None, refresh=False, **kwargs):
             calls["list"] += 1
             return tools
 
-        async def fake_bridge(cid, tid, db=None):
+        async def fake_bridge(cid, tid, db=None, **kwargs):
             calls["bridge"] += 1
             return [f"mcp__Postgres-MCP__{t['name']}" for t in tools]
 
-        async def fake_call(cid, tool_name, arguments, tid, db=None):
+        async def fake_call(cid, tool_name, arguments, tid, db=None, **kwargs):
             calls["call"] = {"tool": tool_name, "args": arguments}
             return {"tool": tool_name, "text": "ok", "is_error": False}
 
@@ -157,7 +157,7 @@ class TestMcpConnectorRoutes:
              "read_only_hint": False},
         ]
 
-        async def fake_list(cid, tid, db=None, refresh=False):
+        async def fake_list(cid, tid, db=None, refresh=False, **kwargs):
             return tools
 
         monkeypatch.setattr(svc, "list_tools", fake_list)
@@ -204,12 +204,12 @@ class TestMcpConnectorRoutes:
         created = await self._create_mcp_connector(client, auth_headers)
         seen = []
 
-        async def fake_svc_test(cid, tid, db=None):
+        async def fake_svc_test(cid, tid, db=None, **kwargs):
             seen.append(str(cid))
             return {"status": "ok", "tools": 2}
 
-        async def fake_ext_test(self, cid, tid=None, db=None):
-            return await fake_svc_test(cid, tid, db)
+        async def fake_ext_test(self, cid, tid=None, db=None, **kwargs):
+            return await fake_svc_test(cid, tid, db, **kwargs)
 
         monkeypatch.setattr(svc, "test_connection", fake_svc_test)
         monkeypatch.setattr(ces.ConnectorExtService, "test_connection", fake_ext_test)

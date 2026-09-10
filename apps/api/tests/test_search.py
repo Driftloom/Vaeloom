@@ -90,14 +90,20 @@ class TestSearchInfrastructure:
 
     async def test_get_search_index_from_env(self):
         from api.infrastructure.search import get_search_index
-        with patch.dict(os.environ, {"MEILISEARCH_URL": ""}):
+        with patch.dict(os.environ, {"MEILISEARCH_URL": "", "ALGOLIA_APP_ID": ""}):
             idx = get_search_index()
             from api.infrastructure.search import PostgresFallbackIndex
             assert isinstance(idx, PostgresFallbackIndex)
 
+    async def test_get_search_index_algolia(self):
+        from api.infrastructure.search import get_search_index, AlgoliaIndex
+        with patch.dict(os.environ, {"ALGOLIA_APP_ID": "test_app_id"}):
+            idx = get_search_index()
+            assert isinstance(idx, AlgoliaIndex)
+
     async def test_get_search_index_meili_not_installed(self):
         from api.infrastructure.search import get_search_index
-        with patch.dict(os.environ, {"MEILISEARCH_URL": "http://localhost:7700"}):
+        with patch.dict(os.environ, {"MEILISEARCH_URL": "http://localhost:7700", "ALGOLIA_APP_ID": ""}):
             import builtins
             original_import = builtins.__import__
 
@@ -110,6 +116,35 @@ class TestSearchInfrastructure:
                 idx = get_search_index()
                 from api.infrastructure.search import PostgresFallbackIndex
                 assert isinstance(idx, PostgresFallbackIndex)
+
+    async def test_algolia_index_operations(self):
+        from api.infrastructure.search import AlgoliaIndex
+        idx = AlgoliaIndex(app_id="test_app", api_key="test_key", index_name="test_idx")
+        assert idx._app_id == "test_app"
+        assert idx._api_key == "test_key"
+        assert "test_app-dsn.algolia.net" in idx._base_url
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"hits": [{"objectID": "1", "title": "test"}]}
+
+        with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = mock_resp
+            
+            await idx.index([{"id": "1", "title": "test"}])
+            assert mock_post.called
+
+            res = await idx.search("test")
+            assert len(res) == 1
+            assert res[0]["title"] == "test"
+
+            await idx.clear()
+            assert mock_post.called
+
+        with patch("httpx.AsyncClient.delete", new_callable=AsyncMock) as mock_del:
+            mock_del.return_value.status_code = 200
+            await idx.delete("1")
+            assert mock_del.called
 
     async def test_meilisearch_index_requires_import(self):
         from api.infrastructure.search import MeilisearchIndex

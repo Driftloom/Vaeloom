@@ -102,9 +102,26 @@ _TOOL_OK = {
                  "finish_reason": "tool_calls"}],
     "usage": {"prompt_tokens": 8, "completion_tokens": 4},
 }
+_ANTHROPIC_CHAT_OK = {
+    "content": [{"type": "text", "text": FINAL_ANSWER}],
+    "stop_reason": "end_turn",
+    "usage": {"input_tokens": 5, "output_tokens": 7},
+}
+_ANTHROPIC_TOOL_OK = {
+    "content": [{"type": "tool_use", "id": "tu_1", "name": "search_documents",
+                 "input": {"query": "fallback"}}],
+    "stop_reason": "tool_calls",
+    "usage": {"input_tokens": 8, "output_tokens": 4},
+}
 
 
 class _FakeAsyncClient:
+    """Provider-shape-faithful transport double (see graph E2E fake).
+
+    Each provider's native response shape is returned so the real provider
+    parsers execute for real regardless of which fallback candidate serves.
+    """
+
     def __init__(self, *a, **k):
         pass
 
@@ -115,9 +132,10 @@ class _FakeAsyncClient:
         return False
 
     async def post(self, url, headers=None, json=None):
+        is_anthropic = "anthropic" in (url or "")
         if json and "tools" in json:
-            return _Resp(200, _TOOL_OK)
-        return _Resp(200, _CHAT_OK)
+            return _Resp(200, _ANTHROPIC_TOOL_OK if is_anthropic else _TOOL_OK)
+        return _Resp(200, _ANTHROPIC_CHAT_OK if is_anthropic else _CHAT_OK)
 
 
 class ReactE2EAgent(BaseAgent):
@@ -170,6 +188,9 @@ def react_harness(monkeypatch, db_session, tmp_path):
     monkeypatch.setattr(mod.llm_service, "provider", "openai")
     monkeypatch.setattr(mod.llm_service, "model", "gpt-4o-mini")
     monkeypatch.setattr(mod.llm_service, "api_key", "test-key-32-chars-long-for-tests!!")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-openai-key-for-hermetic-tests")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test-anthropic-key-for-hermetic")
+    monkeypatch.setenv("GROQ_API_KEY", "gsk_test-groq-key-for-hermetic-tests")
     mod.clear_provider_failure_injection()
 
     maker_factory = lambda: _SessionCtx(db_session)  # noqa: E731

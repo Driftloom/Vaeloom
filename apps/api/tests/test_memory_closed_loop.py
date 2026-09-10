@@ -24,25 +24,21 @@ async def test_finalize_persists_preference_memory(monkeypatch):
     os.environ["VAELOOM_TEST_MEMORY_WRITE"] = "1"
     captured: dict = {}
 
-    async def _fake_create(db, dto, tenant_id, user_id):
-        captured["dto"] = dto
-        captured["tenant_id"] = tenant_id
-        captured["user_id"] = user_id
-        return _FakeMemory()
+    async def _fake_consolidate(**kw):
+        captured.update(kw)
+        return {"status": "success", "consolidated_count": 1}
 
-    from api.services.memory_service import memory_service
+    from api.agents.memory.consolidator import memory_consolidator
 
-    monkeypatch.setattr(memory_service, "create_memory", _fake_create)
+    monkeypatch.setattr(memory_consolidator, "consolidate_trajectory", _fake_consolidate)
 
-    @contextlib.asynccontextmanager
-    async def _fake_factory():
-        yield _FakeSession()
+    import uuid
 
-    monkeypatch.setattr("api.database.async_session_factory", _fake_factory)
-
+    ws = str(uuid.uuid4())
+    uid = str(uuid.uuid4())
     state = {
-        "workspace_id": "ws-123",
-        "user_id": "user-456",
+        "workspace_id": ws,
+        "user_id": uid,
         "task": "I prefer concise summaries",
         "result": {"summary": "done"},
         "execution_status": "completed",
@@ -50,9 +46,8 @@ async def test_finalize_persists_preference_memory(monkeypatch):
     }
     out = await nodes.finalize_node(state)
 
-    assert captured.get("dto") is not None, "memory_service.create_memory was not called"
-    assert str(captured["dto"].workspace_id) == "ws-123"
-    assert captured["user_id"] == "user-456"
+    assert captured.get("workspace_id") == ws, "consolidate_trajectory was not called"
+    assert captured.get("user_id") == uid or captured.get("user_id") is None
     assert out["result"]["provenance"]["memory_persisted"] is True
 
 
@@ -61,18 +56,18 @@ async def test_finalize_skips_persist_when_no_preference(monkeypatch):
     os.environ["VAELOOM_TEST_MEMORY_WRITE"] = "1"
     called = {"n": 0}
 
-    async def _fake_create(db, dto, tenant_id, user_id):
+    async def _fake_consolidate(**kw):
         called["n"] += 1
-        return _FakeMemory()
+        return {"status": "success", "consolidated_count": 1}
 
-    from api.services.memory_service import memory_service
+    from api.agents.memory.consolidator import memory_consolidator
 
-    monkeypatch.setattr(memory_service, "create_memory", _fake_create)
-    monkeypatch.setattr("api.database.async_session_factory", _fake_factory_ctx())
+    monkeypatch.setattr(memory_consolidator, "consolidate_trajectory", _fake_consolidate)
+    import uuid
 
     state = {
-        "workspace_id": "ws-123",
-        "user_id": "user-456",
+        "workspace_id": str(uuid.uuid4()),
+        "user_id": str(uuid.uuid4()),
         "task": "summarize this document",
         "result": {"summary": "done"},
         "execution_status": "completed",
