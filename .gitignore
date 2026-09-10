@@ -83,11 +83,16 @@ pnpm-debug.log*
 
 # Testing
 coverage/
+.hypothesis/
+junit.xml
+*.prof
+*.lprof
 
 # Playwright
 test-results/
 playwright-report/
 blob-report/
+.playwright/
 
 # Husky internal auto-managed hooks
 .husky/_
@@ -112,6 +117,7 @@ blob-report/
 .cline/
 .roo/
 .windsurf/
+.copilot/
 
 # Vaeloom local orchestrator checkpoints (home ~/.vaeloom is outside repo, but repo-local .vaeloom/ if ever created)
 .vaeloom/
@@ -152,6 +158,8 @@ query_engine-*.node
 *.db
 *.sqlite
 *.sqlite3
+dump.rdb
+temporal_data/
 
 # Coverage artifacts
 .coverage
