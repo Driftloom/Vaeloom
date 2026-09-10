@@ -173,8 +173,37 @@ def validate_graph_topology() -> dict[str, Any]:
     from .state import MAX_GRAPH_REPLANS, MAX_FANOUT_BRANCHES
     if not (MAX_GRAPH_REPLANS > 0 and MAX_FANOUT_BRANCHES > 0):
         raise ValueError("graph bounds missing")
+    # ── Compiled-object check (AUDIT-P2-02) ─────────────────────────────
+    # The static checks above prove the DECLARED contract is self-consistent,
+    # but not that the ACTUAL COMPILED graph matches it (builder/meta drift
+    # would pass silently). Introspect the singleton langgraph object and
+    # require exact agreement. Fail-closed: an unreadable compiled topology
+    # refuses the run rather than trusting the static map alone.
+    try:
+        from . import get_vaeloom_graph
+        _compiled = get_vaeloom_graph().get_graph()
+        _real_nodes = {n for n in _compiled.nodes if n not in ("__start__", "__end__")}
+        if _real_nodes != nodes:
+            raise ValueError(
+                f"compiled node drift: extra={sorted(_real_nodes - nodes)} "
+                f"missing={sorted(nodes - _real_nodes)}")
+        _allowed = {(s, d) for s, ds in ALLOWED_TRANSITIONS.items() for d in ds}
+        _compiled_edges = {
+            (str(e.source).replace("__start__", "START").replace("__end__", "END"),
+             str(e.target).replace("__start__", "START").replace("__end__", "END"))
+            for e in _compiled.edges
+        }
+        _unexpected = _compiled_edges - _allowed
+        if _unexpected:
+            raise ValueError(f"compiled edge outside allowed map: {sorted(_unexpected)}")
+        _n_compiled_edges = len(_compiled_edges)
+    except ValueError:
+        raise
+    except Exception as e:
+        raise ValueError(f"compiled topology unreadable — refusing run: {e}")
     _topology_cache = {"version": GRAPH_VERSION, "nodes": sorted(nodes),
-                       "transitions": {k: list(v) for k, v in ALLOWED_TRANSITIONS.items()}}
+                       "transitions": {k: list(v) for k, v in ALLOWED_TRANSITIONS.items()},
+                       "compiled_edges": _n_compiled_edges}
     return _topology_cache
 
 
@@ -221,10 +250,12 @@ def assert_trusted_context_unchanged(initial: dict[str, str], final_state: dict[
     for key in ("workspace_id", "user_id", "tenant_id", "agent_id", "request_id"):
         before = initial.get(key)
         after = final_state.get(key)
-        if key == "tenant_id":
-            # tenant lives in trusted ctx + mirror, not necessarily graph state
-            continue
-        if after is not None and str(after) != str(before):
+        if after is None:
+            # The runner always seeds every trusted id (resolve_trusted_context
+            # fails closed on missing values), so a missing id post-run means a
+            # node wiped a security-critical channel — reject (AUDIT-P2-01).
+            raise ValueError(f"graph {key} missing after run (was {before!r}) — rejecting result")
+        if str(after) != str(before):
             raise ValueError(f"graph {key} mutated during run ({before!r} -> {after!r}) — rejecting result")
 
 
@@ -442,6 +473,8 @@ async def run_graph_direct(
         except Exception:
             final_state = None
     except asyncio.CancelledError:
+        if not await check_graph_cancel(ctx["request_id"]):
+            raise
         cancelled = True
     except (TimeoutError, asyncio.TimeoutError):
         await _record_release("timeout", node_updates=node_updates)

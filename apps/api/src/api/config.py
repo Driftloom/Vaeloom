@@ -206,7 +206,7 @@ class Settings(BaseSettings):
     langgraph_enabled: bool = False
     langgraph_version: str = "v1"
     langgraph_shadow_mode: bool = False
-    langgraph_agent_run_percent: int = 0  # 0=legacy, 100=graph, 1-99 shadow
+    langgraph_agent_run_percent: int = 0  # 0=no percent limit (graph for all when enabled), 100=graph, 1-99 hash-gated (mirrors activity)
     langgraph_checkpoint_backend: str = "memory"  # memory|postgres|redis (memory = MemorySaver)
     langgraph_max_messages: int = 20
     langgraph_max_state_bytes: int = 20480

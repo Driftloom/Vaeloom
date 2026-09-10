@@ -120,6 +120,8 @@ temp/
 scratch/
 scratch*.py
 scratch_*.py
+test_zz_*.py
+test_*_scratch*.py
 
 # Graphify knowledge graph — ALL outputs (build artifacts, cache, exports, temp files)
 graphify-out/

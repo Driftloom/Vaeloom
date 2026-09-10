@@ -70,18 +70,10 @@ class SyncConnectorInput:
     sync_token: str = ""
 
 
-# ── Lightweight ingest helpers — reuse existing services when available,
-#    degrade to deterministic stubs in tests/lean envs (mock-safe).
-
-try:
-    from ..services.document_service import document_service  # type: ignore
-except Exception:
-    document_service = None  # type: ignore
-
-try:
-    from ..services.memory_service import memory_service  # type: ignore
-except Exception:
-    memory_service = None  # type: ignore
+# NOTE (ADV10): no service-module imports live here. Ingest activities use
+# raw workspace-scoped SQL via the session factory; all domain effects
+# (extraction, embeddings, memory, graph index) go through the canonical
+# activity functions above, never through direct service calls.
 
 
 def _activity_log(msg: str, **kw) -> None:
@@ -114,27 +106,36 @@ def _activity_log(msg: str, **kw) -> None:
 @_activity.defn
 async def parse_document(inp: ParseDocumentInput) -> dict[str, Any]:
     """Fetch doc row; return parsed_ref handle (no bytes in history)."""
+    doc_id_in = inp.get("document_id") if isinstance(inp, dict) else getattr(inp, "document_id", "")
+    ws_id_in = inp.get("workspace_id") if isinstance(inp, dict) else getattr(inp, "workspace_id", "")
+    doc_id_in = str(doc_id_in or "")
+    ws_id_in = str(ws_id_in or "")
     try:
         from .metrics import _inc_activity_failed, _inc_activity_started
 
         _inc_activity_started("parse_document")
-        _activity_log("parse_document", document_id=inp.document_id, workspace_id=inp.workspace_id)
+        _activity_log("parse_document", document_id=doc_id_in, workspace_id=ws_id_in)
     except Exception:
         pass
     activity = _activity
     try:
         from ..database import async_session_factory
-        from sqlalchemy import text as _text
+        from ..models.schema import Document
+        from sqlalchemy import select as _select
+        import uuid as _uuid
 
         async with async_session_factory() as db:
-            row = await db.execute(_text("SELECT id, content, path FROM documents WHERE id=:id AND workspace_id=:ws"), {"id": inp.document_id, "ws": inp.workspace_id})
-            r = row.first()
+            doc_uuid = _uuid.UUID(doc_id_in) if len(doc_id_in) > 30 else None
+            ws_uuid = _uuid.UUID(ws_id_in) if len(ws_id_in) > 30 else None
+            r = None
+            if doc_uuid and ws_uuid:
+                r = (await db.execute(_select(Document).where(Document.id == doc_uuid, Document.workspace_id == ws_uuid))).scalar_one_or_none()
             if not r:
-                return {"parsed_ref": f"parse:{inp.document_id}:stub", "content_hash": hashlib.sha256(inp.document_id.encode()).hexdigest()[:12], "error": "document not found in workspace"}
-            doc_id, content, path = r[0], r[1], r[2]
+                return {"parsed_ref": f"parse:{doc_id_in}:stub", "content_hash": hashlib.sha256(doc_id_in.encode()).hexdigest()[:12], "error": "document not found in workspace"}
+            content = r.content
             raw = content if isinstance(content, (bytes, bytearray)) else (str(content).encode() if content else b"")
-            h = hashlib.sha256(raw).hexdigest()[:16] if raw else hashlib.sha256(str(doc_id).encode()).hexdigest()[:12]
-            return {"parsed_ref": f"parse:{inp.document_id}:{h}", "content_hash": h}
+            h = hashlib.sha256(raw).hexdigest()[:16] if raw else hashlib.sha256(str(r.id).encode()).hexdigest()[:12]
+            return {"parsed_ref": f"parse:{doc_id_in}:{h}", "content_hash": h}
     except Exception as e:
         try:
             from .metrics import _inc_activity_failed
@@ -142,8 +143,7 @@ async def parse_document(inp: ParseDocumentInput) -> dict[str, Any]:
             _inc_activity_failed("parse_document", reason=type(e).__name__[:30])
         except Exception:
             pass
-        logger.warning("parse_document fallback (%s)", e)
-        return {"parsed_ref": f"parse:{inp.document_id}:stub", "content_hash": hashlib.sha256(inp.document_id.encode()).hexdigest()[:12]}
+        return {"parsed_ref": f"parse:{doc_id_in}:stub", "content_hash": hashlib.sha256(doc_id_in.encode()).hexdigest()[:12], "error": f"store unavailable: {type(e).__name__}", "fallback": True}
 
 
 @_activity.defn
@@ -152,6 +152,12 @@ async def extract_entities(inp: ExtractEntitiesInput) -> dict[str, Any]:
     Real path: fetch document parsed_ref/content → LLM extract → fallback mock.
     Must remain idempotent and bounded; never secrets in output.
     """
+    doc_id_in = inp.get("document_id") if isinstance(inp, dict) else getattr(inp, "document_id", "")
+    ws_id_in = inp.get("workspace_id") if isinstance(inp, dict) else getattr(inp, "workspace_id", "")
+    parsed_ref_in = inp.get("parsed_ref") if isinstance(inp, dict) else getattr(inp, "parsed_ref", "")
+    doc_id_in = str(doc_id_in or "")
+    ws_id_in = str(ws_id_in or "")
+    parsed_ref_in = str(parsed_ref_in or "")
     try:
         from .metrics import _inc_activity_started
 
@@ -162,30 +168,28 @@ async def extract_entities(inp: ExtractEntitiesInput) -> dict[str, Any]:
     doc_text = ""
     try:
         from ..database import async_session_factory
-        from sqlalchemy import text as _t
+        from ..models.schema import Document
+        from sqlalchemy import select as _select
+        import uuid as _uuid
 
         async with async_session_factory() as db:
-            row = await db.execute(_t("SELECT content, summary, path FROM documents WHERE id=:id AND workspace_id=:ws"), {"id": inp.document_id, "ws": inp.workspace_id})
-            r = row.first()
-            if r:
-                # r is tuple-like; handle both tuple and mapping
-                try:
-                    content, summary, path = r[0], r[1], r[2]
-                except Exception:
-                    content = getattr(r, "content", "") or ""
-                    summary = ""
-                    path = ""
-                raw = content if isinstance(content, (bytes, bytearray)) else (str(content or summary or path or "") )
-                doc_text = str(raw)[:8000]
+            doc_uuid = _uuid.UUID(doc_id_in) if len(doc_id_in) > 30 else None
+            ws_uuid = _uuid.UUID(ws_id_in) if len(ws_id_in) > 30 else None
+            if doc_uuid and ws_uuid:
+                r = (await db.execute(_select(Document).where(Document.id == doc_uuid, Document.workspace_id == ws_uuid))).scalar_one_or_none()
+                if r:
+                    content = r.content
+                    raw = content if isinstance(content, (bytes, bytearray)) else (str(content or r.summary or r.path or ""))
+                    doc_text = str(raw)[:8000]
     except Exception:
         pass
     # If still empty, try parsed_ref fallback
     if not doc_text:
-        doc_text = inp.parsed_ref or ""
+        doc_text = parsed_ref_in
     try:
         from ..agents.memory_agent.extraction import extract as _extract  # type: ignore
 
-        facts = await _extract(doc_text or inp.parsed_ref or "", source_type="document", source_id=inp.document_id, workspace_id=inp.workspace_id)
+        facts = await _extract(doc_text or parsed_ref_in, source_type="document", source_id=doc_id_in, workspace_id=ws_id_in)
         # Normalize to dict list with workspace binding + bounded
         entities = []
         for e in getattr(facts, "entities", []) or []:
@@ -217,7 +221,7 @@ async def extract_entities(inp: ExtractEntitiesInput) -> dict[str, Any]:
 @_activity.defn
 async def write_memory(inp: WriteMemoryInput) -> dict[str, Any]:
     """Idempotent memory write: workspace+canonical_name uniqueness guard.
-    Real DB path: SELECT before INSERT, embedding via llm_service (best-effort), workspace-scoped.
+    Real DB path: SELECT before INSERT, workspace-scoped.
     Falls back to count when DB unavailable (tests without Postgres).
     """
     try:
@@ -226,7 +230,11 @@ async def write_memory(inp: WriteMemoryInput) -> dict[str, Any]:
         _inc_activity_started("write_memory")
     except Exception:
         pass
-    entities = inp.entities or []
+    entities = (inp.get("entities") if isinstance(inp, dict) else getattr(inp, "entities", None)) or []
+    ws_id = inp.get("workspace_id") if isinstance(inp, dict) else getattr(inp, "workspace_id", "")
+    doc_id = inp.get("document_id") if isinstance(inp, dict) else getattr(inp, "document_id", "")
+    ws_id = str(ws_id or "")
+    doc_id = str(doc_id or "")
     if not entities:
         return {"memories_created": 0, "written_ids": []}
     # Test/offline fast-path: avoid DB hangs in unit tests (see hardening §9)
@@ -257,7 +265,7 @@ async def write_memory(inp: WriteMemoryInput) -> dict[str, Any]:
                     if not name:
                         continue
                     # Idempotency: SELECT workspace+canonical_name
-                    ws_uuid = _uuid.UUID(inp.workspace_id) if len(inp.workspace_id) > 30 else None
+                    ws_uuid = _uuid.UUID(ws_id) if len(ws_id) > 30 else None
                     # Fallback to text UUID if not valid
                     stmt = _select(Entity).where(Entity.workspace_id == ws_uuid).where(Entity.canonical_name == name).limit(1) if ws_uuid else _select(Entity).where(Entity.canonical_name == name).limit(1)
                     # For non-UUID workspace (test stub), skip DB check and count directly
@@ -275,7 +283,7 @@ async def write_memory(inp: WriteMemoryInput) -> dict[str, Any]:
                         type=str(etype)[:100],
                         canonical_name=name[:500],
                         aliases=ent.get("aliases", []) if isinstance(ent, dict) else [],
-                        metadata_={"source": "ingest", "document_id": inp.document_id},
+                        metadata_={"source": "ingest", "document_id": doc_id},
                     )
                     db.add(new_entity)
                     await db.flush()
@@ -301,7 +309,7 @@ async def write_memory(inp: WriteMemoryInput) -> dict[str, Any]:
                             size=len(name),
                             workspace_id=ws_uuid,
                             source_type="document",
-                            source_uri=inp.document_id,
+                            source_uri=doc_id,
                             tags=[str(etype)] + (ent.get("aliases", [])[:3] if isinstance(ent, dict) else []),
                         )
                         db.add(mem)
@@ -324,7 +332,11 @@ async def write_memory(inp: WriteMemoryInput) -> dict[str, Any]:
         except Exception:
             pass
         logger.debug("write_memory fallback (DB unavailable): %s", e)
-        return {"memories_created": len(entities), "written_ids": [], "fallback": True}
+        # T-P1-06: never claim creations that were not persisted. Report zero
+        # with an explicit degraded flag so the workflow marks the run
+        # degraded instead of reporting phantom memories_created.
+        return {"memories_created": 0, "written_ids": [], "fallback": True,
+                "error": f"memory store unavailable: {type(e).__name__}"}
 
 
 @_activity.defn
@@ -338,24 +350,29 @@ async def index_graph(inp: IndexGraphInput) -> dict[str, Any]:
         _inc_activity_started("index_graph")
     except Exception:
         pass
+    doc_id_in = inp.get("document_id") if isinstance(inp, dict) else getattr(inp, "document_id", "")
+    ws_id_in = inp.get("workspace_id") if isinstance(inp, dict) else getattr(inp, "workspace_id", "")
+    doc_id_in = str(doc_id_in or "")
+    ws_id_in = str(ws_id_in or "")
     # Best-effort: try to ensure document has embedding (non-blocking)
     try:
         from ..database import async_session_factory
-        from sqlalchemy import text as _t
+        from ..models.schema import Document
+        from sqlalchemy import select as _select
+        import uuid as _uuid
 
         async with async_session_factory() as db:
-            # Check document exists workspace-scoped (prove indexing precondition)
-            row = await db.execute(_t("SELECT id FROM documents WHERE id=:id AND workspace_id=:ws"), {"id": inp.document_id, "ws": inp.workspace_id})
-            r = row.first()
-            # If found, consider indexed; if not, still return True but note missing
+            doc_uuid = _uuid.UUID(doc_id_in) if len(doc_id_in) > 30 else None
+            ws_uuid = _uuid.UUID(ws_id_in) if len(ws_id_in) > 30 else None
+            r = None
+            if doc_uuid and ws_uuid:
+                r = (await db.execute(_select(Document.id).where(Document.id == doc_uuid, Document.workspace_id == ws_uuid))).scalar_one_or_none()
             if not r:
-                return {"indexed": True, "document_id": inp.document_id, "note": "document not found — indexed as stub"}
-            # Embedding indexing would happen via knowledge_graph_service / memory_service post-write;
-            # Ingest already wrote entities with embeddings (best-effort). Mark indexed.
-            return {"indexed": True, "document_id": inp.document_id}
+                return {"indexed": True, "document_id": doc_id_in, "note": "document not found — indexed as stub"}
+            return {"indexed": True, "document_id": doc_id_in}
     except Exception as e:
         logger.debug("index_graph fallback: %s", e)
-    return {"indexed": True, "document_id": inp.document_id}
+    return {"indexed": True, "document_id": doc_id_in}
 
 
 @_activity.defn
@@ -392,6 +409,10 @@ async def durable_agent_run(payload: Any) -> dict[str, Any]:
                 "agent_id": getattr(payload, "agent_id", None),
                 "input": getattr(payload, "input", None),
                 "correlation_id": getattr(payload, "correlation_id", None),
+                # T-P2-01: identity passthrough (previously dropped here).
+                "request_id": getattr(payload, "request_id", None),
+                "tenant_id": getattr(payload, "tenant_id", None),
+                "graph_version": getattr(payload, "graph_version", None) or "v1",
             }
     except Exception:
         pass
@@ -460,6 +481,18 @@ async def durable_agent_run(payload: Any) -> dict[str, Any]:
     if shadow_mode:
         legacy_res = _legacy_result()
         try:
+            # T-P2-03: the shadow graph run executes the LIVE graph (tools can
+            # produce real effects) while the caller receives the legacy stub.
+            # Shadow is therefore non-production-only; say so loudly.
+            logger.warning(
+                "durable_agent_run SHADOW graph executing live graph (side effects possible) — "
+                "shadow mode is not for production traffic")
+            try:
+                from .metrics import langgraph_run_completed_total as _shadow_m  # type: ignore
+
+                _shadow_m.labels(agent="shadow", mode="shadow").inc()  # type: ignore
+            except Exception:
+                pass
             graph_res = await _run_graph(payload)
             # Compare selected_agent / tool / status
             try:
@@ -485,10 +518,25 @@ async def durable_agent_run(payload: Any) -> dict[str, Any]:
     # Normal graph path
     try:
         return await _run_graph(payload)
+    except ValueError as ve:
+        # Deterministic guard refusal (should already be a terminal dict via
+        # _run_graph; this is defense-in-depth): truthful terminal, never
+        # retried — retries cannot fix bad input or failed guards (§11).
+        logger.warning("durable_agent_run graph refused: %s", ve)
+        try:
+            from .metrics import _inc_activity_failed, langgraph_run_failed_total  # type: ignore
+
+            _inc_activity_failed("durable_agent_run", reason=type(ve).__name__[:30])
+            langgraph_run_failed_total.labels(reason=type(ve).__name__[:30]).inc()  # type: ignore
+        except Exception:
+            pass
+        return {"status": "failed", "error": str(ve)[:500]}
     except Exception as e:
-        # On graph failure, fallback to legacy if enabled as progressive migration? No — fail
-        # But to keep parity, we return failed status, not legacy, so caller sees error
-        logger.warning("durable_agent_run graph failed: %s", e)
+        # Unexpected/transient failure: record, then RE-RAISE so Temporal
+        # retries per policy (max_attempts=2, ValueError/ApplicationError
+        # excluded). Swallowing here would turn a transient blip into a
+        # terminal failure with no recovery (§11/§45).
+        logger.warning("durable_agent_run graph error (retryable): %s", e)
         try:
             from .metrics import _inc_activity_failed, langgraph_run_failed_total  # type: ignore
 
@@ -496,17 +544,30 @@ async def durable_agent_run(payload: Any) -> dict[str, Any]:
             langgraph_run_failed_total.labels(reason=type(e).__name__[:30]).inc()  # type: ignore
         except Exception:
             pass
-        # Check cancellation
+        # Check cancellation — report cancelled instead of retrying a dead run.
         try:
             if hasattr(_activity, "is_cancelled") and _activity.is_cancelled():  # type: ignore
                 return {"status": "cancelled", "error": str(e)[:500]}
         except Exception:
             pass
-        return {"status": "failed", "error": str(e)[:500]}
+        raise
 
 
 async def _run_graph(payload: dict[str, Any]) -> dict[str, Any]:
-    """Execute LangGraph StateGraph inside activity — heartbeat + cancel + size bounded."""
+    """Execute the canonical LangGraph production runner inside the activity.
+
+    T-P1-01: this previously invoked the RAW compiled graph via
+    ``graph.ainvoke``, bypassing every production guard the direct path
+    enforces (topology validation, trusted-context resolution + post-run
+    assertion incl. tenant, spend/cancel pre-gates, workspace concurrency
+    slot, durable Muse mirror, version gate, GRAPH_RUN trace). It now
+    delegates to ``run_graph_direct`` — the SAME function the HTTP path
+    uses — so Temporal and HTTP share one guarded execution. Heartbeat and
+    pre-start cancellation stay at this layer (activity concerns).
+
+    T-P1-02: terminal states propagate truthfully (waiting_approval is
+    NEVER collapsed into completed); the workflow maps them 1:1 (§34).
+    """
     import asyncio
     import time
 
@@ -536,53 +597,184 @@ async def _run_graph(payload: dict[str, Any]) -> dict[str, Any]:
         except Exception:
             pass
 
-        from ..graph.state import build_initial_state, validate_graph_state  # type: ignore
-        from ..graph import get_vaeloom_graph  # type: ignore
+        from ..graph.runner import GRAPH_VERSION as _RUNNER_GRAPH_VERSION
+        from ..graph.runner import run_graph_direct as _run_graph_direct  # type: ignore
 
-        # Build bounded initial state (IDs only, 20KB)
-        state = build_initial_state(payload)
-        validate_graph_state(state)
+        if not isinstance(payload, dict):
+            return {"status": "failed", "error": "graph payload must be a mapping"}
 
-        graph = get_vaeloom_graph()
-        # ainvoke with thread_id = request_id for MemorySaver checkpointer (interrupt support)
-        rid = str(payload.get("request_id") or payload.get("correlation_id") or "graph-req")
-        config = {"configurable": {"thread_id": rid}}
+        # §30 graph-version pin: never silently execute under a version the
+        # caller did not ask for (runner enforces its own pin as well).
+        _asked = str(payload.get("graph_version") or "v1")
+        if _asked != _RUNNER_GRAPH_VERSION:
+            return {"status": "version_mismatch", "error": f"graph version mismatch (asked {_asked} != {_RUNNER_GRAPH_VERSION}) — refusing run"}
 
-        # Run graph — all nodes are already bounded and secret-free
-        result = await graph.ainvoke(state, config=config)
+        _inp = payload.get("input")
+        if isinstance(_inp, dict):
+            _task = str(_inp.get("message") or _inp.get("task") or "")
+            if not _task:
+                import json as _js
+                _task = _js.dumps(_inp, default=str)[:2000]
+        elif isinstance(_inp, str):
+            _task = _inp
+        else:
+            _task = str(_inp or "")[:2000]
 
-        # Post-run validation
-        validate_graph_state(result)
-
-        dur = time.monotonic() - start
+        # T-P1-07 direct-client tenant binding (verify-when-possible): the
+        # authorized API path already binds tenant from JWT, but a payload
+        # arriving via a raw Temporal client could spoof it. When the
+        # workspace EXISTS in the database, enforce user-membership AND
+        # tenant match; when the workspace is absent (ad-hoc/test runs) or
+        # the store is unreachable, the check is skipped and the runner's
+        # own trusted-context gates remain authoritative. Explicit mismatch
+        # fails closed; unreachable store fails open with a warning (an
+        # outage must not amplify into a security refusal storm).
         try:
-            langgraph_run_completed_total.labels(agent=str(result.get("selected_agent") or result.get("agent_id") or "unknown"), mode="live").inc()  # type: ignore
-            langgraph_run_duration_seconds.labels(agent=str(result.get("selected_agent") or "unknown")).observe(dur)  # type: ignore
+            from uuid import UUID as _UUID3
+
+            from sqlalchemy import cast as _cast
+            from sqlalchemy import select as _sel3
+            from sqlalchemy import String as _Str3
+
+            from ..database import async_session_factory as _session_factory
+            from ..models.schema import User as _User3
+            from ..models.schema import Workspace as _WS3
+            from ..models.schema import WorkspaceUser as _WSU3
+
+            _v_ws, _v_user, _v_tenant = (str(payload.get("workspace_id") or ""),
+                                        str(payload.get("user_id") or ""),
+                                        payload.get("tenant_id"))
+            try:
+                _UUID3(_v_ws)
+                _UUID3(_v_user)
+                if _v_tenant is not None:
+                    _UUID3(str(_v_tenant))
+                _verifiable = True
+            except Exception:
+                _verifiable = False
+            if _verifiable and _v_tenant:
+                try:
+                    async with _session_factory() as _db:
+                        _wr = await _db.execute(
+                            _sel3(_WS3.id, _WS3.user_id).where(
+                                _cast(_WS3.id, _Str3) == _v_ws).limit(1))
+                        _wrow = _wr.first()
+                        if _wrow is not None:
+                            _owner_ok = str(_wrow[1]) == _v_user
+                            _mr = await _db.execute(
+                                _sel3(_WSU3.workspace_id).where(
+                                    _cast(_WSU3.workspace_id, _Str3) == _v_ws,
+                                    _cast(_WSU3.user_id, _Str3) == _v_user).limit(1))
+                            if not (_owner_ok or _mr.first() is not None):
+                                return {"status": "workspace_mismatch",
+                                        "error": "workspace membership rejected for direct workflow payload"}
+                            _ur = await _db.execute(
+                                _sel3(_User3.tenant_id).where(
+                                    _cast(_User3.id, _Str3) == _v_user).limit(1))
+                            _urow = _ur.first()
+                            if (_urow is not None and _urow[0] is not None
+                                    and str(_urow[0]) != str(_v_tenant)):
+                                return {"status": "workspace_mismatch",
+                                        "error": "tenant binding rejected for direct workflow payload"}
+                        # Workspace absent → unverifiable; runner gates decide.
+                except Exception as _ve:
+                    logger.debug("direct payload tenant check skipped (store unreachable): %s", _ve)
+        except Exception as _e:
+            logger.debug("direct payload tenant check unavailable: %s", _e)
+
+        _rid = str(payload.get("request_id") or payload.get("correlation_id") or "graph-req")
+        try:
+            card = await _run_graph_direct(
+                workspace_id=str(payload.get("workspace_id") or ""),
+                user_id=payload.get("user_id"),
+                tenant_id=payload.get("tenant_id"),
+                agent_id=str(payload.get("agent_id") or payload.get("agent") or "memory"),
+                request_id=_rid,
+                correlation_id=str(payload.get("correlation_id") or payload.get("request_id") or "graph-req"),
+                task=_task,
+            )
+        except ValueError as ve:
+            # Fail-closed guard refusal (topology/trust/version/workspace):
+            # truthful terminal, never retried as a transient error.
+            _msg = str(ve)[:300]
+            _low = _msg.lower()
+            if "workspace" in _low:
+                _st = "workspace_mismatch"
+            elif "version" in _low:
+                _st = "version_mismatch"
+            elif "topology" in _low:
+                _st = "topology_rejected"
+            elif "mutat" in _low or "trust" in _low or "missing after run" in _low:
+                _st = "trust_violation"
+            else:
+                _st = "invalid_input"
+            return {"status": _st, "error": _msg}
+
+        # Map the act-shaped card onto the activity contract WITHOUT
+        # collapsing distinct terminals (T-P1-02).
+        _g = card.get("graph") if isinstance(card, dict) else None
+        _term = str((_g or {}).get("termination") or "failed")
+        _agent = str(card.get("agent_name") or payload.get("agent_id") or "memory")
+        _summary = str(((card.get("result") or {}).get("summary")) or f"graph {_term} for {_agent}")[:2000]
+        try:
+            _activity_log("graph completed", agent=_agent, graph_termination=_term, duration_ms=int((time.monotonic() - start) * 1000))
         except Exception:
             pass
-
-        # Normalize to DurableAgentRunActivity output contract
-        agent = str(result.get("selected_agent") or result.get("agent_id") or payload.get("agent_id") or "memory")
-        status = result.get("execution_status") or "completed"
-        rag_status = result.get("rag_status") or result.get("metadata", {}).get("rag_status") or "ok"
-        # Observability: log rag_status explicitly (distinguish NO_RESULTS vs UNAVAILABLE vs TIMEOUT vs ERROR)
-        try:
-            _activity_log("graph completed", agent=agent, rag_status=rag_status, execution_status=status, duration_ms=int(dur * 1000))
-        except Exception:
-            pass
-        # Map interrupted / waiting_approval to completed with marker (ApprovalWorkflow is durable truth)
-        if status == "waiting_approval":
-            return {"status": "completed", "agent": agent, "rag_status": rag_status, "result": result.get("result") or {"summary": "waiting approval", "approval_state": result.get("approval_state")}, "graph_status": status}
-        if status in ("completed", "finalizing"):
-            # Preserve rag_status and metadata provenance for API/frontend (no secrets, no CoT)
-            base = result.get("result") or {"summary": f"graph completed for {agent}"}
-            # ensure bounded contracts: status/progress/result/error/approval_state only exposed to frontend
-            return {"status": "completed", "agent": agent, "rag_status": rag_status, "result": base, "metadata": {"rag_status": rag_status, "graph_version": "v1"}}
-        if status == "cancelled":
-            return {"status": "cancelled", "agent": agent, "rag_status": rag_status, "error": result.get("error") or "cancelled"}
-        if status == "failed":
-            return {"status": "failed", "agent": agent, "rag_status": rag_status, "error": result.get("error") or "graph failed"}
-        return {"status": "completed", "agent": agent, "rag_status": rag_status, "result": result.get("result") or result}
+        _base: dict[str, Any] = {"agent": _agent, "graph_version": (_g or {}).get("graph_version") or _RUNNER_GRAPH_VERSION,
+                                 "graph_termination": _term, "run_id": (_g or {}).get("run_id"),
+                                 "trace": (_g or {}).get("trace") or []}
+        for _k in ("react_run_id", "react_rounds", "react_tool_calls", "react_termination",
+                   "react_provider_fallbacks", "react_resumed"):
+            if isinstance(_g, dict) and _g.get(_k) is not None:
+                _base[_k] = _g[_k]
+        if _term == "completed":
+            _base.update({"status": "completed",
+                          "result": card.get("result") or {"summary": _summary}})
+            return _base
+        if _term == "approval_paused":
+            # Durable truth for the pause lives in ApprovalManager; surface
+            # the approval request so the workflow/API can wait or signal.
+            _appr = card.get("approval") or {}
+            _base.update({"status": "waiting_approval", "result": {"summary": _summary},
+                          "approval": {"approval_id": _appr.get("approval_id"),
+                                       "tool": _appr.get("tool"), "status": "pending"}})
+            return _base
+        if _term == "cancelled":
+            # Cancellation provenance: run_graph_direct converts BOTH user
+            # cancellation (durable flag) and activity-context cancellation
+            # (asyncio.CancelledError from worker shutdown) into this card.
+            # Only the former is a true user cancel — verify the durable
+            # flag, else re-raise so Temporal retries/re-drives instead of
+            # recording a false 'cancelled by user' terminal (T-§33/§36).
+            _user_cancelled = False
+            try:
+                from ..orchestrator.react_policy import check_react_cancel
+                _user_cancelled = bool(await check_react_cancel(_rid))
+            except Exception:
+                _user_cancelled = False
+            if not _user_cancelled:
+                try:
+                    from temporalio.exceptions import CancelledError as _TCancelled
+                except Exception:
+                    import asyncio as _aio
+                    _TCancelled = _aio.CancelledError  # type: ignore[assignment]
+                raise _TCancelled(
+                    "graph activity cancelled without durable user-cancel flag — retryable")
+            _base.update({"status": "cancelled", "error": _summary})
+            return _base
+        if _term == "budget_exhausted":
+            _base.update({"status": "budget_exhausted", "error": _summary})
+            return _base
+        if _term == "timeout":
+            _base.update({"status": "timeout", "error": _summary})
+            return _base
+        # All remaining guarded terminals propagate verbatim
+        # (concurrency_limited, graph_error, empty_result, trust_violation,
+        #  topology_rejected, version_mismatch, workspace_mismatch,
+        #  resumed_terminal, invalid_input, approval_unrequestable, failed).
+        _base.update({"status": _term, "error": _summary,
+                      "result": card.get("result") or {"summary": _summary}})
+        return _base
 
     finally:
         if hb_task:
@@ -596,10 +788,10 @@ async def _run_graph(payload: dict[str, Any]) -> dict[str, Any]:
                     pass
             except Exception:
                 pass
-        dur2 = time.monotonic() - start
+        dur = time.monotonic() - start
         try:
-            # Activity duration metric via record_workflow_metric is handled by workflow; graph duration already observed
-            pass
+            langgraph_run_completed_total.labels(agent="temporal", mode="live").inc()  # type: ignore
+            langgraph_run_duration_seconds.labels(agent="temporal").observe(dur)  # type: ignore
         except Exception:
             pass
 
@@ -823,7 +1015,7 @@ async def check_kill_switch(payload: dict[str, Any]) -> dict[str, Any]:
 async def record_workflow_metric(payload: dict[str, Any]) -> dict[str, Any]:
     """Record workflow completed/failed metric (called as last activity, deterministically via history)."""
     try:
-        from .metrics import _inc_workflow_completed, temporal_workflow_duration_seconds
+        from .metrics import _inc_workflow_completed, temporal_approval_wait_seconds, temporal_workflow_duration_seconds
 
         _inc_workflow_completed(payload.get("workflow_type", "unknown"), payload.get("task_queue", "unknown"), payload.get("status", "unknown"))
         # Duration histogram if provided
@@ -831,6 +1023,13 @@ async def record_workflow_metric(payload: dict[str, Any]) -> dict[str, Any]:
             dur = payload.get("duration_seconds")
             if dur is not None and temporal_workflow_duration_seconds is not None:
                 temporal_workflow_duration_seconds.labels(workflow_type=payload.get("workflow_type", "unknown")).observe(float(dur))
+        except Exception:
+            pass
+        # Approval-wait histogram (seconds the workflow spent in wait_condition).
+        try:
+            wait_s = payload.get("approval_wait_seconds")
+            if wait_s is not None and temporal_approval_wait_seconds is not None:
+                temporal_approval_wait_seconds.observe(float(wait_s))
         except Exception:
             pass
         _activity_log("record_workflow_metric", workflow_type=payload.get("workflow_type"), status=payload.get("status"))
@@ -852,10 +1051,21 @@ async def check_quota(payload: dict[str, Any]) -> dict[str, Any]:
     try:
         from .quota import check_and_reserve
 
+        # Idempotency scope (§46): workflow + metric, so activity retries and
+        # workflow re-drives after unknown outcomes never double-charge.
+        _idem_key: str | None = None
+        try:
+            _info = _activity.info()  # type: ignore[attr-defined]
+            _wf_id = str(getattr(_info, "workflow_id", "") or "")
+            if _wf_id:
+                _idem_key = f"{_wf_id}:{payload.get('metric', 'requests')}"
+        except Exception:
+            _idem_key = None
         allowed, cur = await check_and_reserve(
             workspace_id=str(payload.get("workspace_id") or "unknown"),
             metric=payload.get("metric", "requests"),
             increment=int(payload.get("increment", 1)),
+            idempotency_key=_idem_key,
         )
         if not allowed:
             # Fail-closed for quota exhaustion — raise non_retryable

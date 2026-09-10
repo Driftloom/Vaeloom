@@ -7,7 +7,7 @@ re-check workspace authorization at call time (§14).
 
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
@@ -16,10 +16,57 @@ from ..dependencies import get_current_user
 
 router = APIRouter()
 
+# Workflow-ID charset (T-P2-02): request-controlled segments must not break
+# ID parsing (":" is the segment separator) or smuggle control characters.
+_WORKFLOW_ID_SAFE = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
+_MAX_WORKFLOW_SEGMENT = 64
+
+
+def _sanitize_workflow_segment(value: str, *, field: str) -> str:
+    """Fail-closed segment sanitizer for deterministic workflow IDs."""
+    seg = str(value or "").strip()
+    if not seg:
+        raise HTTPException(status_code=400, detail=f"{field} required")
+    if len(seg) > _MAX_WORKFLOW_SEGMENT or any(c not in _WORKFLOW_ID_SAFE for c in seg):
+        raise HTTPException(status_code=400, detail=f"{field} contains unsafe characters")
+    return seg
+
+
+def _caller_tenant_id(request: Request | None, current_user: dict | None) -> str | None:
+    """Trusted tenant binding: middleware request-state wins, JWT claims back it up."""
+    if request is not None:
+        _t = getattr(getattr(request, "state", None), "tenant_id", None)
+        if _t:
+            return str(_t)
+    if isinstance(current_user, dict):
+        _t = current_user.get("tenant_id")
+        if isinstance(_t, str) and _t:
+            return _t
+    return None
+
 
 def _require_temporal() -> None:
     if not getattr(settings, "temporal_enabled", False):
         raise HTTPException(status_code=503, detail="Temporal is disabled (set TEMPORAL_ENABLED=true)")
+
+
+def _temporal_unavailable(e: Exception) -> None:
+    """Map fail-closed Temporal unavailability to 503 (never 500-phantom).
+
+    get_temporal_client raises TemporalUnavailableError when durability was
+    explicitly enabled but the server is unreachable — that must surface as
+    503 Service Unavailable, never as a generic 500 and never as a silent
+    non-durable fallback (§39).
+    """
+    try:
+        from ..temporal.client import TemporalUnavailableError as _TUE
+
+        if isinstance(e, _TUE):
+            raise HTTPException(status_code=503, detail=str(e)[:500])
+    except HTTPException:
+        raise
+    except Exception:
+        pass
 
 
 async def _verify_workflow_workspace_access(workflow_id: str, current_user: dict, db: AsyncSession) -> None:
@@ -96,6 +143,7 @@ async def get_workflow_status(
     except HTTPException:
         raise
     except Exception as e:
+        _temporal_unavailable(e)
         raise HTTPException(status_code=500, detail=f"Temporal error: {e}")
 
 
@@ -118,7 +166,10 @@ async def cancel_workflow(
         handle = client.get_workflow_handle(workflow_id)
         await handle.cancel()
         return {"workflow_id": workflow_id, "status": "cancel_requested"}
+    except HTTPException:
+        raise
     except Exception as e:
+        _temporal_unavailable(e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -145,6 +196,19 @@ async def signal_workflow(
         except ValueError as ve:
             raise HTTPException(status_code=400, detail=str(ve))
     await _verify_workflow_workspace_access(workflow_id, current_user, db)
+    body = dict(payload or {})
+    if signal_name == "decision":
+        # T-P1-03: bind the signal to the workflow's own approval. The
+        # workflow ID carries the approval as its last segment
+        # (approval:{workspace}:{approval_id}); a mismatched or missing
+        # approval_id is a forged/swapped signal → reject before Temporal.
+        # Actor is always the authenticated caller, never the payload.
+        _segments = str(workflow_id).split(":")
+        _expected = _segments[-1] if len(_segments) >= 3 and _segments[0] == "approval" else ""
+        _got = str(body.get("approval_id") or "")
+        if not _expected or _got != _expected:
+            raise HTTPException(status_code=400, detail="Signal approval_id does not match workflow approval")
+        body["actor"] = str(current_user.get("sub") or current_user.get("user_id"))
     try:
         from ..temporal.client import get_temporal_client
 
@@ -152,18 +216,19 @@ async def signal_workflow(
         if client is None:
             raise HTTPException(status_code=503, detail="Temporal client unavailable")
         handle = client.get_workflow_handle(workflow_id)
-        await handle.signal(signal_name, payload or {})
+        await handle.signal(signal_name, body)
         return {"workflow_id": workflow_id, "signal": signal_name, "status": "signaled"}
     except HTTPException:
         raise
     except Exception as e:
+        _temporal_unavailable(e)
         import logging
 
         logging.getLogger(__name__).warning(f"signal failed for {workflow_id}: {e}")
         raise HTTPException(status_code=500, detail="Temporal unavailable")
 
 
-@router.post("/workflows/ingest")
+@router.post("/workflows/ingest", status_code=202)
 async def start_ingest_workflow(
     body: dict,
     current_user: dict = Depends(get_current_user),
@@ -177,20 +242,24 @@ async def start_ingest_workflow(
     content_hash = str(body.get("content_hash") or body.get("contentHash") or document_id[:12])
     if not workspace_id or not document_id:
         raise HTTPException(status_code=400, detail="workspace_id and document_id required")
-    # Minimal authorization: caller must have workspace access (reuse documents rule)
+    # Minimal authorization: caller must have workspace access (reuse documents rule).
+    # T-P1-04: fail CLOSED — malformed IDs → 400, unreadable authz → 503.
     try:
         from sqlalchemy import select
         from ..models.schema import Workspace
         from uuid import UUID
 
-        wid, uid = UUID(workspace_id), UUID(current_user.get("sub") or current_user.get("user_id"))
+        try:
+            wid, uid = UUID(workspace_id), UUID(current_user.get("sub") or current_user.get("user_id"))
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid ID format")
         r = await db.execute(select(Workspace).where(Workspace.id == wid, Workspace.user_id == uid))
         if not r.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="Workspace not found")
     except HTTPException:
         raise
     except Exception:
-        pass
+        raise HTTPException(status_code=503, detail="Authorization check failed")
     # T-008 payload limit + T-001 secret check (fail-closed)
     try:
         from ..temporal.validation import validate_no_secrets, validate_payload_size
@@ -229,6 +298,7 @@ async def start_ingest_workflow(
 
         return {"workflow_id": handle.id, "run_id": handle.result_run_id if hasattr(handle, "result_run_id") else None, "status": "accepted", "accepted_at": datetime.now(UTC).isoformat(), "correlation_id": correlation_id}
     except Exception as e:
+        _temporal_unavailable(e)
         # Idempotency: already started → return existing id (case-insensitive, handles "Workflow execution already started")
         msg = str(e)
         low = msg.lower()
@@ -237,7 +307,7 @@ async def start_ingest_workflow(
         raise HTTPException(status_code=500, detail=msg[:500])
 
 
-@router.post("/workflows/connector-sync")
+@router.post("/workflows/connector-sync", status_code=202)
 async def start_connector_sync(
     body: dict,
     current_user: dict = Depends(get_current_user),
@@ -251,7 +321,8 @@ async def start_connector_sync(
     sync_token = str(body.get("sync_token") or body.get("syncToken") or body.get("connector_id") or connector_id)[:32]
     if not workspace_id or not connector_id:
         raise HTTPException(status_code=400, detail="workspace_id and connector_id required")
-    # Verify connector belongs to workspace (workspace_id check via connectors query)
+    # Verify connector belongs to workspace (workspace_id check via connectors query).
+    # T-P1-04: fail CLOSED — malformed IDs → 400, unreadable authz → 503.
     try:
         from sqlalchemy import text as _text
 
@@ -264,19 +335,17 @@ async def start_connector_sync(
 
             try:
                 ws_uuid, uid = _UUID(workspace_id), _UUID(str(current_user.get("sub") or current_user.get("user_id")))
-                q1 = await db.execute(_sel(Workspace).where(Workspace.id == ws_uuid, Workspace.user_id == uid))
-                if not q1.scalar_one_or_none():
-                    q2 = await db.execute(_sel(WorkspaceUser).where(WorkspaceUser.workspace_id == ws_uuid, WorkspaceUser.user_id == uid))
-                    if not q2.scalar_one_or_none():
-                        raise HTTPException(status_code=404, detail="Workspace not found")
-            except HTTPException:
-                raise
             except Exception:
-                pass
+                raise HTTPException(status_code=400, detail="Invalid ID format")
+            q1 = await db.execute(_sel(Workspace).where(Workspace.id == ws_uuid, Workspace.user_id == uid))
+            if not q1.scalar_one_or_none():
+                q2 = await db.execute(_sel(WorkspaceUser).where(WorkspaceUser.workspace_id == ws_uuid, WorkspaceUser.user_id == uid))
+                if not q2.scalar_one_or_none():
+                    raise HTTPException(status_code=404, detail="Workspace not found")
     except HTTPException:
         raise
     except Exception:
-        pass
+        raise HTTPException(status_code=503, detail="Authorization check failed")
     # T-008 + T-001 validation
     try:
         from ..temporal.validation import validate_no_secrets, validate_payload_size
@@ -312,6 +381,7 @@ async def start_connector_sync(
             pass
         return {"workflow_id": handle.id, "run_id": handle.result_run_id if hasattr(handle, "result_run_id") else None, "status": "accepted"}
     except Exception as e:
+        _temporal_unavailable(e)
         msg = str(e)
         low = msg.lower()
         if "already" in low and "started" in low:
@@ -319,9 +389,10 @@ async def start_connector_sync(
         raise HTTPException(status_code=500, detail=msg[:500])
 
 
-@router.post("/workflows/durable-agent")
+@router.post("/workflows/durable-agent", status_code=202)
 async def start_durable_agent(
     body: dict,
+    request: Request,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -336,18 +407,23 @@ async def start_durable_agent(
     workspace_id = str(body.get("workspace_id") or body.get("workspaceId") or "")
     agent_id = str(body.get("agent_id") or body.get("agentId") or "memory")
     request_id = str(body.get("request_id") or body.get("requestId") or body.get("correlation_id") or body.get("correlationId") or __import__("uuid").uuid4().hex)  # type: ignore
+    # T-P2-02: client-controlled request_id must be workflow-ID safe.
+    request_id = _sanitize_workflow_segment(request_id, field="request_id")
     inp = body.get("input") or body.get("message") or {}
     if isinstance(inp, str):
         inp = {"message": inp}
     if not workspace_id:
         raise HTTPException(status_code=400, detail="workspace_id required")
-    # Workspace auth
+    # Workspace auth — T-P1-04: fail CLOSED (400 malformed, 503 unreadable).
     try:
         from sqlalchemy import select as _sel2
         from ..models.schema import Workspace, WorkspaceUser
         from uuid import UUID as _UUID2
 
-        ws_uuid, uid = _UUID2(workspace_id), _UUID2(str(current_user.get("sub") or current_user.get("user_id")))
+        try:
+            ws_uuid, uid = _UUID2(workspace_id), _UUID2(str(current_user.get("sub") or current_user.get("user_id")))
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid ID format")
         q1 = await db.execute(_sel2(Workspace).where(Workspace.id == ws_uuid, Workspace.user_id == uid))
         if not q1.scalar_one_or_none():
             q2 = await db.execute(_sel2(WorkspaceUser).where(WorkspaceUser.workspace_id == ws_uuid, WorkspaceUser.user_id == uid))
@@ -356,7 +432,7 @@ async def start_durable_agent(
     except HTTPException:
         raise
     except Exception:
-        pass
+        raise HTTPException(status_code=503, detail="Authorization check failed")
     # Validation
     try:
         from ..temporal.validation import validate_no_secrets, validate_payload_size
@@ -383,6 +459,9 @@ async def start_durable_agent(
             "input": inp,
             "request_id": request_id,
             "correlation_id": request_id,
+            # T-P2-01: tenant binding + graph pin travel with the run.
+            "tenant_id": _caller_tenant_id(request, current_user),
+            "graph_version": str(body.get("graph_version") or "v1"),
         }
         handle = await client.start_workflow(
             "DurableAgentRunWorkflow",
@@ -402,6 +481,7 @@ async def start_durable_agent(
 
         return {"workflow_id": handle.id, "run_id": handle.result_run_id if hasattr(handle, "result_run_id") else None, "status": "accepted", "accepted_at": datetime.now(UTC).isoformat()}
     except Exception as e:
+        _temporal_unavailable(e)
         msg = str(e)
         low = msg.lower()
         if "already" in low and "started" in low:

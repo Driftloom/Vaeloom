@@ -67,12 +67,20 @@ class IngestResult:
     document_id: str
     memories_created: int = 0
     error: str | None = None
+    # T-P1-06: degraded when any step ran in fallback (e.g. memory store
+    # unavailable) — the run completed but its counts are not authoritative.
+    degraded: bool = False
 
 
 @dataclass
 class ApprovalWorkflowInput:
     approval_id: str
     timeout_seconds: int = 3600
+    # Signal-binding fields (T-P1-03): the decision signal must carry the
+    # same approval_id (and workspace when set); mismatched signals are
+    # ignored, never applied. Optional-with-default so existing histories
+    # replay unchanged.
+    workspace_id: str | None = None
 
 
 @dataclass
@@ -88,6 +96,14 @@ class DurableAgentRequest:
     agent_id: str
     input: dict[str, Any] | None = None
     correlation_id: str | None = None
+    # Trusted-identity passthrough (T-P2-01): request_id seeds the graph
+    # checkpointer thread + idempotency scope (previously dropped, forcing a
+    # shared "graph-req" thread); tenant_id binds tool/memory calls.
+    # Graph version pins resume compatibility (T-§30). All optional so older
+    # histories and callers keep working.
+    request_id: str | None = None
+    tenant_id: str | None = None
+    graph_version: str = "v1"
 
 
 @dataclass
@@ -111,6 +127,67 @@ except Exception:
     _wf_started = _wf_completed = _wf_failed = None  # type: ignore
 
 if HAS_TEMPORAL:
+
+    async def _drive_activity(
+        activity_name: str,
+        arg: Any,
+        *,
+        start_to_close: timedelta,
+        schedule_to_close: timedelta | None = None,
+        heartbeat: timedelta | None = None,
+        retry_policy: Any = None,
+        max_redrives: int = 2,
+    ) -> Any:
+        """Execute an activity, re-driving worker-side cancellations.
+
+        Server-side retries cover activity FAILURE, but NOT attempt
+        CANCELLATION from graceful worker shutdown (deploys, pod restarts):
+        the workflow then observes CancelledError while ITSELF alive. Without
+        a re-drive, every deployment converts in-flight work into a false
+        'cancelled' terminal. This helper re-drives (bounded) when the
+        workflow is not itself cancelled; genuine user cancellation
+        (wf.is_cancelled()) re-raises. Exhaustion raises a non-cancel
+        ApplicationError so callers report failed, never a false cancelled.
+
+        Deterministic: loop takes effect only on cancellation (absent from
+        replay history the first call succeeds identically); all issued
+        commands are recorded workflow commands.
+        """
+        import temporalio.workflow as wf
+
+        _last: Exception | None = None
+        for _ in range(max_redrives + 1):
+            try:
+                _kw: dict[str, Any] = {
+                    "start_to_close_timeout": start_to_close,
+                    "retry_policy": retry_policy,
+                }
+                if schedule_to_close is not None:
+                    _kw["schedule_to_close_timeout"] = schedule_to_close
+                if heartbeat is not None:
+                    _kw["heartbeat_timeout"] = heartbeat
+                return await wf.execute_activity(activity_name, arg, **_kw)
+            except Exception as e:
+                _last = e
+                _txt = f"{type(e).__name__} {e}".lower()
+                if "cancel" not in _txt:
+                    raise
+                try:
+                    _wf_gone = bool(wf.is_cancelled())
+                except Exception:
+                    _wf_gone = True
+                if _wf_gone:
+                    raise
+                # Worker-side cancellation with a live workflow: re-drive.
+                continue
+        try:
+            from temporalio.exceptions import ApplicationError as _AE
+
+            raise _AE("activity drive exhausted after worker turmoil",
+                      non_retryable=True) from _last
+        except ImportError:
+            assert _last is not None
+            raise _last
 
     @workflow.defn(name="IngestDocumentWorkflow")
     class IngestDocumentWorkflow:
@@ -189,6 +266,11 @@ if HAS_TEMPORAL:
                     start_to_close_timeout=timedelta(seconds=10),
                     retry_policy=RetryPolicy(maximum_attempts=3, backoff_coefficient=2.0, non_retryable_error_types=["ValueError", "ApplicationError"]),
                 )
+                # T-P1-06: a fallback parse or write is degraded, not a silent success.
+                _degraded = bool(
+                    (isinstance(written, dict) and written.get("fallback"))
+                    or (isinstance(parsed, dict) and (parsed.get("fallback") or parsed.get("error")))
+                )
 
                 self._step = "indexing"
                 await wf.execute_activity(
@@ -203,13 +285,13 @@ if HAS_TEMPORAL:
                 try:
                     await wf.execute_activity(
                         "record_workflow_metric",
-                        {"workflow_type": "IngestDocumentWorkflow", "task_queue": "vaeloom-ingest-q", "status": "completed"},
+                        {"workflow_type": "IngestDocumentWorkflow", "task_queue": "vaeloom-ingest-q", "status": "completed" if not _degraded else "degraded"},
                         start_to_close_timeout=timedelta(seconds=5),
                         retry_policy=RetryPolicy(maximum_attempts=1),
                     )
                 except Exception:
                     pass
-                return IngestResult(status="completed", document_id=inp.document_id, memories_created=int(written.get("memories_created", 0) or 0))
+                return IngestResult(status="completed", document_id=inp.document_id, memories_created=int(written.get("memories_created", 0) or 0) if isinstance(written, dict) else 0, degraded=_degraded)
             except Exception as e:
                 if _is_cancel(e):
                     self._status = "cancelled"
@@ -291,7 +373,13 @@ if HAS_TEMPORAL:
                         user_id=str(payload.get("user_id") or payload.get("userId") or "unknown"),
                         agent_id=str(payload.get("agent_id") or payload.get("agent") or "memory"),
                         input=payload.get("input"),
-                        correlation_id=payload.get("correlation_id"),
+                        correlation_id=payload.get("correlation_id") or payload.get("correlationId"),
+                        # T-P2-01: preserve run identity + tenant + graph pin
+                        # (previously dropped → shared "graph-req" thread +
+                        # tenant-less graph execution).
+                        request_id=payload.get("request_id") or payload.get("requestId") or payload.get("correlation_id") or payload.get("correlationId"),
+                        tenant_id=payload.get("tenant_id") or payload.get("tenantId"),
+                        graph_version=str(payload.get("graph_version") or "v1"),
                     )
                 else:
                     # Already a dataclass (should not happen when signature is dict, but handle)
@@ -305,13 +393,15 @@ if HAS_TEMPORAL:
                 base = f"{type(e).__name__} {e} {getattr(e, 'cause', '')} {getattr(e, '__cause__', '')}".lower()
                 return "cancel" in base
 
-            # Kill-switch check (§13) before expensive LLM call
+            # Kill-switch check (§13) before expensive LLM call.
+            # Driven via _drive_activity: a worker shutdown mid-check
+            # re-drives instead of falsely cancelling the run.
             try:
                 ag = payload.agent_id if hasattr(payload, "agent_id") else str(payload.get("agent_id", "memory")) if isinstance(payload, dict) else "memory"  # type: ignore[union-attr]
-                ks = await wf.execute_activity(
+                ks = await _drive_activity(
                     "check_kill_switch",
                     {"agent": ag},
-                    start_to_close_timeout=timedelta(seconds=5),
+                    start_to_close=timedelta(seconds=5),
                     retry_policy=RetryPolicy(maximum_attempts=1),
                 )
                 if ks and not ks.get("enabled", True):
@@ -321,13 +411,18 @@ if HAS_TEMPORAL:
                 if _is_cancel(ke):
                     self._status = "cancelled"
                     return {"status": "cancelled", "error": str(ke)[:500]}
+                # Kill-switch unreadable (non-cancel): fail OPEN for reads is
+                # the activity's contract (returns enabled False on error) —
+                # an exception here means worker turmoil; fail closed.
+                self._status = "failed"
+                return {"status": "failed", "error": str(ke)[:500]}
 
             # Quota check (T-007) — durable Redis, fail-open if unavailable, fail-closed on exceeded
             try:
-                await wf.execute_activity(
+                await _drive_activity(
                     "check_quota",
                     {"workspace_id": payload.workspace_id, "metric": "requests", "increment": 1},
-                    start_to_close_timeout=timedelta(seconds=5),
+                    start_to_close=timedelta(seconds=5),
                     retry_policy=RetryPolicy(maximum_attempts=1),
                 )
             except Exception as qe:
@@ -340,17 +435,54 @@ if HAS_TEMPORAL:
                 pass
 
             try:
-                res = await wf.execute_activity(
+                res = await _drive_activity(
                     "durable_agent_run",
                     payload,
-                    start_to_close_timeout=timedelta(seconds=120),
-                    heartbeat_timeout=timedelta(seconds=30),
-                    retry_policy=RetryPolicy(maximum_attempts=2, backoff_coefficient=2.0, non_retryable_error_types=["ValueError", "ApplicationError"]),
+                    start_to_close=timedelta(seconds=120),
+                    schedule_to_close=timedelta(minutes=10),
+                    heartbeat=timedelta(seconds=30),
+                    retry_policy=RetryPolicy(maximum_attempts=2, initial_interval=timedelta(milliseconds=100), backoff_coefficient=2.0, non_retryable_error_types=["ValueError", "ApplicationError"]),
                 )
-                self._status = "completed"
+                # T-P1-02 terminal agreement: Temporal MUST report the same
+                # terminal state Muse reached — never collapse waiting/budget/
+                # cancelled into "completed". Unknown shapes fail closed.
+                _act_status = str((res or {}).get("status") or "failed") if isinstance(res, dict) else "failed"
+                if _act_status in ("completed",):
+                    self._status = "completed"
+                elif _act_status in ("cancelled",):
+                    self._status = "cancelled"
+                elif _act_status in ("waiting_approval", "budget_exhausted", "timeout",
+                                     "failed", "concurrency_limited", "topology_rejected",
+                                     "trust_violation", "version_mismatch", "workspace_mismatch",
+                                     "resumed_terminal"):
+                    self._status = _act_status
+                else:
+                    self._status = "failed"
+                    if isinstance(res, dict):
+                        res = {**res, "status": "failed",
+                               "error": str(res.get("error") or f"unknown activity status {_act_status!r}")[:500]}
+                try:
+                    await wf.execute_activity(
+                        "record_workflow_metric",
+                        {"workflow_type": "DurableAgentRunWorkflow", "task_queue": "vaeloom-agent-q", "status": self._status},
+                        start_to_close_timeout=timedelta(seconds=5),
+                        retry_policy=RetryPolicy(maximum_attempts=1),
+                    )
+                except Exception:
+                    pass
                 return res
             except Exception as e:
-                if _is_cancel(e):
+                # Terminal mapping distinguishes user cancellation (workflow
+                # is cancelled → cancelled) from worker-turmoil exhaustion
+                # (_drive_activity raises "drive exhausted", whose CAUSE chain
+                # contains a cancellation — must still report failed, never a
+                # false cancelled).
+                try:
+                    _wf_cancelled = bool(wf.is_cancelled())
+                except Exception:
+                    _wf_cancelled = False
+                if _wf_cancelled or (_is_cancel(e)
+                                     and "drive exhausted" not in str(e).lower()):
                     self._status = "cancelled"
                     return {"status": "cancelled", "error": str(e)[:500]}
                 self._status = "failed"
@@ -364,16 +496,49 @@ if HAS_TEMPORAL:
         def __init__(self) -> None:
             self._decision: dict[str, Any] | None = None
             self._status: str = "waiting_approval"
+            self._ignored_signals: int = 0
+            self._expected_approval_id: str = ""
+            self._expected_workspace_id: str | None = None
+            self._early: list[dict[str, Any]] = []
 
         @workflow.signal
         def decision(self, payload: dict[str, Any]) -> None:  # noqa: N802
-            # Validated at API gateway; minimal guard here.
-            self._decision = payload
-            self._status = str(payload.get("decision", "decided"))
+            # T-P1-03 signal binding: only a decision for THIS approval is
+            # applied, and only the FIRST one wins. A forged/swapped/replayed
+            # signal (wrong approval_id, wrong workspace, or a second
+            # conflicting decision) is ignored and counted — the durable
+            # single-consume gate stays in execute_approved_action + decide().
+            try:
+                data = payload if isinstance(payload, dict) else {}
+                if not self._expected_approval_id:
+                    # run() has not bound identity yet: buffer in arrival order;
+                    # run() replays the buffer through the same validation.
+                    self._early.append(data)
+                    return
+                self._apply_decision(data)
+            except Exception:
+                self._ignored_signals += 1
+
+        def _apply_decision(self, data: dict[str, Any]) -> None:
+            """Shared validation for live and early-buffered signals."""
+            if str(data.get("approval_id") or "") != self._expected_approval_id:
+                self._ignored_signals += 1
+                return
+            _ws = data.get("workspace_id")
+            if _ws is not None and self._expected_workspace_id is not None and str(_ws) != self._expected_workspace_id:
+                self._ignored_signals += 1
+                return
+            if self._decision is not None:
+                # First decision wins; concurrent/duplicate signals ignored.
+                self._ignored_signals += 1
+                return
+            self._decision = data
+            self._status = str(data.get("decision", "decided"))
 
         @workflow.query
         def getProposal(self) -> dict[str, Any]:  # noqa: N802
-            return {"status": self._status, "decision": self._decision}
+            return {"status": self._status, "decision": self._decision,
+                    "ignored_signals": self._ignored_signals}
 
         @workflow.run
         async def run(self, inp: ApprovalWorkflowInput) -> dict[str, Any]:
@@ -384,34 +549,93 @@ if HAS_TEMPORAL:
             except Exception:
                 pass
 
+            # Bind expected signal identity BEFORE waiting (deterministic:
+            # derived from workflow input, identical on every replay).
+            try:
+                self._expected_approval_id = str(inp.approval_id or "")
+                _w = getattr(inp, "workspace_id", None)
+                self._expected_workspace_id = str(_w) if _w else None
+                # Drain signals that arrived before binding, in arrival order.
+                for _early_sig in list(self._early):
+                    try:
+                        self._apply_decision(_early_sig)
+                    except Exception:
+                        self._ignored_signals += 1
+                self._early = []
+            except Exception:
+                pass
+
             def _is_cancel(e: Exception) -> bool:
                 base = f"{type(e).__name__} {e} {getattr(e, 'cause', '')} {getattr(e, '__cause__', '')}".lower()
                 return "cancel" in base
 
+            _wait_s = 0.0
             try:
+                _wait_start = wf.now()
                 await wf.wait_condition(lambda: self._decision is not None, timeout=timedelta(seconds=inp.timeout_seconds))
+                try:
+                    _wait_s = max(0.0, (wf.now() - _wait_start).total_seconds())
+                except Exception:
+                    _wait_s = 0.0
             except Exception as we:
                 if _is_cancel(we):
                     self._status = "cancelled"
+                    try:
+                        await wf.execute_activity(
+                            "record_workflow_metric",
+                            {"workflow_type": "ApprovalWorkflow", "task_queue": "vaeloom-approvals-q", "status": "cancelled"},
+                            start_to_close_timeout=timedelta(seconds=5),
+                            retry_policy=RetryPolicy(maximum_attempts=1),
+                        )
+                    except Exception:
+                        pass
                     return {"status": "cancelled", "approval_id": inp.approval_id, "error": str(we)[:500]}
             if self._decision is None:
                 # Check if cancelled during wait (Temporal cancels wait_condition)
                 try:
                     if wf.is_cancelled():  # type: ignore[attr-defined]
                         self._status = "cancelled"
+                        try:
+                            await wf.execute_activity(
+                                "record_workflow_metric",
+                                {"workflow_type": "ApprovalWorkflow", "task_queue": "vaeloom-approvals-q", "status": "cancelled", "approval_wait_seconds": _wait_s},
+                                start_to_close_timeout=timedelta(seconds=5),
+                                retry_policy=RetryPolicy(maximum_attempts=1),
+                            )
+                        except Exception:
+                            pass
                         return {"status": "cancelled", "approval_id": inp.approval_id}
                 except Exception:
                     pass
                 self._status = "expired"
+                try:
+                    await wf.execute_activity(
+                        "record_workflow_metric",
+                        {"workflow_type": "ApprovalWorkflow", "task_queue": "vaeloom-approvals-q", "status": "expired", "approval_wait_seconds": _wait_s},
+                        start_to_close_timeout=timedelta(seconds=5),
+                        retry_policy=RetryPolicy(maximum_attempts=1),
+                    )
+                except Exception:
+                    pass
                 return {"status": "expired", "approval_id": inp.approval_id}
             self._status = str(self._decision.get("decision", "decided"))
             try:
-                res = await wf.execute_activity(
+                res = await _drive_activity(
                     "execute_approved_action",
                     {"approval_id": inp.approval_id, "decision": self._decision},
-                    start_to_close_timeout=timedelta(seconds=30),
+                    start_to_close=timedelta(seconds=30),
+                    schedule_to_close=timedelta(minutes=5),
                     retry_policy=RetryPolicy(maximum_attempts=2, backoff_coefficient=2.0, non_retryable_error_types=["ValueError", "ApplicationError"]),
                 )
+                try:
+                    await wf.execute_activity(
+                        "record_workflow_metric",
+                        {"workflow_type": "ApprovalWorkflow", "task_queue": "vaeloom-approvals-q", "status": self._status, "approval_wait_seconds": _wait_s},
+                        start_to_close_timeout=timedelta(seconds=5),
+                        retry_policy=RetryPolicy(maximum_attempts=1),
+                    )
+                except Exception:
+                    pass
                 return {"status": self._status, "approval_id": inp.approval_id, "result": res}
             except Exception as e:
                 if _is_cancel(e):

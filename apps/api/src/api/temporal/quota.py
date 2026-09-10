@@ -33,6 +33,28 @@ end
 return {1, new}
 """
 
+# Idempotent variant: KEYS[2] = guard key (SETNX per idempotency scope),
+# ARGV[4] = guard TTL. A repeated reservation with the same key returns
+# {2, current} WITHOUT incrementing — activity retries and workflow
+# re-drives after unknown outcomes must not double-charge quota (§46).
+_LUA_CHECK_ONCE = """
+if redis.call('EXISTS', KEYS[2]) == 1 then
+  return {2, redis.call('GET', KEYS[1]) or 0}
+end
+local cur = redis.call('GET', KEYS[1])
+if cur and tonumber(cur) + tonumber(ARGV[1]) > tonumber(ARGV[2]) then
+  return {0, cur}
+end
+local new = redis.call('INCRBY', KEYS[1], ARGV[1])
+if new == tonumber(ARGV[1]) then
+  redis.call('EXPIRE', KEYS[1], ARGV[3])
+end
+redis.call('SET', KEYS[2], '1', 'EXPIRE', ARGV[4])
+return {1, new}
+"""
+
+_GUARD_TTL_S = 25 * 3600  # covers retry/re-drive windows; quota keys are daily
+
 
 def _get_redis() -> object | None:
     try:
@@ -61,8 +83,15 @@ async def check_and_reserve(
     metric: str = "requests",
     increment: int = 1,
     limit: int | None = None,
+    idempotency_key: str | None = None,
 ) -> tuple[bool, int]:
-    """Atomic check-and-reserve. Returns (allowed, new_value). Fail-open if Redis unavailable."""
+    """Atomic check-and-reserve. Returns (allowed, new_value). Fail-open if Redis unavailable.
+
+    idempotency_key (optional): when given, a repeated call with the same key
+    is deduplicated server-side (returns allowed with the CURRENT value,
+    without incrementing). Pass a workflow/activity-scoped key so retries
+    and re-drives after unknown outcomes never double-charge (§46).
+    """
     if limit is None:
         if metric == "requests":
             limit = DEFAULT_DAILY_REQUESTS
@@ -92,9 +121,21 @@ async def check_and_reserve(
     now = datetime.now(UTC)
     end_of_day = now.replace(hour=23, minute=59, second=59, microsecond=0)
     ttl = int((end_of_day - now).total_seconds()) + 60
+    guard = f"quota-guard:{workspace_id}:{day}:{metric}:{idempotency_key}" if idempotency_key else None
     try:
         # Try Lua for atomic check
         try:
+            if guard is not None:
+                res = await redis.eval(_LUA_CHECK_ONCE, 2, key, guard, increment, limit, ttl, _GUARD_TTL_S)  # type: ignore[attr-defined]
+                flag = int(res[0])
+                cur = int(res[1]) if res[1] is not None else increment
+                if flag == 2:
+                    logger.debug(f"quota dedup-hit for {workspace_id} {metric}: {cur}/{limit}")
+                    return True, cur
+                if flag == 0:
+                    logger.warning(f"quota exceeded for {workspace_id} {metric}: {cur}/{limit}")
+                    return False, cur
+                return True, cur
             res = await redis.eval(_LUA_CHECK, 1, key, increment, limit, ttl)  # type: ignore[attr-defined]
             allowed = bool(res[0])
             cur = int(res[1]) if res[1] is not None else increment
@@ -102,7 +143,17 @@ async def check_and_reserve(
                 logger.warning(f"quota exceeded for {workspace_id} {metric}: {cur}/{limit}")
             return allowed, cur
         except Exception:
-            # Fallback: simple INCR then check (race possible but rare)
+            # Fallback: simple INCR then check (race possible but rare).
+            # With an idempotency key, guard via SET NX first (best-effort
+            # when Lua is unavailable).
+            if guard is not None:
+                try:
+                    fresh = await redis.set(guard, "1", ex=_GUARD_TTL_S, nx=True)  # type: ignore[attr-defined]
+                    if not fresh:
+                        cur = await redis.get(key)  # type: ignore[attr-defined]
+                        return True, int(cur) if cur is not None else 0
+                except Exception:
+                    pass
             cur = await redis.incrby(key, increment)  # type: ignore[attr-defined]
             if cur == increment:
                 await redis.expire(key, ttl)  # type: ignore[attr-defined]
