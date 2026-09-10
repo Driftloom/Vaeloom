@@ -135,8 +135,16 @@ class PGVectorStore(VectorStore):
 
 class QdrantStore(VectorStore):
     def __init__(self, url: str | None = None, api_key: str | None = None, collection_name: str = "vaeloom_vectors"):
-        self._url = url or os.environ.get("QDRANT_URL", "http://localhost:6333")
+        self._url = url or os.environ.get("QDRANT_URL", "")
         self._api_key = api_key or os.environ.get("QDRANT_API_KEY", "")
+        if not self._url:
+            try:
+                from api.config import settings
+                self._url = getattr(settings, "qdrant_url", "") or ""
+                self._api_key = self._api_key or getattr(settings, "qdrant_api_key", "") or ""
+            except Exception:
+                pass
+        self._url = self._url or "http://localhost:6333"
         self._collection = collection_name
         self._client: Any = None
 
@@ -210,7 +218,14 @@ class FallbackVectorStore(VectorStore):
 
 
 def get_vector_store() -> VectorStore:
-    store_type = os.environ.get("VECTOR_STORE", "pgvector").lower()
+    store_type = os.environ.get("VECTOR_STORE", "")
+    if not store_type:
+        try:
+            from api.config import settings
+            store_type = getattr(settings, "vector_store", "") or ""
+        except Exception:
+            pass
+    store_type = (store_type or "pgvector").lower()
     if store_type == "qdrant":
         try:
             import qdrant_client  # noqa: F401

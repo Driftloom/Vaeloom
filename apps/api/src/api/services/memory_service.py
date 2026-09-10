@@ -1,4 +1,5 @@
 import contextlib
+import os
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -93,6 +94,26 @@ class MemoryService:
         db.add(memory)
         await db.flush()
         await db.refresh(memory)
+        if embedding and not os.environ.get("PYTEST_CURRENT_TEST"):
+            try:
+                from ..infrastructure.vector_store import QdrantStore, VectorRecord, get_vector_store
+                vstore = get_vector_store()
+                if isinstance(vstore, QdrantStore):
+                    await vstore.upsert([
+                        VectorRecord(
+                            id=str(memory.id),
+                            vector=embedding,
+                            metadata={
+                                "source_type": "memory",
+                                "source_id": str(memory.id),
+                                "workspace_id": str(resolved_ws_id) if resolved_ws_id else "",
+                                "tenant_id": tenant_id or "",
+                                "title": memory.title or "",
+                            },
+                        )
+                    ])
+            except Exception:
+                pass
         return memory
 
     async def list_memories(
@@ -262,6 +283,13 @@ class MemoryService:
         memory.status = "deleted"
         memory.deleted_at = datetime.now(UTC)
         await db.flush()
+        try:
+            from ..infrastructure.vector_store import QdrantStore, get_vector_store
+            vstore = get_vector_store()
+            if isinstance(vstore, QdrantStore):
+                await vstore.delete([str(memory_id)])
+        except Exception:
+            pass
         return True
 
     async def search_memories(
@@ -273,6 +301,25 @@ class MemoryService:
     ) -> list[tuple[Memory, float]]:
         content_for_embedding = dto.query
         query_embedding = await llm_service.generate_embedding(content_for_embedding)
+
+        # Primary: query Qdrant if configured (and not running isolated unit tests)
+        if not os.environ.get("PYTEST_CURRENT_TEST"):
+            try:
+                from ..infrastructure.vector_store import QdrantStore, get_vector_store
+                vstore = get_vector_store()
+                if isinstance(vstore, QdrantStore):
+                    filters: dict[str, Any] = {}
+                    if workspace_id:
+                        filters["workspace_id"] = str(workspace_id)
+                    q_records = await vstore.search(query_vector=query_embedding, limit=dto.top_k, filters=filters or None)
+                    if q_records:
+                        mem_ids = [_to_uuid(r.metadata.get("source_id") or r.id) for r in q_records if _to_uuid(r.metadata.get("source_id") or r.id)]
+                        if mem_ids:
+                            res = await db.execute(select(Memory).where(Memory.id.in_(mem_ids)))
+                            mem_map = {m.id: m for m in res.scalars().all()}
+                            return [(mem_map[mid], 0.95) for mid in mem_ids if mid in mem_map]
+            except Exception:
+                pass
 
         stmt = select(Memory, func.cosine_distance(Memory.embedding, query_embedding).label("distance"))
         conditions = [Memory.status == "active", Memory.embedding.isnot(None)]

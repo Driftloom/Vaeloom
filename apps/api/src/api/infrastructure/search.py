@@ -24,6 +24,13 @@ class AlgoliaIndex(SearchIndex):
     def __init__(self, app_id: str | None = None, api_key: str | None = None, index_name: str = "vaeloom"):
         self._app_id = app_id or os.environ.get("ALGOLIA_APP_ID", "")
         self._api_key = api_key or os.environ.get("ALGOLIA_ADMIN_API_KEY") or os.environ.get("ALGOLIA_API_KEY", "")
+        if not self._app_id or not self._api_key:
+            try:
+                from api.config import settings
+                self._app_id = self._app_id or getattr(settings, "algolia_app_id", "") or ""
+                self._api_key = self._api_key or getattr(settings, "algolia_admin_api_key", "") or ""
+            except Exception:
+                pass
         self._index_name = index_name
         self._base_url = f"https://{self._app_id}-dsn.algolia.net/1/indexes/{self._index_name}" if self._app_id else ""
 
@@ -226,18 +233,25 @@ class NoopSearchIndex(SearchIndex):
         pass
 
 
-def get_search_index(session_factory=None) -> SearchIndex:
+def get_search_index(session_factory=None, index_name: str | None = None) -> SearchIndex:
     # 1. Algolia Cloud (Primary fast instant search)
     algolia_app_id = os.environ.get("ALGOLIA_APP_ID")
+    if algolia_app_id is None:
+        try:
+            from api.config import settings
+            algolia_app_id = getattr(settings, "algolia_app_id", "") or ""
+        except Exception:
+            pass
     if algolia_app_id:
-        return AlgoliaIndex(app_id=algolia_app_id)
+        idx_name = index_name or os.environ.get("ALGOLIA_INDEX_PREFIX", "vaeloom")
+        return AlgoliaIndex(app_id=algolia_app_id, index_name=idx_name)
 
     # 2. Meilisearch (Legacy placeholder)
     meili_url = os.environ.get("MEILISEARCH_URL")
     if meili_url:
         try:
             import meilisearch  # noqa: F401
-            return MeilisearchIndex(url=meili_url)
+            return MeilisearchIndex(url=meili_url, index_name=index_name or "vaeloom")
         except ImportError:
             pass
 

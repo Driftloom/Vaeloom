@@ -42,7 +42,52 @@ async def vector_search(query: str, workspace_id: str, limit: int) -> list[Retri
         query_embedding = await llm_service.generate_embedding(query)
     except Exception as e:
         logger.warning(f"Embedding generation failed: {e}")
-        return _in_memory_vector_search(query, workspace_id, limit)
+    # Primary: check dedicated vector store (Qdrant Cloud) if configured
+    try:
+        import os as _os
+        if _os.environ.get("VECTOR_STORE", "").lower() == "qdrant" or bool(_os.environ.get("QDRANT_URL")):
+            from api.infrastructure.vector_store import QdrantStore, get_vector_store
+            vstore = get_vector_store()
+            if isinstance(vstore, QdrantStore):
+                records = await vstore.search(query_vector=query_embedding, limit=limit, filters={"workspace_id": workspace_id})
+                if records:
+                    async with async_session_factory() as session:
+                        memories = []
+                        for r in records:
+                            stype = r.metadata.get("source_type", "entity")
+                            sid = str(r.metadata.get("source_id") or r.id)
+                            content = ""
+                            doc_id = None
+                            if stype == "entity":
+                                ent = (await session.execute(select(Entity).where(Entity.id == sid))).scalar_one_or_none()
+                                if ent:
+                                    content = ent.canonical_name
+                                    doc_id = str(ent.id)
+                            elif stype == "memory_record":
+                                mr = (await session.execute(select(MemoryRecord).where(MemoryRecord.id == sid))).scalar_one_or_none()
+                                if mr:
+                                    content = str(mr.content)
+                                    doc_id = str(mr.source_document_id) if mr.source_document_id else None
+                            elif stype == "document_chunk":
+                                try:
+                                    from api.models.schema import DocumentChunk
+                                    chunk = (await session.execute(select(DocumentChunk).where(DocumentChunk.id == sid))).scalar_one_or_none()
+                                    if chunk:
+                                        content = chunk.content[:500]
+                                        doc_id = str(chunk.document_id)
+                                except Exception:
+                                    pass
+                            if content:
+                                memories.append(RetrievedMemory(
+                                    id=r.id,
+                                    content=content,
+                                    source_document_id=doc_id,
+                                    relevance_score=0.95,
+                                ))
+                        if memories:
+                            return memories
+    except Exception as qe:
+        logger.debug(f"Qdrant vector search in retrieval.py fallback to DB: {qe}")
 
     try:
         async with async_session_factory() as session:

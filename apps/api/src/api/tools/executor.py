@@ -326,6 +326,36 @@ async def check_permission(
 
 
 async def _execute_search_documents(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    query = params.get("query", "")
+    limit = params.get("limit", 10)
+
+    # 1. Primary fast search: Algolia Cloud
+    try:
+        from api.infrastructure.search import AlgoliaIndex, get_search_index
+        search_idx = get_search_index()
+        if isinstance(search_idx, AlgoliaIndex):
+            hits = await search_idx.search(query, options={"limit": limit})
+            if hits:
+                return {
+                    "status": "success",
+                    "tool": "search_documents",
+                    "result": [
+                        {
+                            "id": str(h.get("objectID") or h.get("id", "")),
+                            "path": h.get("path") or h.get("title", ""),
+                            "type": h.get("type", "document"),
+                            "summary": h.get("summary", ""),
+                            "content": h.get("content", ""),
+                        }
+                        for h in hits
+                    ],
+                    "count": len(hits),
+                    "source": "algolia",
+                }
+    except Exception as e:
+        logger.debug(f"Algolia search_documents fallback to DB: {e}")
+
+    # 2. Native DB fallback
     try:
         from sqlalchemy import or_, select
 
@@ -333,9 +363,6 @@ async def _execute_search_documents(params: dict[str, Any], workspace_id: str) -
         from api.models.schema import Document
     except ImportError as e:
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
-
-    query = params.get("query", "")
-    limit = params.get("limit", 10)
 
     try:
         async with async_session_factory() as session:
@@ -367,6 +394,7 @@ async def _execute_search_documents(params: dict[str, Any], workspace_id: str) -
                     for d in documents
                 ],
                 "count": len(documents),
+                "source": "database",
             }
     except Exception as e:
         logger.error(f"search_documents failed: {e}")
