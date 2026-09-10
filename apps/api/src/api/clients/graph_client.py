@@ -110,12 +110,13 @@ class GraphClient:
             logger.info("Graph not configured — search_mail mock fallback")
             return None
         try:
-            params: dict[str, Any] = {"$top": min(max_results, 50), "$orderby": "receivedDateTime desc"}
+            params: dict[str, Any] = {"$top": min(max_results, 50)}
             if query:
                 params["$search"] = f'"{query}"'
-                # $search requires ConsistencyLevel
+                # $search requires ConsistencyLevel and forbids $orderby
                 headers = {"ConsistencyLevel": "eventual"}
             else:
+                params["$orderby"] = "receivedDateTime desc"
                 headers = {}
             data = await self._request("GET", "/me/messages", params=params, headers=headers)
             items = data.get("value", []) if isinstance(data, dict) else []

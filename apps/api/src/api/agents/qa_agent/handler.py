@@ -174,7 +174,7 @@ class QAAgent(BaseAgent):
         return QAValidationResult(decision="approved", issues=[])
 
     async def _llm_grounding_judge(self, agent_output: dict[str, Any], context: Any | None = None) -> list[str]:
-        """Verify output claims against retrieved source context using an LLM evaluator."""
+        """Verify output claims against retrieved source context and tool outputs using an LLM evaluator."""
         from api.config import settings
 
         if not settings.llm_api_key or not context:
@@ -187,15 +187,30 @@ class QAAgent(BaseAgent):
             master_resume = getattr(context, "master_resume", {}) or {}
             profile = getattr(context, "profile", {}) or {}
 
-            if not (rag_ctx or master_resume or profile):
+            tool_evidence: list[Any] = []
+            if isinstance(agent_output, dict):
+                if agent_output.get("tool_observations"):
+                    tool_evidence.extend(agent_output["tool_observations"])
+                elif agent_output.get("tool_calls"):
+                    tool_evidence.extend(agent_output["tool_calls"])
+                details = agent_output.get("result", {}).get("details") if isinstance(agent_output.get("result"), dict) else None
+                if details:
+                    tool_evidence.append(details)
+
+            if not (rag_ctx or master_resume or profile or tool_evidence):
                 return []
 
-            context_str = json.dumps({"rag": rag_ctx, "resume": master_resume, "profile": profile}, default=str)[:3000]
+            context_dict = {"rag": rag_ctx, "resume": master_resume, "profile": profile}
+            if tool_evidence:
+                context_dict["tool_evidence"] = tool_evidence
+
+            context_str = json.dumps(context_dict, default=str)[:4000]
             output_str = json.dumps(agent_output.get("result", {}), default=str)[:2000]
 
             prompt = (
-                "You are an objective grounding judge. Compare the agent's output against the verified source context.\n"
+                "You are an objective grounding judge. Compare the agent's output against the verified source context (including tool execution evidence).\n"
                 "Check for fabricated metrics, invented employers, ungrounded technical skills, or claims not supported by the context.\n"
+                "Claims supported by either the source documents or tool execution evidence are verified and grounded.\n"
                 "Return ONLY valid JSON: {\"is_grounded\": bool, \"unsupported_claims\": [\"claim1\", ...]}\n\n"
                 f"SOURCE CONTEXT:\n{context_str}\n\n"
                 f"AGENT OUTPUT:\n{output_str}"
@@ -240,7 +255,15 @@ class QAAgent(BaseAgent):
                 r"\b\d{2,}%|\$[\d,]+\.?\d*|\b(?:19|20)\d{2}\b", summary
             )
             if numeric_claims:
-                ctx_str = str(context)[:5000]
+                tool_evidence = ""
+                if isinstance(agent_output, dict):
+                    tool_evidence = (
+                        str(agent_output.get("tool_observations") or "")
+                        + " " + str(agent_output.get("tool_calls") or "")
+                        + " " + str(agent_output.get("react") or "")
+                        + " " + str(result.get("details") or "")
+                    )
+                ctx_str = (str(context) + " " + tool_evidence)[:10000]
                 ungrounded = [c for c in numeric_claims if c not in ctx_str]
                 if len(ungrounded) > 2:
                     issues.append(

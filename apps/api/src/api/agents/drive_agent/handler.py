@@ -57,8 +57,60 @@ class DriveAgent(BaseAgent):
 
     async def process(self, request: Any) -> dict[str, Any]:
         ws_id = getattr(request, "workspace_id", None) if hasattr(request, "workspace_id") else (request.get("workspace_id") if isinstance(request, dict) else None)
+        msg = getattr(request, "message", "") if hasattr(request, "message") else (request.get("message", "") if isinstance(request, dict) else "")
+        msg_lower = (msg or "").lower()
+
+        # Check if OneDrive was specifically requested
+        if "onedrive" in msg_lower or "microsoft" in msg_lower:
+            from api.clients.graph_client import GraphClient
+            graph = GraphClient()
+            if graph._configured:
+                if "search" in msg_lower:
+                    query = msg.replace("search", "").replace("onedrive", "").replace("for", "").strip()
+                    files = await graph.search_files(query or "document")
+                else:
+                    files = await graph.list_files(page_size=20)
+                if files is not None:
+                    summary_lines = [f"- {f.get('name', 'Unknown')} ({f.get('size', 0)} bytes)" for f in files[:10]]
+                    summary_text = f"Found {len(files)} files in OneDrive:\n" + "\n".join(summary_lines) if files else "No files found in OneDrive."
+                    return {
+                        "agent_name": "drive",
+                        "action": "suggest",
+                        "confidence": 0.95,
+                        "result": {
+                            "summary": summary_text,
+                            "details": files,
+                            "proposals": [],
+                            "questions": [],
+                        },
+                        "metadata": {"source": "onedrive", "file_count": len(files)},
+                    }
+
         client = await self._get_client(workspace_id=ws_id)
         if not client._configured:
+            # Fallback to OneDrive if Google Drive is not configured
+            try:
+                from api.clients.graph_client import GraphClient
+                graph = GraphClient()
+                if graph._configured:
+                    files = await graph.list_files(page_size=20)
+                    if files is not None:
+                        summary_lines = [f"- {f.get('name', 'Unknown')} ({f.get('size', 0)} bytes)" for f in files[:10]]
+                        summary_text = f"Found {len(files)} files in OneDrive:\n" + "\n".join(summary_lines) if files else "No files found in OneDrive."
+                        return {
+                            "agent_name": "drive",
+                            "action": "suggest",
+                            "confidence": 0.95,
+                            "result": {
+                                "summary": summary_text,
+                                "details": files,
+                                "proposals": [],
+                                "questions": [],
+                            },
+                            "metadata": {"source": "onedrive", "file_count": len(files)},
+                        }
+            except Exception:
+                pass
             return await self.fallback()
 
         files = await client.list_files(page_size=50)
@@ -67,7 +119,7 @@ class DriveAgent(BaseAgent):
 
         ingested = []
         for f in files:
-            ingested.append(await self._process_file(client, f))
+            ingested.append(await self._process_file(client, f, workspace_id=ws_id))
 
         return {
             "agent_name": "drive",
@@ -82,7 +134,7 @@ class DriveAgent(BaseAgent):
             "metadata": {"file_count": len(files), "ingested_count": len([i for i in ingested if i])},
         }
 
-    async def _process_file(self, client: Any, file_meta: dict[str, Any]) -> dict[str, Any] | None:
+    async def _process_file(self, client: Any, file_meta: dict[str, Any], workspace_id: str | None = None) -> dict[str, Any] | None:
         file_id = file_meta.get("id", "")
         name = file_meta.get("name", "")
         mime_type = file_meta.get("mimeType", "")
@@ -96,7 +148,7 @@ class DriveAgent(BaseAgent):
             logger.warning(f"Could not download file: {name} ({file_id})")
             return None
 
-        ingested = await self._ingest(file_meta, content)
+        ingested = await self._ingest(file_meta, content, workspace_id=workspace_id)
         return {
             "file_id": file_id,
             "name": name,
@@ -106,12 +158,12 @@ class DriveAgent(BaseAgent):
             "ingested": ingested.get("status") == "success" if ingested else False,
         }
 
-    async def _ingest(self, file_meta: dict[str, Any], content: bytes) -> dict[str, Any] | None:
+    async def _ingest(self, file_meta: dict[str, Any], content: bytes, workspace_id: str | None = None) -> dict[str, Any] | None:
         try:
             from api.ingestion.pipeline import run_pipeline
             name = file_meta.get("name", "unknown")
-            workspace_id = "drive_sync"
-            return await run_pipeline(workspace_id=workspace_id, filename=name, content=content)
+            wid = str(workspace_id or "00000000-0000-0000-0000-000000000000")
+            return await run_pipeline(workspace_id=wid, filename=name, content=content)
         except Exception as e:
             logger.warning(f"Ingestion failed for {file_meta.get('name', '?')}: {e}")
             return None

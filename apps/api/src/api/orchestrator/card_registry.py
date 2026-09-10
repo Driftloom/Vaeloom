@@ -224,7 +224,14 @@ GMAIL_CARD = AgentCard(
     name="gmail",
     version="1.0.0",
     description="Search, draft, and organize job-related email communication.",
-    tools=["search_documents", "send_email"],
+    tools=[
+        "search_gmail",
+        "draft_email",
+        "search_outlook_mail",
+        "draft_outlook_mail",
+        "search_documents",
+        "send_email",
+    ],
     safety_guidelines=[
         "Draft emails for user review; never send without explicit human confirmation.",
     ],
@@ -234,7 +241,14 @@ SCHEDULER_CARD = AgentCard(
     name="scheduler",
     version="1.0.0",
     description="Schedule interview slots, career preparation blocks, and manage calendar events.",
-    tools=["search_documents"],
+    tools=[
+        "create_calendar_event",
+        "list_calendar_events",
+        "create_outlook_calendar_event",
+        "list_outlook_calendar_events",
+        "search_documents",
+        "notify_user",
+    ],
     safety_guidelines=[
         "Check conflicts before proposing meeting or interview schedule updates.",
     ],
@@ -260,15 +274,40 @@ MEMORY_CARD = AgentCard(
 DRIVE_CARD = AgentCard(
     name="drive",
     version="1.0.0",
-    description="Search and index Google Drive documents into career memory.",
-    tools=["search_documents"],
+    description="Search and index Google Drive and OneDrive documents into career memory.",
+    tools=[
+        "list_drive_files",
+        "download_drive_file",
+        "search_drive",
+        "create_google_doc",
+        "read_google_doc",
+        "append_google_doc",
+        "replace_google_doc_text",
+        "list_onedrive_files",
+        "search_onedrive",
+        "download_onedrive_file",
+        "search_documents",
+    ],
 )
 
 GITHUB_CARD = AgentCard(
     name="github",
     version="1.0.0",
     description="Inspect GitHub repositories, commits, and pull requests for portfolio evidence.",
-    tools=["search_documents"],
+    tools=[
+        "fetch_github_repo",
+        "search_github_repos",
+        "get_github_profile",
+        "list_github_issues",
+        "read_github_file",
+        "create_github_issue",
+        "create_github_pull_request",
+        "web_search",
+        "analyze_profile",
+        "get_repo_stats",
+        "assess_skills",
+        "search_documents",
+    ],
 )
 
 
@@ -300,23 +339,44 @@ class AgentCardRegistry:
         if not name:
             return None
         norm_name = name.strip().lower()
+        card = None
         # Direct lookup
         if norm_name in self._cards:
-            return self._cards[norm_name]
+            card = self._cards[norm_name]
+        else:
+            # Stripped key matching (e.g. "jobsearchagent" -> matches "job_search", "resume_agent" -> matches "resume")
+            clean_input = norm_name.replace("_", "").replace("-", "").replace(" ", "")
+            clean_input_no_suffix = clean_input
+            for suffix in ("agent", "handler"):
+                if clean_input_no_suffix.endswith(suffix):
+                    clean_input_no_suffix = clean_input_no_suffix[: -len(suffix)]
 
-        # Stripped key matching (e.g. "jobsearchagent" -> matches "job_search", "resume_agent" -> matches "resume")
-        clean_input = norm_name.replace("_", "").replace("-", "").replace(" ", "")
-        clean_input_no_suffix = clean_input
-        for suffix in ("agent", "handler"):
-            if clean_input_no_suffix.endswith(suffix):
-                clean_input_no_suffix = clean_input_no_suffix[: -len(suffix)]
+            for k, c in self._cards.items():
+                clean_k = k.replace("_", "").replace("-", "").replace(" ", "")
+                if clean_input == clean_k or clean_input_no_suffix == clean_k:
+                    card = c
+                    norm_name = k
+                    break
+                if clean_input in (f"{clean_k}agent", f"{clean_k}handler"):
+                    card = c
+                    norm_name = k
+                    break
 
-        for k, card in self._cards.items():
-            clean_k = k.replace("_", "").replace("-", "").replace(" ", "")
-            if clean_input == clean_k or clean_input_no_suffix == clean_k:
-                return card
-            if clean_input in (f"{clean_k}agent", f"{clean_k}handler"):
-                return card
+        if card:
+            # Dynamically ensure all tools declared on the registered agent class are authorized
+            try:
+                from .router import AGENT_REGISTRY
+                agent_cls = AGENT_REGISTRY.get(norm_name)
+                if agent_cls:
+                    inst = agent_cls() if callable(agent_cls) else None
+                    inst_tools = getattr(inst, "tools", []) if inst else []
+                    for t in inst_tools:
+                        tn = t.name if hasattr(t, "name") else str(t)
+                        if tn not in card.tools:
+                            card.tools.append(tn)
+            except Exception:
+                pass
+            return card
 
         return None
 

@@ -70,11 +70,24 @@ class SchedulerAgent(BaseAgent):
     async def fetch_events(
         self, days_ahead: int = 14, workspace_id: str | None = None
     ) -> list[dict[str, Any]] | None:
-        client = await self._get_client(workspace_id=workspace_id)
         now = datetime.now(UTC)
         time_min = now.isoformat()
         time_max = (now + timedelta(days=days_ahead)).isoformat()
-        return await client.list_events(time_min=time_min, time_max=time_max)
+
+        client = await self._get_client(workspace_id=workspace_id)
+        events = await client.list_events(time_min=time_min, time_max=time_max)
+        if not events:
+            # Fallback to Outlook Calendar via Microsoft Graph if Google Calendar has no events or is unconfigured
+            try:
+                from api.clients.graph_client import GraphClient
+                gclient = GraphClient()
+                if gclient._configured:
+                    outlook_events = await gclient.list_events(time_min=time_min, time_max=time_max)
+                    if outlook_events:
+                        return outlook_events
+            except Exception:
+                pass
+        return events
 
     async def check_conflicts(
         self, events: list[dict[str, Any]], has_approval: bool = False, workspace_id: str | None = None

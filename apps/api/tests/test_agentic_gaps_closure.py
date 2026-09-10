@@ -63,8 +63,8 @@ class TestToolRegistry:
 
     def test_all_tools_count(self):
         from api.tools.definitions import ALL_TOOLS
-        assert len(ALL_TOOLS) == 54
-        for name in ["web_search", "parse_document_ocr", "calculate_ats_diff", "fetch_github_repo", "create_github_issue", "send_slack_message", "sync_notion_pages", "execute_code_sandbox", "compile_resume_pdf", "compile_resume_docx", "compile_cover_letter"]:
+        assert len(ALL_TOOLS) == 55
+        for name in ["web_search", "parse_document_ocr", "calculate_ats_diff", "fetch_github_repo", "create_github_issue", "send_slack_message", "sync_notion_pages", "execute_code_sandbox", "compile_resume_pdf", "compile_resume_docx", "compile_cover_letter", "query_notebooklm"]:
             assert name in ALL_TOOLS, f"missing {name}"
 
     def test_tool_categories(self):
@@ -151,7 +151,7 @@ class TestStreamingLoop:
     @pytest.mark.asyncio
     async def test_catalog_has_25_tools(self):
         from api.tools.definitions import ALL_TOOLS
-        assert len(ALL_TOOLS) == 54
+        assert len(ALL_TOOLS) == 55
 
 
 class TestSupervisor:
@@ -341,7 +341,7 @@ class TestChatStreamEndpoint:
 
     def test_catalog_shows_25_tools(self):
         from api.tools.definitions import ALL_TOOLS
-        assert len(ALL_TOOLS) == 54
+        assert len(ALL_TOOLS) == 55
         # New compile tools are part of document pipeline (ADR-034/037)
         for name in ["compile_resume_pdf", "compile_resume_docx", "compile_cover_letter"]:
             assert name in ALL_TOOLS

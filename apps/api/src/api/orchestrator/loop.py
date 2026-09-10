@@ -1025,6 +1025,8 @@ async def _try_react_loop(
                 try:
                     if "tool_calls" not in card and _seen_tool_calls:
                         card["tool_calls"] = list(_seen_tool_calls)
+                    if "tool_observations" not in card and _round_records:
+                        card["tool_observations"] = [r.get("observation") for r in _round_records if r.get("observation")]
                 except Exception:
                     pass
             except Exception:
