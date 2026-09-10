@@ -125,12 +125,20 @@ def test_assert_unchanged_passes():
     assert_trusted_context_unchanged(ctx, final)
 
 
-@pytest.mark.parametrize("field", ["workspace_id", "user_id", "agent_id", "request_id"])
+@pytest.mark.parametrize("field", ["workspace_id", "user_id", "tenant_id", "agent_id", "request_id"])
 def test_assert_unchanged_rejects_mutation(field):
     ctx = _ctx()
     final = dict(ctx)
     final[field] = "EVIL"
     with pytest.raises(ValueError, match="mutated"):
+        assert_trusted_context_unchanged(ctx, final)
+
+
+def test_assert_unchanged_rejects_wiped_id():
+    ctx = _ctx()
+    final = dict(ctx)
+    final["tenant_id"] = None
+    with pytest.raises(ValueError, match="missing after run"):
         assert_trusted_context_unchanged(ctx, final)
 
 

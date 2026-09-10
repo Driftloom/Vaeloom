@@ -47,6 +47,7 @@ async def test_temporal_langgraph_e2e(monkeypatch):
                 "input": {"message": "organize my files via graph"},
                 "request_id": req,
                 "correlation_id": req,
+                "tenant_id": str(uuid.uuid4()),
             }
             handle = await client.start_workflow(
                 DurableAgentRunWorkflow.run,
@@ -92,6 +93,7 @@ async def test_temporal_langgraph_kill_switch(monkeypatch):
                     "agent_id": "memory",
                     "input": {"message": "test kill"},
                     "request_id": req,
+                    "tenant_id": str(uuid.uuid4()),
                 }
                 handle = await client.start_workflow(
                     DurableAgentRunWorkflow.run,
@@ -135,6 +137,7 @@ async def test_temporal_langgraph_duplicate_reject(monkeypatch):
                 "agent_id": "memory",
                 "input": {"message": "dup test"},
                 "request_id": req,
+                "tenant_id": str(uuid.uuid4()),
             }
             h1 = await client.start_workflow(
                 DurableAgentRunWorkflow.run, payload, id=wid, task_queue=queue_name("agent"), id_reuse_policy=WorkflowIDReusePolicy.REJECT_DUPLICATE
@@ -170,6 +173,7 @@ async def test_temporal_langgraph_cancellation(monkeypatch):
                 "agent_id": "memory",
                 "input": {"message": "long running task organize files and schedule meeting and research github repos for vaeloom"},
                 "request_id": req,
+                "tenant_id": str(uuid.uuid4()),
             }
             handle = await client.start_workflow(
                 DurableAgentRunWorkflow.run, payload, id=wid, task_queue=queue_name("agent"), id_reuse_policy=WorkflowIDReusePolicy.REJECT_DUPLICATE
