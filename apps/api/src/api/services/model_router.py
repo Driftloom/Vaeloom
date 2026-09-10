@@ -35,8 +35,11 @@ MODEL_CATALOG: dict[str, ModelConfig] = {
     "claude-3-opus-20240229": ModelConfig("claude-3-opus-20240229", "anthropic", 200000, 0.015, 0.075, "powerful"),
     # Groq Cloud
     "openai/gpt-oss-120b": ModelConfig("openai/gpt-oss-120b", "groq", 131072, 0.00015, 0.0006, "balanced"),
+    "openai/gpt-oss-20b": ModelConfig("openai/gpt-oss-20b", "groq", 131072, 0.00008, 0.0002, "fast"),
     "qwen/qwen3.8-27b": ModelConfig("qwen/qwen3.8-27b", "groq", 131072, 0.00010, 0.0003, "fast"),
     # Google Gemini
+    "gemini-3.5-flash": ModelConfig("gemini-3.5-flash", "google", 1000000, 0.000075, 0.0003, "fast"),
+    "gemini-3.6-flash": ModelConfig("gemini-3.6-flash", "google", 1000000, 0.000075, 0.0003, "fast"),
     "gemini-embedding-2": ModelConfig("gemini-embedding-2", "google", 8192, 0.0, 0.0, "fast"),
 }
 

@@ -513,50 +513,65 @@ async def _assemble_rag_context(
                         from api.services.llm_service import llm_service
                         from sqlalchemy import text as _text
                         vec = await llm_service.generate_embedding(query[:2000])
-                        vec_str = "[" + ",".join(f"{v:.6f}" for v in vec) + "]"
-                        # Try embeddings table (works on Postgres with pgvector; falls back on SQLite mock)
-                        try:
-                            res = await session.execute(
-                                _text("""
-                                    SELECT source_id, source_type, 1 - (vector <=> CAST(:vec AS vector)) AS score
-                                    FROM embeddings
-                                    WHERE workspace_id = :wid AND source_type IN ('entity', 'memory', 'document', 'document_chunk')
-                                    ORDER BY vector <=> CAST(:vec AS vector)
-                                    LIMIT 8
-                                """),
-                                {"wid": workspace_id, "vec": vec_str},
-                            )
-                            rows = res.fetchall()
-                            for row in rows:
-                                sid = str(row[0])
-                                stype = row[1]
-                                try:
-                                    if stype in ('entity', 'memory') and len(entities) < 8:
-                                        ent = await session.get(Entity, _uuid.UUID(sid))
-                                        if ent and not any(e["id"] == sid for e in entities):
-                                            entities.append({"id": sid, "name": ent.canonical_name, "type": ent.type, "aliases": ent.aliases})
-                                    elif stype == 'document' and len(documents) < 8:
-                                        doc = await session.get(Document, _uuid.UUID(sid))
-                                        if doc and not any(d["id"] == sid for d in documents):
-                                            documents.append({"id": sid, "path": doc.path, "summary": (doc.summary or "")[:300]})
-                                    elif stype == 'document_chunk' and len(documents) < 8:
-                                        chunk = await session.get(DocumentChunk, _uuid.UUID(sid))
-                                        if chunk and chunk.document_id:
-                                            doc = await session.get(Document, chunk.document_id)
-                                            if doc and not any(d["id"] == str(doc.id) for d in documents):
-                                                documents.append({
-                                                    "id": str(doc.id),
-                                                    "path": doc.path,
-                                                    "summary": (doc.summary or "")[:300],
-                                                    "chunk_content": (chunk.content or "")[:500],
-                                                })
-                                except Exception:
-                                    continue
-                            if entities or documents:
-                                vector_done = True
-                                logger.info(f"RAG vector search: {len(entities)} entities, {len(documents)} docs via embeddings")
-                        except Exception as ve:
-                            logger.debug(f"RAG vector SQL failed, falling back to LIKE: {ve}")
+                        rows: list[tuple[str, str]] = []
+                        # Check dedicated vector store (e.g. Qdrant Cloud) first
+                        vstore_type = _os.environ.get("VECTOR_STORE", "").lower()
+                        if vstore_type == "qdrant" or bool(_os.environ.get("QDRANT_URL")):
+                            try:
+                                from api.infrastructure.vector_store import QdrantStore, get_vector_store
+                                vstore = get_vector_store()
+                                if isinstance(vstore, QdrantStore):
+                                    vrecords = await vstore.search(query_vector=vec, limit=8, filters={"workspace_id": workspace_id})
+                                    for vr in vrecords:
+                                        sid = str(vr.metadata.get("source_id") or vr.id)
+                                        stype = str(vr.metadata.get("source_type", "entity"))
+                                        rows.append((sid, stype))
+                            except Exception as qe:
+                                logger.debug(f"Qdrant RAG search failed, fallback to DB: {qe}")
+
+                        # If no dedicated vector store results, try embeddings table (pgvector)
+                        if not rows:
+                            try:
+                                res = await session.execute(
+                                    _text("""
+                                        SELECT source_id, source_type, 1 - (vector <=> CAST(:vec AS vector)) AS score
+                                        FROM embeddings
+                                        WHERE workspace_id = :wid AND source_type IN ('entity', 'memory', 'document', 'document_chunk')
+                                        ORDER BY vector <=> CAST(:vec AS vector)
+                                        LIMIT 8
+                                    """),
+                                    {"wid": workspace_id, "vec": vec_str},
+                                )
+                                rows = [(str(r[0]), str(r[1])) for r in res.fetchall()]
+                            except Exception as ve:
+                                logger.debug(f"RAG vector SQL failed, falling back to LIKE: {ve}")
+
+                        for sid, stype in rows:
+                            try:
+                                if stype in ('entity', 'memory') and len(entities) < 8:
+                                    ent = await session.get(Entity, _uuid.UUID(sid))
+                                    if ent and not any(e["id"] == sid for e in entities):
+                                        entities.append({"id": sid, "name": ent.canonical_name, "type": ent.type, "aliases": ent.aliases})
+                                elif stype == 'document' and len(documents) < 8:
+                                    doc = await session.get(Document, _uuid.UUID(sid))
+                                    if doc and not any(d["id"] == sid for d in documents):
+                                        documents.append({"id": sid, "path": doc.path, "summary": (doc.summary or "")[:300]})
+                                elif stype == 'document_chunk' and len(documents) < 8:
+                                    chunk = await session.get(DocumentChunk, _uuid.UUID(sid))
+                                    if chunk and chunk.document_id:
+                                        doc = await session.get(Document, chunk.document_id)
+                                        if doc and not any(d["id"] == str(doc.id) for d in documents):
+                                            documents.append({
+                                                "id": str(doc.id),
+                                                "path": doc.path,
+                                                "summary": (doc.summary or "")[:300],
+                                                "chunk_content": (chunk.content or "")[:500],
+                                            })
+                            except Exception:
+                                continue
+                        if entities or documents:
+                            vector_done = True
+                            logger.info(f"RAG vector search: {len(entities)} entities, {len(documents)} docs via embeddings")
             except Exception as ve:
                 logger.debug(f"RAG vector embedding failed, falling back to LIKE: {ve}")
 
@@ -1288,6 +1303,10 @@ async def _try_react_loop(
                             content_str = str(_fb_content or "")
                         tool_calls = _fb.get("tool_calls") or []
                 except Exception as _fbe:
+                    import traceback as _tbf
+                    import sys as _sysf
+                    print("DBG fallback-round traceback: " + "".join(_tbf.format_exception(_fbe))[-2500:],
+                          file=_sysf.stderr, flush=True)
                     logger.warning(f"ReAct fallback round failed: {_fbe}")
                 if not _fell_back and not tool_calls and not content_str.strip():
                     await _finish("provider_down", None)

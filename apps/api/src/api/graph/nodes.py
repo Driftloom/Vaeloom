@@ -294,6 +294,51 @@ async def fan_in_node(state: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _map_react_result(react_res: dict[str, Any], state: dict[str, Any], agent_id: str) -> dict[str, Any] | None:
+    """Map a completed ReAct act-result onto graph agent-node output.
+
+    Returns None when the stub ladder should proceed (react declined/errored).
+    Pause cards carry the real approval_id (resumable); answers carry bounded
+    summaries + react provenance (rounds/tools/termination — never reasoning).
+    """
+    if not isinstance(react_res, dict):
+        return None
+    base_meta = {**(state.get("metadata") or {}), "node": "agent", "via": "react"}
+    try:
+        rmeta = react_res.get("react") if isinstance(react_res.get("react"), dict) else {}
+        if rmeta:
+            base_meta["react"] = {k: rmeta.get(k) for k in
+                                  ("run_id", "rounds", "tool_calls", "termination",
+                                   "provider_fallbacks", "resumed") if rmeta.get(k) is not None}
+    except Exception:
+        pass
+    if react_res.get("action") == "request_approval":
+        appr = react_res.get("approval") if isinstance(react_res.get("approval"), dict) else {}
+        if not appr.get("approval_id"):
+            return None  # fail-closed pause without an id is not resumable — stub ladder
+        res = react_res.get("result") if isinstance(react_res.get("result"), dict) else {}
+        return {
+            "selected_agent": agent_id,
+            "selected_tool": None,
+            "approval_state": {"status": "pending", "approval_id": str(appr["approval_id"]),
+                               "tool": appr.get("tool")},
+            "result": {"summary": str(res.get("summary") or f"tool {appr.get('tool')} awaiting approval")[:800]},
+            "execution_status": "waiting_approval",
+            "metadata": {**base_meta, "approval_required": True},
+        }
+    res = react_res.get("result") if isinstance(react_res.get("result"), dict) else {}
+    summary = res.get("summary") if isinstance(res.get("summary"), str) else ""
+    if react_res.get("action") in ("suggest", "execute") and summary.strip():
+        return {
+            "selected_agent": agent_id,
+            "selected_tool": None,
+            "result": {"summary": summary[:800], "agent": agent_id},
+            "execution_status": "finalizing",
+            "metadata": base_meta,
+        }
+    return None
+
+
 async def agent_node(state: dict[str, Any]) -> dict[str, Any]:
     agent_id = state.get("selected_agent") or state.get("agent_id") or "memory"
     # Handoff validation if present (LG-09)
@@ -320,6 +365,48 @@ async def agent_node(state: dict[str, Any]) -> dict[str, Any]:
             raise QuotaExceededError(str(e)) from e
         # fail-open on Redis outage for local — log
         logger.debug("quota check fail-open: %s", e)
+
+    # ── ReAct delegation (§10): the node runs the COMPLETED ReAct runtime
+    # (existing executor → AgentCard → tool executor), never a new one.
+    # Ladder: ReAct result → mapped below; ReAct decline/failure → stub path
+    # (existing behavior preserved, incl. PYTEST determinism when the flag or
+    # key is absent).
+    try:
+        from ..config import settings as _rsettings
+        _react_allowed = bool(getattr(_rsettings, "agent_react_enabled", False)) and bool(
+            getattr(_rsettings, "llm_api_key", ""))
+    except Exception:
+        _react_allowed = False
+    if _react_allowed:
+        try:
+            import os as _ros
+
+            from ..orchestrator.router import AGENT_REGISTRY as _REG  # type: ignore
+            from ..orchestrator.loop import _try_react_loop  # type: ignore
+
+            _agent_name = str(agent_id or "")
+            _handler_cls = _REG.get(_agent_name)
+            _in_pytest = bool(_ros.environ.get("PYTEST_CURRENT_TEST"))
+            _force_real = _ros.environ.get("VAELOOM_TEST_REAL_AGENT") == "1"
+            if _handler_cls is not None and (not _in_pytest or _force_real):
+                _handler = _handler_cls() if callable(_handler_cls) else _handler_cls
+                _ws = str(state.get("workspace_id") or "")
+                _tenant = state.get("tenant_id")
+                _react_res = await _try_react_loop(
+                    _handler, str(state.get("task") or ""), _ws, _agent_name,
+                    user_id=str(state.get("user_id") or "") or None,
+                    db=None,
+                    correlation_id=str(state.get("correlation_id") or state.get("request_id") or ""),
+                    request_id=str(state.get("request_id") or "") or None,
+                    state=None,
+                    tenant_id=_tenant if isinstance(_tenant, str) else None,
+                )
+                if isinstance(_react_res, dict):
+                    _mapped = _map_react_result(_react_res, state, agent_id)
+                    if _mapped is not None:
+                        return _mapped
+        except Exception as _re:
+            logger.debug("graph agent ReAct delegation skipped for %s: %s", agent_id, _re)
 
     # Actual agent dispatch — try real handler first, fallback deterministic stub (MVP truth when LANGGRAPH_ENABLED=false)
     # Real dispatch via AGENT_REGISTRY handler when available (bounded, never destructive)
@@ -406,11 +493,23 @@ async def agent_node(state: dict[str, Any]) -> dict[str, Any]:
 
 
 async def tool_decision_node(state: dict[str, Any]) -> dict[str, Any]:
+    # Terminal-ish pauses/failures pass through untouched — this node only
+    # decides for live agent output. (Prevents swallowing waiting_approval
+    # pauses and failure states set upstream.)
+    _incoming = state.get("execution_status")
+    if _incoming in ("waiting_approval", "failed", "cancelled"):
+        return {"execution_status": _incoming,
+                "metadata": {**state.get("metadata", {}), "node": "tool_decision"}}
     need = bool(state.get("selected_tool"))
     return {"execution_status": "executing_tool" if need else "finalizing", "metadata": {**state.get("metadata", {}), "node": "tool_decision"}}
 
 
 async def policy_check_node(state: dict[str, Any]) -> dict[str, Any]:
+    # Pass through terminal-ish states set upstream (same contract as tool_decision).
+    _incoming = state.get("execution_status")
+    if _incoming in ("failed", "cancelled"):
+        return {"execution_status": _incoming,
+                "metadata": {**state.get("metadata", {}), "node": "policy_check"}}
     tool = state.get("selected_tool")
     if not tool:
         return {"execution_status": "finalizing"}
@@ -514,8 +613,10 @@ async def tool_execute_node(state: dict[str, Any]) -> dict[str, Any]:
         elif tool == "query_graph":
             params = {"query": state.get("task") or "", "limit": 5}
         # Secret resolution happens inside execute_tool handlers via SecretManager — never in state
-        # Use agent_id with no scopes for graph v1 — executor will handle permission gracefully
-        # Pass allowed scopes derived from registry if available, else empty (fail-open for graph)
+        # Scopes derive from the agent's card (SAME rule as the ReAct path).
+        # Fail-closed: underivable scopes deny execution. The old `scopes=[]`
+        # comment claimed "fail-open for graph" — that let denied tools return
+        # mock success; denials below are now terminal failures (production).
         from ..orchestrator.router import AGENT_REGISTRY  # type: ignore
         agent_cls = AGENT_REGISTRY.get(agent_id)
         scopes: list[str] = []
@@ -524,10 +625,36 @@ async def tool_execute_node(state: dict[str, Any]) -> dict[str, Any]:
                 scopes = [get_tool_definition(t.name).required_scope for t in agent_cls.tools if hasattr(t, "name")]
             except Exception:
                 scopes = []
-        # Idempotency key for tool side effects
-        idempotency_key = hashlib.sha256(f"{ws}:{state.get('request_id')}:{tool}:{json.dumps(params, sort_keys=True, default=str)[:500]}".encode()).hexdigest()[:16]
-        # Attach idempotency key to params if tool supports it (non-breaking)
-        params["_idempotency_key"] = idempotency_key
+        if not scopes:
+            logger.warning("graph tool_execute denied (no derivable scopes) agent=%s tool=%s", agent_id, tool)
+            return {
+                "error": f"no authorized scopes for agent {agent_id} tool {tool}"[:500],
+                "execution_status": "failed",
+                "metadata": {**state.get("metadata", {}), "node": "tool_execute", "error": True, "scope_denied": True},
+            }
+        # Argument validation (shared ReAct policy — schema/types/binding/size).
+        try:
+            from ..orchestrator.react_policy import validate_tool_arguments  # type: ignore
+            _ok_args, _clean_args, _arg_errs = validate_tool_arguments(
+                td, params, workspace_id=ws,
+                tenant_id=state.get("tenant_id") if isinstance(state.get("tenant_id"), str) else None,
+                user_id=state.get("user_id") if isinstance(state.get("user_id"), str) else None)
+            if not _ok_args:
+                logger.warning("graph tool_execute arguments rejected agent=%s tool=%s: %s", agent_id, tool, _arg_errs)
+                return {
+                    "error": f"invalid tool arguments: {'; '.join(_arg_errs[:4])}"[:500],
+                    "execution_status": "failed",
+                    "metadata": {**state.get("metadata", {}), "node": "tool_execute", "error": True, "arg_rejected": True},
+                }
+            params = _clean_args
+        except ValueError:
+            raise
+        except Exception as _ve:
+            logger.debug("graph arg validation skipped: %s", _ve)
+        # Idempotency: the executor computes its own canonical key internally
+        # (workspace+agent+tool+params). Nothing is injected into params — a
+        # caller-supplied key would both break the canonical hash and fail
+        # argument validation as an unexpected field.
         res = await execute_tool(td, params, agent_id, scopes, ws)
         # Truncate tool output to 4KB (measure utf-8 bytes to match state validation)
         if isinstance(res, dict) and len(json.dumps(res, default=str).encode("utf-8")) > 4096:
@@ -543,28 +670,19 @@ async def tool_execute_node(state: dict[str, Any]) -> dict[str, Any]:
         return {
             "result": {"tool": tool, "output": res, "summary": f"tool {tool} executed"},
             "execution_status": "finalizing",
-            "metadata": {**state.get("metadata", {}), "node": "tool_execute", "idempotency_key": idempotency_key},
+            "metadata": {**state.get("metadata", {}), "node": "tool_execute"},
         }
     except Exception as e:
-        # Permission denied must NOT be masked as mock for consequential tools — fail closed
+        # Permission/scope denial is NEVER masked as mock success — fail closed
+        # with a truthful terminal state (the old non-gated "permission
+        # fallback" mock is removed: it fabricated success for denied tools).
         if "permission" in str(e).lower() or "scope" in str(e).lower():
-            # Approval-gated or destructive tools: treat as hard failure, not mock success
-            try:
-                from ..tools.executor import approval_gated_tools  # type: ignore
-                if tool in approval_gated_tools():
-                    logger.warning("tool_execute permission denied for gated tool %s — failing closed: %s", tool, e)
-                    return {
-                        "error": f"permission denied for tool {tool}: {e}"[:500],
-                        "execution_status": "failed",
-                        "metadata": {**state.get("metadata", {}), "node": "tool_execute", "error": True, "permission_denied": True},
-                    }
-            except Exception:
-                pass
-            logger.warning("tool_execute permission fallback for non-gated %s: %s", tool, e)
+            logger.warning("tool_execute permission denied agent=%s tool=%s — failing closed: %s",
+                           agent_id, tool, e)
             return {
-                "result": {"tool": tool, "output": {"mock": True, "note": "permission fallback for non-gated tool (graph v1)"}, "summary": f"tool {tool} mock executed"},
-                "execution_status": "finalizing",
-                "metadata": {**state.get("metadata", {}), "node": "tool_execute", "mock": True},
+                "error": f"permission denied for tool {tool}: {e}"[:500],
+                "execution_status": "failed",
+                "metadata": {**state.get("metadata", {}), "node": "tool_execute", "error": True, "permission_denied": True},
             }
         logger.warning("tool_execute failed %s: %s", tool, e)
         return {
@@ -575,6 +693,30 @@ async def tool_execute_node(state: dict[str, Any]) -> dict[str, Any]:
 
 
 async def evaluate_node(state: dict[str, Any]) -> dict[str, Any]:
+    # Approval pause is sticky: a node that paused for approval must NOT be
+    # converted into completed/failed by scoring — the router's
+    # waiting_approval branch (→ finalize with the pause intact) depends on it.
+    if state.get("execution_status") == "waiting_approval":
+        rag_ctx_w = state.get("rag_context") or {}
+        return {
+            "execution_status": "waiting_approval",
+            "evaluation": {
+                "task_completion": False,
+                "tool_correctness": True,
+                "retrieval_relevance": state.get("rag_status") in ("ok", "empty"),
+                "memory_relevance": bool(rag_ctx_w.get("preferences")),
+                "policy_correctness": bool(state.get("approval_state")),
+                "workspace_correctness": True,
+                "output_schema_valid": True,
+                "provenance_complete": True,
+                "user_objective_met": False,
+                "score": 0.5,
+                "replan_required": False,
+                "reason": "awaiting approval",
+                "schema_version": 1,
+            },
+            "metadata": {**state.get("metadata", {}), "node": "evaluate"},
+        }
     if state.get("error"):
         # Build evaluation for failure path
         rag_ctx_err = state.get("rag_context") or {}
@@ -652,6 +794,23 @@ async def evaluate_node(state: dict[str, Any]) -> dict[str, Any]:
 
 
 async def finalize_node(state: dict[str, Any]) -> dict[str, Any]:
+    # Approval pause passes through untouched (same contract as tool_decision/
+    # evaluate): finalize must never convert a pause into completed/failed.
+    if state.get("execution_status") == "waiting_approval":
+        return {
+            "execution_status": "waiting_approval",
+            "metadata": {**state.get("metadata", {}), "node": "finalize"},
+        }
+    # Failure truthfulness (§31): surface the terminal reason in the result so
+    # downstream consumers (and operators) see WHY the graph failed instead of
+    # a stale upstream summary. The `error` key keeps the activity contract.
+    if state.get("execution_status") == "failed":
+        _reason = str(state.get("error") or (state.get("evaluation") or {}).get("reason") or "failed")[:500]
+        return {
+            "result": {"summary": f"graph failed: {_reason}"[:800], "error": _reason},
+            "execution_status": "failed",
+            "metadata": {**state.get("metadata", {}), "node": "finalize"},
+        }
     # Merge result + rag summary + bounded (never exceed 20KB)
     result = state.get("result") or {"summary": f"graph completed for {state.get('agent_id')}"}
     if len(json.dumps(result, default=str).encode("utf-8")) > 20480:
@@ -663,49 +822,37 @@ async def finalize_node(state: dict[str, Any]) -> dict[str, Any]:
     except ValueError:
         result = {"summary": "result redacted (contained forbidden key)", "truncated": True}
 
-    # Memory closed-loop hook: attempt lightweight preference extraction when task signals preference
-    # (e.g., "I prefer concise reports") — best-effort, never fails finalize
+    # Memory closed-loop hook: task preference signals flow through the
+    # COMPLETED learning pipeline (admission gate + dedup + tenant binding),
+    # never direct memory writes. Best-effort, never fails finalize.
+    # Skip in tests unless explicitly opted in (VAELOOM_TEST_MEMORY_WRITE=1).
     task_lower = (state.get("task") or "").lower()
     if "prefer" in task_lower and ("concise" in task_lower or "brief" in task_lower or "short" in task_lower):
         try:
-            # Attach provenance marker for observability/verification
             result.setdefault("provenance", {})["memory_candidate"] = {"type": "preference", "signal": "concise", "task": state.get("task", "")[:200]}
-            # Best-effort async persist (fail-open, never blocks finalize).
-            # Skip in tests unless explicitly opted in (VAELOOM_TEST_MEMORY_WRITE=1); writes in prod.
             import os as _os
 
             if not _os.environ.get("PYTEST_CURRENT_TEST") or _os.environ.get("VAELOOM_TEST_MEMORY_WRITE") == "1":
                 try:
-                    from ..database import async_session_factory  # type: ignore
-                    from ..schemas.memory import MemoryCreate  # type: ignore
-                    from ..services.memory_service import memory_service  # type: ignore
+                    from ..agents.memory.consolidator import memory_consolidator  # type: ignore
 
                     _ws = state.get("workspace_id")
-                    _uid = state.get("user_id")
-                    _ws = _ws if _ws not in (None, "unknown", "req-unknown") else None
-                    _uid = _uid if _uid not in (None, "unknown", "req-unknown") else None
-
-                    async with async_session_factory() as _db:
-                        await memory_service.create_memory(
-                            _db,
-                            MemoryCreate(
-                                type="preference",
-                                domain="user_preference",
-                                title="Communication preference",
-                                summary="User prefers concise/brief responses",
-                                content=f"User signaled preference for concise output during task: {state.get('task', '')[:200]}",
-                                workspace_id=_ws,
-                                metadata={"source": "graph_finalize_closed_loop", "signal": "concise"},
-                                tags=["preference", "auto-extracted"],
-                                source_type="agent",
-                            ),
-                            tenant_id=None,
-                            user_id=_uid,
+                    _tenant = state.get("tenant_id")
+                    if _ws not in (None, "", "unknown", "req-unknown"):
+                        _lr = await memory_consolidator.consolidate_trajectory(
+                            workspace_id=str(_ws),
+                            agent_name=str(state.get("selected_agent") or state.get("agent_id") or "graph"),
+                            user_prompt=str(state.get("task") or ""),
+                            summary="graph run completed",
+                            event_id=f"graph:{state.get('request_id')}",
+                            tenant_id=_tenant if isinstance(_tenant, str) else None,
+                            correlation_id=str(state.get("correlation_id") or state.get("request_id") or ""),
+                            source="trajectory_feedback",
                         )
-                        await _db.commit()
-                    result["provenance"]["memory_persisted"] = True
+                        if isinstance(_lr, dict) and _lr.get("status") == "success" and _lr.get("consolidated_count"):
+                            result["provenance"]["memory_persisted"] = True
                 except Exception as _mem_err:  # fail-open: never block finalize
-                    logger.warning("finalize memory closed-loop write skipped: %s", _mem_err)
+                    logger.warning("finalize learning pipeline skipped: %s", _mem_err)
         except Exception:
             pass
 

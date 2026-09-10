@@ -231,11 +231,19 @@ async def chat(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     await _verify_workspace_access(dto.workspaceId, current_user, db)
+    # Trusted caller identity for downstream orchestration (graph branch).
+    # Tenant prefers middleware request-state, falls back to JWT claims.
+    _uid = current_user.get("sub") or current_user.get("user_id") if current_user else None
+    _tenant = getattr(request.state, "tenant_id", None)
+    if not _tenant and isinstance(current_user, dict):
+        _tenant = current_user.get("tenant_id") or (current_user.get("tenant") if isinstance(current_user.get("tenant"), str) else None)
     req = UserRequest(
         request_id=str(uuid.uuid4()),
         message=dto.message,
         workspace_id=dto.workspaceId,
         preferred_agent=dto.agentName.strip().lower() if dto.agentName else None,
+        user_id=str(_uid) if _uid else None,
+        tenant_id=str(_tenant) if _tenant else None,
     )
     result = await handle(req)
     return result

@@ -28,6 +28,10 @@ class VaeloomGraphState(TypedDict, total=False):
 
     workspace_id: str
     user_id: str
+    # Trusted tenant binding — set ONLY by the runner from middleware context,
+    # never from model output. Nodes must not overwrite it (runner asserts
+    # trusted ids unchanged post-run).
+    tenant_id: str | None
     agent_id: str
     request_id: str
     correlation_id: str | None
@@ -99,6 +103,12 @@ def validate_graph_state(state: dict[str, Any]) -> None:
             pass
     # Validate no secrets anywhere in state
     validate_no_secrets(state)
+
+    # Trusted tenant binding: well-formed when present (runner enforces presence).
+    _tenant = state.get("tenant_id")
+    if _tenant is not None:
+        if not isinstance(_tenant, str) or not _tenant.strip() or len(_tenant) > 256:
+            raise ValueError("graph tenant_id malformed")
 
     # Explicit forbidden keys check (redundant with validate_no_secrets but clearer error)
     for k in FORBIDDEN_GRAPH_KEYS:
@@ -222,6 +232,7 @@ def build_initial_state(
     """Build bounded initial state from DurableAgentRequest payload (IDs only)."""
     ws = payload.get("workspace_id") or payload.get("workspaceId") or ""
     uid = payload.get("user_id") or payload.get("userId") or ""
+    tenant = payload.get("tenant_id") or payload.get("tenantId") or ""
     aid = payload.get("agent_id") or payload.get("agentId") or "memory"
     req = payload.get("request_id") or payload.get("requestId") or payload.get("correlation_id") or "req-unknown"
     corr = payload.get("correlation_id") or payload.get("correlationId")
@@ -247,6 +258,7 @@ def build_initial_state(
     state: VaeloomGraphState = {
         "workspace_id": str(ws),
         "user_id": str(uid),
+        "tenant_id": str(tenant) if tenant else None,
         "agent_id": str(aid),
         "request_id": str(req),
         "correlation_id": str(corr) if corr else None,

@@ -145,12 +145,16 @@ def _build_graph():
     g.add_edge("agent", "tool_decision")
 
     def after_tool_decision(state: VaeloomGraphState) -> str:
+        # Terminal-ish statuses pass straight to evaluate (never into policy/execute).
+        if state.get("execution_status") in ("waiting_approval", "failed", "cancelled"):
+            return "evaluate"
         return "policy_check" if state.get("selected_tool") else "evaluate"
 
     g.add_conditional_edges("tool_decision", after_tool_decision, {"policy_check": "policy_check", "evaluate": "evaluate"})
 
     def after_policy_check(state: VaeloomGraphState) -> str:
-        if state.get("execution_status") == "waiting_approval":
+        # Terminal-ish statuses pass straight to evaluate (never into execute).
+        if state.get("execution_status") in ("waiting_approval", "failed", "cancelled"):
             return "evaluate"
         return "tool_execute"
 

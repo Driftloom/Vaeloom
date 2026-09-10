@@ -127,11 +127,16 @@ CATEGORY_KEYWORDS = {
 
 
 class UserRequest:
-    def __init__(self, request_id: str, message: str, workspace_id: str, preferred_agent: str | None = None):
+    def __init__(self, request_id: str, message: str, workspace_id: str, preferred_agent: str | None = None,
+                 user_id: str | None = None, tenant_id: str | None = None):
         self.id = request_id
         self.message = message
         self.workspace_id = workspace_id
         self.preferred_agent = preferred_agent
+        # Trusted caller identity (populated by the API layer from auth context;
+        # None in non-HTTP/test contexts — consumers must fail closed).
+        self.user_id = user_id
+        self.tenant_id = tenant_id
 
 
 # ── Muse §7 capability-aware selection ─────────────────────────────
@@ -450,6 +455,66 @@ def _handle_out_of_scope(agent_name: str, confidence: float) -> dict[str, Any]:
     }
 
 
+async def _qa_gate_output(agent_output: dict[str, Any], workspace_id: str, label: str) -> dict[str, Any]:
+    """Shared QA gate: up to 3 approvals, else best-effort flag + pending approvals.
+
+    Identical semantics for supervisor and graph paths (factored to avoid a
+    second gate implementation drifting).
+    """
+    qa = QAAgent()
+    for attempt in range(3):
+        qa_result: QAValidationResult = await qa.validate(agent_output)
+        if qa_result.decision == "approved":
+            logger.info("%s QA APPROVED (attempt %d)", label, attempt + 1)
+            await _attach_pending_approvals(agent_output, workspace_id)
+            return agent_output
+        logger.warning("%s QA REJECTED (attempt %d): %s", label, attempt + 1, qa_result.issues)
+    agent_output["qa_flag"] = "best_effort_after_retries"
+    await _attach_pending_approvals(agent_output, workspace_id)
+    return agent_output
+
+
+async def _run_graph_branch(request: UserRequest, agent_name: str, confidence: float) -> dict[str, Any] | None:
+    """LangGraph direct path (gated, opt-in). Returns None when the graph path
+    is unavailable so the caller falls through to the single-agent loop
+    (availability ladder — same contract as ReAct's None fallthrough).
+
+    When the graph EXECUTES, failures are truthful terminal results (never
+    silent fallback to the loop — matches the activity's failed-not-legacy rule).
+    """
+    try:
+        from ..graph.runner import run_graph_direct, should_use_graph
+    except Exception as e:
+        logger.debug("graph runner unavailable: %s", e)
+        return None
+    try:
+        if not should_use_graph(request.id):
+            return None
+    except Exception:
+        return None
+    # Trusted identity: explicit request fields win, middleware context is backup.
+    user_id = getattr(request, "user_id", None)
+    tenant_id = getattr(request, "tenant_id", None)
+    if not user_id or not tenant_id:
+        try:
+            from ..middleware.tenant import TenantContext as _TC
+            user_id = user_id or _TC.get_user_id()
+            tenant_id = tenant_id or _TC.get_tenant_id()
+        except Exception:
+            pass
+    logger.info(f"GRAPH direct path for request {request.id} agent={agent_name}")
+    result = await run_graph_direct(
+        workspace_id=request.workspace_id,
+        user_id=user_id,
+        tenant_id=tenant_id,
+        agent_id=agent_name,
+        request_id=request.id,
+        correlation_id=request.id,
+        task=request.message,
+    )
+    return result
+
+
 async def handle(request: UserRequest) -> dict[str, Any]:
     """
     Orchestrator entry point.
@@ -519,6 +584,26 @@ async def handle(request: UserRequest) -> dict[str, Any]:
             },
         }
 
+    # ── 2b. LangGraph direct path (gated, opt-in) ────────────────────
+    # When enabled, the compiled graph orchestrates (its supervisor node owns
+    # multi-agent). Unavailable → None → existing paths unchanged.
+    try:
+        _graph_out = await _run_graph_branch(request, agent_name, confidence)
+        if _graph_out is not None:
+            return await _qa_gate_output(_graph_out, request.workspace_id, "GRAPH")
+    except ValueError as _ge:
+        # Trusted-context/topology failures fail closed (never fall through).
+        logger.warning("GRAPH branch refused: %s", _ge)
+        return {
+            "agent_name": agent_name,
+            "action": "error",
+            "confidence": 0.0,
+            "result": {"summary": f"Graph execution refused: {_ge}", "details": None,
+                       "proposals": [], "questions": []},
+        }
+    except Exception as e:
+        logger.warning(f"GRAPH branch failed, falling back to single-agent: {e}")
+
     # ── 3. Multi-agent supervisor check (before single-agent guards) ───
     # If the message spans 2+ intent categories and no explicit agent was forced,
     # run the hierarchical supervisor DAG instead of single-agent loop.
@@ -534,25 +619,14 @@ async def handle(request: UserRequest) -> dict[str, Any]:
             metrics_collector.record(AgentMetric(
                 timestamp=time.time(), agent_name="supervisor", success=True, latency_ms=sup_latency, confidence=confidence,
             ))
-            # ── QA Gate for supervisor output ─────────────────────
-            qa = QAAgent()
-            # If supervisor already produced merged summary, use it; else wrap
+            # ── QA Gate for supervisor output (shared helper — identical semantics)
             agent_output = supervisor_output if supervisor_output.get("supervisor") else {
                 "agent_name": supervisor_output.get("agent_name", "supervisor"),
                 "action": supervisor_output.get("action", "suggest"),
                 "confidence": supervisor_output.get("confidence", 0.87),
                 "result": supervisor_output.get("result", {"summary": str(supervisor_output), "details": None, "proposals": [], "questions": []}),
             }
-            for attempt in range(3):
-                qa_result: QAValidationResult = await qa.validate(agent_output)
-                if qa_result.decision == "approved":
-                    logger.info(f"SUPERVISOR QA APPROVED (attempt {attempt+1})")
-                    await _attach_pending_approvals(agent_output, request.workspace_id)
-                    return agent_output
-                logger.warning(f"SUPERVISOR QA REJECTED (attempt {attempt+1}): {qa_result.issues}")
-            agent_output["qa_flag"] = "best_effort_after_retries"
-            await _attach_pending_approvals(agent_output, request.workspace_id)
-            return agent_output
+            return await _qa_gate_output(agent_output, request.workspace_id, "SUPERVISOR")
         except Exception as e:
             logger.warning(f"SUPERVISOR failed, falling back to single-agent: {e}")
 
