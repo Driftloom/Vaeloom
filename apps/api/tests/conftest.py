@@ -73,6 +73,25 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest, REGISTRY
 from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from api.config import settings
+
+# Isolate test suite from developer's local credentials in .env
+for _env_key in [
+    "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN",
+    "MS_GRAPH_CLIENT_ID", "MS_GRAPH_CLIENT_SECRET", "MS_GRAPH_REFRESH_TOKEN",
+    "JOB_BOARD_API_URL", "JOB_BOARD_API_KEY",
+    "SSO_PROVIDERS",
+]:
+    os.environ.pop(_env_key, None)
+
+settings.google_client_id = ""
+settings.google_client_secret = ""
+settings.google_refresh_token = ""
+settings.ms_graph_client_id = ""
+settings.ms_graph_client_secret = ""
+settings.ms_graph_refresh_token = ""
+settings.job_board_api_url = ""
+settings.job_board_api_key = ""
+settings.sso_providers = {}
 from sqlalchemy.pool import NullPool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 

@@ -172,9 +172,8 @@ def get_sso_provider(provider: str, config: SSOConfig) -> SSOProvider:
     providers = {
         "google": GoogleSSOProvider,
         "microsoft": MicrosoftSSOProvider,
-        "saml": SAMLSSOProvider,
     }
     cls = providers.get(provider)
     if not cls:
-        raise ValueError(f"Unsupported SSO provider: {provider}. Use 'google', 'microsoft', or 'saml'.")
+        raise ValueError(f"Unsupported SSO provider: {provider}. Use 'google' or 'microsoft'.")
     return cls(config)

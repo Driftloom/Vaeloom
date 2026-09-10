@@ -160,7 +160,7 @@ async def sso_login(provider: str, redirect_uri: str = Query(...), request: Requ
 
     sso = get_sso_provider(provider, SSOConfig(**provider_config))
     state = secrets.token_urlsafe(32)
-    _sso_states[state] = provider
+    _sso_states[state] = (provider, redirect_uri)
     auth_url = await sso.get_auth_url(redirect_uri, state)
     return {"auth_url": auth_url, "state": state}
 
@@ -179,9 +179,14 @@ async def sso_callback(
     from ..schemas.auth import AuthResponse as AuthResp
     from ..schemas.auth import PublicUser
 
-    expected_provider = _sso_states.pop(state, None)
-    if expected_provider is None:
+    stored = _sso_states.pop(state, None)
+    if stored is None:
         raise HTTPException(status_code=400, detail="Invalid or expired SSO state")
+    if isinstance(stored, tuple):
+        expected_provider, original_redirect_uri = stored
+    else:
+        expected_provider, original_redirect_uri = stored, None
+
     if expected_provider != provider:
         raise HTTPException(status_code=400, detail="Provider mismatch in SSO state")
 
@@ -189,7 +194,7 @@ async def sso_callback(
     if not provider_config:
         raise HTTPException(status_code=400, detail=f"Unsupported SSO provider: {provider}")
 
-    redirect_uri = str(request.url_for("sso_callback", provider=provider))
+    redirect_uri = original_redirect_uri or str(request.url_for("sso_callback", provider=provider))
     sso = get_sso_provider(provider, SSOConfig(**provider_config))
     id_token = await sso.exchange_code(code, redirect_uri)
     if not id_token:
