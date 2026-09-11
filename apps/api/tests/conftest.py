@@ -125,20 +125,22 @@ def _build_test_app(db_session):
     from sqlalchemy.ext.asyncio import async_sessionmaker
 
     test_session_factory = async_sessionmaker(db_session.bind, expire_on_commit=False)
+    # IDEM-SCOPE-01: idempotency must run AFTER Auth+Tenant (added before
+    # them, since Starlette executes last-added first) so replays are
+    # authenticated and tenant/workspace-scoped. Replaying before auth would
+    # serve stored responses to unauthenticated callers.
+    from api.middleware.idempotency import IdempotencyMiddleware
+    test_app.add_middleware(
+        IdempotencyMiddleware,
+        session_factory=test_session_factory,
+    )
     test_app.add_middleware(TenantMiddleware, session_factory=test_session_factory)
-    test_app.add_middleware(AuthMiddleware)
+    test_app.add_middleware(AuthMiddleware, session_factory=test_session_factory)
     test_app.add_exception_handler(StarletteHTTPException, unified_exception_handler)
     test_app.add_exception_handler(Exception, generic_exception_handler)
 
     from api.infrastructure.metrics import MetricsMiddleware
     test_app.add_middleware(MetricsMiddleware)
-
-    from sqlalchemy.ext.asyncio import async_sessionmaker
-    from api.middleware.idempotency import IdempotencyMiddleware
-    test_app.add_middleware(
-        IdempotencyMiddleware,
-        session_factory=async_sessionmaker(db_session.bind, expire_on_commit=False),
-    )
 
     test_app.include_router(health.router, prefix="/health")
     test_app.include_router(auth.router, prefix="/api/v1/auth")

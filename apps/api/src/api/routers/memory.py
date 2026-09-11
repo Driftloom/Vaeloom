@@ -311,6 +311,18 @@ async def create_memory(
         raise HTTPException(status_code=403, detail="Forbidden: Mismatched workspace ID")
 
     target_ws = workspace_id or (str(dto.workspace_id) if dto.workspace_id else None)
+    if not target_ws and user_id:
+        try:
+            uid = uuid.UUID(str(user_id))
+            ws_res = await db.execute(
+                select(Workspace.id).where(Workspace.user_id == uid).order_by(Workspace.created_at.asc()).limit(1)
+            )
+            default_ws = ws_res.scalar_one_or_none()
+            if default_ws:
+                target_ws = str(default_ws)
+        except Exception:
+            pass
+
     if not target_ws:
         raise HTTPException(
             status_code=400,

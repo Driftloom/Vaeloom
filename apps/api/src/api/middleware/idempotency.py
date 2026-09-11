@@ -1,10 +1,17 @@
 """
 Idempotency Middleware — replay protection for consequential POST/PATCH/PUT requests.
 
-Requests carrying an `Idempotency-Key` header to a consequential endpoint are
-recorded together with their response. Replays with the same key and identical
-payload return the original response (marked with `Idempotency-Replayed: true`)
-instead of re-executing the side effect. Replays with a different payload get 422.
+Identity is (tenant_id, workspace_id, actor, key, path) — IDEM-SCOPE-01.
+Same scope + key + identical payload replays the stored response
+(`Idempotency-Replayed: true`); a different tenant/workspace/actor NEVER
+observes another scope's result, even on key collision; a different payload
+under the same identity gets 422.
+
+Runs AFTER Auth+Tenant in the middleware stack (see main.py ordering) so
+request.state carries authoritative scope. Requests without auth context
+scope to '' sentinels (fail-closed per-scope isolation still holds: two
+unauthenticated callers share only the ('','','') namespace on public
+paths — and all consequential paths require auth).
 """
 import hashlib
 import json
@@ -42,6 +49,25 @@ def _is_consequential(path: str, method: str) -> bool:
     return path.startswith("/api/v1/approvals")
 
 
+def _scope_from_request(request: Request) -> tuple[str, str, str]:
+    """Authoritative scope from middleware-populated request state.
+
+    tenant/workspace from TenantMiddleware; actor (sub/user_id) from Auth.
+    '' sentinel for absent values (never None: NULLs would defeat the UNIQUE
+    scope constraint on PostgreSQL).
+    """
+    tenant = getattr(request.state, "tenant_id", None) or ""
+    workspace = getattr(request.state, "workspace_id", None) or ""
+    user = getattr(request.state, "user", None) or {}
+    actor = (
+        getattr(request.state, "user_id", None)
+        or (user.get("sub") if isinstance(user, dict) else None)
+        or (user.get("user_id") if isinstance(user, dict) else None)
+        or ""
+    )
+    return str(tenant), str(workspace), str(actor)
+
+
 def _request_hash(method: str, path: str, body: bytes) -> str:
     return hashlib.sha256(f"{method}|{path}|{body.decode('utf-8', errors='replace')}".encode()).hexdigest()
 
@@ -59,9 +85,10 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
 
         body = await request.body()
         req_hash = _request_hash(request.method, path, body)
+        tenant_id, workspace_id, actor = _scope_from_request(request)
 
         try:
-            replayed = await self._replay(key, path, req_hash)
+            replayed = await self._replay(key, path, req_hash, tenant_id, workspace_id, actor)
         except Exception:
             try:
                 from ..config import settings as _idem_settings
@@ -91,7 +118,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
             logger.exception("Idempotency body read failed; passing response through")
             return response
         try:
-            await self._store(key, path, req_hash, response, body_bytes=raw_body)
+            await self._store(key, path, req_hash, response, tenant_id, workspace_id, actor, body_bytes=raw_body)
             response = Response(
                 content=raw_body,
                 status_code=response.status_code,
@@ -108,10 +135,16 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
             response = Response(content=raw_body, status_code=response.status_code, headers=headers)
         return response
 
-    async def _replay(self, key: str, path: str, req_hash: str) -> Response | None:
+    async def _replay(
+        self, key: str, path: str, req_hash: str,
+        tenant_id: str, workspace_id: str, actor: str,
+    ) -> Response | None:
         async with self._session_factory() as session:
             result = await session.execute(
                 select(IdempotencyRecord).where(
+                    IdempotencyRecord.tenant_id == tenant_id,
+                    IdempotencyRecord.workspace_id == workspace_id,
+                    IdempotencyRecord.actor == actor,
                     IdempotencyRecord.idempotency_key == key,
                     IdempotencyRecord.request_path == path,
                     IdempotencyRecord.expires_at > datetime.now(UTC),
@@ -136,7 +169,9 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
             )
 
     async def _store(
-        self, key: str, path: str, req_hash: str, response: Response, body_bytes: bytes | None = None
+        self, key: str, path: str, req_hash: str, response: Response,
+        tenant_id: str, workspace_id: str, actor: str,
+        body_bytes: bytes | None = None,
     ) -> bytes:
         if body_bytes is None:  # backward compat: consume when caller did not pre-read
             body_bytes = b"".join([chunk async for chunk in response.body_iterator])
@@ -150,6 +185,9 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                 session.add(
                     IdempotencyRecord(
                         id=uuid.uuid4(),
+                        tenant_id=tenant_id,
+                        workspace_id=workspace_id,
+                        actor=actor,
                         idempotency_key=key,
                         request_path=path,
                         request_hash=req_hash,

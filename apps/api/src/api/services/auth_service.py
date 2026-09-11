@@ -10,6 +10,71 @@ from ..models.schema import AuthSession, User, Workspace
 from ..schemas.auth import AuthResponse, PublicUser
 from ..utils.sanitize import sanitize_text
 
+# AUTH-REV-01: shared revocation. Redis (when explicitly configured via
+# REDIS_URL) is the fast path; the DB (auth_sessions.status +
+# revoked_user_cutoffs) is the cross-worker truth. There is deliberately NO
+# process-local denylist anymore: a revocation invisible to another worker
+# is not a revocation.
+_REVOKED_PREFIX = "jwt:revoked:"
+_CUTOFF_PREFIX = "jwt:cutoff:"
+_redis_client = None
+_redis_checked = False
+
+
+def _get_revocation_redis():
+    """Sync Redis client for the revocation fast path, else None.
+
+    Opt-in rule mirrors middleware/csrf.py: only an explicit REDIS_URL
+    enables it (never the localhost default), so tests/local without Redis
+    pay no connection timeouts. Cached after first probe.
+    """
+    global _redis_client, _redis_checked
+    import os
+
+    if _redis_checked:
+        return _redis_client
+    _redis_checked = True
+    if not os.environ.get("REDIS_URL"):
+        return None
+    try:
+        import redis as _redis
+
+        client = _redis.Redis.from_url(
+            os.environ["REDIS_URL"],
+            decode_responses=True,
+            socket_connect_timeout=1,
+            socket_timeout=1,
+        )
+        client.ping()
+        _redis_client = client
+        return client
+    except Exception as e:
+        import logging as _log
+
+        _log.getLogger(__name__).warning(
+            "revocation Redis unavailable, using DB truth: %s", e
+        )
+        return None
+
+
+# Test/embedding hook: middleware-adjacent checks open sessions through this
+# factory. Production default is the global engine factory; the test harness
+# overrides it with the per-test session so checks stay hermetic.
+_session_factory_override = None
+
+
+def set_revocation_session_factory(fn) -> None:
+    global _session_factory_override
+    _session_factory_override = fn
+
+
+def _revocation_session_factory():
+    if _session_factory_override is not None:
+        return _session_factory_override()
+    from ..database import async_session_factory
+
+    return async_session_factory()
+
 
 class AuthService:
     async def signup(self, email: str, password: str, display_name: str | None = None, db=None):
@@ -42,6 +107,28 @@ class AuthService:
         )
         db.add(user)
         await db.flush()
+
+        # OP-RLS-01: establish RLS context for the remainder of the signup
+        # transaction. Under a least-privilege runtime role, the workspace
+        # INSERT below (WITH CHECK owner) and subsequent reads require GUCs;
+        # pre-auth there is no middleware context, so the freshly minted
+        # identity bootstraps its own (transaction-scoped SET LOCAL).
+        # No-op on SQLite / on failure (fail-closed RLS then applies, and the
+        # pre-existing permissive users/tenants policies keep signup working).
+        try:
+            from sqlalchemy import text as _text
+
+            if getattr(user, "tenant_id", None):
+                await db.execute(
+                    _text("SELECT set_config('app.tenant_id', :v, true)"),
+                    {"v": str(user.tenant_id)},
+                )
+            await db.execute(
+                _text("SELECT set_config('app.user_id', :v, true)"),
+                {"v": str(user.id)},
+            )
+        except Exception:
+            pass
 
         workspace = Workspace(
             user_id=user.id,
@@ -94,13 +181,14 @@ class AuthService:
         import secrets
 
         now = datetime.now(UTC)
-        access_token = self._create_jwt(user_id, email, tenant_id)
+        access_token, jti = self._create_jwt(user_id, email, tenant_id)
         refresh_token = secrets.token_urlsafe(64)
 
         session = AuthSession(
             user_id=uuid.UUID(user_id),
             token=access_token,
             refresh_token=refresh_token,
+            jti=jti,
             expires_at=now + timedelta(seconds=settings.jwt_refresh_token_ttl),
         )
         db.add(session)
@@ -147,30 +235,181 @@ class AuthService:
             return user
         return None
 
-    _revoked_tokens: set[str] = set()
-    _revoked_users_before: dict[str, int] = {}
-
     def revoke_token(self, jti: str | None = None) -> None:
-        if jti:
-            self._revoked_tokens.add(str(jti))
+        """Best-effort shared single-token revocation (sync, logout path).
 
-    def revoke_all_user_tokens(self, user_id: str) -> None:
+        Writes the Redis fast-path entry when Redis is configured. The
+        durable cross-worker revocation is the auth_sessions.status flip
+        performed by the logout route's SQL in the same request; the async
+        check below always consults shared state, never process memory.
+        """
+        if not jti:
+            return
+        try:
+            client = _get_revocation_redis()
+            if client is not None:
+                client.setex(
+                    f"{_REVOKED_PREFIX}{jti}", int(settings.jwt_token_ttl), "1"
+                )
+        except Exception as e:
+            import logging as _log
+
+            _log.getLogger(__name__).warning("revoke_token Redis write failed: %s", e)
+
+    async def revoke_all_user_tokens(self, user_id: str, db=None) -> None:
+        """Server-side revoke-all watermark (shared across workers).
+
+        Any access token for this user with iat strictly below the cutoff is
+        rejected. Persists to revoked_user_cutoffs (+ Redis mirror). Prunes
+        watermarks older than the max access-token lifetime.
+        """
         import time
-        self._revoked_users_before[str(user_id)] = int(time.time())
+
+        cutoff = int(time.time())
+        client = None
+        try:
+            client = _get_revocation_redis()
+            if client is not None:
+                client.setex(
+                    f"{_CUTOFF_PREFIX}{user_id}", int(settings.jwt_token_ttl), str(cutoff)
+                )
+        except Exception as e:
+            import logging as _log
+
+            _log.getLogger(__name__).warning("revoke_all Redis write failed: %s", e)
+        if db is None:
+            return
+        try:
+            from ..models.schema import RevokedUserCutoff
+
+            row = await db.get(RevokedUserCutoff, uuid.UUID(str(user_id)))
+            if row is None:
+                db.add(RevokedUserCutoff(user_id=uuid.UUID(str(user_id)), cutoff_unix=cutoff))
+            else:
+                row.cutoff_unix = cutoff
+            # Prune watermarks that can no longer match a live access token.
+            try:
+                from sqlalchemy import delete
+
+                await db.execute(
+                    delete(RevokedUserCutoff).where(
+                        RevokedUserCutoff.cutoff_unix
+                        < int(time.time()) - int(settings.jwt_token_ttl) - 60
+                    )
+                )
+            except Exception:
+                pass
+            await db.flush()
+        except Exception as e:
+            import logging as _log
+
+            _log.getLogger(__name__).warning("revoke_all DB write failed: %s", e)
+
+    async def is_token_revoked_async(
+        self,
+        jti: str | None = None,
+        user_id: str | None = None,
+        iat: float | None = None,
+        raw_token: str | None = None,
+        db=None,
+    ) -> tuple[bool, str]:
+        """Shared revocation check. Order: Redis fast path -> DB truth.
+
+        Returns (revoked, reason). Raises on DB outage (callers fail closed:
+        a revocation state that cannot be read must deny, never admit).
+        Redis outage degrades to DB (warn-logged); Redis absence skips to DB.
+        """
+        import logging as _log
+
+        log = _log.getLogger(__name__)
+        # 1. Redis fast path (explicit REDIS_URL only).
+        try:
+            client = _get_revocation_redis()
+        except Exception:
+            client = None
+        if client is not None:
+            try:
+                if jti and client.exists(f"{_REVOKED_PREFIX}{jti}"):
+                    return True, "denylist"
+                if user_id:
+                    stored = client.get(f"{_CUTOFF_PREFIX}{user_id}")
+                    if stored is not None and iat is not None and float(iat) < float(stored):
+                        return True, "cutoff"
+            except Exception as e:
+                log.warning("revocation Redis read failed, falling back to DB: %s", e)
+        # 2. DB truth: session status (covers logout's status flip for ALL of
+        # the user's sessions) + revoke-all watermarks.
+        own_session = False
+        session = db
+        ctx = None
+        if session is None:
+            # Open a session through the (overridable) factory. Production:
+            # global engine factory (cross-worker DB truth). Tests: the
+            # per-test session via set_revocation_session_factory.
+            own_session = True
+            factory = _revocation_session_factory()
+            ctx = factory()
+            session = await ctx.__aenter__()
+        try:
+            from sqlalchemy import or_
+
+            from ..models.schema import RevokedUserCutoff
+
+            if jti or raw_token:
+                conds = []
+                if jti:
+                    conds.append(AuthSession.jti == str(jti))
+                if raw_token:
+                    conds.append(AuthSession.token == raw_token)
+                res = await session.execute(
+                    select(AuthSession.status).where(or_(*conds)).limit(1)
+                )
+                status = res.scalar_one_or_none()
+                if status is not None and status != "ACTIVE":
+                    return True, f"session-{status.lower()}"
+            if user_id and iat is not None:
+                try:
+                    row = await session.get(
+                        RevokedUserCutoff, uuid.UUID(str(user_id))
+                    )
+                except Exception:
+                    row = None
+                if row is not None and float(iat) < float(row.cutoff_unix):
+                    return True, "cutoff"
+            return False, ""
+        finally:
+            if own_session:
+                try:
+                    await ctx.__aexit__(None, None, None)
+                except Exception:
+                    pass
 
     def is_token_revoked(self, jti: str | None = None, user_id: str | None = None, iat: float | None = None) -> bool:
-        if jti and str(jti) in self._revoked_tokens:
-            return True
-        if user_id and str(user_id) in self._revoked_users_before:
-            cutoff = self._revoked_users_before[str(user_id)]
-            if iat is not None and int(iat) < cutoff:
+        """Deprecated sync shim (no DB access): consults the shared Redis
+        fast path only. Prefer is_token_revoked_async. Returns False when
+        Redis is unconfigured (documented: sync contexts cannot reach DB)."""
+        try:
+            client = _get_revocation_redis()
+        except Exception:
+            return False
+        if client is None:
+            return False
+        try:
+            if jti and client.exists(f"{_REVOKED_PREFIX}{jti}"):
                 return True
+            if user_id:
+                stored = client.get(f"{_CUTOFF_PREFIX}{user_id}")
+                if stored is not None and iat is not None and float(iat) < float(stored):
+                    return True
+        except Exception:
+            return False
         return False
 
     def _create_jwt(self, user_id: str, email: str, tenant_id: str | None = None):
         now = datetime.now(UTC)
+        jti = str(uuid.uuid4())
         payload = {
-            "jti": str(uuid.uuid4()),
+            "jti": jti,
             "sub": user_id,
             "email": email,
             "iat": now,
@@ -178,7 +417,7 @@ class AuthService:
         }
         if tenant_id:
             payload["tenant_id"] = tenant_id
-        return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+        return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm), jti
 
 
 auth_service = AuthService()

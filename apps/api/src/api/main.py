@@ -138,7 +138,13 @@ async def lifespan(app: FastAPI):
     setup_logging()
     setup_opentelemetry()
     logger.info("Starting Vaeloom Backend v%s (env=%s)", settings.service_version, settings.service_environment)
-    async with engine.begin() as conn:
+    # OP-RLS-01: DDL/boot migrations run on the owner engine when
+    # DATABASE_MIGRATION__URL is configured; the runtime engine may be a
+    # least-privilege non-BYPASSRLS role without DDL rights.
+    from .database import get_migration_engine
+
+    _ddl_engine = get_migration_engine() or engine
+    async with _ddl_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     # Run Alembic migrations (standard, replaces custom migration runner)
     try:
@@ -154,7 +160,22 @@ async def lifespan(app: FastAPI):
             # Fallback: try relative to current working directory
             alembic_ini = "alembic.ini"
         alembic_cfg = Config(alembic_ini)
-        command.upgrade(alembic_cfg, "head")
+        # Point alembic at the migration (owner) URL when configured; env.py
+        # prefers VAELOOM_TARGET_URL over everything else.
+        from .database import _migration_url
+
+        _murl = _migration_url()
+        _prev_target = os.environ.get("VAELOOM_TARGET_URL")
+        if _murl:
+            os.environ["VAELOOM_TARGET_URL"] = _murl
+        try:
+            command.upgrade(alembic_cfg, "head")
+        finally:
+            if _murl:
+                if _prev_target is None:
+                    os.environ.pop("VAELOOM_TARGET_URL", None)
+                else:
+                    os.environ["VAELOOM_TARGET_URL"] = _prev_target
         logger.info("Alembic migrations applied successfully")
     except FileNotFoundError as e:
         logger.warning(f"Alembic config not found, using custom runner: {e}")
@@ -164,6 +185,29 @@ async def lifespan(app: FastAPI):
         # For real migration errors, still try custom runner but log loudly
         await _run_custom_migrations()
     logger.info("Database tables verified and migrations applied")
+    # OP-RLS-01 startup guard: the runtime role must not bypass RLS outside
+    # local development. Local warns (devs may still use owner URLs); every
+    # other environment fails fast with an actionable error.
+    try:
+        from .database import check_runtime_role
+
+        _role = await check_runtime_role()
+        if _role.get("bypassrls") is True:
+            _msg = (
+                f"runtime DB role '{_role.get('role')}' has BYPASSRLS — RLS is "
+                "non-enforcing for app traffic. Set DATABASE__URL to a "
+                "least-privilege role (e.g. vaeloom_app) and "
+                "DATABASE_MIGRATION__URL to the owner URL."
+            )
+            if settings.service_environment != "local":
+                raise RuntimeError(_msg)
+            logger.warning("RLS NOT ENFORCING (local dev bypass): %s", _msg)
+        else:
+            logger.info("RLS runtime role check: %s", _role)
+    except RuntimeError:
+        raise
+    except Exception as e:
+        logger.warning("RLS runtime role check skipped: %s", e)
     # ── Start background daemon (cron + daily watchers) ──────────────
     try:
         from .infrastructure.background_daemon import start_background_daemon, stop_background_daemon
@@ -265,7 +309,12 @@ app.add_middleware(
     window_seconds=settings.rate_limit_window,
     api_key_rate_limit=settings.api_key_rate_limit,
 )
-# Tenant must be inner than Auth (added before Auth so Auth outer) → fixes RLS never-set bug (audit CRITICAL 2026-08-21)
+# IDEM-SCOPE-01: idempotency must execute AFTER Auth+Tenant (added before
+# them: Starlette runs last-added first) so replays are authenticated and
+# tenant/workspace/actor-scoped. Running before auth would serve stored
+# responses to unauthenticated callers.
+app.add_middleware(IdempotencyMiddleware)
+# Tenant must be inner than Auth (added before Auth so Auth outer) — fixes RLS never-set bug (audit CRITICAL 2026-08-21)
 app.add_middleware(TenantMiddleware)
 app.add_middleware(AuthMiddleware)
 app.add_middleware(CSRFMiddleware)
@@ -274,7 +323,6 @@ app.add_middleware(CorrelationIDMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(APIVersionMiddleware)
 app.add_middleware(PromptInjectionMiddleware)
-app.add_middleware(IdempotencyMiddleware)
 # Guard against DoS via oversized request bodies (FIND-SEC-020). Outer to PromptInjection to prevent unbounded RAM buffering.
 app.add_middleware(
     BodySizeLimitMiddleware,

@@ -93,7 +93,10 @@ def _build_test_app(db_session, enable_rate_limit=False):
         test_app.add_middleware(RateLimitMiddleware, requests_per_minute=5, window_seconds=60)
 
     test_app.add_middleware(PromptInjectionMiddleware)
-    test_app.add_middleware(AuthMiddleware)
+    from sqlalchemy.ext.asyncio import async_sessionmaker as _sm
+
+    _test_session_factory = _sm(db_session.bind, expire_on_commit=False)
+    test_app.add_middleware(AuthMiddleware, session_factory=_test_session_factory)
 
     test_app.include_router(health.router, prefix="/health")
     test_app.include_router(auth.router, prefix="/api/v1/auth")
@@ -140,7 +143,12 @@ def _build_csrf_test_app(db_session):
 
     test_app = FastAPI()
     test_app.add_middleware(CSRFMiddleware)
-    test_app.add_middleware(AuthMiddleware)
+    from sqlalchemy.ext.asyncio import async_sessionmaker as _sm2
+
+    test_app.add_middleware(
+        AuthMiddleware,
+        session_factory=_sm2(db_session.bind, expire_on_commit=False),
+    )
 
     test_app.include_router(health.router, prefix="/health")
     test_app.include_router(auth.router, prefix="/api/v1/auth")

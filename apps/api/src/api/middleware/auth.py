@@ -4,6 +4,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.responses import JSONResponse, Response
 
 from ..config import settings
+from ..database import async_session_factory as _default_session_factory
 from ..services.auth_service import auth_service
 
 PUBLIC_PATHS = frozenset({
@@ -31,6 +32,12 @@ PUBLIC_PREFIXES = frozenset({
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, session_factory=None):
+        super().__init__(app)
+        # Injectable for tests (mirrors IdempotencyMiddleware/TenantMiddleware):
+        # production default is the global engine factory.
+        self._session_factory = session_factory or _default_session_factory
+
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         path = request.url.path
         if path in PUBLIC_PATHS:
@@ -60,7 +67,31 @@ class AuthMiddleware(BaseHTTPMiddleware):
             iat = payload.get("iat")
             iat_val = float(iat) if isinstance(iat, (int, float)) else None
 
-            if auth_service.is_token_revoked(jti=jti, user_id=str(user_id) if user_id else None, iat=iat_val):
+            # AUTH-REV-01: shared revocation (Redis fast path -> DB truth).
+            # DB outage fails closed: an unreadable revocation state must
+            # deny, never admit (authenticated endpoints need the DB anyway).
+            # The check opens a short read-only session through the injected
+            # factory (test-hermetic; production = global engine).
+            try:
+                async with self._session_factory() as _rev_session:
+                    revoked, _reason = await auth_service.is_token_revoked_async(
+                        jti=jti,
+                        user_id=str(user_id) if user_id else None,
+                        iat=iat_val,
+                        raw_token=token,
+                        db=_rev_session,
+                    )
+            except Exception as e:
+                import logging as _log
+
+                _log.getLogger(__name__).warning(
+                    "revocation check unavailable, failing closed: %s", e
+                )
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Authorization unavailable — try again"},
+                )
+            if revoked:
                 return JSONResponse(status_code=401, content={"detail": "Token has been revoked"})
 
             request.state.user = payload

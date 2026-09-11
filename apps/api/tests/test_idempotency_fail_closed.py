@@ -58,10 +58,11 @@ class TestFailClosedFlag:
     def test_store_failure_tags_response_not_durable(self, monkeypatch):
         import api.middleware.idempotency as mod
 
-        async def _ok_replay(self, key, path, req_hash):
+        async def _ok_replay(self, key, path, req_hash, tenant_id, workspace_id, actor):
             return None
 
-        async def _boom_store(self, key, path, req_hash, response, body_bytes=None):
+        async def _boom_store(self, key, path, req_hash, response, tenant_id, workspace_id,
+                              actor, body_bytes=None):
             raise RuntimeError("store down")
 
         monkeypatch.setattr(mod.IdempotencyMiddleware, "_replay", _ok_replay)

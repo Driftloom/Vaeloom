@@ -6,6 +6,7 @@ import json
 import logging
 import time
 import uuid as uuid_lib
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from .definitions import ToolDefinition
@@ -2678,6 +2679,239 @@ TOOL_DISPATCH: dict[str, Any] = {
 }
 
 
+# ── IDEM-RACE-01: atomic claim protocol ──────────────────────────────
+IDEM_CLAIM_LEASE_S = 600  # >> worst-case single execution (~54s incl. retries)
+IDEM_POLL_TIMEOUT_S = 30.0
+IDEM_POLL_INTERVAL_S = 0.5
+_IDEM_SUCCEEDED = ("succeeded", "success")  # 'success' = pre-0039 legacy rows
+
+
+def _idem_session_cm(workspace_id: str):
+    """Worker-safe session for idempotency rows: RLS-scoped when possible.
+
+    Uses scoped_session (workspace GUC + tenant resolution) so the claim
+    works under a least-privilege runtime role; falls back to the raw
+    factory when scoping is unavailable (SQLite/tests).
+    """
+    try:
+        from ..database import scoped_session
+
+        return scoped_session(workspace_id=workspace_id, require=False)
+    except Exception:
+        from ..database import async_session_factory
+
+        return async_session_factory()
+
+
+async def _claim_tool_effect(
+    workspace_id: str, idem_key: str, tool_name: str, agent_id: str, request_id: str,
+    _reclaimed: bool = False,
+) -> tuple[str, Any]:
+    """Atomic INSERT-claim. Returns:
+    - ("won", claim_token): caller owns execution; MUST complete via
+      _complete_tool_effect (success or failure).
+    - ("duplicate", stored_result): already succeeded; return stored.
+    - ("in_progress", None): live lease held elsewhere; poll via
+      _await_tool_effect.
+    - ("unavailable", None): claim store unreachable; caller executes
+      unprotected and flags the result (fail-open, truthful).
+    """
+    from sqlalchemy.exc import IntegrityError
+
+    from ..models.schema import ToolIdempotency
+
+    token = uuid_lib.uuid4().hex
+    now = datetime.now(UTC)
+    lease = now + timedelta(seconds=IDEM_CLAIM_LEASE_S)
+    try:
+        async with _idem_session_cm(workspace_id) as session:
+            session.add(
+                ToolIdempotency(
+                    workspace_id=str(workspace_id),
+                    idem_key=idem_key,
+                    tool_name=tool_name,
+                    agent_id=agent_id,
+                    request_id=request_id,
+                    status="claimed",
+                    result_json={},
+                    claim_token=token,
+                    lease_expires_at=lease,
+                )
+            )
+            await session.commit()
+            return "won", token
+    except IntegrityError:
+        pass
+    except Exception as exc:
+        logger.debug(f"Idempotency claim unavailable for {idem_key}: {exc}")
+        return "unavailable", None
+    # Conflict: observe the winner's row (fresh session: the failed INSERT
+    # rolled back and must not be reused). A "retry" (vanished row) gets one
+    # bounded reclaim attempt, then falls back to unavailable.
+    try:
+        outcome, payload = await _observe_tool_claim(workspace_id, idem_key)
+        if outcome == "retry" and not _reclaimed:
+            return await _claim_tool_effect(
+                workspace_id, idem_key, tool_name, agent_id, request_id, _reclaimed=True
+            )
+        if outcome == "retry":
+            return "unavailable", None
+        return outcome, payload
+    except Exception as exc:
+        logger.debug(f"Idempotency observe unavailable for {idem_key}: {exc}")
+        return "unavailable", None
+
+
+async def _observe_tool_claim(workspace_id: str, idem_key: str) -> tuple[str, Any]:
+    """Read the current claim row and classify it. May steal expired/failed
+    claims atomically (single UPDATE with ownership predicate)."""
+    from sqlalchemy import select, update
+
+    from ..models.schema import ToolIdempotency
+
+    now = datetime.now(UTC)
+    async with _idem_session_cm(workspace_id) as session:
+        row = (
+            await session.execute(
+                select(ToolIdempotency).where(
+                    ToolIdempotency.workspace_id == str(workspace_id),
+                    ToolIdempotency.idem_key == idem_key,
+                )
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            # Vanished (rolled-back winner / GC): caller reclaims.
+            return "retry", None
+        if row.status in _IDEM_SUCCEEDED and isinstance(row.result_json, dict):
+            return "duplicate", row.result_json
+        reclaimable = row.status == "failed" or (
+            row.status == "claimed"
+            and row.lease_expires_at is not None
+            and row.lease_expires_at < now
+        )
+        live = row.status == "claimed" and not reclaimable
+        if live:
+            return "in_progress", None
+        if reclaimable:
+            new_token = uuid_lib.uuid4().hex
+            new_lease = now + timedelta(seconds=IDEM_CLAIM_LEASE_S)
+            res = await session.execute(
+                update(ToolIdempotency)
+                .where(
+                    ToolIdempotency.workspace_id == str(workspace_id),
+                    ToolIdempotency.idem_key == idem_key,
+                    ToolIdempotency.status == row.status,
+                    ToolIdempotency.claim_token == row.claim_token,
+                )
+                .values(
+                    status="claimed",
+                    claim_token=new_token,
+                    lease_expires_at=new_lease,
+                    result_json={},
+                )
+            )
+            await session.commit()
+            if res.rowcount == 1:
+                logger.info(f"IDEMPOTENCY steal ({row.status}): {idem_key} — lease reclaimed")
+                return "won", new_token
+            # Lost the steal race: re-observe once (bounded).
+            row2 = (
+                await session.execute(
+                    select(ToolIdempotency).where(
+                        ToolIdempotency.workspace_id == str(workspace_id),
+                        ToolIdempotency.idem_key == idem_key,
+                    )
+                )
+            ).scalar_one_or_none()
+            if row2 is not None and row2.status in _IDEM_SUCCEEDED and isinstance(row2.result_json, dict):
+                return "duplicate", row2.result_json
+            return "in_progress", None
+        # Unknown status: do not execute blindly; treat as in-progress so the
+        # caller polls instead of duplicating.
+        logger.warning(f"IDEMPOTENCY unknown status '{row.status}': {idem_key}")
+        return "in_progress", None
+
+
+async def _await_tool_effect(
+    workspace_id: str, idem_key: str, tool_name: str, agent_id: str, request_id: str
+) -> dict | None:
+    """Bounded poll for the winner's result. Returns the stored result dict,
+    or None on timeout (caller returns a truthful in-progress error). A
+    terminal 'failed' observation triggers one reclaim attempt."""
+    deadline = time.monotonic() + IDEM_POLL_TIMEOUT_S
+    while time.monotonic() < deadline:
+        await asyncio.sleep(IDEM_POLL_INTERVAL_S)
+        try:
+            outcome, payload = await _observe_tool_claim(workspace_id, idem_key)
+        except Exception:
+            return None
+        if outcome == "duplicate":
+            return payload
+        if outcome == "won":
+            # Previous attempt failed and we stole the claim: the ORIGINAL
+            # caller (us, via execute_tool) must not double-execute in the
+            # poll path — hand the claim back by marking failed so a future
+            # retry reclaims cleanly, and report timeout truthfully.
+            try:
+                await _complete_tool_effect(workspace_id, idem_key, payload, False, None)
+            except Exception:
+                pass
+            return None
+        if outcome == "retry":
+            continue
+        # "in_progress" / "unavailable": keep waiting / give up at deadline
+        if outcome == "unavailable":
+            return None
+    return None
+
+
+async def _complete_tool_effect(
+    workspace_id: str, idem_key: str, claim_token: str, ok: bool, result: dict | None
+) -> None:
+    """Record the winner's outcome. Ownership predicate (claim_token) keeps a
+    steal-winner from being overwritten by the stale owner."""
+    import json as _json
+
+    from sqlalchemy import update
+
+    from ..models.schema import ToolIdempotency
+
+    values: dict = {
+        "status": "succeeded" if ok else "failed",
+        "lease_expires_at": None,
+    }
+    if ok and result is not None:
+        values["result_json"] = _json.loads(_json.dumps(result, default=str))
+    async with _idem_session_cm(workspace_id) as session:
+        res = await session.execute(
+            update(ToolIdempotency)
+            .where(
+                ToolIdempotency.workspace_id == str(workspace_id),
+                ToolIdempotency.idem_key == idem_key,
+                ToolIdempotency.claim_token == claim_token,
+                ToolIdempotency.status == "claimed",
+            )
+            .values(**values)
+        )
+        await session.commit()
+        if res.rowcount != 1:
+            logger.warning(
+                f"IDEMPOTENCY completion lost race (stolen claim?): {idem_key}"
+            )
+
+
+async def _abandon_idem_claim(workspace_id: str, idem_key: str | None, claim: str | None) -> None:
+    """Release a won claim as failed (reclaimable). Best-effort, never raises.
+    Used on denial/exhaustion paths so a won-but-unexecuted claim does not
+    block identical retries behind a live lease."""
+    if not idem_key or not claim:
+        return
+    try:
+        await _complete_tool_effect(str(workspace_id), idem_key, claim, False, None)
+    except Exception:
+        pass
+
+
 async def execute_tool(
     tool: ToolDefinition,
     params: dict[str, Any],
@@ -2729,13 +2963,17 @@ async def execute_tool(
     except Exception:
         pass
 
-    # ── 1b. Deterministic idempotency for consequential actions (P1 — workspace+agent+tool+canonical params)
+    # ── 1b. Atomic idempotency claim for consequential actions (IDEM-RACE-01)
     # Only for connector_write/memory_write; read-only tools skip. Includes agent_id for per-agent isolation.
     # Key: workspace_id:agent_id:tool:hash(canonical_params) — stable across retries, unique per resource.
-    # Durability: UNIQUE(workspace_id, idem_key) row in tool_idempotency is the
-    # correctness mechanism (survives restarts); the in-memory LRU below is a
-    # fast-path cache only (Phase B §5).
+    # Protocol (CLAIM → execute → record): the INSERT is the atomic arbiter.
+    # Exactly one claimant wins; losers observe the winner's row and NEVER
+    # execute. Stale leases (worker death) are stealable after expiry;
+    # 'failed' rows are reclaimable. Crash-window duplicates (death between
+    # effect and record) remain possible and are documented, not hidden.
     idem_key: str | None = None
+    idem_claim: str | None = None
+    idem_unavailable = False
     if tool.category in ("connector_write", "memory_write"):
         try:
             import hashlib, json as _js
@@ -2749,29 +2987,39 @@ async def execute_tool(
             if idem_key in _cache:
                 logger.info(f"IDEMPOTENCY HIT (memory): {idem_key} — returning cached success")
                 return _cache[idem_key]
-            # Durable check: another worker (or a pre-crash attempt) may have won.
-            try:
-                from ..models.schema import ToolIdempotency
-                from ..database import async_session_factory as _idem_factory
-                from sqlalchemy import select as _idem_select
-
-                async with _idem_factory() as _idem_session:
-                    _row = (
-                        await _idem_session.execute(
-                            _idem_select(ToolIdempotency).where(
-                                ToolIdempotency.workspace_id == str(workspace_id),
-                                ToolIdempotency.idem_key == idem_key,
-                            )
-                        )
-                    ).scalar_one_or_none()
-                    if _row is not None and isinstance(_row.result_json, dict):
-                        logger.info(f"IDEMPOTENCY HIT (durable): {idem_key} — returning stored success")
-                        _cache[idem_key] = _row.result_json
-                        return _row.result_json
-            except Exception as _idem_exc:
-                logger.debug(f"Durable idempotency lookup skipped: {_idem_exc}")
+            _outcome, _payload = await _claim_tool_effect(
+                str(workspace_id), idem_key, tool.name,
+                str(agent_id or ""), str(params.get("_request_id", "") or ""),
+            )
+            if _outcome == "duplicate":
+                logger.info(f"IDEMPOTENCY HIT (durable): {idem_key} — returning stored success")
+                _cache[idem_key] = _payload
+                return _payload
+            if _outcome == "in_progress":
+                _waited = await _await_tool_effect(
+                    str(workspace_id), idem_key, tool.name,
+                    str(agent_id or ""), str(params.get("_request_id", "") or ""),
+                )
+                if _waited is not None:
+                    logger.info(f"IDEMPOTENCY HIT (waited): {idem_key} — returning winner result")
+                    _cache[idem_key] = _waited
+                    return _waited
+                return {
+                    "status": "error",
+                    "tool": tool.name,
+                    "result": (
+                        "duplicate request still in progress after bounded wait — "
+                        "retry with identical parameters to collect the stored result"
+                    ),
+                    "idempotency": "in_progress_timeout",
+                }
+            if _outcome == "won":
+                idem_claim = _payload  # claim token
+            else:  # "unavailable": store unreachable — execute unprotected, flagged
+                idem_unavailable = True
         except Exception:
             idem_key = None
+            idem_claim = None
 
     # ── 1. Permission Check ────────────────────────────────────────
     # 1a. AgentCard Declarative Capability Check (P1 Agent Authorization)
@@ -2876,8 +3124,9 @@ async def execute_tool(
                 record_tool_latency(duration_ms)
             except Exception:
                 pass
-            # Cache success for idempotency guard (memory-bounded LRU 500)
-            # + durable row so a post-crash retry observes the pre-crash success.
+            # Record idempotency outcome (memory LRU for successes + durable
+            # claim completion). Only the claim winner reaches here; losers
+            # returned above without executing.
             if idem_key and result.get("status") == "success":
                 try:
                     _cache[idem_key] = result
@@ -2887,24 +3136,25 @@ async def execute_tool(
                         _cache.pop(oldest, None)
                 except Exception:
                     pass
+                if idem_claim:
+                    try:
+                        await _complete_tool_effect(
+                            str(workspace_id), idem_key, idem_claim, True, result
+                        )
+                    except Exception as _complete_exc:
+                        logger.warning(f"Idempotency completion failed for {idem_key}: {_complete_exc}")
+                elif idem_unavailable:
+                    result["idempotency"] = "unavailable"
+            elif idem_key and idem_claim:
+                # Non-success terminal outcome: release the claim as failed so
+                # a later retry may reclaim (equivalent to pre-claim behavior
+                # where failures were never stored).
                 try:
-                    from ..models.schema import ToolIdempotency as _IdemRow
-                    from ..database import async_session_factory as _store_factory
-
-                    async with _store_factory() as _store_session:
-                        _store_session.add(_IdemRow(
-                            workspace_id=str(workspace_id),
-                            idem_key=idem_key,
-                            tool_name=tool.name,
-                            agent_id=str(agent_id or ""),
-                            request_id=str(params.get("_request_id", "") or ""),
-                            status="succeeded",
-                            result_json=json.loads(json.dumps(result, default=str)),
-                        ))
-                        await _store_session.commit()
-                except Exception as _store_exc:
-                    # UNIQUE race: loser reads the winner's row on next attempt.
-                    logger.debug(f"Durable idempotency store skipped: {_store_exc}")
+                    await _complete_tool_effect(str(workspace_id), idem_key, idem_claim, False, None)
+                except Exception:
+                    pass
+            elif idem_key and idem_unavailable:
+                result["idempotency"] = "unavailable"
             return result
 
         except TimeoutError:
