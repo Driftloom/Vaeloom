@@ -87,7 +87,7 @@ class TestKnowledgeGraphService:
         dto.importance = 0.8
         dto.properties = {}
         dto.tenant_id = None
-        result = await service.create_node(dto, tenant_id="t1", db=db)
+        result = await service.create_node(dto, tenant_id="t1", db=db, workspace_id="ws1")
         assert result._mapping["label"] == "Test"
 
     async def test_get_node(self, service):
@@ -97,12 +97,12 @@ class TestKnowledgeGraphService:
             created_at="2025-01-01", updated_at="2025-01-01", edge_count=3,
         )
         db = self._make_db(fetchone_val=row)
-        result = await service.get_node(uuid.uuid4(), db=db)
+        result = await service.get_node(uuid.uuid4(), db=db, workspace_id="ws1")
         assert result._mapping["edge_count"] == 3
 
     async def test_get_node_none(self, service):
         db = self._make_db(fetchone_val=None)
-        result = await service.get_node(uuid.uuid4(), db=db)
+        result = await service.get_node(uuid.uuid4(), db=db, workspace_id="ws1")
         assert result is None
 
     async def test_update_node(self, service, monkeypatch):
@@ -120,7 +120,7 @@ class TestKnowledgeGraphService:
         dto.model_dump.return_value = {"label": "Updated", "importance": 0.9}
         dto.label = "Updated"
         dto.description = None
-        result = await service.update_node(uuid.uuid4(), dto, db=db)
+        result = await service.update_node(uuid.uuid4(), dto, db=db, workspace_id="ws1")
         assert result._mapping["label"] == "Updated"
 
     async def test_update_node_type_and_properties(self, service, monkeypatch):
@@ -139,7 +139,7 @@ class TestKnowledgeGraphService:
         dto.type.value = "new_type"
         dto.label = "N"
         dto.description = None
-        result = await service.update_node(uuid.uuid4(), dto, db=db)
+        result = await service.update_node(uuid.uuid4(), dto, db=db, workspace_id="ws1")
         assert result._mapping["label"] == "N"
 
     async def test_update_node_description_triggers_reembed(self, service, monkeypatch):
@@ -157,7 +157,7 @@ class TestKnowledgeGraphService:
         dto.model_dump.return_value = {"description": "new desc"}
         dto.label = "N"
         dto.description = "new desc"
-        result = await service.update_node(uuid.uuid4(), dto, db=db)
+        result = await service.update_node(uuid.uuid4(), dto, db=db, workspace_id="ws1")
         assert result._mapping["label"] == "N"
 
     async def test_update_node_empty_data(self, service, monkeypatch):
@@ -169,13 +169,13 @@ class TestKnowledgeGraphService:
         db = self._make_db(fetchone_val=row)
         dto = MagicMock()
         dto.model_dump.return_value = {}
-        result = await service.update_node(uuid.uuid4(), dto, db=db)
+        result = await service.update_node(uuid.uuid4(), dto, db=db, workspace_id="ws1")
         assert result._mapping["label"] == "Same"
 
     async def test_delete_node(self, service):
         row = self._make_simple_row(id=str(uuid.uuid4()))
         db = self._make_db(fetchone_val=row)
-        result = await service.delete_node(uuid.uuid4(), db=db)
+        result = await service.delete_node(uuid.uuid4(), db=db, workspace_id="ws1")
         assert result is not None
 
     async def test_list_nodes(self, service):
@@ -236,7 +236,7 @@ class TestKnowledgeGraphService:
             created_at="2025-01-01", updated_at="2025-01-01",
         )
         db = self._make_db(fetchone_val=row)
-        nodes, depth = await service.find_shortest_path(nid, nid, 5, db=db)
+        nodes, depth = await service.find_shortest_path(nid, nid, 5, db=db, workspace_id="ws1")
         assert depth == 0
         assert len(nodes) == 1
 
@@ -260,24 +260,30 @@ class TestKnowledgeGraphService:
             "relationship": "knows", "weight": 0.5, "created_at": "2025-01-01",
         })
         row._mapping = row.__dict__
+        anchor_result = MagicMock()
+        anchor_result.fetchone.return_value = self._make_simple_row(id="s1")
         count_result = MagicMock()
         count_result.scalar.return_value = 1
         rows_result = MagicMock()
         rows_result.fetchall.return_value = [row]
         db = AsyncMock()
-        db.execute = AsyncMock(side_effect=[count_result, rows_result])
-        enriched, total = await service.list_edges(uuid.uuid4(), 1, 20, db=db)
+        db.execute = AsyncMock(side_effect=[anchor_result, count_result, rows_result])
+        enriched, total = await service.list_edges(
+            uuid.uuid4(), 1, 20, db=db, workspace_id="ws1")
         assert total == 1
         assert len(enriched) == 1
 
     async def test_list_edges(self, service):
+        anchor_result = MagicMock()
+        anchor_result.fetchone.return_value = self._make_simple_row(id="s1")
         count_result = MagicMock()
         count_result.scalar.return_value = 0
         rows_result = MagicMock()
         rows_result.fetchall.return_value = []
         db = AsyncMock()
-        db.execute = AsyncMock(side_effect=[count_result, rows_result])
-        rows, total = await service.list_edges(uuid.uuid4(), 1, 20, db=db)
+        db.execute = AsyncMock(side_effect=[anchor_result, count_result, rows_result])
+        rows, total = await service.list_edges(
+            uuid.uuid4(), 1, 20, db=db, workspace_id="ws1")
         assert total == 0
 
     async def test_list_all_edges(self, service):
@@ -305,7 +311,7 @@ class TestKnowledgeGraphService:
         result.fetchone.return_value = self._make_simple_row(id=str(uuid.uuid4()))
         db = AsyncMock()
         db.execute = AsyncMock(return_value=result)
-        r = await service.delete_edge(uuid.uuid4(), db=db)
+        r = await service.delete_edge(uuid.uuid4(), db=db, workspace_id="ws1")
         assert r is not None
 
     async def test_delete_edge_not_found(self, service):
@@ -313,7 +319,7 @@ class TestKnowledgeGraphService:
         result.fetchone.return_value = None
         db = AsyncMock()
         db.execute = AsyncMock(return_value=result)
-        r = await service.delete_edge(uuid.uuid4(), db=db)
+        r = await service.delete_edge(uuid.uuid4(), db=db, workspace_id="ws1")
         assert r is None
 
     async def test_create_edge_source_not_found(self, service):
@@ -321,5 +327,5 @@ class TestKnowledgeGraphService:
         dto = MagicMock()
         dto.target_id = str(uuid.uuid4())
         dto.relationship = "knows"
-        result = await service.create_edge(uuid.uuid4(), dto, db=db)
+        result = await service.create_edge(uuid.uuid4(), dto, db=db, workspace_id="ws1")
         assert result is None

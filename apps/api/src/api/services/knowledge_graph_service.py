@@ -11,6 +11,35 @@ from ..services.llm_service import LLMProviderError, llm_service
 
 
 class KnowledgeGraphService:
+    # APP-KG-01: service-layer scope is AUTHORITATIVE. Rules (fail-closed):
+    # - writes (create/update/delete/edges) REQUIRE workspace_id (raise);
+    #   tenant is enforced whenever provided (create falls back to "default"
+    #   only for legacy tenant-less callers; the workspace binding holds).
+    # - reads with NO scope at all return empty (None/[]); provided
+    #   dimensions are always enforced. Fully unscoped reads never dump.
+    # - caller DTO scope fields are NEVER trusted (see create_node).
+    # - graph hops (traverse/path/edge expansion) constrain BOTH endpoints.
+    @staticmethod
+    def _require_write_scope(workspace_id: str | None) -> str:
+        if not workspace_id:
+            raise ValueError("workspace_id is required for KG writes (fail closed)")
+        return str(workspace_id)
+
+    @staticmethod
+    def _read_scope(
+        tenant_id: str | None, workspace_id: str | None
+    ) -> tuple[str | None, str | None]:
+        return (str(tenant_id) if tenant_id else None,
+                str(workspace_id) if workspace_id else None)
+
+    @staticmethod
+    def _tenant_cond(alias: str, tenant_id: str | None, params: dict, suffix: str = "") -> str:
+        if tenant_id:
+            key = f"scope_tenant_id{suffix}"
+            params[key] = tenant_id
+            return f" AND {alias}.tenant_id = :{key}"
+        return ""
+
     @staticmethod
     def _fix_row(row):
         """Convert raw DB row types for Pydantic (SQLite returns JSON strings)."""
@@ -60,13 +89,17 @@ class KnowledgeGraphService:
         return enriched
 
     async def create_node(self, dto, tenant_id: str | None, db, workspace_id: str | None = None):
+        ws = self._require_write_scope(workspace_id)
         node_id = uuid.uuid4()
         label = dto.label
         node_type = dto.type.value
         description = dto.description
         importance = dto.importance if dto.importance is not None else 0.5
         properties = dto.properties or {}
-        effective_tenant = dto.tenant_id or tenant_id or "default"
+        # APP-KG-01: caller DTO tenant NEVER overrides the authoritative
+        # scope (tenant_id param from auth context / pipeline). dto.tenant_id
+        # is ignored by design; "default" only for legacy tenant-less callers.
+        effective_tenant = tenant_id or "default"
 
         content_for_embedding = f"{label} {description or ''}".strip()
         embedding = await self._compute_embedding(content_for_embedding)
@@ -87,7 +120,7 @@ class KnowledgeGraphService:
                 "embedding": embedding_str,
                 "properties": properties,
                 "tenant_id": effective_tenant,
-                "workspace_id": workspace_id,
+                "workspace_id": ws,
             },
         )
         row = result.fetchone()
@@ -107,6 +140,9 @@ class KnowledgeGraphService:
         db,
         workspace_id: str | None = None,
     ):
+        tenant_id, workspace_id = self._read_scope(tenant_id, workspace_id)
+        if not tenant_id and not workspace_id:
+            return [], 0
         conditions = []
         params: dict[str, Any] = {}
 
@@ -165,28 +201,47 @@ class KnowledgeGraphService:
         rows = result.fetchall()
         return self._fix_rows(rows), total
 
-    async def get_node(self, node_id: uuid.UUID, db, workspace_id: str | None = None):
+    async def get_node(
+        self, node_id: uuid.UUID, db,
+        workspace_id: str | None = None, tenant_id: str | None = None,
+    ):
+        tenant_id, workspace_id = self._read_scope(tenant_id, workspace_id)
+        if not tenant_id and not workspace_id:
+            return None
+        params: dict[str, Any] = {"node_id": node_id, "workspace_id": workspace_id}
+        tenant_cond = self._tenant_cond("n", tenant_id, params)
+        s_cond = self._tenant_cond("_s", tenant_id, params, suffix="s")
+        t_cond = self._tenant_cond("_t", tenant_id, params, suffix="t")
         result = await db.execute(
-            text("""
+            text(f"""
                 SELECT n.id, n.label, n.type, n.description, n.importance,
-                       n.properties, n.tenant_id, n.workspace_id, n.created_at, n.updated_at,
-                       (SELECT COUNT(*) FROM knowledge_edges
-                        WHERE source_id = n.id OR target_id = n.id) AS edge_count
+                        n.properties, n.tenant_id, n.workspace_id, n.created_at, n.updated_at,
+                        (SELECT COUNT(*) FROM knowledge_edges e
+                         JOIN knowledge_nodes _s ON _s.id = e.source_id
+                         JOIN knowledge_nodes _t ON _t.id = e.target_id
+                         WHERE (e.source_id = n.id OR e.target_id = n.id)
+                           AND (_s.workspace_id = :workspace_id OR :workspace_id IS NULL)
+                           AND (_t.workspace_id = :workspace_id OR :workspace_id IS NULL)
+                           {s_cond} {t_cond}) AS edge_count
                 FROM knowledge_nodes n
                 WHERE n.id = :node_id
                   AND (n.workspace_id = :workspace_id OR :workspace_id IS NULL)
+                  {tenant_cond}
             """),
-            {"node_id": node_id, "workspace_id": workspace_id},
+            params,
         )
         return self._fix_row(result.fetchone())
 
-    async def update_node(self, node_id: uuid.UUID, dto, db):
+    async def update_node(self, node_id: uuid.UUID, dto, db,
+                          workspace_id: str | None = None, tenant_id: str | None = None):
+        ws = self._require_write_scope(workspace_id)
         update_data = dto.model_dump(exclude_unset=True)
         if not update_data:
-            return await self.get_node(node_id, db)
+            return await self.get_node(node_id, db, ws, tenant_id)
 
         set_parts = []
-        params: dict[str, Any] = {"node_id": node_id}
+        params: dict[str, Any] = {"node_id": node_id, "workspace_id": ws}
+        params["scope_tenant_id"] = tenant_id  # None-safe: `... OR :x IS NULL`
         needs_reembed = False
 
         if "label" in update_data:
@@ -217,35 +272,60 @@ class KnowledgeGraphService:
             params["embedding"] = embedding_str
 
         set_clause = ", ".join(set_parts)
+        # APP-KG-01: scope is part of the UPDATE predicate itself (single
+        # statement — no verify-then-act TOCTOU). Zero rows = foreign/missing.
         result = await db.execute(
             text(f"""
                 UPDATE knowledge_nodes
                 SET {set_clause}, updated_at = CURRENT_TIMESTAMP
                 WHERE id = :node_id
+                  AND workspace_id = :workspace_id
+                  AND (tenant_id = :scope_tenant_id OR :scope_tenant_id IS NULL)
                 RETURNING id, label, type, description, importance, properties, tenant_id, created_at, updated_at
             """),
             params,
         )
         return self._fix_row(result.fetchone())
 
-    async def delete_node(self, node_id: uuid.UUID, db):
+    async def delete_node(self, node_id: uuid.UUID, db,
+                          workspace_id: str | None = None, tenant_id: str | None = None):
+        ws = self._require_write_scope(workspace_id)
+        scope = {"node_id": node_id, "workspace_id": ws, "scope_tenant_id": tenant_id}
+        owned = await db.execute(
+            text("SELECT id FROM knowledge_nodes n WHERE id = :node_id "
+                 "AND workspace_id = :workspace_id "
+                 "AND (n.tenant_id = :scope_tenant_id OR :scope_tenant_id IS NULL)"),
+            scope,
+        )
+        if not owned.fetchone():
+            return None
+        # Scoped cascade: only same-scope edges (FK CASCADE covers the rest on
+        # PG; explicit cleanup keeps SQLite parity where FKs are unenforced).
         await db.execute(
-            text("DELETE FROM knowledge_edges WHERE source_id = :node_id OR target_id = :node_id"),
-            {"node_id": node_id},
+            text("DELETE FROM knowledge_edges WHERE (source_id = :node_id OR target_id = :node_id) "
+                 "AND workspace_id = :workspace_id"),
+            {"node_id": node_id, "workspace_id": ws},
         )
         result = await db.execute(
-            text("DELETE FROM knowledge_nodes WHERE id = :node_id RETURNING id"),
-            {"node_id": node_id},
+            text("DELETE FROM knowledge_nodes WHERE id = :node_id "
+                 "AND workspace_id = :workspace_id "
+                 "AND (tenant_id = :scope_tenant_id OR :scope_tenant_id IS NULL) "
+                 "RETURNING id"),
+            scope,
         )
         return result.fetchone()
 
-    async def create_edge(self, source_id: uuid.UUID, dto, db, workspace_id: str | None = None):
-        source = await self.get_node(source_id, db, workspace_id)
+    async def create_edge(self, source_id: uuid.UUID, dto, db,
+                          workspace_id: str | None = None, tenant_id: str | None = None):
+        ws = self._require_write_scope(workspace_id)
+        # APP-KG-01: BOTH endpoints must be owned under the same scope —
+        # cross-workspace links are refused (no NULL-scope backdoor).
+        source = await self.get_node(source_id, db, ws, tenant_id)
         if not source:
             return None
 
         target_uuid = uuid.UUID(dto.target_id) if isinstance(dto.target_id, str) else dto.target_id
-        target = await self.get_node(target_uuid, db, workspace_id)
+        target = await self.get_node(target_uuid, db, ws, tenant_id)
         if not target:
             return None
 
@@ -253,8 +333,10 @@ class KnowledgeGraphService:
             text("""
                 SELECT id FROM knowledge_edges
                 WHERE source_id = :source_id AND target_id = :target_id AND relationship = :rel
+                  AND workspace_id = :workspace_id
             """),
-            {"source_id": source_id, "target_id": target_uuid, "rel": dto.relationship},
+            {"source_id": source_id, "target_id": target_uuid, "rel": dto.relationship,
+             "workspace_id": ws},
         )
         if dup.fetchone():
             return None
@@ -276,24 +358,43 @@ class KnowledgeGraphService:
                 "relationship": dto.relationship,
                 "weight": weight,
                 "properties": properties,
-                "workspace_id": workspace_id,
+                "workspace_id": ws,
             },
         )
         return self._fix_row(result.fetchone())
 
-    async def list_edges(self, node_id: uuid.UUID, page: int, page_size: int, db):
+    async def list_edges(self, node_id: uuid.UUID, page: int, page_size: int, db,
+                         workspace_id: str | None = None, tenant_id: str | None = None):
+        tenant_id, workspace_id = self._read_scope(tenant_id, workspace_id)
+        # Anchor must be owned; neighbors constrained on BOTH sides.
+        anchor = await self.get_node(node_id, db, workspace_id, tenant_id)
+        if not anchor:
+            return [], 0
         offset = (page - 1) * page_size
-
+        params: dict[str, Any] = {
+            "node_id": node_id, "workspace_id": workspace_id,
+            "scope_tenant_id": tenant_id, "limit": page_size, "offset_val": offset,
+        }
+        scope_filter = """
+            AND e.workspace_id = :workspace_id
+            AND src.workspace_id = :workspace_id
+            AND tgt.workspace_id = :workspace_id
+            AND (src.tenant_id = :scope_tenant_id OR :scope_tenant_id IS NULL)
+            AND (tgt.tenant_id = :scope_tenant_id OR :scope_tenant_id IS NULL)
+        """
         count_result = await db.execute(
-            text("""
-                SELECT COUNT(*) FROM knowledge_edges
-                WHERE source_id = :node_id OR target_id = :node_id
+            text(f"""
+                SELECT COUNT(*) FROM knowledge_edges e
+                JOIN knowledge_nodes src ON src.id = e.source_id
+                JOIN knowledge_nodes tgt ON tgt.id = e.target_id
+                WHERE (e.source_id = :node_id OR e.target_id = :node_id)
+                {scope_filter}
             """),
-            {"node_id": node_id},
+            params,
         )
         total = count_result.scalar()
 
-        enriched = await self._edge_rows_with_source_target("""
+        enriched = await self._edge_rows_with_source_target(f"""
                 SELECT e.id, e.source_id, e.target_id, e.relationship, e.weight,
                        e.properties, e.created_at,
                        src.id AS src_id, src.label AS src_label, src.type AS src_type,
@@ -301,36 +402,43 @@ class KnowledgeGraphService:
                 FROM knowledge_edges e
                 JOIN knowledge_nodes src ON src.id = e.source_id
                 JOIN knowledge_nodes tgt ON tgt.id = e.target_id
-                WHERE e.source_id = :node_id OR e.target_id = :node_id
+                WHERE (e.source_id = :node_id OR e.target_id = :node_id)
+                {scope_filter}
                 ORDER BY e.created_at DESC
                 LIMIT :limit OFFSET :offset_val
             """,
-            {"node_id": node_id, "limit": page_size, "offset_val": offset},
+            params,
             db,
         )
         return enriched, total
 
     async def list_all_edges(self, page: int, page_size: int, relationship: str | None, db, tenant_id: str | None = None, workspace_id: str | None = None):
+        tenant_id, workspace_id = self._read_scope(tenant_id, workspace_id)
         offset = (page - 1) * page_size
-        params: dict[str, Any] = {"limit": page_size, "offset_val": offset}
+        params: dict[str, Any] = {
+            "limit": page_size, "offset_val": offset,
+            "scope_tenant_id": tenant_id, "workspace_id": workspace_id,
+        }
 
-        conditions = []
+        # APP-KG-01: BOTH endpoints constrained (source-only filtering leaked
+        # edges pointing into foreign workspaces).
+        conditions = [
+            "e.workspace_id = :workspace_id",
+            "src.workspace_id = :workspace_id",
+            "tgt.workspace_id = :workspace_id",
+            "(src.tenant_id = :scope_tenant_id OR :scope_tenant_id IS NULL)",
+            "(tgt.tenant_id = :scope_tenant_id OR :scope_tenant_id IS NULL)",
+        ]
         if relationship:
             conditions.append("e.relationship = :rel")
             params["rel"] = relationship
-        if tenant_id:
-            conditions.append("src.tenant_id = :tenant_id")
-            params["tenant_id"] = tenant_id
-        if workspace_id:
-            conditions.append("src.workspace_id = :workspace_id")
-            params["workspace_id"] = workspace_id
 
-        where_clause = ""
-        if conditions:
-            where_clause = "WHERE " + " AND ".join(conditions)
+        where_clause = "WHERE " + " AND ".join(conditions)
 
         count_result = await db.execute(
-            text(f"SELECT COUNT(*) FROM knowledge_edges e JOIN knowledge_nodes src ON src.id = e.source_id {where_clause}"),
+            text(f"SELECT COUNT(*) FROM knowledge_edges e "
+                 f"JOIN knowledge_nodes src ON src.id = e.source_id "
+                 f"JOIN knowledge_nodes tgt ON tgt.id = e.target_id {where_clause}"),
             params,
         )
         total = count_result.scalar()
@@ -352,16 +460,30 @@ class KnowledgeGraphService:
         )
         return enriched, total
 
-    async def delete_edge(self, edge_id: uuid.UUID, db):
+    async def delete_edge(self, edge_id: uuid.UUID, db,
+                          workspace_id: str | None = None, tenant_id: str | None = None):
+        ws = self._require_write_scope(workspace_id)
+        # APP-KG-01: scope-predicated single statement; tenant flows through
+        # the source node (edges carry no tenant column).
         result = await db.execute(
-            text("DELETE FROM knowledge_edges WHERE id = :edge_id RETURNING id"),
-            {"edge_id": edge_id},
+            text("""
+                DELETE FROM knowledge_edges
+                WHERE id = :edge_id
+                  AND workspace_id = :workspace_id
+                  AND EXISTS (SELECT 1 FROM knowledge_nodes src
+                              WHERE src.id = source_id
+                                AND (src.tenant_id = :scope_tenant_id OR :scope_tenant_id IS NULL))
+                RETURNING id
+            """),
+            {"edge_id": edge_id, "workspace_id": ws, "scope_tenant_id": tenant_id},
         )
         return result.fetchone()
 
-    async def traverse(self, start_id: uuid.UUID, depth: int, mode: str, db, workspace_id: str | None = None):
+    async def traverse(self, start_id: uuid.UUID, depth: int, mode: str, db,
+                       workspace_id: str | None = None, tenant_id: str | None = None):
         from collections import deque
 
+        tenant_id, workspace_id = self._read_scope(tenant_id, workspace_id)
         visited = {start_id}
         queue = deque([(start_id, 0)]) if mode == "bfs" else [(start_id, 0)]
 
@@ -373,14 +495,24 @@ class KnowledgeGraphService:
             else:
                 current_id, lvl = queue.pop()
 
-            row = await self.get_node(current_id, db, workspace_id)
+            row = await self.get_node(current_id, db, workspace_id, tenant_id)
             if row:
                 result.append(row)
 
             if lvl < depth:
+                # APP-KG-01: hops expand only into in-scope targets (the old
+                # unscoped expansion walked into foreign workspaces).
                 edge_result = await db.execute(
-                    text("SELECT target_id FROM knowledge_edges WHERE source_id = :id"),
-                    {"id": current_id},
+                    text("""
+                        SELECT e.target_id FROM knowledge_edges e
+                        JOIN knowledge_nodes tgt ON tgt.id = e.target_id
+                        WHERE e.source_id = :id
+                          AND e.workspace_id = :workspace_id
+                          AND tgt.workspace_id = :workspace_id
+                          AND (tgt.tenant_id = :scope_tenant_id OR :scope_tenant_id IS NULL)
+                    """),
+                    {"id": current_id, "workspace_id": workspace_id,
+                     "scope_tenant_id": tenant_id},
                 )
                 for edge_row in edge_result.fetchall():
                     neighbor_id = uuid.UUID(edge_row[0]) if isinstance(edge_row[0], str) else edge_row[0]
@@ -393,12 +525,22 @@ class KnowledgeGraphService:
 
         return result
 
-    async def find_shortest_path(self, from_id: uuid.UUID, to_id: uuid.UUID, max_depth: int, db, workspace_id: str | None = None):
+    async def find_shortest_path(self, from_id: uuid.UUID, to_id: uuid.UUID, max_depth: int, db,
+                                 workspace_id: str | None = None, tenant_id: str | None = None):
         from collections import deque
 
+        tenant_id, workspace_id = self._read_scope(tenant_id, workspace_id)
+
         if from_id == to_id:
-            node = await self.get_node(from_id, db, workspace_id)
+            node = await self.get_node(from_id, db, workspace_id, tenant_id)
             return [node] if node else [], 0
+
+        # Both endpoints must be owned before searching (no foreign-target
+        # discovery, no truncated phantom paths).
+        if not await self.get_node(from_id, db, workspace_id, tenant_id):
+            return None, None
+        if not await self.get_node(to_id, db, workspace_id, tenant_id):
+            return None, None
 
         visited = {from_id}
         parent = {from_id: None}
@@ -414,8 +556,16 @@ class KnowledgeGraphService:
 
             if lvl < max_depth:
                 edge_result = await db.execute(
-                    text("SELECT target_id FROM knowledge_edges WHERE source_id = :id"),
-                    {"id": current_id},
+                    text("""
+                        SELECT e.target_id FROM knowledge_edges e
+                        JOIN knowledge_nodes tgt ON tgt.id = e.target_id
+                        WHERE e.source_id = :id
+                          AND e.workspace_id = :workspace_id
+                          AND tgt.workspace_id = :workspace_id
+                          AND (tgt.tenant_id = :scope_tenant_id OR :scope_tenant_id IS NULL)
+                    """),
+                    {"id": current_id, "workspace_id": workspace_id,
+                     "scope_tenant_id": tenant_id},
                 )
                 for edge_row in edge_result.fetchall():
                     neighbor_id = uuid.UUID(edge_row[0]) if isinstance(edge_row[0], str) else edge_row[0]
@@ -436,7 +586,7 @@ class KnowledgeGraphService:
 
         nodes = []
         for pid in path_ids:
-            node = await self.get_node(pid, db, workspace_id)
+            node = await self.get_node(pid, db, workspace_id, tenant_id)
             if node:
                 nodes.append(node)
 

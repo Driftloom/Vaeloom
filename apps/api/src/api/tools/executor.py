@@ -1410,12 +1410,14 @@ async def _execute_download_onedrive_file(params: dict[str, Any], workspace_id: 
         name = (meta or {}).get("name", f"{file_id}.bin")
         content = await client.download_file(file_id)
         if content is None:
-            mock = f"Mock content for OneDrive file {file_id} ({name})".encode()
+            # MOCK-SUCCESS-01: never fabricate file bytes. Truthful
+            # unavailable (file missing upstream or Graph unreachable).
             return {
-                "status": "success",
+                "status": "unavailable",
                 "tool": "download_onedrive_file",
-                "result": {"file_id": file_id, "name": name, "size_bytes": len(mock), "content_base64": base64.b64encode(mock).decode()},
-                "note": "Graph API unavailable — returned mock content",
+                "result": {"file_id": file_id, "name": name},
+                "retryable": True,
+                "note": "Graph API unavailable or file not found — no content returned (never fabricated)",
             }
         return {
             "status": "success",
@@ -1600,35 +1602,37 @@ async def _execute_web_search(params: dict[str, Any], workspace_id: str) -> dict
     domain = params.get("domain")
     if not query:
         return {"status": "error", "tool": "web_search", "result": "query is required"}
-    # Try real web search via httpx if SERPAPI/BRAVE key available, else mock
+    # MOCK-SUCCESS-01: no fabricated results. Missing credentials ->
+    # not_configured; provider failure -> unavailable. Never success+mock.
+    import os
+
+    brave_key = os.environ.get("BRAVE_SEARCH_API_KEY") or os.environ.get("SERPAPI_KEY")
+    if not brave_key:
+        return _connector_not_configured("web_search", "Web search")
     try:
-        import os
         import httpx
-        brave_key = os.environ.get("BRAVE_SEARCH_API_KEY") or os.environ.get("SERPAPI_KEY")
-        if brave_key:
-            q = f"{query} site:{domain}" if domain else query
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.get(
-                    "https://api.search.brave.com/res/v1/web/search",
-                    headers={"X-Subscription-Token": brave_key},
-                    params={"q": q, "count": limit},
-                )
-                if resp.status_code == 200:
-                    data = resp.json()
-                    results = data.get("web", {}).get("results", [])[:limit]
-                    return {"status": "success", "tool": "web_search", "result": results, "count": len(results)}
+
+        q = f"{query} site:{domain}" if domain else query
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                "https://api.search.brave.com/res/v1/web/search",
+                headers={"X-Subscription-Token": brave_key},
+                params={"q": q, "count": limit},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                results = data.get("web", {}).get("results", [])[:limit]
+                return {"status": "success", "tool": "web_search", "result": results, "count": len(results)}
+            logger.warning(f"web_search provider {resp.status_code}: {resp.text[:300]}")
     except Exception as e:
-        logger.warning(f"web_search live call failed, falling back to mock: {e}")
-    # Mock fallback — deterministic, no external dependency
+        logger.warning(f"web_search live call failed: {e}")
     return {
-        "status": "success",
+        "status": "unavailable",
         "tool": "web_search",
-        "result": [
-            {"title": f"Result {i+1} for '{query}'", "url": f"https://example.com/search?q={query.replace(' ', '+')}&r={i}", "snippet": f"Mock snippet for '{query}' — result {i+1}. This is simulated web search content for offline/test environments."}
-            for i in range(min(limit, 5))
-        ],
-        "count": min(limit, 5),
-        "note": "Web search API unavailable — returned mock results",
+        "result": [],
+        "count": 0,
+        "retryable": True,
+        "note": "Web search provider unavailable — no results returned (never fabricated)",
     }
 
 
@@ -2008,7 +2012,7 @@ async def _execute_fetch_github_repo(params: dict[str, Any], workspace_id: str) 
                 if resp.status_code == 200:
                     return {"status": "success", "tool": "fetch_github_repo", "result": resp.json(), "count": len(resp.json()) if isinstance(resp.json(), list) else 1}
                 if resp.status_code == 404:
-                    # Fallback mock so tests don't flake offline
+                    # No fabrication: fall through to not_configured truth.
                     pass
                 else:
                     logger.warning(f"GitHub API {resp.status_code}: {resp.text[:200]}")
@@ -2235,11 +2239,17 @@ async def _execute_sync_notion_pages(params: dict[str, Any], workspace_id: str) 
     page_id = params.get("page_id", "")
     if not database_id:
         return {"status": "error", "tool": "sync_notion_pages", "result": "database_id is required"}
+    # MOCK-SUCCESS-01: no token -> not_configured (not fabricated pages).
+    import os as _os
+
+    if not (await _get_workspace_connector_token(workspace_id, ["notion"])) and not (
+        _os.environ.get("NOTION_TOKEN") or _os.environ.get("NOTION_API_KEY")
+    ):
+        return _connector_not_configured("sync_notion_pages", "Notion")
     try:
-        import os
         import httpx
         user_token = await _get_workspace_connector_token(workspace_id, ["notion"])
-        token = user_token or os.environ.get("NOTION_TOKEN") or os.environ.get("NOTION_API_KEY")
+        token = user_token or _os.environ.get("NOTION_TOKEN") or _os.environ.get("NOTION_API_KEY")
         if token:
             headers = {"Authorization": f"Bearer {token}", "Notion-Version": "2022-06-28", "Content-Type": "application/json"}
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -2261,8 +2271,15 @@ async def _execute_sync_notion_pages(params: dict[str, Any], workspace_id: str) 
                 logger.warning(f"Notion API {resp.status_code}: {resp.text[:300]}")
     except Exception as e:
         logger.warning(f"sync_notion_pages live call failed: {e}")
-    # Mock fallback
-    return {"status": "success", "tool": "sync_notion_pages", "result": [{"id": f"page_mock_{uuid_lib.uuid4().hex[:6]}", "object": "page", "properties": properties or {"title": query or "Mock Page"}}], "note": "Notion API unavailable — returned mock data"}
+    # MOCK-SUCCESS-01: provider failure -> unavailable with empty result.
+    # Never fabricate pages.
+    return {
+        "status": "unavailable",
+        "tool": "sync_notion_pages",
+        "result": [],
+        "retryable": True,
+        "note": "Notion API unavailable — no pages returned (never fabricated)",
+    }
 
 
 async def _execute_execute_code_sandbox(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
@@ -2686,6 +2703,15 @@ IDEM_POLL_INTERVAL_S = 0.5
 _IDEM_SUCCEEDED = ("succeeded", "success")  # 'success' = pre-0039 legacy rows
 
 
+def _idem_aware(dt):
+    """Normalize DB datetimes for lease comparison. PostgreSQL timestamptz
+    round-trips aware; SQLite drops tzinfo (stores naive). Assume UTC when
+    naive so lease math is correct on both backends."""
+    if dt is not None and dt.tzinfo is None:
+        return dt.replace(tzinfo=UTC)
+    return dt
+
+
 # Test hook: override the session source for the claim protocol
 # (per-test file DBs). Production always uses _idem_session_cm default.
 _IDEM_SESSION_FACTORY_OVERRIDE = None
@@ -2814,8 +2840,8 @@ async def _observe_tool_claim(workspace_id: str, idem_key: str) -> tuple[str, An
             return "duplicate", row.result_json
         reclaimable = row.status == "failed" or (
             row.status == "claimed"
-            and row.lease_expires_at is not None
-            and row.lease_expires_at < now
+            and _idem_aware(row.lease_expires_at) is not None
+            and _idem_aware(row.lease_expires_at) < now
         )
         live = row.status == "claimed" and not reclaimable
         if live:
