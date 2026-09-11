@@ -1106,7 +1106,7 @@ def _temporal_test_app(db_session):
     # API tests exercise REAL JWT auth + tenant context, not overrides.
     _maker = async_sessionmaker(db_session.bind, expire_on_commit=False)
     app.add_middleware(TenantMiddleware, session_factory=_maker)
-    app.add_middleware(AuthMiddleware)
+    app.add_middleware(AuthMiddleware, session_factory=_maker)
     app.include_router(_temporal_router.router, prefix="/api/v1/temporal")
 
     async def override_get_db():

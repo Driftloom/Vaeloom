@@ -89,7 +89,8 @@ def _build_test_app(db_session):
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    test_app.add_middleware(AuthMiddleware)
+    test_app.add_middleware(AuthMiddleware,
+                            session_factory=async_sessionmaker(db_session.bind, expire_on_commit=False))
     test_app.add_exception_handler(StarletteHTTPException, unified_exception_handler)
     test_app.add_exception_handler(Exception, generic_exception_handler)
 

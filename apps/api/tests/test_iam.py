@@ -48,7 +48,12 @@ class TestIAM:
 
         test_app = FastAPI()
         test_app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-        test_app.add_middleware(AuthMiddleware)
+        from sqlalchemy.ext.asyncio import async_sessionmaker as _sm
+
+        test_app.add_middleware(
+            AuthMiddleware,
+            session_factory=_sm(db_session.bind, expire_on_commit=False),
+        )
         test_app.add_exception_handler(StarletteHTTPException, unified_exception_handler)
         test_app.add_exception_handler(Exception, generic_exception_handler)
         test_app.include_router(health.router, prefix="/health")
