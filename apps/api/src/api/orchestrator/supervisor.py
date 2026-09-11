@@ -437,9 +437,21 @@ async def resume_supervisor(
     approval_decision: dict[str, Any],
 ) -> dict[str, Any]:
     """Resume a paused supervisor DAG workflow using its persisted checkpoint."""
-    from .state import load_or_create_state, save_checkpoint
+    from .state import ForeignCheckpointError, load_or_create_state, save_checkpoint, validate_resume_identity
 
     state = await load_or_create_state(request_id, workspace_id=workspace_id)
+    # LOOP-RESUME-01: supervisor resume honors the same trust gate (the
+    # approval decision carries no identity; the workspace argument does).
+    try:
+        validate_resume_identity(state, workspace_id=workspace_id)
+    except ForeignCheckpointError:
+        return {
+            "agent_name": "supervisor",
+            "action": "error",
+            "confidence": 0.0,
+            "result": {"summary": f"Resume refused for {request_id}: checkpoint identity mismatch"},
+            "status": "refused",
+        }
     # Find latest pause phase
     pause_key = None
     for k in sorted(state.phases.keys(), reverse=True):

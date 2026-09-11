@@ -80,6 +80,28 @@ async def check_runtime_role() -> dict:
         return {"role": str(r[0]), "bypassrls": None if r[1] is None else bool(r[1])}
 
 
+def _session_dialect(session) -> str:
+    """Detect the live dialect of a session (OP-RLS-01).
+
+    MUST NOT use global settings: sessions may come from test/override
+    factories bound to a different backend (e.g. SQLite) than the configured
+    runtime URL. PG-only statements (set_config, definer fns) run only on PG.
+    """
+    for getter in (
+        lambda: getattr(getattr(session, "bind", None), "dialect", None),
+        lambda: getattr(session.get_bind(), "dialect", None),
+    ):
+        try:
+            dialect = getter()
+            name = getattr(dialect, "name", None)
+            if name:
+                return str(name)
+        except Exception:
+            continue
+    url = getattr(settings, "database__url", "") or ""
+    return "postgresql" if "postgresql" in url else "sqlite"
+
+
 @asynccontextmanager
 async def scoped_session(
     workspace_id: str | None = None,
@@ -107,7 +129,7 @@ async def scoped_session(
 
     async with async_session_factory() as session:
         try:
-            if "postgresql" in settings.database__url:
+            if _session_dialect(session) == "postgresql":
                 tid = tenant_id or TenantContext.get_tenant_id()
                 wid = workspace_id or TenantContext.get_workspace_id()
                 uid = user_id or TenantContext.get_user_id()

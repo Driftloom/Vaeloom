@@ -71,6 +71,22 @@ def upgrade() -> None:
     if "tenant_id" not in lc:
         op.add_column("loop_checkpoints", sa.Column("tenant_id", sa.String(255), nullable=True))
     _safe(bind, "CREATE INDEX IF NOT EXISTS idx_loop_ckpt_tenant ON loop_checkpoints (tenant_id)")
+    # CAS-DEAD-01: backfill the version column from the JSON payload so the
+    # atomic UPDATE-WHERE-version path matches legacy rows (NULL column never
+    # equals, which would conflict every legacy writer).
+    if is_pg:
+        _safe(
+            bind,
+            "UPDATE loop_checkpoints SET state_version = (state_json->>'state_version')::int "
+            "WHERE state_version IS NULL AND (state_json->>'state_version') IS NOT NULL",
+        )
+    else:
+        _safe(
+            bind,
+            "UPDATE loop_checkpoints SET state_version = "
+            "CAST(json_extract(state_json, '$.state_version') AS INTEGER) "
+            "WHERE state_version IS NULL AND json_extract(state_json, '$.state_version') IS NOT NULL",
+        )
 
     if is_pg:
         _safe(bind, "DROP POLICY IF EXISTS p_loop_checkpoints_workspace ON loop_checkpoints")

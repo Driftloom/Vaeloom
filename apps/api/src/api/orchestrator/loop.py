@@ -2533,6 +2533,31 @@ async def run_agent_loop_stream(request: AgentRequest) -> AsyncGenerator[dict[st
     logger.info(f"START stream loop: request={request.id}, agent={request.agent_name}")
     state = await load_or_create_state(request.id)
 
+    # LOOP-RESUME-01: same resume trust as the buffered path (the stream
+    # entry previously had neither this gate nor a terminal short-circuit).
+    from .state import ForeignCheckpointError as _StreamFCE
+    from .state import validate_resume_identity as _stream_validate
+
+    try:
+        _stream_validate(
+            state,
+            tenant_id=getattr(request, "tenant_id", None),
+            workspace_id=getattr(request, "workspace_id", None),
+            agent_id=getattr(request, "agent_name", None),
+        )
+    except _StreamFCE as _resume_exc:
+        logger.warning(f"REFUSE foreign stream resume {request.id}: {_resume_exc}")
+        yield {"event": "error", "data": {"status": "failed", "result": "Resume refused: checkpoint identity does not match this run"}}
+        yield {"event": "done", "data": {"status": "failed", "result": "Resume refused: checkpoint identity does not match this run"}}
+        return
+
+    # Stream terminal short-circuit (parity with buffered resume): never
+    # re-execute a terminal run's side effects.
+    if state.is_terminal and state.termination_reason:
+        logger.info(f"RESUME terminal stream run {request.id}: {state.status}/{state.termination_reason} — no re-execution")
+        yield {"event": "done", "data": {"status": state.status, "result": "Task completed"}}
+        return
+
     # Emit intent classification immediately (re-emit from router context if available)
     yield {"event": "intent", "data": {"agent": request.agent_name, "request_id": str(request.id)}}
 
@@ -2711,6 +2736,27 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
 
     logger.info(f"START loop: request={request.id}, agent={request.agent_name}")
     state = await load_or_create_state(request.id)
+    # LOOP-RESUME-01: resume trust parity with the graph path. A checkpoint
+    # owned by another tenant/workspace/agent must never serve, merge, or be
+    # overwritten by this run — refuse BEFORE the terminal short-circuit
+    # (which would otherwise serve foreign terminal output) and BEFORE the
+    # identity adoption below (which would launder foreign state).
+    from .state import ForeignCheckpointError, validate_resume_identity
+
+    try:
+        validate_resume_identity(
+            state,
+            tenant_id=getattr(request, "tenant_id", None),
+            workspace_id=getattr(request, "workspace_id", None),
+            agent_id=getattr(request, "agent_name", None),
+        )
+    except ForeignCheckpointError as _resume_exc:
+        logger.warning(f"REFUSE foreign resume {request.id}: {_resume_exc}")
+        return AgentResponse(
+            status="failed",
+            final_result="Resume refused: checkpoint identity does not match this run",
+            termination_reason="policy_stop",
+        )
     if request.workspace_id and not state.workspace_id:
         state.workspace_id = str(request.workspace_id)
 
@@ -2986,11 +3032,38 @@ def _eval_ok(state, request, resp=None) -> None:
         import asyncio as _aio
         try:
             loop = _aio.get_running_loop()
-            loop.create_task(save_checkpoint(state))
+            loop.create_task(_save_eval_phase(state))
         except RuntimeError:
             pass
     except Exception as exc:
         logger.debug(f"Trajectory eval skipped: {exc}")
+
+
+async def _save_eval_phase(state) -> None:
+    """Best-effort eval persistence that survives CAS races (CAS-DEAD-01).
+
+    The terminal save normally wins the race; on conflict, reload truth,
+    re-apply ONLY the eval phase (never clobbering terminal/cancel via the
+    merge in save_checkpoint), and save once more. Swallowed after that:
+    eval is observability, not run truth.
+    """
+    from .state import ConcurrentUpdateError, load_or_create_state, save_checkpoint
+
+    try:
+        await save_checkpoint(state)
+    except ConcurrentUpdateError:
+        try:
+            eval_phase = (state.phases or {}).get("trajectory_eval")
+            fresh = await load_or_create_state(
+                state.request_id, workspace_id=getattr(state, "workspace_id", None)
+            )
+            if eval_phase is not None:
+                fresh.add_phase("trajectory_eval", eval_phase)
+            await save_checkpoint(fresh)
+        except Exception as exc:
+            logger.debug(f"Trajectory eval conflict-retry skipped: {exc}")
+    except Exception as exc:
+        logger.debug(f"Trajectory eval save skipped: {exc}")
 
 
 def _eval_fail(state, request) -> None:

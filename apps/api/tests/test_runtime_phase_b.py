@@ -242,17 +242,21 @@ class TestDurableIdempotency:
                                        tool_name="rename_file", agent_id="ag", request_id="r0",
                                        status="succeeded", result_json=stored))
         await db_session.commit()
-        # Point the executor's factory at the test DB session.
-        class _F:
-            def __call__(self):
-                class _S:
-                    async def __aenter__(self): return db_session
-                    async def __aexit__(self, *a): return False
-                return _S()
-        monkeypatch.setattr("api.tools.executor.async_session_factory", _F(), raising=False)
-        # import-time binding: patch the already-imported symbol path used inside execute_tool
-        import api.database as _db
-        monkeypatch.setattr(_db, "async_session_factory", _F(), raising=False)
+        # Point the claim protocol at the test DB session (IDEM-RACE-01 hook;
+        # the legacy async_session_factory patch no longer affects claims).
+        from contextlib import asynccontextmanager as _acm
+
+        @_acm
+        async def _test_cm(_ws):
+            try:
+                yield db_session
+            finally:
+                try:
+                    await db_session.commit()
+                except Exception:
+                    await db_session.rollback()
+
+        monkeypatch.setattr(ex, "_IDEM_SESSION_FACTORY_OVERRIDE", _test_cm)
         calls = []
         async def _boom(params, ws):  # pragma: no cover - must not run
             calls.append(1)
