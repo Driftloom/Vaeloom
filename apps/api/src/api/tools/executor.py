@@ -30,6 +30,23 @@ def _connector_not_configured(tool: str, integration: str) -> dict[str, Any]:
     }
 
 
+def _ws_session(workspace_id):
+    """Worker-safe DB session for tool handlers (OP-RLS-01).
+
+    RLS-scoped to the tool's workspace (tenant resolved via definer fn when
+    absent from context) so handlers work under a least-privilege runtime
+    role; falls back to the raw factory when scoping is unavailable.
+    """
+    try:
+        from ..database import scoped_session
+
+        return scoped_session(workspace_id=workspace_id, require=False)
+    except Exception:
+        from ..database import async_session_factory
+
+        return async_session_factory()
+
+
 class PermissionDeniedError(PermissionError):
     """Raised when the agent lacks the required scope for a tool call."""
     pass
@@ -366,7 +383,7 @@ async def _execute_search_documents(params: dict[str, Any], workspace_id: str) -
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
 
     try:
-        async with async_session_factory() as session:
+        async with _ws_session(workspace_id) as session:
             stmt = (
                 select(Document)
                 .where(Document.workspace_id == workspace_id)
@@ -416,7 +433,7 @@ async def _execute_query_graph(params: dict[str, Any], workspace_id: str) -> dic
     limit = params.get("limit", 20)
 
     try:
-        async with async_session_factory() as session:
+        async with _ws_session(workspace_id) as session:
             filters = [Entity.workspace_id == workspace_id]
             if entity_type != "any":
                 filters.append(Entity.type == entity_type)
@@ -480,7 +497,7 @@ async def _execute_get_entity(params: dict[str, Any], workspace_id: str) -> dict
     entity_id = params.get("entity_id", "")
 
     try:
-        async with async_session_factory() as session:
+        async with _ws_session(workspace_id) as session:
             entity = await session.get(Entity, uuid.UUID(entity_id))
             if not entity:
                 return {"status": "error", "tool": "get_entity", "result": f"Entity {entity_id} not found"}
@@ -538,7 +555,7 @@ async def _execute_create_entity(params: dict[str, Any], workspace_id: str) -> d
         return {"status": "error", "tool": "create_entity", "result": "name and entity_type are required"}
 
     try:
-        async with async_session_factory() as session:
+        async with _ws_session(workspace_id) as session:
             existing = await session.execute(
                 select(Entity).where(
                     Entity.workspace_id == workspace_id,
@@ -591,7 +608,7 @@ async def _execute_categorize_document(params: dict[str, Any], workspace_id: str
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
 
     try:
-        async with async_session_factory() as session:
+        async with _ws_session(workspace_id) as session:
             doc = await session.get(Document, uuid.UUID(document_id))
             if not doc:
                 return {"status": "error", "tool": "categorize_document", "result": f"Document {document_id} not found"}
@@ -633,7 +650,7 @@ async def _execute_notify_user(params: dict[str, Any], workspace_id: str) -> dic
         return {"status": "success", "tool": "notify_user", "result": {"delivered": True, "logged_to": "stdout"}}
 
     try:
-        async with async_session_factory() as session:
+        async with _ws_session(workspace_id) as session:
             action = AgentAction(
                 workspace_id=uuid.UUID(workspace_id) if isinstance(workspace_id, str) else workspace_id,
                 agent_name="tool_executor",
@@ -667,7 +684,7 @@ async def _resolve_compile_content(params: dict[str, Any], workspace_id: str) ->
             import uuid
             from api.database import async_session_factory
             from api.models.schema import Resume
-            async with async_session_factory() as session:
+            async with _ws_session(workspace_id) as session:
                 row = await session.get(Resume, uuid.UUID(str(resume_id)))
                 if row and isinstance(row.content, dict):
                     return row.content, None
@@ -684,7 +701,7 @@ async def _resolve_compile_content(params: dict[str, Any], workspace_id: str) ->
         from sqlalchemy import select
         from api.database import async_session_factory
         from api.models.schema import Resume
-        async with async_session_factory() as session:
+        async with _ws_session(workspace_id) as session:
             # workspace-scoped lookup via raw SQL to avoid tenant RLS detachment complexity
             result = await session.execute(select(Resume).where(Resume.workspace_id == _uuid.UUID(workspace_id)).order_by(Resume.created_at.desc()).limit(1))  # type: ignore
             row = result.scalars().first()
@@ -835,7 +852,7 @@ async def _execute_merge_entities(params: dict[str, Any], workspace_id: str) -> 
         return {"status": "error", "tool": "merge_entities", "result": "source_id and target_id must be different"}
 
     try:
-        async with async_session_factory() as session:
+        async with _ws_session(workspace_id) as session:
             source_entity = await session.get(Entity, uuid.UUID(source_id))
             target_entity = await session.get(Entity, uuid.UUID(target_id))
 
@@ -1445,7 +1462,7 @@ async def _execute_rename_file(params: dict[str, Any], workspace_id: str) -> dic
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
 
     try:
-        async with async_session_factory() as session:
+        async with _ws_session(workspace_id) as session:
             doc = await session.get(Document, uuid.UUID(document_id))
             if not doc:
                 return {"status": "error", "tool": "rename_file", "result": f"Document {document_id} not found"}
@@ -1487,7 +1504,7 @@ async def _execute_move_file(params: dict[str, Any], workspace_id: str) -> dict[
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
 
     try:
-        async with async_session_factory() as session:
+        async with _ws_session(workspace_id) as session:
             doc = await session.get(Document, uuid.UUID(document_id))
             if not doc:
                 return {"status": "error", "tool": "move_file", "result": f"Document {document_id} not found"}
@@ -1651,7 +1668,7 @@ async def _execute_parse_document_ocr(params: dict[str, Any], workspace_id: str)
     except ImportError as e:
         return {"status": "error", "tool": "parse_document_ocr", "result": f"Imports unavailable: {e}"}
     try:
-        async with async_session_factory() as session:
+        async with _ws_session(workspace_id) as session:
             doc = await session.get(Document, uuid.UUID(document_id))
             if not doc:
                 return {"status": "error", "tool": "parse_document_ocr", "result": f"Document {document_id} not found"}
@@ -1960,7 +1977,7 @@ async def _get_workspace_connector_token(workspace_id: str | None, connector_typ
         from api.models.schema import Connector
         from api.services.encryption import decrypt_value
 
-        async with async_session_factory() as db:
+        async with _ws_session(workspace_id) as db:
             result = await db.execute(
                 select(Connector).where(
                     Connector.workspace_id == uuid.UUID(str(workspace_id)),
