@@ -3034,6 +3034,7 @@ async def execute_tool(
                         f"AGENT_CARD_DENIAL: agent={agent_id} tool={tool.name} not in card.tools={card.tools}"
                     )
                     _audit_log(agent_id, tool.name, workspace_id, False, 0, "agent_card_tool_unauthorized")
+                    await _abandon_idem_claim(workspace_id, idem_key, idem_claim)
                     raise PermissionDeniedError(
                         f"Agent '{agent_id}' is not authorized to use tool '{tool.name}' per AgentCard specification"
                     )
@@ -3050,6 +3051,7 @@ async def execute_tool(
             f"required={tool.required_scope} granted={agent_scopes}"
         )
         _audit_log(agent_id, tool.name, workspace_id, False, 0, "permission_denied")
+        await _abandon_idem_claim(workspace_id, idem_key, idem_claim)
         raise PermissionDeniedError(
             f"Agent '{agent_id}' lacks scope '{tool.required_scope}' for tool '{tool.name}'"
         )
@@ -3183,6 +3185,7 @@ async def execute_tool(
     duration_ms = int((time.monotonic() - start_time) * 1000)
     error_msg = str(last_error) if last_error else "unknown"
     _audit_log(agent_id, tool.name, workspace_id, False, duration_ms, error_msg)
+    await _abandon_idem_claim(workspace_id, idem_key, idem_claim)
     raise ToolExecutionError(
         f"Tool '{tool.name}' failed after {max_retries} attempts: {error_msg}"
     )
