@@ -110,11 +110,38 @@ async def gmail_push_webhook(
     if x_goog_channel_token:
         from sqlalchemy import text
         token_hash = hash_channel_token(x_goog_channel_token)
-        result = await db.execute(
-            text("SELECT id FROM gmail_watches WHERE channel_id = :cid AND channel_token = :token AND status = 'ACTIVE'"),  # nosec B608
-            {"cid": x_goog_channel_id, "token": token_hash},
-        )
-        if not result.fetchone():
+        # OP-RLS-01: this public endpoint has no auth context. Resolve RLS
+        # scope from the verified channel credential (definer fn, no GUCs
+        # needed) and establish it before touching scoped tables.
+        try:
+            scope_res = await db.execute(
+                text("SELECT workspace_id, tenant_id FROM app_gmail_watch_scope(:cid, :token)"),  # nosec B608
+                {"cid": x_goog_channel_id, "token": token_hash},
+            )
+            scope_row = scope_res.fetchone()
+            if scope_row and scope_row[0]:
+                await db.execute(
+                    text("SELECT set_config('app.workspace_id', :v, true)"),  # nosec B608
+                    {"v": str(scope_row[0])},
+                )
+                if scope_row[1]:
+                    await db.execute(
+                        text("SELECT set_config('app.tenant_id', :v, true)"),  # nosec B608
+                        {"v": str(scope_row[1])},
+                    )
+        except Exception:
+            pass
+        try:
+            result = await db.execute(
+                text("SELECT id FROM gmail_watches WHERE channel_id = :cid AND channel_token = :token AND status = 'ACTIVE'"),  # nosec B608
+                {"cid": x_goog_channel_id, "token": token_hash},
+            )
+            found = result.fetchone()
+        except Exception:
+            # Fail closed with 403 semantics (includes RLS denial when the
+            # channel cannot be resolved to a scope).
+            found = None
+        if not found:
             raise HTTPException(403, "Invalid channel token")
     else:
         raise HTTPException(400, "Missing X-Goog-Channel-Token header for verification")

@@ -17,10 +17,10 @@ async def reflection_scan() -> int:
     try:
         from sqlalchemy import select, text
 
-        from api.database import async_session_factory
+        from api.database import scoped_session
         from api.models.schema import Entity, Workspace
 
-        async with async_session_factory() as db:
+        async with scoped_session(require=False) as db:
             rows = await db.execute(select(Workspace.id).limit(20))
             ws = rows.all()
             count = 0
@@ -124,11 +124,11 @@ async def process_user_correction(workspace_id: str, correction_text: str, sourc
         return None
     try:
         from sqlalchemy import select
-        from api.database import async_session_factory
+        from api.database import scoped_session
         from api.models.schema import Entity
         import uuid
 
-        async with async_session_factory() as session:
+        async with scoped_session(workspace_id=workspace_id, tenant_id=tenant_id, require=False) as session:
             from api.services.learning_gate import verify_workspace_tenant
             _ok, _why = await verify_workspace_tenant(session, ws_uuid, tenant_id)
             if not _ok:

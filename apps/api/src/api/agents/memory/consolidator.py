@@ -11,7 +11,7 @@ from typing import Any
 
 from sqlalchemy import select
 
-from api.database import async_session_factory
+from api.database import scoped_session
 from api.models.schema import Entity
 from api.orchestrator.base import AgentContext, BaseAgent, MemoryScopes, Tool
 from api.services.llm_service import llm_service
@@ -367,7 +367,7 @@ class MemoryConsolidatorAgent(BaseAgent):
                 if session is not None:
                     _pres = await _persist_to_session(session)
                 else:
-                    async with async_session_factory() as sess:
+                    async with scoped_session(workspace_id=ws_str, require=False) as sess:
                         _pres = await _persist_to_session(sess)
                 if isinstance(_pres, tuple) and _pres and _pres[0] == "DUPLICATE":
                     duplicate_event = True

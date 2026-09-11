@@ -76,6 +76,37 @@ class SyncConnectorInput:
 # activity functions above, never through direct service calls.
 
 
+def _scoped_db(workspace_id=None):
+    """OP-RLS-01 worker session: RLS-scoped to the activity payload's
+    workspace (tenant resolved via definer fn when absent from context).
+    Falls back to the raw factory when scoping is unavailable."""
+    try:
+        from ..database import scoped_session
+
+        return scoped_session(workspace_id=workspace_id or None, require=False)
+    except Exception:
+        from ..database import async_session_factory
+
+        return async_session_factory()
+
+
+def _bind_activity_scope(payload) -> None:
+    """Set TenantContext from the activity payload so nested context-reading
+    sessions (services, handlers) inherit the workflow's scope. Best-effort;
+    activities also pass explicit workspace to their own queries."""
+    try:
+        from ..middleware.tenant import TenantContext
+
+        get = (lambda k: payload.get(k)) if isinstance(payload, dict) else (lambda k: getattr(payload, k, None))
+        TenantContext.set(
+            str(get("tenant_id") or "") or None,
+            str(get("workspace_id") or "") or None,
+            str(get("user_id") or "") or None,
+        )
+    except Exception:
+        pass
+
+
 def _activity_log(msg: str, **kw) -> None:
     """Structured log with temporal activity context (workflowId/runId/activityId) when available."""
     try:
@@ -118,13 +149,13 @@ async def parse_document(inp: ParseDocumentInput) -> dict[str, Any]:
     except Exception:
         pass
     activity = _activity
+    _bind_activity_scope(inp)
     try:
-        from ..database import async_session_factory
         from ..models.schema import Document
         from sqlalchemy import select as _select
         import uuid as _uuid
 
-        async with async_session_factory() as db:
+        async with _scoped_db(ws_id_in) as db:
             doc_uuid = _uuid.UUID(doc_id_in) if len(doc_id_in) > 30 else None
             ws_uuid = _uuid.UUID(ws_id_in) if len(ws_id_in) > 30 else None
             r = None
@@ -166,13 +197,13 @@ async def extract_entities(inp: ExtractEntitiesInput) -> dict[str, Any]:
         pass
     # Try document fetch + real extraction
     doc_text = ""
+    _bind_activity_scope(inp)
     try:
-        from ..database import async_session_factory
         from ..models.schema import Document
         from sqlalchemy import select as _select
         import uuid as _uuid
 
-        async with async_session_factory() as db:
+        async with _scoped_db(ws_id_in) as db:
             doc_uuid = _uuid.UUID(doc_id_in) if len(doc_id_in) > 30 else None
             ws_uuid = _uuid.UUID(ws_id_in) if len(ws_id_in) > 30 else None
             if doc_uuid and ws_uuid:
@@ -243,15 +274,15 @@ async def write_memory(inp: WriteMemoryInput) -> dict[str, Any]:
     if _os.environ.get("PYTEST_CURRENT_TEST"):
         return {"memories_created": len(entities), "written_ids": [], "fallback": True}
     # Attempt real DB write
+    _bind_activity_scope(inp)
     try:
-        from ..database import async_session_factory
         from ..models.schema import Entity
         from sqlalchemy import select as _select
         import uuid as _uuid
 
         created = 0
         written_ids: list[str] = []
-        async with async_session_factory() as db:
+        async with _scoped_db(ws_id) as db:
             for ent in entities:
                 try:
                     # Normalize entity dict
@@ -355,13 +386,13 @@ async def index_graph(inp: IndexGraphInput) -> dict[str, Any]:
     doc_id_in = str(doc_id_in or "")
     ws_id_in = str(ws_id_in or "")
     # Best-effort: try to ensure document has embedding (non-blocking)
+    _bind_activity_scope(inp)
     try:
-        from ..database import async_session_factory
         from ..models.schema import Document
         from sqlalchemy import select as _select
         import uuid as _uuid
 
-        async with async_session_factory() as db:
+        async with _scoped_db(ws_id_in) as db:
             doc_uuid = _uuid.UUID(doc_id_in) if len(doc_id_in) > 30 else None
             ws_uuid = _uuid.UUID(ws_id_in) if len(ws_id_in) > 30 else None
             r = None
@@ -446,6 +477,7 @@ async def durable_agent_run(payload: Any) -> dict[str, Any]:
         return {"status": "completed", "agent": agent, "result": {"summary": f"stub run for {agent}"}}
 
     # Decide graph vs legacy via config + percent gating (deterministic per request_id)
+    _bind_activity_scope(payload)
     try:
         from ..config import settings
 
@@ -887,14 +919,23 @@ async def execute_approved_action(payload: dict[str, Any]) -> dict[str, Any]:
     except Exception:
         pass
     try:
-        from ..database import async_session_factory
-
         approval_id = str(payload.get("approval_id", ""))
         decision = payload.get("decision", {}) or {}
         if not approval_id:
             return {"approval_id": approval_id, "executed": False, "error": "missing approval_id"}
+        # OP-RLS-01: scope from the workflow-provided workspace (threaded
+        # through the activity payload) so revalidation + consume work under
+        # a least-privilege role. Falls back to decision workspace, else
+        # context (empty in workers → RLS denies → truthful refusal).
+        _act_ws = (
+            payload.get("workspace_id")
+            or decision.get("workspace_id")
+            or (decision.get("payload") or {}).get("workspace_id")
+        )
+        _bind_activity_scope({**(decision if isinstance(decision, dict) else {}),
+                              "workspace_id": _act_ws})
 
-        async with async_session_factory() as db:
+        async with _scoped_db(_act_ws) as db:
             recheck = await _revalidate_approval_for_execution(db, approval_id, decision)
             if not recheck.get("ok"):
                 logger.warning(
@@ -956,12 +997,12 @@ async def sync_connector(inp: SyncConnectorInput) -> dict[str, Any]:
     except Exception:
         pass
     # T-002: activity-level workspace binding — fail closed in prod, fail-open in local/test
+    _bind_activity_scope(inp)
     try:
-        from ..database import async_session_factory
         from sqlalchemy import text as _t2
         from temporalio.exceptions import ApplicationError
 
-        async with async_session_factory() as db:
+        async with _scoped_db(getattr(inp, "workspace_id", None)) as db:
             row = await db.execute(_t2("SELECT workspace_id FROM connectors WHERE id=:id"), {"id": inp.connector_id})
             r = row.first()
             if not r:

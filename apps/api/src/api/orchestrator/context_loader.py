@@ -13,7 +13,7 @@ from typing import Any
 
 from sqlalchemy import select
 
-from ..database import async_session_factory
+from ..database import scoped_session
 from ..models.schema import Document, Entity, User
 from .base import AgentContext
 
@@ -47,7 +47,7 @@ class AgentContextLoader:
             if db is not None:
                 await self._hydrate_context(context, workspace_id, user_id, db)
             else:
-                async with async_session_factory() as session:
+                async with scoped_session(workspace_id=workspace_id, require=False) as session:
                     await self._hydrate_context(context, workspace_id, user_id, session)
         except Exception as exc:
             logger.warning(f"AgentContextLoader non-blocking error: {exc}")

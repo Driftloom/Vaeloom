@@ -253,7 +253,12 @@ async def handle_event_publish(data: dict[str, Any], db: Any = None) -> dict[str
         if db is not None:
             has_access = await check_user_workspace_access(db, workspace_id, user_id, tenant_id)
         else:
-            async with async_session_factory() as session:
+            from api.database import scoped_session
+
+            async with scoped_session(
+                workspace_id=workspace_id, tenant_id=tenant_id, user_id=user_id,
+                require=False,
+            ) as session:
                 has_access = await check_user_workspace_access(session, workspace_id, user_id, tenant_id)
         if not has_access:
             raise BackgroundSecurityError(

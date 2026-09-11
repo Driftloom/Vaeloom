@@ -390,9 +390,9 @@ class _McpClientService:
                                params: dict[str, Any], workspace_id: str,
                                tenant_id: str | None) -> dict[str, Any]:
         """Handler body for bridged tools: enforce workspace ownership, execute."""
-        from ..database import async_session_factory
+        from ..database import scoped_session
 
-        async with async_session_factory() as session:
+        async with scoped_session(workspace_id=workspace_id, tenant_id=tenant_id, require=False) as session:
             connector = await connector_ext_service.get(connector_id, tenant_id, session)
             if str(connector.workspace_id) != str(workspace_id):
                 return {

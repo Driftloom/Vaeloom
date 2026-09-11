@@ -153,9 +153,9 @@ class AuditMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
     async def _log_request(self, request: Request, response: Response) -> None:
-        from ..database import async_session_factory
+        from ..database import scoped_session
 
-        async with async_session_factory() as db:
+        async with scoped_session(require=False) as db:
             logger = AuditLogger(db)
             user_id = getattr(request.state, "user_id", None)
             tenant_id = getattr(request.state, "tenant_id", None)

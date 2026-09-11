@@ -34,14 +34,14 @@ async def merge_check(entity_name: str, aliases: list[str], workspace_id: str, e
     try:
         from sqlalchemy import select
 
-        from api.database import async_session_factory
+        from api.database import scoped_session
         from api.models.schema import Entity
     except ImportError:
         logger.warning("Database modules not available, using fallback merge logic")
         return _fallback_merge_check(entity_name, aliases)
 
     try:
-        async with async_session_factory() as session:
+        async with scoped_session(workspace_id=workspace_id, require=False) as session:
             stmt = select(Entity).where(Entity.workspace_id == workspace_id)
             result = await session.execute(stmt)
             existing_entities = result.scalars().all()

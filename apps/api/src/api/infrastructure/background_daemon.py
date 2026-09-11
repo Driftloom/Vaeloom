@@ -227,7 +227,41 @@ async def execute_agent_schedule_job(
         with contextlib.suppress(ValueError):
             uid = UUID(ctx_uid)
 
-    async with async_session_factory() as db:
+    # OP-RLS-01: establish an explicit RLS scope for the run. Precedence:
+    # envelope (queue path) -> ambient TenantContext (inline daemon path) ->
+    # agent-row resolution via definer fn (catch-up path has neither).
+    scope_ws = (envelope or {}).get("workspace_id") if envelope else None
+    scope_tid = (envelope or {}).get("tenant_id") if envelope else None
+    scope_uid = (envelope or {}).get("user_id") if envelope else None
+    if not scope_ws or not scope_tid:
+        try:
+            from sqlalchemy import text as _scope_text
+
+            from api.database import async_session_factory as _raw_factory
+
+            async with _raw_factory() as _scope_db:
+                _row = (await _scope_db.execute(
+                    _scope_text("SELECT tenant_id, workspace_id, user_id FROM app_agent_scope(:aid)"),
+                    {"aid": str(agent_id)},
+                )).fetchone()
+                if _row:
+                    scope_tid = scope_tid or (str(_row[0]) if _row[0] else None)
+                    scope_ws = scope_ws or (str(_row[1]) if _row[1] else None)
+                    scope_uid = scope_uid or (str(_row[2]) if _row[2] else None)
+        except Exception:
+            pass
+    if scope_tid and not tid:
+        with contextlib.suppress(ValueError):
+            tid = UUID(str(scope_tid))
+    if scope_uid and not uid:
+        with contextlib.suppress(ValueError):
+            uid = UUID(str(scope_uid))
+
+    from api.database import scoped_session
+
+    async with scoped_session(
+        workspace_id=scope_ws, tenant_id=scope_tid, user_id=scope_uid, require=False
+    ) as db:
         dto = AgentExecute(input=input_data or {}, stream=False)
         try:
             result = await agent_service.execute_agent(db, UUID(agent_id), dto, tenant_id=tid, user_id=uid)
@@ -324,11 +358,22 @@ async def _run_due_agent_schedules(now: datetime) -> int:
                     dedup_key = f"agent_sched:{sched.id}:{now.strftime('%Y%m%d%H%M')}"
 
                     from api.infrastructure.background_envelope import create_background_envelope
-                    from api.models.schema import Agent
-                    agent_obj = await db.get(Agent, sched.agent_id)
-                    tenant_id = str(agent_obj.tenant_id or "default") if agent_obj else "default"
-                    workspace_id = str(agent_obj.workspace_id or "default") if agent_obj else "default"
-                    user_id = str(agent_obj.user_id or "system") if agent_obj else "system"
+                    from sqlalchemy import text as _scope_text
+                    # OP-RLS-01: resolve agent scope without GUCs (definer fn;
+                    # the agents table is RLS-scoped). Falls back to defaults
+                    # exactly as before when unresolvable.
+                    tenant_id, workspace_id, user_id = "default", "default", "system"
+                    try:
+                        _scope_row = (await db.execute(
+                            _scope_text("SELECT tenant_id, workspace_id, user_id FROM app_agent_scope(:aid)"),
+                            {"aid": str(sched.agent_id)},
+                        )).fetchone()
+                        if _scope_row:
+                            tenant_id = str(_scope_row[0] or "default")
+                            workspace_id = str(_scope_row[1] or "default")
+                            user_id = str(_scope_row[2] or "system")
+                    except Exception:
+                        pass
 
                     envelope = create_background_envelope(
                         tenant_id=tenant_id,
@@ -442,12 +487,45 @@ async def _run_due_scheduled_jobs(now: datetime) -> int:
     try:
         from sqlalchemy import text
 
-        from api.database import async_session_factory
+        from api.database import async_session_factory, scoped_session
 
-        async with async_session_factory() as db:
-            result = await db.execute(text("SELECT id, cron, payload, tenant_id, type, method, url, event, headers FROM scheduled_jobs WHERE status = 'active'"))  # nosec B608
-            rows = result.fetchall()
-            for row in rows:
+        # OP-RLS-01: scheduled_jobs is tenant-scoped. List tenants through the
+        # permissive tenants directory, then scan per-tenant under RLS.
+        async with async_session_factory() as _scan_db:
+            try:
+                _tenants = [
+                    str(x[0]) for x in (
+                        await _scan_db.execute(text("SELECT id FROM tenants"))
+                    ).fetchall() if x[0]
+                ]
+            except Exception:
+                _tenants = []
+        if not _tenants:
+            # No tenant directory (or no access): single unscoped pass preserves
+            # legacy behavior where RLS is non-enforcing (SQLite/dev).
+            _tenants = [""]
+        for _tenant in _tenants:
+            async with scoped_session(
+                tenant_id=_tenant or None, require=False
+            ) as db:
+                try:
+                    triggered += await _poll_scheduled_jobs_for_tenant(db, r, now)
+                except Exception as e:
+                    logger.warning(f"DAEMON tenant poll failed: {e}")
+        return triggered
+    except Exception as e:
+        logger.warning(f"DAEMON scheduled_jobs poll failed: {e}")
+        return 0
+
+
+async def _poll_scheduled_jobs_for_tenant(db, r, now) -> int:
+    """Per-tenant due-job scan. `db` MUST be a tenant-scoped session."""
+    from sqlalchemy import text
+
+    triggered = 0
+    result = await db.execute(text("SELECT id, cron, payload, tenant_id, type, method, url, event, headers FROM scheduled_jobs WHERE status = 'active'"))  # nosec B608
+    rows = result.fetchall()
+    for row in rows:
                 job_id, cron, payload, tenant_id, job_type, method, url, event_name, headers = row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8]
                 try:
                     if not cron or not _is_cron_due(str(cron), now):
@@ -490,10 +568,7 @@ async def _run_due_scheduled_jobs(now: datetime) -> int:
                     logger.warning(f"DAEMON scheduled_job {job_id} trigger failed: {e}")
                     with contextlib.suppress(Exception):
                         await db.rollback()
-            return triggered
-    except Exception as e:
-        logger.debug(f"DAEMON scheduled_jobs poll skipped (table maybe missing): {e}")
-        return 0
+    return triggered
 
 
 # ── Proactive watchers (daily) ──────────────────────────────────────

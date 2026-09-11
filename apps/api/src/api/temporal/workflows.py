@@ -622,7 +622,10 @@ if HAS_TEMPORAL:
             try:
                 res = await _drive_activity(
                     "execute_approved_action",
-                    {"approval_id": inp.approval_id, "decision": self._decision},
+                    {"approval_id": inp.approval_id, "decision": self._decision,
+                     # OP-RLS-01: the activity scopes its RLS session from this
+                     # (workflow-bound at run() from ApprovalWorkflowInput).
+                     "workspace_id": self._expected_workspace_id},
                     start_to_close=timedelta(seconds=30),
                     schedule_to_close=timedelta(minutes=5),
                     retry_policy=RetryPolicy(maximum_attempts=2, backoff_coefficient=2.0, non_retryable_error_types=["ValueError", "ApplicationError"]),

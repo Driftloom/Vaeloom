@@ -31,7 +31,7 @@ async def vector_search(query: str, workspace_id: str, limit: int) -> list[Retri
     try:
         from sqlalchemy import select, text
 
-        from api.database import async_session_factory
+        from api.database import scoped_session
         from api.models.schema import Embedding, Entity, MemoryRecord  # noqa: F401
         from api.services.llm_service import llm_service
     except ImportError as e:
@@ -51,7 +51,7 @@ async def vector_search(query: str, workspace_id: str, limit: int) -> list[Retri
             if isinstance(vstore, QdrantStore):
                 records = await vstore.search(query_vector=query_embedding, limit=limit, filters={"workspace_id": workspace_id})
                 if records:
-                    async with async_session_factory() as session:
+                    async with scoped_session(workspace_id=workspace_id, require=False) as session:
                         memories = []
                         for r in records:
                             stype = r.metadata.get("source_type", "entity")
@@ -90,7 +90,7 @@ async def vector_search(query: str, workspace_id: str, limit: int) -> list[Retri
         logger.debug(f"Qdrant vector search in retrieval.py fallback to DB: {qe}")
 
     try:
-        async with async_session_factory() as session:
+        async with scoped_session(workspace_id=workspace_id, require=False) as session:
             try:
                 stmt = text(  # nosec B608 — parameterized vector query, not injection
                     "SELECT e.id, e.source_type, e.source_id, e.vector, "
@@ -217,14 +217,14 @@ async def keyword_search(query: str, workspace_id: str, limit: int) -> list[Retr
     try:
         from sqlalchemy import or_, select
 
-        from api.database import async_session_factory
+        from api.database import scoped_session
         from api.models.schema import Entity, MemoryRecord
     except ImportError as e:
         logger.warning(f"Keyword search imports unavailable: {e}")
         return []
 
     try:
-        async with async_session_factory() as session:
+        async with scoped_session(workspace_id=workspace_id, require=False) as session:
             memories = []
             pattern = f"%{query}%"
 
@@ -296,14 +296,14 @@ async def graph_traversal(query: str, workspace_id: str, limit: int) -> list[Ret
 
         from sqlalchemy import or_, select
 
-        from api.database import async_session_factory
+        from api.database import scoped_session
         from api.models.schema import Entity, Relationship
     except ImportError as e:
         logger.warning(f"Graph traversal imports unavailable: {e}")
         return []
 
     try:
-        async with async_session_factory() as session:
+        async with scoped_session(workspace_id=workspace_id, require=False) as session:
             entity_stmt = (
                 select(Entity)
                 .where(Entity.workspace_id == workspace_id)

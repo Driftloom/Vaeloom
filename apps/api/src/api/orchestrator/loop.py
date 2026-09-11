@@ -128,10 +128,10 @@ async def fetch_pending_approvals(workspace_id: str) -> list[dict[str, Any]]:
     Used by the orchestrator to surface actionable approval cards in chat
     responses (each card carries the approval_id for the decide endpoints).
     """
-    from ..database import async_session_factory
+    from ..database import scoped_session
 
     try:
-        async with async_session_factory() as db:
+        async with scoped_session(workspace_id=workspace_id, require=False) as db:
             from datetime import datetime
             now = datetime.now(UTC)
             await db.execute(
@@ -188,7 +188,6 @@ async def _lookup_approval_internal(
 ) -> dict[str, Any] | None:
     import json
     from datetime import UTC, datetime
-    from ..database import async_session_factory
 
     async def _do_lookup(session: AsyncSession) -> dict[str, Any] | None:
         now = datetime.now(UTC)
@@ -298,7 +297,9 @@ async def _lookup_approval_internal(
     try:
         if db is not None:
             return await _do_lookup(db)
-        async with async_session_factory() as session:
+        from ..database import scoped_session
+
+        async with scoped_session(workspace_id=workspace_id, require=False) as session:
             return await _do_lookup(session)
     except Exception as exc:
         logger.warning(f"Approval lookup failed (non-blocking): {exc}")
@@ -496,8 +497,18 @@ async def _assemble_rag_context(
 
         _session_factory = session_factory
         if _session_factory is None:
-            from api.database import async_session_factory as _default_factory
-            _session_factory = _default_factory
+            # OP-RLS-01: RLS-scoped session so RAG reads work under a
+            # least-privilege role (tenant resolved from workspace).
+            from contextlib import asynccontextmanager as _acm
+
+            from ..database import scoped_session
+
+            @_acm
+            async def _scoped_factory_cm():
+                async with scoped_session(workspace_id=workspace_id, require=False) as _s:
+                    yield _s
+
+            _session_factory = _scoped_factory_cm
 
         async with _session_factory() as session:
             # ── Vector search (hybrid, preferred) — pgvector <=> distance ──
@@ -880,6 +891,7 @@ async def _react_approval_gate(
         _requested_by = None
     try:
         from ..services.approval import ApprovalManager
+        from ..database import scoped_session
         mgr = ApprovalManager()
         if db is not None:
             try:
@@ -906,8 +918,7 @@ async def _react_approval_gate(
                     pass
                 return {"approved": False, "approval_id": None, "error": "approval store unavailable"}
             return {"approved": False, "approval_id": str(resp.id), "error": None}
-        from ..database import async_session_factory as _af
-        async with _af() as _sess:
+        async with scoped_session(workspace_id=workspace_id, require=False) as _sess:
             resp = await mgr.request_approval(
                 agent_name, tool_name, payload,
                 f"ReAct tool '{tool_name}' requires approval", workspace_id,

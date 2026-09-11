@@ -49,11 +49,11 @@ class DriveClient:
         try:
             import uuid
             from sqlalchemy import select
-            from api.database import async_session_factory
+            from api.database import scoped_session
             from api.models.schema import Connector
             from api.services.encryption import decrypt_value
 
-            async with async_session_factory() as db:
+            async with scoped_session(workspace_id=workspace_id, require=False) as db:
                 result = await db.execute(
                     select(Connector).where(
                         Connector.workspace_id == uuid.UUID(str(workspace_id)),

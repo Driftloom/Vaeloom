@@ -9,7 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
-from ..database import async_session_factory
+from ..database import scoped_session
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,7 @@ class RetentionScheduler:
             return []
 
         results = []
-        async with async_session_factory() as db:
+        async with scoped_session(require=False) as db:
             for policy in policies:
                 try:
                     result = await apply_retention(policy, db)

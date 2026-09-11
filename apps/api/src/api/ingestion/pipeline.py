@@ -6,7 +6,7 @@ from typing import Any
 
 from sqlalchemy import func, select
 
-from api.database import async_session_factory
+from api.database import scoped_session
 from api.models.schema import Document, DocumentVersion
 
 from .chunking import TextChunk, chunk_text
@@ -42,7 +42,7 @@ async def run_pipeline(
         existing_doc_id = await check_dedup(workspace_id, content_hash, filename)
 
         # 4. Write to database
-        async with async_session_factory() as session:
+        async with scoped_session(workspace_id=workspace_id, require=False) as session:
             async with session.begin():
                 if existing_doc_id:
                     # Existing document — add new version
@@ -178,7 +178,7 @@ async def run_pipeline(
         try:
             from api.services.event_service import event_service
 
-            async with async_session_factory() as evt_session:
+            async with scoped_session(workspace_id=workspace_id, require=False) as evt_session:
                 await event_service.publish(
                     evt_session,
                     event_type="ingest.completed",
@@ -258,9 +258,9 @@ async def _persist_chunks_with_embeddings(
         chunk_embeddings.append(emb)
 
     try:
-        from api.database import async_session_factory as _asf
+        from api.database import scoped_session as _asf
 
-        async with _asf() as session:
+        async with _asf(workspace_id=workspace_id, require=False) as session:
             async with session.begin():
                 for idx, ch in enumerate(chunks):
                     emb_vec = chunk_embeddings[idx] if idx < len(chunk_embeddings) else None
@@ -383,11 +383,11 @@ async def _populate_graph_memory(
         return
 
     try:
-        from api.database import async_session_factory as _asf
+        from api.database import scoped_session as _asf
         from api.services.knowledge_graph_service import kg_service
         from api.schemas.knowledge_graph import CreateNodeRequest, NodeType  # type: ignore
 
-        async with _asf() as session:
+        async with _asf(workspace_id=workspace_id, require=False) as session:
             # 1) Create central Document node for obsidian-style hub (document -> entities)
             doc_node_id: str | None = None
             try:

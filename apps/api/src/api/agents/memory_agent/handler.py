@@ -91,10 +91,10 @@ class MemoryAgentHandler(BaseAgent):
         entity_id_map: dict[str, uuid.UUID] = {}  # name -> DB id for relationship resolution
 
         try:
-            from ...database import async_session_factory
+            from ...database import scoped_session
             from ...models.schema import Entity, Memory, Relationship
 
-            async with async_session_factory() as db:
+            async with scoped_session(workspace_id=workspace_id, require=False) as db:
                 # 3a. Create Entity rows (knowledge graph nodes)
                 for i, entity in enumerate(facts.entities):
                     merge_decision = merge_results[i] if i < len(merge_results) else None

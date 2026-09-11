@@ -31,14 +31,14 @@ async def check_dedup(workspace_id: str, content_hash: str, filename: str) -> st
 
         from sqlalchemy import select
 
-        from api.database import async_session_factory
+        from api.database import scoped_session
         from api.models.schema import Document, DocumentVersion
     except ImportError as e:
         logger.warning(f"Dedup DB imports unavailable: {e}")
         return _fallback_dedup(workspace_id, content_hash, filename)
 
     try:
-        async with async_session_factory() as session:
+        async with scoped_session(workspace_id=workspace_id, require=False) as session:
             version_stmt = (
                 select(DocumentVersion)
                 .where(DocumentVersion.checksum == content_hash)
