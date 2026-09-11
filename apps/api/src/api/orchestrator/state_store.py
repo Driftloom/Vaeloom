@@ -237,8 +237,20 @@ class DatabaseStateStore(StateStore):
 
     @staticmethod
     async def _save_via(session, request_id, payload, wid, tenant, expected_version) -> int:
+        import json as _json
+
         from sqlalchemy import select, update
         from ..models.schema import LoopCheckpoint
+
+        # CAS-DEAD-01 hardening: JSON-sanitize once (datetimes/UUIDs in phase
+        # payloads are not JSON-native; the DB JSON/JSONB bind would reject
+        # them and divert every save to the file fallback). Parity with
+        # MemoryStateStore. Sanitization is deterministic, so CAS comparisons
+        # stay consistent across writers.
+        try:
+            payload = _json.loads(_json.dumps(payload, default=str))
+        except Exception:
+            pass
 
         if expected_version is not None:
             new_version = int(expected_version) + 1
