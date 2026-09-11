@@ -47,6 +47,7 @@ export function setToken(token: string): void {
   if (typeof window !== 'undefined') {
     window.localStorage.setItem(TOKEN_KEY, token);
     document.cookie = `vaeloom.accessToken=${token}; path=/; max-age=86400; SameSite=Lax`;
+    window.dispatchEvent(new Event('vaeloom.auth_token_set'));
   }
 }
 

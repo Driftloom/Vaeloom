@@ -62,65 +62,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [state, setState] = useState<AuthState>(INITIAL_STATE);
   /** Guards against StrictMode double-invocation of the hydration effect. */
-  const hydrateStartedRef = useRef(false);
-
-  useEffect(() => {
-    if (hydrateStartedRef.current) return;
-    hydrateStartedRef.current = true;
-
-    let cancelled = false;
+  const check = useCallback((attempt = 1) => {
     const token = getToken();
     if (!token) {
-      setState((s) => ({ ...s, loading: false, isAuthenticated: false }));
+      setState({ user: null, me: null, loading: false, error: null, isAuthenticated: false });
       return;
     }
-
-    const check = (attempt: number): void => {
-      api
-        .me()
-        .then((res: MeResponse) => {
-          if (!cancelled)
-            setState({
-              user: res.user,
-              me: res,
-              loading: false,
-              error: null,
-              isAuthenticated: true,
-            });
-        })
-        .catch((err: unknown) => {
-          if (cancelled) return;
-          if (err instanceof ApiError && err.status === 401) {
-            clearToken();
-            clearRefreshToken();
-            setState({
-              user: null,
-              me: null,
-              loading: false,
-              error: 'Session expired',
-              isAuthenticated: false,
-            });
-            return;
-          }
-          if (attempt < 3 && !cancelled) {
-            setTimeout(() => check(attempt + 1), 1000 * attempt);
-          } else if (!cancelled) {
-            setState({
-              user: null,
-              me: null,
-              loading: false,
-              error: 'Session expired',
-              isAuthenticated: false,
-            });
-          }
+    setState((s) => ({ ...s, loading: true }));
+    api
+      .me()
+      .then((res: MeResponse) => {
+        setState({
+          user: res.user,
+          me: res,
+          loading: false,
+          error: null,
+          isAuthenticated: true,
         });
-    };
-    check(1);
-
-    return () => {
-      cancelled = true;
-    };
+      })
+      .catch((err: unknown) => {
+        if (err instanceof ApiError && err.status === 401) {
+          clearToken();
+          clearRefreshToken();
+          setState({
+            user: null,
+            me: null,
+            loading: false,
+            error: 'Session expired',
+            isAuthenticated: false,
+          });
+          return;
+        }
+        if (attempt < 3) {
+          setTimeout(() => check(attempt + 1), 1000 * attempt);
+        } else {
+          setState({
+            user: null,
+            me: null,
+            loading: false,
+            error: 'Session expired',
+            isAuthenticated: false,
+          });
+        }
+      });
   }, []);
+
+  useEffect(() => {
+    check(1);
+    const onAuthSet = () => check(1);
+    window.addEventListener('vaeloom.auth_token_set', onAuthSet);
+    return () => window.removeEventListener('vaeloom.auth_token_set', onAuthSet);
+  }, [check]);
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await api.login({ email, password });

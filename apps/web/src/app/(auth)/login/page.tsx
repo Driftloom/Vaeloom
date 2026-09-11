@@ -24,7 +24,10 @@ function LoginForm() {
 
   async function handleSSO(provider: 'google' | 'microsoft') {
     try {
-      const redirectUri = `${window.location.origin}/auth/callback`;
+      const redirectUri =
+        provider === 'google'
+          ? `${window.location.origin}/callback`
+          : `${window.location.origin}/auth/callback`;
       const res = await apiClient.request<{ auth_url?: string; authUrl?: string }>(
         `/auth/sso/${provider}?redirect_uri=${encodeURIComponent(redirectUri)}`,
       );
@@ -172,7 +175,7 @@ function LoginForm() {
 
           {/* Form card */}
           <div className="bg-surface-50 border border-border rounded-2xl p-8 shadow-card">
-            <form onSubmit={onSubmit} className="space-y-5">
+            <form onSubmit={onSubmit} className="space-y-5" suppressHydrationWarning>
               {/* Email field */}
               <div className="space-y-2">
                 <label htmlFor="email" className="input-label">
@@ -188,6 +191,7 @@ function LoginForm() {
                     onBlur={() => setFocusedField(null)}
                     placeholder="you@example.com"
                     autoComplete="email"
+                    suppressHydrationWarning
                     aria-invalid={errors.email ? true : undefined}
                     aria-describedby={errors.email ? 'email-error' : undefined}
                     className={`input-field ${
@@ -230,6 +234,7 @@ function LoginForm() {
                     onBlur={() => setFocusedField(null)}
                     placeholder="Enter your password"
                     autoComplete="current-password"
+                    suppressHydrationWarning
                     aria-invalid={errors.password ? true : undefined}
                     aria-describedby={errors.password ? 'password-error' : undefined}
                     className={`input-field ${
@@ -287,6 +292,7 @@ function LoginForm() {
               <button
                 type="submit"
                 disabled={submitting}
+                suppressHydrationWarning
                 className="w-full btn-primary flex items-center justify-center gap-2 py-3.5 text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? (
@@ -329,6 +335,7 @@ function LoginForm() {
               <button
                 type="button"
                 onClick={() => handleSSO('google')}
+                suppressHydrationWarning
                 className="btn-secondary flex items-center justify-center gap-2 py-2.5"
                 aria-label="Continue with Google"
               >
@@ -355,6 +362,7 @@ function LoginForm() {
               <button
                 type="button"
                 onClick={() => handleSSO('microsoft')}
+                suppressHydrationWarning
                 className="btn-secondary flex items-center justify-center gap-2 py-2.5"
                 aria-label="Continue with Microsoft"
               >

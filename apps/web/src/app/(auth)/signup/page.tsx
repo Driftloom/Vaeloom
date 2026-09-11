@@ -42,7 +42,10 @@ export default function SignupPage() {
   // callback (auth.py auto-provision), so we reuse the login SSO flow.
   async function handleSSO(provider: string) {
     try {
-      const redirectUri = `${window.location.origin}/auth/callback`;
+      const redirectUri =
+        provider === 'google'
+          ? `${window.location.origin}/callback`
+          : `${window.location.origin}/auth/callback`;
       const res = await api.request<{ auth_url?: string; authUrl?: string }>(
         `/auth/sso/${provider}?redirect_uri=${encodeURIComponent(redirectUri)}`,
       );

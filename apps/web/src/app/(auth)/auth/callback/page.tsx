@@ -94,22 +94,28 @@ function CallbackInner() {
 
         sessionStorage.removeItem(SSO_PROVIDER_KEY);
 
-        // Resolve destination: preserved redirect > first workspace > landing.
+        // Resolve destination: preserved redirect > me.workspaces > listWorkspaces > landing.
         let target: string | null = null;
         if (storedRedirect && storedRedirect.startsWith('/') && !storedRedirect.startsWith('//')) {
           target = storedRedirect;
         } else {
           try {
-            const workspaces = await api.listWorkspaces();
-            if (Array.isArray(workspaces) && workspaces.length > 0 && workspaces[0]?.id) {
-              target = `/workspace/${workspaces[0].id}`;
+            const meRes = await api.me();
+            const ws = meRes?.workspaces;
+            if (Array.isArray(ws) && ws.length > 0 && ws[0]?.id) {
+              target = `/workspace/${ws[0].id}`;
+            } else {
+              const workspaces = await api.listWorkspaces();
+              if (Array.isArray(workspaces) && workspaces.length > 0 && workspaces[0]?.id) {
+                target = `/workspace/${workspaces[0].id}`;
+              }
             }
           } catch {
             // Fall through to landing.
           }
         }
         sessionStorage.removeItem(SSO_REDIRECT_KEY);
-        router.replace(target ?? '/');
+        window.location.href = target ?? '/';
       } catch {
         // Invalid/expired/already-consumed state values surface one honest,
         // actionable message instead of leaking internals.
