@@ -1,0 +1,245 @@
+{
+  "summary": {
+    "total": 28,
+    "pass": 24,
+    "fail": 4,
+    "block": 0,
+    "unknown": 0,
+    "pct": 85
+  },
+  "by_module": {
+    "P0": {
+      "PASS": 2,
+      "FAIL": 0,
+      "UNKNOWN": 0,
+      "CHECK": 0,
+      "BLOCK": 0
+    },
+    "M01": {
+      "PASS": 6,
+      "FAIL": 2,
+      "UNKNOWN": 0,
+      "CHECK": 0,
+      "BLOCK": 0
+    },
+    "M02": {
+      "PASS": 9,
+      "FAIL": 0,
+      "UNKNOWN": 0,
+      "CHECK": 0,
+      "BLOCK": 0
+    },
+    "M05": {
+      "PASS": 1,
+      "FAIL": 1,
+      "UNKNOWN": 0,
+      "CHECK": 0,
+      "BLOCK": 0
+    },
+    "M08": {
+      "PASS": 6,
+      "FAIL": 1,
+      "UNKNOWN": 0,
+      "CHECK": 0,
+      "BLOCK": 0
+    }
+  },
+  "results": [
+    {
+      "ts": "2026-09-11T09:40:50.160781+00:00",
+      "mod": "P0",
+      "test": "User A",
+      "status": "PASS",
+      "detail": "uid=a8951825 ws=f5574892 csrf=ok"
+    },
+    {
+      "ts": "2026-09-11T09:40:50.162102+00:00",
+      "mod": "P0",
+      "test": "User B",
+      "status": "PASS",
+      "detail": "uid=84cf2f2a ws=f9de656e csrf=ok"
+    },
+    {
+      "ts": "2026-09-11T09:40:53.951337+00:00",
+      "mod": "M01",
+      "test": "Bad password",
+      "status": "PASS",
+      "detail": "s=401"
+    },
+    {
+      "ts": "2026-09-11T09:40:58.222820+00:00",
+      "mod": "M01",
+      "test": "No such user",
+      "status": "PASS",
+      "detail": "s=401"
+    },
+    {
+      "ts": "2026-09-11T09:41:02.138656+00:00",
+      "mod": "M01",
+      "test": "Dup email",
+      "status": "PASS",
+      "detail": "s=409"
+    },
+    {
+      "ts": "2026-09-11T09:41:02.195243+00:00",
+      "mod": "M01",
+      "test": "Bad JWT",
+      "status": "PASS",
+      "detail": "s=401"
+    },
+    {
+      "ts": "2026-09-11T09:41:02.290948+00:00",
+      "mod": "M01",
+      "test": "No JWT",
+      "status": "PASS",
+      "detail": "s=401"
+    },
+    {
+      "ts": "2026-09-11T09:41:04.781038+00:00",
+      "mod": "M01",
+      "test": "Weak pw '123'",
+      "status": "FAIL",
+      "detail": "s=409 (201=no policy!)"
+    },
+    {
+      "ts": "2026-09-11T09:41:06.423731+00:00",
+      "mod": "M01",
+      "test": "Empty email",
+      "status": "FAIL",
+      "detail": "s=409"
+    },
+    {
+      "ts": "2026-09-11T09:41:08.833153+00:00",
+      "mod": "M01",
+      "test": "Bad refresh token",
+      "status": "PASS",
+      "detail": "s=401"
+    },
+    {
+      "ts": "2026-09-11T09:41:11.791012+00:00",
+      "mod": "M02",
+      "test": "Own workspace",
+      "status": "PASS",
+      "detail": "s=200"
+    },
+    {
+      "ts": "2026-09-11T09:41:14.743401+00:00",
+      "mod": "M02",
+      "test": "IDOR ws B",
+      "status": "PASS",
+      "detail": "s=404"
+    },
+    {
+      "ts": "2026-09-11T09:41:18.020500+00:00",
+      "mod": "M02",
+      "test": "IDOR ws A",
+      "status": "PASS",
+      "detail": "s=404"
+    },
+    {
+      "ts": "2026-09-11T09:41:21.143304+00:00",
+      "mod": "M02",
+      "test": "IDOR memories",
+      "status": "PASS",
+      "detail": "s=404"
+    },
+    {
+      "ts": "2026-09-11T09:41:23.305535+00:00",
+      "mod": "M02",
+      "test": "IDOR apps",
+      "status": "PASS",
+      "detail": "s=404"
+    },
+    {
+      "ts": "2026-09-11T09:41:25.511868+00:00",
+      "mod": "M02",
+      "test": "IDOR connectors",
+      "status": "PASS",
+      "detail": "s=404"
+    },
+    {
+      "ts": "2026-09-11T09:41:27.287451+00:00",
+      "mod": "M02",
+      "test": "IDOR agents",
+      "status": "PASS",
+      "detail": "s=404"
+    },
+    {
+      "ts": "2026-09-11T09:41:28.448475+00:00",
+      "mod": "M02",
+      "test": "Fake UUID ws",
+      "status": "PASS",
+      "detail": "s=404"
+    },
+    {
+      "ts": "2026-09-11T09:41:29.368472+00:00",
+      "mod": "M02",
+      "test": "Spoofed ws header",
+      "status": "PASS",
+      "detail": "s=403"
+    },
+    {
+      "ts": "2026-09-11T09:41:32.760877+00:00",
+      "mod": "M05",
+      "test": "List docs",
+      "status": "PASS",
+      "detail": "s=200"
+    },
+    {
+      "ts": "2026-09-11T09:41:34.632902+00:00",
+      "mod": "M05",
+      "test": "Upload doc",
+      "status": "FAIL",
+      "detail": "s=422 {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"file\"],\"msg\":\"Field required\",\"input\":null}]}"
+    },
+    {
+      "ts": "2026-09-11T09:41:37.826324+00:00",
+      "mod": "M08",
+      "test": "List memories",
+      "status": "PASS",
+      "detail": "s=200"
+    },
+    {
+      "ts": "2026-09-11T09:41:45.815784+00:00",
+      "mod": "M08",
+      "test": "Create memory",
+      "status": "PASS",
+      "detail": "id=73f9214e-aa99-45b3-889e-60b371eb9429"
+    },
+    {
+      "ts": "2026-09-11T09:41:48.946060+00:00",
+      "mod": "M08",
+      "test": "Read memory",
+      "status": "PASS",
+      "detail": "s=200"
+    },
+    {
+      "ts": "2026-09-11T09:41:50.035232+00:00",
+      "mod": "M08",
+      "test": "P0: Cross-user mem",
+      "status": "PASS",
+      "detail": "s=403 BLOCKED"
+    },
+    {
+      "ts": "2026-09-11T09:41:57.892554+00:00",
+      "mod": "M08",
+      "test": "Update memory",
+      "status": "PASS",
+      "detail": "s=200"
+    },
+    {
+      "ts": "2026-09-11T09:41:59.142903+00:00",
+      "mod": "M08",
+      "test": "P0: Cross-ws list",
+      "status": "PASS",
+      "detail": "s=403"
+    },
+    {
+      "ts": "2026-09-11T09:42:08.783966+00:00",
+      "mod": "M08",
+      "test": "Memory search",
+      "status": "FAIL",
+      "detail": "s=500"
+    }
+  ]
+}

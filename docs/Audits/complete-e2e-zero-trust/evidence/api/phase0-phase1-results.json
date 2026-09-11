@@ -1,0 +1,339 @@
+{
+  "summary": {
+    "total": 41,
+    "passed": 34,
+    "failed": 5,
+    "blocked": 0,
+    "unknown": 2
+  },
+  "results": [
+    {
+      "timestamp": "2026-09-11T05:51:53.323911+00:00",
+      "module": "P0",
+      "test": "Health endpoint",
+      "status": "PASS",
+      "detail": "v0.2.0",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:51:53.332964+00:00",
+      "module": "P0",
+      "test": "Swagger UI loads",
+      "status": "PASS",
+      "detail": "200",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:51:55.723571+00:00",
+      "module": "P0",
+      "test": "CSRF token endpoint",
+      "status": "FAIL",
+      "detail": "401",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:51:58.550912+00:00",
+      "module": "P0",
+      "test": "User A login",
+      "status": "PASS",
+      "detail": "id=a8951825-9c2c-422f-9ff1-e37ad2800538",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:02.114564+00:00",
+      "module": "P0",
+      "test": "User B login",
+      "status": "PASS",
+      "detail": "id=84cf2f2a-23ab-4b2c-891f-32db449eaa85",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:06.965169+00:00",
+      "module": "P0",
+      "test": "User A workspace exists",
+      "status": "PASS",
+      "detail": "ws_id=f5574892-c502-469b-8b14-d0b926683b87",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:08.188002+00:00",
+      "module": "P0",
+      "test": "User B workspace exists",
+      "status": "PASS",
+      "detail": "ws_id=f9de656e-76fd-47e5-88c9-dd0124471388",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:10.998720+00:00",
+      "module": "M01",
+      "test": "Invalid password rejected",
+      "status": "PASS",
+      "detail": "status=401",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:11.970444+00:00",
+      "module": "M01",
+      "test": "Nonexistent user rejected",
+      "status": "PASS",
+      "detail": "status=401",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:13.719328+00:00",
+      "module": "M01",
+      "test": "Duplicate email rejected",
+      "status": "PASS",
+      "detail": "status=409, body={\"success\":false,\"error\":{\"code\":409,\"message\":\"Email already registered\",\"details\":null}}",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:17.907668+00:00",
+      "module": "M01",
+      "test": "Weak password rejected",
+      "status": "FAIL",
+      "detail": "status=201",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:23.691930+00:00",
+      "module": "M01",
+      "test": "Empty email rejected",
+      "status": "FAIL",
+      "detail": "status=201",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:23.724000+00:00",
+      "module": "M01",
+      "test": "Invalid JWT rejected",
+      "status": "PASS",
+      "detail": "status=401",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:23.745105+00:00",
+      "module": "M01",
+      "test": "Missing JWT rejected",
+      "status": "PASS",
+      "detail": "status=401",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:26.680940+00:00",
+      "module": "M01",
+      "test": "Token refresh works",
+      "status": "PASS",
+      "detail": "new token issued",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:26.715507+00:00",
+      "module": "M01",
+      "test": "CSRF on POST (no token)",
+      "status": "PASS",
+      "detail": "status=403 - CSRF may rely on cookie pattern",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:26.728600+00:00",
+      "module": "M01",
+      "test": "Public path /health",
+      "status": "PASS",
+      "detail": "status=200",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:26.760359+00:00",
+      "module": "M01",
+      "test": "Public path /docs",
+      "status": "PASS",
+      "detail": "status=200",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:26.792370+00:00",
+      "module": "M01",
+      "test": "Public path /api/v1/csrf-token",
+      "status": "FAIL",
+      "detail": "status=401",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:28.984500+00:00",
+      "module": "M01",
+      "test": "Logout endpoint",
+      "status": "PASS",
+      "detail": "status=204",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:32.330018+00:00",
+      "module": "M02",
+      "test": "User A reads own workspace",
+      "status": "PASS",
+      "detail": "status=200",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:33.247101+00:00",
+      "module": "M02",
+      "test": "User A reads User B workspace (IDOR)",
+      "status": "PASS",
+      "detail": "status=404 - BLOCKED",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:34.137120+00:00",
+      "module": "M02",
+      "test": "User B reads User A workspace (IDOR)",
+      "status": "PASS",
+      "detail": "status=404 - BLOCKED",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:34.164116+00:00",
+      "module": "M02",
+      "test": "User A reads User B documents (IDOR)",
+      "status": "PASS",
+      "detail": "status=404",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:35.170546+00:00",
+      "module": "M02",
+      "test": "User A reads User B memories (IDOR)",
+      "status": "PASS",
+      "detail": "status=404",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:36.027603+00:00",
+      "module": "M02",
+      "test": "User A reads User B agents (IDOR)",
+      "status": "PASS",
+      "detail": "status=404",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:36.917350+00:00",
+      "module": "M02",
+      "test": "User A reads User B connectors (IDOR)",
+      "status": "PASS",
+      "detail": "status=404",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:37.535706+00:00",
+      "module": "M02",
+      "test": "Spoofed X-Workspace-ID header",
+      "status": "PASS",
+      "detail": "status=403 - header should be validated against ownership",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:38.453347+00:00",
+      "module": "M02",
+      "test": "Nonexistent workspace access",
+      "status": "PASS",
+      "detail": "status=404",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:38.485156+00:00",
+      "module": "M25",
+      "test": "Header x-content-type-options",
+      "status": "PASS",
+      "detail": "expected=nosniff, actual=nosniff",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:38.485156+00:00",
+      "module": "M25",
+      "test": "Header x-frame-options",
+      "status": "PASS",
+      "detail": "expected=DENY, actual=DENY",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:38.485156+00:00",
+      "module": "M25",
+      "test": "Server header exposure",
+      "status": "FAIL",
+      "detail": "server=uvicorn",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:47.275246+00:00",
+      "module": "M01",
+      "test": "Rate limiting on failed logins",
+      "status": "UNKNOWN",
+      "detail": "10 rapid requests, statuses: {401}",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:47.291431+00:00",
+      "module": "M01",
+      "test": "Rate limit headers present",
+      "status": "UNKNOWN",
+      "detail": "headers: none found",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:48.727573+00:00",
+      "module": "M04",
+      "test": "List connectors endpoint",
+      "status": "PASS",
+      "detail": "status=200",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:48.735451+00:00",
+      "module": "DISC",
+      "test": "POST /api/v1/auth/signup",
+      "status": "PASS",
+      "detail": "status=405",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:48.767552+00:00",
+      "module": "DISC",
+      "test": "POST /api/v1/auth/login",
+      "status": "PASS",
+      "detail": "status=405",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:49.648486+00:00",
+      "module": "DISC",
+      "test": "GET /api/v1/workspaces",
+      "status": "PASS",
+      "detail": "status=200",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:49.688101+00:00",
+      "module": "DISC",
+      "test": "GET /api/v1/search",
+      "status": "PASS",
+      "detail": "status=405",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:49.719884+00:00",
+      "module": "DISC",
+      "test": "GET /health",
+      "status": "PASS",
+      "detail": "status=200",
+      "evidence": ""
+    },
+    {
+      "timestamp": "2026-09-11T05:52:49.816811+00:00",
+      "module": "DISC",
+      "test": "GET /metrics",
+      "status": "PASS",
+      "detail": "status=200",
+      "evidence": ""
+    }
+  ]
+}

@@ -1,0 +1,382 @@
+{
+  "summary": {
+    "total": 53,
+    "pass": 39,
+    "fail": 13,
+    "block": 0,
+    "unknown": 1
+  },
+  "results": [
+    {
+      "ts": "2026-09-11T09:31:52.948674+00:00",
+      "mod": "P0",
+      "test": "User A setup",
+      "status": "PASS",
+      "detail": "ws=f5574892, csrf=yes"
+    },
+    {
+      "ts": "2026-09-11T09:31:52.948674+00:00",
+      "mod": "P0",
+      "test": "User B setup",
+      "status": "PASS",
+      "detail": "ws=f9de656e, csrf=yes"
+    },
+    {
+      "ts": "2026-09-11T09:31:54.605984+00:00",
+      "mod": "M01",
+      "test": "Invalid password",
+      "status": "PASS",
+      "detail": "s=401"
+    },
+    {
+      "ts": "2026-09-11T09:31:55.838216+00:00",
+      "mod": "M01",
+      "test": "Nonexistent user",
+      "status": "PASS",
+      "detail": "s=401"
+    },
+    {
+      "ts": "2026-09-11T09:31:57.607171+00:00",
+      "mod": "M01",
+      "test": "Duplicate email",
+      "status": "PASS",
+      "detail": "s=409"
+    },
+    {
+      "ts": "2026-09-11T09:31:57.616708+00:00",
+      "mod": "M01",
+      "test": "Invalid JWT",
+      "status": "PASS",
+      "detail": "s=401"
+    },
+    {
+      "ts": "2026-09-11T09:31:57.617369+00:00",
+      "mod": "M01",
+      "test": "Missing JWT",
+      "status": "PASS",
+      "detail": "s=401"
+    },
+    {
+      "ts": "2026-09-11T09:32:01.280757+00:00",
+      "mod": "M02",
+      "test": "Own workspace",
+      "status": "PASS",
+      "detail": "s=200"
+    },
+    {
+      "ts": "2026-09-11T09:32:03.702847+00:00",
+      "mod": "M02",
+      "test": "IDOR workspace",
+      "status": "PASS",
+      "detail": "s=404"
+    },
+    {
+      "ts": "2026-09-11T09:32:06.815209+00:00",
+      "mod": "M02",
+      "test": "IDOR memories",
+      "status": "PASS",
+      "detail": "s=404"
+    },
+    {
+      "ts": "2026-09-11T09:32:11.026719+00:00",
+      "mod": "M02",
+      "test": "IDOR applications",
+      "status": "PASS",
+      "detail": "s=404"
+    },
+    {
+      "ts": "2026-09-11T09:32:14.209459+00:00",
+      "mod": "M02",
+      "test": "IDOR connectors",
+      "status": "PASS",
+      "detail": "s=404"
+    },
+    {
+      "ts": "2026-09-11T09:32:17.722364+00:00",
+      "mod": "M02",
+      "test": "IDOR agents",
+      "status": "PASS",
+      "detail": "s=404"
+    },
+    {
+      "ts": "2026-09-11T09:32:20.389947+00:00",
+      "mod": "M02",
+      "test": "Fake workspace",
+      "status": "PASS",
+      "detail": "s=404"
+    },
+    {
+      "ts": "2026-09-11T09:32:22.407465+00:00",
+      "mod": "M05",
+      "test": "List docs",
+      "status": "FAIL",
+      "detail": "s=400"
+    },
+    {
+      "ts": "2026-09-11T09:32:22.488843+00:00",
+      "mod": "M05",
+      "test": "Upload doc",
+      "status": "FAIL",
+      "detail": "s=403 {\"detail\":\"CSRF token mismatch\"}"
+    },
+    {
+      "ts": "2026-09-11T09:32:25.628329+00:00",
+      "mod": "M08",
+      "test": "List memories",
+      "status": "PASS",
+      "detail": "s=200"
+    },
+    {
+      "ts": "2026-09-11T09:32:25.805258+00:00",
+      "mod": "M08",
+      "test": "Create memory",
+      "status": "FAIL",
+      "detail": "s=403 {\"detail\":\"CSRF token mismatch\"}"
+    },
+    {
+      "ts": "2026-09-11T09:32:26.823598+00:00",
+      "mod": "M08",
+      "test": "P0: Cross-ws memory list",
+      "status": "PASS",
+      "detail": "s=403"
+    },
+    {
+      "ts": "2026-09-11T09:32:26.962726+00:00",
+      "mod": "M08",
+      "test": "Memory search",
+      "status": "FAIL",
+      "detail": "s=403"
+    },
+    {
+      "ts": "2026-09-11T09:32:29.520170+00:00",
+      "mod": "M09",
+      "test": "KG nodes",
+      "status": "PASS",
+      "detail": "s=200"
+    },
+    {
+      "ts": "2026-09-11T09:32:33.923882+00:00",
+      "mod": "M09",
+      "test": "KG edges",
+      "status": "PASS",
+      "detail": "s=200"
+    },
+    {
+      "ts": "2026-09-11T09:32:35.017240+00:00",
+      "mod": "M09",
+      "test": "Cross-user KG",
+      "status": "PASS",
+      "detail": "s=403"
+    },
+    {
+      "ts": "2026-09-11T09:32:35.200980+00:00",
+      "mod": "M21",
+      "test": "Search",
+      "status": "FAIL",
+      "detail": "s=403"
+    },
+    {
+      "ts": "2026-09-11T09:32:36.938277+00:00",
+      "mod": "M11",
+      "test": "Agent catalog",
+      "status": "PASS",
+      "detail": "s=200"
+    },
+    {
+      "ts": "2026-09-11T09:32:41.847767+00:00",
+      "mod": "M11",
+      "test": "List agents",
+      "status": "PASS",
+      "detail": "s=200"
+    },
+    {
+      "ts": "2026-09-11T09:32:41.956333+00:00",
+      "mod": "M13",
+      "test": "Agent chat",
+      "status": "FAIL",
+      "detail": "s=403 len=32"
+    },
+    {
+      "ts": "2026-09-11T09:32:42.037730+00:00",
+      "mod": "M13",
+      "test": "Chat stream SSE",
+      "status": "FAIL",
+      "detail": "s=403 ct=application/json"
+    },
+    {
+      "ts": "2026-09-11T09:32:42.045760+00:00",
+      "mod": "M13",
+      "test": "Prompt injection",
+      "status": "PASS",
+      "detail": "leaked=False"
+    },
+    {
+      "ts": "2026-09-11T09:32:43.008642+00:00",
+      "mod": "M13",
+      "test": "Cross-user chat leak",
+      "status": "PASS",
+      "detail": "s=403"
+    },
+    {
+      "ts": "2026-09-11T09:32:43.892904+00:00",
+      "mod": "M14",
+      "test": "Templates",
+      "status": "PASS",
+      "detail": "s=200 count=10"
+    },
+    {
+      "ts": "2026-09-11T09:32:47.029973+00:00",
+      "mod": "M14",
+      "test": "List resumes",
+      "status": "FAIL",
+      "detail": "s=400"
+    },
+    {
+      "ts": "2026-09-11T09:32:49.096298+00:00",
+      "mod": "M14",
+      "test": "Master resume",
+      "status": "FAIL",
+      "detail": "s=422"
+    },
+    {
+      "ts": "2026-09-11T09:32:51.436718+00:00",
+      "mod": "M15",
+      "test": "ATS readiness",
+      "status": "PASS",
+      "detail": "s=422"
+    },
+    {
+      "ts": "2026-09-11T09:32:51.515201+00:00",
+      "mod": "M16",
+      "test": "Job match",
+      "status": "FAIL",
+      "detail": "s=403"
+    },
+    {
+      "ts": "2026-09-11T09:32:55.461937+00:00",
+      "mod": "M17",
+      "test": "List apps",
+      "status": "PASS",
+      "detail": "s=200"
+    },
+    {
+      "ts": "2026-09-11T09:32:59.371335+00:00",
+      "mod": "M17",
+      "test": "IDOR apps",
+      "status": "PASS",
+      "detail": "s=404"
+    },
+    {
+      "ts": "2026-09-11T09:33:01.282135+00:00",
+      "mod": "M18",
+      "test": "Gmail watch",
+      "status": "FAIL",
+      "detail": "s=500"
+    },
+    {
+      "ts": "2026-09-11T09:33:03.531931+00:00",
+      "mod": "M19",
+      "test": "Scheduler jobs",
+      "status": "PASS",
+      "detail": "s=200"
+    },
+    {
+      "ts": "2026-09-11T09:33:06.808946+00:00",
+      "mod": "M22",
+      "test": "Notifications",
+      "status": "PASS",
+      "detail": "s=200"
+    },
+    {
+      "ts": "2026-09-11T09:33:09.659775+00:00",
+      "mod": "M23",
+      "test": "Agent actions",
+      "status": "PASS",
+      "detail": "s=200"
+    },
+    {
+      "ts": "2026-09-11T09:33:12.316291+00:00",
+      "mod": "M23",
+      "test": "Doc actions",
+      "status": "PASS",
+      "detail": "s=200"
+    },
+    {
+      "ts": "2026-09-11T09:33:15.292027+00:00",
+      "mod": "M24",
+      "test": "Approvals",
+      "status": "PASS",
+      "detail": "s=200"
+    },
+    {
+      "ts": "2026-09-11T09:33:15.375128+00:00",
+      "mod": "M25",
+      "test": "SQL injection",
+      "status": "FAIL",
+      "detail": "s=403"
+    },
+    {
+      "ts": "2026-09-11T09:33:16.177843+00:00",
+      "mod": "M25",
+      "test": "Path traversal",
+      "status": "PASS",
+      "detail": "s=404"
+    },
+    {
+      "ts": "2026-09-11T09:33:16.227667+00:00",
+      "mod": "M25",
+      "test": "XSS rejected",
+      "status": "UNKNOWN",
+      "detail": "s=403"
+    },
+    {
+      "ts": "2026-09-11T09:33:16.235159+00:00",
+      "mod": "M25",
+      "test": "X-Content-Type-Options",
+      "status": "PASS",
+      "detail": "nosniff"
+    },
+    {
+      "ts": "2026-09-11T09:33:16.235159+00:00",
+      "mod": "M25",
+      "test": "X-Frame-Options",
+      "status": "PASS",
+      "detail": "DENY"
+    },
+    {
+      "ts": "2026-09-11T09:33:20.927356+00:00",
+      "mod": "M26",
+      "test": "GDPR export",
+      "status": "FAIL",
+      "detail": "s=500"
+    },
+    {
+      "ts": "2026-09-11T09:33:21.191252+00:00",
+      "mod": "M27",
+      "test": "Prometheus",
+      "status": "PASS",
+      "detail": "s=200 size=13818"
+    },
+    {
+      "ts": "2026-09-11T09:33:23.997649+00:00",
+      "mod": "M04",
+      "test": "List connectors",
+      "status": "PASS",
+      "detail": "s=200"
+    },
+    {
+      "ts": "2026-09-11T09:33:26.456191+00:00",
+      "mod": "M04",
+      "test": "WS connectors",
+      "status": "PASS",
+      "detail": "s=200"
+    },
+    {
+      "ts": "2026-09-11T09:33:26.474220+00:00",
+      "mod": "M32",
+      "test": "OpenAPI spec",
+      "status": "PASS",
+      "detail": "paths=162"
+    }
+  ]
+}

@@ -1,0 +1,291 @@
+{
+  "summary": {
+    "total": 40,
+    "passed": 23,
+    "failed": 16,
+    "blocked": 0,
+    "unknown": 1
+  },
+  "results": [
+    {
+      "timestamp": "2026-09-11T05:57:14.180458+00:00",
+      "module": "P0",
+      "test": "User A login + CSRF",
+      "status": "FAIL",
+      "detail": "csrf=missing"
+    },
+    {
+      "timestamp": "2026-09-11T05:57:39.786033+00:00",
+      "module": "M05",
+      "test": "List documents",
+      "status": "FAIL",
+      "detail": "status=400, count=N/A"
+    },
+    {
+      "timestamp": "2026-09-11T05:57:39.792222+00:00",
+      "module": "M05",
+      "test": "Upload document (with CSRF)",
+      "status": "FAIL",
+      "detail": "status=403 body={\"detail\":\"CSRF token missing\"}"
+    },
+    {
+      "timestamp": "2026-09-11T05:57:40.933500+00:00",
+      "module": "M05",
+      "test": "Cross-user doc list (IDOR)",
+      "status": "PASS",
+      "detail": "status=403"
+    },
+    {
+      "timestamp": "2026-09-11T05:57:48.076260+00:00",
+      "module": "M08",
+      "test": "List memories",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "timestamp": "2026-09-11T05:57:48.083320+00:00",
+      "module": "M08",
+      "test": "Create memory (with CSRF)",
+      "status": "FAIL",
+      "detail": "status=403 body={\"detail\":\"CSRF token missing\"}"
+    },
+    {
+      "timestamp": "2026-09-11T05:57:49.394195+00:00",
+      "module": "M08",
+      "test": "Cross-ws memory list (RLS)",
+      "status": "PASS",
+      "detail": "status=403"
+    },
+    {
+      "timestamp": "2026-09-11T05:57:49.398037+00:00",
+      "module": "M08",
+      "test": "Memory search",
+      "status": "FAIL",
+      "detail": "status=403"
+    },
+    {
+      "timestamp": "2026-09-11T05:57:51.624684+00:00",
+      "module": "M09",
+      "test": "List KG nodes",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "timestamp": "2026-09-11T05:57:53.672720+00:00",
+      "module": "M09",
+      "test": "List KG edges",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "timestamp": "2026-09-11T05:57:54.386950+00:00",
+      "module": "M09",
+      "test": "Cross-user KG nodes (RLS)",
+      "status": "PASS",
+      "detail": "status=403"
+    },
+    {
+      "timestamp": "2026-09-11T05:57:54.392819+00:00",
+      "module": "M21",
+      "test": "Search (POST)",
+      "status": "FAIL",
+      "detail": "status=403"
+    },
+    {
+      "timestamp": "2026-09-11T05:57:57.202655+00:00",
+      "module": "M11",
+      "test": "Agent catalog",
+      "status": "PASS",
+      "detail": "count=non-list"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:02.036392+00:00",
+      "module": "M11",
+      "test": "List agents",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:02.045919+00:00",
+      "module": "M13",
+      "test": "Agent chat (with CSRF)",
+      "status": "FAIL",
+      "detail": "status=403, len=31"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:02.052303+00:00",
+      "module": "M13",
+      "test": "Chat stream SSE",
+      "status": "FAIL",
+      "detail": "status=403, content_type=application/json"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:02.060846+00:00",
+      "module": "M13",
+      "test": "Prompt injection defense",
+      "status": "PASS",
+      "detail": "status=400, leaked_sensitive=False"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:02.074054+00:00",
+      "module": "M13",
+      "test": "Cross-user chat context leak",
+      "status": "PASS",
+      "detail": "status=403"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:02.633756+00:00",
+      "module": "M14",
+      "test": "Resume templates",
+      "status": "PASS",
+      "detail": "count=10"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:05.860358+00:00",
+      "module": "M14",
+      "test": "List resumes",
+      "status": "FAIL",
+      "detail": "status=400"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:07.288564+00:00",
+      "module": "M14",
+      "test": "Master resume",
+      "status": "FAIL",
+      "detail": "status=422"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:08.784357+00:00",
+      "module": "M15",
+      "test": "ATS readiness",
+      "status": "FAIL",
+      "detail": "status=422"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:08.792185+00:00",
+      "module": "M16",
+      "test": "Opportunity match",
+      "status": "FAIL",
+      "detail": "status=403"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:10.404878+00:00",
+      "module": "M17",
+      "test": "List applications",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:11.332133+00:00",
+      "module": "M17",
+      "test": "Cross-user applications (IDOR)",
+      "status": "PASS",
+      "detail": "status=404"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:13.124134+00:00",
+      "module": "M18",
+      "test": "Gmail watch status",
+      "status": "FAIL",
+      "detail": "status=500"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:14.960724+00:00",
+      "module": "M19",
+      "test": "Scheduler events",
+      "status": "FAIL",
+      "detail": "status=422"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:16.612389+00:00",
+      "module": "M19",
+      "test": "Scheduler jobs",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:20.026149+00:00",
+      "module": "M22",
+      "test": "List notifications",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:24.494766+00:00",
+      "module": "M23",
+      "test": "Agent actions (audit)",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:25.510620+00:00",
+      "module": "M23",
+      "test": "Document actions (audit)",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:27.997241+00:00",
+      "module": "M24",
+      "test": "List approvals",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:28.038467+00:00",
+      "module": "M25",
+      "test": "SQL injection via search",
+      "status": "FAIL",
+      "detail": "status=403"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:28.092696+00:00",
+      "module": "M25",
+      "test": "XSS in memory",
+      "status": "UNKNOWN",
+      "detail": "status=403"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:29.134008+00:00",
+      "module": "M25",
+      "test": "Path traversal",
+      "status": "PASS",
+      "detail": "status=404"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:33.651503+00:00",
+      "module": "M26",
+      "test": "GDPR export",
+      "status": "FAIL",
+      "detail": "status=500"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:33.915488+00:00",
+      "module": "M27",
+      "test": "Prometheus metrics",
+      "status": "PASS",
+      "detail": "status=200, size=12655"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:33.948514+00:00",
+      "module": "M32",
+      "test": "OpenAPI spec",
+      "status": "PASS",
+      "detail": "paths=162"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:38.452036+00:00",
+      "module": "M04",
+      "test": "List connectors (global)",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "timestamp": "2026-09-11T05:58:39.715954+00:00",
+      "module": "M04",
+      "test": "List connectors (workspace)",
+      "status": "PASS",
+      "detail": "status=200"
+    }
+  ]
+}

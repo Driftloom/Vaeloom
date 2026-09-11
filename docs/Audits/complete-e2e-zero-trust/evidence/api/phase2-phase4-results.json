@@ -1,0 +1,242 @@
+{
+  "summary": {
+    "total": 33,
+    "passed": 15,
+    "failed": 16,
+    "blocked": 0,
+    "unknown": 2
+  },
+  "results": [
+    {
+      "timestamp": "2026-09-11T05:55:07.339629+00:00",
+      "module": "M05",
+      "test": "List documents",
+      "status": "FAIL",
+      "detail": "status=404"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:07.357109+00:00",
+      "module": "M05",
+      "test": "Upload document",
+      "status": "FAIL",
+      "detail": "status=403, body={\"detail\":\"CSRF token missing\"}"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:07.371261+00:00",
+      "module": "M06",
+      "test": "Upload PDF",
+      "status": "FAIL",
+      "detail": "status=403"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:07.384884+00:00",
+      "module": "M06",
+      "test": "Upload empty file",
+      "status": "FAIL",
+      "detail": "status=403 - rejected"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:08.927467+00:00",
+      "module": "M08",
+      "test": "List memories",
+      "status": "PASS",
+      "detail": "status=200, count=0"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:08.939887+00:00",
+      "module": "M08",
+      "test": "Create memory",
+      "status": "FAIL",
+      "detail": "status=403, body={\"detail\":\"CSRF token missing\"}"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:09.849662+00:00",
+      "module": "M08",
+      "test": "Cross-workspace memory list (P0)",
+      "status": "PASS",
+      "detail": "status=404"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:09.865377+00:00",
+      "module": "M09",
+      "test": "List entities",
+      "status": "FAIL",
+      "detail": "status=404"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:09.879511+00:00",
+      "module": "M09",
+      "test": "List relationships",
+      "status": "FAIL",
+      "detail": "status=404"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:09.893709+00:00",
+      "module": "M09",
+      "test": "Cross-user KG access",
+      "status": "PASS",
+      "detail": "status=404"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:09.909032+00:00",
+      "module": "M21",
+      "test": "Search endpoint",
+      "status": "FAIL",
+      "detail": "status=404"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:11.277621+00:00",
+      "module": "M11",
+      "test": "List agents",
+      "status": "PASS",
+      "detail": "count=0"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:11.285377+00:00",
+      "module": "M13",
+      "test": "Chat message (non-stream)",
+      "status": "FAIL",
+      "detail": "status=403, response_len=31"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:11.289803+00:00",
+      "module": "M13",
+      "test": "Prompt injection defense",
+      "status": "PASS",
+      "detail": "status=400, db_leak=False"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:11.298584+00:00",
+      "module": "M13",
+      "test": "Cross-user chat (IDOR)",
+      "status": "PASS",
+      "detail": "status=403"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:11.328051+00:00",
+      "module": "M14",
+      "test": "List resume templates",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:11.342853+00:00",
+      "module": "M14",
+      "test": "List resumes",
+      "status": "FAIL",
+      "detail": "status=404"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:11.351008+00:00",
+      "module": "M15",
+      "test": "ATS endpoint exists",
+      "status": "UNKNOWN",
+      "detail": "status=404"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:11.362950+00:00",
+      "module": "M16",
+      "test": "List opportunities/jobs",
+      "status": "FAIL",
+      "detail": "status=404"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:12.785000+00:00",
+      "module": "M17",
+      "test": "List applications",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:12.796450+00:00",
+      "module": "M18",
+      "test": "Gmail status",
+      "status": "PASS",
+      "detail": "status=404"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:12.813808+00:00",
+      "module": "M19",
+      "test": "List scheduled events",
+      "status": "PASS",
+      "detail": "status=404"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:12.825574+00:00",
+      "module": "M20",
+      "test": "Dashboard analytics",
+      "status": "FAIL",
+      "detail": "status=404"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:12.836637+00:00",
+      "module": "M22",
+      "test": "List notifications",
+      "status": "FAIL",
+      "detail": "status=404"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:12.848907+00:00",
+      "module": "M23",
+      "test": "List audit events",
+      "status": "FAIL",
+      "detail": "status=404"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:12.865097+00:00",
+      "module": "M24",
+      "test": "List pending approvals",
+      "status": "PASS",
+      "detail": "status=404"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:12.873860+00:00",
+      "module": "M26",
+      "test": "GDPR export endpoint",
+      "status": "PASS",
+      "detail": "status=404"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:12.890664+00:00",
+      "module": "M27",
+      "test": "Prometheus metrics",
+      "status": "PASS",
+      "detail": "status=200, has_content=True"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:12.898387+00:00",
+      "module": "M25",
+      "test": "SQL injection via search",
+      "status": "FAIL",
+      "detail": "status=404"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:12.915213+00:00",
+      "module": "M25",
+      "test": "Path traversal attempt",
+      "status": "PASS",
+      "detail": "status=404"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:12.923652+00:00",
+      "module": "M25",
+      "test": "XSS in memory creation",
+      "status": "UNKNOWN",
+      "detail": "status=403"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:12.939668+00:00",
+      "module": "M25",
+      "test": "Oversized payload (1MB)",
+      "status": "FAIL",
+      "detail": "status=403"
+    },
+    {
+      "timestamp": "2026-09-11T05:55:14.033299+00:00",
+      "module": "M32",
+      "test": "OpenAPI spec",
+      "status": "PASS",
+      "detail": "paths=162"
+    }
+  ]
+}
