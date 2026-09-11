@@ -4,6 +4,7 @@ from datetime import datetime
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     Column,
     DateTime,
@@ -88,6 +89,8 @@ class AuthSession(Base):
     status: Mapped[str] = mapped_column(String(20), default="ACTIVE")
     token: Mapped[str] = mapped_column(String(500), unique=True, nullable=False)
     refresh_token: Mapped[str] = mapped_column(String(500), unique=True, nullable=False)
+    # AUTH-REV-01 (0037): per-token id for targeted shared revocation.
+    jti: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_activity: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     device_info: Mapped[dict | None] = mapped_column(JSON)
@@ -95,6 +98,21 @@ class AuthSession(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     user: Mapped["User"] = relationship("User", back_populates="sessions")
+
+
+class RevokedUserCutoff(Base):
+    """AUTH-REV-01 (0037): server-side revoke-all watermark per user.
+
+    Any access token with iat strictly below cutoff_unix is revoked.
+    Shared across workers via DB (+ Redis mirror); replaces the old
+    process-local _revoked_users_before dict.
+    """
+
+    __tablename__ = "revoked_user_cutoffs"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    cutoff_unix: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class ApiKey(Base):
@@ -730,6 +748,12 @@ class IdempotencyRecord(Base):
     __tablename__ = "idempotency_records"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # IDEM-SCOPE-01 (0038): identity is (tenant, workspace, actor, key, path).
+    # '' sentinel for absent scope (NULLs are distinct in UNIQUE constraints
+    # and would silently permit cross-boundary collisions).
+    tenant_id: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    workspace_id: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    actor: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
     request_path: Mapped[str] = mapped_column(String(255), nullable=False)
     request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -739,8 +763,12 @@ class IdempotencyRecord(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     __table_args__ = (
-        UniqueConstraint("idempotency_key", "request_path", name="uq_idempotency_key_path"),
+        UniqueConstraint(
+            "tenant_id", "workspace_id", "actor", "idempotency_key", "request_path",
+            name="uq_idempotency_scoped",
+        ),
         Index("idx_idempotency_expires", "expires_at"),
+        Index("idx_idempotency_scope_expires", "tenant_id", "workspace_id", "expires_at"),
     )
 
 
@@ -774,6 +802,8 @@ class LoopCheckpoint(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     request_id: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     workspace_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    # LOOP-RESUME-01 (0039): tenant binding for resume isolation parity.
+    tenant_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     state_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     state_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -788,11 +818,12 @@ class LoopCheckpoint(Base):
 class ToolIdempotency(Base):
     """Durable side-effect idempotency for consequential tool calls (Phase B).
 
-    One row per (workspace_id, idem_key). The UNIQUE constraint is the
-    correctness mechanism: concurrent duplicate executions race on INSERT and
-    exactly one wins; losers read the winner's stored result instead of
-    re-executing the side effect. Survives process restarts (unlike the
-    executor's in-memory LRU, which remains as a fast-path cache only).
+    One row per (workspace_id, idem_key). IDEM-RACE-01 atomic-claim protocol:
+    - a claimant INSERTs status='claimed' + claim_token + lease; on UNIQUE
+      conflict it observes instead of executing (loser never executes);
+    - the winner executes, then UPDATEs to 'succeeded' (+result) or 'failed';
+    - stale leases (worker death) are stealable after expiry; 'failed' rows
+      are reclaimable. The in-memory LRU remains a succeeded-only fast path.
     """
 
     __tablename__ = "tool_idempotency"
@@ -805,12 +836,16 @@ class ToolIdempotency(Base):
     request_id: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="success")
     result_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    # IDEM-RACE-01 (0039): claim ownership + lease for crash recovery.
+    claim_token: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     __table_args__ = (
         UniqueConstraint("workspace_id", "idem_key", name="uq_tool_idempotency_ws_key"),
         Index("idx_tool_idempotency_ws_tool", "workspace_id", "tool_name"),
+        Index("idx_tool_idem_claim", "workspace_id", "idem_key"),
     )
 
 

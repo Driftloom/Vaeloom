@@ -31,6 +31,12 @@ class Settings(BaseSettings):
 
     database__url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/vaeloom"
     redis__url: str = "redis://localhost:6379/0"
+    # OP-RLS-01: owner/migrator connection used ONLY for DDL + boot
+    # migrations (create_all, alembic) and for the startup role guard.
+    # When set, the runtime engine (database__url) must be a least-privilege
+    # non-BYPASSRLS role (e.g. vaeloom_app). When unset, current behavior is
+    # preserved (runtime engine also runs DDL) for SQLite/local workflows.
+    database_migration__url: str = ""
 
     @field_validator("database__url", mode="before")
     @classmethod
