@@ -2437,24 +2437,6 @@ def _extract_job_posting(text: str, page_title: str, url: str) -> dict[str, Any]
     }
 
 
-_MOCK_JOB_POSTING = {
-    "title": "Senior Backend Engineer",
-    "company": "ExampleCorp",
-    "description": (
-        "Mock job posting content. ExampleCorp is seeking a Senior Backend Engineer "
-        "skilled in Python, Go, Kubernetes, PostgreSQL, AWS, Terraform and GraphQL. "
-        "You will design distributed services, own CI/CD pipelines, and mentor engineers."
-    ),
-    "requirements": [
-        "5+ years building production services in Python or Go",
-        "Experience with Kubernetes and infrastructure-as-code (Terraform)",
-        "Strong SQL and data-modeling skills (PostgreSQL)",
-        "Track record of operating systems on AWS at scale",
-    ],
-    "skills_mentioned": ["python", "go", "kubernetes", "postgresql", "aws", "terraform", "graphql"],
-}
-
-
 async def _execute_browse_job_page(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
     url = params.get("url", "")
     if not url:
