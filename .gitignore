@@ -12,6 +12,7 @@ docs/Documentation-Dashboard.html
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
@@ -77,7 +78,9 @@ infra/kubernetes/secrets/*.yaml
 *.pfx
 
 # Logs
+logs/
 *.log
+*.pid
 npm-debug.log*
 pnpm-debug.log*
 
@@ -118,6 +121,8 @@ blob-report/
 .roo/
 .windsurf/
 .copilot/
+.aider*
+.continue/
 
 # Vaeloom local orchestrator checkpoints (home ~/.vaeloom is outside repo, but repo-local .vaeloom/ if ever created)
 .vaeloom/
