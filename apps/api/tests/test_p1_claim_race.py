@@ -41,11 +41,13 @@ async def claim_db(tmp_path, monkeypatch):
     @asynccontextmanager
     async def factory(_ws):
         async with mk() as s:
-            yield s
             try:
-                await s.commit()
-            except Exception:
-                await s.rollback()
+                yield s
+            finally:
+                try:
+                    await s.commit()
+                except Exception:
+                    await s.rollback()
 
     monkeypatch.setattr(ex, "_IDEM_SESSION_FACTORY_OVERRIDE", lambda _ws: factory(_ws))
     try:
