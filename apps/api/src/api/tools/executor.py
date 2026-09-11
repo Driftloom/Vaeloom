@@ -3169,6 +3169,7 @@ async def execute_tool(
             await asyncio.sleep(backoff)
 
         except PermissionDeniedError:
+            await _abandon_idem_claim(workspace_id, idem_key, idem_claim)
             raise
 
         except Exception as e:
