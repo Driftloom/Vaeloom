@@ -31,10 +31,15 @@ async_session_factory = async_sessionmaker(engine, expire_on_commit=False)
 def _migration_url() -> str | None:
     """Owner/migrator URL for DDL + boot migrations (OP-RLS-01).
 
-    Explicit env only (DATABASE_MIGRATION__URL); never derived from the
+    Explicit config only (DATABASE_MIGRATION__URL, else VAELOOM_TARGET_URL —
+    the same variable the alembic CLI prefers); never derived from the
     runtime URL, so a least-privilege runtime cannot escalate itself.
     """
+    import os as _os
+
     url = (getattr(settings, "database_migration__url", "") or "").strip()
+    if not url:
+        url = (_os.environ.get("VAELOOM_TARGET_URL", "") or "").strip()
     return url or None
 
 
