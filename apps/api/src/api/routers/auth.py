@@ -1,3 +1,5 @@
+import asyncio
+import logging
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -17,6 +19,8 @@ from ..schemas.auth import (
 from ..services.auth_service import auth_service
 from ..services.sso import SSOConfig, get_sso_provider
 from ..services.workspace_service import workspace_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -120,7 +124,7 @@ async def sso_token_login(
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid SSO token")
 
-    email = payload.get("email")
+    email = payload.get("email") or payload.get("preferred_username") or payload.get("upn")
     if not email:
         raise HTTPException(status_code=401, detail="Email not provided by SSO provider")
 
@@ -128,7 +132,7 @@ async def sso_token_login(
     user = result.scalar_one_or_none()
 
     if not user:
-        display_name = payload.get("name") or email.split("@")[0]
+        display_name = payload.get("name") or payload.get("preferred_username") or email.split("@")[0]
         user = User(
             email=email,
             display_name=display_name,
@@ -161,6 +165,21 @@ async def sso_login(provider: str, redirect_uri: str = Query(...), request: Requ
     sso = get_sso_provider(provider, SSOConfig(**provider_config))
     state = secrets.token_urlsafe(32)
     _sso_states[state] = (provider, redirect_uri)
+    try:
+        from ..middleware.csrf import _get_redis
+
+        r = _get_redis()
+        if r is not None:
+            import json
+
+            await asyncio.to_thread(
+                r.set,
+                f"sso_state:{state}",
+                json.dumps({"provider": provider, "redirect_uri": redirect_uri}),
+                ex=900,
+            )
+    except Exception as e:
+        logger.warning("SSO state Redis cache error: %s", e)
     auth_url = await sso.get_auth_url(redirect_uri, state)
     return {"auth_url": auth_url, "state": state}
 
@@ -180,6 +199,22 @@ async def sso_callback(
     from ..schemas.auth import PublicUser
 
     stored = _sso_states.pop(state, None)
+    if stored is None:
+        try:
+            from ..middleware.csrf import _get_redis
+
+            r = _get_redis()
+            if r is not None:
+                import json
+
+                raw = await asyncio.to_thread(r.get, f"sso_state:{state}")
+                if raw:
+                    await asyncio.to_thread(r.delete, f"sso_state:{state}")
+                    data = json.loads(raw)
+                    stored = (data["provider"], data["redirect_uri"])
+        except Exception as e:
+            logger.warning("SSO state Redis fetch error: %s", e)
+
     if stored is None:
         raise HTTPException(status_code=400, detail="Invalid or expired SSO state")
     if isinstance(stored, tuple):
@@ -204,7 +239,7 @@ async def sso_callback(
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid ID token")
 
-    email = payload.get("email")
+    email = payload.get("email") or payload.get("preferred_username") or payload.get("upn")
     if not email:
         raise HTTPException(status_code=401, detail="Email not provided by SSO provider")
 
@@ -213,13 +248,34 @@ async def sso_callback(
     user = result.scalar_one_or_none()
 
     if not user:
-        display_name = payload.get("name") or email.split("@")[0]
+        from ..models.schema import Tenant, Workspace
+
+        display_name = payload.get("name") or payload.get("preferred_username") or email.split("@")[0]
+        tenant = None
+        try:
+            tenant_res = await db.execute(select(Tenant).where(Tenant.slug == "default"))
+            tenant = tenant_res.scalar_one_or_none()
+            if not tenant:
+                tenant = Tenant(name="Default", slug="default")
+                db.add(tenant)
+                await db.flush()
+        except Exception:
+            tenant = None
+
         user = User(
             email=email,
             display_name=display_name,
             auth_provider=provider,
+            tenant_id=tenant.id if tenant else None,
         )
         db.add(user)
+        await db.flush()
+
+        workspace = Workspace(
+            user_id=user.id,
+            name=f"{display_name}'s Workspace",
+        )
+        db.add(workspace)
         await db.flush()
         await db.refresh(user)
 

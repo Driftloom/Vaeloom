@@ -41,13 +41,18 @@ class GoogleSSOProvider(SSOProvider):
                 signing_key.key,
                 algorithms=["RS256"],
                 audience=self.config.client_id,
-                issuer=self.config.issuer or "https://accounts.google.com",
+                options={"verify_iss": False},
             )
+            iss = payload.get("iss", "")
+            if iss not in ("https://accounts.google.com", "accounts.google.com"):
+                return None
             return payload
         except jwt.PyJWTError:
             return None
 
     async def get_auth_url(self, redirect_uri: str, state: str) -> str:
+        import urllib.parse
+
         params = {
             "client_id": self.config.client_id,
             "redirect_uri": redirect_uri,
@@ -55,7 +60,7 @@ class GoogleSSOProvider(SSOProvider):
             "scope": "openid email profile",
             "state": state,
         }
-        query = "&".join(f"{k}={v}" for k, v in params.items())
+        query = urllib.parse.urlencode(params)
         return f"https://accounts.google.com/o/oauth2/v2/auth?{query}"
 
     async def exchange_code(self, code: str, redirect_uri: str) -> str | None:
@@ -92,18 +97,34 @@ class MicrosoftSSOProvider(SSOProvider):
                 return None
             jwks_client = jwt.PyJWKClient(jwks_uri)
             signing_key = jwks_client.get_signing_key_from_jwt(token)
+
+            # In Microsoft Azure AD, multi-tenant endpoints (common/organizations/consumers)
+            # issue tokens with the specific user's tenant ID in the "iss" claim:
+            # https://login.microsoftonline.com/{tenantid}/v2.0
+            decode_kwargs: dict[str, Any] = {
+                "algorithms": ["RS256"],
+                "audience": self.config.client_id,
+            }
+            if self.config.issuer and self.config.issuer not in ("common", "organizations", "consumers"):
+                decode_kwargs["issuer"] = f"https://login.microsoftonline.com/{self.config.issuer}/v2.0"
+            else:
+                decode_kwargs["options"] = {"verify_iss": False}
+
             payload = jwt.decode(
                 token,
                 signing_key.key,
-                algorithms=["RS256"],
-                audience=self.config.client_id,
-                issuer=f"https://login.microsoftonline.com/{self.config.issuer}/v2.0",
+                **decode_kwargs,
             )
+            iss = payload.get("iss", "")
+            if not (iss.startswith("https://login.microsoftonline.com/") and iss.endswith("/v2.0")):
+                return None
             return payload
         except jwt.PyJWTError:
             return None
 
     async def get_auth_url(self, redirect_uri: str, state: str) -> str:
+        import urllib.parse
+
         tenant = self.config.issuer or "common"
         params = {
             "client_id": self.config.client_id,
@@ -112,7 +133,7 @@ class MicrosoftSSOProvider(SSOProvider):
             "scope": "openid email profile",
             "state": state,
         }
-        query = "&".join(f"{k}={v}" for k, v in params.items())
+        query = urllib.parse.urlencode(params)
         return f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize?{query}"
 
     async def exchange_code(self, code: str, redirect_uri: str) -> str | None:
