@@ -2686,6 +2686,16 @@ IDEM_POLL_INTERVAL_S = 0.5
 _IDEM_SUCCEEDED = ("succeeded", "success")  # 'success' = pre-0039 legacy rows
 
 
+# Test hook: override the session source for the claim protocol
+# (per-test file DBs). Production always uses _idem_session_cm default.
+_IDEM_SESSION_FACTORY_OVERRIDE = None
+
+
+def set_idem_session_factory(fn) -> None:
+    global _IDEM_SESSION_FACTORY_OVERRIDE
+    _IDEM_SESSION_FACTORY_OVERRIDE = fn
+
+
 def _idem_session_cm(workspace_id: str):
     """Worker-safe session for idempotency rows: RLS-scoped when possible.
 
@@ -2693,6 +2703,8 @@ def _idem_session_cm(workspace_id: str):
     works under a least-privilege runtime role; falls back to the raw
     factory when scoping is unavailable (SQLite/tests).
     """
+    if _IDEM_SESSION_FACTORY_OVERRIDE is not None:
+        return _IDEM_SESSION_FACTORY_OVERRIDE(workspace_id)
     try:
         from ..database import scoped_session
 
@@ -2723,31 +2735,47 @@ async def _claim_tool_effect(
     token = uuid_lib.uuid4().hex
     now = datetime.now(UTC)
     lease = now + timedelta(seconds=IDEM_CLAIM_LEASE_S)
-    try:
-        async with _idem_session_cm(workspace_id) as session:
-            session.add(
-                ToolIdempotency(
-                    workspace_id=str(workspace_id),
-                    idem_key=idem_key,
-                    tool_name=tool_name,
-                    agent_id=agent_id,
-                    request_id=request_id,
-                    status="claimed",
-                    result_json={},
-                    claim_token=token,
-                    lease_expires_at=lease,
+    # Transient congestion (e.g. SQLite busy under thread bursts, pool
+    # saturation) is retried boundedly; only persistent store failure decays
+    # to "unavailable". Never confuse congestion with outage.
+    last_exc: Exception | None = None
+    for _try in range(4):
+        try:
+            async with _idem_session_cm(workspace_id) as session:
+                session.add(
+                    ToolIdempotency(
+                        workspace_id=str(workspace_id),
+                        idem_key=idem_key,
+                        tool_name=tool_name,
+                        agent_id=agent_id,
+                        request_id=request_id,
+                        status="claimed",
+                        result_json={},
+                        claim_token=token,
+                        lease_expires_at=lease,
+                    )
                 )
-            )
-            await session.commit()
-            return "won", token
-    except IntegrityError:
-        pass
-    except Exception as exc:
-        logger.debug(f"Idempotency claim unavailable for {idem_key}: {exc}")
-        return "unavailable", None
-    # Conflict: observe the winner's row (fresh session: the failed INSERT
-    # rolled back and must not be reused). A "retry" (vanished row) gets one
-    # bounded reclaim attempt, then falls back to unavailable.
+                await session.commit()
+                return "won", token
+        except IntegrityError:
+            break
+        except Exception as exc:
+            last_exc = exc
+            if "locked" in str(exc).lower() or "busy" in str(exc).lower():
+                try:
+                    await asyncio.sleep(0.05 * (_try + 1))
+                    continue
+                except Exception:
+                    break
+            logger.debug(f"Idempotency claim unavailable for {idem_key}: {exc}")
+            return "unavailable", None
+    else:
+        if last_exc is not None:
+            logger.debug(f"Idempotency claim unavailable for {idem_key}: {last_exc}")
+            return "unavailable", None
+    # Conflict (UNIQUE): observe the winner's row (fresh session: the failed
+    # INSERT rolled back and must not be reused). A "retry" (vanished row)
+    # gets one bounded reclaim attempt, then falls back to unavailable.
     try:
         outcome, payload = await _observe_tool_claim(workspace_id, idem_key)
         if outcome == "retry" and not _reclaimed:
