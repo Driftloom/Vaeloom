@@ -2760,11 +2760,11 @@ async def _claim_tool_effect(
     token = uuid_lib.uuid4().hex
     now = datetime.now(UTC)
     lease = now + timedelta(seconds=IDEM_CLAIM_LEASE_S)
-    # Transient congestion (e.g. SQLite busy under thread bursts, pool
+    # Transient congestion (e.g. SQLite busy under process bursts, pool
     # saturation) is retried boundedly; only persistent store failure decays
     # to "unavailable". Never confuse congestion with outage.
     last_exc: Exception | None = None
-    for _try in range(4):
+    for _try in range(6):
         try:
             async with _idem_session_cm(workspace_id) as session:
                 session.add(
@@ -2788,7 +2788,7 @@ async def _claim_tool_effect(
             last_exc = exc
             if "locked" in str(exc).lower() or "busy" in str(exc).lower():
                 try:
-                    await asyncio.sleep(0.05 * (_try + 1))
+                    await asyncio.sleep(0.05 * (_try + 1) + 0.01 * (_try % 3))
                     continue
                 except Exception:
                     break

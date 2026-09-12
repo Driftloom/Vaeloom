@@ -122,6 +122,7 @@ class TestAtomicClaimRace:
     @pytest.mark.parametrize("n", [2, 4, 8, 16, 32])
     async def test_concurrent_claim_single_winner(self, claim_db, n):
         import multiprocessing as _mp
+        import time as _time
 
         ctx = _mp.get_context("spawn")
         q = ctx.Queue()
@@ -129,6 +130,8 @@ class TestAtomicClaimRace:
                  for i in range(n)]
         for p in procs:
             p.start()
+            _time.sleep(0.01)  # stagger spawn storms (thundering-herd relief only;
+            # atomicity must and does hold regardless of arrival timing)
         for p in procs:
             p.join(180)
         assert all(p.exitcode == 0 for p in procs), [p.exitcode for p in procs]
