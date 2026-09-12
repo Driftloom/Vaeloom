@@ -16,6 +16,11 @@ from .parsers import UnsupportedFormatError, parse_document
 logger = logging.getLogger(__name__)
 
 
+def get_session_cm(workspace_id=None):
+    """Patchable DB session seam (OP-RLS-01). Production: RLS-scoped."""
+    return scoped_session(workspace_id=workspace_id, require=False)
+
+
 async def run_pipeline(
     workspace_id: str,
     filename: str,
@@ -42,7 +47,7 @@ async def run_pipeline(
         existing_doc_id = await check_dedup(workspace_id, content_hash, filename)
 
         # 4. Write to database
-        async with scoped_session(workspace_id=workspace_id, require=False) as session:
+        async with get_session_cm(workspace_id) as session:
             async with session.begin():
                 if existing_doc_id:
                     # Existing document — add new version
@@ -258,9 +263,7 @@ async def _persist_chunks_with_embeddings(
         chunk_embeddings.append(emb)
 
     try:
-        from api.database import scoped_session as _asf
-
-        async with _asf(workspace_id=workspace_id, require=False) as session:
+        async with get_session_cm(workspace_id) as session:
             async with session.begin():
                 for idx, ch in enumerate(chunks):
                     emb_vec = chunk_embeddings[idx] if idx < len(chunk_embeddings) else None
@@ -383,11 +386,10 @@ async def _populate_graph_memory(
         return
 
     try:
-        from api.database import scoped_session as _asf
         from api.services.knowledge_graph_service import kg_service
         from api.schemas.knowledge_graph import CreateNodeRequest, NodeType  # type: ignore
 
-        async with _asf(workspace_id=workspace_id, require=False) as session:
+        async with get_session_cm(workspace_id) as session:
             # 1) Create central Document node for obsidian-style hub (document -> entities)
             doc_node_id: str | None = None
             try:

@@ -49,7 +49,8 @@ class _SessionCtx:
 def bind_test_db(monkeypatch, db_session):
     factory = lambda: _SessionCtx(db_session)  # noqa: E731
     monkeypatch.setattr("api.database.async_session_factory", factory)
-    monkeypatch.setattr("api.agents.memory.consolidator.async_session_factory", factory)
+    _cm = lambda workspace_id=None, **kw: _SessionCtx(db_session)  # noqa: E731
+    monkeypatch.setattr("api.agents.memory.consolidator.get_session_cm", _cm)
     # NOTE: reflection_scheduler imports async_session_factory lazily from
     # api.database inside each function, so the api.database patch covers it.
     return db_session
@@ -327,7 +328,10 @@ async def test_learning_idempotent_concurrent(db_session, monkeypatch):
     engine = db_session.bind
     maker = async_sessionmaker(engine, expire_on_commit=False)
     monkeypatch.setattr("api.database.async_session_factory", maker)
-    monkeypatch.setattr("api.agents.memory.consolidator.async_session_factory", maker)
+    monkeypatch.setattr(
+        "api.agents.memory.consolidator.get_session_cm",
+        lambda workspace_id=None, **kw: maker(),
+    )
 
     agent = MemoryConsolidatorAgent()
     eid = f"idem-{_uuid.uuid4().hex[:8]}"

@@ -19,6 +19,17 @@ from api.services.llm_service import llm_service
 logger = logging.getLogger(__name__)
 
 
+def get_session_cm(workspace_id=None):
+    """Patchable DB session seam (OP-RLS-01).
+
+    Production: RLS-scoped session for the trajectory workspace. Tests
+    override this name with a test-DB maker:
+    monkeypatch.setattr("api.agents.memory.consolidator.get_session_cm",
+                        lambda workspace_id=None, **kw: maker()).
+    """
+    return scoped_session(workspace_id=workspace_id, require=False)
+
+
 # Muse §17 bounded memory admission. Every candidate extracted from a
 # trajectory/feedback is scored before it may enter long-term memory:
 #   score = 0.5 * source_quality + 0.3 * novelty + 0.2 * signal
@@ -367,7 +378,7 @@ class MemoryConsolidatorAgent(BaseAgent):
                 if session is not None:
                     _pres = await _persist_to_session(session)
                 else:
-                    async with scoped_session(workspace_id=ws_str, require=False) as sess:
+                    async with get_session_cm(ws_str) as sess:
                         _pres = await _persist_to_session(sess)
                 if isinstance(_pres, tuple) and _pres and _pres[0] == "DUPLICATE":
                     duplicate_event = True

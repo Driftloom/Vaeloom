@@ -175,11 +175,11 @@ async def scoped_session(
             except Exception:
                 pass
             raise
-        finally:
-            try:
-                await session.close()
-            except Exception:
-                pass
+        # NOTE: no explicit session.close() here. Lifecycle is owned by the
+        # context-manager protocol of whatever the factory yields: real
+        # AsyncSessions close on __aexit__; test doubles that share one
+        # session decide for themselves. An explicit close() would detach ORM
+        # state owned by a shared session (regression: refresh-after-lookup).
 
 
 class Base(DeclarativeBase):

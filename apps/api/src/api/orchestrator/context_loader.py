@@ -20,6 +20,11 @@ from .base import AgentContext
 logger = logging.getLogger(__name__)
 
 
+def get_session_cm(workspace_id=None):
+    """Patchable DB session seam (OP-RLS-01). Production: RLS-scoped."""
+    return scoped_session(workspace_id=workspace_id, require=False)
+
+
 class AgentContextLoader:
     """Loads authoritative workspace memory state into an AgentContext."""
 
@@ -47,7 +52,7 @@ class AgentContextLoader:
             if db is not None:
                 await self._hydrate_context(context, workspace_id, user_id, db)
             else:
-                async with scoped_session(workspace_id=workspace_id, require=False) as session:
+                async with get_session_cm(workspace_id) as session:
                     await self._hydrate_context(context, workspace_id, user_id, session)
         except Exception as exc:
             logger.warning(f"AgentContextLoader non-blocking error: {exc}")

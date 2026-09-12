@@ -3016,17 +3016,17 @@ async def execute_tool(
     except Exception:
         pass
 
-    # ── 1b. Atomic idempotency claim for consequential actions (IDEM-RACE-01)
+    # ── 1b. Idempotency key derivation for consequential actions (IDEM-RACE-01)
     # Only for connector_write/memory_write; read-only tools skip. Includes agent_id for per-agent isolation.
     # Key: workspace_id:agent_id:tool:hash(canonical_params) — stable across retries, unique per resource.
-    # Protocol (CLAIM → execute → record): the INSERT is the atomic arbiter.
-    # Exactly one claimant wins; losers observe the winner's row and NEVER
-    # execute. Stale leases (worker death) are stealable after expiry;
-    # 'failed' rows are reclaimable. Crash-window duplicates (death between
-    # effect and record) remain possible and are documented, not hidden.
+    # NOTE: the atomic CLAIM happens in §1c AFTER permission checks, so
+    # denied calls leave zero rows (no residue, no claim-row spam). The
+    # in-memory LRU below is a succeeded-only fast path (no new effect when
+    # it hits, so pre-permission lookup is safe).
     idem_key: str | None = None
     idem_claim: str | None = None
     idem_unavailable = False
+    _cache: dict = {}
     if tool.category in ("connector_write", "memory_write"):
         try:
             import hashlib, json as _js
@@ -3036,40 +3036,10 @@ async def execute_tool(
             if not hasattr(execute_tool, "_idem_cache"):
                 execute_tool._idem_cache = {}  # type: ignore[attr-defined]
                 execute_tool._idem_cache_order = []  # type: ignore[attr-defined]
-            _cache: dict = execute_tool._idem_cache  # type: ignore[attr-defined]
+            _cache = execute_tool._idem_cache  # type: ignore[attr-defined]
             if idem_key in _cache:
                 logger.info(f"IDEMPOTENCY HIT (memory): {idem_key} — returning cached success")
                 return _cache[idem_key]
-            _outcome, _payload = await _claim_tool_effect(
-                str(workspace_id), idem_key, tool.name,
-                str(agent_id or ""), str(params.get("_request_id", "") or ""),
-            )
-            if _outcome == "duplicate":
-                logger.info(f"IDEMPOTENCY HIT (durable): {idem_key} — returning stored success")
-                _cache[idem_key] = _payload
-                return _payload
-            if _outcome == "in_progress":
-                _waited = await _await_tool_effect(
-                    str(workspace_id), idem_key, tool.name,
-                    str(agent_id or ""), str(params.get("_request_id", "") or ""),
-                )
-                if _waited is not None:
-                    logger.info(f"IDEMPOTENCY HIT (waited): {idem_key} — returning winner result")
-                    _cache[idem_key] = _waited
-                    return _waited
-                return {
-                    "status": "error",
-                    "tool": tool.name,
-                    "result": (
-                        "duplicate request still in progress after bounded wait — "
-                        "retry with identical parameters to collect the stored result"
-                    ),
-                    "idempotency": "in_progress_timeout",
-                }
-            if _outcome == "won":
-                idem_claim = _payload  # claim token
-            else:  # "unavailable": store unreachable — execute unprotected, flagged
-                idem_unavailable = True
         except Exception:
             idem_key = None
             idem_claim = None
@@ -3108,6 +3078,48 @@ async def execute_tool(
         raise PermissionDeniedError(
             f"Agent '{agent_id}' lacks scope '{tool.required_scope}' for tool '{tool.name}'"
         )
+
+    # ── 1c. Atomic idempotency claim (IDEM-RACE-01) — AFTER permission.
+    # Protocol (CLAIM → execute → record): the INSERT is the atomic arbiter.
+    # Exactly one claimant wins; losers observe the winner's row and NEVER
+    # execute. Stale leases (worker death) are stealable after expiry;
+    # 'failed' rows are reclaimable. Crash-window duplicates (death between
+    # effect and record) remain possible and are documented, not hidden.
+    if idem_key:
+        try:
+            _outcome, _payload = await _claim_tool_effect(
+                str(workspace_id), idem_key, tool.name,
+                str(agent_id or ""), str(params.get("_request_id", "") or ""),
+            )
+            if _outcome == "duplicate":
+                logger.info(f"IDEMPOTENCY HIT (durable): {idem_key} — returning stored success")
+                _cache[idem_key] = _payload
+                return _payload
+            if _outcome == "in_progress":
+                _waited = await _await_tool_effect(
+                    str(workspace_id), idem_key, tool.name,
+                    str(agent_id or ""), str(params.get("_request_id", "") or ""),
+                )
+                if _waited is not None:
+                    logger.info(f"IDEMPOTENCY HIT (waited): {idem_key} — returning winner result")
+                    _cache[idem_key] = _waited
+                    return _waited
+                return {
+                    "status": "error",
+                    "tool": tool.name,
+                    "result": (
+                        "duplicate request still in progress after bounded wait — "
+                        "retry with identical parameters to collect the stored result"
+                    ),
+                    "idempotency": "in_progress_timeout",
+                }
+            if _outcome == "won":
+                idem_claim = _payload  # claim token
+            else:  # "unavailable": store unreachable — execute unprotected, flagged
+                idem_unavailable = True
+        except Exception:
+            idem_key = None
+            idem_claim = None
 
     # ── 2. Execute with retry ──────────────────────────────────────
     timeout = TOOL_TIMEOUT_OVERRIDES.get(

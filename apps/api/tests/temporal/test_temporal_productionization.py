@@ -149,7 +149,10 @@ def temporal_harness(monkeypatch, db_session, tmp_path):
     _session_maker = _maker(db_session.bind, expire_on_commit=False)
     monkeypatch.setattr("api.database.async_session_factory", _session_maker)
     try:
-        monkeypatch.setattr("api.agents.memory.consolidator.async_session_factory", _session_maker)
+        monkeypatch.setattr(
+            "api.agents.memory.consolidator.get_session_cm",
+            lambda workspace_id=None, **kw: _session_maker(),
+        )
     except Exception:
         pass
 

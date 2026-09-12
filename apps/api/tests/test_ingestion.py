@@ -532,10 +532,10 @@ class TestPipeline:
         mock_session.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session.__aexit__ = AsyncMock(return_value=False)
         mock_session.begin = MagicMock(return_value=mock_session)
-        mock_factory = MagicMock(return_value=mock_session)
+        mock_factory = MagicMock(side_effect=lambda workspace_id=None, **kw: mock_session)
         monkeypatch.setattr("api.ingestion.pipeline.parse_document", mock_parse)
         monkeypatch.setattr("api.ingestion.pipeline.check_dedup", mock_dedup)
-        monkeypatch.setattr("api.ingestion.pipeline.async_session_factory", mock_factory)
+        monkeypatch.setattr("api.ingestion.pipeline.get_session_cm", mock_factory)
         monkeypatch.setattr("api.ingestion.pipeline.chunk_text", lambda **kwargs: [])
 
         result = await run_pipeline("00000000-0000-0000-0000-000000000001", "new.md", b"# New")
@@ -583,10 +583,10 @@ class TestPipeline:
         mock_session.__aexit__ = AsyncMock(return_value=False)
         mock_session.begin = MagicMock(return_value=mock_session)
         mock_session.execute = mock_execute
-        mock_factory = MagicMock(return_value=mock_session)
+        mock_factory = MagicMock(side_effect=lambda workspace_id=None, **kw: mock_session)
         monkeypatch.setattr("api.ingestion.pipeline.parse_document", mock_parse)
         monkeypatch.setattr("api.ingestion.pipeline.check_dedup", mock_dedup)
-        monkeypatch.setattr("api.ingestion.pipeline.async_session_factory", mock_factory)
+        monkeypatch.setattr("api.ingestion.pipeline.get_session_cm", mock_factory)
         monkeypatch.setattr("api.ingestion.pipeline.chunk_text", lambda **kwargs: [])
 
         result = await run_pipeline("00000000-0000-0000-0000-000000000001", "existing.pdf", b"data")

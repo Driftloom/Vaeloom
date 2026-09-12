@@ -66,7 +66,10 @@ def adv_harness(monkeypatch, db_session, tmp_path):
     from sqlalchemy.ext.asyncio import async_sessionmaker as _maker
     _session_maker = _maker(db_session.bind, expire_on_commit=False)
     monkeypatch.setattr("api.database.async_session_factory", _session_maker)
-    monkeypatch.setattr("api.agents.memory.consolidator.async_session_factory", _session_maker)
+    monkeypatch.setattr(
+        "api.agents.memory.consolidator.get_session_cm",
+        lambda workspace_id=None, **kw: _session_maker(),
+    )
 
     import api.orchestrator.loop as _loopmod
     try:

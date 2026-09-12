@@ -29,8 +29,9 @@ class _SessionCtx:
 def bind_test_db(monkeypatch, db_session):
     factory = lambda: _SessionCtx(db_session)
     monkeypatch.setattr("api.database.async_session_factory", factory)
-    monkeypatch.setattr("api.orchestrator.context_loader.async_session_factory", factory)
-    monkeypatch.setattr("api.agents.memory.consolidator.async_session_factory", factory)
+    _cm = lambda workspace_id=None, **kw: _SessionCtx(db_session)
+    monkeypatch.setattr("api.orchestrator.context_loader.get_session_cm", _cm)
+    monkeypatch.setattr("api.agents.memory.consolidator.get_session_cm", _cm)
 
 
 @pytest.mark.asyncio
