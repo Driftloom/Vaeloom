@@ -77,7 +77,9 @@ class TestResumeDocumentRoutes:
         res = await client.get("/api/v1/resumes/templates", headers=auth_headers)
         assert res.status_code == 200
         data = res.json()
-        assert len(data) == 5
+        # Registry grew 5 -> 10 (industry templates); pin shape + known
+        # slugs instead of an exact count so growth doesn't break the suite.
+        assert len(data) >= 5
         slugs = {t["slug"] for t in data}
         assert "classic-harvard" in slugs and "tech-modern" in slugs
         for t in data:

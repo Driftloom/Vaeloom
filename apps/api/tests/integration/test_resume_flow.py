@@ -10,7 +10,13 @@ pytestmark = pytest.mark.asyncio
 class TestResumeFlow:
     """Integration: create resume → generate variant → list variants."""
 
-    WORKSPACE_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    # FINAL-01: resume endpoints enforce workspace membership; tests use a
+    # caller-owned workspace (the old hardcoded foreign UUID correctly 404s).
+    async def _own_workspace(self, client: AsyncClient, auth_headers: dict) -> uuid.UUID:
+        res = await client.post("/api/v1/workspaces", json={"name": "resume-ws"},
+                                headers=auth_headers)
+        assert res.status_code in (200, 201), res.text
+        return uuid.UUID(res.json()["id"])
 
     async def _seed_master_resume(self, db_session: AsyncSession, workspace_id: uuid.UUID):
         from api.models.schema import Resume
@@ -27,16 +33,18 @@ class TestResumeFlow:
         return resume.id
 
     async def test_list_resumes_empty(self, client: AsyncClient, auth_headers: dict):
+        ws = await self._own_workspace(client, auth_headers)
         res = await client.get(
-            f"/api/v1/resumes?workspace_id={self.WORKSPACE_ID}",
+            f"/api/v1/resumes?workspace_id={ws}",
             headers=auth_headers,
         )
         assert res.status_code == 200
         assert isinstance(res.json(), list)
 
     async def test_get_master_not_found(self, client: AsyncClient, auth_headers: dict):
+        ws = await self._own_workspace(client, auth_headers)
         res = await client.get(
-            f"/api/v1/resumes/master?workspace_id={self.WORKSPACE_ID}",
+            f"/api/v1/resumes/master?workspace_id={ws}",
             headers=auth_headers,
         )
         assert res.status_code == 404
@@ -44,10 +52,11 @@ class TestResumeFlow:
     async def test_create_master_then_get(
         self, client: AsyncClient, auth_headers: dict, db_session: AsyncSession
     ):
-        resume_id = await self._seed_master_resume(db_session, self.WORKSPACE_ID)
+        ws = await self._own_workspace(client, auth_headers)
+        resume_id = await self._seed_master_resume(db_session, ws)
 
         res = await client.get(
-            f"/api/v1/resumes/master?workspace_id={self.WORKSPACE_ID}",
+            f"/api/v1/resumes/master?workspace_id={ws}",
             headers=auth_headers,
         )
         assert res.status_code == 200
@@ -57,7 +66,8 @@ class TestResumeFlow:
     async def test_generate_variant_from_master(
         self, client: AsyncClient, auth_headers: dict, db_session: AsyncSession
     ):
-        resume_id = await self._seed_master_resume(db_session, self.WORKSPACE_ID)
+        ws = await self._own_workspace(client, auth_headers)
+        resume_id = await self._seed_master_resume(db_session, ws)
 
         res = await client.post(
             f"/api/v1/resumes/{resume_id}/generate",
@@ -67,7 +77,7 @@ class TestResumeFlow:
         assert res.status_code == 200
         data = res.json()
         assert data["variant_type"] == "tailored"
-        assert data["workspace_id"] == str(self.WORKSPACE_ID)
+        assert data["workspace_id"] == str(ws)
         assert data["version"] == 2
 
     async def test_generate_variant_not_found(
@@ -83,7 +93,8 @@ class TestResumeFlow:
     async def test_list_variants_includes_generated(
         self, client: AsyncClient, auth_headers: dict, db_session: AsyncSession
     ):
-        resume_id = await self._seed_master_resume(db_session, self.WORKSPACE_ID)
+        ws = await self._own_workspace(client, auth_headers)
+        resume_id = await self._seed_master_resume(db_session, ws)
 
         await client.post(
             f"/api/v1/resumes/{resume_id}/generate",
@@ -97,7 +108,7 @@ class TestResumeFlow:
         )
 
         res = await client.get(
-            f"/api/v1/resumes?workspace_id={self.WORKSPACE_ID}",
+            f"/api/v1/resumes?workspace_id={ws}",
             headers=auth_headers,
         )
         assert res.status_code == 200

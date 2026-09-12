@@ -128,40 +128,53 @@ async def scoped_session(
     On SQLite this is a plain session (RLS n/a).
 
     require=True (default): failure to establish GUCs on PostgreSQL raises
-    (fail closed). require=False: warn + yield (request-path behavior).
+    (fail closed). require=False: warn + yield (request-path behavior;
+    downstream RLS default-deny still fails closed at the DB).
     """
+    import logging as _log
+
     from .middleware.tenant import TenantContext
 
     async with async_session_factory() as session:
         try:
             if _session_dialect(session) == "postgresql":
-                tid = tenant_id or TenantContext.get_tenant_id()
-                wid = workspace_id or TenantContext.get_workspace_id()
-                uid = user_id or TenantContext.get_user_id()
-                if wid and not tid:
-                    try:
-                        tid = await session.scalar(
-                            text("SELECT app_tenant_for_workspace(:ws)"),
-                            {"ws": str(wid)},
+                try:
+                    tid = tenant_id or TenantContext.get_tenant_id()
+                    wid = workspace_id or TenantContext.get_workspace_id()
+                    uid = user_id or TenantContext.get_user_id()
+                    if wid and not tid:
+                        try:
+                            tid = await session.scalar(
+                                text("SELECT app_tenant_for_workspace(:ws)"),
+                                {"ws": str(wid)},
+                            )
+                            tid = str(tid) if tid else None
+                        except Exception:
+                            tid = None
+                    if tid:
+                        await session.execute(
+                            text("SELECT set_config('app.tenant_id', :v, true)"),
+                            {"v": str(tid)},
                         )
-                        tid = str(tid) if tid else None
-                    except Exception:
-                        tid = None
-                if tid:
-                    await session.execute(
-                        text("SELECT set_config('app.tenant_id', :v, true)"),
-                        {"v": str(tid)},
+                    if wid:
+                        await session.execute(
+                            text("SELECT set_config('app.workspace_id', :v, true)"),
+                            {"v": str(wid)},
+                        )
+                    if uid:
+                        await session.execute(
+                            text("SELECT set_config('app.user_id', :v, true)"),
+                            {"v": str(uid)},
+                        )
+                except Exception as guc_exc:
+                    # Mock/closed/foreign sessions (and any transport blip
+                    # here) must not break callers that only need a session:
+                    # require=True still fails closed below; require=False
+                    # yields unscoped (RLS denies appropriately downstream).
+                    _log.getLogger(__name__).warning(
+                        "scoped_session GUC setup skipped: %s", guc_exc
                     )
-                if wid:
-                    await session.execute(
-                        text("SELECT set_config('app.workspace_id', :v, true)"),
-                        {"v": str(wid)},
-                    )
-                if uid:
-                    await session.execute(
-                        text("SELECT set_config('app.user_id', :v, true)"),
-                        {"v": str(uid)},
-                    )
+                    tid, wid = None, None
                 if require and not tid and not wid:
                     raise RuntimeError(
                         "scoped_session: no tenant/workspace scope could be "
