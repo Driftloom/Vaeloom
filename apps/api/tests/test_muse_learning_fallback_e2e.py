@@ -377,9 +377,9 @@ async def test_learning_restart_persistence(db_path):
     # write learning through the real agent on engine 1
     import api.database as _dbmod
     import api.agents.memory.consolidator as _cmod
-    orig_db, orig_c = _dbmod.async_session_factory, _cmod.async_session_factory
+    orig_db, orig_c = _dbmod.async_session_factory, _cmod.get_session_cm
     _dbmod.async_session_factory = f1
-    _cmod.async_session_factory = f1
+    _cmod.get_session_cm = lambda workspace_id=None, **kw: f1()
     try:
         agent = MemoryConsolidatorAgent()
         r = await agent.consolidate_trajectory(
@@ -390,7 +390,7 @@ async def test_learning_restart_persistence(db_path):
         assert r["status"] == "success", r
     finally:
         _dbmod.async_session_factory = orig_db
-        _cmod.async_session_factory = orig_c
+        _cmod.get_session_cm = orig_c
     await eng1.dispose()  # ← process restart boundary
 
     eng2 = create_async_engine(url, poolclass=NullPool)
