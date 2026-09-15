@@ -16,9 +16,15 @@ patches:
         value:
           name: LOG_LEVEL
           value: debug
-configMapGenerator:
-  - name: vaeloom-config
-    behavior: merge
-    literals:
-      - LOG_LEVEL=debug
-      - API_RATE_LIMIT=200
+  # CONT-P16: broken configMapGenerator merge replaced with a strategic patch
+  # (same intent: dev LOG_LEVEL=debug, API_RATE_LIMIT=200).
+  - target:
+      kind: ConfigMap
+      name: vaeloom-config
+    patch: |-
+      - op: replace
+        path: /data/LOG_LEVEL
+        value: debug
+      - op: replace
+        path: /data/API_RATE_LIMIT
+        value: "200"

@@ -11,8 +11,5 @@ patches:
       - op: replace
         path: /spec/replicas
         value: 2
-configMapGenerator:
-  - name: vaeloom-config
-    behavior: merge
-    literals:
-      - LOG_LEVEL=info
+# CONT-P16: removed dead configMapGenerator merge (LOG_LEVEL=info already the
+# base value in base/infra/configmap.yaml; the merge block broke the build).
