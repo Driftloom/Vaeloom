@@ -1,5 +1,5 @@
-version: '3.9'
-
+# CONT-P21: obsolete `version` field retired (Compose Spec ignores it; was
+# emitting a deprecation warning on every invocation).
 x-logging: &default-logging
   driver: 'json-file'
   options:
