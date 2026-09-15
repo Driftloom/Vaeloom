@@ -313,7 +313,12 @@ async def saml_callback_post(request: Request, db: AsyncSession = Depends(get_db
         import os
         cert = saml_cfg.get('idp_certificate') or os.environ.get('SAML_IDP_CERTIFICATE') or ''
         issuer = saml_cfg.get('issuer') or saml_cfg.get('expected_issuer') or os.environ.get('SAML_ISSUER') or 'https://idp.example.com'
-        provider = SAMLProvider(expected_issuer=issuer, idp_certificate=cert, require_signature=False)
+        # CONT-P13: fail-closed signatures. Unsigned assertions accepted only
+        # behind explicit SAML_ALLOW_UNSIGNED=true (dev/IdP-migration windows).
+        allow_unsigned = (saml_cfg.get('allow_unsigned') or os.environ.get('SAML_ALLOW_UNSIGNED') or 'false').lower() == 'true'
+        if not cert and not allow_unsigned:
+            raise HTTPException(status_code=503, detail='SAML IdP not provisioned (missing certificate)')
+        provider = SAMLProvider(expected_issuer=issuer, idp_certificate=cert, require_signature=not allow_unsigned)
         assertion = provider.parse_saml_response(saml_response)
         info = provider.validate_assertion(assertion)
         email = info.get('email') or info.get('name_id')
