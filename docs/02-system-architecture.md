@@ -1,11 +1,11 @@
 Vaeloom · System Architecture
 
-| Metadata | Value |
+| Metadata         | Value                                                  |
 | ---------------- | ------------------------------------------------------ |
-| **Purpose** | Document the six-layer system architecture for Vaeloom |
-| **Status** | Draft |
-| **Owner** | Engineering Team |
-| **Last Updated** | 2026-07-13 |
+| **Purpose**      | Document the six-layer system architecture for Vaeloom |
+| **Status**       | Draft                                                  |
+| **Owner**        | Engineering Team                                       |
+| **Last Updated** | 2026-07-13                                             |
 
 ## Overview
 
@@ -19,13 +19,13 @@ ultimately reads from.
 ## Goals
 
 - **Define the six-layer architecture** — clearly delineate each layer's
- responsibility and interfaces
+  responsibility and interfaces
 - **Establish memory as the architectural spine** — show how all layers feed and
- read from the core memory layer
+  read from the core memory layer
 - **Document connector and agent boundaries** — permission scopes, data flow,
- and isolation between components
+  and isolation between components
 - **Provide unambiguous layer contracts** — what each layer guarantees to the
- layers above and below
+  layers above and below
 
 # Six layers, one spine of memory
 
@@ -62,11 +62,12 @@ graph TD
  G4["Dedup & Version Detector<br/>Merge duplicate / versioned files"]
  end
 
- subgraph Orchestration["04 · Agent Orchestration"]
- O1["Orchestrator--> Routes to right agent"]
- O2["Organization · Resume · ATS Agents"]
- O3["Job Search · Gmail · Scheduler Agents"]
- end
+  subgraph Orchestration["04 · Agent Orchestration"]
+  O1["Orchestrator - Routes to right agent"]
+  O2["Organization - Resume - ATS - Application Agents"]
+  O3["Job Search - Gmail - Scheduler Agents"]
+  O3b["Planning - Research + 12 Enterprise agents"]
+  end
 
   subgraph Memory["05 Memory & Knowledge Layer -- CORE"]
  M1["Knowledge Graph<br/>Entities + typed relationships"]
@@ -89,7 +90,7 @@ graph TD
  class I1,I2,I3,I4 interface
  class C1,C2,C3 connector
  class G1,G2,G3,G4 ingest
- class O1,O2,O3 agent
+  class O1,O2,O3,O3b agent
  class M1,M2,M3,M4,M5 core
  class S1,S2,S3,S4 storage
 ```
@@ -101,9 +102,16 @@ graph TD
 > agents. **Memory & Knowledge Layer** (the CORE — knowledge graph, vector
 > store, structured memory, RAG, consolidation) is the spine everything reads
 > from and writes to. **Storage & Security** provides encryption, secrets
-> management, permissions, and audit logging.
+> management, permissions, and audit logging. **Scope:** MVP is 6 layers / 10
+> canonical agents (organization, memory, resume, ats, job_search, application,
+> gmail, scheduler, planning, research); Enterprise extends to 8 layers (adds
+> Events/Realtime + Data Infra) and 22 routable agents. Code truth:
+> `apps/api/src/api/orchestrator/router.py:64-87,416-437`.
 
-> **Layer summary:** Each section below complements the diagram above with implementation status and contracts. Status flags (NOT IMPLEMENTED / STUB / DEAD CODE / PARTIAL) reflect runtime truth as of 2026-08-16, not design intent.
+> **Layer summary:** Each section below complements the diagram above with
+> implementation status and contracts. Status flags (NOT IMPLEMENTED / STUB /
+> DEAD CODE / PARTIAL) reflect runtime truth as of 2026-08-16, not design
+> intent.
 
 ## Interface Layer
 
@@ -138,13 +146,19 @@ Turns raw files into something agents can reason about.
 
 Specialized agents, each scoped to one job and one tool list.
 
-- **Orchestrator** — Routes chat & requests to the right agent
+- **Orchestrator** — Routes chat & requests to the right agent (Router →
+  Supervisor DAG | single-agent Loop → QA gate; see
+  `orchestrator/router.py:519-758`)
 - **Organization Agent** — Naming, foldering, dedup proposals
+- **Memory Agent** — Extract & merge entities into graph/vector
 - **Resume Agent** — Builds & maintains the master resume
 - **ATS Agent** — Scores resume against a job description
 - **Job Search Agent** — Finds, ranks, and shortlists roles
+- **Application Agent** — Tailors + submits each app (or deep-link handoff)
 - **Gmail Agent** — Classifies mail, extracts deadlines
 - **Scheduler Agent** — Deadlines, reminders, conflict checks
+- **Planning + Research Agents** — MVP-canonical multi-step support
+  (`router.py:416-437`); 12 further agents are Enterprise-gated
 
 ## Memory & Knowledge Layer — CORE
 
@@ -161,12 +175,17 @@ product.
 
 The floor every other layer stands on.
 
-- **Encrypted Storage** — **NOT IMPLEMENTED** — `encryption_key` is used for token signing only
-- **Secrets Manager** — **IMPLEMENTED** — SecretManager protocol with infisical/fallback provider
-- **Permission Engine** — **PARTIAL** — role-based checks via DI helpers, not a standalone engine
+- **Encrypted Storage** — **NOT IMPLEMENTED** — `encryption_key` is used for
+  token signing only
+- **Secrets Manager** — **IMPLEMENTED** — SecretManager protocol with
+  infisical/fallback provider
+- **Permission Engine** — **PARTIAL** — role-based checks via DI helpers, not a
+  standalone engine
 - **Audit Log** — Every agent action, reversible
 
-> **Core invariant:** The knowledge graph + memory store is the layer everything else depends on. Read access is default · Write access is always a separate, explicit grant
+> **Core invariant:** The knowledge graph + memory store is the layer everything
+> else depends on. Read access is default · Write access is always a separate,
+> explicit grant
 
 ---
 
@@ -175,10 +194,10 @@ The floor every other layer stands on.
 ### In Scope
 
 - Six-layer architecture design: Interface, Connectors, Ingestion, Agent
- Orchestration, Memory & Knowledge (core), Storage & Security
+  Orchestration, Memory & Knowledge (core), Storage & Security
 - Layer contracts — what each layer guarantees to layers above and below
 - Web app, desktop companion, VS Code extension, and future mobile interface
- points
+  points
 - Connector architecture using MCP-shaped tool definitions
 - Agent orchestration with Orchestrator + 7 specialist agents
 - Memory layer: knowledge graph, vector store, structured memory, agentic RAG
@@ -227,17 +246,17 @@ const result = await Vaeloom.layers.execute({
 
 ## Future Improvements
 
-| Improvement | Priority | Complexity | Timeline |
+| Improvement                                    | Priority | Complexity | Timeline |
 | ---------------------------------------------- | -------- | ---------- | -------- |
-| Service mesh for inter-layer communication | High | High | Q2 2027 |
-| Layer-level observability instrumentation | Medium | Medium | Q1 2027 |
-| Event-driven architecture for layer decoupling | Medium | High | Q3 2027 |
+| Service mesh for inter-layer communication     | High     | High       | Q2 2027  |
+| Layer-level observability instrumentation      | Medium   | Medium     | Q1 2027  |
+| Event-driven architecture for layer decoupling | Medium   | High       | Q3 2027  |
 
 ## Related Documents
 
-| Document | Description |
+| Document                                                  | Description                               |
 | --------------------------------------------------------- | ----------------------------------------- |
-| [MVP Product Spec](01-Vaeloom-MVP-Spec.md) | v1/MVP product specification |
-| [Agent Workflow](03-agent-workflow.md) | How agents interact across the six layers |
-| [Memory & Knowledge Graph](04-memory-knowledge-graph.md) | Deep dive into the core memory layer |
-| [Enterprise Architecture](06-Vaeloom-Enterprise-Paper.md) | Enterprise-scale architecture vision |
+| [MVP Product Spec](01-Vaeloom-MVP-Spec.md)                | v1/MVP product specification              |
+| [Agent Workflow](03-agent-workflow.md)                    | How agents interact across the six layers |
+| [Memory & Knowledge Graph](04-memory-knowledge-graph.md)  | Deep dive into the core memory layer      |
+| [Enterprise Architecture](06-Vaeloom-Enterprise-Paper.md) | Enterprise-scale architecture vision      |

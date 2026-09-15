@@ -1,11 +1,11 @@
 Vaeloom · Memory System
 
-| Metadata | Value |
-| ---------------- | ----------------------------------------------------------------------------------- |
-| **Purpose** | Document Vaeloom's MVP memory system: knowledge graph, 6 memory types (MVP) and agentic RAG — see Enterprise paper for 22-type taxonomy |
-| **Status** | Draft |
-| **Owner** | Engineering Team |
-| **Last Updated** | 2026-07-13 |
+| Metadata         | Value                                                                                                                                   |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Purpose**      | Document Vaeloom's MVP memory system: knowledge graph, 6 memory types (MVP) and agentic RAG — see Enterprise paper for 22-type taxonomy |
+| **Status**       | Draft                                                                                                                                   |
+| **Owner**        | Engineering Team                                                                                                                        |
+| **Last Updated** | 2026-07-13                                                                                                                              |
 
 ## Overview
 
@@ -19,14 +19,14 @@ extracts, deduplicates, merges, and consolidates.
 
 ## Goals
 
-- **Define the 6 memory types (MVP)** — what each stores, when it's written, and how
-  it's queried
+- **Define the 6 memory types (MVP)** — what each stores, when it's written, and
+  how it's queried
 - **Describe the knowledge graph structure** — entity types, relationship types,
- and how they're built automatically
+  and how they're built automatically
 - **Document the agentic RAG read path** — how agents choose retrieval strategy
- per query
+  per query
 - **Explain the write and consolidation path** — extraction, dedup, merge, and
- periodic compression
+  periodic compression
 
 # One graph, six kinds of memory
 
@@ -89,7 +89,10 @@ graph TD
 > search ? re-rank ? assembled context. **Write path**: new info ? extract ?
 > dedup/merge ? write to graph + vector store ? consolidated.
 
-> **Diagram summary:** The Knowledge Graph is the second brain. Six memory types feed it, and every agent reads via Agentic RAG (hybrid search → re-rank → context) and writes via extract → dedup/merge → graph/vector store. Working Memory is session-scoped; all other types persist and compound.
+> **Diagram summary:** The Knowledge Graph is the second brain. Six memory types
+> feed it, and every agent reads via Agentic RAG (hybrid search → re-rank →
+> context) and writes via extract → dedup/merge → graph/vector store. Working
+> Memory is session-scoped; all other types persist and compound.
 
 ## Agentic RAG retrieval
 
@@ -108,18 +111,47 @@ flows: new info → extract entities & facts → dedup/merge against existing no
 only type that's cleared per session — everything else persists and compounds
 over years of use.
 
+## Retrieval reality (code truth)
+
+There is no single RAG pipeline in code — three disjoint paths exist. Weights
+differ by path: docs quote
+`relevance 0.50 + freshness 0.20 + importance 0.15 + confidence 0.15`; the loop
+ranker uses `0.4 / 0.3 / 0.2 / 0.1` (`orchestrator/loop.py:516-711`,
+`search_ranking.py:7`); the memory-agent retriever uses fixed per-source scores
+with dedup and an 8000-token fit (`agents/memory_agent/retrieval.py:420`). No
+cross-encoder on the hot path.
+
+```mermaid
+flowchart TD
+  Q["Agent query + workspace_id"] --> P1["POST /memories/search<br/>vector-only on memories"]
+  Q --> P2["POST /search<br/>keyword ILIKE-only"]
+  Q --> P3["memory_agent retrieve<br/>vector + keyword + 1-hop graph"]
+  P1 --> N1["score = 1 - cosine distance<br/>threshold 0.7"]
+  P2 --> N2["heuristic 2.0 / 1.0<br/>in-memory facets"]
+  P3 --> N3["dedup + fixed source scores<br/>fit to 8000 tokens"]
+  N1 & N2 & N3 --> C["assembled context + provenance"]
+```
+
+> **Diagram:** Retrieval is path-dependent, not one pipeline. Stores:
+> `memories` + `memory_records` + `entities/relationships` ORM +
+> `knowledge_nodes/edges` raw SQL (`models/schema.py`, `migrations/0002`).
+> Vector default is `gemini-embedding-2` (`config.py:67`), not
+> `text-embedding-3-small`; pgvector default, Qdrant optional; Apache AGE
+> provisioned but UNUSED; no IVFFlat/HNSW indexes in code.
+
 ---
 
 ## Scope
 
 ### In Scope
 
-- 6 memory types (MVP): Profile, Document, Career, Episodic, Preference, Working — full 22-type taxonomy is Enterprise scope
+- 6 memory types (MVP): Profile, Document, Career, Episodic, Preference, Working
+  — full 22-type taxonomy is Enterprise scope
 - Knowledge graph structure: entity types and typed relationships
 - Agentic RAG read path — hybrid search combining vector, keyword, and graph
- traversal
+  traversal
 - Write path: extraction, dedup/merge, write to graph + vector store,
- consolidation
+  consolidation
 - Read/re-rank by relevance, recency, and confidence
 
 ### Out of Scope
@@ -164,17 +196,17 @@ Vaeloom memory write --type episodic --event "Applied to Stripe internship" --ti
 
 ## Future Improvements
 
-| Improvement | Priority | Complexity | Timeline |
+| Improvement                               | Priority | Complexity | Timeline |
 | ----------------------------------------- | -------- | ---------- | -------- |
-| Automated graph consolidation and pruning | High | Medium | Q1 2027 |
-| Real-time graph traversal optimization | Medium | Medium | Q2 2027 |
-| Cross-user memory anonymization framework | Low | High | Q3 2027 |
+| Automated graph consolidation and pruning | High     | Medium     | Q1 2027  |
+| Real-time graph traversal optimization    | Medium   | Medium     | Q2 2027  |
+| Cross-user memory anonymization framework | Low      | High       | Q3 2027  |
 
 ## Related Documents
 
-| Document | Description |
+| Document                                                    | Description                                          |
 | ----------------------------------------------------------- | ---------------------------------------------------- |
-| [MVP Product Spec](01-Vaeloom-MVP-Spec.md) | v1 memory architecture defined in product context |
-| [System Architecture](02-system-architecture.md) | Where the memory layer fits in the six-layer stack |
-| [Agent Workflow](03-agent-workflow.md) | How agents read from and write to memory in practice |
-| [Enterprise Product Vision](06-Vaeloom-Enterprise-Paper.md) | Full enterprise memory taxonomy (22 types) |
+| [MVP Product Spec](01-Vaeloom-MVP-Spec.md)                  | v1 memory architecture defined in product context    |
+| [System Architecture](02-system-architecture.md)            | Where the memory layer fits in the six-layer stack   |
+| [Agent Workflow](03-agent-workflow.md)                      | How agents read from and write to memory in practice |
+| [Enterprise Product Vision](06-Vaeloom-Enterprise-Paper.md) | Full enterprise memory taxonomy (22 types)           |

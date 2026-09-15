@@ -1,15 +1,42 @@
 # Connectors
 
-> **Purpose:** Define the connector architecture for external service integration — OAuth token lifecycle, sync scheduling, rate limiting, and error recovery
-> **Status:** New
-> **Owner:** Backend Team
-> **Last Updated:** 2026-07-12
+> **Purpose:** Define the connector architecture for external service
+> integration — OAuth token lifecycle, sync scheduling, rate limiting, and error
+> recovery **Status:** New **Owner:** Backend Team **Last Updated:** 2026-07-12
 
 ---
 
 ## Overview
 
-Connectors are the bridge between Vaeloom and external services (Gmail, Google Calendar, GitHub, Slack, etc.). Each connector manages its own OAuth credentials, sync schedule, and data transformation pipeline. This document covers the two critical lifecycle paths: **OAuth token management** and **data sync execution**.
+Connectors are the bridge between Vaeloom and external services. Each connector
+manages its own OAuth credentials, sync schedule, and data transformation
+pipeline. This document covers the two critical lifecycle paths: **OAuth token
+management** and **data sync execution**.
+
+## Implemented connector set (code truth)
+
+Code registers **15 built-ins** (`integrations/registry.py:95-111`): gmail,
+google_calendar, google_drive, google_docs, github, greenhouse, lever,
+jobs_board, outlook, graph_calendar, onedrive, mcp (`mcp__*` dynamic), slack,
+notion, browser (job-page tools). Tables below listing only 5 are stale —
+Drive/Docs/Graph-Calendar/OneDrive/Greenhouse/Lever/Jobs-aggregator/MCP/Notion/Browser
+are implemented. Routers: `/connectors` (CRUD + sync/test + mcp/*),
+`/integrations` (legacy), `/gmail/*` (watch/drafts/webhook).
+
+```mermaid
+flowchart TD
+  EXT["External systems<br/>Gmail - Calendar - Drive - Docs<br/>GitHub - Outlook - OneDrive<br/>Slack - Notion - Job boards"]
+  CL["Connector layer<br/>/connectors + /integrations + /gmail"]
+  OA["OAuth PKCE<br/>encrypt + store in SecretManager<br/>keyed by workspace_id + connector_id"]
+  SC["Sync<br/>cron - manual - webhook<br/>paginate, respect Retry-After"]
+  DD["Dedup by external_id + workspace_id<br/>classify + enqueue to memory pipeline"]
+  MEM["Memory - graph - vector<br/>available to agents"]
+  EXT --> CL --> OA --> SC --> DD --> MEM
+```
+
+> **Diagram:** High-level connector path — external system → connector router →
+> OAuth/SecretManager → sync → dedup/classify → memory. Detail lifecycle below
+> is the per-connector token/sync truth.
 
 ## Connector Sync & Token Lifecycle
 
@@ -100,81 +127,93 @@ graph TD
  class H1,H2,H3,H4,H5,H6 health
 ```
 
-> **Diagram:** The connector lifecycle spans five phases. **OAuth Authorization** (🔍) obtains tokens via the OAuth consent flow. **Token Refresh** (🔍„) transparently refreshes expired tokens with up to 2 retries before degrading. **Sync Execution** (📁¥) fetches data from the external API with rate-limit handling (3 retries, respecting `Retry-After`). **Data Processing** (⚙️™ï¸) deduplicates, classifies, and enqueues items for the memory pipeline. **Health & Monitoring** (📁ˆ) collects metrics and alerts on prolonged degradation.
+> **Diagram:** The connector lifecycle spans five phases. **OAuth
+> Authorization** (🔍) obtains tokens via the OAuth consent flow. **Token
+> Refresh** (🔍„) transparently refreshes expired tokens with up to 2 retries
+> before degrading. **Sync Execution** (📁¥) fetches data from the external API
+> with rate-limit handling (3 retries, respecting `Retry-After`). **Data
+> Processing** (⚙️™ï¸) deduplicates, classifies, and enqueues items for the
+> memory pipeline. **Health & Monitoring** (📁ˆ) collects metrics and alerts on
+> prolonged degradation.
 
 ---
 
 ## Connector Types
 
-| Connector | Scopes | Sync Frequency | Rate Limit | Auth Type |
-|-----------|--------|----------------|------------|-----------|
-| Gmail | `gmail.readonly` | Every 6h (daily scan), real-time (push) | 250 quota units/user/s | OAuth 2.0 |
-| Google Calendar | `calendar.readonly` | Every 12h | 60 requests/min | OAuth 2.0 |
-| GitHub | `repo, notifications` | Every 6h | 5,000 requests/h | OAuth 2.0 (PAT fallback) |
-| Slack | `channels:history, users:read` | Every 6h, real-time (RTM) | 1 req/s per workspace | OAuth 2.0 |
-| Outlook | `Mail.Read` | Every 6h | 10,000 requests/h | OAuth 2.0 (MSAL) |
+| Connector       | Scopes                         | Sync Frequency                          | Rate Limit             | Auth Type                |
+| --------------- | ------------------------------ | --------------------------------------- | ---------------------- | ------------------------ |
+| Gmail           | `gmail.readonly`               | Every 6h (daily scan), real-time (push) | 250 quota units/user/s | OAuth 2.0                |
+| Google Calendar | `calendar.readonly`            | Every 12h                               | 60 requests/min        | OAuth 2.0                |
+| GitHub          | `repo, notifications`          | Every 6h                                | 5,000 requests/h       | OAuth 2.0 (PAT fallback) |
+| Slack           | `channels:history, users:read` | Every 6h, real-time (RTM)               | 1 req/s per workspace  | OAuth 2.0                |
+| Outlook         | `Mail.Read`                    | Every 6h                                | 10,000 requests/h      | OAuth 2.0 (MSAL)         |
 
 ## Token Storage
 
-| Field | Storage | Encryption |
-|-------|---------|------------|
-| `access_token` | Secrets Manager | AES-256-GCM at rest, TLS in transit |
-| `refresh_token` | Secrets Manager | AES-256-GCM at rest, never exposed to client |
-| `expires_at` | PostgreSQL (connector row) | Plain (used for expiry checks) |
-| `scopes` | PostgreSQL (connector row) | Plain |
+| Field           | Storage                    | Encryption                                   |
+| --------------- | -------------------------- | -------------------------------------------- |
+| `access_token`  | Secrets Manager            | AES-256-GCM at rest, TLS in transit          |
+| `refresh_token` | Secrets Manager            | AES-256-GCM at rest, never exposed to client |
+| `expires_at`    | PostgreSQL (connector row) | Plain (used for expiry checks)               |
+| `scopes`        | PostgreSQL (connector row) | Plain                                        |
 
 ## Error Handling
 
-| Error | Action | Recovery |
-|-------|--------|----------|
-| `401 Unauthorized` | Attempt token refresh | Auto — refresh succeeds |
-| `400 invalid_grant` | Mark connector degraded | Manual — user re-authorizes |
-| `429 Too Many Requests` | Backoff with `Retry-After` | Auto — next sync cycle |
-| `5xx Server Error` | Retry up to 3 times | Auto — exponential backoff |
-| Network timeout | Retry up to 2 times | Auto — immediate retry |
+| Error                   | Action                     | Recovery                    |
+| ----------------------- | -------------------------- | --------------------------- |
+| `401 Unauthorized`      | Attempt token refresh      | Auto — refresh succeeds     |
+| `400 invalid_grant`     | Mark connector degraded    | Manual — user re-authorizes |
+| `429 Too Many Requests` | Backoff with `Retry-After` | Auto — next sync cycle      |
+| `5xx Server Error`      | Retry up to 3 times        | Auto — exponential backoff  |
+| Network timeout         | Retry up to 2 times        | Auto — immediate retry      |
 
 ## Common Mistakes
 
-| Mistake | Consequence |
-|---------|-------------|
-| Storing refresh tokens in the database instead of a secrets manager | A database breach exposes long-lived credentials that can regenerate access tokens indefinitely |
-| Ignoring the Retry-After header on rate limit responses | Retrying immediately after a 429 compounds the rate limit violation — respect Retry-After and back off |
-| Not handling token revocation events | Providers can revoke tokens at any time (user revokes access, password change) — without handling this, connectors silently fail |
-| Using the same OAuth scopes for all connectors | Each connector should request the minimum scopes needed — Gmail only needs `gmail.readonly`, not calendar or contacts scopes |
+| Mistake                                                             | Consequence                                                                                                                      |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Storing refresh tokens in the database instead of a secrets manager | A database breach exposes long-lived credentials that can regenerate access tokens indefinitely                                  |
+| Ignoring the Retry-After header on rate limit responses             | Retrying immediately after a 429 compounds the rate limit violation — respect Retry-After and back off                           |
+| Not handling token revocation events                                | Providers can revoke tokens at any time (user revokes access, password change) — without handling this, connectors silently fail |
+| Using the same OAuth scopes for all connectors                      | Each connector should request the minimum scopes needed — Gmail only needs `gmail.readonly`, not calendar or contacts scopes     |
 
 ## Best Practices
 
-| Practice | Why |
-|----------|-----|
-| Store tokens in a secrets manager with encryption at rest | Secrets managers provide encryption, access auditing, and automatic rotation — never store tokens in application code or database rows |
-| Implement exponential backoff with Retry-After respect | External APIs have unpredictable load — respecting Retry-After headers and backing off exponentially prevents connector bans |
-| Mark connectors as degraded after repeated failures | A connector that has failed 3 consecutive syncs should be surfaced to the user — silent failures erode trust in the system |
-| Log every sync attempt with connector_id and page_token | Debugging connector failures without per-request tracing is nearly impossible — structured logs are essential for connector reliability |
+| Practice                                                  | Why                                                                                                                                     |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Store tokens in a secrets manager with encryption at rest | Secrets managers provide encryption, access auditing, and automatic rotation — never store tokens in application code or database rows  |
+| Implement exponential backoff with Retry-After respect    | External APIs have unpredictable load — respecting Retry-After headers and backing off exponentially prevents connector bans            |
+| Mark connectors as degraded after repeated failures       | A connector that has failed 3 consecutive syncs should be surfaced to the user — silent failures erode trust in the system              |
+| Log every sync attempt with connector_id and page_token   | Debugging connector failures without per-request tracing is nearly impossible — structured logs are essential for connector reliability |
 
 ## Security
 
-| Concern | Mitigation |
-|---------|------------|
-| Token leakage in request logs | OAuth tokens passed in URLs or logged as part of request headers can be captured in log aggregation systems — sanitize all log output to redact `access_token` and `refresh_token` values |
-| OAuth redirect URI validation bypass | If the redirect URI accepts wildcards or open redirects, an attacker can intercept the authorization code — validate redirect URIs against an allow-list with exact path matching |
-| Token scope escalation | A connector with `gmail.readonly` scope requesting `gmail.modify`-level access could escalate if the token is reused — each connector must use a token scoped only to its declared permissions |
+| Concern                              | Mitigation                                                                                                                                                                                     |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Token leakage in request logs        | OAuth tokens passed in URLs or logged as part of request headers can be captured in log aggregation systems — sanitize all log output to redact `access_token` and `refresh_token` values      |
+| OAuth redirect URI validation bypass | If the redirect URI accepts wildcards or open redirects, an attacker can intercept the authorization code — validate redirect URIs against an allow-list with exact path matching              |
+| Token scope escalation               | A connector with `gmail.readonly` scope requesting `gmail.modify`-level access could escalate if the token is reused — each connector must use a token scoped only to its declared permissions |
 
 ## Performance
 
-| Concern | Mitigation |
-|---------|------------|
-| Token refresh latency stalling sync | If every sync starts with a token refresh (2-3 network round trips), sync duration doubles — check token expiry locally before attempting refresh and batch multiple connector refreshes |
-| Sync pagination with high item counts | External APIs with 10K+ items (GitHub notifications, Gmail threads) can take minutes to paginate through — use parallel page fetching when the API supports it and set a max items per sync |
-| Rate limit backoff increasing total sync time | Aggressive rate limit backoff (30s→2m→5m) on a connector with many items can push sync beyond the schedule window — distribute connector syncs across the window to avoid overlapping |
+| Concern                                       | Mitigation                                                                                                                                                                                  |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Token refresh latency stalling sync           | If every sync starts with a token refresh (2-3 network round trips), sync duration doubles — check token expiry locally before attempting refresh and batch multiple connector refreshes    |
+| Sync pagination with high item counts         | External APIs with 10K+ items (GitHub notifications, Gmail threads) can take minutes to paginate through — use parallel page fetching when the API supports it and set a max items per sync |
+| Rate limit backoff increasing total sync time | Aggressive rate limit backoff (30s→2m→5m) on a connector with many items can push sync beyond the schedule window — distribute connector syncs across the window to avoid overlapping       |
 
 ---
 
 ## Goals
 
-1. **Reliable external data ingestion** — Connect Vaeloom to external services (Gmail, Calendar, GitHub, Slack) with automatic sync, retry, and error recovery
-2. **Secure credential management** — Store OAuth tokens in Secrets Manager with encryption at rest; never expose tokens to application code or logs
-3. **Transparent sync lifecycle** — Surface connector health, last sync time, and error states to users so they trust the integration
-4. **Graceful degradation** — Mark connectors as degraded after repeated failures instead of silently breaking; notify users to re-authorize
+1. **Reliable external data ingestion** — Connect Vaeloom to external services
+   (Gmail, Calendar, GitHub, Slack) with automatic sync, retry, and error
+   recovery
+2. **Secure credential management** — Store OAuth tokens in Secrets Manager with
+   encryption at rest; never expose tokens to application code or logs
+3. **Transparent sync lifecycle** — Surface connector health, last sync time,
+   and error states to users so they trust the integration
+4. **Graceful degradation** — Mark connectors as degraded after repeated
+   failures instead of silently breaking; notify users to re-authorize
 
 ---
 
@@ -182,7 +221,8 @@ graph TD
 
 ### In Scope
 
-- OAuth 2.0 authorization flow for Gmail, Google Calendar, GitHub, Slack, Outlook
+- OAuth 2.0 authorization flow for Gmail, Google Calendar, GitHub, Slack,
+  Outlook
 - Token lifecycle management (issue, refresh, revoke, rotate)
 - Scheduled sync via cron jobs with configurable frequency
 - Real-time sync via webhook/push where supported (Gmail push, Slack RTM)
@@ -200,26 +240,26 @@ graph TD
 
 ## Functional Requirements
 
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| F-001 | System SHALL support OAuth 2.0 authorization code flow with PKCE for all connectors | P0 |
-| F-002 | System SHALL store OAuth tokens encrypted in Secrets Manager (AES-256-GCM) | P0 |
-| F-003 | System SHALL auto-refresh expired tokens transparently during sync | P0 |
-| F-004 | System SHALL respect `Retry-After` headers on rate limit (429) responses | P0 |
-| F-005 | System SHALL mark connector as degraded after 3 consecutive sync failures | P1 |
-| F-006 | System SHALL support both scheduled (cron) and manual sync triggers | P1 |
+| ID    | Requirement                                                                         | Priority |
+| ----- | ----------------------------------------------------------------------------------- | -------- |
+| F-001 | System SHALL support OAuth 2.0 authorization code flow with PKCE for all connectors | P0       |
+| F-002 | System SHALL store OAuth tokens encrypted in Secrets Manager (AES-256-GCM)          | P0       |
+| F-003 | System SHALL auto-refresh expired tokens transparently during sync                  | P0       |
+| F-004 | System SHALL respect `Retry-After` headers on rate limit (429) responses            | P0       |
+| F-005 | System SHALL mark connector as degraded after 3 consecutive sync failures           | P1       |
+| F-006 | System SHALL support both scheduled (cron) and manual sync triggers                 | P1       |
 
 ---
 
 ## Non-Functional Requirements
 
-| ID | Requirement | Target |
-|----|-------------|--------|
-| NF-001 | Token refresh latency | < 500ms (including provider round trip) |
-| NF-002 | Sync execution per connector | < 5 minutes for < 1000 items |
-| NF-003 | Data deduplication accuracy | 100% (same external_id + workspace_id = same record) |
-| NF-004 | Connector health check interval | Every 6 hours |
-| NF-005 | Token refresh success rate | > 99.5% |
+| ID     | Requirement                     | Target                                               |
+| ------ | ------------------------------- | ---------------------------------------------------- |
+| NF-001 | Token refresh latency           | < 500ms (including provider round trip)              |
+| NF-002 | Sync execution per connector    | < 5 minutes for < 1000 items                         |
+| NF-003 | Data deduplication accuracy     | 100% (same external_id + workspace_id = same record) |
+| NF-004 | Connector health check interval | Every 6 hours                                        |
+| NF-005 | Token refresh success rate      | > 99.5%                                              |
 
 ---
 
@@ -249,7 +289,9 @@ sequenceDiagram
  Note over API,SM: Token stored with workspace isolation
 ```
 
-> **Diagram:** Connector OAuth flow — User initiates connection via UI, API orchestrates OAuth consent with the external provider, receives tokens, encrypts them, and stores in Secrets Manager scoped to workspace.
+> **Diagram:** Connector OAuth flow — User initiates connection via UI, API
+> orchestrates OAuth consent with the external provider, receives tokens,
+> encrypts them, and stores in Secrets Manager scoped to workspace.
 
 ---
 
@@ -278,94 +320,94 @@ sequenceDiagram
 
 ## APIs
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/v1/connectors` | GET | List all connectors for a workspace |
-| `/v1/connectors` | POST | Initiate OAuth connection flow |
-| `/v1/connectors/:id` | DELETE | Disconnect and revoke tokens |
-| `/v1/connectors/:id/sync` | POST | Trigger manual sync |
-| `/v1/connectors/:id/status` | GET | Get sync status and health |
-| `/v1/connectors/:id/tokens` | POST | Refresh stored tokens manually |
+| Endpoint                    | Method | Description                         |
+| --------------------------- | ------ | ----------------------------------- |
+| `/v1/connectors`            | GET    | List all connectors for a workspace |
+| `/v1/connectors`            | POST   | Initiate OAuth connection flow      |
+| `/v1/connectors/:id`        | DELETE | Disconnect and revoke tokens        |
+| `/v1/connectors/:id/sync`   | POST   | Trigger manual sync                 |
+| `/v1/connectors/:id/status` | GET    | Get sync status and health          |
+| `/v1/connectors/:id/tokens` | POST   | Refresh stored tokens manually      |
 
 ---
 
 ## Database
 
-| Table | Purpose | Key Columns |
-|-------|---------|-------------|
-| `connectors` | Connector configuration and sync state | id, workspace_id, type, scopes, status (active/degraded/revoked), last_sync_at, last_error, item_count |
-| `connector_sync_runs` | Sync execution history | id, connector_id, status, items_processed, errors, started_at, completed_at |
-| `connector_tokens_metadata` | Token metadata (tokens stored in Secrets Manager) | id, connector_id, token_type (oauth/api_key), expires_at, token_key (reference to SM) |
-| `synced_items` | Deduplication tracking | id, connector_id, external_id, workspace_id, item_type, classification, synced_at |
+| Table                       | Purpose                                           | Key Columns                                                                                            |
+| --------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `connectors`                | Connector configuration and sync state            | id, workspace_id, type, scopes, status (active/degraded/revoked), last_sync_at, last_error, item_count |
+| `connector_sync_runs`       | Sync execution history                            | id, connector_id, status, items_processed, errors, started_at, completed_at                            |
+| `connector_tokens_metadata` | Token metadata (tokens stored in Secrets Manager) | id, connector_id, token_type (oauth/api_key), expires_at, token_key (reference to SM)                  |
+| `synced_items`              | Deduplication tracking                            | id, connector_id, external_id, workspace_id, item_type, classification, synced_at                      |
 
 ---
 
 ## Scalability
 
-| Dimension | Current Limit | 10x Strategy | 100x Strategy |
-|-----------|---------------|--------------|---------------|
-| Concurrent connector syncs | 5 per workspace | Stagger sync schedules to avoid overlapping | Dedicated sync worker pool per connector type |
-| Stored tokens per workspace | 10 connectors | Secrets Manager scales to 100K secrets | Hierarchical token storage with workspace prefix |
-| Synced items per day | 100K | Bulk insert with dedup (ON CONFLICT DO NOTHING) | Partition synced_items table by connector_id |
-| Sync frequency | 6h default | Configurable per-connector sync interval | Event-driven sync via webhook push |
+| Dimension                   | Current Limit   | 10x Strategy                                    | 100x Strategy                                    |
+| --------------------------- | --------------- | ----------------------------------------------- | ------------------------------------------------ |
+| Concurrent connector syncs  | 5 per workspace | Stagger sync schedules to avoid overlapping     | Dedicated sync worker pool per connector type    |
+| Stored tokens per workspace | 10 connectors   | Secrets Manager scales to 100K secrets          | Hierarchical token storage with workspace prefix |
+| Synced items per day        | 100K            | Bulk insert with dedup (ON CONFLICT DO NOTHING) | Partition synced_items table by connector_id     |
+| Sync frequency              | 6h default      | Configurable per-connector sync interval        | Event-driven sync via webhook push               |
 
 ---
 
 ## Error Handling
 
-| Scenario | Detection | Mitigation | Recovery |
-|----------|-----------|------------|----------|
-| Token expired on sync start | API returns 401 on first request | Attempt transparent token refresh (up to 2 retries) | If refresh fails → mark connector degraded; notify user to re-authorize |
-| Rate limit (429) | External API returns 429 | Parse Retry-After header; backoff 30s → 2m → 5m | After max retries → abort sync; retry next cycle |
-| External API unavailable (5xx) | 500/503 response | Retry up to 3 times with exponential backoff (5s, 15s, 45s) | After max retries → skip sync cycle; alert if consecutive > 3 |
-| Network timeout | Request exceeds 30s timeout | Retry up to 2 times | Mark as degraded after 3 consecutive timeouts |
-| Token revoked by user | Refresh returns 400 invalid_grant | Mark connector as revoked; notify user | User must re-authorize via OAuth flow |
+| Scenario                       | Detection                         | Mitigation                                                  | Recovery                                                                |
+| ------------------------------ | --------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Token expired on sync start    | API returns 401 on first request  | Attempt transparent token refresh (up to 2 retries)         | If refresh fails → mark connector degraded; notify user to re-authorize |
+| Rate limit (429)               | External API returns 429          | Parse Retry-After header; backoff 30s → 2m → 5m             | After max retries → abort sync; retry next cycle                        |
+| External API unavailable (5xx) | 500/503 response                  | Retry up to 3 times with exponential backoff (5s, 15s, 45s) | After max retries → skip sync cycle; alert if consecutive > 3           |
+| Network timeout                | Request exceeds 30s timeout       | Retry up to 2 times                                         | Mark as degraded after 3 consecutive timeouts                           |
+| Token revoked by user          | Refresh returns 400 invalid_grant | Mark connector as revoked; notify user                      | User must re-authorize via OAuth flow                                   |
 
 ---
 
 ## Monitoring
 
-| Metric | Alert Threshold | Severity | Dashboard |
-|--------|-----------------|----------|-----------|
-| Sync failure rate per connector | > 20% of recent 10 syncs | Warning | Connectors > Failure Rate |
-| Token refresh failures | > 5% of refresh attempts | Critical | Connectors > Tokens |
-| Connector in degraded state > 24h | Any connector degraded > 24h | Warning | Connectors > Health |
-| Sync duration > schedule interval | Sync time > 80% of interval | Warning | Connectors > Duration |
-| Items synced per day | < 50% of daily average | Info | Connectors > Volume |
-| Rate limit hits per connector | > 10 per sync | Info | Connectors > Rate Limits |
+| Metric                            | Alert Threshold              | Severity | Dashboard                 |
+| --------------------------------- | ---------------------------- | -------- | ------------------------- |
+| Sync failure rate per connector   | > 20% of recent 10 syncs     | Warning  | Connectors > Failure Rate |
+| Token refresh failures            | > 5% of refresh attempts     | Critical | Connectors > Tokens       |
+| Connector in degraded state > 24h | Any connector degraded > 24h | Warning  | Connectors > Health       |
+| Sync duration > schedule interval | Sync time > 80% of interval  | Warning  | Connectors > Duration     |
+| Items synced per day              | < 50% of daily average       | Info     | Connectors > Volume       |
+| Rate limit hits per connector     | > 10 per sync                | Info     | Connectors > Rate Limits  |
 
 ---
 
 ## Deployment
 
-| Environment | Method | Trigger | Verification |
-|-------------|--------|---------|--------------|
-| Development | Docker Compose with mock external APIs | Git push to feature branch | Integration tests: OAuth flow + sync + token refresh |
-| Staging | Deployed with worker pool (1 replica per connector type) | PR merged to main | End-to-end test: connect Gmail → sync → verify items in DB |
-| Production | Auto-scaled worker pool (2-4 replicas per type) | Tagged release via CI/CD | Canary: verify sync success rate > 98% for 5 min |
+| Environment | Method                                                   | Trigger                    | Verification                                               |
+| ----------- | -------------------------------------------------------- | -------------------------- | ---------------------------------------------------------- |
+| Development | Docker Compose with mock external APIs                   | Git push to feature branch | Integration tests: OAuth flow + sync + token refresh       |
+| Staging     | Deployed with worker pool (1 replica per connector type) | PR merged to main          | End-to-end test: connect Gmail → sync → verify items in DB |
+| Production  | Auto-scaled worker pool (2-4 replicas per type)          | Tagged release via CI/CD   | Canary: verify sync success rate > 98% for 5 min           |
 
 ---
 
 ## Configuration
 
-| Variable | Purpose | Default | Required |
-|----------|---------|---------|----------|
-| `CONNECTOR_SYNC_INTERVAL_HOURS` | Default sync interval | 6 | Yes |
-| `CONNECTOR_TOKEN_REFRESH_RETRIES` | Max token refresh attempts | 2 | Yes |
-| `CONNECTOR_SYNC_RETRIES` | Max sync retries per cycle | 3 | Yes |
-| `CONNECTOR_MAX_ITEMS_PER_SYNC` | Max items to process per sync | 5000 | No |
-| `CONNECTOR_DEGRADED_THRESHOLD` | Consecutive failures before degraded | 3 | Yes |
-| `CONNECTOR_SYNC_TIMEOUT` | Per-request timeout for external API calls | 30000ms | Yes |
+| Variable                          | Purpose                                    | Default | Required |
+| --------------------------------- | ------------------------------------------ | ------- | -------- |
+| `CONNECTOR_SYNC_INTERVAL_HOURS`   | Default sync interval                      | 6       | Yes      |
+| `CONNECTOR_TOKEN_REFRESH_RETRIES` | Max token refresh attempts                 | 2       | Yes      |
+| `CONNECTOR_SYNC_RETRIES`          | Max sync retries per cycle                 | 3       | Yes      |
+| `CONNECTOR_MAX_ITEMS_PER_SYNC`    | Max items to process per sync              | 5000    | No       |
+| `CONNECTOR_DEGRADED_THRESHOLD`    | Consecutive failures before degraded       | 3       | Yes      |
+| `CONNECTOR_SYNC_TIMEOUT`          | Per-request timeout for external API calls | 30000ms | Yes      |
 
 ---
 
 ## Limitations
 
-| Limitation | Impact | Workaround | Future Resolution |
-|------------|--------|------------|-------------------|
-| No real-time sync for most connectors | Data is stale up to 6 hours between syncs | Webhook/push support for Gmail; manual sync button | Implement webhook receivers for all major connectors |
-| No reverse sync (Vaeloom → External) | Cannot push data to external services | Manual export feature | Add bidirectional sync for supported connectors |
-| OAuth only — no API key or service account auth | Headless connectors (CI/CD) require user context | API key alternative for read-only GitHub access | Support service account authentication for enterprise |
+| Limitation                                      | Impact                                           | Workaround                                         | Future Resolution                                     |
+| ----------------------------------------------- | ------------------------------------------------ | -------------------------------------------------- | ----------------------------------------------------- |
+| No real-time sync for most connectors           | Data is stale up to 6 hours between syncs        | Webhook/push support for Gmail; manual sync button | Implement webhook receivers for all major connectors  |
+| No reverse sync (Vaeloom → External)            | Cannot push data to external services            | Manual export feature                              | Add bidirectional sync for supported connectors       |
+| OAuth only — no API key or service account auth | Headless connectors (CI/CD) require user context | API key alternative for read-only GitHub access    | Support service account authentication for enterprise |
 
 ---
 
@@ -404,13 +446,13 @@ Vaeloom connectors sync --id conn_42 --full-refresh
 
 ## Future Improvements
 
-| Improvement | Priority | Complexity | Timeline |
-|-------------|----------|------------|----------|
-| Webhook receivers for real-time sync (Gmail push, Slack RTM) | High | Medium | Q4 2026 |
-| Bidirectional sync for calendar events | Medium | High | Q1 2027 |
-| Custom connector SDK for third-party developers | Low | High | Q2 2027 |
-| Service account authentication for headless connectors | Medium | Medium | Q4 2026 |
-| Connector health dashboard with per-connector metrics | Low | Low | Q3 2026 |
+| Improvement                                                  | Priority | Complexity | Timeline |
+| ------------------------------------------------------------ | -------- | ---------- | -------- |
+| Webhook receivers for real-time sync (Gmail push, Slack RTM) | High     | Medium     | Q4 2026  |
+| Bidirectional sync for calendar events                       | Medium   | High       | Q1 2027  |
+| Custom connector SDK for third-party developers              | Low      | High       | Q2 2027  |
+| Service account authentication for headless connectors       | Medium   | Medium     | Q4 2026  |
+| Connector health dashboard with per-connector metrics        | Low      | Low        | Q3 2026  |
 
 ---
 
