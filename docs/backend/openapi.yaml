@@ -812,8 +812,7 @@ paths:
       tags:
         - memory
       summary: Get Memory History
-      description: "DB-backed version history for a memory \u2014 EXC-P12-03 durable\
-        \ history."
+      description: DB-backed version history for a memory — EXC-P12-03 durable history.
       operationId: get_memory_history_api_v1_memories__memory_id__history_get
       parameters:
         - name: memory_id
@@ -844,8 +843,8 @@ paths:
       tags:
         - memory
       summary: Get Memory Chunks
-      description: "Chunk-level provenance for a memory's source document \u2014 obsidian\
-        \ chunk view."
+      description: Chunk-level provenance for a memory's source document — obsidian
+        chunk view.
       operationId: get_memory_chunks_api_v1_memories__memory_id__chunks_get
       parameters:
         - name: memory_id
@@ -1006,12 +1005,18 @@ paths:
       tags:
         - agents
       summary: Cancel Run
-      description: "Cooperative cancellation of an active agent run (\xA731).\n\n\
-        Sets the durable cancel flag; the orchestrator loop (and any worker\ndriving\
-        \ it) observes the flag before its next consequential step and\nterminates\
-        \ as cancelled/user_cancel without further side effects.\nWorkspace binding\
-        \ is verified twice (caller membership + checkpoint\nownership); unknown runs\
-        \ return 404 to avoid enumeration."
+      description: 'Cooperative cancellation of an active agent run (§31).
+
+
+        Sets the durable cancel flag; the orchestrator loop (and any worker
+
+        driving it) observes the flag before its next consequential step and
+
+        terminates as cancelled/user_cancel without further side effects.
+
+        Workspace binding is verified twice (caller membership + checkpoint
+
+        ownership); unknown runs return 404 to avoid enumeration.'
       operationId: cancel_run_api_v1_agents_runs__request_id__cancel_post
       parameters:
         - name: request_id
@@ -1073,10 +1078,10 @@ paths:
       tags:
         - agents
       summary: Chat Stream
-      description: "Streaming orchestrator chat \u2014 phase-by-phase SSE.\n\nEvents:\n\
-        \  intent \u2192 plan \u2192 act \u2192 tool_start/tool_result \u2192 observe\
-        \ \u2192 reflect \u2192 token* \u2192 approval_required? \u2192 done\nUses\
-        \ the full 5-phase loop (not the simple execute path) with QA gate."
+      description: "Streaming orchestrator chat — phase-by-phase SSE.\n\nEvents:\n\
+        \  intent → plan → act → tool_start/tool_result → observe → reflect → token*\
+        \ → approval_required? → done\nUses the full 5-phase loop (not the simple\
+        \ execute path) with QA gate."
       operationId: chat_stream_api_v1_agents_chat_stream_post
       requestBody:
         content:
@@ -2245,8 +2250,8 @@ paths:
       tags:
         - resumes
       summary: Compile Typst
-      description: "Live Typst compile: source \u2192 PDF. WASM on frontend is primary;\
-        \ this is the backend fallback + artifact persist."
+      description: 'Live Typst compile: source → PDF. WASM on frontend is primary;
+        this is the backend fallback + artifact persist.'
       operationId: compile_typst_api_v1_resumes__resume_id__compile_typst_post
       parameters:
         - name: resume_id
@@ -2285,8 +2290,8 @@ paths:
       tags:
         - resumes
       summary: Inline Ai
-      description: "Overleaf inline AI: select range \u2192 intent \u2192 diff ops.\
-        \ Zero-hallucination via provenance."
+      description: 'Overleaf inline AI: select range → intent → diff ops. Zero-hallucination
+        via provenance.'
       operationId: inline_ai_api_v1_resumes__resume_id__ai_inline_post
       parameters:
         - name: resume_id
@@ -3303,6 +3308,60 @@ paths:
                   $ref: '#/components/schemas/JobExecutionResponse'
                 title: Response List Executions Api V1 Scheduler Jobs  Job Id  Executions
                   Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/scheduler/events:
+    post:
+      tags:
+        - scheduler
+      summary: Create Schedule Event
+      operationId: create_schedule_event_api_v1_scheduler_events_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateScheduleEventRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleEventResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+        - scheduler
+      summary: List Schedule Events
+      operationId: list_schedule_events_api_v1_scheduler_events_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScheduleEventResponse'
+                title: Response List Schedule Events Api V1 Scheduler Events Get
         '422':
           description: Validation Error
           content:
@@ -4618,7 +4677,7 @@ paths:
               title: Body
         required: true
       responses:
-        '200':
+        '202':
           description: Successful Response
           content:
             application/json:
@@ -4644,7 +4703,7 @@ paths:
               title: Body
         required: true
       responses:
-        '200':
+        '202':
           description: Successful Response
           content:
             application/json:
@@ -4660,10 +4719,15 @@ paths:
       tags:
         - temporal
       summary: Start Durable Agent
-      description: "Start DurableAgentRunWorkflow \u2014 LangGraph executes inside\
-        \ DurableAgentRunActivity (ADR-039).\n\nTemporal owns durability, LangGraph\
-        \ owns topology. Input is IDs/refs only; secrets rejected.\nUsed by k6-langgraph\
-        \ and agent chat."
+      description:
+        'Start DurableAgentRunWorkflow — LangGraph executes inside DurableAgentRunActivity
+        (ADR-039).
+
+
+        Temporal owns durability, LangGraph owns topology. Input is IDs/refs only;
+        secrets rejected.
+
+        Used by k6-langgraph and agent chat.'
       operationId: start_durable_agent_api_v1_temporal_workflows_durable_agent_post
       requestBody:
         content:
@@ -4674,7 +4738,7 @@ paths:
               title: Body
         required: true
       responses:
-        '200':
+        '202':
           description: Successful Response
           content:
             application/json:
@@ -5304,6 +5368,784 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/council/evaluate-and-certify:
+    post:
+      tags:
+        - council
+      summary: Evaluate And Certify
+      description: Evaluates artifact through Council and automatically generates
+        W3C AgentAuditCredential on consensus.
+      operationId: evaluate_and_certify_api_v1_council_evaluate_and_certify_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CouncilCertifyRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Evaluate And Certify Api V1 Council Evaluate And Certify
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/cognition/scale/nodes:
+    get:
+      tags:
+        - cognition
+      summary: List Scale Nodes
+      description: Lists SCALE temporal memory nodes scoped to workspace and user.
+      operationId: list_scale_nodes_api_v1_cognition_scale_nodes_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+        - name: tier
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: 'Tier: SUB_DAILY, DAILY, WEEKLY, MONTHLY, ANNUAL, NORTH_STAR'
+            title: Tier
+          description: 'Tier: SUB_DAILY, DAILY, WEEKLY, MONTHLY, ANNUAL, NORTH_STAR'
+        - name: period_start
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+                format: date-time
+              - type: 'null'
+            title: Period Start
+        - name: period_end
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+                format: date-time
+              - type: 'null'
+            title: Period End
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            minimum: 1
+            default: 50
+            title: Limit
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+            title: Offset
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Scale Nodes Api V1 Cognition Scale Nodes Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+        - cognition
+      summary: Create Scale Node
+      description: Manually ingests or registers a SCALE temporal memory node.
+      operationId: create_scale_node_api_v1_cognition_scale_nodes_post
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Target workspace ID
+            title: Workspace Id
+          description: Target workspace ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScaleMemoryCreate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScaleMemoryResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/cognition/scale/nodes/{node_id}:
+    get:
+      tags:
+        - cognition
+      summary: Get Scale Node
+      description: Retrieves a single SCALE memory node.
+      operationId: get_scale_node_api_v1_cognition_scale_nodes__node_id__get
+      parameters:
+        - name: node_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Node Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScaleMemoryResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+        - cognition
+      summary: Delete Scale Node
+      description: Deletes a SCALE memory node.
+      operationId: delete_scale_node_api_v1_cognition_scale_nodes__node_id__delete
+      parameters:
+        - name: node_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Node Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: boolean
+                title: Response Delete Scale Node Api V1 Cognition Scale Nodes  Node
+                  Id  Delete
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/cognition/scale/rollup:
+    post:
+      tags:
+        - cognition
+      summary: Execute Scale Rollup
+      description: Executes hierarchical temporal rollup across memory tiers.
+      operationId: execute_scale_rollup_api_v1_cognition_scale_rollup_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RollupRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScaleMemoryResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/cognition/overnight/run:
+    post:
+      tags:
+        - cognition
+      summary: Trigger Overnight Cycle
+      description: Triggers the overnight background cognition daemon cycle on-demand.
+      operationId: trigger_overnight_cycle_api_v1_cognition_overnight_run_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OvernightCycleRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MorningBriefing'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/cognition/briefing/today:
+    get:
+      tags:
+        - cognition
+      summary: Get Today Morning Briefing
+      description: Retrieves or synthesizes today's Morning Briefing.
+      operationId: get_today_morning_briefing_api_v1_cognition_briefing_today_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MorningBriefing'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/cognition/reality-gap:
+    get:
+      tags:
+        - cognition
+      summary: Get Reality Gap
+      description: Runs reality gap diagnostics comparing commitments against chronological
+        action traces.
+      operationId: get_reality_gap_api_v1_cognition_reality_gap_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+        - name: period_start
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+                format: date-time
+              - type: 'null'
+            title: Period Start
+        - name: period_end
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+                format: date-time
+              - type: 'null'
+            title: Period End
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RealityGapAnalysis'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/sovereignty/identity:
+    get:
+      tags:
+        - sovereignty
+      summary: Get Sovereign Identity
+      description: Retrieves the authenticated user's sovereign DID and W3C DID document.
+      operationId: get_sovereign_identity_api_v1_sovereignty_identity_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Get Sovereign Identity Api V1 Sovereignty Identity
+                  Get
+  /api/v1/sovereignty/credentials/issue/capability:
+    post:
+      tags:
+        - sovereignty
+      summary: Issue Capability Credential
+      description: Issues a cryptographically signed W3C Verifiable Credential for
+        a validated skill.
+      operationId: issue_capability_credential_api_v1_sovereignty_credentials_issue_capability_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueCapabilityRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Issue Capability Credential Api V1 Sovereignty Credentials
+                  Issue Capability Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/sovereignty/credentials/issue/audit:
+    post:
+      tags:
+        - sovereignty
+      summary: Issue Audit Credential
+      description: Issues a tamper-evident audit credential certifying agent execution
+        safety.
+      operationId: issue_audit_credential_api_v1_sovereignty_credentials_issue_audit_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueAuditRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Issue Audit Credential Api V1 Sovereignty Credentials
+                  Issue Audit Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/sovereignty/credentials:
+    get:
+      tags:
+        - sovereignty
+      summary: List Credentials
+      description: Lists verifiable credentials in the user's sovereign workspace.
+      operationId: list_credentials_api_v1_sovereignty_credentials_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+        - name: credential_type
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: CapabilityCredential or AgentAuditCredential
+            title: Credential Type
+          description: CapabilityCredential or AgentAuditCredential
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Credentials Api V1 Sovereignty Credentials Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/sovereignty/credentials/{credential_id}:
+    get:
+      tags:
+        - sovereignty
+      summary: Get Credential
+      description: Exports a single verifiable credential as W3C JSON-LD.
+      operationId: get_credential_api_v1_sovereignty_credentials__credential_id__get
+      parameters:
+        - name: credential_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Credential Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Credential Api V1 Sovereignty Credentials  Credential
+                  Id  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/sovereignty/credentials/verify:
+    post:
+      tags:
+        - sovereignty
+      summary: Verify Credential
+      description: Mathematically verifies any W3C Verifiable Credential against its
+        Ed25519 proof.
+      operationId: verify_credential_api_v1_sovereignty_credentials_verify_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyCredentialRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationResult'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/sovereignty/sync/push:
+    post:
+      tags:
+        - sovereignty
+      summary: Push Crdt Deltas
+      description: Pushes local-first CRDT deltas with deterministic LWW conflict
+        resolution.
+      operationId: push_crdt_deltas_api_v1_sovereignty_sync_push_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushSyncRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushSyncResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/sovereignty/sync/pull:
+    get:
+      tags:
+        - sovereignty
+      summary: Pull Crdt Deltas
+      description: Pulls recent CRDT deltas updated since the specified HLC cursor.
+      operationId: pull_crdt_deltas_api_v1_sovereignty_sync_pull_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+        - name: since_hlc
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: Last synchronized HLC timestamp
+            title: Since Hlc
+          description: Last synchronized HLC timestamp
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 500
+            minimum: 1
+            default: 100
+            title: Limit
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PullSyncResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/anticipation/proposals:
+    get:
+      tags:
+        - anticipation
+      summary: List Proposals
+      description: Lists proactive anticipation proposals in the user's workspace.
+      operationId: list_proposals_api_v1_anticipation_proposals_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+        - name: status
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: PENDING, ACCEPTED, DISMISSED
+            title: Status
+          description: PENDING, ACCEPTED, DISMISSED
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Proposals Api V1 Anticipation Proposals Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/anticipation/scan:
+    post:
+      tags:
+        - anticipation
+      summary: Scan And Generate
+      description: Triggers proactive anticipation analysis across calendar, applications,
+        and goals.
+      operationId: scan_and_generate_api_v1_anticipation_scan_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScanProposalsRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Scan And Generate Api V1 Anticipation Scan Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/anticipation/proposals/{proposal_id}/accept:
+    post:
+      tags:
+        - anticipation
+      summary: Accept Proposal
+      description: Accepts a proposal and promotes it to an active task.
+      operationId: accept_proposal_api_v1_anticipation_proposals__proposal_id__accept_post
+      parameters:
+        - name: proposal_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Proposal Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptProposalRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProposalOutput'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/anticipation/proposals/{proposal_id}/dismiss:
+    post:
+      tags:
+        - anticipation
+      summary: Dismiss Proposal
+      description: Dismisses a proposal with anti-nagging feedback.
+      operationId: dismiss_proposal_api_v1_anticipation_proposals__proposal_id__dismiss_post
+      parameters:
+        - name: proposal_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Proposal Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DismissProposalRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProposalOutput'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/federation/dispatch:
+    post:
+      tags:
+        - federation
+      summary: Dispatch Federation
+      description: Dispatches a task to a federated peer agent guarded by W3C capability
+        credentials.
+      operationId: dispatch_federation_api_v1_federation_dispatch_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FederationDispatchRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FederationDispatchResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
 components:
   schemas:
     ATSReadinessResponse:
@@ -5350,6 +6192,16 @@ components:
         - score
         - status_label
       title: ATSReadinessResponse
+    AcceptProposalRequest:
+      properties:
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+      type: object
+      required:
+        - workspace_id
+      title: AcceptProposalRequest
     AddCareerEntryRequest:
       properties:
         workspace_id:
@@ -5970,6 +6822,28 @@ components:
       required:
         - message
       title: ChatRequest
+    CommitmentAudit:
+      properties:
+        commitment:
+          type: string
+          title: Commitment
+        status:
+          type: string
+          title: Status
+        evidence:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Evidence
+        confidence:
+          type: number
+          title: Confidence
+          default: 0.8
+      type: object
+      required:
+        - commitment
+        - status
+      title: CommitmentAudit
     CompileResumeRequest:
       properties:
         template_slug:
@@ -6102,6 +6976,42 @@ components:
         - agent_access
         - email_marketing
       title: ConsentScope
+    CouncilCertifyRequest:
+      properties:
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        agent_name:
+          type: string
+          title: Agent Name
+        execution_id:
+          type: string
+          title: Execution Id
+        artifact:
+          type: string
+          minLength: 1
+          title: Artifact
+        artifact_type:
+          type: string
+          title: Artifact Type
+          default: text
+        tools_invoked:
+          items:
+            type: string
+          type: array
+          title: Tools Invoked
+        mode:
+          type: string
+          title: Mode
+          default: collaborative
+      type: object
+      required:
+        - workspace_id
+        - agent_name
+        - execution_id
+        - artifact
+      title: CouncilCertifyRequest
     CouncilReviewRequest:
       properties:
         artifact:
@@ -6179,6 +7089,19 @@ components:
           type: boolean
           title: Bypassed Triage
           default: false
+        quorum_achieved:
+          type: boolean
+          title: Quorum Achieved
+          default: false
+        quorum_score:
+          type: number
+          title: Quorum Score
+          default: 0.0
+        persona_scores:
+          additionalProperties:
+            type: number
+          type: object
+          title: Persona Scores
         timestamp:
           type: string
           title: Timestamp
@@ -6232,6 +7155,94 @@ components:
         - body
         - template_slug
       title: CoverLetterRequest
+    CrdtDeltaInput:
+      properties:
+        client_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Client Id
+          description: Originating client ID
+        entity_type:
+          type: string
+          title: Entity Type
+        entity_id:
+          type: string
+          format: uuid
+          title: Entity Id
+        hlc_timestamp:
+          type: string
+          title: Hlc Timestamp
+        operation:
+          type: string
+          title: Operation
+          description: INSERT, UPDATE, DELETE, upsert
+          default: UPDATE
+        payload:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Payload
+          description: Raw structured JSON payload
+        encrypted_payload:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Encrypted Payload
+          description: Encrypted serialized state delta
+      type: object
+      required:
+        - entity_type
+        - entity_id
+        - hlc_timestamp
+      title: CrdtDeltaInput
+    CrdtDeltaOutput:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        client_id:
+          type: string
+          title: Client Id
+        entity_type:
+          type: string
+          title: Entity Type
+        entity_id:
+          type: string
+          format: uuid
+          title: Entity Id
+        hlc_timestamp:
+          type: string
+          title: Hlc Timestamp
+        operation:
+          type: string
+          title: Operation
+        encrypted_payload:
+          type: string
+          title: Encrypted Payload
+        payload:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Payload
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+        - id
+        - client_id
+        - entity_type
+        - entity_id
+        - hlc_timestamp
+        - operation
+        - encrypted_payload
+        - created_at
+      title: CrdtDeltaOutput
     CreateConnectorRequest:
       properties:
         name:
@@ -6366,6 +7377,48 @@ components:
       required:
         - label
       title: CreateNodeRequest
+    CreateScheduleEventRequest:
+      properties:
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        title:
+          type: string
+          title: Title
+        source:
+          type: string
+          title: Source
+          default: calendar
+        type:
+          type: string
+          title: Type
+          default: event
+        date:
+          type: string
+          format: date-time
+          title: Date
+        end_date:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: End Date
+        description:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Description
+        metadata:
+          additionalProperties: true
+          type: object
+          title: Metadata
+      type: object
+      required:
+        - workspace_id
+        - title
+        - date
+      title: CreateScheduleEventRequest
     CreateTemplateRequest:
       properties:
         name:
@@ -6444,6 +7497,43 @@ components:
         - strategy_stakes
         - adjudicator
       title: DeliberatorRole
+    DismissProposalRequest:
+      properties:
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        reason:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Reason
+          description: Anti-nagging dismissal reason
+      type: object
+      required:
+        - workspace_id
+      title: DismissProposalRequest
+    DivergentActivity:
+      properties:
+        activity:
+          type: string
+          title: Activity
+        category:
+          type: string
+          title: Category
+        occurrences:
+          type: integer
+          title: Occurrences
+          default: 1
+        significance:
+          type: string
+          title: Significance
+          default: MEDIUM
+      type: object
+      required:
+        - activity
+        - category
+      title: DivergentActivity
     DocumentActionListResponse:
       properties:
         actions:
@@ -6950,6 +8040,87 @@ components:
         - status
         - created_at
       title: ExecutionResponse
+    FederationDispatchRequest:
+      properties:
+        caller_did:
+          type: string
+          title: Caller Did
+          description: did:vaeloom:<user-id> of the requesting agent
+        caller_workspace_id:
+          type: string
+          format: uuid
+          title: Caller Workspace Id
+        target_workspace_id:
+          type: string
+          format: uuid
+          title: Target Workspace Id
+        target_agent:
+          type: string
+          title: Target Agent
+          description: Target specialized agent name
+        required_capability:
+          type: string
+          title: Required Capability
+          description: e.g. capability:career.resume_build
+        capability_credential:
+          additionalProperties: true
+          type: object
+          title: Capability Credential
+          description: Signed W3C Capability Credential
+        task_name:
+          type: string
+          title: Task Name
+        task_parameters:
+          additionalProperties: true
+          type: object
+          title: Task Parameters
+      type: object
+      required:
+        - caller_did
+        - caller_workspace_id
+        - target_workspace_id
+        - target_agent
+        - required_capability
+        - capability_credential
+        - task_name
+      title: FederationDispatchRequest
+    FederationDispatchResponse:
+      properties:
+        success:
+          type: boolean
+          title: Success
+        caller_did:
+          type: string
+          title: Caller Did
+        target_agent:
+          type: string
+          title: Target Agent
+        task_name:
+          type: string
+          title: Task Name
+        result:
+          additionalProperties: true
+          type: object
+          title: Result
+        audit_credential:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Audit Credential
+        verification:
+          $ref: '#/components/schemas/VerificationResult'
+        completed_at:
+          type: string
+          title: Completed At
+      type: object
+      required:
+        - success
+        - caller_did
+        - target_agent
+        - task_name
+        - verification
+      title: FederationDispatchResponse
     GenerateResumeRequest:
       properties:
         variant_type:
@@ -7132,6 +8303,62 @@ components:
           title: Config
       type: object
       title: IntegrationUpdate
+    IssueAuditRequest:
+      properties:
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        agent_name:
+          type: string
+          title: Agent Name
+        execution_id:
+          type: string
+          title: Execution Id
+        tools_invoked:
+          items:
+            type: string
+          type: array
+          title: Tools Invoked
+        council_verdict:
+          type: string
+          title: Council Verdict
+          default: SHIP
+        policy_checks_passed:
+          type: boolean
+          title: Policy Checks Passed
+          default: true
+      type: object
+      required:
+        - workspace_id
+        - agent_name
+        - execution_id
+      title: IssueAuditRequest
+    IssueCapabilityRequest:
+      properties:
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        capability_tag:
+          type: string
+          title: Capability Tag
+          description: e.g. capability:backend.python@v3
+        validation_tier:
+          type: string
+          title: Validation Tier
+          description: V0, V1, V2, V3, V4
+          default: V3
+        evidence:
+          items:
+            type: string
+          type: array
+          title: Evidence
+      type: object
+      required:
+        - workspace_id
+        - capability_tag
+      title: IssueCapabilityRequest
     JobExecutionResponse:
       properties:
         id:
@@ -7752,6 +8979,80 @@ components:
           title: Supersedes Id
       type: object
       title: MemoryUpdate
+    MicroLearningNudge:
+      properties:
+        title:
+          type: string
+          title: Title
+        concept:
+          type: string
+          title: Concept
+        actionable_takeaway:
+          type: string
+          title: Actionable Takeaway
+        estimated_read_seconds:
+          type: integer
+          title: Estimated Read Seconds
+          default: 30
+      type: object
+      required:
+        - title
+        - concept
+        - actionable_takeaway
+      title: MicroLearningNudge
+    MorningBriefing:
+      properties:
+        briefing_date:
+          type: string
+          title: Briefing Date
+        user_id:
+          type: string
+          format: uuid
+          title: User Id
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        top_priorities:
+          items:
+            type: string
+          type: array
+          maxItems: 5
+          title: Top Priorities
+          description: 3-5 high-leverage focus items for today
+        reality_gap:
+          $ref: '#/components/schemas/RealityGapAnalysis'
+        resolved_friction:
+          items:
+            type: string
+          type: array
+          title: Resolved Friction
+        open_friction:
+          items:
+            type: string
+          type: array
+          title: Open Friction
+        micro_learning:
+          $ref: '#/components/schemas/MicroLearningNudge'
+        daily_log_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Daily Log Id
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+        - briefing_date
+        - user_id
+        - workspace_id
+        - top_priorities
+        - reality_gap
+        - micro_learning
+      title: MorningBriefing
     NodeResponse:
       properties:
         id:
@@ -7906,6 +9207,22 @@ components:
         - title
         - company
       title: OpportunityDTO
+    OvernightCycleRequest:
+      properties:
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        target_date:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Target Date
+      type: object
+      required:
+        - workspace_id
+      title: OvernightCycleRequest
     ProfileActivityItem:
       properties:
         id:
@@ -8107,6 +9424,60 @@ components:
         - created_at
         - updated_at
       title: ProfileResponse
+    ProposalOutput:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        trigger_type:
+          type: string
+          title: Trigger Type
+        title:
+          type: string
+          title: Title
+        summary:
+          type: string
+          title: Summary
+        proposed_action:
+          type: string
+          title: Proposed Action
+        action_payload:
+          additionalProperties: true
+          type: object
+          title: Action Payload
+        urgency:
+          type: string
+          title: Urgency
+        status:
+          type: string
+          title: Status
+        relevance_score:
+          type: number
+          title: Relevance Score
+        scheduled_for:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Scheduled For
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+        - id
+        - trigger_type
+        - title
+        - summary
+        - proposed_action
+        - action_payload
+        - urgency
+        - status
+        - relevance_score
+        - created_at
+      title: ProposalOutput
     ProviderKeyCreate:
       properties:
         provider:
@@ -8330,6 +9701,31 @@ components:
         - display_name
         - created_at
       title: PublicUser
+    PullSyncResponse:
+      properties:
+        deltas:
+          items:
+            $ref: '#/components/schemas/CrdtDeltaOutput'
+          type: array
+          title: Deltas
+        total:
+          type: integer
+          title: Total
+          default: 0
+        latest_hlc:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Latest Hlc
+        has_more:
+          type: boolean
+          title: Has More
+      type: object
+      required:
+        - deltas
+        - latest_hlc
+        - has_more
+      title: PullSyncResponse
     PushNotificationRequest:
       properties:
         historyId:
@@ -8345,6 +9741,113 @@ components:
           title: Message
       type: object
       title: PushNotificationRequest
+    PushSyncRequest:
+      properties:
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        client_id:
+          type: string
+          title: Client Id
+        deltas:
+          items:
+            $ref: '#/components/schemas/CrdtDeltaInput'
+          type: array
+          title: Deltas
+      type: object
+      required:
+        - workspace_id
+        - client_id
+        - deltas
+      title: PushSyncRequest
+    PushSyncResponse:
+      properties:
+        accepted_count:
+          type: integer
+          title: Accepted Count
+        superseded_count:
+          type: integer
+          title: Superseded Count
+        latest_hlc:
+          type: string
+          title: Latest Hlc
+      type: object
+      required:
+        - accepted_count
+        - superseded_count
+        - latest_hlc
+      title: PushSyncResponse
+    RealityGapAnalysis:
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          title: User Id
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        period_start:
+          type: string
+          format: date-time
+          title: Period Start
+        period_end:
+          type: string
+          format: date-time
+          title: Period End
+        alignment_score:
+          type: number
+          maximum: 1.0
+          minimum: 0.0
+          title: Alignment Score
+          description: 1.0 = perfect execution alignment
+        discrepancy_score:
+          type: number
+          maximum: 1.0
+          minimum: 0.0
+          title: Discrepancy Score
+          description: 1.0 = total divergence from commitments
+        total_commitments:
+          type: integer
+          title: Total Commitments
+        fulfilled_count:
+          type: integer
+          title: Fulfilled Count
+        commitments:
+          items:
+            $ref: '#/components/schemas/CommitmentAudit'
+          type: array
+          title: Commitments
+        divergent_activities:
+          items:
+            $ref: '#/components/schemas/DivergentActivity'
+          type: array
+          title: Divergent Activities
+        behavioral_insights:
+          items:
+            type: string
+          type: array
+          title: Behavioral Insights
+        friction_recommendation:
+          type: string
+          title: Friction Recommendation
+        timestamp:
+          type: string
+          format: date-time
+          title: Timestamp
+      type: object
+      required:
+        - user_id
+        - workspace_id
+        - period_start
+        - period_end
+        - alignment_score
+        - discrepancy_score
+        - total_commitments
+        - fulfilled_count
+        - friction_recommendation
+      title: RealityGapAnalysis
     RebuttalEntry:
       properties:
         reviewer_role:
@@ -8550,6 +10053,30 @@ components:
         - category
         - description
       title: ResumeTemplateResponse
+    RollupRequest:
+      properties:
+        target_tier:
+          $ref: '#/components/schemas/ScaleTier'
+          description: Target tier to synthesize into (WEEKLY, MONTHLY)
+        period_start:
+          type: string
+          format: date-time
+          title: Period Start
+        period_end:
+          type: string
+          format: date-time
+          title: Period End
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+      type: object
+      required:
+        - target_tier
+        - period_start
+        - period_end
+        - workspace_id
+      title: RollupRequest
     SSOTokenRequest:
       properties:
         token:
@@ -8559,6 +10086,202 @@ components:
       required:
         - token
       title: SSOTokenRequest
+    ScaleMemoryCreate:
+      properties:
+        tier:
+          $ref: '#/components/schemas/ScaleTier'
+          default: DAILY
+        period_start:
+          type: string
+          format: date-time
+          title: Period Start
+        period_end:
+          type: string
+          format: date-time
+          title: Period End
+        summary:
+          type: string
+          minLength: 1
+          title: Summary
+        key_insights:
+          items:
+            type: string
+          type: array
+          title: Key Insights
+        friction_points:
+          items:
+            type: string
+          type: array
+          title: Friction Points
+        unresolved_questions:
+          items:
+            type: string
+          type: array
+          title: Unresolved Questions
+        action_commitments:
+          items:
+            type: string
+          type: array
+          title: Action Commitments
+        metadata:
+          additionalProperties: true
+          type: object
+          title: Metadata
+      type: object
+      required:
+        - period_start
+        - period_end
+        - summary
+      title: ScaleMemoryCreate
+    ScaleMemoryResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        user_id:
+          type: string
+          format: uuid
+          title: User Id
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        tier:
+          type: string
+          title: Tier
+        period_start:
+          type: string
+          format: date-time
+          title: Period Start
+        period_end:
+          type: string
+          format: date-time
+          title: Period End
+        summary:
+          type: string
+          title: Summary
+        key_insights:
+          items: {}
+          type: array
+          title: Key Insights
+        friction_points:
+          items: {}
+          type: array
+          title: Friction Points
+        unresolved_questions:
+          items: {}
+          type: array
+          title: Unresolved Questions
+        action_commitments:
+          items: {}
+          type: array
+          title: Action Commitments
+        metadata:
+          additionalProperties: true
+          type: object
+          title: Metadata
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+        - id
+        - user_id
+        - workspace_id
+        - tier
+        - period_start
+        - period_end
+        - summary
+        - key_insights
+        - friction_points
+        - unresolved_questions
+        - action_commitments
+        - metadata
+        - created_at
+        - updated_at
+      title: ScaleMemoryResponse
+    ScaleTier:
+      type: string
+      enum:
+        - SUB_DAILY
+        - DAILY
+        - WEEKLY
+        - MONTHLY
+        - ANNUAL
+        - NORTH_STAR
+      title: ScaleTier
+    ScanProposalsRequest:
+      properties:
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+      type: object
+      required:
+        - workspace_id
+      title: ScanProposalsRequest
+    ScheduleEventResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        title:
+          type: string
+          title: Title
+        source:
+          type: string
+          title: Source
+        type:
+          type: string
+          title: Type
+        date:
+          type: string
+          format: date-time
+          title: Date
+        end_date:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: End Date
+        description:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Description
+        conflict_flag:
+          type: boolean
+          title: Conflict Flag
+          default: false
+        metadata:
+          additionalProperties: true
+          type: object
+          title: Metadata
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+        - id
+        - workspace_id
+        - title
+        - source
+        - type
+        - date
+        - created_at
+      title: ScheduleEventResponse
     ScheduleRequest:
       properties:
         cron:
@@ -8734,10 +10457,16 @@ components:
       properties:
         email:
           type: string
+          maxLength: 255
+          minLength: 3
           title: Email
+          description: User email address
         password:
           type: string
+          maxLength: 128
+          minLength: 8
           title: Password
+          description: User password (min 8 characters)
         display_name:
           anyOf:
             - type: string
@@ -9275,6 +11004,53 @@ components:
         - msg
         - type
       title: ValidationError
+    VerificationResult:
+      properties:
+        is_valid:
+          type: boolean
+          title: Is Valid
+        issuer:
+          type: string
+          title: Issuer
+        subject:
+          type: string
+          title: Subject
+        credential_type:
+          type: string
+          title: Credential Type
+        claims_verified:
+          type: boolean
+          title: Claims Verified
+        signature_verified:
+          type: boolean
+          title: Signature Verified
+        reason:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Reason
+        checked_at:
+          type: string
+          title: Checked At
+      type: object
+      required:
+        - is_valid
+        - issuer
+        - subject
+        - credential_type
+        - claims_verified
+        - signature_verified
+      title: VerificationResult
+    VerifyCredentialRequest:
+      properties:
+        credential:
+          additionalProperties: true
+          type: object
+          title: Credential
+      type: object
+      required:
+        - credential
+      title: VerifyCredentialRequest
     WatchStartRequest:
       properties:
         topic:
