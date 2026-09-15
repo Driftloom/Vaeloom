@@ -99,7 +99,7 @@ def validate_mcp_config(config: dict) -> dict:
             raise McpConfigError("http:// URLs require allow_insecure=true (dev only)")
         if parsed.scheme not in ("http", "https") or not parsed.hostname:
             raise McpConfigError("http transport requires a valid 'url'")
-        headers = cfg.get("headers", None)
+        headers = cfg.get("headers")
         if headers is not None:
             if not isinstance(headers, dict) or not all(
                 isinstance(k, str) and isinstance(v, str) for k, v in headers.items()
@@ -117,7 +117,7 @@ def validate_mcp_config(config: dict) -> dict:
             # Also reject shell metachars in values? Bearer tokens are safe alphanum
             # but we enforce size bound only — tokens may contain -. Underscore.
         # also handle env for http (optional)
-        env = cfg.get("env", None)
+        env = cfg.get("env")
         if env is not None:
             if not isinstance(env, dict) or not all(
                 isinstance(k, str) and isinstance(v, str) for k, v in env.items()

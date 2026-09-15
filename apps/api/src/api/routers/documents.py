@@ -85,9 +85,9 @@ async def upload_document(
             async def _start() -> None:
                 try:
                     from ..temporal.client import get_temporal_client
+                    from ..temporal.metrics import _inc_workflow_started
                     from ..temporal.queues import queue_name
                     from ..temporal.workflows import IngestInput
-                    from ..temporal.metrics import _inc_workflow_started
 
                     # T-001/T-008: validate no secrets / size before history
                     try:

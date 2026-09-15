@@ -218,7 +218,7 @@ class WorkspaceConcurrencyLimiter:
             # Global at capacity — still try but with 0 wait (fail-fast, caller returns rate-limit)
             try:
                 await _asyncio.wait_for(self._global_sem.acquire(), timeout=0.1)
-            except _asyncio.TimeoutError:
+            except TimeoutError:
                 return False
         else:
             await self._global_sem.acquire()
@@ -231,12 +231,12 @@ class WorkspaceConcurrencyLimiter:
             self._global_sem.release()
             try:
                 await _asyncio.wait_for(sem.acquire(), timeout=0.1)
-            except _asyncio.TimeoutError:
+            except TimeoutError:
                 return False
             # Re-acquire global after ws slot
             try:
                 await _asyncio.wait_for(self._global_sem.acquire(), timeout=0.1)
-            except _asyncio.TimeoutError:
+            except TimeoutError:
                 sem.release()
                 return False
             return True
@@ -244,7 +244,7 @@ class WorkspaceConcurrencyLimiter:
             # Check workspace slot availability non-blocking
             try:
                 await _asyncio.wait_for(sem.acquire(), timeout=0.1)
-            except _asyncio.TimeoutError:
+            except TimeoutError:
                 self._global_sem.release()
                 return False
             return True

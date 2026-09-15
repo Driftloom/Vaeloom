@@ -261,13 +261,13 @@ class TestPreferenceFeedback:
     async def test_ingest_dedup(self, db_session):
         from api.services.approval import _ingest_feedback_preference
         import uuid
+        from sqlalchemy import text
         ws = str(uuid.uuid4())
         try:
             await db_session.execute(text("INSERT INTO workspaces (id, name, user_id, created_at, updated_at) VALUES (:id, 'test', :uid, now(), now())"), {"id": ws, "uid": str(uuid.uuid4())})
             await db_session.commit()
         except Exception:
             await db_session.rollback()
-        from sqlalchemy import text
         await _ingest_feedback_preference(ws, "resume", "tailor", "REJECTED", "dup note", str(uuid.uuid4()), db_session)
         await db_session.commit()
         await _ingest_feedback_preference(ws, "resume", "tailor", "REJECTED", "dup note", str(uuid.uuid4()), db_session)

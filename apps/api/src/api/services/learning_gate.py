@@ -19,7 +19,6 @@ correlation / tenant / workspace / signal identity for observability.
 
 from __future__ import annotations
 
-import re
 import uuid
 from typing import Any
 
@@ -202,8 +201,9 @@ async def verify_workspace_tenant(session: Any, workspace_uuid: uuid.UUID, tenan
     if not tenant_id:
         return True, "no_tenant_binding"
     try:
-        from api.models.schema import User, Workspace, WorkspaceUser
         from sqlalchemy import select as _sel
+
+        from api.models.schema import User, Workspace, WorkspaceUser
 
         ws = await session.get(Workspace, workspace_uuid)
         if ws is None:

@@ -149,6 +149,22 @@ class TestAgentCostTracker:
         for i in range(len(records) - 1):
             assert records[i].timestamp >= records[i + 1].timestamp
 
+    async def test_concurrent_usage_and_budget(self, tracker):
+        import asyncio
+        await tracker.set_budget("ws-concurrent", 10.0)
+
+        async def worker():
+            for _ in range(10):
+                await tracker.track_usage("worker", "ws-concurrent", 50, 50, "gpt-4o")
+                await tracker.check_budget("ws-concurrent")
+
+        await asyncio.gather(*[worker() for _ in range(10)])
+        records = await tracker.get_usage(workspace_id="ws-concurrent")
+        assert len(records) == 100
+        budget_status = await tracker.check_budget("ws-concurrent")
+        assert budget_status["allowed"] is True
+        assert budget_status["spent_usd"] > 0
+
 
 class TestTokenCostPerModel:
     def test_default_pricing_exists(self):

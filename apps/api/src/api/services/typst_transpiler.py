@@ -29,7 +29,7 @@ def to_typst(content: dict, template_slug: str = "jakes-resume") -> str:
     d = normalize_resume_content(content)
     lines: list[str] = []
     lines.append(f'// Template: {template_slug}')
-    lines.append(f'#set page(paper: "a4", margin: (x: 1.8cm, y: 1.5cm))')
+    lines.append('#set page(paper: "a4", margin: (x: 1.8cm, y: 1.5cm))')
     lines.append(f'#align(center)[#text(size: 18pt, weight: "bold")[{d["name"]}]]')
     if d["title"]:
         lines.append(f'#text(style: "italic")[{d["title"]}]')

@@ -38,7 +38,14 @@ async def _run(dry_run: bool = False) -> None:
 
     from .activities import ALL_ACTIVITIES
     from .queues import TASK_QUEUES
-    from .workflows import ApprovalWorkflow, ConnectorSyncWorkflow, DurableAgentRunWorkflow, EventTriggeredWorkflow, HelloWorkflow, IngestDocumentWorkflow
+    from .workflows import (
+        ApprovalWorkflow,
+        ConnectorSyncWorkflow,
+        DurableAgentRunWorkflow,
+        EventTriggeredWorkflow,
+        HelloWorkflow,
+        IngestDocumentWorkflow,
+    )
 
     try:
         from temporalio.client import Client

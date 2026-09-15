@@ -10,7 +10,7 @@ Exposes endpoints for:
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -19,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..dependencies import get_current_user, get_workspace_id
+from ..dependencies import get_current_user
 from ..models.schema import Workspace, WorkspaceUser
 from ..services.overnight_cognition_service import MorningBriefing, overnight_cognition_service
 from ..services.reality_gap_service import RealityGapAnalysis, reality_gap_service

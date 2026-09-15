@@ -437,7 +437,12 @@ async def resume_supervisor(
     approval_decision: dict[str, Any],
 ) -> dict[str, Any]:
     """Resume a paused supervisor DAG workflow using its persisted checkpoint."""
-    from .state import ForeignCheckpointError, load_or_create_state, save_checkpoint, validate_resume_identity
+    from .state import (
+        ForeignCheckpointError,
+        load_or_create_state,
+        save_checkpoint,
+        validate_resume_identity,
+    )
 
     state = await load_or_create_state(request_id, workspace_id=workspace_id)
     # LOOP-RESUME-01: supervisor resume honors the same trust gate (the

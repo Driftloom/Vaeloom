@@ -1,15 +1,26 @@
-import uuid
 import json
 import logging
-from datetime import datetime, UTC
-from sqlalchemy import select, func
-from ..models.schema import User, Memory, Entity, Resume, Document
+import uuid
+from datetime import UTC, datetime
+
+from sqlalchemy import func, select
+
+from ..models.schema import Document, Entity, Memory, Resume, User
 from ..schemas.profile import (
-    ProfileResponse, UpdateProfileRequest, ProfileCompletenessResponse,
-    SkillItem, CareerEntry, JobPreferences, MemorySummary,
-    UpdateJobPreferencesRequest, PublicProfileResponse,
-    ATSReadinessResponse, ProfileRecommendationItem,
-    AddCareerEntryRequest, UpdateCareerEntryRequest, ProfileActivityItem,
+    AddCareerEntryRequest,
+    ATSReadinessResponse,
+    CareerEntry,
+    JobPreferences,
+    MemorySummary,
+    ProfileActivityItem,
+    ProfileCompletenessResponse,
+    ProfileRecommendationItem,
+    ProfileResponse,
+    PublicProfileResponse,
+    SkillItem,
+    UpdateCareerEntryRequest,
+    UpdateJobPreferencesRequest,
+    UpdateProfileRequest,
 )
 from ..utils.sanitize import sanitize_text
 
@@ -54,7 +65,7 @@ class ProfileService:
     async def _aggregate_memory_data(self, workspace_id: str, db) -> dict:
         """Pull skills, career history, preferences from Memory records."""
         from ..models.schema import Memory as MemoryModel
-        
+
         result = await db.execute(
             select(MemoryModel).where(
                 MemoryModel.workspace_id == uuid.UUID(workspace_id),
@@ -74,7 +85,7 @@ class ProfileService:
         for mem in memories:
             mem_type = mem.type
             memory_counts[mem_type] = memory_counts.get(mem_type, 0) + 1
-            
+
             content = mem.content if isinstance(mem.content, dict) else {}
             if isinstance(mem.content, str):
                 try:
@@ -308,7 +319,7 @@ class ProfileService:
     async def upload_avatar(self, user_id: str, file_data: bytes, content_type: str, db=None) -> str:
         """Upload avatar to storage and update user record."""
         from .storage_service import storage_service
-        
+
         # Generate unique key
         ext = "png"
         if "jpeg" in content_type or "jpg" in content_type:
@@ -319,7 +330,7 @@ class ProfileService:
 
         # Upload to storage
         await storage_service.upload(key, file_data)
-        
+
         # Generate URL
         try:
             avatar_url = await storage_service.get_signed_url(key, expires_in=86400 * 365)
@@ -338,8 +349,9 @@ class ProfileService:
 
     async def get_avatar(self, user_id: str) -> tuple[bytes, str] | None:
         """Retrieve avatar image bytes and content type."""
-        from .storage_service import storage_service
         import os
+
+        from .storage_service import storage_service
 
         types = [("png", "image/png"), ("jpg", "image/jpeg"), ("webp", "image/webp")]
         for ext, media_type in types:
@@ -1158,7 +1170,7 @@ class ProfileService:
     ) -> ProfileResponse | None:
         """Add a career experience entry to Memory and Entity graph."""
         ws_uuid = uuid.UUID(data.workspace_id)
-        
+
         mem_content = {
             "company": sanitize_text(data.company),
             "role": sanitize_text(data.role),
@@ -1168,7 +1180,7 @@ class ProfileService:
         }
         content_str = json.dumps(mem_content)
         content_hash = f"career_{uuid.uuid4().hex[:12]}"
-        
+
         mem = Memory(
             id=uuid.uuid4(),
             type="career",
@@ -1184,7 +1196,7 @@ class ProfileService:
             user_id=uuid.UUID(user_id) if isinstance(user_id, str) else user_id,
         )
         db.add(mem)
-        
+
         ent_stmt = select(Entity).where(
             Entity.workspace_id == ws_uuid,
             Entity.type == "experience",
@@ -1217,7 +1229,7 @@ class ProfileService:
                 "endDate": data.end_date,
             })
             ent.metadata_ = meta
-            
+
         await db.flush()
         return await self.get_profile(user_id, workspace_id=data.workspace_id, db=db)
 
@@ -1226,7 +1238,7 @@ class ProfileService:
     ) -> ProfileResponse | None:
         """Update an existing career experience entry in Memory and Entity graph."""
         ws_uuid = uuid.UUID(data.workspace_id)
-        
+
         mem_stmt = select(Memory).where(
             Memory.workspace_id == ws_uuid,
             Memory.type == "career",
@@ -1249,11 +1261,11 @@ class ProfileService:
                 curr_content["endDate"] = sanitize_text(data.end_date)
             if data.achievements is not None:
                 curr_content["achievements"] = [sanitize_text(a) for a in data.achievements if a]
-            
+
             content_str = json.dumps(curr_content)
             mem.content = content_str
             mem.size = len(content_str)
-            
+
         ent_stmt = select(Entity).where(
             Entity.workspace_id == ws_uuid,
             Entity.type == "experience",
@@ -1272,7 +1284,7 @@ class ProfileService:
             if data.achievements is not None:
                 meta["achievements"] = data.achievements
             ent.metadata_ = meta
-            
+
         await db.flush()
         return await self.get_profile(user_id, workspace_id=data.workspace_id, db=db)
 
@@ -1281,7 +1293,7 @@ class ProfileService:
     ) -> ProfileResponse | None:
         """Soft delete a career entry from Memory and Entity graph."""
         ws_uuid = uuid.UUID(workspace_id)
-        
+
         mem_stmt = select(Memory).where(
             Memory.workspace_id == ws_uuid,
             Memory.type == "career",
@@ -1293,7 +1305,7 @@ class ProfileService:
         for mem in mems:
             mem.status = "deleted"
             mem.deleted_at = datetime.now(UTC)
-            
+
         ent_stmt = select(Entity).where(
             Entity.workspace_id == ws_uuid,
             Entity.type == "experience",
@@ -1303,7 +1315,7 @@ class ProfileService:
         ent = ent_res.scalar_one_or_none()
         if ent:
             await db.delete(ent)
-            
+
         await db.flush()
         return await self.get_profile(user_id, workspace_id=workspace_id, db=db)
 
@@ -1313,7 +1325,7 @@ class ProfileService:
         """Fetch profile-specific event stream."""
         ws_uuid = uuid.UUID(workspace_id)
         activities: list[ProfileActivityItem] = []
-        
+
         mem_stmt = (
             select(Memory)
             .where(
@@ -1338,7 +1350,7 @@ class ProfileService:
                 status="completed",
                 agent_name="Memory Agent",
             ))
-            
+
         try:
             res_stmt = (
                 select(Resume)

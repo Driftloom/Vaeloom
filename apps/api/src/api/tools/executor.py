@@ -9,8 +9,8 @@ import uuid as uuid_lib
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from .definitions import ToolDefinition
 from ..utils.sanitize import sanitize_text
+from .definitions import ToolDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +123,6 @@ TOOL_TIMEOUT_OVERRIDES = {
 # quota is shared across the fleet. Both backends expose `allowed(ws, limit, window)`.
 import os as _os
 import time as _time
-
 from typing import Protocol
 
 
@@ -682,7 +681,7 @@ async def _resolve_compile_content(params: dict[str, Any], workspace_id: str) ->
     if resume_id:
         try:
             import uuid
-            from api.database import async_session_factory
+
             from api.models.schema import Resume
             async with _ws_session(workspace_id) as session:
                 row = await session.get(Resume, uuid.UUID(str(resume_id)))
@@ -698,8 +697,9 @@ async def _resolve_compile_content(params: dict[str, Any], workspace_id: str) ->
     # Fallback: master resume for workspace (workspace_id → resumes)
     try:
         import uuid as _uuid
+
         from sqlalchemy import select
-        from api.database import async_session_factory
+
         from api.models.schema import Resume
         async with _ws_session(workspace_id) as session:
             # workspace-scoped lookup via raw SQL to avoid tenant RLS detachment complexity
@@ -729,7 +729,7 @@ async def _execute_compile_resume_pdf(params: dict[str, Any], workspace_id: str)
             "setup_hint": "create a resume via POST /api/v1/resumes or pass resume_content",
         }
     try:
-        from api.services.document_builder import PlaywrightUnavailableError, document_builder
+        from api.services.document_builder import document_builder
         compiled = await document_builder.compile_resume(content, template_slug, fmt="pdf", max_pages=max_pages)
         return {
             "status": "success",
@@ -804,7 +804,7 @@ async def _execute_compile_cover_letter(params: dict[str, Any], workspace_id: st
     if not body:
         body = f"Dear Hiring Manager,\n\nI am excited to apply for the {role or 'role'} at {company or 'your company'}. My background aligns with the requirements and I look forward to contributing.\n\nSincerely,\n{content.get('name', 'Candidate')}"
     try:
-        from api.services.document_builder import PlaywrightUnavailableError, document_builder
+        from api.services.document_builder import document_builder
         compiled = await document_builder.compile_cover_letter(content, body, template_slug, recipient=recipient, company=company, role=role, fmt=fmt)
         return {
             "status": "success",
@@ -911,7 +911,7 @@ async def _execute_merge_entities(params: dict[str, Any], workspace_id: str) -> 
 
 
 async def _get_client_for_workspace(client_cls: Any, workspace_id: str | None = None) -> Any:
-    if hasattr(client_cls, "for_workspace") and callable(getattr(client_cls, "for_workspace")):
+    if hasattr(client_cls, "for_workspace") and callable(client_cls.for_workspace):
         return await client_cls.for_workspace(workspace_id)
     return client_cls()
 
@@ -1661,10 +1661,12 @@ async def _execute_parse_document_ocr(params: dict[str, Any], workspace_id: str)
         return {"status": "error", "tool": "parse_document_ocr", "result": "document_id is required"}
     try:
         import uuid
+
         from sqlalchemy import select
+
         from api.database import async_session_factory
-        from api.models.schema import Document
         from api.ingestion.parsers import parse_document
+        from api.models.schema import Document
     except ImportError as e:
         return {"status": "error", "tool": "parse_document_ocr", "result": f"Imports unavailable: {e}"}
     try:
@@ -1972,8 +1974,9 @@ async def _get_workspace_connector_token(workspace_id: str | None, connector_typ
         return None
     try:
         import uuid
+
         from sqlalchemy import select
-        from api.database import async_session_factory
+
         from api.models.schema import Connector
         from api.services.encryption import decrypt_value
 
@@ -1994,6 +1997,7 @@ async def _get_workspace_connector_token(workspace_id: str | None, connector_typ
 
 async def _resolve_github_token(workspace_id: str | None = None) -> str:
     import os
+
     from api.config import settings
     user_token = await _get_workspace_connector_token(workspace_id, ["github", "git"])
     return user_token or getattr(settings, "github_token", "") or os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_API_KEY") or ""
@@ -2110,7 +2114,7 @@ async def _execute_get_github_profile(params: dict[str, Any], workspace_id: str)
     try:
         import httpx
 
-        headers = _github_headers()
+        headers = await _github_headers_async(workspace_id)
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(f"https://api.github.com/users/{username}", headers=headers)
             if resp.status_code == 200:
@@ -2137,7 +2141,7 @@ async def _execute_list_github_issues(params: dict[str, Any], workspace_id: str)
     try:
         import httpx
 
-        headers = _github_headers()
+        headers = await _github_headers_async(workspace_id)
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
                 f"https://api.github.com/repos/{repo}/issues",
@@ -2163,7 +2167,7 @@ async def _execute_read_github_file(params: dict[str, Any], workspace_id: str) -
     try:
         import httpx
 
-        headers = _github_headers()
+        headers = await _github_headers_async(workspace_id)
         url = f"https://api.github.com/repos/{repo}/contents/{path.lstrip('/')}"
         q = {"ref": ref} if ref else {}
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -2227,6 +2231,7 @@ async def _execute_send_slack_message(params: dict[str, Any], workspace_id: str)
         return {"status": "error", "tool": "send_slack_message", "result": "channel and text are required"}
     try:
         import os
+
         import httpx
         user_token = await _get_workspace_connector_token(workspace_id, ["slack"])
         token = user_token or os.environ.get("SLACK_BOT_TOKEN")
@@ -2314,9 +2319,9 @@ async def _execute_execute_code_sandbox(params: dict[str, Any], workspace_id: st
         if pat in code:
             return {"status": "error", "tool": "execute_code_sandbox", "result": f"Blocked pattern '{pat}' — sandboxed execution forbids system access"}
     try:
+        import os
         import subprocess
         import tempfile
-        import os
         with tempfile.TemporaryDirectory() as tmpdir:
             if language == "python":
                 fpath = os.path.join(tmpdir, "snippet.py")
@@ -3029,7 +3034,8 @@ async def execute_tool(
     _cache: dict = {}
     if tool.category in ("connector_write", "memory_write"):
         try:
-            import hashlib, json as _js
+            import hashlib
+            import json as _js
 
             payload_hash = hashlib.sha256(_js.dumps(params, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()[:16]
             idem_key = f"{workspace_id}:{agent_id}:{tool.name}:{payload_hash}"
@@ -3164,7 +3170,9 @@ async def execute_tool(
                     except Exception:
                         pass
                     try:
-                        from ..services.inference_policy import validate_tool_output as _validate_tool_output
+                        from ..services.inference_policy import (
+                            validate_tool_output as _validate_tool_output,
+                        )
                         _shape_problems = _validate_tool_output(result.get("result"), getattr(tool, "output_schema", None))
                         if _shape_problems:
                             logger.warning(f"Tool {tool.name} shape problems: {_shape_problems}")

@@ -169,8 +169,6 @@ class DatabaseStateStore(StateStore):
         else:
             cm = None
         try:
-            from sqlalchemy import select
-            from ..models.schema import LoopCheckpoint
 
             if cm is not None:
                 async with cm as session:
@@ -184,6 +182,7 @@ class DatabaseStateStore(StateStore):
     @staticmethod
     async def _load_via(session, request_id: str) -> dict[str, Any] | None:
         from sqlalchemy import select
+
         from ..models.schema import LoopCheckpoint
 
         stmt = select(LoopCheckpoint).where(LoopCheckpoint.request_id == request_id)
@@ -217,8 +216,6 @@ class DatabaseStateStore(StateStore):
         else:
             cm = None
         try:
-            from sqlalchemy import select, update
-            from ..models.schema import LoopCheckpoint
 
             if cm is not None:
                 async with cm as session:
@@ -240,6 +237,7 @@ class DatabaseStateStore(StateStore):
         import json as _json
 
         from sqlalchemy import select, update
+
         from ..models.schema import LoopCheckpoint
 
         # CAS-DEAD-01 hardening: JSON-sanitize once (datetimes/UUIDs in phase
@@ -381,6 +379,7 @@ class DatabaseStateStore(StateStore):
         factory = self._get_factory()
         try:
             from sqlalchemy import delete
+
             from ..models.schema import LoopCheckpoint
 
             async with factory() as session:

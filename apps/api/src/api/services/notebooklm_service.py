@@ -121,7 +121,7 @@ class NotebookLMService:
                     "raw": stdout,
                 }
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.error("NotebookLM query timed out after %.1fs", timeout)
             return {
                 "success": False,

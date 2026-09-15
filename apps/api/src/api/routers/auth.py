@@ -324,6 +324,7 @@ async def saml_callback_post(request: Request, db: AsyncSession = Depends(get_db
     except Exception as e:
         raise HTTPException(status_code=401, detail=f'SAML validation failed: {e}')
     from sqlalchemy import select
+
     from ..models.schema import User
     from ..schemas.auth import AuthResponse as AuthResp2
     from ..schemas.auth import PublicUser

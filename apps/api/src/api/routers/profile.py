@@ -1,28 +1,28 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Response
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..config import settings
 from ..database import get_db
 from ..dependencies import get_current_user
 from ..schemas.profile import (
-    ProfileResponse,
-    UpdateProfileRequest,
-    ProfileCompletenessResponse,
+    AddCareerEntryRequest,
+    AddSkillRequest,
+    ATSReadinessResponse,
+    AutoPopulateRequest,
     AvatarUploadResponse,
     ConfirmSkillRequest,
-    AddSkillRequest,
-    RemoveSkillRequest,
-    UpdateJobPreferencesRequest,
-    AutoPopulateRequest,
-    PublicProfileResponse,
-    ATSReadinessResponse,
-    ProfileRecommendationItem,
-    AddCareerEntryRequest,
-    UpdateCareerEntryRequest,
     ProfileActivityItem,
+    ProfileCompletenessResponse,
+    ProfileRecommendationItem,
+    ProfileResponse,
+    PublicProfileResponse,
+    UpdateCareerEntryRequest,
+    UpdateJobPreferencesRequest,
+    UpdateProfileRequest,
 )
 from ..services.profile_service import profile_service
-from ..config import settings
 
 logger = logging.getLogger(__name__)
 

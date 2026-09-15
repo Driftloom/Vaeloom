@@ -16,7 +16,6 @@ from typing import Any
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..services.sovereign_identity_service import sovereign_identity_service
 from ..services.verifiable_credentials_service import (
     VerificationResult,
     verifiable_credentials_service,

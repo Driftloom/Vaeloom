@@ -215,7 +215,6 @@ class BullMQWorker:
 
 async def handle_event_publish(data: dict[str, Any], db: Any = None) -> dict[str, Any]:
     """Handle 'event.publish' jobs from the API events queue."""
-    from api.database import async_session_factory
     from api.infrastructure.background_envelope import (
         BackgroundSecurityError,
         averify_background_envelope,

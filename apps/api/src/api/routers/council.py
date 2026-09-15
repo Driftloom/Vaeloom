@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..dependencies import get_current_user, get_workspace_id
-from ..services.agent_council import agent_council, CouncilVerdict
+from ..services.agent_council import CouncilVerdict, agent_council
 
 router = APIRouter()
 

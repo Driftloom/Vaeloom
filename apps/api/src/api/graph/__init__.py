@@ -12,8 +12,8 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 try:
-    from langgraph.graph import StateGraph, START, END  # type: ignore
     from langgraph.checkpoint.memory import MemorySaver  # type: ignore
+    from langgraph.graph import END, START, StateGraph  # type: ignore
     from langgraph.types import Send  # type: ignore  # native fan-out (F-02)
 
     HAS_LANGGRAPH = True

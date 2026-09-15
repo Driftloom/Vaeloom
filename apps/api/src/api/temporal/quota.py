@@ -9,7 +9,6 @@ Limits: configurable via env (defaults: 1000 req/day, 100k tokens/day)
 """
 
 import logging
-import time
 from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)

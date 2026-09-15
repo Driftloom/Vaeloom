@@ -123,10 +123,11 @@ async def process_user_correction(workspace_id: str, correction_text: str, sourc
         logger.warning(f"process_user_correction gate failed: {e}")
         return None
     try:
+
         from sqlalchemy import select
+
         from api.database import scoped_session
         from api.models.schema import Entity
-        import uuid
 
         async with scoped_session(workspace_id=workspace_id, tenant_id=tenant_id, require=False) as session:
             from api.services.learning_gate import verify_workspace_tenant

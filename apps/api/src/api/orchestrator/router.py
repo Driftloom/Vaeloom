@@ -237,9 +237,10 @@ async def _llm_classify_intent(message: str) -> tuple[str, float] | None:
         return None
 
     try:
-        from ..services.llm_service import llm_service
         import json
         import re
+
+        from ..services.llm_service import llm_service
 
         agent_desc = [
             "- organization: file and document organization, folders, categorization",

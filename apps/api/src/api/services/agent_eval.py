@@ -4,7 +4,6 @@ Task 6: golden/adversarial evals, shadow/canary, fallback and kill switches.
 """
 import time
 from dataclasses import dataclass, field
-from typing import Any
 
 
 @dataclass

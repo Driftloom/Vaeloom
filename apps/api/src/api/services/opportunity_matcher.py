@@ -7,11 +7,8 @@ from __future__ import annotations
 
 import logging
 import math
-from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from dataclasses import dataclass
 from typing import Any
-
-from .capability_engine import capability_engine, ValidationTier, DecayStatus
 
 logger = logging.getLogger(__name__)
 

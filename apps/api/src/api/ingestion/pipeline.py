@@ -386,8 +386,8 @@ async def _populate_graph_memory(
         return
 
     try:
-        from api.services.knowledge_graph_service import kg_service
         from api.schemas.knowledge_graph import CreateNodeRequest, NodeType  # type: ignore
+        from api.services.knowledge_graph_service import kg_service
 
         async with get_session_cm(workspace_id) as session:
             # 1) Create central Document node for obsidian-style hub (document -> entities)
@@ -471,7 +471,7 @@ async def _populate_graph_memory(
                         logger.debug("KG edge mirror failed %s->%s: %s", rel.from_entity, rel.to_entity, e)
                         continue
             await session.commit()
-            hub_msg = f"+ hub" if doc_node_id else ""
+            hub_msg = "+ hub" if doc_node_id else ""
             logger.info("Graph memory mirrored: %d nodes %s, %d edges for doc %s", len(label_to_node_id), hub_msg, len(facts.relationships), document_id[:8])
     except Exception as e:
         logger.warning("KG mirror transaction failed (non-blocking): %s", e)

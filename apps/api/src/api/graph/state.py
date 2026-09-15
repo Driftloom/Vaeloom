@@ -7,7 +7,6 @@ no secrets, no large bodies, max 20KB, max 20 messages.
 from __future__ import annotations
 
 import json
-import re
 from operator import add
 from typing import Annotated, Any, Literal, TypedDict
 
@@ -17,7 +16,6 @@ from langgraph.graph import add_messages
 # source of truth shared by logging redaction, Temporal workflow-history validation,
 # and graph-state validation. Do not fork a copy here (previous drift was F-11).
 from ..temporal.validation import SECRET_KEYS, validate_no_secrets, validate_payload_size
-
 
 # Graph state is stricter than generic payloads; forbid the same canonical set.
 FORBIDDEN_GRAPH_KEYS = SECRET_KEYS

@@ -21,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.schema import SovereignIdentity
-from .encryption import decrypt_value, encrypt_value, is_encrypted
+from .encryption import decrypt_value, is_encrypted
 
 logger = logging.getLogger(__name__)
 

@@ -106,7 +106,7 @@ class Settings(BaseSettings):
     rate_limit_requests: int = 100
     rate_limit_window: int = 60
     api_key_rate_limit: int = 1000
-    
+
     profile_avatar_max_bytes: int = 5 * 1024 * 1024  # 5MB
 
     # Consequential HTTP idempotency (middleware/idempotency.py): when True,
@@ -132,6 +132,7 @@ class Settings(BaseSettings):
     storage_mirror_enabled: bool = False
 
     ip_allowlist: str = ""
+    trusted_proxies: str = ""
     retention_policies: str = ""
 
     db_pool_size: int = 20

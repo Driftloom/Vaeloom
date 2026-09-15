@@ -78,8 +78,10 @@ async def set_rls_session_vars(db: AsyncSession) -> None:
 async def check_user_workspace_access(session: AsyncSession, workspace_id: str, user_id: str, tenant_id: str | None = None) -> bool:
     """Check if a user has authorized access to a workspace within tenant boundary."""
     import uuid as _uuid
-    from sqlalchemy import select, or_, cast, String
-    from ..models.schema import Workspace, WorkspaceUser, User
+
+    from sqlalchemy import String, cast, or_, select
+
+    from ..models.schema import User, Workspace, WorkspaceUser
 
     try:
         ws_uuid = str(_uuid.UUID(str(workspace_id)))
@@ -155,6 +157,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
                 workspace_id = None
             else:
                 import uuid as _uuid
+
                 from starlette.responses import JSONResponse
                 try:
                     ws_uuid = _uuid.UUID(str(requested_workspace_id))

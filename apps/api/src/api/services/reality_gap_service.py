@@ -10,7 +10,6 @@ import json
 import logging
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy import desc, select
@@ -18,7 +17,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.schema import AgentAction, Document, ScaleMemoryNode
 from ..services.llm_service import llm_service
-from .scale_memory_service import ScaleTier
 
 logger = logging.getLogger(__name__)
 

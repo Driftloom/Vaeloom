@@ -137,12 +137,12 @@ class ForeignCheckpointError(Exception):
 
 
 def validate_resume_identity(
-    state: "LoopState",
+    state: LoopState,
     *,
     tenant_id: str | None = None,
     workspace_id: str | None = None,
     agent_id: str | None = None,
-) -> "LoopState":
+) -> LoopState:
     """Enforce resume trust parity with the graph path (LOOP-RESUME-01).
 
     Rules (fail closed on mismatch, pin-on-first-sight for legacy blanks):
@@ -324,7 +324,7 @@ class LoopState:
         return serialized
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "LoopState":
+    def from_dict(cls, data: dict[str, Any]) -> LoopState:
         state = cls(
             data["request_id"],
             workspace_id=data.get("workspace_id"),

@@ -78,6 +78,13 @@ def _revocation_session_factory():
 
 class AuthService:
     async def signup(self, email: str, password: str, display_name: str | None = None, db=None):
+        if not email or "@" not in email:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail="Invalid email format")
+        if not password or len(password) < 8:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail="Password must be at least 8 characters long")
+
         result = await db.execute(select(User).where(User.email == email))
         if result.scalar_one_or_none():
             from fastapi import HTTPException

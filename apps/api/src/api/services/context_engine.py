@@ -19,7 +19,7 @@ from __future__ import annotations
 import hashlib
 import time
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Literal
 
 ContextKind = Literal[
     "system", "agent", "task", "user", "memory", "working",

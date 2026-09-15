@@ -172,7 +172,6 @@ class SAMLSSOProvider(SSOProvider):
     async def validate_token(self, token: str) -> dict[str, Any] | None:
         # token is base64 SAMLResponse
         try:
-            from .saml import SAMLProvider as RealSAML  # type: ignore
 
             assertion = self._real.parse_saml_response(token)
             info = self._real.validate_assertion(assertion)

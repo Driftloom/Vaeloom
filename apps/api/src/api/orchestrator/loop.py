@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import re
 from datetime import UTC
@@ -478,6 +479,7 @@ async def _assemble_rag_context(
         return {"entities": [], "documents": [], "preferences": []}
     try:
         from sqlalchemy import or_, select
+
         from api.models.schema import Document, DocumentChunk, Entity
 
         read_types = getattr(getattr(agent, "memory_scopes", None), "read_types", []) or []
@@ -521,15 +523,19 @@ async def _assemble_rag_context(
                     db_url = _os.environ.get("DATABASE__URL", "") + _os.environ.get("QDRANT_URL", "")
                     has_vector_store = "postgres" in db_url.lower() or bool(_os.environ.get("QDRANT_URL"))
                     if has_vector_store or _os.environ.get("ENABLE_VECTOR_RAG") == "1":
-                        from api.services.llm_service import llm_service
                         from sqlalchemy import text as _text
+
+                        from api.services.llm_service import llm_service
                         vec = await llm_service.generate_embedding(query[:2000])
                         rows: list[tuple[str, str]] = []
                         # Check dedicated vector store (e.g. Qdrant Cloud) first
                         vstore_type = _os.environ.get("VECTOR_STORE", "").lower()
                         if vstore_type == "qdrant" or bool(_os.environ.get("QDRANT_URL")):
                             try:
-                                from api.infrastructure.vector_store import QdrantStore, get_vector_store
+                                from api.infrastructure.vector_store import (
+                                    QdrantStore,
+                                    get_vector_store,
+                                )
                                 vstore = get_vector_store()
                                 if isinstance(vstore, QdrantStore):
                                     vrecords = await vstore.search(query_vector=vec, limit=8, filters={"workspace_id": workspace_id})
@@ -543,6 +549,7 @@ async def _assemble_rag_context(
                         # If no dedicated vector store results, try embeddings table (pgvector)
                         if not rows:
                             try:
+                                vec_str = f"[{','.join(str(x) for x in vec)}]"
                                 res = await session.execute(
                                     _text("""
                                         SELECT source_id, source_type, 1 - (vector <=> CAST(:vec AS vector)) AS score
@@ -608,8 +615,9 @@ async def _assemble_rag_context(
             if not vector_done or len(documents) < 4:
                 tsv_tried = False
                 try:
-                    from sqlalchemy import text as _ts_text
                     import os as _os2
+
+                    from sqlalchemy import text as _ts_text
 
                     # Only attempt tsvector when Postgres (requires migration 0026)
                     if "postgres" in _os2.environ.get("DATABASE__URL", "").lower():
@@ -658,9 +666,7 @@ async def _assemble_rag_context(
                 res = await session.execute(stmt)
                 for pref in res.scalars().all():
                     # If query overlaps preference name, keep it
-                    if any(kw.lower() in (pref.canonical_name or "").lower() for kw in keywords):
-                        preferences.append({"id": str(pref.id), "name": pref.canonical_name, "metadata": pref.metadata_})
-                    elif len(preferences) < 3:
+                    if any(kw.lower() in (pref.canonical_name or "").lower() for kw in keywords) or len(preferences) < 3:
                         preferences.append({"id": str(pref.id), "name": pref.canonical_name, "metadata": pref.metadata_})
             except Exception as e:
                 logger.warning(f"RAG preference lookup failed: {e}")
@@ -715,12 +721,26 @@ async def _assemble_rag_context(
         try:
             from ..services.context_engine import (
                 ContextItem as _CI,
+            )
+            from ..services.context_engine import (
                 assemble as _assemble,
+            )
+            from ..services.context_engine import (
                 compress_to_budget as _compress,
+            )
+            from ..services.context_engine import (
                 context_fingerprint as _cf,
+            )
+            from ..services.context_engine import (
                 filter_items as _filter,
+            )
+            from ..services.context_engine import (
                 plan_retrieval as _plan_retrieval,
+            )
+            from ..services.context_engine import (
                 rank_items as _rank_items,
+            )
+            from ..services.context_engine import (
                 validate_assembly as _validate_assembly,
             )
             _rplan = _plan_retrieval(query, task_type=getattr(agent, "mission", "general")[:64])
@@ -890,8 +910,8 @@ async def _react_approval_gate(
     except Exception:
         _requested_by = None
     try:
-        from ..services.approval import ApprovalManager
         from ..database import scoped_session
+        from ..services.approval import ApprovalManager
         mgr = ApprovalManager()
         if db is not None:
             try:
@@ -964,6 +984,7 @@ async def _try_react_loop(
     if len(message.strip()) < 3:
         return None
     import time as _rt
+
     from .react_policy import (
         ReactRunRecord,
         build_resume_messages,
@@ -1089,8 +1110,9 @@ async def _try_react_loop(
         return await _finish(reason, _card)
 
     try:
-        from ..services.llm_service import llm_service
         import json
+
+        from ..services.llm_service import llm_service
         from .card_registry import get_agent_card
 
         # Retrieve declarative AgentCard for prompt templating & schema verification
@@ -1316,8 +1338,8 @@ async def _try_react_loop(
                             content_str = str(_fb_content or "")
                         tool_calls = _fb.get("tool_calls") or []
                 except Exception as _fbe:
-                    import traceback as _tbf
                     import sys as _sysf
+                    import traceback as _tbf
                     print("DBG fallback-round traceback: " + "".join(_tbf.format_exception(_fbe))[-2500:],
                           file=_sysf.stderr, flush=True)
                     logger.warning(f"ReAct fallback round failed: {_fbe}")
@@ -1432,11 +1454,13 @@ async def _try_react_loop(
 
             # Execute each tool call sequentially (preserving order) through the
             # full enforcement ladder. Model proposals are untrusted input.
+            from .loop_safety import tool_fingerprint as _tool_fp
             from .react_policy import (
                 REACT_CHECKPOINT_OBS_CHARS as _OBS_CAP,
+            )
+            from .react_policy import (
                 validate_tool_arguments as _validate_args,
             )
-            from .loop_safety import tool_fingerprint as _tool_fp
 
             async def _snapshot_running() -> None:
                 if state is None or not request_id:
@@ -1609,7 +1633,10 @@ async def _try_react_loop(
                                     pass
                             return await _terminal_card(f"ReAct run stopped: tool '{tname}' repeatedly denied by policy.", "policy_denied")
                         try:
-                            from ..utils.sanitize import looks_like_prompt_injection, sanitize_tool_output
+                            from ..utils.sanitize import (
+                                looks_like_prompt_injection,
+                                sanitize_tool_output,
+                            )
                             raw_tool_str = json.dumps(result)
                             if looks_like_prompt_injection(raw_tool_str):
                                 logger.warning(f"ReAct: tool '{tname}' output flagged as potential prompt injection — sanitizing")
@@ -1973,7 +2000,7 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
 
     # ── MODEL-001: auto-route per-agent task_type → model hint (logged, does not override explicit model)
     try:
-        from ..services.model_router import AGENT_TASK_TYPE_MAP, TASK_MODEL_MAP, model_router
+        from ..services.model_router import AGENT_TASK_TYPE_MAP, TASK_MODEL_MAP
 
         task_hint = AGENT_TASK_TYPE_MAP.get(agent_name, "document_summarize")
         tier_hint = TASK_MODEL_MAP.get(task_hint, "balanced")
@@ -2483,9 +2510,11 @@ async def improve_phase(state: LoopState, request: AgentRequest) -> AgentRespons
         try:
             _db = getattr(request, "db", None)
             if _db is not None:
-                from sqlalchemy import select as _sel
-                from ..models.schema import Workspace as _WS
                 import uuid as _uuid
+
+                from sqlalchemy import select as _sel
+
+                from ..models.schema import Workspace as _WS
                 try:
                     _wrow = await _db.execute(
                         _sel(_WS.user_id).where(_WS.id == _uuid.UUID(str(request.workspace_id)))
@@ -2742,7 +2771,8 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
     - structured-validation failures terminate as qa_failed, never success
     - trajectory evaluation persisted post-run (non-blocking)
     """
-    from .loop_safety import LoopSafetyTracker, fingerprint as _fp
+    from .loop_safety import LoopSafetyTracker
+    from .loop_safety import fingerprint as _fp
     from .state import DEFAULT_RUN_BUDGETS
 
     logger.info(f"START loop: request={request.id}, agent={request.agent_name}")
@@ -2783,7 +2813,6 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
         return AgentResponse(status=state.status, final_result=final, termination_reason=state.termination_reason)
 
     # Run identity + budgets (hard per-run ceilings; daily budget is separate).
-    import hashlib as _hl
     state.run_id = state.run_id or request.id
     state.agent_id = request.agent_name or state.agent_id
     # §29: adopt caller correlation (durable so post-restart traces join).
@@ -2895,7 +2924,8 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
             state.retrieval_ids = _ids[:16]
             tracker.record_retrieval(state.retrieval_ids)
             try:
-                from ..services.context_engine import context_fingerprint as _cf, ContextItem as _CI
+                from ..services.context_engine import ContextItem as _CI
+                from ..services.context_engine import context_fingerprint as _cf
                 _items = [_CI(kind="memory", content=e.get("name", ""), provenance=f"ws:{state.workspace_id}:{e.get('id','')}")
                           for e in _rag.get("entities", [])[:8]]
                 state.context_fingerprint = _cf(_items) if _items else ""

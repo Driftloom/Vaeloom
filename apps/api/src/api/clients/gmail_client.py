@@ -43,7 +43,9 @@ class GmailClient:
             return cls()
         try:
             import uuid
+
             from sqlalchemy import select
+
             from api.database import scoped_session
             from api.models.schema import Connector
             from api.services.encryption import decrypt_value

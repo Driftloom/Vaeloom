@@ -203,8 +203,8 @@ async def admin_services_health(
 
     # Redis
     try:
+
         from ..database import get_redis  # type: ignore
-        import asyncio
 
         r = get_redis()
         if r is None:

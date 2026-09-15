@@ -20,8 +20,8 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.schema import SovereignIdentity, VerifiableCredential
-from .capability_engine import TAG_PATTERN, ValidationTier, capability_engine
-from .sovereign_identity_service import canonicalize_json, sovereign_identity_service
+from .capability_engine import TAG_PATTERN, ValidationTier
+from .sovereign_identity_service import sovereign_identity_service
 
 logger = logging.getLogger(__name__)
 

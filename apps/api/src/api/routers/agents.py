@@ -263,12 +263,12 @@ async def chat_stream(
       intent → plan → act → tool_start/tool_result → observe → reflect → token* → approval_required? → done
     Uses the full 5-phase loop (not the simple execute path) with QA gate.
     """
-    from ..orchestrator.loop import AgentRequest, run_agent_loop_stream
-    from ..orchestrator.router import AGENT_REGISTRY, classify_intent
     from ..agents.qa_agent.handler import QAAgent
     from ..config import settings
     from ..infrastructure.agent_eval import detect_adversarial_prompt
     from ..infrastructure.agent_observability import kill_switch
+    from ..orchestrator.loop import AgentRequest, run_agent_loop_stream
+    from ..orchestrator.router import AGENT_REGISTRY, classify_intent
 
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -284,7 +284,8 @@ async def chat_stream(
             # delegate to the supervisor streaming DAG instead of single-agent loop.
             if not preferred:
                 try:
-                    from ..orchestrator.supervisor import is_multi_agent_request as _is_multi, run_supervisor_stream
+                    from ..orchestrator.supervisor import is_multi_agent_request as _is_multi
+                    from ..orchestrator.supervisor import run_supervisor_stream
                     if _is_multi(dto.message):
                         yield f"event: supervisor_start\ndata: {json.dumps({'message': 'Complex multi-step goal detected — delegating to specialist team'})}\n\n"
                         async for sup_evt in run_supervisor_stream(dto.message, dto.workspaceId, req_id):
@@ -329,19 +330,19 @@ async def chat_stream(
             if not kill_switch.is_enabled(agent_name):
                 _msg = f"Agent '{agent_name}' is disabled"
                 yield f"event: error\ndata: {json.dumps({'message': _msg})}\n\n"
-                yield f"event: done\ndata: {{}}\n\n"
+                yield "event: done\ndata: {}\n\n"
                 return
             adversarial = detect_adversarial_prompt(dto.message)
             if adversarial and any(d.get("severity") == "critical" for d in adversarial):
                 yield f"event: error\ndata: {json.dumps({'message': 'Input flagged by security filter'})}\n\n"
-                yield f"event: done\ndata: {{}}\n\n"
+                yield "event: done\ndata: {}\n\n"
                 return
 
             # ── 4. Instantiate & stream loop ─────────────────────
             agent_cls = AGENT_REGISTRY.get(agent_name)
             if not agent_cls:
                 yield f"event: error\ndata: {json.dumps({'message': f'No agent for {agent_name}'})}\n\n"
-                yield f"event: done\ndata: {{}}\n\n"
+                yield "event: done\ndata: {}\n\n"
                 return
             agent = agent_cls()
             agent_req = AgentRequest(agent=agent, request_id=req_id, message=dto.message, workspace_id=dto.workspaceId, agent_name=agent_name,
@@ -381,7 +382,7 @@ async def chat_stream(
 
         except Exception as e:
             yield f"event: error\ndata: {json.dumps({'message': str(e)})}\n\n"
-            yield f"event: done\ndata: {{}}\n\n"
+            yield "event: done\ndata: {}\n\n"
 
     return StreamingResponse(
         event_gen(),
@@ -554,13 +555,15 @@ async def schedule_agent(
     await db.commit()
     # Shadow Temporal schedule (fail-open)
     try:
-        from ..temporal.schedules import create_or_update_schedule
         import asyncio as _aio
+
+        from ..temporal.schedules import create_or_update_schedule
 
         ws = None
         try:
             # Try to derive workspace from agent row
             from sqlalchemy import select as _sel
+
             from ..models.schema import Agent as _Agent
 
             r = await db.execute(_sel(_Agent.workspace_id).where(_Agent.id == agent_id))

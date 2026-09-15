@@ -212,7 +212,10 @@ class MemoryConsolidatorAgent(BaseAgent):
 
                     from sqlalchemy.exc import IntegrityError
 
-                    from api.services.learning_gate import validate_learning_signal, verify_workspace_tenant
+                    from api.services.learning_gate import (
+                        validate_learning_signal,
+                        verify_workspace_tenant,
+                    )
 
                     count = 0
                     rejected: list[dict[str, Any]] = []
@@ -499,6 +502,7 @@ class MemoryConsolidatorAgent(BaseAgent):
                                   user_id: str | None = None) -> list[dict[str, Any]]:
         """Extract learned preferences or corrections via LLM when available."""
         import json
+
         from api.config import settings
 
         if not settings.llm_api_key:

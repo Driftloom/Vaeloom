@@ -65,9 +65,9 @@ class SchedulerService:
         row = SchedulerService._fix_json_fields(result.mappings().first())
         # Shadow Temporal schedule (fail-open — DB remains source of truth)
         try:
-            from ..temporal.schedules import create_or_update_schedule
-
             import asyncio as _aio
+
+            from ..temporal.schedules import create_or_update_schedule
 
             _aio.create_task(create_or_update_schedule(str(job_id), dto.cron, tenant_id, payload=dto.payload))
         except Exception:
@@ -163,9 +163,9 @@ class SchedulerService:
         # Shadow update to Temporal if cron/payload changed
         try:
             if dto.cron is not None or dto.payload is not None:
-                from ..temporal.schedules import create_or_update_schedule
-
                 import asyncio as _aio
+
+                from ..temporal.schedules import create_or_update_schedule
 
                 cron = dto.cron or row.get("cron")  # type: ignore[assignment]
                 _aio.create_task(create_or_update_schedule(str(job_id), cron, row.get("tenant_id"), payload=dto.payload if dto.payload is not None else row.get("payload")))
@@ -182,9 +182,9 @@ class SchedulerService:
         )
         await db.commit()
         try:
-            from ..temporal.schedules import pause_schedule
-
             import asyncio as _aio
+
+            from ..temporal.schedules import pause_schedule
 
             _aio.create_task(pause_schedule(str(job_id), row_before.get("tenant_id")))
         except Exception:
@@ -200,9 +200,9 @@ class SchedulerService:
         )
         await db.commit()
         try:
-            from ..temporal.schedules import resume_schedule
-
             import asyncio as _aio
+
+            from ..temporal.schedules import resume_schedule
 
             _aio.create_task(resume_schedule(str(job_id), row_before.get("tenant_id")))
         except Exception:
@@ -227,9 +227,9 @@ class SchedulerService:
         )
         await db.commit()
         try:
-            from ..temporal.schedules import delete_schedule
-
             import asyncio as _aio
+
+            from ..temporal.schedules import delete_schedule
 
             _aio.create_task(delete_schedule(str(job_id), row_before.get("tenant_id")))
         except Exception:

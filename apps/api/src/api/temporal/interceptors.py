@@ -61,7 +61,10 @@ if HAS_TEMPORAL_INTERCEPTOR and HAS_OTEL:
 
     # Workflow tracing (closes gap workflow→activity propagation §25)
     try:
-        from temporalio.interceptor import WorkflowInboundInterceptor, ExecuteWorkflowInput  # type: ignore
+        from temporalio.interceptor import (  # type: ignore
+            ExecuteWorkflowInput,
+            WorkflowInboundInterceptor,
+        )
 
         _HAS_WF_INTERCEPTOR = True
     except Exception:

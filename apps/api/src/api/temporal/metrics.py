@@ -5,7 +5,7 @@ join workflow telemetry with app telemetry without collision.
 """
 
 try:
-    from prometheus_client import Counter, Histogram, Gauge
+    from prometheus_client import Counter, Gauge, Histogram
 
     temporal_workflow_started = Counter("temporal_workflow_started_total", "Workflows started", ["workflow_type", "task_queue"])
     temporal_workflow_completed = Counter("temporal_workflow_completed_total", "Workflows completed", ["workflow_type", "task_queue", "status"])

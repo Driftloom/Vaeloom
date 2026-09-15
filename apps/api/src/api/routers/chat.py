@@ -14,7 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..dependencies import get_current_user
-from ..orchestrator.router import UserRequest, handle as orchestrator_handle
+from ..orchestrator.router import UserRequest
+from ..orchestrator.router import handle as orchestrator_handle
 
 router = APIRouter()
 

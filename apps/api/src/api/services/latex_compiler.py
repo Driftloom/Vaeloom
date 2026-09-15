@@ -86,7 +86,6 @@ class LatexCompiler:
         </style></head><body>
         <div class='fallback-note'>⚠️ LaTeX fallback preview — install <code>tectonic</code> for pixel-perfect TeX typography. Showing source as monospaced.</div>
         <pre>{escaped[:20000]}</pre></body></html>"""
-        from .document_builder import document_builder
 
         # Use document_builder's internal HTML→PDF path (compile_resume does HTML→PDF via Playwright)
         # For fallback we can directly call its Playwright manager

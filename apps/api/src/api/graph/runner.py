@@ -170,7 +170,7 @@ def validate_graph_topology() -> dict[str, Any]:
         raise ValueError(f"nodes cannot reach terminal: {unreachable}")
     if meta.get("version") != GRAPH_VERSION:
         raise ValueError(f"graph version drift: {meta.get('version')} != {GRAPH_VERSION}")
-    from .state import MAX_GRAPH_REPLANS, MAX_FANOUT_BRANCHES
+    from .state import MAX_FANOUT_BRANCHES, MAX_GRAPH_REPLANS
     if not (MAX_GRAPH_REPLANS > 0 and MAX_FANOUT_BRANCHES > 0):
         raise ValueError("graph bounds missing")
     # ── Compiled-object check (AUDIT-P2-02) ─────────────────────────────
@@ -415,8 +415,8 @@ async def run_graph_direct(
 
     # Build + validate initial state from TRUSTED ids only.
     try:
-        from .state import build_initial_state, validate_graph_state
         from . import get_vaeloom_graph
+        from .state import build_initial_state, validate_graph_state
         gstate = build_initial_state({
             "workspace_id": ctx["workspace_id"], "user_id": ctx["user_id"],
             "agent_id": ctx["agent_id"], "request_id": ctx["request_id"],
@@ -476,7 +476,7 @@ async def run_graph_direct(
         if not await check_graph_cancel(ctx["request_id"]):
             raise
         cancelled = True
-    except (TimeoutError, asyncio.TimeoutError):
+    except TimeoutError:
         await _record_release("timeout", node_updates=node_updates)
         await _mirror_terminal(mirror, "timeout")
         return _terminal("timeout", "Graph run exceeded wall-clock budget.", ctx, corr, trace,

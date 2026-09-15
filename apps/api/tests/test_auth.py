@@ -127,3 +127,17 @@ class TestAuth:
             res = await ac.get("/api/v1/auth/me")
             assert res.status_code == 401
             assert "User not found or inactive" in res.json()["detail"]
+
+    async def test_signup_weak_password_rejected(self, client: AsyncClient):
+        res = await client.post("/api/v1/auth/signup", json={
+            "email": "strong@test.com",
+            "password": "123",
+        })
+        assert res.status_code in (400, 422)
+
+    async def test_signup_invalid_email_rejected(self, client: AsyncClient):
+        res = await client.post("/api/v1/auth/signup", json={
+            "email": "invalid-email",
+            "password": "ValidPassword123!",
+        })
+        assert res.status_code in (400, 422)

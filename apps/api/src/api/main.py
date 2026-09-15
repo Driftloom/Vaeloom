@@ -73,7 +73,6 @@ from .infrastructure.logging import (
     get_logger,
     setup_logging,
 )
-
 from .infrastructure.opentelemetry import instrumement_fastapi, setup_opentelemetry
 from .middleware.api_version import APIVersionMiddleware
 from .middleware.auth import AuthMiddleware
@@ -100,6 +99,7 @@ from .routers import (
     council,
     documents,
     events,
+    feature_flags,
     federation,
     gmail,
     health,
@@ -117,11 +117,12 @@ from .routers import (
     scheduler,
     search,
     sovereignty,
-    temporal as temporal_router,
     webhooks,
     workspaces,
 )
-from .routers import feature_flags
+from .routers import (
+    temporal as temporal_router,
+)
 from .services.agent_costs import router as agent_costs_router
 from .services.approval import router as approval_router
 from .services.consent import router as consent_router
@@ -210,7 +211,10 @@ async def lifespan(app: FastAPI):
         logger.warning("RLS runtime role check skipped: %s", e)
     # ── Start background daemon (cron + daily watchers) ──────────────
     try:
-        from .infrastructure.background_daemon import start_background_daemon, stop_background_daemon
+        from .infrastructure.background_daemon import (
+            start_background_daemon,
+            stop_background_daemon,
+        )
         start_background_daemon()
         logger.info("Background daemon started")
     except Exception as e:

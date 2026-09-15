@@ -207,7 +207,6 @@ async def execute_agent_schedule_job(
     inline (degraded mode). Marks last_run_at on success or failure attempt."""
     from uuid import UUID
 
-    from api.database import async_session_factory
     from api.middleware.tenant import TenantContext
     from api.models.schema import AgentSchedule
     from api.schemas.agent import AgentExecute
@@ -357,8 +356,9 @@ async def _run_due_agent_schedules(now: datetime) -> int:
                     logger.info(f"DAEMON: agent_schedule due {sched.id} cron='{sched.cron}' agent={sched.agent_id}")
                     dedup_key = f"agent_sched:{sched.id}:{now.strftime('%Y%m%d%H%M')}"
 
-                    from api.infrastructure.background_envelope import create_background_envelope
                     from sqlalchemy import text as _scope_text
+
+                    from api.infrastructure.background_envelope import create_background_envelope
                     # OP-RLS-01: resolve agent scope without GUCs (definer fn;
                     # the agents table is RLS-scoped). Falls back to defaults
                     # exactly as before when unresolvable.

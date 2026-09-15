@@ -1,3 +1,4 @@
+import asyncio
 import contextlib
 import hashlib
 import time
@@ -239,14 +240,10 @@ class LLMService:
         elif prov == "openai":
             key = getattr(settings, "openai_api_key", "") or os.environ.get("OPENAI_API_KEY", "")
             if not key:
-                if settings.llm_provider == "openai" and not settings.llm_api_key.startswith("gsk_") and not settings.llm_api_key.startswith("AIza"):
-                    key = settings.llm_api_key
-                elif settings.llm_api_key.startswith("sk-") and not settings.llm_api_key.startswith("sk-ant-") and not settings.llm_api_key.startswith("gsk_"):
+                if settings.llm_provider == "openai" and not settings.llm_api_key.startswith("gsk_") and not settings.llm_api_key.startswith("AIza") or settings.llm_api_key.startswith("sk-") and not settings.llm_api_key.startswith("sk-ant-") and not settings.llm_api_key.startswith("gsk_"):
                     key = settings.llm_api_key
             if not key:
-                if self.provider == "openai" and not getattr(self, "api_key", "").startswith("gsk_") and not getattr(self, "api_key", "").startswith("AIza"):
-                    key = self.api_key
-                elif getattr(self, "api_key", "").startswith("sk-") and not getattr(self, "api_key", "").startswith("sk-ant-") and not getattr(self, "api_key", "").startswith("gsk_"):
+                if self.provider == "openai" and not getattr(self, "api_key", "").startswith("gsk_") and not getattr(self, "api_key", "").startswith("AIza") or getattr(self, "api_key", "").startswith("sk-") and not getattr(self, "api_key", "").startswith("sk-ant-") and not getattr(self, "api_key", "").startswith("gsk_"):
                     key = self.api_key
             if key:
                 return prov, key
@@ -254,14 +251,10 @@ class LLMService:
         elif prov == "anthropic":
             key = getattr(settings, "anthropic_api_key", "") or os.environ.get("ANTHROPIC_API_KEY", "")
             if not key:
-                if settings.llm_provider == "anthropic" and not settings.llm_api_key.startswith("gsk_") and not settings.llm_api_key.startswith("AIza"):
-                    key = settings.llm_api_key
-                elif settings.llm_api_key.startswith("sk-ant"):
+                if settings.llm_provider == "anthropic" and not settings.llm_api_key.startswith("gsk_") and not settings.llm_api_key.startswith("AIza") or settings.llm_api_key.startswith("sk-ant"):
                     key = settings.llm_api_key
             if not key:
-                if self.provider == "anthropic" and not getattr(self, "api_key", "").startswith("gsk_") and not getattr(self, "api_key", "").startswith("AIza"):
-                    key = self.api_key
-                elif getattr(self, "api_key", "").startswith("sk-ant"):
+                if self.provider == "anthropic" and not getattr(self, "api_key", "").startswith("gsk_") and not getattr(self, "api_key", "").startswith("AIza") or getattr(self, "api_key", "").startswith("sk-ant"):
                     key = self.api_key
             if key:
                 return prov, key
@@ -306,9 +299,7 @@ class LLMService:
 
         effective_prov = provider_override
         if not effective_prov:
-            if self.embedding_model.startswith("gemini") or self.embedding_model.startswith("models/embedding"):
-                effective_prov = "google"
-            elif self.provider in ("google", "gemini"):
+            if self.embedding_model.startswith("gemini") or self.embedding_model.startswith("models/embedding") or self.provider in ("google", "gemini"):
                 effective_prov = "google"
             elif self.provider == "anthropic":
                 effective_prov = "anthropic"

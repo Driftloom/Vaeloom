@@ -29,6 +29,12 @@ except Exception:
     HAS_RETRY = False
     RetryPolicy = None  # type: ignore[assignment]
 
+def _dummy():  # minimal context manager when temporal missing
+    import contextlib
+
+    return contextlib.nullcontext()
+
+
 with workflow.unsafe.imports_passed_through() if HAS_TEMPORAL else _dummy():  # type: ignore[attr-defined]
     from .activities import (
         ExtractEntitiesInput,
@@ -37,12 +43,6 @@ with workflow.unsafe.imports_passed_through() if HAS_TEMPORAL else _dummy():  # 
         SyncConnectorInput,
         WriteMemoryInput,
     )
-
-
-def _dummy():  # minimal context manager when temporal missing
-    import contextlib
-
-    return contextlib.nullcontext()
 
 
 # Pre-import validation for workflow sandbox (avoids "imported after initial load" warning)
@@ -117,7 +117,11 @@ class SyncConnectorResult:
 try:
     from .metrics import (  # type: ignore
         temporal_workflow_completed as _wf_completed,
+    )
+    from .metrics import (
         temporal_workflow_failed as _wf_failed,
+    )
+    from .metrics import (
         temporal_workflow_started as _wf_started,
     )
 
@@ -356,8 +360,9 @@ if HAS_TEMPORAL:
             # This is the last line of defense — API layer already validates before start_workflow,
             # but workflow must also fail closed if secret reaches history (e.g., direct Temporal client)
             try:
-                from .validation import validate_no_secrets
                 import temporalio.workflow as _wf2
+
+                from .validation import validate_no_secrets
 
                 _wf2.logger.info(f"Durable payload check keys: {list(payload.keys()) if isinstance(payload, dict) else type(payload).__name__}")
 

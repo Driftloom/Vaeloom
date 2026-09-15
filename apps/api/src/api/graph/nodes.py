@@ -12,15 +12,18 @@ import json
 import logging
 from typing import Any
 
-from .state import validate_graph_state, validate_handoff_state, validate_no_secrets, validate_workspace_binding
-from .routing import route_classify, route_classify_structured, supervisor_dag
 from .errors import (
-    ApprovalRequiredError,
     KillSwitchError,
     QuotaExceededError,
-    SecretPayloadError,
     ValidationError,
     WorkspaceMismatchError,
+)
+from .routing import route_classify, route_classify_structured, supervisor_dag
+from .state import (
+    validate_graph_state,
+    validate_handoff_state,
+    validate_no_secrets,
+    validate_workspace_binding,
 )
 
 try:
@@ -46,7 +49,6 @@ async def validate_input_node(state: dict[str, Any]) -> dict[str, Any]:
         # Kill-switch pre-check (fail-closed in non-local, fail-open only in local dev)
         try:
             from ..infrastructure.agent_observability import kill_switch  # type: ignore
-            from ..config import settings as _cs  # type: ignore
 
             ag = state.get("agent_id") or state.get("selected_agent") or ""
             if ag and not kill_switch.is_enabled(ag):
@@ -90,8 +92,9 @@ async def retrieve_context_node(state: dict[str, Any]) -> dict[str, Any]:
     rag = None
     rag_status: str = "ok"
     try:
-        from ..orchestrator.loop import _assemble_rag_context  # type: ignore
         import asyncio as _asyncio
+
+        from ..orchestrator.loop import _assemble_rag_context  # type: ignore
 
         # Bounded timeout — RAG must never block graph indefinitely
         try:
@@ -101,7 +104,7 @@ async def retrieve_context_node(state: dict[str, Any]) -> dict[str, Any]:
                 ),
                 timeout=5.0,
             )
-        except _asyncio.TimeoutError:
+        except TimeoutError:
             rag = {"entities": [], "documents": [], "preferences": []}
             rag_status = "timeout"
             logger.warning("retrieve_context timeout — status=timeout")
@@ -381,8 +384,8 @@ async def agent_node(state: dict[str, Any]) -> dict[str, Any]:
         try:
             import os as _ros
 
-            from ..orchestrator.router import AGENT_REGISTRY as _REG  # type: ignore
             from ..orchestrator.loop import _try_react_loop  # type: ignore
+            from ..orchestrator.router import AGENT_REGISTRY as _REG  # type: ignore
 
             _agent_name = str(agent_id or "")
             _handler_cls = _REG.get(_agent_name)
@@ -443,8 +446,8 @@ async def agent_node(state: dict[str, Any]) -> dict[str, Any]:
                 try:
                     import inspect as _insp
 
-                    if hasattr(handler, "execute") and callable(getattr(handler, "execute")):
-                        sig = _insp.signature(getattr(handler, "execute"))
+                    if hasattr(handler, "execute") and callable(handler.execute):
+                        sig = _insp.signature(handler.execute)
                         if len(sig.parameters) >= 4:
                             res = await handler.execute(
                                 content=state.get("task") or "",
@@ -608,9 +611,7 @@ async def tool_execute_node(state: dict[str, Any]) -> dict[str, Any]:
             }
         # For graph v1, use minimal params from task; real params derived from LLM in future
         params: dict[str, Any] = {}
-        if tool == "search_documents":
-            params = {"query": state.get("task") or "", "limit": 5}
-        elif tool == "query_graph":
+        if tool == "search_documents" or tool == "query_graph":
             params = {"query": state.get("task") or "", "limit": 5}
         # Secret resolution happens inside execute_tool handlers via SecretManager — never in state
         # Scopes derive from the agent's card (SAME rule as the ReAct path).

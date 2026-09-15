@@ -45,10 +45,18 @@ async def create_or_update_schedule(
     if not _enabled():
         return False
     try:
-        from ..temporal.client import get_temporal_client
         from datetime import timedelta
+
+        from ..temporal.client import get_temporal_client
         try:
-            from temporalio.client import Schedule, ScheduleActionStartWorkflow, ScheduleOverlapPolicy, ScheduleSpec, ScheduleState, SchedulePolicy  # type: ignore
+            from temporalio.client import (  # type: ignore
+                Schedule,
+                ScheduleActionStartWorkflow,
+                ScheduleOverlapPolicy,
+                SchedulePolicy,
+                ScheduleSpec,
+                ScheduleState,
+            )
             from temporalio.common import RetryPolicy  # type: ignore
         except Exception as e:
             logger.debug(f"schedules: SDK import failed ({e})")

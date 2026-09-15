@@ -20,8 +20,7 @@ import hashlib
 import json
 import logging
 import re
-import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -131,7 +130,7 @@ def validate_tool_arguments(
     advisory: list[str] = []
     hard: list[str] = []
     try:
-        from ..utils.sanitize import sanitize_text, looks_like_prompt_injection
+        from ..utils.sanitize import looks_like_prompt_injection, sanitize_text
     except Exception:  # pragma: no cover
         sanitize_text = lambda v: v  # type: ignore[assignment]
         looks_like_prompt_injection = lambda t: False  # type: ignore[assignment]

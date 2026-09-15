@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..dependencies import get_current_user, get_tenant_id
+from ..dependencies import get_current_user
 from ..services.feature_flag_service import (
     FeatureFlagCreate,
     FeatureFlagResponse,

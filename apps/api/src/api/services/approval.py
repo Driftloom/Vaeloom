@@ -284,6 +284,7 @@ async def _ingest_feedback_preference(
         return
     try:
         import uuid
+
         from api.models.schema import Entity
 
         polarity = "approved" if decision == "APPROVED" else "rejected"
@@ -391,11 +392,11 @@ async def _maybe_start_approval_workflow(approval_id: str, workspace_id: str | N
         if client is None:
             return
         wid = f"approval:{workspace_id or 'global'}:{approval_id}"
-        from ..temporal.workflows import ApprovalWorkflowInput
+        from datetime import timedelta as _td2
 
         from temporalio.common import WorkflowIDReusePolicy as _WIDP2  # type: ignore
 
-        from datetime import timedelta as _td2
+        from ..temporal.workflows import ApprovalWorkflowInput
         await client.start_workflow(
             "ApprovalWorkflow",
             ApprovalWorkflowInput(approval_id=approval_id, timeout_seconds=timeout_seconds),

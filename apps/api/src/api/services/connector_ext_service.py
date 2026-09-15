@@ -383,7 +383,7 @@ class ConnectorExtService:
                 logger.info("connector_sync_trigger", extra={"connector_id": str(connector_id), "connector_type": ctype})
         except HTTPException:
             raise
-        except Exception as e:
+        except Exception:
             # Legacy test expects error == "sync_failed"; preserve that for generic failures
             error = "sync_failed"
             try:

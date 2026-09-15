@@ -1,9 +1,9 @@
 import uuid
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Any
 
 from ..database import get_db
 from ..dependencies import get_current_user, get_workspace_id

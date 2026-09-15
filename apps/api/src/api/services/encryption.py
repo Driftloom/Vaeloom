@@ -3,7 +3,8 @@ import hashlib
 import logging
 
 from fastapi import APIRouter, Depends
-from sqlalchemy.types import Text as _SA_Text, TypeDecorator
+from sqlalchemy.types import Text as _SA_Text
+from sqlalchemy.types import TypeDecorator
 
 from ..config import settings
 from ..dependencies import require_role

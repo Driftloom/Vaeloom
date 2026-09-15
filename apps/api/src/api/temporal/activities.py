@@ -151,9 +151,11 @@ async def parse_document(inp: ParseDocumentInput) -> dict[str, Any]:
     activity = _activity
     _bind_activity_scope(inp)
     try:
-        from ..models.schema import Document
-        from sqlalchemy import select as _select
         import uuid as _uuid
+
+        from sqlalchemy import select as _select
+
+        from ..models.schema import Document
 
         async with _scoped_db(ws_id_in) as db:
             doc_uuid = _uuid.UUID(doc_id_in) if len(doc_id_in) > 30 else None
@@ -199,9 +201,11 @@ async def extract_entities(inp: ExtractEntitiesInput) -> dict[str, Any]:
     doc_text = ""
     _bind_activity_scope(inp)
     try:
-        from ..models.schema import Document
-        from sqlalchemy import select as _select
         import uuid as _uuid
+
+        from sqlalchemy import select as _select
+
+        from ..models.schema import Document
 
         async with _scoped_db(ws_id_in) as db:
             doc_uuid = _uuid.UUID(doc_id_in) if len(doc_id_in) > 30 else None
@@ -276,9 +280,11 @@ async def write_memory(inp: WriteMemoryInput) -> dict[str, Any]:
     # Attempt real DB write
     _bind_activity_scope(inp)
     try:
-        from ..models.schema import Entity
-        from sqlalchemy import select as _select
         import uuid as _uuid
+
+        from sqlalchemy import select as _select
+
+        from ..models.schema import Entity
 
         created = 0
         written_ids: list[str] = []
@@ -326,8 +332,9 @@ async def write_memory(inp: WriteMemoryInput) -> dict[str, Any]:
                         written_ids.append(name)
                     # Also create Memory row for API retrieval / knowledge graph service parity
                     try:
-                        from ..models.schema import Memory as _Memory
                         import hashlib as _hl
+
+                        from ..models.schema import Memory as _Memory
                         c_hash = _hl.sha256((name + str(etype)).encode()).hexdigest()
                         mem = _Memory(
                             type=str(etype).lower()[:50] if str(etype).lower() in ("skill","person","organization","event","preference","career","education","project","tool","language") else "document",
@@ -388,9 +395,11 @@ async def index_graph(inp: IndexGraphInput) -> dict[str, Any]:
     # Best-effort: try to ensure document has embedding (non-blocking)
     _bind_activity_scope(inp)
     try:
-        from ..models.schema import Document
-        from sqlalchemy import select as _select
         import uuid as _uuid
+
+        from sqlalchemy import select as _select
+
+        from ..models.schema import Document
 
         async with _scoped_db(ws_id_in) as db:
             doc_uuid = _uuid.UUID(doc_id_in) if len(doc_id_in) > 30 else None
@@ -603,7 +612,10 @@ async def _run_graph(payload: dict[str, Any]) -> dict[str, Any]:
     import asyncio
     import time
 
-    from .metrics import langgraph_run_completed_total, langgraph_run_duration_seconds  # type: ignore
+    from .metrics import (  # type: ignore
+        langgraph_run_completed_total,
+        langgraph_run_duration_seconds,
+    )
 
     start = time.monotonic()
     # Heartbeat task to keep Temporal alive during long graph runs
@@ -664,9 +676,9 @@ async def _run_graph(payload: dict[str, Any]) -> dict[str, Any]:
         try:
             from uuid import UUID as _UUID3
 
+            from sqlalchemy import String as _Str3
             from sqlalchemy import cast as _cast
             from sqlalchemy import select as _sel3
-            from sqlalchemy import String as _Str3
 
             from ..database import async_session_factory as _session_factory
             from ..models.schema import User as _User3
@@ -1089,7 +1101,11 @@ async def check_kill_switch(payload: dict[str, Any]) -> dict[str, Any]:
 async def record_workflow_metric(payload: dict[str, Any]) -> dict[str, Any]:
     """Record workflow completed/failed metric (called as last activity, deterministically via history)."""
     try:
-        from .metrics import _inc_workflow_completed, temporal_approval_wait_seconds, temporal_workflow_duration_seconds
+        from .metrics import (
+            _inc_workflow_completed,
+            temporal_approval_wait_seconds,
+            temporal_workflow_duration_seconds,
+        )
 
         _inc_workflow_completed(payload.get("workflow_type", "unknown"), payload.get("task_queue", "unknown"), payload.get("status", "unknown"))
         # Duration histogram if provided

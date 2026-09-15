@@ -78,7 +78,9 @@ class TestIPAllowlistMiddleware:
         assert result.headers.get("X-IP-Allowlist") == "denied"
 
     @pytest.mark.asyncio
-    async def test_uses_x_forwarded_for(self):
+    async def test_uses_x_forwarded_for(self, monkeypatch):
+        from api.config import settings
+        monkeypatch.setattr(settings, "trusted_proxies", "192.168.1.1/32")
         app = MagicMock()
         middleware = IPAllowlistMiddleware(app, allowlist_raw="10.0.0.0/8")
         request = MagicMock(spec=Request)
@@ -88,6 +90,20 @@ class TestIPAllowlistMiddleware:
         call_next = AsyncMock(return_value=Response())
         result = await middleware.dispatch(request, call_next)
         assert result.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_ignores_x_forwarded_for_from_untrusted_peer(self, monkeypatch):
+        from api.config import settings
+        monkeypatch.setattr(settings, "trusted_proxies", "")
+        app = MagicMock()
+        middleware = IPAllowlistMiddleware(app, allowlist_raw="10.0.0.0/8")
+        request = MagicMock(spec=Request)
+        request.url.path = "/api/v1/test"
+        request.headers = {"X-Forwarded-For": "10.0.0.1, 192.168.1.1"}
+        request.client.host = "192.168.1.1"
+        call_next = AsyncMock(return_value=Response())
+        result = await middleware.dispatch(request, call_next)
+        assert result.status_code == 403
 
     @pytest.mark.asyncio
     async def test_allows_all_when_no_allowlist(self):

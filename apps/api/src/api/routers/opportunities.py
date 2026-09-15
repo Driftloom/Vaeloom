@@ -7,13 +7,13 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..dependencies import get_current_user, get_workspace_id
-from ..services.opportunity_matcher import opportunity_matcher, OpportunityMatchResult
+from ..services.opportunity_matcher import opportunity_matcher
 from ..services.profile_service import ProfileService
 
 router = APIRouter()

@@ -2,6 +2,7 @@
 Agent cost tracking — tracks token usage per agent per workspace.
 Uses in-memory store with Redis-ready interface.
 """
+import asyncio
 import logging
 import time
 from collections import defaultdict
@@ -74,7 +75,12 @@ class AgentCostTracker:
     def __init__(self):
         self._records: dict[str, list[UsageRecord]] = defaultdict(list)
         self._budgets: dict[str, WorkspaceBudget] = {}
-        self._lock: object = None
+        self._lock: asyncio.Lock | None = None
+
+    def _get_lock(self) -> asyncio.Lock:
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
 
     async def track_usage(
         self,
@@ -92,8 +98,9 @@ class AgentCostTracker:
             model=model,
             timestamp=time.time(),
         )
-        key = self._store_key(workspace_id)
-        self._records[key].append(record)
+        async with self._get_lock():
+            key = self._store_key(workspace_id)
+            self._records[key].append(record)
         logger.info(
             "Tracked usage: agent=%s workspace=%s input=%d output=%d model=%s cost=%.8f",
             agent_name, workspace_id, input_tokens, output_tokens, model, record.cost,
@@ -130,8 +137,9 @@ class AgentCostTracker:
         return f"usage:{workspace_id}"
 
     async def reset(self) -> None:
-        self._records.clear()
-        self._budgets.clear()
+        async with self._get_lock():
+            self._records.clear()
+            self._budgets.clear()
 
     # ── Spend budgets (Wave 1, 2026-09-06) ──────────────────────────
     # In-memory budget store, same Redis-ready pattern as usage records.
@@ -145,7 +153,8 @@ class AgentCostTracker:
         budget = WorkspaceBudget(
             workspace_id=workspace_id, limit_usd=limit_usd, period_seconds=period_seconds
         )
-        self._budgets[self._budget_key(workspace_id)] = budget
+        async with self._get_lock():
+            self._budgets[self._budget_key(workspace_id)] = budget
         logger.info("Set spend budget: workspace=%s limit_usd=%.4f period_s=%d", workspace_id, limit_usd, period_seconds)
         return budget
 
@@ -153,7 +162,8 @@ class AgentCostTracker:
         return self._budgets.get(self._budget_key(workspace_id))
 
     async def clear_budget(self, workspace_id: str) -> bool:
-        return self._budgets.pop(self._budget_key(workspace_id), None) is not None
+        async with self._get_lock():
+            return self._budgets.pop(self._budget_key(workspace_id), None) is not None
 
     def _budget_key(self, workspace_id: str) -> str:
         return f"budget:{workspace_id}"
@@ -176,21 +186,22 @@ class AgentCostTracker:
 
     async def check_budget(self, workspace_id: str) -> dict:
         """Return {allowed, spent_usd, limit_usd, remaining_usd}. No limit → allowed."""
-        limit = await self.effective_limit_usd(workspace_id)
-        if limit <= 0:
-            return {"allowed": True, "spent_usd": 0.0, "limit_usd": 0.0, "remaining_usd": None}
-        budget = await self.get_budget(workspace_id)
-        period = budget.period_seconds if budget else 86400
-        spent = await self._spent_in_period(workspace_id, period)
-        allowed = spent < limit
-        if not allowed:
-            logger.warning("Spend budget exceeded: workspace=%s spent=%.6f limit=%.4f", workspace_id, spent, limit)
-        return {
-            "allowed": allowed,
-            "spent_usd": spent,
-            "limit_usd": limit,
-            "remaining_usd": round(max(limit - spent, 0.0), 8),
-        }
+        async with self._get_lock():
+            limit = await self.effective_limit_usd(workspace_id)
+            if limit <= 0:
+                return {"allowed": True, "spent_usd": 0.0, "limit_usd": 0.0, "remaining_usd": None}
+            budget = await self.get_budget(workspace_id)
+            period = budget.period_seconds if budget else 86400
+            spent = await self._spent_in_period(workspace_id, period)
+            allowed = spent < limit
+            if not allowed:
+                logger.warning("Spend budget exceeded: workspace=%s spent=%.6f limit=%.4f", workspace_id, spent, limit)
+            return {
+                "allowed": allowed,
+                "spent_usd": spent,
+                "limit_usd": limit,
+                "remaining_usd": round(max(limit - spent, 0.0), 8),
+            }
 
 
 agent_cost_tracker = AgentCostTracker()

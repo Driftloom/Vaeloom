@@ -6,7 +6,11 @@ from typing import Any
 
 # Reuse existing deterministic classifiers — do not copy logic
 try:
-    from ..orchestrator.router import AGENT_REGISTRY, classify_intent, CATEGORY_KEYWORDS  # type: ignore
+    from ..orchestrator.router import (  # type: ignore
+        AGENT_REGISTRY,
+        CATEGORY_KEYWORDS,
+        classify_intent,
+    )
 except Exception:  # pragma: no cover
     AGENT_REGISTRY = {}  # type: ignore
     CATEGORY_KEYWORDS = {}  # type: ignore
@@ -64,8 +68,8 @@ async def route_classify_structured(task: str) -> dict[str, Any]:
     # Policy filtering already includes MVP scope in orchestrator; replicate minimal filter for graph path
     policy_filtered: list[str] = []
     try:
-        from ..orchestrator.router import MVP_CANONICAL_AGENTS  # type: ignore
         from ..config import settings as _s  # type: ignore
+        from ..orchestrator.router import MVP_CANONICAL_AGENTS  # type: ignore
 
         if _s.mvp_scope_enforced and agent not in MVP_CANONICAL_AGENTS:
             policy_filtered = [agent]

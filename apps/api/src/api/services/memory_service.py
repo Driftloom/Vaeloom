@@ -83,10 +83,10 @@ class MemoryService:
         )
         # Set additive columns if present (SQLAlchemy will ignore on SQLite if missing)
         try:
-            setattr(memory, "taxonomy_version", taxonomy_version)
-            setattr(memory, "lineage", lineage)
-            setattr(memory, "confidence", 1.0)
-            setattr(memory, "contradiction_flags", [])
+            memory.taxonomy_version = taxonomy_version
+            memory.lineage = lineage
+            memory.confidence = 1.0
+            memory.contradiction_flags = []
         except Exception:
             pass
         if dto.supersedes_id:
@@ -96,7 +96,11 @@ class MemoryService:
         await db.refresh(memory)
         if embedding and not os.environ.get("PYTEST_CURRENT_TEST"):
             try:
-                from ..infrastructure.vector_store import QdrantStore, VectorRecord, get_vector_store
+                from ..infrastructure.vector_store import (
+                    QdrantStore,
+                    VectorRecord,
+                    get_vector_store,
+                )
                 vstore = get_vector_store()
                 if isinstance(vstore, QdrantStore):
                     await vstore.upsert([

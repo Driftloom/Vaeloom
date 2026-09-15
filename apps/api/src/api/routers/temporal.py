@@ -7,7 +7,7 @@ re-check workspace authorization at call time (§14).
 
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
@@ -82,9 +82,11 @@ async def _verify_workflow_workspace_access(workflow_id: str, current_user: dict
         # No global bypass — every user-owned workflow must have valid workspace UUID
         if candidate in ("global", "ws", "workspace"):
             raise HTTPException(status_code=404, detail="Workflow not found")
-        from sqlalchemy import select as _sel
-        from ..models.schema import Workspace, WorkspaceUser
         from uuid import UUID as _UUID
+
+        from sqlalchemy import select as _sel
+
+        from ..models.schema import Workspace, WorkspaceUser
 
         try:
             ws_uuid = _UUID(candidate)
@@ -245,9 +247,11 @@ async def start_ingest_workflow(
     # Minimal authorization: caller must have workspace access (reuse documents rule).
     # T-P1-04: fail CLOSED — malformed IDs → 400, unreadable authz → 503.
     try:
-        from sqlalchemy import select
-        from ..models.schema import Workspace
         from uuid import UUID
+
+        from sqlalchemy import select
+
+        from ..models.schema import Workspace
 
         try:
             wid, uid = UUID(workspace_id), UUID(current_user.get("sub") or current_user.get("user_id"))
@@ -329,9 +333,11 @@ async def start_connector_sync(
         r = await db.execute(_text("SELECT id FROM connectors WHERE id=:id AND workspace_id=:ws"), {"id": connector_id, "ws": workspace_id})
         if not r.first():
             # Also allow connectors scoped by tenant workspace fallback — check workspace access
-            from sqlalchemy import select as _sel
-            from ..models.schema import Workspace, WorkspaceUser
             from uuid import UUID as _UUID
+
+            from sqlalchemy import select as _sel
+
+            from ..models.schema import Workspace, WorkspaceUser
 
             try:
                 ws_uuid, uid = _UUID(workspace_id), _UUID(str(current_user.get("sub") or current_user.get("user_id")))
@@ -356,9 +362,9 @@ async def start_connector_sync(
         raise HTTPException(status_code=400, detail=str(ve))
     workflow_id = f"connector_sync:{workspace_id}:{connector_id}:{sync_token}"
     try:
+        from ..temporal.activities import SyncConnectorInput
         from ..temporal.client import get_temporal_client
         from ..temporal.queues import queue_name
-        from ..temporal.activities import SyncConnectorInput
 
         client = await get_temporal_client()
         if client is None:
@@ -416,9 +422,11 @@ async def start_durable_agent(
         raise HTTPException(status_code=400, detail="workspace_id required")
     # Workspace auth — T-P1-04: fail CLOSED (400 malformed, 503 unreadable).
     try:
-        from sqlalchemy import select as _sel2
-        from ..models.schema import Workspace, WorkspaceUser
         from uuid import UUID as _UUID2
+
+        from sqlalchemy import select as _sel2
+
+        from ..models.schema import Workspace, WorkspaceUser
 
         try:
             ws_uuid, uid = _UUID2(workspace_id), _UUID2(str(current_user.get("sub") or current_user.get("user_id")))

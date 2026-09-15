@@ -110,7 +110,7 @@ class ExecutionEnvelope:
     correlation_id: str = ""
     event_depth: int = 0
 
-    def child(self, agent_id: str, budget_share: float = 0.4) -> "ExecutionEnvelope":
+    def child(self, agent_id: str, budget_share: float = 0.4) -> ExecutionEnvelope:
         """Spawn a bounded child envelope — the child can never exceed its
         share of the parent's *remaining* budget (budget propagation, §21)."""
         remaining = max(0.0, self.budget_usd - self.spent_usd)
