@@ -1,10 +1,6 @@
 # Agentic Scale-Safety Closure — Plan (2026-09-06)
 
-> **Status:** WAVES 0+1+2 EXECUTED 2026-09-06 — Wave 2 GATE: GO (evidence:
-> `docs/phases/agentic-safety-w2/01-wave-report.md`; 54/54 new + full regression
-> green; 1 pre-existing slack env failure proven pristine). Tier-1 bypass rate
-> 0/18. Next: Wave 3 on user command — RECONCILE with parallel session's
-> `orchestrator/state_store.py` first. **Scope:** Agentic safety ceilings ONLY
+> **Status:** WAVES 0-5 EXECUTED 2026-09-15 — Wave 3 GATE: GO (`agentic-safety-w3`), Wave 4 GATE: GO (`agentic-safety-w4`), Wave 5 GATE: GO (`agentic-safety-w5` with residual: cards code-defined, not DB-versioned). W1/W2 remain GO. All evidence tracked at HEAD `bb732402`. Pre-landed code in `f82a4057` reconciled and gated here (parallel session's `state_store/context_budget/card` work verified, no conflicts). **Scope:** Agentic safety ceilings ONLY
 > (spend, loop budgets, evals, state, context, prompts) — no agent rewrites, no
 > substrate migration **Repo:** Vaeloom `master` @ current HEAD **Governing
 > contracts:** `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/`
