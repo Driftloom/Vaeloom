@@ -50,6 +50,9 @@ build/
 *.swp
 *.swo
 *.code-workspace
+*.sublime-project
+*.sublime-workspace
+.history/
 
 # OS
 .DS_Store
@@ -83,6 +86,8 @@ logs/
 *.pid
 npm-debug.log*
 pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Testing
 coverage/
