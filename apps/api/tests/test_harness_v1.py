@@ -233,3 +233,81 @@ def test_idempotency_key_deterministic():
     k2 = idempotency_key("exec1", "send", {"to": "a@b.c"})
     k3 = idempotency_key("exec1", "send", {"to": "other@b.c"})
     assert k1 == k2 and k1 != k3
+
+
+# -- Hot-path wiring (agent_service) --------------------------------------
+def test_check_agent_tool_contract_unknown_passthrough():
+    from api.services.agent_service import check_agent_tool_contract
+    assert check_agent_tool_contract("SomeCustomUserAgent", ["any_tool"]) is None
+    assert check_agent_tool_contract("retrieval", ["search_all", "kg_traverse"]) is not None
+
+
+def test_check_agent_tool_contract_known_denied():
+    import pytest as _pytest
+
+    from api.services.agent_service import check_agent_tool_contract
+    with _pytest.raises(ValueError, match="Contract denied"):
+        check_agent_tool_contract("gmail", ["gmail_send"])
+    with _pytest.raises(ValueError, match="Contract denied"):
+        check_agent_tool_contract("gmail", [{"name": "gmail_send"}])
+
+
+def test_check_agent_tool_contract_dict_names():
+    from api.services.agent_service import check_agent_tool_contract
+    assert check_agent_tool_contract("retrieval", [{"name": "search_all"}]) is not None
+
+
+def test_execute_agent_emits_prompt_manifest():
+    import asyncio as _aio
+    from unittest.mock import AsyncMock, MagicMock, patch as _patch
+
+    from api.services.agent_service import AgentService
+
+    agent = MagicMock()
+    agent.id = "00000000-0000-0000-0000-000000000001"
+    agent.name = "TestAgentCustomXyz"
+    agent.status = "active"
+    agent.config = {"system_prompt": "Be helpful."}
+    agent.workspace_id = None
+    dto = MagicMock()
+    dto.input = {"text": "hello"}
+    llm_return = {"content": "Hi", "finish_reason": "stop", "tool_calls": [], "usage": {}}
+    svc = AgentService()
+    mock_db = AsyncMock()
+
+    async def _run():
+        with _patch.object(svc, "get_agent", new=AsyncMock(return_value=agent)):
+            with _patch("api.services.agent_service.llm_service") as mock_llm:
+                mock_llm.generate_completion = AsyncMock(return_value=llm_return)
+                return await svc.execute_agent(mock_db, agent.id, dto, None, None)
+
+    result = _aio.run(_run())
+    assert result.status == "completed"
+    assert result.output["prompt_manifest"]["compiler_version"] == "v1.0.0"
+    assert result.output["prompt_manifest"]["agent_name"] == "TestAgentCustomXyz"
+
+
+def test_execute_agent_contract_denial_fails_closed():
+    import asyncio as _aio
+    from unittest.mock import AsyncMock, MagicMock, patch as _patch
+
+    from api.services.agent_service import AgentService
+
+    agent = MagicMock()
+    agent.id = "00000000-0000-0000-0000-000000000002"
+    agent.name = "gmail"
+    agent.status = "active"
+    agent.config = {"system_prompt": "gmail", "tools": ["gmail_send"]}
+    agent.workspace_id = None
+    dto = MagicMock()
+    dto.input = {"text": "send it"}
+    svc = AgentService()
+    mock_db = AsyncMock()
+
+    async def _run():
+        with _patch.object(svc, "get_agent", new=AsyncMock(return_value=agent)):
+            return await svc.execute_agent(mock_db, agent.id, dto, None, None)
+
+    result = _aio.run(_run())
+    assert result.status == "failed"
+    assert "Contract denied" in (result.error or "")

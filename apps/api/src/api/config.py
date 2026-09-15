@@ -11,10 +11,12 @@ try:
     if root_env.exists():
         load_dotenv(root_env, override=False)
 
-    # 2. Prioritize apps/api/.env (overriding root defaults with API cloud credentials)
+    # 2. Prioritize apps/api/.env as fallback defaults (never override explicit
+    # environment: explicit env must always win over checked-in files, otherwise
+    # local/test commands silently talk to production — see zero-trust audit.)
     for api_env in [Path("apps/api/.env"), Path(__file__).resolve().parent.parent.parent / ".env"]:
         if api_env.exists():
-            load_dotenv(api_env, override=True)
+            load_dotenv(api_env, override=False)
 except Exception:
     pass
 

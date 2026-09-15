@@ -67,12 +67,16 @@ allowed/forbidden tools (MCP `mcp__*` deny-by-default), memory read/write
 scopes, autonomy (OBSERVE..AUTO), risk class, approval list, LoopPolicy,
 model/timeout/budget, version/status lifecycle. `AgentRegistry` (8 seeded
 contracts; gmail forbids `gmail_send`, scheduler/github APPROVAL_REQUIRED)
-rejects unknown/DEPRECATED agents. `LoopController` enforces max
+rejects unknown/DEPRECATED agents. Wiring (all live):
+`agent_service.execute_agent` resolves the registry contract fail-closed for
+known agents, compiles prompts via PromptCompiler, and stores the prompt
+manifest on the execution row (`check_agent_tool_contract` — unknown user agents
+pass through); `orchestrator/loop.py` ReAct path checks the runtime contract
+pre-dispatch; `orchestrator/supervisor.py` bounds fan-out with LoopController
+(delegation cycles, 2x respawn cap). `LoopController` enforces max
 iterations/tool-calls/sub-agents/tokens/cost/duration, 3x duplicate-action loop
 guard, A→B→A delegation-cycle detection, and `ExecutionEnvelope.child()`
-propagates only a share of _remaining_ budget to sub-agents. PARTIAL: hot-path
-`agent_service.execute_agent` (system_prompt+tools) and `orchestrator/loop.py`
-5-phase loop do not yet resolve contracts — tracked as next wiring step.
+propagates only a share of _remaining_ budget to sub-agents.
 
 ## 6. Inference + tool trust (IMPLEMENTED as additive policy)
 
@@ -85,13 +89,13 @@ READ..DESTRUCTIVE (unknown MCP → ACT). `sanitize_tool_output()` quarantines,
 
 ## 7. What remains (honest labels)
 
-| Area                                                                       | Status                        | Next                                                                                            |
-| -------------------------------------------------------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------- |
-| Wire contracts into `agent_service.execute_agent` + `orchestrator/loop.py` | PLANNED                       | resolve contract, `check_tool` pre-dispatch, contract→PromptLayers                              |
-| True hybrid BM25+RRF+rerank on hot path                                    | PARTIAL                       | retrieval.py is hybrid-lite; planner ready, ranker exists but uncalled                          |
-| Prompt caching, per-phase OTel spans                                       | NOT IMPLEMENTED               | needs infra change, not policy                                                                  |
-| Reflection/consolidation cron (learning closes the loop)                   | DESIGNED, NOT OPERATIONALIZED | schedule ReflectionAgent; eval_harness is mock-scored                                           |
-| Durable checkpoints cross-process                                          | PARTIAL                       | LoopState is file-local; Temporal owns durability when enabled (`temporal_enabled=False` today) |
+| Area                                                                       | Status                  | Next                                                                                                                                                                                        |
+| -------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Wire contracts into `agent_service.execute_agent` + `orchestrator/loop.py` | IMPLEMENTED             | contract gate + prompt compiler + manifest live in `execute_agent`; ReAct + supervisor paths already bound                                                                                  |
+| True hybrid BM25+RRF+rerank on hot path                                    | PARTIAL (deliberate)    | `rerank_with_llm` exists but uncalled — per-call LLM rerank costs latency+budget on every turn; planner + rank/filter policy compensates until a cached-rerank design lands                 |
+| Prompt caching, per-phase OTel spans                                       | NOT IMPLEMENTED         | needs infra change, not policy                                                                                                                                                              |
+| Reflection/consolidation cron (learning closes the loop)                   | IMPLEMENTED (scheduler) | `reflection_scan_wrapper` registered as 03:00 UTC daily watcher in `background_daemon.WATCHER_REGISTRY`; consolidation itself is LLM-key-gated best-effort, preference harvest runs offline |
+| Durable checkpoints cross-process                                          | PARTIAL                 | LoopState is file-local; Temporal owns durability when enabled (`temporal_enabled=False` default — needs a server, not just code)                                                           |
 
 ## 8. Zero-trust answers
 
