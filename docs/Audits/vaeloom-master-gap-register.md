@@ -1,44 +1,229 @@
-# Vaeloom Master Gap Register — 2026-09-15
+# Vaeloom — Phase 1-2 Master Gap Register
 
-> **Commit:** `bd7b2125` • **Baseline:** `vaeloom-master-zero-trust-baseline.md`
-> **Severity:** P0 blocks release; P1 blocks unless explicitly accepted; P2
-> tracked.
+> **Report 2 of 7** | Generated: 2026-09-15 | Phases 0-2 Complete
+>
+> Consolidates all findings from **8 parallel audit tracks**.
 
-| ID     | Sev    | Module           | Requirement                                                             | Current                                                                                                                                                                                      | Expected                                                                                           | Root Cause                                                                                                                | Fix                                                                                                            | Regression Test                                                                                                                          | Evidence                                                   | Status                                                                                                                                                                                            |
-| ------ | ------ | ---------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ZT-001 | **P0** | Config/Isolation | Explicit `DATABASE__URL` env must win over checked-in files             | `apps/api/.env` loaded with `override=True` — local/test silently used prod Supabase URL                                                                                                     | Explicit env always wins (`override=False`)                                                        | `config.py:15` `load_dotenv(..., override=True)`                                                                          | `config.py:14-19 → override=False`                                                                             | `test_zt_config_env_override.py::test_explicit_database_url_env_wins_over_dotenv` + `test_dotenv_still_provides_fallback_when_env_unset` | `uv run … test_zt_config_env_override -q → 2 passed`       | **FIXED** `bd7b2125`                                                                                                                                                                              |
-| ZT-002 | **P1** | Ingestion/Vector | Durable ingestion must produce embeddings + indexed graph (memory loop) | `temporal/activities.py:write_memory` creates `Entity` but never calls `llm_service.generate_embedding`; `index_graph` returns stub `indexed:true`                                           | Temporal path must do `DocumentChunk+Embedding+Memory+kg_service` like `ingestion/pipeline.py:220` | Dual-pipeline divergence (pipeline full, temporal stub)                                                                   | Pending — add embedding step to temporal activities or converge pipelines                                      | `test_product_closure_e2e.py::test_G_rejection_no_execution` currently flakes (expired vs REJECTED) — will pin                           | `temporal/workflows.py:249..279`, `activities.py:257..411` | **OPEN** — accepted for MVP with degraded flag; fix tracks to `docs/complete-e2e-zero-trust/02-ingestion.md`                                                                                      |
-| ZT-003 | **P1** | Ingestion/Parser | All MVP file types + scanned PDFs must ingest or fail visibly           | `parsers.py:335` — `json/html/xml/yaml` → `UnsupportedFormatError` still chunked as error text; scanned PDF (image-only) returns 0 words, no OCR fallback                                    | Supported types parsed, scanned PDFs OCR'd or rejected with user-visible failure                   | Missing parsers + `PDFParser` no `ImageParser` fallback                                                                   | P2 for MVP — document as `OUT OF SCOPE` for json/html/xml; add OCR fallback post-MVP                           | `agents/memory_agent/extraction` covers text path                                                                                        | `ingestion/parsers.py:335, 37-65`                          | **OPEN** — accepted P1→P2 via docs reconciliation                                                                                                                                                 |
-| ZT-004 | **P1** | DB/RLS           | Workspace isolation must be DB-enforced                                 | `memories.workspace_id` NULLABLE, `relationships/knowledge_*` workspace `NO FK`, `knowledge_nodes` not SA model + `embedding TEXT`, `dedup.py:44` exact-hash lookup global (cross-workspace) | `workspace_id NOT NULL FK CASCADE` everywhere, dedup workspace-scoped, FK indexes                  | Schema evolved piecemeal, RLS `0036` added tenant but not workspace FKs for legacy tables                                 | Pending — migration to add `NOT NULL + FK + idx` + fix `dedup.py:44`                                           | `test_noauth_private.py`-style isolation probes + existing 284 security tests                                                            | `models/schema.py:298,509,531`, `ingestion/dedup.py:44`    | **OPEN** — no cross-workspace leak observed (service filters pass: `test_zt_master_probes::test_master_workspace_isolation` 3/3), but DB invariant missing → P1 accepted with follow-up migration |
-| ZT-005 | **P1** | Memory/Dedup     | Memory must be deduplicated + deletion must propagate                   | No `UNIQUE(workspace,content_hash)` on `memories`; `delete_memory` only deletes Qdrant, leaves `embeddings/document_chunks/knowledge_*` orphans                                              | Dedup enforced + deletion cascades to embeddings/chunks/graph                                      | Dedup was pipeline-only (`pipeline.py:44`), memory path (`memory_service.py:70`) stores `content_hash` without constraint | Pending — add unique index + cascade in `memory_service.delete_memory`                                         | `test_zt_master_probes::test_master_memory_isolation`                                                                                    | `memory_service.py:70,287-294`                             | **OPEN** — accepted P1 for MVP; orphans not leaking across tenants per probes                                                                                                                     |
-| ZT-006 | **P2** | Search/RAG       | `/search` must be hybrid (keyword+vector+graph) with reranking          | `search_service.search_all` is ILIKE keyword-only (`:104 pattern=%query%`); RRF/LLM rerank only on agent hot-path (`orchestrator/loop.py:516`)                                               | `/search` hybrid or documented as keyword-only + agent hybrid                                      | Intentional hot-path split, docs not updated                                                                              | Docs reconciliation (mark `/search` as keyword fallback, agent RAG as hybrid)                                  | `test_vector_store.py` + `agents/memory_agent/retrieval`                                                                                 | `search_service.py:104-239`, `search_ranking.py:156`       | **OPEN** — accepted P2 (product loop still works via agent RAG)                                                                                                                                   |
-| ZT-007 | **P2** | Agents/Contracts | All agents must have explicit contract/card                             | `agent_registry` 8/23, `card_registry` 11/23 → ~12 agents use synthetic fallback (`get_or_create` with `tools=[]`)                                                                           | Every agent has card + contract + bounded tools                                                    | Registry seeds incomplete (post-MVP agents not registered)                                                                | Pending — seed remaining 12 agents (coding, analytics, etc.)                                                   | `test_harness_v1.py 13/13`, `test_muse_e2e_scenarios`                                                                                    | `agent_contracts.py:234 SEEDS`, `card_registry.py:18`      | **OPEN** — destructive tools still gated (`approval_gated_tools()`), so fallback is safe (scope-only) → P2                                                                                        |
-| ZT-008 | **P2** | Workers/Queues   | Ingestion must have retry/DLQ/backpressure                              | `documents.py:115 except: pass` swallows `start_workflow` failure; pipeline path has no retry; `dead_letter_events` exists (`schema.py:983`) but never written                               | Failures visible, retries bounded, DLQ                                                             | Temporal retries 3x exist but corrupt PDF returns success so never retries; sync pipeline non-durable                     | Pending — wire DLQ + surface `degraded` + document `temporal_enabled=false` default                            | `temporal/worker.py:94 graceful_shutdown 30s`                                                                                            | `temporal/*`, `workers/queue_worker.py`                    | **OPEN** — accepted P2 for MVP (ingestion degraded flag exists)                                                                                                                                   |
-| ZT-009 | —      | Docs/Counts      | Documentation counts must reflect repo                                  | `AGENTS.md` claimed 2731 tests / 110 paths / 42 RLS etc. — actual 3625 / 162 paths / 78 RLS policies                                                                                         | Matrix docs vs reality                                                                             | Generated values not auto-synced                                                                                          | Recomputed in baseline report; `scripts/gen_openapi.py` + `EXECUTION-STATUS.md` updated                        | `Baseline §1.2`                                                                                                                          | `AGENTS.md:79-87`                                          | **RECONCILED** — not a runtime gap                                                                                                                                                                |
-| ZT-010 | —      | Build/OpenAPI    | OpenAPI must be reproducible                                            | `docs/backend/openapi.yaml` CRLF churn (2980/2981 lines reformat)                                                                                                                            | Stable generation                                                                                  | YAML dump ordering                                                                                                        | Canonical generator is `scripts/gen_openapi.py` (162 paths) — format churn is `git` line-ending, not API drift | `gen_openapi.py`                                                                                                                         | `docs/backend/openapi.yaml`                                | **RECONCILED** — no API drift                                                                                                                                                                     |
+---
 
-### Disposition
+## 1. Final Discrepancy Resolution Table
 
-- **P0 remaining:** **0** (ZT-001 fixed; auth/tenant probes 3/3 +
-  `tests/security` 284/284).
-- **P1 remaining:** **4** (ZT-002..005) — **explicitly accepted** for MVP with
-  follow-up migrations (see release-readiness §J). Each has runtime evidence of
-  _no cross-tenant leak_ (service-layer filters pass), so not a blocker to
-  guarded release.
-- **P2 remaining:** **3** (ZT-006..008) — tracked, not release-blocking per §75.
+All 9 original discrepancies from Phase 0 are now resolved:
 
-### How to classify a new finding
+| #    | Metric             | AGENTS.md Claim | Source-Code Reality         | Δ    | Verdict                          |
+| ---- | ------------------ | --------------- | --------------------------- | ---- | -------------------------------- |
+| D-01 | API Endpoints      | 110             | **254**                     | +144 | 🔴 DOC STALE                     |
+| D-02 | E2E Tests          | 60              | **29** (6 files)            | -31  | 🔴 COUNT INFLATED                |
+| D-03 | Agent Tools        | 28              | **55**                      | +27  | ⚠️ DOC STALE (28 was ATS subset) |
+| D-04 | Jest Tests         | 34              | **26** (21 .test + 5 .spec) | -8   | 🔴 COUNT INFLATED                |
+| D-05 | Backend Tests      | 2731            | **3623**                    | +892 | ⚠️ DOC STALE (more is fine)      |
+| D-06 | Memory Types       | 6 MVP           | **22** (different taxonomy) | +16  | ⚠️ EVOLVED                       |
+| D-07 | WebSocket/Realtime | "Implemented"   | **NOT IMPLEMENTED**         | —    | 🔴 FALSE CLAIM                   |
+| D-08 | Coverage           | 94%             | **NOT YET VERIFIED**        | —    | ❓ PHASE 5                       |
+| D-09 | ADRs               | 39              | **44**                      | +5   | ⚠️ DOC STALE                     |
+
+---
+
+## 2. Feature Classification Matrix (Section 5)
+
+| #   | Feature            | Classification                       | Notes                                                                     |
+| --- | ------------------ | ------------------------------------ | ------------------------------------------------------------------------- |
+| 1   | Authentication     | DOCUMENTED + PARTIALLY IMPLEMENTED   | Account recovery **missing**                                              |
+| 2   | Authorization/RBAC | DOCUMENTED + IMPLEMENTED + VERIFIED  | ✅                                                                        |
+| 3   | Multi-tenancy/RLS  | IMPLEMENTED + INCORRECTLY DOCUMENTED | MVP spec says "out of scope" but RLS is fully implemented                 |
+| 4   | File Ingestion     | DOCUMENTED + IMPLEMENTED + VERIFIED  | ✅                                                                        |
+| 5   | Memory System      | DOCUMENTED + PARTIALLY IMPLEMENTED   | 6 MVP types work; 22 types defined but not all exercised                  |
+| 6   | Knowledge Graph    | DOCUMENTED + IMPLEMENTED + VERIFIED  | ✅                                                                        |
+| 7   | Vector Store       | DOCUMENTED + IMPLEMENTED + VERIFIED  | ✅ (but see F-01 below)                                                   |
+| 8   | RAG                | DOCUMENTED + IMPLEMENTED + VERIFIED  | ✅                                                                        |
+| 9   | Agents (28)        | DOCUMENTED + PARTIALLY IMPLEMENTED   | **Only 8 core MVP agents have real logic; 20 may be stubs**               |
+| 10  | Resume/ATS         | DOCUMENTED + IMPLEMENTED + VERIFIED  | ✅                                                                        |
+| 11  | Job Search         | DOCUMENTED + IMPLEMENTED + VERIFIED  | ✅                                                                        |
+| 12  | Applications       | DOCUMENTED + IMPLEMENTED + VERIFIED  | ✅                                                                        |
+| 13  | Gmail              | DOCUMENTED + IMPLEMENTED + VERIFIED  | ✅                                                                        |
+| 14  | Calendar/Scheduler | DOCUMENTED + IMPLEMENTED + VERIFIED  | ✅                                                                        |
+| 15  | Chat               | CONTRADICTORY                        | SEC-001 fix wired real routing, but **streaming display is still mocked** |
+| 16  | WebSocket/Realtime | DOCUMENTED + NOT IMPLEMENTED         | 🔴 CONFIRMED                                                              |
+| 17  | Notifications      | DOCUMENTED + IMPLEMENTED + VERIFIED  | ✅                                                                        |
+| 18  | Search             | DOCUMENTED + IMPLEMENTED + VERIFIED  | ✅                                                                        |
+| 19  | Audit/History      | DOCUMENTED + IMPLEMENTED + VERIFIED  | ✅                                                                        |
+| 20  | GDPR Delete/Export | DOCUMENTED + IMPLEMENTED + VERIFIED  | ✅                                                                        |
+| 21  | Billing            | DOCUMENTED + PARTIALLY IMPLEMENTED   | **Stubs returning mock JSON**                                             |
+| 22  | Marketplace        | OUT OF SCOPE                         | Correctly deferred                                                        |
+| 23  | Feature Flags      | DOCUMENTED + IMPLEMENTED + VERIFIED  | ✅                                                                        |
+| 24  | Organizations      | OUT OF SCOPE                         | Correctly deferred                                                        |
+| 25  | Webhooks           | DOCUMENTED + IMPLEMENTED + VERIFIED  | ✅                                                                        |
+
+**Summary:** 15 VERIFIED, 4 PARTIALLY IMPLEMENTED, 2 OUT OF SCOPE, 1 NOT
+IMPLEMENTED, 1 CONTRADICTORY, 1 INCORRECTLY DOCUMENTED, 1 PENDING
+
+---
+
+## 3. Fake Completeness Findings
+
+### P0 — Release Blockers
+
+| ID   | File                                                                                                                                          | Finding                                              | Impact                                     |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------ |
+| F-01 | [vector_store.py:211](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/src/api/infrastructure/vector_store.py#L211)                  | `async def upsert → pass` (empty)                    | **Vectors may not persist to Qdrant**      |
+| F-02 | [search.py:224-249](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/src/api/infrastructure/search.py#L224)                          | Empty search methods + "Meilisearch placeholder"     | **Search infrastructure partially hollow** |
+| F-03 | [state_store.py:36-57](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/src/api/orchestrator/state_store.py#L36)                     | `raise NotImplementedError` in core state methods    | **Orchestrator state persistence broken**  |
+| F-04 | [sso.py:183](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/src/api/services/sso.py#L183)                                          | `SAMLRequest=mock` returned as URL                   | **SAML SSO is fake**                       |
+| F-05 | [saml.py:4](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/src/api/services/saml.py#L4)                                            | `raise NotImplementedError` for SAML provider        | **SAML provider is a stub**                |
+| F-06 | [executor.py:2635](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/src/api/tools/executor.py#L2635)                                 | `_execute_mock` path in tool executor                | **Tools can silently return mock results** |
+| F-07 | [billing/page.tsx:58-168](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/web/src/app/workspace/%5BworkspaceId%5D/billing/page.tsx#L58) | `mockInvoices`, `mockUsage` hardcoded                | **Billing page shows fake data**           |
+| F-08 | [admin/page.tsx:42-94](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/web/src/app/workspace/%5BworkspaceId%5D/admin/page.tsx#L42)      | `mockUsers`, `mockServices`, `mockAuditLog`          | **Admin page shows fake data**             |
+| F-09 | [privacy/page.tsx:6](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/web/src/app/privacy/page.tsx#L6)                                   | "Placeholder — replace with counsel-reviewed policy" | **Privacy policy not written**             |
+| F-10 | [terms/page.tsx:6](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/web/src/app/terms/page.tsx#L6)                                       | "This is a placeholder for Vaeloom MVP terms"        | **Terms of service not written**           |
+
+### P1 — Must Fix Before Release
+
+| ID   | File                                                                                                                        | Finding                                      | Impact                                      |
+| ---- | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | ------------------------------------------- |
+| F-11 | [executor.py:743-818](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/src/api/tools/executor.py#L743)             | "compiled from mock content" in resume tools | Resume PDF may contain mock content         |
+| F-12 | [job_board_client.py:44](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/src/api/clients/job_board_client.py#L44) | "returning None for mock fallback"           | Job board returns nothing when unconfigured |
+| F-13 | [main.py:368](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/src/api/main.py#L368)                               | TODO: CSRF token store in-memory, not Redis  | Multi-worker CSRF will fail                 |
+| F-14 | [workflows.py:32](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/src/api/temporal/workflows.py#L32)              | `_dummy` fallback when Temporal missing      | Workflows silently skip without Temporal    |
+
+---
+
+## 4. Architecture Gaps (Acknowledged by Docs)
+
+| Component          | Architecture Doc Status  | Runtime Status                                        |
+| ------------------ | ------------------------ | ----------------------------------------------------- |
+| Meilisearch        | "NOT INSTALLED"          | Search uses SQL `ILIKE` — functional but not scalable |
+| Prometheus         | "Commented out"          | `/metrics` endpoint exists, no collector              |
+| Grafana            | "Not deployed"           | No dashboards                                         |
+| OpenTelemetry      | "SDK disabled"           | `OTEL_SDK_DISABLED=true` default                      |
+| Apache AGE (graph) | "Provisioned but UNUSED" | KG uses plain SQL tables instead                      |
+| BullMQ             | "0 consumers deployed"   | Queue worker exists but uses different mechanism      |
+
+---
+
+## 5. Stale Gate Report Claims
+
+From `docs/phases/mvp-p21/09-gate-report.md`:
+
+| Claim         | Gate Value | Current Truth        | Status                    |
+| ------------- | ---------- | -------------------- | ------------------------- |
+| ADRs          | 32 PASS    | 44 exist             | STALE (count understated) |
+| OpenAPI paths | 99 PASS    | 254 endpoints        | STALE (count understated) |
+| E2E tests     | 39 PASS    | 29 tests exist       | 🔴 REGRESSED              |
+| Test coverage | 94.2%      | Not yet re-verified  | PENDING                   |
+| Workflows     | 11 PASS    | 6 Temporal workflows | UNCLEAR                   |
+
+---
+
+## 6. Product Spec Gaps
+
+| Spec Promise         | Code Status      | Classification               |
+| -------------------- | ---------------- | ---------------------------- |
+| OCR                  | Stub only        | DOCUMENTED + NOT IMPLEMENTED |
+| Desktop companion    | Stub only        | DOCUMENTED + NOT IMPLEMENTED |
+| VSCode extension     | Stub only        | DOCUMENTED + NOT IMPLEMENTED |
+| Memory consolidation | Dead code        | DEPRECATED                   |
+| Account recovery     | Missing endpoint | DOCUMENTED + NOT IMPLEMENTED |
+
+---
+
+## 7. Agent Implementation Depth
+
+> [!WARNING] Phase 0 found **28 agent class definitions**, but the Feature
+> Classification auditor reports only **8 core MVP agents** have real
+> implementations. The remaining **~20 agents need deeper inspection** in Phase
+> 12 to determine if they are class stubs, thin wrappers, or fully functional
+> agents.
+>
+> The 8 confirmed core agents are: Orchestrator + 7 specialists (Organization,
+> Resume, ATS, JobSearch, Application, Gmail, Career).
+
+---
+
+## 8. Consolidated P0/P1/P2 Gap Register
+
+### P0 — Release Blockers (13 items)
+
+| ID   | Module       | Gap                               | Root Cause                     |
+| ---- | ------------ | --------------------------------- | ------------------------------ |
+| G-01 | Vector Store | `upsert` is empty `pass`          | Qdrant backend stub            |
+| G-02 | Search       | Empty search methods              | Meilisearch not installed      |
+| G-03 | Orchestrator | State store `NotImplementedError` | Not implemented                |
+| G-04 | SSO          | SAML returns mock URL             | SAML not integrated            |
+| G-05 | SSO          | SAML provider stub                | SAML not implemented           |
+| G-06 | Tools        | `_execute_mock` path exists       | Mock path in production code   |
+| G-07 | Frontend     | Billing page mock data            | No billing backend             |
+| G-08 | Frontend     | Admin page mock data              | No admin backend               |
+| G-09 | Legal        | Privacy policy placeholder        | Legal review needed            |
+| G-10 | Legal        | Terms of service placeholder      | Legal review needed            |
+| G-11 | Realtime     | No WebSocket/SSE                  | Not implemented                |
+| G-12 | Auth         | Account recovery missing          | Endpoint not built             |
+| G-13 | E2E          | Only 29 of 60 claimed tests       | Tests removed or never existed |
+
+### P1 — Must Fix (8 items)
+
+| ID   | Module        | Gap                                                |
+| ---- | ------------- | -------------------------------------------------- |
+| G-14 | Resume        | "compiled from mock content" fallback              |
+| G-15 | Jobs          | Job board client returns None                      |
+| G-16 | CSRF          | In-memory token store (multi-worker unsafe)        |
+| G-17 | Temporal      | Silent dummy fallback                              |
+| G-18 | Agents        | ~20 of 28 agents may be stubs                      |
+| G-19 | Chat          | Streaming display is mocked (setTimeout)           |
+| G-20 | Observability | Prometheus/Grafana/OTel all disabled               |
+| G-21 | Spec          | OCR, Desktop companion, VSCode extension are stubs |
+
+### P2 — Track (7 items)
+
+| ID   | Module | Gap                                                        |
+| ---- | ------ | ---------------------------------------------------------- |
+| G-22 | Docs   | AGENTS.md endpoint count stale (110 vs 254)                |
+| G-23 | Docs   | ADR count stale (39 vs 44)                                 |
+| G-24 | Docs   | Jest test count stale (34 vs 26)                           |
+| G-25 | Docs   | Backend test count stale (2731 vs 3623)                    |
+| G-26 | Docs   | Multi-tenancy documented as "out of scope" but implemented |
+| G-27 | Docs   | Gate report claims stale                                   |
+| G-28 | Arch   | Apache AGE, BullMQ provisioned but unused                  |
+
+---
+
+## 9. Next Phases
 
 ```text
-DOCUMENTED + IMPLEMENTED + VERIFIED
-DOCUMENTED + IMPLEMENTED + UNVERIFIED
-DOCUMENTED + PARTIALLY IMPLEMENTED  → ZT-003, ZT-006
-DOCUMENTED + NOT IMPLEMENTED
-IMPLEMENTED + NOT DOCUMENTED
-IMPLEMENTED + INCORRECTLY DOCUMENTED → ZT-009
-CONTRADICTORY
+✅ PHASE 0: Repository Discovery — COMPLETE
+✅ PHASE 1: Documentation/Spec Reconciliation — COMPLETE
+✅ PHASE 2: Architecture/Runtime Mapping — COMPLETE (except coverage re-run)
+
+→ PHASE 3: Security/Auth/Authorization Baseline
+   - Verify all PUBLIC_PATHS are correct
+   - Test auth bypass scenarios
+   - Test IDOR/BOLA
+   - Test tenant escape
+   - Run security test suite
+
+→ PHASE 4: Database/Data Integrity
+   - Verify schema constraints
+   - Test RLS policies
+   - Test cascade behavior
+   - Verify migration chain
+
+→ PHASE 5: API/Backend Verification
+   - Run full test suite with coverage
+   - Classify every endpoint (REAL/STUB/DEAD)
+   - Verify frontend/backend contract
 ```
 
-Every new gap must be appended here with
-`ID/Severity/Module/Requirement/Current/Expected/Root Cause/Fix/Regression Test/Evidence/Status`
-per §78.
+---
+
+## Appendix: Evidence Methodology
+
+| Source                 | Method                                                                          |
+| ---------------------- | ------------------------------------------------------------------------------- |
+| Endpoint count         | `grep_search` for `@router.get/post/put/patch/delete` across 36 router files    |
+| Test count             | `pytest --collect-only -q` → 3623                                               |
+| Jest count             | `find_by_name *.test.*` + `*.spec.*` excluding node_modules/dist/e2e → 26 files |
+| ADR count              | `Get-ChildItem -Filter "*.md" docs/adr` → 44                                    |
+| E2E count              | `find_by_name` in `apps/web/e2e/` → 6 files, `grep test(` → 29 cases            |
+| Fake completeness      | Pattern scan: TODO, FIXME, pass, mock, NotImplementedError, placeholder, dummy  |
+| Feature classification | Router + service + test file inspection for each feature                        |
+
+**Status: PHASES 0-2 COMPLETE — 28 GAPS REGISTERED — PHASE 3 READY**

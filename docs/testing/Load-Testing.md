@@ -1,7 +1,6 @@
 # Load Testing
 
-> **Purpose:** Define load testing strategy for Vaeloom
-> **Status:** New
+> **Purpose:** Define load testing strategy for Vaeloom **Status:** New
 
 ## Load Testing Architecture
 
@@ -48,18 +47,21 @@ graph TD
  class C1,C2,C3,C4 success
 ```
 
-> **Diagram:** Load testing strategy flows from **goals** (throughput, concurrency, ingestion, agent response) → **scenarios** (normal, peak, stress) → **tools** (k6, Locust, Artillery) → **success criteria** with pass/warn/fail thresholds.
+> **Diagram:** Load testing strategy flows from **goals** (throughput,
+> concurrency, ingestion, agent response) → **scenarios** (normal, peak, stress)
+> → **tools** (k6, Locust, Artillery) → **success criteria** with pass/warn/fail
+> thresholds.
 
 ---
 
 ## Load Testing Goals
 
-| Goal | Target | Measurement |
-|------|--------|-------------|
-| API throughput | 1000 req/s | Requests per second |
-| Concurrent users | 1000 active sessions | Active connections |
-| Document ingestion | 100 files/min | Documents processed per minute |
-| Agent response under load | < 15s p99 | Agent execution time |
+| Goal                      | Target               | Measurement                    |
+| ------------------------- | -------------------- | ------------------------------ |
+| API throughput            | 1000 req/s           | Requests per second            |
+| Concurrent users          | 1000 active sessions | Active connections             |
+| Document ingestion        | 100 files/min        | Documents processed per minute |
+| Agent response under load | < 15s p99            | Agent execution time           |
 
 ## Load Testing Scenarios
 
@@ -85,114 +87,145 @@ graph TD
 
 ## Load Testing Tools
 
-| Tool | Use Case | Command |
-|------|----------|---------|
-| k6 | API load testing | `k6 run scenarios/api-load.js` |
-| Locust | User simulation | `locust -f scenarios/user-flow.py` |
-| Artillery | Spike testing | `artillery run scenarios/spike.yml` |
+| Tool      | Use Case         | Command                             |
+| --------- | ---------------- | ----------------------------------- |
+| k6        | API load testing | `k6 run scenarios/api-load.js`      |
+| Locust    | User simulation  | `locust -f scenarios/user-flow.py`  |
+| Artillery | Spike testing    | `artillery run scenarios/spike.yml` |
 
 ## Success Criteria
 
-| Metric | Pass | Warn | Fail |
-|--------|------|------|------|
-| API latency p99 | < 1s | 1-3s | > 3s |
-| Error rate | < 0.1% | 0.1-1% | > 1% |
-| Throughput | > 80% target | 50-80% | < 50% |
-| Database connections | < 70% pool | 70-85% | > 85% |
+| Metric               | Pass         | Warn   | Fail  |
+| -------------------- | ------------ | ------ | ----- |
+| API latency p99      | < 1s         | 1-3s   | > 3s  |
+| Error rate           | < 0.1%       | 0.1-1% | > 1%  |
+| Throughput           | > 80% target | 50-80% | < 50% |
+| Database connections | < 70% pool   | 70-85% | > 85% |
 
 ## Common Mistakes
 
-| Mistake | Consequence |
-|---------|-------------|
-| Testing only happy path loads | System buckles under real traffic patterns like bursts or slow connections |
-| Running load tests against under-powered environments | Results don't reflect production capacity |
-| Not measuring resource usage during tests | Can't tell if bottleneck is CPU, memory, or I/O |
+| Mistake                                               | Consequence                                                                |
+| ----------------------------------------------------- | -------------------------------------------------------------------------- |
+| Testing only happy path loads                         | System buckles under real traffic patterns like bursts or slow connections |
+| Running load tests against under-powered environments | Results don't reflect production capacity                                  |
+| Not measuring resource usage during tests             | Can't tell if bottleneck is CPU, memory, or I/O                            |
 
 ## Best Practices
 
-| Practice | Rationale |
-|----------|-----------|
-| Gradually ramp load to identify breaking points | Understand degradation patterns, not just pass/fail |
-| Monitor infrastructure metrics alongside application metrics | Identify the actual bottleneck during load |
-| Run load tests against production-like hardware | Results are actionable and predictive of real behavior |
+| Practice                                                     | Rationale                                              |
+| ------------------------------------------------------------ | ------------------------------------------------------ |
+| Gradually ramp load to identify breaking points              | Understand degradation patterns, not just pass/fail    |
+| Monitor infrastructure metrics alongside application metrics | Identify the actual bottleneck during load             |
+| Run load tests against production-like hardware              | Results are actionable and predictive of real behavior |
 
 ## Security Considerations
 
-| Concern | Mitigation |
-|---------|------------|
-| Load tests can trigger DDoS alarms | Notify operations team before running large-scale tests |
-| Test traffic may be mistaken for real attacks | Use dedicated test user agents and whitelist source IPs |
-| Load test results reveal infrastructure capacity | Keep results in access-controlled dashboards |
+| Concern                                          | Mitigation                                              |
+| ------------------------------------------------ | ------------------------------------------------------- |
+| Load tests can trigger DDoS alarms               | Notify operations team before running large-scale tests |
+| Test traffic may be mistaken for real attacks    | Use dedicated test user agents and whitelist source IPs |
+| Load test results reveal infrastructure capacity | Keep results in access-controlled dashboards            |
 
 ## Performance Considerations
 
-| Concern | Mitigation |
-|---------|------------|
-| Load tests consume significant infrastructure | Schedule during maintenance windows, clean up after |
-| Repeated tests can skew baseline results | Allow cooldown periods between test runs |
+| Concern                                         | Mitigation                                            |
+| ----------------------------------------------- | ----------------------------------------------------- |
+| Load tests consume significant infrastructure   | Schedule during maintenance windows, clean up after   |
+| Repeated tests can skew baseline results        | Allow cooldown periods between test runs              |
 | Distributed load generators add network latency | Collocate generators in the same region as the target |
 
 ## Workflows
 
-1. **Normal load test execution**: QA engineer configures k6 script with 100 concurrent users → 80/20 read/write mix → 5m ramp-up → 20m steady state → 5m cooldown → monitors API latency, error rate, and resource usage → compares against success criteria → generates HTML report
-2. **Peak load simulation (exam season)**: 1000 concurrent users with burst writes (file uploads, application submissions) → 2m ramp-up → 15m peak → monitors database connection pool utilization → verifies graceful degradation (no crashes, queued writes) → identifies bottleneck
-3. **Stress test to find breaking point**: Gradual user increase from 100 to 2000 over 30m → system metrics monitored → breaking point identified (where latency exceeds 3s or error rate > 1%) → documented as "maximum sustainable load" → capacity planning adjusted
-4. **Load test result analysis**: k6 outputs JSON results → parsed by reporting script → compared against baseline from previous run → trends plotted in Grafana → regression identified → root cause investigation opened
+1. **Normal load test execution**: QA engineer configures k6 script with 100
+   concurrent users → 80/20 read/write mix → 5m ramp-up → 20m steady state → 5m
+   cooldown → monitors API latency, error rate, and resource usage → compares
+   against success criteria → generates HTML report
+2. **Peak load simulation (exam season)**: 1000 concurrent users with burst
+   writes (file uploads, application submissions) → 2m ramp-up → 15m peak →
+   monitors database connection pool utilization → verifies graceful degradation
+   (no crashes, queued writes) → identifies bottleneck
+3. **Stress test to find breaking point**: Gradual user increase from 100 to
+   2000 over 30m → system metrics monitored → breaking point identified (where
+   latency exceeds 3s or error rate > 1%) → documented as "maximum sustainable
+   load" → capacity planning adjusted
+4. **Load test result analysis**: k6 outputs JSON results → parsed by reporting
+   script → compared against baseline from previous run → trends plotted in
+   Grafana → regression identified → root cause investigation opened
 
 ## Scalability
 
-| Dimension | Current Limit | 10x Strategy | 100x Strategy |
-|-----------|---------------|--------------|---------------|
-| Concurrent virtual users | 1,000 | 10,000 with distributed k6 runners (10 instances — 1000 users) | 100,000+ with cloud-based load generation across 3 regions |
-| Test scenario complexity | 3 scenarios (normal, peak, stress) | 10 scenarios including spike, soak, and chaos patterns | ML-generated load profiles from production traffic patterns |
-| Metrics collected per run | 15 | 50+ with custom k6 metrics and application-level tracing | Full distributed tracing correlation during load tests |
-| Concurrent test reports stored | 100 | 1,000 with automated trend analysis | Infinite with tiered storage (hot/cold/archive) |
+| Dimension                      | Current Limit                      | 10x Strategy                                                   | 100x Strategy                                               |
+| ------------------------------ | ---------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------- |
+| Concurrent virtual users       | 1,000                              | 10,000 with distributed k6 runners (10 instances — 1000 users) | 100,000+ with cloud-based load generation across 3 regions  |
+| Test scenario complexity       | 3 scenarios (normal, peak, stress) | 10 scenarios including spike, soak, and chaos patterns         | ML-generated load profiles from production traffic patterns |
+| Metrics collected per run      | 15                                 | 50+ with custom k6 metrics and application-level tracing       | Full distributed tracing correlation during load tests      |
+| Concurrent test reports stored | 100                                | 1,000 with automated trend analysis                            | Infinite with tiered storage (hot/cold/archive)             |
 
 ## Error Handling
 
-| Scenario | Detection | Mitigation | Recovery |
-|----------|-----------|------------|----------|
-| k6 script error (syntax/import) | k6 fails to parse/execute script | Show line-level error with context; prevent run | Fix script and re-run |
-| Test target unavailable | k6 connection refused | Retry target health check; abort if down after 3 retries | Notify DevOps; re-schedule test |
-| Resource exhaustion on load generator | CPU/memory on generator exceeds 90% | Scale horizontally by adding more k6 instances | Reduce concurrent users per instance; distribute load |
-| Test data runs out (unique users exhausted) | k6 reports "no unique data available" | Switch to randomized data generation with seeded randomness | Increase data pool size; use parameterized templates |
+| Scenario                                    | Detection                             | Mitigation                                                  | Recovery                                              |
+| ------------------------------------------- | ------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------- |
+| k6 script error (syntax/import)             | k6 fails to parse/execute script      | Show line-level error with context; prevent run             | Fix script and re-run                                 |
+| Test target unavailable                     | k6 connection refused                 | Retry target health check; abort if down after 3 retries    | Notify DevOps; re-schedule test                       |
+| Resource exhaustion on load generator       | CPU/memory on generator exceeds 90%   | Scale horizontally by adding more k6 instances              | Reduce concurrent users per instance; distribute load |
+| Test data runs out (unique users exhausted) | k6 reports "no unique data available" | Switch to randomized data generation with seeded randomness | Increase data pool size; use parameterized templates  |
 
 ## Monitoring
 
-| Metric | Alert Threshold | Severity | Dashboard |
-|--------|----------------|----------|-----------|
-| API p99 latency under load | > 1s at 1000 users | Critical | Grafana — Load Test Dashboard |
-| Error rate during peak | > 0.1% | Warning | Grafana — API Errors |
-| Database connection pool utilization | > 80% | Warning | Grafana — Database Dashboard |
-| Load generator resource usage | > 85% CPU | Warning | CI Pipeline — Load Test Infra |
-| Throughput degradation from baseline | > 20% drop | Critical | Grafana — Performance Trends |
+| Metric                               | Alert Threshold    | Severity | Dashboard                     |
+| ------------------------------------ | ------------------ | -------- | ----------------------------- |
+| API p99 latency under load           | > 1s at 1000 users | Critical | Grafana — Load Test Dashboard |
+| Error rate during peak               | > 0.1%             | Warning  | Grafana — API Errors          |
+| Database connection pool utilization | > 80%              | Warning  | Grafana — Database Dashboard  |
+| Load generator resource usage        | > 85% CPU          | Warning  | CI Pipeline — Load Test Infra |
+| Throughput degradation from baseline | > 20% drop         | Critical | Grafana — Performance Trends  |
 
 ## Risks
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| Load test triggers production incident (DDoS) | Medium | Critical | Run against staging only; use isolated test environments; coordinate with SRE |
-| Load test results not reproducible due to environment variance | High | Medium | Use dedicated load test environment with fixed capacity; baseline before every test |
-| Tests measure the wrong bottleneck | Medium | High | Monitor all layers (app, DB, cache, network) simultaneously during tests |
-| Synthetic load doesn't reflect real user behavior | High | Medium | Use recorded production traffic patterns for realistic load profiles |
+| Risk                                                           | Likelihood | Impact   | Mitigation                                                                          |
+| -------------------------------------------------------------- | ---------- | -------- | ----------------------------------------------------------------------------------- |
+| Load test triggers production incident (DDoS)                  | Medium     | Critical | Run against staging only; use isolated test environments; coordinate with SRE       |
+| Load test results not reproducible due to environment variance | High       | Medium   | Use dedicated load test environment with fixed capacity; baseline before every test |
+| Tests measure the wrong bottleneck                             | Medium     | High     | Monitor all layers (app, DB, cache, network) simultaneously during tests            |
+| Synthetic load doesn't reflect real user behavior              | High       | Medium   | Use recorded production traffic patterns for realistic load profiles                |
 
 ## Limitations
 
-| Limitation | Impact | Workaround | Future Resolution |
-|------------|--------|------------|-------------------|
-| k6 cannot execute JavaScript in browser context | Cannot measure client-side performance | Pair load tests with Lighthouse CI for client-side metrics | Use Playwright for browser-level load testing (Playwright + k6 hybrid) |
-| Distributed k6 adds latency variance | Results may differ from single-region tests | Deploy load generators in same region as target | Use cloud-native load generation (AWS Distributed Load Testing) |
-| Load tests only measure synchronous request patterns | Async agent actions not captured | Add dedicated agent latency monitoring from production traces | Instrument agent execution as k6 custom metrics via API |
+| Limitation                                           | Impact                                      | Workaround                                                    | Future Resolution                                                      |
+| ---------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| k6 cannot execute JavaScript in browser context      | Cannot measure client-side performance      | Pair load tests with Lighthouse CI for client-side metrics    | Use Playwright for browser-level load testing (Playwright + k6 hybrid) |
+| Distributed k6 adds latency variance                 | Results may differ from single-region tests | Deploy load generators in same region as target               | Use cloud-native load generation (AWS Distributed Load Testing)        |
+| Load tests only measure synchronous request patterns | Async agent actions not captured            | Add dedicated agent latency monitoring from production traces | Instrument agent execution as k6 custom metrics via API                |
 
 ## Overview
 
-Load testing at Vaeloom validates that the platform can handle expected traffic patterns and identifies breaking points before they reach production. The system targets 1,000 requests per second API throughput, 1,000 concurrent active sessions, 100 documents ingested per minute, and sub-15-second p99 agent response times under load. These targets are validated through three load scenarios — normal, peak, and stress — run against production-like staging environments.
+Load testing at Vaeloom validates that the platform can handle expected traffic
+patterns and identifies breaking points before they reach production. The system
+targets 1,000 requests per second API throughput, 1,000 concurrent active
+sessions, 100 documents ingested per minute, and sub-15-second p99 agent
+response times under load. These targets are validated through three load
+scenarios — normal, peak, and stress — run against production-like staging
+environments.
 
-Three tools cover different load testing needs: k6 for API-level load testing with precise metrics, Locust for user-simulation scenarios with Python-based behavior modeling, and Artillery for spike testing with rapid traffic surges. Each scenario follows a structured ramp-up/hold/ramp-down pattern to observe how the system behaves under gradual load increases, sustained peak traffic, and recovery.
+Three tools cover different load testing needs: k6 for API-level load testing
+with precise metrics, Locust for user-simulation scenarios with Python-based
+behavior modeling, and Artillery for spike testing with rapid traffic surges.
+Each scenario follows a structured ramp-up/hold/ramp-down pattern to observe how
+the system behaves under gradual load increases, sustained peak traffic, and
+recovery.
 
-For Vaeloom's AI agents, load testing is particularly important. Agent response times under load (p99 < 15s) ensure that users aren't left waiting for proposals during peak usage periods like exam season or graduation application deadlines. Document ingestion throughput (100 files/min) validates that the pipeline from upload through AI processing to organized storage can keep pace with user demand.
+For Vaeloom's AI agents, load testing is particularly important. Agent response
+times under load (p99 < 15s) ensure that users aren't left waiting for proposals
+during peak usage periods like exam season or graduation application deadlines.
+Document ingestion throughput (100 files/min) validates that the pipeline from
+upload through AI processing to organized storage can keep pace with user
+demand.
 
-Success criteria use a three-tier rating system per metric: Pass (green), Warn (yellow), and Fail (red). API p99 latency under 1 second passes, 1-3 seconds warns, and over 3 seconds fails. Error rates under 0.1% pass, 0.1-1% warn, and over 1% fail. Database connection pool utilization under 70% passes, 70-85% warns, and over 85% fails.
+Success criteria use a three-tier rating system per metric: Pass (green), Warn
+(yellow), and Fail (red). API p99 latency under 1 second passes, 1-3 seconds
+warns, and over 3 seconds fails. Error rates under 0.1% pass, 0.1-1% warn, and
+over 1% fail. Database connection pool utilization under 70% passes, 70-85%
+warns, and over 85% fails.
 
 ## Goals
 
@@ -206,16 +239,19 @@ Success criteria use a three-tier rating system per metric: Pass (green), Warn (
 
 ### In Scope
 
-- Three load scenarios: normal (100 users, 30min), peak (1000 users, 15min), stress (gradual ramp to failure)
+- Three load scenarios: normal (100 users, 30min), peak (1000 users, 15min),
+  stress (gradual ramp to failure)
 - k6 for API load testing with structured ramp-up/hold/ramp-down patterns
 - Locust for user-simulation with realistic behavior models
 - Artillery for spike testing with sudden traffic surges
-- Success criteria with pass/warn/fail thresholds for latency, error rate, throughput, and DB connections
+- Success criteria with pass/warn/fail thresholds for latency, error rate,
+  throughput, and DB connections
 - Pre-release load test gate with baseline comparison and regression detection
 
 ### Out of Scope
 
-- ML-generated load profiles from production traffic patterns (future improvement)
+- ML-generated load profiles from production traffic patterns (future
+  improvement)
 - Distributed tracing correlation during load tests (future improvement)
 - Automated capacity recommendation from load test results (future improvement)
 - Chaos engineering integration with load tests (future improvement)
@@ -305,15 +341,20 @@ sequenceDiagram
 
 ---
 
-| Improvement | Priority | Complexity | Timeline |
-|-------------|----------|------------|----------|
-| ML-generated load profiles from production traffic | High | High | Q3 2027 |
-| Distributed tracing correlation during load tests | Medium | High | Q4 2027 |
-| Automated capacity recommendation based on load test results | Medium | Medium | Q2 2027 |
-| Chaos engineering integration with load tests | Low | High | Q4 2027 |
+| Improvement                                                  | Priority | Complexity | Timeline |
+| ------------------------------------------------------------ | -------- | ---------- | -------- |
+| ML-generated load profiles from production traffic           | High     | High       | Q3 2027  |
+| Distributed tracing correlation during load tests            | Medium   | High       | Q4 2027  |
+| Automated capacity recommendation based on load test results | Medium   | Medium     | Q2 2027  |
+| Chaos engineering integration with load tests                | Low      | High       | Q4 2027  |
 
 ## Related Documents
 
 - [Performance Testing.md](./Performance-Testing.md)
 - [Testing Strategy.md](./Testing-Strategy.md)
 - [`Architecture/Scalability.md`](../Architecture/Scalability.md)
+
+> _WS-E verified 2026-09-15 — measured actuals: p50 45ms / p95 120ms @20 RPS,
+> stress 480ms @200 RPS (`mvp-p15/05-test-results`, `k6-script.js:17`); k6
+> scripts live in `testing/performance/` (k6-script, k6-langgraph, k6-temporal).
+> Perf re-measure EXC-P14-03 open. See Test-Matrix.md._

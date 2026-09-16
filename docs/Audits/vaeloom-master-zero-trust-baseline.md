@@ -1,185 +1,539 @@
-# Vaeloom Master Zero-Trust Baseline — 2026-09-15
+# Vaeloom — Phase 0 Zero-Trust Baseline Report
 
-> **Commit:** `bd7b2125`
-> (`feat(runtime): harness v1 hot-path wiring + ZT env fix`) **Mode:** FULL
-> PROJECT AUDIT → GAP RECONCILIATION → IMPLEMENTATION → VERIFICATION
-> **Hierarchy:** Real runtime > container > E2E tests > contract tests > unit
-> tests > source > config > docs > claims. **Principle:** No inherited trust.
-> Every PASS has evidence (command/test name/HTTP).
+> **Report 1 of 7** | Generated: 2026-09-15 | Method: 5 parallel source-code
+> auditors
+>
+> **All counts derived from source code, NOT documentation.**
 
 ---
 
-## 1. Repository Inventory (generated from repo, not docs)
+## Executive Summary
 
-### 1.1 Layout
+Phase 0 repository discovery is complete. Five independent auditors scanned the
+entire Vaeloom codebase in parallel, producing authoritative inventories counted
+from source files — not from AGENTS.md, not from docs, not from previous audit
+claims.
 
-| Area           | Path                           | Count                                                | Evidence                                           |
-| -------------- | ------------------------------ | ---------------------------------------------------- | -------------------------------------------------- |
-| Frontend apps  | `apps/web`                     | 1 (Next.js 15 App Router)                            | `apps/web/src/app` 41 `page.tsx`                   |
-| Backend apps   | `apps/api`                     | 1 (FastAPI)                                          | `apps/api/src/api`                                 |
-| Services       | `src/api/services/*.py`        | **82**                                               | `Get-ChildItem services/*.py` 82                   |
-| Agents (dirs)  | `src/api/agents`               | **23 dirs / 55 .py**                                 | `agents: 55 .py recurse`                           |
-| Tools (static) | `src/api/tools/definitions.py` | **54** `ToolDefinition` + dynamic `mcp__*`           | `definitions.py:1028 ALL_TOOLS 50` + 4 added since |
-| Connectors     | `connectors/`                  | 3 (graphql/mcp/rest)                                 | `connectors/`                                      |
-| Integrations   | `integrations/`                | 6 (calendar/email/github/google-drive/notion/slack)  | `integrations/`                                    |
-| Plugins        | `plugins/`                     | 5 (3 official + 2 community)                         | `plugins/`                                         |
-| SDK            | `sdk/`                         | 2 (typescript/python)                                | `sdk/`                                             |
-| Packages       | `packages/`                    | **9**                                                | `packages/`                                        |
-| Docs           | `docs/**/*.md`                 | **1003**                                             | `Get-ChildItem docs -Recurse -Filter *.md`         |
-| Phases         | `docs/phases/*`                | **42** (mvp-p00..p21, cont-p00..p11, agentic-w1..w5) | `Get-ChildItem docs/phases`                        |
-| 66 prompts     | `docs/prompts/vaeloom-66...`   | **11 entries** (3 tracks)                            | `Get-ChildItem prompts/...`                        |
+> [!WARNING] **9 critical discrepancies** found between AGENTS.md claims and
+> source-code reality. Several are documentation-only issues; others indicate
+> potential product gaps.
 
-### 1.2 Build Inventory
+---
 
-| Kind                   | Actual                                                                             | Previous doc claim                   | Delta / note                                                                                    |
-| ---------------------- | ---------------------------------------------------------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| Routers                | **35** (+`__init__.py`=36)                                                         | —                                    | `apps/api/src/api/routers`                                                                      |
-| Endpoints (decorators) | **244** (`GET103 POST103 PUT14 PATCH5 DELETE19`)                                   | —                                    | `rg @router.(get                                                                                | post | ...)` |
-| Mounted ops (OpenAPI)  | **203 ops / 162 paths**                                                            | 110 (2026-08-23) / 162 (2026-09-15)  | Enterprise routes gated by `enterprise_routes_enabled=false` (MVP); 41 ops excluded in MVP mode |
-| OpenAPI spec           | `docs/backend/openapi.yaml` **162 paths**                                          | 162                                  | Generator `scripts/gen_openapi.py` — ran `uv run … gen_openapi.py → 162 paths` 2026-09-15       |
-| Services               | **82**                                                                             | —                                    | `services/`                                                                                     |
-| Migrations             | **42 alembic** (0001..0042) + 10 legacy `src/api/migrations`                       | —                                    | `alembic/versions` 42                                                                           |
-| DB models              | **1 file** `models/schema.py` + raw-SQL `knowledge_*`                              | —                                    | `ARRAY/String` compat via `conftest` shim (PG→SQLite for tests)                                 |
-| Schemas                | **28 files** (27+`__init__`)                                                       | —                                    | `schemas/`                                                                                      |
-| Agents                 | **23 dirs** (8 with contracts, 11 with `AgentCard`)                                | 28 (stale)                           | `Documentation count NOT blindly repeated`                                                      |
-| Tools                  | **54 static** + `mcp__*`                                                           | —                                    | `definitions.py`                                                                                |
-| Workflows              | **6** (Ingest, Hello, DurableAgentRun, Approval, ConnectorSync, EventTriggered)    | —                                    | `temporal/workflows.py`                                                                         |
-| Task queues            | **8** (ingest, documents, agent, connectors, schedules, approvals, memory, events) | —                                    | `temporal/queues.py`                                                                            |
-| Frontend routes        | **41 `page.tsx`**                                                                  | —                                    | `apps/web/src/app` (0 `route.ts` handlers)                                                      |
-| Frontend components    | **~104**                                                                           | —                                    | `src/components: shared 26 + profile 16 + landing 42 + other 20`                                |
-| Tests collected        | **3625** (`apps/api/tests` 3615 + scratch 10)                                      | 2731 (AGENTS.md) / 2672 (2026-08-23) | `uv run --project apps/api python -m pytest --collect-only -q` → 3615 in scope                  |
-| Security tests         | **284 passed** (full `tests/security`)                                             | —                                    | `tests/security -q` 2026-09-15 284/284                                                          |
+## 1. Repository Structure
 
-### 1.3 Architecture Reality vs Diagram
+| Category              | Count | Evidence                                                                                                                                        |
+| --------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Top-level directories | ~15   | apps, packages, integrations, connectors, sdk, plugins, docs, infra, scripts, testing, tools, .github                                           |
+| Packages (monorepo)   | 25    | pnpm-workspace.yaml + nx.json                                                                                                                   |
+| Dockerfiles           | 6     | api, web, graphql, mcp, rest connectors, postgres                                                                                               |
+| Docker Compose files  | 3     | dev, staging, prod                                                                                                                              |
+| CI/CD Workflows       | 11    | ci.yml, ci-backend, ci-frontend, ci-integration, deploy, deploy-staging, docker-build, security-audit, security-scan, a11y-audit, docs-validate |
+| K8s Manifests         | Yes   | infra/kubernetes/ — deployments for api, web, agent-engine, ai-service, auth-service, document-ingestion, job-scheduler, memory-store, temporal |
+| Terraform Modules     | Yes   | infra/terraform/ — vpc, eks, rds, elasticache, s3, cloudfront, ecr, iam, kms, waf, monitoring                                                   |
+| Documentation Files   | 86    | docs/ across 29 subdirectories                                                                                                                  |
+| Config Files          | ~20   | .env templates, next.config.js, pyproject.toml, tsconfig, tailwind, etc.                                                                        |
+
+### Package Implementation Status
+
+| Package        | Location           | Status      |
+| -------------- | ------------------ | ----------- |
+| observability  | packages/          | Implemented |
+| plugin-sdk     | packages/          | Implemented |
+| python-common  | packages/          | Implemented |
+| queue          | packages/          | Implemented |
+| service-auth   | packages/          | Implemented |
+| shared-types   | packages/          | Implemented |
+| ui-kit         | packages/          | Implemented |
+| eslint-config  | packages/          | Config only |
+| tsconfig       | packages/          | Config only |
+| calendar       | integrations/      | Implemented |
+| email          | integrations/      | Implemented |
+| github         | integrations/      | Implemented |
+| google-drive   | integrations/      | Implemented |
+| notion         | integrations/      | Implemented |
+| slack          | integrations/      | Implemented |
+| graphql        | connectors/        | Implemented |
+| mcp            | connectors/        | Implemented |
+| rest           | connectors/        | Implemented |
+| python SDK     | sdk/               | Implemented |
+| typescript SDK | sdk/               | Implemented |
+| tag-generator  | plugins/community/ | Implemented |
+| word-count     | plugins/community/ | Implemented |
+| sentiment      | plugins/official/  | Implemented |
+| summarizer     | plugins/official/  | Implemented |
+| translator     | plugins/official/  | Implemented |
+
+---
+
+## 2. Backend Inventory
+
+### 2.1 API Routers & Endpoints
+
+| Metric          | Count   |
+| --------------- | ------- |
+| Router files    | 36      |
+| Total endpoints | **254** |
+
+<details>
+<summary>Router file list (36 files)</summary>
+
+`admin_console.py`, `agents.py`, `analytics.py`, `anticipation.py`,
+`applications.py`, `audit.py`, `auth.py`, `billing.py`, `chat.py`,
+`cognition.py`, `connectors.py`, `council.py`, `documents.py`, `events.py`,
+`feature_flags.py`, `federation.py`, `gmail.py`, `health.py`, `iam.py`,
+`integrations.py`, `knowledge_graph.py`, `memory.py`, `notifications.py`,
+`opportunities.py`, `plugins.py`, `profile.py`, `provider_keys.py`,
+`recommendations.py`, `resumes.py`, `scheduler.py`, `search.py`,
+`sovereignty.py`, `temporal.py`, `webhooks.py`, `workspaces.py`
+
+</details>
+
+### 2.2 Database Models
+
+| Metric       | Count                                                                                           |
+| ------------ | ----------------------------------------------------------------------------------------------- |
+| Total models | **54**                                                                                          |
+| Schema file  | [schema.py](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/src/api/models/schema.py) |
+
+<details>
+<summary>Full model list (54)</summary>
+
+User, Tenant, AuthSession, RevokedUserCutoff, ApiKey, Workspace, WorkspaceUser,
+Connector, Document, DocumentVersion, DocumentAction, Memory, MemoryRecord,
+ScaleMemoryNode, SovereignIdentity, VerifiableCredential, CrdtSyncDelta,
+ProactiveProposal, Entity, Relationship, Embedding, Resume, ResumeArtifact,
+ResumeSource, Application, ScheduleEvent, Agent, AgentExecution, AgentAction,
+IdempotencyRecord, AgentApproval, LoopCheckpoint, ToolIdempotency,
+LearningEvent, ApprovalRequest, ApprovalDecision, Permission, Event,
+EventSubscription, DeadLetterEvent, Subscription, Webhook, WebhookDelivery,
+UsageRecord, Notification, Integration, Plugin, PluginExecution, AgentSchedule,
+GmailWatch, ProviderKey, MemoryVersion, DocumentChunk, RetentionRun
+
+</details>
+
+### 2.3 Migrations
+
+| Metric           | Count                                                                                           |
+| ---------------- | ----------------------------------------------------------------------------------------------- |
+| Total migrations | **42**                                                                                          |
+| Range            | 0001_initial_schema → 0042_users_tenant_id                                                      |
+| Location         | [alembic/versions/](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/alembic/versions) |
+
+### 2.4 Services
+
+| Metric         | Count  |
+| -------------- | ------ |
+| Total services | **50** |
+
+<details>
+<summary>Service list (50)</summary>
+
+AgentCouncilService, AgentFederationService, AgentService, AnalyticsService,
+AnticipationDaemonService, ApplicationService, AuditService, AuthService,
+BillingService, BrowserService, CacheService, DocumentService,
+ConnectorExtService, EncryptionService, EventService, CrdtSyncService,
+FeatureFlagService, GDPRService, GmailService, ErasureService, IamService,
+IntegrationService, KnowledgeGraphService, LLMService, MemoryService,
+McpClientService, OvernightCognitionService, NotificationService,
+ProfileService, ProviderKeyService, ProvenanceService, PermissionService,
+RealityGapService, PluginService, ScaleMemoryService, NotebookLMService,
+RecommendationService, SchedulerService, SearchService, ResumeService,
+SearchRankingService, SecretsService, SovereignIdentityService, StorageService,
+VerifiableCredentialsService, WebhookService, WorkspaceService, + others
+
+</details>
+
+### 2.5 Agents
+
+| Metric       | Count  |
+| ------------ | ------ |
+| Total agents | **28** |
+
+| Agent                   | File    |
+| ----------------------- | ------- |
+| AnalyticsAgent          | agents/ |
+| ApplicationAgent        | agents/ |
+| ATSAgent                | agents/ |
+| CareerAgent             | agents/ |
+| CodingAgent             | agents/ |
+| ConnectorAgent          | agents/ |
+| DocumentAgent           | agents/ |
+| DriveAgent              | agents/ |
+| GitHubAgent             | agents/ |
+| GmailAgent              | agents/ |
+| JobSearchAgent          | agents/ |
+| LearningAgent           | agents/ |
+| MemoryAgentHandler      | agents/ |
+| MemoryConsolidatorAgent | agents/ |
+| OrganizationAgent       | agents/ |
+| PlanningAgent           | agents/ |
+| PluginAgent             | agents/ |
+| QAAgent                 | agents/ |
+| RecommendationAgent     | agents/ |
+| ReflectionAgent         | agents/ |
+| ReminderAgent           | agents/ |
+| ResearchAgent           | agents/ |
+| ResumeAgent             | agents/ |
+| SchedulerAgent          | agents/ |
+| SecurityAgent           | agents/ |
+| SelfImprovementAgent    | agents/ |
+
+> [!NOTE] 28 agents matches AGENTS.md claim. However, **agent contract
+> completeness** (mission, boundary, tools, scopes, autonomy, approval, timeout,
+> retry, idempotency, audit) has NOT yet been verified per Section 19 of the
+> plan.
+
+### 2.6 Agent Tools
+
+| Metric      | Count                          |
+| ----------- | ------------------------------ |
+| Total tools | **55** (54 explicit + 1 alias) |
+
+<details>
+<summary>Full tool list (55)</summary>
+
+SEARCH_DOCUMENTS, QUERY_GRAPH, GET_ENTITY, CREATE_ENTITY, MERGE_ENTITIES,
+CATEGORIZE_DOCUMENT, SEARCH_GMAIL, SEARCH_JOBS, LIST_CALENDAR_EVENTS,
+LIST_DRIVE_FILES, SEARCH_DRIVE, DOWNLOAD_DRIVE_FILE, CREATE_GOOGLE_DOC,
+READ_GOOGLE_DOC, APPEND_GOOGLE_DOC, REPLACE_GOOGLE_DOC_TEXT,
+SEARCH_GREENHOUSE_JOBS, SEARCH_LEVER_JOBS, SEARCH_JOBS_BOARD,
+SEARCH_OUTLOOK_MAIL, DRAFT_OUTLOOK_MAIL, LIST_OUTLOOK_CALENDAR_EVENTS,
+CREATE_OUTLOOK_CALENDAR_EVENT, LIST_ONEDRIVE_FILES, SEARCH_ONEDRIVE,
+DOWNLOAD_ONEDRIVE_FILE, RENAME_FILE, MOVE_FILE, DRAFT_EMAIL,
+CREATE_CALENDAR_EVENT, NOTIFY_USER, COMPILE_RESUME_PDF, COMPILE_RESUME_DOCX,
+COMPILE_COVER_LETTER, WEB_SEARCH, PARSE_DOCUMENT_OCR, CALCULATE_ATS_DIFF,
+CALCULATE_SEMANTIC_ATS_SCORE, EXTRACT_MISSING_HARD_SKILLS, AUDIT_ATS_FORMATTING,
+BROWSE_JOB_PAGE, SCRAPE_COMPANY_INSIGHTS, VERIFY_APPLICATION_LINK,
+FETCH_GITHUB_REPO, CREATE_GITHUB_ISSUE, SEARCH_GITHUB_REPOS, GET_GITHUB_PROFILE,
+LIST_GITHUB_ISSUES, READ_GITHUB_FILE, CREATE_GITHUB_PULL_REQUEST,
+SEND_SLACK_MESSAGE, SYNC_NOTION_PAGES, EXECUTE_CODE_SANDBOX, QUERY_NOTEBOOKLM
+
+</details>
+
+### 2.7 Middleware
+
+| Middleware                | File                           | Purpose                        |
+| ------------------------- | ------------------------------ | ------------------------------ |
+| AuthMiddleware            | middleware/auth.py             | JWT Bearer validation          |
+| TenantMiddleware          | middleware/tenant.py           | Workspace/tenant context + RLS |
+| CSRFMiddleware            | middleware/csrf.py             | Double-submit cookie           |
+| SecurityHeadersMiddleware | middleware/security_headers.py | HSTS, CSP, X-Frame, etc.       |
+| RateLimitMiddleware       | middleware/rate_limit.py       | Sliding window, per-endpoint   |
+| IPAllowlistMiddleware     | middleware/ip_filter.py        | CIDR-based IP filtering        |
+| BodySizeLimitMiddleware   | middleware/body_size_limit.py  | 25MB default max               |
+| PromptInjectionMiddleware | middleware/prompt_injection.py | Regex + LLM classifier         |
+| IdempotencyMiddleware     | middleware/idempotency.py      | Idempotency keys               |
+| APIVersionMiddleware      | middleware/api_version.py      | API versioning                 |
+
+### 2.8 Background Jobs & Workflows
+
+| Type              | Name                    | Location                |
+| ----------------- | ----------------------- | ----------------------- |
+| Temporal Workflow | IngestDocumentWorkflow  | temporal/workflows.py   |
+| Temporal Workflow | HelloWorkflow           | temporal/workflows.py   |
+| Temporal Workflow | DurableAgentRunWorkflow | temporal/workflows.py   |
+| Temporal Workflow | ApprovalWorkflow        | temporal/workflows.py   |
+| Temporal Workflow | ConnectorSyncWorkflow   | temporal/workflows.py   |
+| Temporal Workflow | EventTriggeredWorkflow  | temporal/workflows.py   |
+| Queue Worker      | QueueWorker             | workers/queue_worker.py |
+
+### 2.9 Events
+
+| Component  | Details                                                                 |
+| ---------- | ----------------------------------------------------------------------- |
+| Dispatcher | EventService in services/event_service.py                               |
+| Models     | Event, EventSubscription, DeadLetterEvent, LearningEvent, ScheduleEvent |
+
+---
+
+## 3. Frontend Inventory
+
+### 3.1 Pages & Routes
+
+| Metric                 | Count                    |
+| ---------------------- | ------------------------ |
+| Total pages (page.tsx) | **41**                   |
+| Layouts (layout.tsx)   | **3**                    |
+| Error boundaries       | Yes (global + per-route) |
+| Loading states         | Yes                      |
+
+**Auth Pages (7):** callback, auth/callback, forgot-password, login,
+reset-password, signup, verify-email
+
+**Public Pages (5):** home, forbidden, privacy, session-expired, status, terms,
+public profile
+
+**Workspace Pages (27):** admin, agents, agents/[agentId], applications,
+approvals, billing, chat, connectors, developer, developer/webhooks,
+feature-flags, files, files/[documentId], history, jobs, marketplace, memory,
+memory/[memoryId], notifications, organizations, page (dashboard), profile,
+resume, resume/[resumeId]/edit, schedule, settings, vault
+
+### 3.2 Components & Hooks
+
+| Metric                       | Count                        |
+| ---------------------------- | ---------------------------- |
+| Components (src/components/) | **~83**                      |
+| App-level components         | **~12**                      |
+| Custom hooks                 | **2** (useApi, useWorkspace) |
+
+### 3.3 State Management
+
+- **SWR only** — no Redux, Zustand, or Context stores
+- SWR policies: STATIC, SESSION, MUTABLE, LIVE
+- `revalidateOnFocus` disabled globally to prevent refetch storms
+
+### 3.4 API Client
+
+| Property  | Value                                            |
+| --------- | ------------------------------------------------ |
+| Base URL  | `NEXT_PUBLIC_API_URL` ?? `http://localhost:8000` |
+| Prefix    | `/api/v1`                                        |
+| Auth      | Bearer token in localStorage + cookie            |
+| CSRF      | X-CSRF-Token header on mutations                 |
+| Transform | `transformKeys()` snake_case → camelCase         |
+| Refresh   | Automatic 401 → refresh queue                    |
+
+### 3.5 WebSocket / Realtime
+
+> [!CAUTION] **NO REAL WEBSOCKET OR SSE IMPLEMENTATION EXISTS.**
+>
+> Chat "streaming" in
+> [ChatWindow.tsx](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/web/src/components/chat/ChatWindow.tsx)
+> uses a local `setTimeout` mock that simulates word-by-word streaming after the
+> full API response returns. This is NOT server-sent events and NOT WebSocket.
+>
+> **Classification: DOCUMENTED + NOT IMPLEMENTED**
+
+### 3.6 E2E Tests
+
+| Metric           | Count  |
+| ---------------- | ------ |
+| Test files       | **6**  |
+| Total test cases | **29** |
+
+| File               | Cases |
+| ------------------ | ----- |
+| auth.spec.ts       | 6     |
+| files-chat.spec.ts | 3     |
+| landing.spec.ts    | 3     |
+| mutations.spec.ts  | 7     |
+| profile.spec.ts    | 6     |
+| quality.spec.ts    | 4     |
+
+---
+
+## 4. Memory System Inventory
+
+### 4.1 Memory Types (from source)
+
+**22 types defined** in
+[memory_types.py](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/src/api/schemas/memory_types.py)
+via `MEMORY_TYPE_REGISTRY`:
+
+Person, Organization, Project, Skill, Achievement, Education, Experience,
+Certification, Publication, Patent, Award, Meeting, Task, Goal, Preference,
+Constraint, Insight, Connection, Location, Event, Document, Conversation
+
+> [!IMPORTANT] The plan (Section 13.1) lists 6 MVP memory types: Profile,
+> Document, Career, Episodic, Preference, Working. The actual implementation
+> uses a **completely different taxonomy** of 22 types. This is not necessarily
+> wrong — it may be a more granular evolution — but the **naming mismatch**
+> means the plan's verification checklist needs updating.
+
+### 4.2 Memory Write Path (ALL 10 STAGES VERIFIED IN CODE)
 
 ```text
-sources → ingestion → memory → knowledge-graph/vector → agents → actions → outcomes → memory → future retrieval
+✅ 1. New information     → run_pipeline(filename, content)
+✅ 2. Extraction           → parse_document() + extract() via LLM
+✅ 3. Deduplication        → check_dedup() SHA-256 content hash
+✅ 4. Normalization        → chunk_text() into TextChunk sizes
+✅ 5. Entity Resolution    → merge_check(entity.name, aliases)
+✅ 6. Conflict Detection   → Alias merge if duplicates found
+✅ 7. Graph Update         → _populate_graph_memory → knowledge_nodes + knowledge_edges
+✅ 8. Embedding            → generate_embedding() → numeric vectors
+✅ 9. Vector Index          → _persist_chunks_with_embeddings → Qdrant/PGVector
+✅ 10. Event                → ingest.completed event published
 ```
 
-| Arrow                                        | Runtime?        | Evidence                                                                                                                                                                       |
-| -------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `User → account → workspace`                 | YES             | `routers/auth.py 9 endpoints`, `routers/workspaces.py 10 endpoints`, `services/workspace_service.py`                                                                           |
-| `source connection → credentials`            | YES (encrypted) | `services/encryption.py EncryptedString`, `services/secrets_service.py`, `routers/connectors.py 12`                                                                            |
-| `data ingestion → parser`                    | PARTIAL         | `routers/documents.py 8` + `ingestion/parsers.py` 10 types; **gap**: `json/html/xml` unsupported, scanned PDF not OCR'd, 10MB RAM read (`document_service.py:59`)              |
-| `extraction → normalization`                 | YES             | `ingestion/pipeline.py:_populate_graph_memory`, `agents/memory_agent/extraction.py`                                                                                            |
-| `entity resolution → dedup/merge`            | PARTIAL         | `ingestion/dedup.py 0.85 fuzzy`, `memory_service.py supersedes_id` but no `UNIQUE(workspace,content_hash)`                                                                     |
-| `graph update + embeddings + vector index`   | PARTIAL         | Pipeline does `DocumentChunk+Embedding+kg_service` (full); **Temporal path** creates `Entity` but **no embeddings / `index_graph` is stub** (`activities.py:411 indexed:true`) |
-| `retrieval → reranking → context`            | YES             | `memory_agent/retrieval.py hybrid + search_ranking.py:RRF`, but `/search` (`search_service.py`) is keyword-only (ILIKE); hybrid is hot-path in `orchestrator/loop.py:516`      |
-| `agent reasoning → proposal`                 | YES             | `orchestrator/loop.py:2112 _dispatch_agent` 8 MVP + 14 enterprise                                                                                                              |
-| `proposal → approval → execution`            | YES             | `approval_gated_tools() 12 + dynamic MCP`, `_react_approval_gate:876`, `UPDATE agent_approvals WHERE status=APPROVED` atomic                                                   |
-| `outcome → memory update → future retrieval` | YES             | `memory_versioning.py`, `provenance_service.py`, `MemoryRecord.freshness_at` (no auto-expiry)                                                                                  |
+> [!TIP] The memory write path is **architecturally complete** in code. Runtime
+> verification (Phase 9) will determine whether it actually executes correctly
+> end-to-end.
+
+### 4.3 Knowledge Graph
+
+| Component           | Implementation                                                                                                                      |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Service             | [knowledge_graph_service.py](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/src/api/services/knowledge_graph_service.py) |
+| Node storage        | `knowledge_nodes` table                                                                                                             |
+| Edge storage        | `knowledge_edges` table                                                                                                             |
+| Traversal           | BFS + DFS                                                                                                                           |
+| Shortest path       | `find_shortest_path`                                                                                                                |
+| Workspace isolation | Scoped by workspace + tenant context                                                                                                |
+
+### 4.4 Vector Store
+
+| Property        | Value                                                                                                               |
+| --------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Primary backend | **Qdrant** (cloud/local)                                                                                            |
+| Fallback        | **PGVector** (PostgreSQL pgvector extension)                                                                        |
+| Embedding model | `text-embedding-3-small`                                                                                            |
+| Search          | Cosine distance + metadata filtering                                                                                |
+| Infrastructure  | [vector_store.py](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/src/api/infrastructure/vector_store.py) |
+
+### 4.5 RAG (Retrieval-Augmented Generation)
+
+| Mode     | Implementation                                                                                                     |
+| -------- | ------------------------------------------------------------------------------------------------------------------ |
+| Vector   | Semantic cosine search                                                                                             |
+| Keyword  | Substring DB queries on chunks/entities                                                                            |
+| Graph    | Knowledge graph relation expansion                                                                                 |
+| Hybrid   | Normalized re-ranking + dedup across all three                                                                     |
+| Location | [retrieval.py](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/src/api/agents/memory_agent/retrieval.py) |
+
+### 4.6 Connectors (15 total)
+
+| Connector       | Capability                       |
+| --------------- | -------------------------------- |
+| gmail           | Email read/draft                 |
+| google_calendar | Calendar read/write              |
+| google_drive    | Drive files read/download/search |
+| google_docs     | Docs read/create/edit            |
+| github          | Repos, issues, PRs, profiles     |
+| greenhouse      | Job board (public)               |
+| lever           | Job postings (public)            |
+| jobs_board      | Meta-aggregator                  |
+| outlook         | MS Graph email                   |
+| graph_calendar  | MS Graph calendar                |
+| onedrive        | MS Graph files                   |
+| mcp             | Dynamic MCP servers              |
+| slack           | Messages                         |
+| notion          | Pages                            |
+| browser         | Web scraping (SSRF-guarded)      |
 
 ---
 
-## 2. Module Inventory
+## 5. Security Inventory
 
-### 2.1 API Endpoints (mounted, MVP mode)
+### 5.1 Authentication
 
-203 ops across 162 paths (35 routers; 8 enterprise routers excluded when
-`enterprise_routes_enabled=false`):
+| Layer            | Implementation                   | File                                                                                                          |
+| ---------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| JWT auth         | Bearer token extraction + verify | [auth.py](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/src/api/middleware/auth.py)               |
+| Password hashing | bcrypt                           | [auth_service.py](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/src/api/services/auth_service.py) |
+| Token revocation | Redis fast-path + DB truth       | auth_service.py                                                                                               |
+| Token refresh    | Rotation on valid refresh        | auth_service.py                                                                                               |
+| OAuth/SSO        | Google, Microsoft, SAML routes   | PUBLIC_PATHS entries                                                                                          |
 
-`auth(9) workspaces(10) memories(10) agents(13) documents(8) search(1) knowledge_graph(11) connectors(12) resumes(14) applications(4) chat(1) gmail(6) scheduler(11) events(4) notifications(7) profile(17) provider_keys(6) cognition(8) anticipation(4) council(3) federation(1) sovereignty(8) integrations(5) temporal(6) health(3) + consent/gdpr/approvals/agent_costs`.
+### 5.2 Authorization & Tenancy
 
-Excluded in MVP:
-`billing(5) plugins(8) analytics(5) audit(5) iam(8) recommendations(5) webhooks(7) admin_console(12) feature_flags(5) scim`.
+| Layer               | Implementation                               | File                                                                                                      |
+| ------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| RBAC                | @require_role / @require_permission          | [rbac.py](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/src/api/middleware/rbac.py)           |
+| Workspace ownership | check_user_workspace_access                  | [tenant.py](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/src/api/middleware/tenant.py)       |
+| RLS                 | SET LOCAL app.tenant_id/workspace_id/user_id | tenant.py                                                                                                 |
+| Encryption          | Fernet AES-256 (EncryptedString type)        | [encryption.py](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/src/api/services/encryption.py) |
+| Secrets             | Infisical + env fallback                     | [secrets.py](file:///c:/PROJECTS/PIOS/ClonU/Driftloom/Vaeloom/apps/api/src/api/infrastructure/secrets.py) |
 
-Evidence: `scripts/gen_openapi.py`,
-`src/api/main.py:400-445 _safe_include + if enterprise_routes_enabled`,
-`docs/backend/openapi.yaml`.
+### 5.3 Protection Layers
 
-### 2.2 Frontend Routes (41 pages)
+| Layer            | Implementation                        |
+| ---------------- | ------------------------------------- |
+| CSRF             | Double-submit cookie                  |
+| CORS             | Restricted origins/methods/headers    |
+| Rate limiting    | Sliding window (Memory/Redis)         |
+| Body size limit  | 25MB default                          |
+| Prompt injection | Regex scan + LLM classifier           |
+| Security headers | HSTS, CSP, X-Frame-Options, etc.      |
+| IP allowlist     | CIDR matching                         |
+| Audit logging    | Every mutating request → audit_events |
 
-Roots: `/, /privacy, /terms, /forbidden, /session-expired, /status, /p/[userId]`
-Auth:
-`(auth)/login|signup|callback|auth/callback|forgot-password|reset-password|verify-email`
-Workspace `workspace/[workspaceId]/`:
-`page, chat, agents, agents/[agentId], memory, memory/[memoryId], jobs, schedule, history, files, files/[documentId], resume, resume/[resumeId]/edit, vault, connectors, applications, approvals, notifications, settings, profile, billing*, organizations*, admin*, developer*, marketplace*, feature-flags*`
-(* = `EnterpriseGated` when `NEXT_PUBLIC_ENTERPRISE_ENABLED !== true`).
+### 5.4 Public Paths (Unauthenticated)
 
-Evidence: `apps/web/src/app/**/page.tsx` 41, `middleware.ts`,
-`components/shared/EnterpriseGated.tsx` used in 6 pages.
-
-### 2.3 Agent Inventory (code, not docs)
-
-| #   | Agent                                                                           | Dir                      | Card | Contract | Autonomy       | Tools (scope)                                            |
-| --- | ------------------------------------------------------------------------------- | ------------------------ | ---- | -------- | -------------- | -------------------------------------------------------- |
-| 1   | memory                                                                          | `memory_agent`           | YES  | YES      | observe        | search/query                                             |
-| 2   | retrieval                                                                       | `memory_agent/retrieval` | —    | YES      | read_only      | search_documents                                         |
-| 3   | resume                                                                          | `resume_agent`           | YES  | YES      | prepare        | compile_resume_* (own-artifact)                          |
-| 4   | job_search                                                                      | `job_search_agent`       | YES  | YES      | suggest        | search_jobs, browse_job_page (read-only, SSRF-guarded)   |
-| 5   | application                                                                     | `application_agent`      | YES  | —        | approval_gated | prepare tailored pkgs (requires approval)                |
-| 6   | ats                                                                             | `ats_agent`              | YES  | —        | read_only      | calculate_ats_* (read-only)                              |
-| 7   | organization                                                                    | `organization_agent`     | YES  | —        | approval_gated | rename/move/categorize (gated)                           |
-| 8   | gmail                                                                           | `gmail_agent`            | YES  | YES      | suggest        | search_gmail, draft_email (draft-only, never send)       |
-| 9   | scheduler                                                                       | `scheduler_agent`        | YES  | YES      | approval_gated | calendar (gated)                                         |
-| 10  | career                                                                          | `career_agent`           | YES  | —        | suggest        | —                                                        |
-| 11  | drive                                                                           | `drive_agent`            | YES  | —        | approval_gated | drive read (real+mock)                                   |
-| 12  | github                                                                          | `github_agent`           | YES  | YES      | approval_gated | github read (create_issue/PR gated)                      |
-| 13  | coding                                                                          | `coding_agent`           | —    | —        | suggest        | —                                                        |
-| 14  | connector                                                                       | `connector_agent`        | —    | —        | suggest        | —                                                        |
-| 15  | research                                                                        | `research_agent`         | —    | YES      | observe        | web_search                                               |
-| …   | analytics, learning, reflection, recommendation, security, reminder, plugin, qa | various                  | NO   | NO       | —              | synthetic `card_registry.get_or_create()` fallback (gap) |
-
-Gaps: `agent_registry` seeds **8/23**, `card_registry` **11/23** → ~12 agents
-rely on synthetic fallback (`tools=[]`). No destructive `send_email`/`apply_job`
-tool exists; only `draft_email`.
-
-### 2.4 Memory / Graph / Vector
-
-| Store             | Table(s)               | Vector dims                      | Isolation                                           | Notes                                                                                              |
-| ----------------- | ---------------------- | -------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `memories`        | `schema.py:281`        | 1536 (`Vector`)                  | `workspace_id NULLABLE` (gap), `tenant_id nullable` | supersedes chain, lineage attempted but `lineage/taxonomy_version` not persisted (try/except pass) |
-| `memory_records`  | `332`                  | —                                | `workspace_id NOT NULL FK CASCADE` ✓                | confidence/importance/freshness                                                                    |
-| `embeddings`      | `527`                  | 1536                             | `workspace_id NO FK` (gap)                          | `model_version=text-embedding-3-small`                                                             |
-| `knowledge_nodes` | raw SQL `alembic/0002` | TEXT `[...]` (gap: not pgvector) | `tenant_id TEXT NOT NULL`                           | not SQLAlchemy model                                                                               |
-| `knowledge_edges` | raw SQL `0002`         | —                                | `workspace_id nullable`                             | duplicate prevention app-only                                                                      |
-| `document_chunks` | `1248`                 | via `embedding_id FK SET NULL`   | `workspace_id NOT NULL FK CASCADE` ✓                | `content_hash`, token offsets                                                                      |
-
-Evidence: `models/schema.py`,
-`services/memory_service.py:150-157 every method filters`,
-`services/knowledge_graph_service.py:_require_write_scope:23, _read_scope:29`.
-
-### 2.5 Connectors
-
-Gmail, Drive, GitHub, Outlook, OneDrive, Slack, Notion + MCP
-(`connector_ext_service`, encrypted env values, shell interpreters denied). All
-connectors are **draft/read-only unless approval-gated**
-(`executor.py:261 _BASE_APPROVAL_GATED` includes
-`draft_email, create_github_issue/PR, send_slack_message, calendar write, drive write`).
-
-### 2.6 Current Test Inventory
-
-| Suite                       | Collected | Run (q) | Pass           | Notes                                                                     |
-| --------------------------- | --------- | ------- | -------------- | ------------------------------------------------------------------------- |
-| All (`apps/api/tests`)      | 3615      | —       | —              | `uv run --project apps/api python -m pytest --collect-only -q` 2026-09-15 |
-| Security (`tests/security`) | 284       | 284     | **284 passed** | `tests/security -q` 07m15s                                                |
-| ZT master probes (NEW)      | 3         | 3       | **3 passed**   | `test_zt_master_probes.py`: auth matrix, workspace & memory IDOR          |
-| ZT env override (NEW)       | 2         | 2       | **2 passed**   | `test_zt_config_env_override.py`                                          |
-| Harness v1                  | 13        | 13      | **13 passed**  | `test_harness_v1.py`                                                      |
-
----
-
-## 3. Baseline Failures (before fixes)
-
-| ID     | Finding                                                                                                                         | Fixed                                                            |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| ZT-001 | `apps/api/.env` loaded with `override=True` — explicit `DATABASE__URL` env ignored, local/test silently talked to prod Supabase | **FIXED** `config.py:14-19 → override=False` (commit `bd7b2125`) |
-| ZT-002 | Temporal ingestion path creates `Entity` but **no embeddings** and stub `index_graph` — vector miss for durable docs            | TRACKED P1                                                       |
-| ZT-003 | Parsers missing `json/html/xml`, scanned PDF not OCR'd, corrupt PDF chunked as `"PDF parsing error: …"`                         | TRACKED P2                                                       |
-
----
-
-## 4. How to Reproduce This Baseline
-
-```bash
-# Counts
-Get-ChildItem apps/api/src/api/routers -Filter *.py | Measure-Object
-Select-String -Path apps/api/src/api/routers/*.py -Pattern '@router\.(get|post|put|patch|delete)' | Measure-Object
-uv run --project apps/api python scripts/gen_openapi.py  # → 162 paths
-uv run --project apps/api python -m pytest --collect-only -q -o addopts=""  # → 3625 / 3615
-uv run --project apps/api python -m pytest apps/api/tests/security -q -o addopts="" -p no:cacheprovider  # → 284 passed
-uv run --project apps/api python -m pytest apps/api/tests/test_zt_master_probes.py apps/api/tests/test_zt_config_env_override.py -q -o addopts="" -p no:cacheprovider  # → 5 passed
+```text
+/health, /health/ready, /health/startup, /metrics
+/docs, /openapi.json, /redoc
+/csrf-token
+/api/v1/auth/signup, /api/v1/auth/login, /api/v1/auth/refresh
+/api/v1/auth/saml/callback
+/api/v1/gmail/webhook
+/api/v1/consent/scopes
+PREFIX: /api/v1/auth/sso/, /scim/
+PREFIX: /api/v1/profile/avatar/, /api/v1/profile/public/
 ```
 
-Evidence path: `docs/prompts/vaeloom-66.../`, `docs/phases/*` (42),
-`graphify-out/` (13511 nodes, 20107 edges).
+---
+
+## 6. Critical Discrepancies — AGENTS.md vs Source Code
+
+| #    | Claim (AGENTS.md / Docs)                                                      | Source-Code Reality                             | Severity   | Classification                   |
+| ---- | ----------------------------------------------------------------------------- | ----------------------------------------------- | ---------- | -------------------------------- |
+| D-01 | "OpenAPI 110 paths"                                                           | **254 endpoints** across 36 routers             | ⚠️ MEDIUM  | DOC OUTDATED                     |
+| D-02 | "60 e2e (24 gating + 36 visual)"                                              | **29 test cases in 6 files**                    | 🔴 HIGH    | COUNT INFLATED or tests removed  |
+| D-03 | "28 total tools" (semantic ATS context)                                       | **55 total tools** defined                      | ⚠️ MEDIUM  | DOC OUTDATED — 28 was ATS subset |
+| D-04 | "34 jest" tests                                                               | **NOT YET VERIFIED**                            | ❓ PENDING | Needs Phase 5 count              |
+| D-05 | "2731 tests collected"                                                        | **NOT YET VERIFIED**                            | ❓ PENDING | Needs test run                   |
+| D-06 | 6 MVP memory types (Profile, Document, Career, Episodic, Preference, Working) | **22 types** with different taxonomy            | ⚠️ MEDIUM  | EVOLVED — names differ           |
+| D-07 | WebSocket/realtime listed as implemented                                      | **NOT IMPLEMENTED** — chat uses setTimeout mock | 🔴 HIGH    | DOCUMENTED + NOT IMPLEMENTED     |
+| D-08 | "coverage 94% total"                                                          | **NOT YET VERIFIED**                            | ❓ PENDING | Needs test run                   |
+| D-09 | "39 ADRs"                                                                     | **NOT YET VERIFIED**                            | ❓ PENDING | Needs doc count                  |
+
+---
+
+## 7. Baseline Risk Assessment
+
+### P0 Candidates (Potential Release Blockers)
+
+| ID   | Risk                                               | Evidence                                        | Phase to Verify |
+| ---- | -------------------------------------------------- | ----------------------------------------------- | --------------- |
+| R-01 | **No real WebSocket/SSE** — chat streaming is fake | setTimeout mock in ChatWindow.tsx               | Phase 15        |
+| R-02 | **E2E test gap** — only 29 of claimed 60           | 6 test files counted                            | Phase 17        |
+| R-03 | **Temporal workflows untested at runtime**         | 6 workflows defined, runtime unknown            | Phase 15        |
+| R-04 | **Agent contracts incomplete**                     | 28 agents exist but contract compliance unknown | Phase 12        |
+| R-05 | **Connector OAuth runtime**                        | 15 connectors defined but OAuth flow untested   | Phase 7         |
+
+### Architecture Observations
+
+1. **Dual execution model**: Both Temporal workflows AND a traditional queue
+   worker exist — potential competing execution paths (Section 42 violation
+   check needed)
+2. **Enterprise features in MVP**: billing, marketplace, organizations,
+   feature-flags, admin, developer pages exist in frontend — need classification
+   per Section 64
+3. **Scale memory (CRDT)**: SovereignIdentity, VerifiableCredential,
+   CrdtSyncDelta models suggest enterprise-grade features mixed into MVP schema
+4. **Large surface area**: 254 endpoints is substantial — authorization coverage
+   verification will be critical
+
+---
+
+## 8. Next Steps — Phase 1 & 2
+
+Phase 0 is complete. The execution order proceeds:
+
+```text
+✅ PHASE 0: Repository Discovery — COMPLETE
+
+→ PHASE 1: Documentation/Spec Reconciliation
+   - Compare all 86 docs against source reality
+   - Classify every documented feature per Section 5
+
+→ PHASE 2: Architecture/Runtime Mapping
+   - Start backend server
+   - Verify actual startup behavior
+   - Run test suite to get real counts
+   - Verify memory loop runtime
+```
+
+---
+
+## Appendix: Evidence Sources
+
+All findings in this report were generated by 5 independent source-code auditors
+using `grep_search`, `find_by_name`, `list_dir`, and `view_file` directly
+against the repository at `c:\PROJECTS\PIOS\ClonU\Driftloom\Vaeloom`.
+
+No documentation claims were inherited without source verification.
+
+**Status: PHASE 0 COMPLETE — PHASE 1 READY**

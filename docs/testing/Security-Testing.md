@@ -1,8 +1,12 @@
 # Security Testing
 
-> **Purpose:** Define security testing practices for Vaeloom **Status:** ?? New
-> **Implementation Status:** ?? NOT_IMPLEMENTED — `testing/security/` directory
-> is EMPTY (no security tests implemented yet)
+> **Purpose:** Define security testing practices for Vaeloom **Status:** ✅
+> Implemented **Implementation Status:** ✅ IMPLEMENTED —
+> `apps/api/tests/security/` 233 collected / 170 unique (middleware/test_csrf
+> duplicates per zero-trust audit 2026-08-22 F-02). Matrix pointer:
+> `docs/phases/mvp-p13/09-gate-report.md` (95.4 APPROVED) +
+> `docs/phases/mvp-p14/05-test-results.md` +
+> `docs/phases/mvp-p14/06-security-privacy-a11y.md`.
 
 ## Security Test Architecture
 
@@ -50,13 +54,13 @@ graph TD
 
 ## Security Test Types
 
-| Test Type | Frequency | Tool | Scope |
+| Test Type              | Frequency   | Tool                          | Scope               |
 | ---------------------- | ----------- | ----------------------------- | ------------------- |
-| SAST (Static Analysis) | Every PR | ESLint security rules, Bandit | Source code |
-| Dependency scanning | Every PR | Dependabot, Snyk | Third-party deps |
-| Secret scanning | Every push | GitLeaks | Committed secrets |
-| DAST (Dynamic) | Pre-release | OWASP ZAP | Running application |
-| Penetration testing | Quarterly | External firm | Full application |
+| SAST (Static Analysis) | Every PR    | ESLint security rules, Bandit | Source code         |
+| Dependency scanning    | Every PR    | Dependabot, Snyk              | Third-party deps    |
+| Secret scanning        | Every push  | GitLeaks                      | Committed secrets   |
+| DAST (Dynamic)         | Pre-release | OWASP ZAP                     | Running application |
+| Penetration testing    | Quarterly   | External firm                 | Full application    |
 
 ## SAST Rules
 
@@ -88,110 +92,110 @@ updates:
 
 ## Penetration Testing Scope
 
-| Area | Test Cases |
+| Area             | Test Cases                                     |
 | ---------------- | ---------------------------------------------- |
-| Authentication | Session management, token handling, MFA bypass |
-| Authorization | Privilege escalation, role bypass |
-| API security | Injection, IDOR, rate limiting bypass |
-| AI safety | Prompt injection, data leakage |
-| Tenant isolation | Cross-tenant data access |
+| Authentication   | Session management, token handling, MFA bypass |
+| Authorization    | Privilege escalation, role bypass              |
+| API security     | Injection, IDOR, rate limiting bypass          |
+| AI safety        | Prompt injection, data leakage                 |
+| Tenant isolation | Cross-tenant data access                       |
 
 ## Common Mistakes
 
-| Mistake | Consequence |
+| Mistake                                       | Consequence                                                |
 | --------------------------------------------- | ---------------------------------------------------------- |
-| Relying only on automated scanning | Misses business logic flaws and chained exploits |
+| Relying only on automated scanning            | Misses business logic flaws and chained exploits           |
 | Treating security testing as a one-time event | New vulnerabilities emerge as code and dependencies change |
-| Ignoring SAST false positives | Alerts get ignored, real issues slip through |
+| Ignoring SAST false positives                 | Alerts get ignored, real issues slip through               |
 
 ## Best Practices
 
-| Practice | Rationale |
+| Practice                             | Rationale                                       |
 | ------------------------------------ | ----------------------------------------------- |
-| Shift left — run SAST on every PR | Catch vulnerabilities before they reach staging |
-| Maintain a security test inventory | Track which tests cover which OWASP categories |
-| Schedule quarterly penetration tests | Automated scans miss novel attack vectors |
+| Shift left — run SAST on every PR    | Catch vulnerabilities before they reach staging |
+| Maintain a security test inventory   | Track which tests cover which OWASP categories  |
+| Schedule quarterly penetration tests | Automated scans miss novel attack vectors       |
 
 ## Performance Considerations
 
-| Concern | Mitigation |
+| Concern                                          | Mitigation                                            |
 | ------------------------------------------------ | ----------------------------------------------------- |
-| SAST scans slow down CI pipelines | Run only on changed files in PRs, full scan nightly |
-| Dependency auditing adds build time | Cache dependency scan results between runs |
+| SAST scans slow down CI pipelines                | Run only on changed files in PRs, full scan nightly   |
+| Dependency auditing adds build time              | Cache dependency scan results between runs            |
 | Penetration tests require dedicated environments | Use ephemeral staging environments to avoid conflicts |
 
 ## Security Considerations
 
-| Concern | Mitigation |
+| Concern                                       | Mitigation                                                                                                                                             |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Relying only on automated scanning | Automated tools miss business logic flaws and chained exploits — supplement with manual penetration testing and threat modeling every quarter |
-| Treating security testing as a one-time event | New vulnerabilities emerge as code and dependencies change — integrate SAST, DAST, and dependency scanning into CI with scheduled full-scope reviews |
-| Ignoring SAST false positives | Too many false leads desensitize the team — triage findings with a severity matrix and tune rules to reduce noise without missing real vulnerabilities |
+| Relying only on automated scanning            | Automated tools miss business logic flaws and chained exploits — supplement with manual penetration testing and threat modeling every quarter          |
+| Treating security testing as a one-time event | New vulnerabilities emerge as code and dependencies change — integrate SAST, DAST, and dependency scanning into CI with scheduled full-scope reviews   |
+| Ignoring SAST false positives                 | Too many false leads desensitize the team — triage findings with a severity matrix and tune rules to reduce noise without missing real vulnerabilities |
 
 ## Workflows
 
 1. **SAST scan on every PR**: Developer pushes PR ? GitHub Action triggers
- `eslint --rule 'security/detect-object-injection: error'` for JS/TS ? Bandit
- scans Python AI service ? results posted as annotations on PR diff ? any
- high-severity finding blocks merge ? developer fixes and re-pushes
+   `eslint --rule 'security/detect-object-injection: error'` for JS/TS ? Bandit
+   scans Python AI service ? results posted as annotations on PR diff ? any
+   high-severity finding blocks merge ? developer fixes and re-pushes
 2. **Dependency vulnerability scan**: Weekly Dependabot scan runs against all
- packages ? npm/pip vulnerabilities identified ? automated PR created with
- version bump ? CI runs test suite on patched version ? if tests pass, PR
- auto-merged ? if breaking change, manual review
+   packages ? npm/pip vulnerabilities identified ? automated PR created with
+   version bump ? CI runs test suite on patched version ? if tests pass, PR
+   auto-merged ? if breaking change, manual review
 3. **Quarterly penetration test**: External security firm engages ? 2-week
- testing window ? 5 focus areas tested (auth, authorization, API, AI safety,
- tenant isolation) ? findings documented with severity/PoC/remediation ?
- 30-day SLA for critical findings ? fix verified by re-test
+   testing window ? 5 focus areas tested (auth, authorization, API, AI safety,
+   tenant isolation) ? findings documented with severity/PoC/remediation ?
+   30-day SLA for critical findings ? fix verified by re-test
 4. **Secret scanning on every push**: GitLeaks scans every commit for secrets ?
- if secret pattern detected (AWS key, token, password), push blocked ?
- developer notified with commit hash and file path ? secret rotated via vault
- ? force push with cleaned history
+   if secret pattern detected (AWS key, token, password), push blocked ?
+   developer notified with commit hash and file path ? secret rotated via vault
+   ? force push with cleaned history
 
 ## Scalability
 
-| Dimension | Current Limit | 10x Strategy | 100x Strategy |
+| Dimension                  | Current Limit          | 10x Strategy                                                       | 100x Strategy                                          |
 | -------------------------- | ---------------------- | ------------------------------------------------------------------ | ------------------------------------------------------ |
-| SAST rules applied | 20 security rules | 100 rules with custom rule authoring for Vaeloom-specific patterns | 500+ rules with ML-augmented false positive reduction |
-| Dependency scan scope | npm + pip | npm, pip, Docker, GitHub Actions, Terraform | Full SBOM generation with VEX document management |
-| Penetration test frequency | Quarterly | Bi-monthly with automated DAST between engagements | Continuous security validation with bug bounty program |
-| Secret scan patterns | 150 (GitLeaks default) | 500 custom patterns for Vaeloom-specific secret formats | Real-time secret detection with response automation |
+| SAST rules applied         | 20 security rules      | 100 rules with custom rule authoring for Vaeloom-specific patterns | 500+ rules with ML-augmented false positive reduction  |
+| Dependency scan scope      | npm + pip              | npm, pip, Docker, GitHub Actions, Terraform                        | Full SBOM generation with VEX document management      |
+| Penetration test frequency | Quarterly              | Bi-monthly with automated DAST between engagements                 | Continuous security validation with bug bounty program |
+| Secret scan patterns       | 150 (GitLeaks default) | 500 custom patterns for Vaeloom-specific secret formats            | Real-time secret detection with response automation    |
 
 ## Error Handling
 
-| Scenario | Detection | Mitigation | Recovery |
+| Scenario                                      | Detection                                 | Mitigation                                                                 | Recovery                                                            |
 | --------------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| SAST false positive blocks PR | Rule triggers on non-vulnerable code | Developer adds `// eslint-disable-next-line` with justification in comment | If pattern is systemic, tune rule to reduce noise |
-| Dependabot PR introduces breaking change | CI tests fail on patched dependency | Block auto-merge; notify team; create manual remediation ticket | Pin acceptable version range; test alternative library if needed |
-| Penetration test finds critical vulnerability | External firm reports severity 9+ finding | 30-day SLA begins; security team leads remediation; hotfix deployed | Verify fix; re-test affected scope; update threat model |
-| Secret leaked to public repository | GitHub secret scanning alerts | Rotate compromised secret immediately; revoke access; audit access logs | Remove secret from git history (BFG Repo-Cleaner); update git hooks |
+| SAST false positive blocks PR                 | Rule triggers on non-vulnerable code      | Developer adds `// eslint-disable-next-line` with justification in comment | If pattern is systemic, tune rule to reduce noise                   |
+| Dependabot PR introduces breaking change      | CI tests fail on patched dependency       | Block auto-merge; notify team; create manual remediation ticket            | Pin acceptable version range; test alternative library if needed    |
+| Penetration test finds critical vulnerability | External firm reports severity 9+ finding | 30-day SLA begins; security team leads remediation; hotfix deployed        | Verify fix; re-test affected scope; update threat model             |
+| Secret leaked to public repository            | GitHub secret scanning alerts             | Rotate compromised secret immediately; revoke access; audit access logs    | Remove secret from git history (BFG Repo-Cleaner); update git hooks |
 
 ## Monitoring
 
-| Metric | Alert Threshold | Severity | Dashboard |
+| Metric                              | Alert Threshold    | Severity | Dashboard                  |
 | ----------------------------------- | ------------------ | -------- | -------------------------- |
-| SAST high-severity findings | > 0 per PR | Critical | GitHub Security Dashboard |
-| Open dependency vulnerabilities | > 5 critical | Critical | Snyk/Dependabot Dashboard |
-| Penetration test critical findings | > 0 per engagement | Critical | Security — Pentest Report |
-| Secret scan violations | > 0 per push | Critical | GitLeaks Dashboard |
-| Time to remediate critical findings | > 30 days | Critical | Security — SLA Tracker |
-| DAST scan pass rate | < 95% | Warning | OWASP ZAP — Scan Dashboard |
+| SAST high-severity findings         | > 0 per PR         | Critical | GitHub Security Dashboard  |
+| Open dependency vulnerabilities     | > 5 critical       | Critical | Snyk/Dependabot Dashboard  |
+| Penetration test critical findings  | > 0 per engagement | Critical | Security — Pentest Report  |
+| Secret scan violations              | > 0 per push       | Critical | GitLeaks Dashboard         |
+| Time to remediate critical findings | > 30 days          | Critical | Security — SLA Tracker     |
+| DAST scan pass rate                 | < 95%              | Warning  | OWASP ZAP — Scan Dashboard |
 
 ## Risks
 
-| Risk | Likelihood | Impact | Mitigation |
+| Risk                                                         | Likelihood | Impact   | Mitigation                                                                                   |
 | ------------------------------------------------------------ | ---------- | -------- | -------------------------------------------------------------------------------------------- |
-| SAST tool misses business logic vulnerabilities | High | Medium | Supplement with DAST + manual penetration testing; threat model per feature |
-| Dependency vulnerability discovered in production | Medium | Critical | Dependabot scans weekly; incident response plan for zero-day vulnerabilities |
-| Penetration test findings not remediated within SLA | Medium | High | Track SLA compliance in security dashboard; escalate to leadership if at risk |
-| AI prompt injection techniques evolve faster than guardrails | Medium | High | Continuous adversarial testing; follow AI safety research; participate in red team community |
+| SAST tool misses business logic vulnerabilities              | High       | Medium   | Supplement with DAST + manual penetration testing; threat model per feature                  |
+| Dependency vulnerability discovered in production            | Medium     | Critical | Dependabot scans weekly; incident response plan for zero-day vulnerabilities                 |
+| Penetration test findings not remediated within SLA          | Medium     | High     | Track SLA compliance in security dashboard; escalate to leadership if at risk                |
+| AI prompt injection techniques evolve faster than guardrails | Medium     | High     | Continuous adversarial testing; follow AI safety research; participate in red team community |
 
 ## Limitations
 
-| Limitation | Impact | Workaround | Future Resolution |
+| Limitation                                                    | Impact                                   | Workaround                                                                           | Future Resolution                                                         |
 | ------------------------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
-| SAST cannot detect runtime vulnerabilities (injection, IDOR) | Only covers static code patterns | Complement with DAST (OWASP ZAP) on staging; manual pentest for business logic flaws | IAST (Interactive Application Security Testing) at runtime |
-| Automated dependency scanning can't prioritize exploitability | CVSS score may not reflect actual risk | Manual triage of critical findings by security team | AI-based exploitability prediction using CISA KEV and threat intelligence |
-| Penetration tests are point-in-time snapshots | New vulnerabilities emerge between tests | Monthly DAST scans between quarterly pentests | Continuous bug bounty program with automated validation |
+| SAST cannot detect runtime vulnerabilities (injection, IDOR)  | Only covers static code patterns         | Complement with DAST (OWASP ZAP) on staging; manual pentest for business logic flaws | IAST (Interactive Application Security Testing) at runtime                |
+| Automated dependency scanning can't prioritize exploitability | CVSS score may not reflect actual risk   | Manual triage of critical findings by security team                                  | AI-based exploitability prediction using CISA KEV and threat intelligence |
+| Penetration tests are point-in-time snapshots                 | New vulnerabilities emerge between tests | Monthly DAST scans between quarterly pentests                                        | Continuous bug bounty program with automated validation                   |
 
 ## Overview
 
@@ -228,37 +232,37 @@ Prompt Testing document.
 
 - Achieve zero critical or high-severity SAST findings on any PR merge
 - Maintain zero critical dependency vulnerabilities open beyond 7 days from
- discovery
+  discovery
 - Complete quarterly penetration tests with 30-day SLA for critical finding
- remediation
+  remediation
 - Detect and block 100% of secrets committed to the repository before push
 - Verify tenant isolation across all penetration test engagements with zero
- cross-tenant leaks
+  cross-tenant leaks
 
 ## Scope
 
 ### In Scope
 
 - Automated SAST scanning: ESLint security rules (JS/TS) and Bandit (Python) on
- every PR
+  every PR
 - Dependency scanning: Dependabot (npm) and Snyk (npm + pip) on a weekly cadence
 - Secret scanning: GitLeaks on every push to detect committed credentials,
- tokens, keys
+  tokens, keys
 - DAST scanning: OWASP ZAP against staging before each production release
 - Penetration testing: Quarterly external firm engagement covering auth,
- authorization, API, AI safety, and tenant isolation
+  authorization, API, AI safety, and tenant isolation
 - SAST findings: severity-classified with action (high-severity blocks merge,
- medium reviewed, low triaged)
+  medium reviewed, low triaged)
 
 ### Out of Scope
 
 - Bug bounty program (future improvement)
 - IAST (Interactive Application Security Testing) integration (future
- improvement)
+  improvement)
 - AI-based exploitability prediction for dependency vulnerabilities (future
- improvement)
+  improvement)
 - Automated security regression test generation from pentest findings (future
- improvement)
+  improvement)
 
 ## Examples
 
@@ -339,15 +343,19 @@ sequenceDiagram
 
 ---
 
-| Improvement | Priority | Complexity | Timeline |
+| Improvement                                                         | Priority | Complexity | Timeline |
 | ------------------------------------------------------------------- | -------- | ---------- | -------- |
-| Bug bounty program with automated validation | High | High | Q3 2027 |
-| IAST (Interactive Application Security Testing) integration | Medium | High | Q4 2027 |
-| AI-based exploitability prediction for dependency vulns | Medium | Medium | Q2 2027 |
-| Automated security regression test generation from pentest findings | Low | High | Q4 2027 |
+| Bug bounty program with automated validation                        | High     | High       | Q3 2027  |
+| IAST (Interactive Application Security Testing) integration         | Medium   | High       | Q4 2027  |
+| AI-based exploitability prediction for dependency vulns             | Medium   | Medium     | Q2 2027  |
+| Automated security regression test generation from pentest findings | Low      | High       | Q4 2027  |
 
 ## Related Documents
 
 - [Security Architecture.md](../Security/Security-Architecture.md)
 - [Threat Model.md](../Security/Threat-Model.md)
 - [`DevOps/CI-CD.md`](../DevOps/CI-CD.md)
+
+> _WS-E verified 2026-09-15 — 233/233 security (170 unique), JWT 32+, RLS 42/42,
+> GDPR 31, DPIA v1.2 All Regions per mvp-p13 gate; F-08 ingestion quarantine +
+> LLM classifier gated. See Test-Matrix.md._

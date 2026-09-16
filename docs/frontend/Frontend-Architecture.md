@@ -11,13 +11,25 @@
 ## Overview
 
 The Vaeloom frontend is a component-driven single-page application built with
-Next.js 14+ (App Router), TypeScript (strict mode), Tailwind CSS, TanStack
-Query, and React Hook Form. It serves 27 workspace pages (dashboard, resume +
-resume editor, jobs, applications, chat, memory + memory detail, schedule,
-files + file detail, approvals, connectors, history, agents + agent detail,
-settings, profile, vault, notifications, marketplace, organizations, admin,
-developer + webhooks, billing, feature-flags) plus auth/marketing routes — the
-"11 routes" list below is stale.
+**Next.js 15** (App Router), TypeScript (strict mode), Tailwind CSS, TanStack
+Query, and React Hook Form. It ships **41 `page.tsx` routes** (see inventory
+below): 27 workspace pages under `workspace/[workspaceId]/`, 7 auth routes under
+`(auth)/`, and 7 root/marketing routes.
+
+> **API boundary gotchas (code truth):**
+>
+> - **CSP:** `apps/web/src/middleware.ts:54` and `next.config.js:43-50` only
+>   allow `http://localhost:8000` in `connect-src` when
+>   `NODE_ENV === 'development'` (or `ALLOW_LOCAL_API=true`). Browser API blocks
+>   in local dev almost always mean the allowlist, not the API.
+> - **snake_case ↔ camelCase:** backend serializes `access_token`, frontend
+>   reads `accessToken`. `lib/api.ts:27-39` (`transformKeys`) converts
+>   **responses only** — request bodies stay `snake_case`, and any new API
+>   client must reuse `transformKeys` (`lib/api-client.ts`). `ResumeBuilder.tsx`
+>   consumes camelCase responses.
+> - **CSRF:** mutating requests attach `X-CSRF-Token` from `getCsrfToken()`
+>   (`lib/csrf.ts`, `GET /csrf-token`) with `credentials: 'include'`; the client
+>   refreshes (`resetCsrfToken`) and retries once on 403.
 
 The architecture enforces a strict communication boundary: the frontend
 communicates exclusively through the REST API gateway, never directly accessing
@@ -86,7 +98,7 @@ graph TD
 
  subgraph Stack["Technology Stack"]
  direction TB
- S1["Framework: Next.js 14+<br/>SSR + App Router"]
+  S1["Framework: Next.js 15<br/>SSR + App Router"]
  S2["Language: TypeScript<br/>Strict mode"]
  S3["Styling: Tailwind CSS<br/>Design tokens"]
  S4["State: TanStack Query<br/>Server state, caching"]
@@ -124,6 +136,57 @@ graph TD
 > through the REST API gateway, never directly accessing memory or agent
 > systems.
 
+## Route Inventory (41 `page.tsx`, code truth)
+
+Base: `apps/web/src/app/`. Count verified by glob: 27 workspace + 7 auth + 7
+root/marketing = 41.
+
+### Workspace routes — `workspace/[workspaceId]/` (27)
+
+| Route          | File suffix                        |
+| -------------- | ---------------------------------- |
+| Workspace home | `workspace/[workspaceId]/page.tsx` |
+| Agents         | `agents/page.tsx`                  |
+| Agent detail   | `agents/[agentId]/page.tsx`        |
+| Admin          | `admin/page.tsx`                   |
+| Applications   | `applications/page.tsx`            |
+| Approvals      | `approvals/page.tsx`               |
+| Billing        | `billing/page.tsx`                 |
+| Chat           | `chat/page.tsx`                    |
+| Connectors     | `connectors/page.tsx`              |
+| Developer      | `developer/page.tsx`               |
+| Webhooks       | `developer/webhooks/page.tsx`      |
+| Feature flags  | `feature-flags/page.tsx`           |
+| Files          | `files/page.tsx`                   |
+| File detail    | `files/[documentId]/page.tsx`      |
+| History        | `history/page.tsx`                 |
+| Jobs           | `jobs/page.tsx`                    |
+| Marketplace    | `marketplace/page.tsx`             |
+| Memory         | `memory/page.tsx`                  |
+| Memory detail  | `memory/[memoryId]/page.tsx`       |
+| Notifications  | `notifications/page.tsx`           |
+| Organizations  | `organizations/page.tsx`           |
+| Profile        | `profile/page.tsx`                 |
+| Resume         | `resume/page.tsx`                  |
+| Resume editor  | `resume/[resumeId]/edit/page.tsx`  |
+| Schedule       | `schedule/page.tsx`                |
+| Settings       | `settings/page.tsx`                |
+| Vault          | `vault/page.tsx`                   |
+
+### Auth routes — `(auth)/` (7)
+
+`login`, `signup`, `callback`, `forgot-password`, `reset-password`,
+`verify-email`, `auth/callback`.
+
+### Root / marketing routes (7)
+
+/ (`page.tsx`), `p/[userId]`, `status`, `terms`, `privacy`, `forbidden`,
+`session-expired`.
+
+> **Note:** there is no `/ats` route — ATS is a modal inside
+> `ResumeBuilder.tsx`. `NEXT_PUBLIC_WS_URL` is defined but WebSocket is NOT
+> IMPLEMENTED — REST polling only.
+
 ## Frontend to backend request flow (code truth)
 
 ```mermaid
@@ -151,7 +214,7 @@ sequenceDiagram
 
 | Component            | Responsibility                                    | Technology             | Scale Strategy                            |
 | -------------------- | ------------------------------------------------- | ---------------------- | ----------------------------------------- |
-| Next.js SSR Renderer | Server-side page rendering with streaming         | Next.js 14+ App Router | Auto-scaling with container orchestration |
+| Next.js SSR Renderer | Server-side page rendering with streaming         | Next.js 15 App Router  | Auto-scaling with container orchestration |
 | API Client           | Type-safe HTTP client with caching and retry      | TanStack Query + fetch | No scaling needed (stateless)             |
 | State Manager        | Server state caching and workspace scoping        | TanStack Query         | Per-workspace query key prefixing         |
 | Form Manager         | Form state, validation, and submission            | React Hook Form        | No scaling needed (client-side only)      |
@@ -276,7 +339,7 @@ permissions are enforced at the backend level.
 | Concurrent SSR requests | 100 per instance | Horizontal scaling with auto-scaling groups | Global CDN with edge rendering        |
 | Client bundle size      | 250KB per route  | Dynamic imports for heavy components        | Module federation for micro-frontends |
 | TanStack Query cache    | 50MB client-side | LRU eviction with per-workspace keys        | IndexedDB for offline support         |
-| Page routes             | 11 routes        | Parallel routes and intercepting routes     | Nested layouts with route groups      |
+| Page routes             | 41 page.tsx      | Parallel routes and intercepting routes     | Nested layouts with route groups      |
 
 ## Error Handling
 
