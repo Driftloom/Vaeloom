@@ -134,7 +134,19 @@ class NotificationService:
 
     async def notify_subscribers(self, notification, db: AsyncSession = None):
         try:
-            result = await db.execute(text("SELECT url FROM notification_subscribers"))
+            tenant_id = getattr(notification, "tenant_id", None)
+            if not tenant_id and getattr(notification, "workspace_id", None):
+                from ..models.schema import Workspace
+                ws_res = await db.execute(select(Workspace.tenant_id).where(Workspace.id == notification.workspace_id))
+                tenant_id = ws_res.scalar_one_or_none()
+
+            if tenant_id:
+                result = await db.execute(
+                    text("SELECT url FROM notification_subscribers WHERE tenant_id = :tid"),
+                    {"tid": str(tenant_id)},
+                )
+            else:
+                result = await db.execute(text("SELECT url FROM notification_subscribers WHERE tenant_id IS NULL"))
             subscribers = result.fetchall()
             async with httpx.AsyncClient(timeout=5) as client:
                 for sub in subscribers:

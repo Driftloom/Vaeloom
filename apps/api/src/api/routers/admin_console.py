@@ -273,9 +273,18 @@ async def admin_action(
             return {"action": action, "status": "success", "message": f"Cache clear attempted: {e}"}
 
     if action == "trigger_backup":
-        # Stub: record audit event, real backup via pg_dump would be async job
         try:
-            await db.execute(text("INSERT INTO audit_events (id, actor_id, action, resource, tenant_id, created_at) VALUES (gen_random_uuid(), 'system', 'backup.trigger', 'system', '00000000-0000-0000-0000-000000000000', NOW())"))
+            from ..services.audit_service import audit_service
+            actor = _admin.get("sub", "admin") if isinstance(_admin, dict) else "admin"
+            tenant_id = _admin.get("tenant_id") if isinstance(_admin, dict) else None
+            await audit_service.record_event(
+                actor_id=str(actor),
+                action="backup.trigger",
+                resource="system",
+                tenant_id=tenant_id,
+                metadata={"action": action},
+                db=db,
+            )
             await db.commit()
         except Exception:
             pass
@@ -303,6 +312,10 @@ async def admin_audit_log(
 ):
     conditions: list[str] = []
     params: dict = {}
+    caller_tenant = _admin.get("tenant_id") if isinstance(_admin, dict) else None
+    if caller_tenant and str(caller_tenant).lower() not in {"global", "none", ""}:
+        conditions.append("tenant_id = :tenant_id")
+        params["tenant_id"] = str(caller_tenant)
     if action:
         conditions.append("action = :action")
         params["action"] = action

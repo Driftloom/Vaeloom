@@ -22,6 +22,7 @@ ALLOWED_TABLES = frozenset({
     "resumes", "applications", "schedule_events", "agent_executions",
     "agent_actions", "agent_approvals", "permissions", "subscriptions",
     "gmail_watches", "provider_keys", "memory_versions",
+    "resume_artifacts", "resume_sources",
 })
 
 EXPORT_COLUMNS = {
@@ -56,6 +57,8 @@ EXPORT_COLUMNS = {
     "gmail_watches": "*",
     "provider_keys": "*",
     "memory_versions": "*",
+    "resume_artifacts": "*",
+    "resume_sources": "*",
 }
 
 USER_TABLES = [
@@ -82,6 +85,7 @@ USER_TABLES = [
     ("entities", "workspace_id"),
     ("relationships", "workspace_id"),
     ("resumes", "workspace_id"),
+    ("resume_artifacts", "workspace_id"),
     ("applications", "workspace_id"),
     ("schedule_events", "workspace_id"),
     ("agent_executions", "user_id"),

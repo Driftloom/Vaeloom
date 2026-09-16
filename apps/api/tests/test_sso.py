@@ -140,10 +140,30 @@ class TestSSO:
         assert result is None
 
     async def test_saml_provider(self):
-        from api.services.sso import SSOConfig, get_sso_provider
-        config = SSOConfig(issuer="saml-issuer", client_id="id", client_secret="secret")
-        with pytest.raises(ValueError, match="Unsupported SSO provider.*saml"):
-            get_sso_provider("saml", config)
+        import base64
+        import urllib.parse
+        import zlib
+        from api.services.sso import SAMLSSOProvider, SSOConfig, get_sso_provider
+
+        config = SSOConfig(issuer="https://idp.example.com/sso", client_id="https://vaeloom.app/sp", client_secret="secret")
+        provider = get_sso_provider("saml", config)
+        assert isinstance(provider, SAMLSSOProvider)
+
+        auth_url = await provider.get_auth_url("https://vaeloom.app/callback", "state123")
+        assert "https://idp.example.com/sso" in auth_url
+        assert "SAMLRequest=mock" not in auth_url
+        assert "RelayState=state123" in auth_url
+
+        # Parse query params and decompress SAMLRequest
+        parsed = urllib.parse.urlparse(auth_url)
+        qs = urllib.parse.parse_qs(parsed.query)
+        assert "SAMLRequest" in qs
+        b64_req = qs["SAMLRequest"][0]
+        raw_deflated = base64.b64decode(b64_req)
+        xml = zlib.decompress(raw_deflated, -15).decode("utf-8")
+        assert "samlp:AuthnRequest" in xml
+        assert "https://vaeloom.app/sp" in xml
+        assert 'Destination="https://idp.example.com/sso"' in xml
 
     async def test_get_sso_provider_unsupported(self):
         from api.services.sso import SSOConfig, get_sso_provider

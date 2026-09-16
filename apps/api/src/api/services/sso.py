@@ -172,7 +172,6 @@ class SAMLSSOProvider(SSOProvider):
     async def validate_token(self, token: str) -> dict[str, Any] | None:
         # token is base64 SAMLResponse
         try:
-
             assertion = self._real.parse_saml_response(token)
             info = self._real.validate_assertion(assertion)
             return info
@@ -180,8 +179,45 @@ class SAMLSSOProvider(SSOProvider):
             return None
 
     async def get_auth_url(self, redirect_uri: str, state: str) -> str:
-        # SAML IdP-initiated or SP-initiated mock URL — return IdP metadata URL
-        return f"{redirect_uri}?SAMLRequest=mock&RelayState={state}"
+        """Generate genuine SAML 2.0 AuthnRequest URL for Okta, Azure AD, Ping, etc."""
+        import base64
+        import urllib.parse
+        import uuid
+        import zlib
+        from datetime import UTC, datetime
+
+        idp_sso_url = (self.config.issuer or "").strip()
+        if not idp_sso_url:
+            raise ValueError("SAML Identity Provider (IdP) URL is not configured.")
+
+        request_id = f"id_{uuid.uuid4().hex}"
+        issue_instant = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        sp_entity_id = self.config.client_id or "https://vaeloom.app/saml/metadata"
+
+        authn_request_xml = (
+            f'<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" '
+            f'xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" '
+            f'ID="{request_id}" '
+            f'Version="2.0" '
+            f'IssueInstant="{issue_instant}" '
+            f'Destination="{idp_sso_url}" '
+            f'AssertionConsumerServiceURL="{redirect_uri}" '
+            f'ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST">'
+            f'<saml:Issuer>{sp_entity_id}</saml:Issuer>'
+            f'<samlp:NameIDPolicy Format="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress" AllowCreate="true"/>'
+            f'</samlp:AuthnRequest>'
+        )
+
+        compressor = zlib.compressobj(level=9, method=zlib.DEFLATED, wbits=-15)
+        deflated = compressor.compress(authn_request_xml.encode("utf-8")) + compressor.flush()
+        b64_request = base64.b64encode(deflated).decode("ascii")
+
+        params = {
+            "SAMLRequest": b64_request,
+            "RelayState": state,
+        }
+        separator = "&" if "?" in idp_sso_url else "?"
+        return f"{idp_sso_url}{separator}{urllib.parse.urlencode(params)}"
 
     async def exchange_code(self, code: str, redirect_uri: str) -> str | None:
         # SAML uses POST binding, not code exchange — return code as token
@@ -192,8 +228,9 @@ def get_sso_provider(provider: str, config: SSOConfig) -> SSOProvider:
     providers = {
         "google": GoogleSSOProvider,
         "microsoft": MicrosoftSSOProvider,
+        "saml": SAMLSSOProvider,
     }
     cls = providers.get(provider)
     if not cls:
-        raise ValueError(f"Unsupported SSO provider: {provider}. Use 'google' or 'microsoft'.")
+        raise ValueError(f"Unsupported SSO provider: {provider}. Use 'google', 'microsoft', or 'saml'.")
     return cls(config)

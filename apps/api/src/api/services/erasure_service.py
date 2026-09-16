@@ -13,15 +13,26 @@ from ..models.schema import (
     ApiKey,
     Application,
     AuthSession,
+    Connector,
+    CrdtSyncDelta,
     Document,
+    DocumentAction,
+    DocumentChunk,
     DocumentVersion,
     Embedding,
+    Entity,
     Memory,
     MemoryRecord,
+    MemoryVersion,
     Notification,
     Permission,
+    ProviderKey,
+    Relationship,
     Resume,
+    ResumeArtifact,
+    ResumeSource,
     ScheduleEvent,
+    VerifiableCredential,
     WorkspaceUser,
 )
 
@@ -50,26 +61,82 @@ class ErasureService:
             backup_expiry_timestamp="",
         )
 
+        # 1. Delete object storage / S3 files before DB row purge (G-31)
+        try:
+            from .storage_service import storage_service
+
+            doc_versions_res = await db.execute(
+                select(DocumentVersion.storage_key).where(
+                    DocumentVersion.document_id.in_(
+                        select(Document.id).where(Document.workspace_id == workspace_id)
+                    )
+                )
+            )
+            for row in doc_versions_res.fetchall():
+                if row[0]:
+                    try:
+                        await storage_service.delete(row[0])
+                    except Exception:
+                        pass
+
+            docs_res = await db.execute(
+                select(Document.raw_storage_key).where(Document.workspace_id == workspace_id)
+            )
+            for row in docs_res.fetchall():
+                if row[0]:
+                    try:
+                        await storage_service.delete(row[0])
+                    except Exception:
+                        pass
+            receipt.stores_affected.append("object_storage")
+        except Exception as e:
+            receipt.stores_affected.append(f"object_storage:ERROR:{e}")
+
+        # 2. Revoke and clear connector OAuth tokens (G-32)
+        try:
+            connectors_res = await db.execute(
+                select(Connector).where(Connector.workspace_id == workspace_id)
+            )
+            for conn in connectors_res.scalars().all():
+                conn.config = {}
+            receipt.stores_affected.append("connectors_revoked")
+        except Exception as e:
+            receipt.stores_affected.append(f"connectors_revoked:ERROR:{e}")
+
         agent_result = await db.execute(
             select(Agent.id).where(Agent.workspace_id == workspace_id)
         )
         agent_ids = [row[0] for row in agent_result.fetchall()]
 
+        # 3. Comprehensive DB cascade delete including graph entities & relations (G-30)
         tables_to_delete: list[tuple[str, type, object]] = [
             ("agent_executions", AgentExecution, AgentExecution.agent_id.in_(agent_ids) if agent_ids else AgentExecution.agent_id == uuid.uuid4()),
             ("agent_actions", AgentAction, AgentAction.workspace_id == workspace_id),
-            ("memory_records", MemoryRecord, MemoryRecord.workspace_id == workspace_id),
-            ("embeddings", Embedding, Embedding.workspace_id == workspace_id),
-            ("memories", Memory, Memory.workspace_id == workspace_id),
+            ("relationships", Relationship, Relationship.workspace_id == workspace_id),
+            ("entities", Entity, Entity.workspace_id == workspace_id),
+            ("document_chunks", DocumentChunk, DocumentChunk.workspace_id == workspace_id),
+            ("document_actions", DocumentAction, DocumentAction.workspace_id == workspace_id),
             ("document_versions", DocumentVersion, DocumentVersion.document_id.in_(
                 select(Document.id).where(Document.workspace_id == workspace_id)
             )),
             ("documents", Document, Document.workspace_id == workspace_id),
-            ("applications", Application, Application.workspace_id == workspace_id),
+            ("memory_versions", MemoryVersion, MemoryVersion.workspace_id == workspace_id),
+            ("memory_records", MemoryRecord, MemoryRecord.workspace_id == workspace_id),
+            ("embeddings", Embedding, Embedding.workspace_id == workspace_id),
+            ("memories", Memory, Memory.workspace_id == workspace_id),
+            ("resume_artifacts", ResumeArtifact, ResumeArtifact.workspace_id == workspace_id),
+            ("resume_sources", ResumeSource, ResumeSource.resume_id.in_(
+                select(Resume.id).where(Resume.workspace_id == workspace_id)
+            )),
             ("resumes", Resume, Resume.workspace_id == workspace_id),
+            ("applications", Application, Application.workspace_id == workspace_id),
             ("schedule_events", ScheduleEvent, ScheduleEvent.workspace_id == workspace_id),
             ("notifications", Notification, Notification.workspace_id == workspace_id),
             ("permissions", Permission, Permission.workspace_id == workspace_id),
+            ("verifiable_credentials", VerifiableCredential, VerifiableCredential.workspace_id == workspace_id),
+            ("crdt_sync_deltas", CrdtSyncDelta, CrdtSyncDelta.workspace_id == workspace_id),
+            ("provider_keys", ProviderKey, ProviderKey.workspace_id == workspace_id),
+            ("connectors", Connector, Connector.workspace_id == workspace_id),
         ]
 
         for table_name, model, condition in tables_to_delete:
@@ -121,6 +188,9 @@ class ErasureService:
             ("documents", Document, Document.workspace_id),
             ("applications", Application, Application.workspace_id),
             ("embeddings", Embedding, Embedding.workspace_id),
+            ("entities", Entity, Entity.workspace_id),
+            ("relationships", Relationship, Relationship.workspace_id),
+            ("connectors", Connector, Connector.workspace_id),
         ]
 
         for table_name, model, filter_col in tables_to_check:

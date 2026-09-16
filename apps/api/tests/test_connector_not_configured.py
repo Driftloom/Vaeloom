@@ -21,8 +21,8 @@ from api.tools.executor import (
 
 
 @pytest.mark.asyncio
-async def test_send_slack_message_not_configured_without_token():
-    os.environ.pop("SLACK_BOT_TOKEN", None)
+async def test_send_slack_message_not_configured_without_token(monkeypatch):
+    monkeypatch.delenv("SLACK_BOT_TOKEN", raising=False)
     result = await _execute_send_slack_message(
         {"channel": "C123", "text": "hi"}, "ws-1"
     )
@@ -31,9 +31,14 @@ async def test_send_slack_message_not_configured_without_token():
 
 
 @pytest.mark.asyncio
-async def test_create_github_issue_not_configured_without_token():
-    os.environ.pop("GITHUB_TOKEN", None)
-    os.environ.pop("GITHUB_API_KEY", None)
+async def test_create_github_issue_not_configured_without_token(monkeypatch):
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GITHUB_API_KEY", raising=False)
+
+    async def _no_token(workspace_id=None):
+        return ""
+
+    monkeypatch.setattr("api.tools.executor._resolve_github_token", _no_token)
     result = await _execute_create_github_issue(
         {"repo": "o/r", "title": "bug"}, "ws-1"
     )
