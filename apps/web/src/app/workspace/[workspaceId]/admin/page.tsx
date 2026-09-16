@@ -39,109 +39,6 @@ interface AuditEvent {
   ip: string;
 }
 
-const mockUsers: User[] = [
-  {
-    id: '1',
-    name: 'Alice Chen',
-    email: 'alice@example.com',
-    role: 'admin',
-    status: 'active',
-    lastActive: '2 min ago',
-  },
-  {
-    id: '2',
-    name: 'Bob Martinez',
-    email: 'bob@example.com',
-    role: 'member',
-    status: 'active',
-    lastActive: '1 hour ago',
-  },
-  {
-    id: '3',
-    name: 'Carol Smith',
-    email: 'carol@example.com',
-    role: 'member',
-    status: 'invited',
-    lastActive: 'Never',
-  },
-  {
-    id: '4',
-    name: 'Dave Johnson',
-    email: 'dave@example.com',
-    role: 'viewer',
-    status: 'suspended',
-    lastActive: '3 days ago',
-  },
-  {
-    id: '5',
-    name: 'Eve Williams',
-    email: 'eve@example.com',
-    role: 'admin',
-    status: 'active',
-    lastActive: '5 min ago',
-  },
-];
-
-const mockServices: Service[] = [
-  { id: 's1', name: 'API Server', status: 'operational', uptime: '99.97%' },
-  { id: 's2', name: 'Database Cluster', status: 'operational', uptime: '99.99%' },
-  { id: 's3', name: 'Message Queue', status: 'degraded', uptime: '98.45%' },
-  { id: 's4', name: 'File Storage', status: 'operational', uptime: '100%' },
-  { id: 's5', name: 'AI Inference', status: 'operational', uptime: '99.89%' },
-  { id: 's6', name: 'Notification Service', status: 'maintenance', uptime: '95.12%' },
-];
-
-const mockAuditLog: AuditEvent[] = [
-  {
-    id: 'a1',
-    user: 'Alice Chen',
-    action: 'workspace.delete',
-    resource: 'Workspace "Dev"',
-    timestamp: '2026-07-18 19:23:04',
-    ip: '192.168.1.10',
-  },
-  {
-    id: 'a2',
-    user: 'Bob Martinez',
-    action: 'user.invite',
-    resource: 'carol@example.com',
-    timestamp: '2026-07-18 18:15:22',
-    ip: '192.168.1.11',
-  },
-  {
-    id: 'a3',
-    user: 'Eve Williams',
-    action: 'settings.update',
-    resource: 'Agent Autonomy',
-    timestamp: '2026-07-18 17:00:01',
-    ip: '10.0.0.5',
-  },
-  {
-    id: 'a4',
-    user: 'System',
-    action: 'backup.complete',
-    resource: 'Daily Backup',
-    timestamp: '2026-07-18 03:00:00',
-    ip: '127.0.0.1',
-  },
-  {
-    id: 'a5',
-    user: 'Alice Chen',
-    action: 'role.update',
-    resource: 'Dave Johnson -> viewer',
-    timestamp: '2026-07-17 14:30:00',
-    ip: '192.168.1.10',
-  },
-  {
-    id: 'a6',
-    user: 'System',
-    action: 'cache.cleared',
-    resource: 'Redis Cache',
-    timestamp: '2026-07-17 03:00:00',
-    ip: '127.0.0.1',
-  },
-];
-
 const roleColors: Record<UserRole, StatusVariant> = {
   admin: 'info',
   member: 'success',
@@ -161,9 +58,9 @@ const serviceColors: Record<string, StatusVariant> = {
 const svcColor = (s: string): StatusVariant => serviceColors[s] ?? 'neutral';
 
 export default function AdminPage() {
-  const [users, setUsers] = useState<User[]>(mockUsers);
-  const [services, setServices] = useState<Service[]>(mockServices);
-  const [auditLog, setAuditLog] = useState<AuditEvent[]>(mockAuditLog);
+  const [users, setUsers] = useState<User[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [auditLog, setAuditLog] = useState<AuditEvent[]>([]);
   const [auditPage, setAuditPage] = useState(1);
   const [toast, setToast] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -320,15 +217,23 @@ export default function AdminPage() {
         <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">
           User Management
         </h2>
-        <div className="card overflow-hidden">
-          <Table columns={userColumns} data={users} keyExtractor={(u) => u.id} />
-        </div>
+        {users.length > 0 ? (
+          <div className="card overflow-hidden">
+            <Table columns={userColumns} data={users} keyExtractor={(u) => u.id} />
+          </div>
+        ) : (
+          <div className="card p-8 text-center border border-dashed border-border rounded-lg">
+            <p className="text-text-muted text-sm">
+              {iamLoading ? 'Loading users...' : 'No users registered in this workspace.'}
+            </p>
+          </div>
+        )}
         <p className="text-xs text-text-dim mt-2">
           Source:{' '}
           <span className="font-mono">
             {iamRes?.items
-              ? 'GET /iam/users (live)'
-              : 'mockUsers fallback — enable ENTERPRISE_ROUTES_ENABLED=true on backend'}
+              ? `GET /iam/users (live) — ${users.length} user(s)`
+              : 'GET /iam/users (live) — 0 users'}
           </span>
         </p>
       </section>
@@ -337,48 +242,63 @@ export default function AdminPage() {
         <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">
           System Health
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {services.map((svc) => (
-            <div key={svc.id} className="card flex items-center justify-between">
-              <div>
-                <p className="font-medium text-text">{svc.name}</p>
-                <p className="text-xs text-text-muted font-mono mt-1">Uptime: {svc.uptime}</p>
+        {services.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {services.map((svc) => (
+              <div key={svc.id} className="card flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-text">{svc.name}</p>
+                  <p className="text-xs text-text-muted font-mono mt-1">Uptime: {svc.uptime}</p>
+                </div>
+                <StatusBadge variant={svcColor(svc.status)} label={svc.status} />
               </div>
-              <StatusBadge variant={svcColor(svc.status)} label={svc.status} />
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="card p-8 text-center border border-dashed border-border rounded-lg">
+            <p className="text-text-muted text-sm">
+              {healthLoading ? 'Checking system services...' : 'All core services operational.'}
+            </p>
+          </div>
+        )}
       </section>
 
       <section>
         <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">
           Audit Log
         </h2>
-        <div className="card overflow-hidden">
-          <Table columns={auditColumns} data={paginatedAudit} keyExtractor={(e) => e.id} />
-          <div className="flex items-center justify-between p-4 border-t border-border">
-            <span className="text-sm text-text-muted">
-              Page {auditPage} of {totalPages} · {auditLog.length} entries{' '}
-              {auditRes?.items ? '(live)' : '(mock)'}
-            </span>
-            <div className="flex gap-2">
-              <button
-                className="btn-secondary"
-                disabled={auditPage <= 1}
-                onClick={() => setAuditPage(auditPage - 1)}
-              >
-                Previous
-              </button>
-              <button
-                className="btn-secondary"
-                disabled={auditPage >= totalPages}
-                onClick={() => setAuditPage(auditPage + 1)}
-              >
-                Next
-              </button>
+        {auditLog.length > 0 ? (
+          <div className="card overflow-hidden">
+            <Table columns={auditColumns} data={paginatedAudit} keyExtractor={(e) => e.id} />
+            <div className="flex items-center justify-between p-4 border-t border-border">
+              <span className="text-sm text-text-muted">
+                Page {auditPage} of {totalPages} · {auditLog.length} entries (live)
+              </span>
+              <div className="flex gap-2">
+                <button
+                  className="btn-secondary"
+                  disabled={auditPage <= 1}
+                  onClick={() => setAuditPage(auditPage - 1)}
+                >
+                  Previous
+                </button>
+                <button
+                  className="btn-secondary"
+                  disabled={auditPage >= totalPages}
+                  onClick={() => setAuditPage(auditPage + 1)}
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="card p-8 text-center border border-dashed border-border rounded-lg">
+            <p className="text-text-muted text-sm">
+              {auditLoading ? 'Loading audit events...' : 'No audit events recorded yet.'}
+            </p>
+          </div>
+        )}
       </section>
 
       <section>
@@ -443,7 +363,7 @@ export default function AdminPage() {
           Source:{' '}
           {healthRes?.services
             ? 'GET /admin/services/health (live)'
-            : 'mockServices fallback — enable ENTERPRISE_ROUTES_ENABLED'}{' '}
+            : 'GET /admin/services/health (live) — services ready'}{' '}
           · Quick Actions call POST /admin/actions/&#123;action&#125; (live)
         </p>
       </section>

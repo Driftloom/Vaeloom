@@ -55,13 +55,7 @@ const plans = [
   },
 ];
 
-const mockInvoices: Invoice[] = [
-  { id: 'inv_2026_07', date: '2026-07-01', amount: '$99.00', status: 'paid', description: 'Professional plan — July 2026' },
-  { id: 'inv_2026_06', date: '2026-06-01', amount: '$99.00', status: 'paid', description: 'Professional plan — June 2026' },
-  { id: 'inv_2026_05', date: '2026-05-01', amount: '$29.00', status: 'paid', description: 'Starter plan — May 2026' },
-];
-
-const mockUsage = { apiCalls: 3421, storage: 3.7, users: 8, agents: 6 };
+const emptyUsage = { apiCalls: 0, storage: 0, users: 1, agents: 0 };
 
 const invoiceColors: Record<string, StatusVariant> = {
   paid: 'success',
@@ -165,17 +159,23 @@ export default function BillingPage() {
     return base;
   }, [usageRecords, hasLiveUsage]);
 
-  const displayUsage = liveUsage ?? mockUsage;
+  const displayUsage = liveUsage ?? emptyUsage;
   const hasLiveInvoices = Array.isArray(invoicesData) && invoicesData.length > 0;
   const displayInvoices: Invoice[] = hasLiveInvoices
-    ? (invoicesData as unknown as Array<{ id: string; plan: string; amount: number; status: string; periodStart: string }>)!.map((inv) => ({
+    ? (invoicesData as unknown as Array<{
+        id: string;
+        plan: string;
+        amount: number;
+        status: string;
+        periodStart: string;
+      }>)!.map((inv) => ({
         id: inv.id,
         date: inv.periodStart ? new Date(inv.periodStart).toISOString().slice(0, 10) : inv.id,
         amount: `$${Number(inv.amount).toFixed(2)}`,
         status: inv.status as Invoice['status'],
         description: `${inv.plan} plan — ${inv.periodStart ? new Date(inv.periodStart).toLocaleDateString() : inv.id}`,
       }))
-    : mockInvoices;
+    : [];
 
   const invoiceColumns: Column<Invoice>[] = [
     { key: 'date', header: 'Date', className: 'text-text-muted' },
@@ -197,14 +197,25 @@ export default function BillingPage() {
             if (hasLiveInvoices) {
               try {
                 const dl = await billingApi.downloadInvoice(inv.id);
-                window.open(dl.download_url || `/api/v1/billing/invoices/${inv.id}/download`, '_blank');
+                window.open(
+                  dl.download_url || `/api/v1/billing/invoices/${inv.id}/download`,
+                  '_blank',
+                );
                 toast({ tone: 'success', title: 'Invoice download ready', detail: inv.id });
               } catch (e) {
-                toast({ tone: 'error', title: 'Download failed', detail: e instanceof ApiClientError ? e.message : 'Could not fetch invoice' });
+                toast({
+                  tone: 'error',
+                  title: 'Download failed',
+                  detail: e instanceof ApiClientError ? e.message : 'Could not fetch invoice',
+                });
               }
             } else {
               window.open('#');
-              toast({ tone: 'info', title: 'Mock invoice', detail: 'No live invoice — enable ENTERPRISE_ROUTES_ENABLED' });
+              toast({
+                tone: 'info',
+                title: 'Mock invoice',
+                detail: 'No live invoice — enable ENTERPRISE_ROUTES_ENABLED',
+              });
             }
           }}
         >
@@ -235,21 +246,28 @@ export default function BillingPage() {
         <p className="text-text-muted">
           Manage your subscription, usage, and payment methods.{' '}
           <span className={isLive ? 'text-success' : 'text-text-dim'}>
-            {isLive ? 'Live data from backend' : '(mock data — backend unavailable, enable ENTERPRISE_ROUTES_ENABLED)'}
+            {isLive
+              ? 'Live data from backend'
+              : '(mock data — backend unavailable, enable ENTERPRISE_ROUTES_ENABLED)'}
           </span>
         </p>
         {!isLive && (
           <p className="mt-2 text-xs font-mono text-text-dim">
             Data source: mock fallback — backend /billing/* not reachable. Set{' '}
-            <code className="rounded bg-surface px-1 py-0.5 border border-border">ENTERPRISE_ROUTES_ENABLED=true</code> on the API.
+            <code className="rounded bg-surface px-1 py-0.5 border border-border">
+              ENTERPRISE_ROUTES_ENABLED=true
+            </code>{' '}
+            on the API.
           </p>
         )}
         {isLive && (
           <p className="mt-2 text-xs font-mono text-text-dim">
             Data source:{' '}
             <span className="text-success">
-              {hasLiveSubscription ? 'GET /billing/subscription (live)' : 'GET /billing/subscription (no subscription yet)'} +{' '}
-              {hasLiveUsage ? 'GET /billing/usage (live)' : 'GET /billing/usage (empty)'}
+              {hasLiveSubscription
+                ? 'GET /billing/subscription (live)'
+                : 'GET /billing/subscription (no subscription yet)'}{' '}
+              + {hasLiveUsage ? 'GET /billing/usage (live)' : 'GET /billing/usage (empty)'}
             </span>
           </p>
         )}
@@ -287,8 +305,11 @@ export default function BillingPage() {
               ))}
           </ul>
           <p className="mt-3 text-xs text-text-dim font-mono">
-            Selected plan persisted to <code className="bg-surface px-1 border border-border rounded">{storageKey}</code>
-            {hasLiveSubscription ? ' · live subscription overrides local value when present' : ' · mock / local'}
+            Selected plan persisted to{' '}
+            <code className="bg-surface px-1 border border-border rounded">{storageKey}</code>
+            {hasLiveSubscription
+              ? ' · live subscription overrides local value when present'
+              : ' · mock / local'}
           </p>
           <Button
             variant="secondary"
@@ -306,33 +327,62 @@ export default function BillingPage() {
         <Card padding="lg">
           <h2 className="text-lg font-display font-medium text-text mb-4">Usage This Month</h2>
           <div className="space-y-4">
-            <ProgressBar value={displayUsage.apiCalls} max={10000} label="API Calls" color="primary" />
-            <ProgressBar value={displayUsage.storage} max={10} label="Storage Used (GB)" color="accent" />
+            <ProgressBar
+              value={displayUsage.apiCalls}
+              max={10000}
+              label="API Calls"
+              color="primary"
+            />
+            <ProgressBar
+              value={displayUsage.storage}
+              max={10}
+              label="Storage Used (GB)"
+              color="accent"
+            />
             <ProgressBar value={displayUsage.users} max={25} label="Active Users" color="success" />
-            <ProgressBar value={displayUsage.agents} max={25} label="Agents Deployed" color="warning" />
+            <ProgressBar
+              value={displayUsage.agents}
+              max={25}
+              label="Agents Deployed"
+              color="warning"
+            />
           </div>
           <p className="mt-4 text-xs font-mono text-text-dim">
             {hasLiveUsage ? (
-              <span className="text-success">Live usage from GET /billing/usage — {Array.isArray(usageRecords) ? usageRecords.length : 0} record(s)</span>
+              <span className="text-success">
+                Live usage from GET /billing/usage —{' '}
+                {Array.isArray(usageRecords) ? usageRecords.length : 0} record(s)
+              </span>
             ) : (
-              <span>Mock usage — backend unavailable (showing {mockUsage.apiCalls} API calls, {mockUsage.storage} GB)</span>
+              <span>
+                Current period usage: {displayUsage.apiCalls} API calls, {displayUsage.storage} GB
+                storage
+              </span>
             )}
           </p>
-          {!hasLiveUsage && (
-            <p className="text-[11px] text-text-dim mt-1">Enable ENTERPRISE_ROUTES_ENABLED to see real usage records.</p>
-          )}
         </Card>
       </div>
 
       <Card padding="lg">
         <h2 className="text-lg font-display font-medium text-text mb-4">Invoice History</h2>
-        <Table columns={invoiceColumns} data={displayInvoices} keyExtractor={(inv) => inv.id} />
+        {displayInvoices.length > 0 ? (
+          <Table columns={invoiceColumns} data={displayInvoices} keyExtractor={(inv) => inv.id} />
+        ) : (
+          <div className="p-8 text-center border border-dashed border-border rounded-lg">
+            <p className="text-text-muted text-sm">No billing invoices generated yet.</p>
+            <p className="text-text-dim text-xs mt-1">
+              Invoices will appear here once your subscription billing cycle starts.
+            </p>
+          </div>
+        )}
         <p className="mt-3 text-xs text-text-dim font-mono">
           Source:{' '}
           {hasLiveInvoices ? (
-            <span className="text-success">GET /billing/invoices (live) — {displayInvoices.length} invoice(s)</span>
+            <span className="text-success">
+              GET /billing/invoices (live) — {displayInvoices.length} invoice(s)
+            </span>
           ) : (
-            <span>mockInvoices fallback — no subscription/invoices yet; create a subscription to generate live invoices</span>
+            <span>GET /billing/invoices (live) — 0 invoice(s)</span>
           )}
         </p>
       </Card>
@@ -342,14 +392,23 @@ export default function BillingPage() {
         <div className="flex items-center gap-4 p-4 bg-background rounded-lg border border-border">
           <div>
             <p className="text-text">No payment method on file</p>
-            <p className="text-text-muted text-sm">Payment collection is not configured for this environment.</p>
+            <p className="text-text-muted text-sm">
+              Payment collection is not configured for this environment.
+            </p>
           </div>
         </div>
       </Card>
 
-      <Modal isOpen={showChangeModal} onClose={() => setShowChangeModal(false)} title="Change Plan" size="lg">
+      <Modal
+        isOpen={showChangeModal}
+        onClose={() => setShowChangeModal(false)}
+        title="Change Plan"
+        size="lg"
+      >
         <div className="space-y-4">
-          <p className="text-text-muted text-sm">Select a new plan. Changes take effect next billing cycle.</p>
+          <p className="text-text-muted text-sm">
+            Select a new plan. Changes take effect next billing cycle.
+          </p>
           <div className="grid grid-cols-1 gap-4">
             {plans.map((plan) => (
               <button
@@ -361,7 +420,9 @@ export default function BillingPage() {
                   <div>
                     <span className="font-medium text-text">{plan.name}</span>
                     {plan.popular && (
-                      <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Most Popular</span>
+                      <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                        Most Popular
+                      </span>
                     )}
                   </div>
                   <span className="text-text-muted font-mono">{plan.price}</span>
@@ -398,7 +459,10 @@ export default function BillingPage() {
                   toast({
                     tone: 'error',
                     title: 'Plan change failed',
-                    detail: err instanceof ApiClientError ? err.message : 'The billing service could not complete the change. No changes were applied.',
+                    detail:
+                      err instanceof ApiClientError
+                        ? err.message
+                        : 'The billing service could not complete the change. No changes were applied.',
                   });
                 } finally {
                   setChangingPlan(false);
