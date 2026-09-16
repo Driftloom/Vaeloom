@@ -17,9 +17,9 @@ graph TD
  T3["Production<br/>Live user traffic<br/>Source: Secrets manager"]
  end
 
- subgraph Variables["Key Environment Variables"]
- V1["NODE_ENV / ENVIRONMENT / LOG_LEVEL"]
- V2["DATABASE_URL / REDIS_URL"]
+  subgraph Variables["Key Environment Variables"]
+  V1["NODE_ENV / ENVIRONMENT / LOG_LEVEL"]
+  V2["DATABASE__URL (double underscore) / REDIS_URL"]
  V3["AUTH_PROVIDER_URL / AUTH_SECRET"]
  V4["ANTHROPIC_API_KEY / ANTHROPIC_MODEL"]
  V5["S3_ENDPOINT / S3_BUCKET / KEYS"]
@@ -48,13 +48,19 @@ graph TD
 
 ## Environment Types
 
-| Environment | Purpose | Configuration Source |
+| Environment | Purpose             | Configuration Source        |
 | ----------- | ------------------- | --------------------------- |
-| Development | Local development | `.env` file (gitignored) |
-| Staging | Integration testing | PaaS secrets / CI variables |
-| Production | Live user traffic | Secrets manager |
+| Development | Local development   | `.env` file (gitignored)    |
+| Staging     | Integration testing | PaaS secrets / CI variables |
+| Production  | Live user traffic   | Secrets manager             |
 
 ## Environment Variables
+
+> **Pydantic gotcha:** `apps/api/src/api/config.py` sets
+> `model_config = {"env_prefix": "", "case_sensitive": False}` with **no
+> `env_file`** — `.env` files are NOT auto-read. Export variables in your shell
+> (or via your process manager). Nested settings use **double underscores**:
+> `DATABASE__URL`, not `DATABASE_URL`.
 
 ```bash
 # Core
@@ -62,13 +68,15 @@ NODE_ENV=development
 ENVIRONMENT=development
 LOG_LEVEL=debug
 
-# Database
-DATABASE_URL=postgresql+asyncpg://Vaeloom:Vaeloom@localhost:5432/Vaeloom_db
+# Database (DOUBLE underscore — model_config lacks env_file, so export in shell)
+DATABASE__URL=postgresql+asyncpg://Vaeloom:Vaeloom@localhost:5432/Vaeloom_db
 
 # Redis
 REDIS_URL=redis://localhost:6379
 
-# Auth
+# Auth (JWT_SECRET must be 32+ chars — startup refuses to boot otherwise;
+# generate with: openssl rand -hex 32)
+JWT_SECRET=<output-of-openssl-rand-hex-32>
 AUTH_PROVIDER_URL=https://auth.Vaeloom.dev
 AUTH_SECRET=dev-secret-only
 
@@ -94,13 +102,18 @@ GITHUB_CLIENT_SECRET=...
 
 ```bash
 # Copy this to .env and fill in your values
-# cp .env.example .env
+# cp .env.example .env  (WARNING: overwrites .env without asking)
 
 # --- Required ---
-DATABASE_URL=
+# NOTE: double underscore — DATABASE__URL, not DATABASE_URL.
+# NOTE: Pydantic does NOT read .env automatically (no env_file) —
+# export these in your shell before starting the backend.
+DATABASE__URL=
 REDIS_URL=
 
 # Auth (use dev keys from dashboard)
+# JWT_SECRET must be 32+ chars: openssl rand -hex 32
+JWT_SECRET=
 AUTH_SECRET=
 
 # AI (get from Anthropic console)
@@ -115,76 +128,78 @@ PORT=3000
 ## Environment-Specific Config
 
 ```python
-# apps/api/config.py
+# apps/api/src/api/config.py (truth — no env_file; export vars in shell)
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
-    DATABASE_URL: str
+    database__url: str  # env var: DATABASE__URL (double underscore)
     REDIS_URL: str | None = None
     LOG_LEVEL: str = "debug"
 
-    class Config:
-        env_file = ".env"
+    # NOTE: model_config = {"env_prefix": "", "case_sensitive": False}
+    # — there is deliberately NO env_file, so .env files are NOT read.
 
 settings = Settings()
 ```
 
 ## Common Mistakes
 
-| Mistake | Consequence |
+| Mistake                                                           | Consequence                                                                                                                                                                       |
 | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Committing `.env` files to version control | A committed `.env` file exposes API keys, database credentials, and secrets to everyone with repository access — it's the most common source of credential leaks |
-| Using production API keys in local development | A local development error (infinite loop, accidental delete) with a production API key can incur real costs or modify production data — API keys should be scoped per environment |
-| Sharing `.env` files via unencrypted channels | Sending `.env` files over Slack, email, or chat exposes secrets in transport logs — use a secrets manager or encrypted sharing instead |
-| Hardcoding fallback values when environment variables are missing | A fallback like `ANTHROPIC_API_KEY` with a default fake key silently uses the fake key — prefer failing fast with a clear error message |
+| Committing `.env` files to version control                        | A committed `.env` file exposes API keys, database credentials, and secrets to everyone with repository access — it's the most common source of credential leaks                  |
+| Using production API keys in local development                    | A local development error (infinite loop, accidental delete) with a production API key can incur real costs or modify production data — API keys should be scoped per environment |
+| Sharing `.env` files via unencrypted channels                     | Sending `.env` files over Slack, email, or chat exposes secrets in transport logs — use a secrets manager or encrypted sharing instead                                            |
+| Hardcoding fallback values when environment variables are missing | A fallback like `ANTHROPIC_API_KEY` with a default fake key silently uses the fake key — prefer failing fast with a clear error message                                           |
 
 ## Best Practices
 
-| Practice | Why |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Keep `.env` in `.gitignore` and never commit it | The `.env` file is in `.gitignore` by default — verify with `git status` before committing. Use `.env.example` as the template |
-| Use separate API keys for development, staging, and production | Dev keys should have rate limits and no access to production data — API key scoping prevents cross-environment accidents |
-| Use a secrets manager for sharing credentials | For team environments, use a vault or secrets manager (1Password CLI, Doppler, AWS Secrets Manager) — never share `.env` files directly |
-| Fail fast with clear error messages for missing variables | `if (!DATABASE_URL) throw new Error('DATABASE_URL is required')` — catching missing config early prevents confusing connection errors at runtime |
+| Practice                                                       | Why                                                                                                                                                            |
+| -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Remember `.env` is NOT auto-read (no `env_file`)               | Pydantic only sees exported shell vars — `cp .env.example .env` alone does nothing until you export                                                            |
+| Always use `DATABASE__URL` (double underscore)                 | Single-underscore `DATABASE_URL` does not bind to the nested setting and the backend will fail validation                                                      |
+| Keep `.env` in `.gitignore` and never commit it                | The `.env` file is in `.gitignore` by default — verify with `git status` before committing. Use `.env.example` as the template                                 |
+| Use separate API keys for development, staging, and production | Dev keys should have rate limits and no access to production data — API key scoping prevents cross-environment accidents                                       |
+| Use a secrets manager for sharing credentials                  | For team environments, use a vault or secrets manager (1Password CLI, Doppler, AWS Secrets Manager) — never share `.env` files directly                        |
+| Fail fast with clear error messages for missing variables      | `if (!process.env.DATABASE__URL) throw new Error('DATABASE__URL is required')` — catching missing config early prevents confusing connection errors at runtime |
 
 ## Security Considerations
 
-| Consideration | Mitigation |
+| Consideration                        | Mitigation                                                                                                                                               |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| .env file permissions | The `.env` file should have file permissions `600` (owner read/write only) — prevent other processes on the same machine from reading secrets |
+| .env file permissions                | The `.env` file should have file permissions `600` (owner read/write only) — prevent other processes on the same machine from reading secrets            |
 | Environment variable injection in CI | CI/CD pipeline variables can be printed in logs or leaked through build artifacts — mark sensitive variables as "masked" or "secret" in CI configuration |
-| Local environment isolation | Each project should use its own `.env` file — shared dotfiles (`.bashrc`, `.zshrc`) with global environment variables create conflicts between projects |
+| Local environment isolation          | Each project should use its own `.env` file — shared dotfiles (`.bashrc`, `.zshrc`) with global environment variables create conflicts between projects  |
 
 ## Performance Considerations
 
-| Consideration | Approach |
+| Consideration                                | Approach                                                                                                                                                                             |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Environment variable lookups are not free | Reading `process.env` thousands of times per request adds overhead — cache env vars at startup in a config object, not per-request lookups |
+| Environment variable lookups are not free    | Reading `process.env` thousands of times per request adds overhead — cache env vars at startup in a config object, not per-request lookups                                           |
 | Development vs production config differences | Dev config uses debug logging and higher rate limits — ensure the config system correctly reads `NODE_ENV` and doesn't fall through to a default that could apply the wrong settings |
 
 ## Error Handling
 
-| Scenario | Detection | Mitigation | Recovery |
+| Scenario                                | Detection                                       | Mitigation                                                         | Recovery                                                       |
 | --------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------- |
-| Missing required environment variable | App crashes on startup with clear error message | Add startup validation that fails fast with specific variable name | Set the missing variable in `.env` and restart |
-| Wrong environment values in production | Unexpected behavior or data loss | Validate `NODE_ENV` against deployment environment | Correct variable and redeploy; audit for data impact |
-| Secret rotation without updating config | Auth failures across services | Use secrets manager with auto-rotation; cache with TTL | Check all services for stale secrets; trigger rotation webhook |
+| Missing required environment variable   | App crashes on startup with clear error message | Add startup validation that fails fast with specific variable name | Set the missing variable in `.env` and restart                 |
+| Wrong environment values in production  | Unexpected behavior or data loss                | Validate `NODE_ENV` against deployment environment                 | Correct variable and redeploy; audit for data impact           |
+| Secret rotation without updating config | Auth failures across services                   | Use secrets manager with auto-rotation; cache with TTL             | Check all services for stale secrets; trigger rotation webhook |
 
 ## Risks
 
-| Risk | Likelihood | Impact | Mitigation |
+| Risk                                             | Likelihood | Impact   | Mitigation                                                                                          |
 | ------------------------------------------------ | ---------- | -------- | --------------------------------------------------------------------------------------------------- |
-| `.env` file accidentally committed to git | High | Critical | `.env` in `.gitignore` enforced by CI pre-commit hook; `git secrets` scan in PR pipeline |
-| Production credentials used in local development | Medium | Critical | Environment-specific API keys with scope limits; `ENVIRONMENT` must match key's allowed environment |
-| Environment variable conflicts across projects | Medium | Medium | Use project-prefixed variable names (`Vaeloom_DATABASE_URL` vs bare `DATABASE_URL`) |
+| `.env` file accidentally committed to git        | High       | Critical | `.env` in `.gitignore` enforced by CI pre-commit hook; `git secrets` scan in PR pipeline            |
+| Production credentials used in local development | Medium     | Critical | Environment-specific API keys with scope limits; `ENVIRONMENT` must match key's allowed environment |
+| Environment variable conflicts across projects   | Medium     | Medium   | Use project-prefixed variable names (`Vaeloom_DATABASE__URL` vs bare `DATABASE__URL`)               |
 
 ## Limitations
 
-| Limitation | Impact | Workaround | Future Resolution |
+| Limitation                             | Impact                                             | Workaround                                                                             | Future Resolution                                              |
 | -------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| .env.example must be manually updated | New variables may be missing from template | Add checklist item in PR template; automate .env.example generation from config schema | Auto-generate .env.example from validated config schema (v1.5) |
-| No per-developer environment isolation | Developers working on same machine share env state | Use separate `.env.local` overrides | Dev container with isolated environment per workspace (V2) |
+| .env.example must be manually updated  | New variables may be missing from template         | Add checklist item in PR template; automate .env.example generation from config schema | Auto-generate .env.example from validated config schema (v1.5) |
+| No per-developer environment isolation | Developers working on same machine share env state | Use separate `.env.local` overrides                                                    | Dev container with isolated environment per workspace (V2)     |
 
 ## Overview
 
@@ -212,7 +227,7 @@ levels, rate limits), security practices for secret management, and the
 
 - Environment types (development, staging, production) and configuration sources
 - Key environment variables across all services (core, database, auth, AI,
- storage, connectors)
+  storage, connectors)
 - Environment-specific configuration differences
 - .env.example template and conventions
 - Security practices for secrets and environment isolation
@@ -228,11 +243,11 @@ levels, rate limits), security practices for secret management, and the
 
 ## Future Improvements
 
-| Improvement | Priority | Complexity | Timeline |
+| Improvement                                             | Priority | Complexity | Timeline       |
 | ------------------------------------------------------- | -------- | ---------- | -------------- |
-| Auto-generate .env.example from validated config schema | High | Low | v1.5 (2027 H1) |
-| Dev container with isolated environment per workspace | Medium | Medium | V2 (2027 H2) |
-| Environment validation tool (`Vaeloom env check`) | Medium | Low | v1.5 (2027 H1) |
+| Auto-generate .env.example from validated config schema | High     | Low        | v1.5 (2027 H1) |
+| Dev container with isolated environment per workspace   | Medium   | Medium     | V2 (2027 H2)   |
+| Environment validation tool (`Vaeloom env check`)       | Medium   | Low        | v1.5 (2027 H1) |
 
 ## Security Considerations
 
@@ -273,7 +288,7 @@ settings = Settings()
 from api.config import settings
 import sys
 
-required_vars = ["DATABASE_URL"]
+required_vars = ["database__url"]  # env var: DATABASE__URL
 for var in required_vars:
     if not getattr(settings, var, None):
         print(f"Missing required environment variable: {var}", file=sys.stderr)
@@ -283,10 +298,10 @@ for var in required_vars:
 ### .env.example template
 
 ```bash
-# Copy to .env and fill values
-DATABASE_URL=postgresql+asyncpg://Vaeloom:Vaeloom@localhost:5432/Vaeloom_db
+# Copy to .env and fill values (then EXPORT in shell — no env_file autodiscovery)
+DATABASE__URL=postgresql+asyncpg://Vaeloom:Vaeloom@localhost:5432/Vaeloom_db
 REDIS_URL=redis://localhost:6379
-JWT_SECRET=your-dev-secret
+JWT_SECRET=<32+ chars — generate: openssl rand -hex 32>
 LLM_API_KEY=sk-ant-your-key
 LOG_LEVEL=debug
 ```

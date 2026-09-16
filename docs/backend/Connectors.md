@@ -320,14 +320,37 @@ sequenceDiagram
 
 ## APIs
 
-| Endpoint                    | Method | Description                         |
-| --------------------------- | ------ | ----------------------------------- |
-| `/v1/connectors`            | GET    | List all connectors for a workspace |
-| `/v1/connectors`            | POST   | Initiate OAuth connection flow      |
-| `/v1/connectors/:id`        | DELETE | Disconnect and revoke tokens        |
-| `/v1/connectors/:id/sync`   | POST   | Trigger manual sync                 |
-| `/v1/connectors/:id/status` | GET    | Get sync status and health          |
-| `/v1/connectors/:id/tokens` | POST   | Refresh stored tokens manually      |
+| Endpoint                    | Method | Description                                                    |
+| --------------------------- | ------ | -------------------------------------------------------------- |
+| `/v1/connectors`            | GET    | List all connectors for a workspace                            |
+| `/v1/connectors`            | POST   | Initiate OAuth connection flow (or register `mcp`-type server) |
+| `/v1/connectors/:id`        | DELETE | Disconnect and revoke tokens                                   |
+| `/v1/connectors/:id/sync`   | POST   | Trigger manual sync                                            |
+| `/v1/connectors/:id/status` | GET    | Get sync status and health                                     |
+| `/v1/connectors/:id/tokens` | POST   | Refresh stored tokens manually                                 |
+
+## MCP Bridge (`mcp`-type connectors, ADR-036)
+
+MCP servers are stored as `mcp`-type connectors via
+`services/connector_ext_service.py`. Every create/update **revalidates the full
+connector config**; env values are encrypted per-key at rest; **shell
+interpreters are denied as stdio commands** (argv only —
+`services/mcp_client_service.py:38,82,189`).
+
+`services/mcp_client_service.py` opens one-shot sessions (stdio +
+streamable-http) and bridges discovered tools into the agent executor's
+`DYNAMIC_*` registry as `mcp__<Server>__<Tool>` (scope `connector.mcp.execute`,
+30s call timeout, **300s discovery TTL** cache). Non-`readOnly` tools are
+approval-gated via the unified `approval_gated_tools()` in the orchestrator
+loop. Startup warm-up re-syncs bridges non-fatally. Seed configs:
+`docs/mcp/servers/seed-configs.md`.
+
+| Endpoint                               | Method | Description                              |
+| -------------------------------------- | ------ | ---------------------------------------- |
+| `/v1/connectors/:id/mcp/tools`         | GET    | List bridged tools                       |
+| `/v1/connectors/:id/mcp/tools/refresh` | POST   | Force re-discovery (bypass 300s TTL)     |
+| `/v1/connectors/:id/mcp/sync`          | POST   | Re-sync tool bridge                      |
+| `/v1/connectors/:id/mcp/call`          | POST   | Call MCP tool (approval gate for writes) |
 
 ---
 
@@ -464,3 +487,6 @@ Vaeloom connectors sync --id conn_42 --full-refresh
 - [`Workers.md`](./Workers.md) — Async processing
 - [`Security/Security-Architecture.md`](../Security/Security-Architecture.md)
 - [`DevOps/Monitoring.md`](../DevOps/Monitoring.md)
+
+> _Last verified: 2026-09-15 — added MCP-bridge section (ADR-036); endpoint
+> table aligned with API-Reference.md._

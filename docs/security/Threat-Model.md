@@ -4,7 +4,20 @@
 > mitigations for Vaeloom **Status:** ✅ Upgraded to enterprise quality +
 > patched 2026-08-22 (zero-trust audit F-17: added BYOK provider_keys +
 > document_chunks/doc-variants assets, RLS 37/42 correction, fail-closed note)
-> **Owner:** Security Team **Last Updated:** 2026-08-22
+>
+> - WS-D 2026-09-15 (RLS 42/42 correction, SQLite-no-op caveat) **Owner:**
+>   Security Team **Last Updated:** 2026-09-15
+
+> **WS-D 2026-09-15 — RLS correction:** the F-17 header cited RLS 37/42. RLS is
+> now **42/42** via Alembic 0010/0019/0020 (completed 2026-08-22; see
+> `0020_rls_remaining_5.py:1-18`, `docs/enterprise/Multi-Tenancy.md`).
+> Enforcement: `TenantContext` + `set_rls_session_vars`
+> (`apps/api/src/api/middleware/tenant.py:38`), GUCs `app.tenant_id` /
+> `app.workspace_id` / `app.user_id`, fail-closed (missing GUC ⇒ zero rows).
+> Caveat: the automated test tier runs SQLite where RLS is a no-op, so
+> enforcement is unproven at the test tier — Postgres follow-up required
+> (live-PG RLS test + staging GUC audit). STRIDE analysis below is otherwise
+> unchanged.
 
 ---
 
@@ -20,17 +33,17 @@ architecture changes are made.
 
 ## Assets
 
-| Asset | Sensitivity | Description | CIA Triad Priority |
+| Asset                   | Sensitivity  | Description                                                                               | CIA Triad Priority                         |
 | ----------------------- | ------------ | ----------------------------------------------------------------------------------------- | ------------------------------------------ |
-| User documents | **High** | Personal files, resumes, certificates | Confidentiality > Integrity > Availability |
-| Document chunks | **High** | Chunked slices (`document_chunks`) ingested for embeddings — ingestion bypass path (F-08) | Confidentiality > Integrity > Availability |
-| Memory graph | **High** | Structured knowledge about the user | Confidentiality > Integrity > Availability |
-| OAuth access tokens | **Critical** | Access to connected services (Gmail, GitHub) | Confidentiality > Integrity > Availability |
-| BYOK provider keys | **Critical** | Per-user/per-workspace LLM keys (`provider_keys`) Fernet-encrypted; user DPA (F-09) | Confidentiality > Integrity > Availability |
-| AI model API keys | **Critical** | System fallback Anthropic/OpenAI keys | Confidentiality > Availability |
-| User credentials | **Critical** | Password hashes (delegated to auth provider) | Confidentiality > Integrity |
-| Agent action logs | **Medium** | Audit trail of system actions | Integrity > Availability |
-| Application source code | **Medium** | Proprietary business logic | Confidentiality > Integrity |
+| User documents          | **High**     | Personal files, resumes, certificates                                                     | Confidentiality > Integrity > Availability |
+| Document chunks         | **High**     | Chunked slices (`document_chunks`) ingested for embeddings — ingestion bypass path (F-08) | Confidentiality > Integrity > Availability |
+| Memory graph            | **High**     | Structured knowledge about the user                                                       | Confidentiality > Integrity > Availability |
+| OAuth access tokens     | **Critical** | Access to connected services (Gmail, GitHub)                                              | Confidentiality > Integrity > Availability |
+| BYOK provider keys      | **Critical** | Per-user/per-workspace LLM keys (`provider_keys`) Fernet-encrypted; user DPA (F-09)       | Confidentiality > Integrity > Availability |
+| AI model API keys       | **Critical** | System fallback Anthropic/OpenAI keys                                                     | Confidentiality > Availability             |
+| User credentials        | **Critical** | Password hashes (delegated to auth provider)                                              | Confidentiality > Integrity                |
+| Agent action logs       | **Medium**   | Audit trail of system actions                                                             | Integrity > Availability                   |
+| Application source code | **Medium**   | Proprietary business logic                                                                | Confidentiality > Integrity                |
 
 ## Attack Surface
 
@@ -177,51 +190,51 @@ categories simultaneously — they're the highest-value security investments.
 
 ### Spoofing
 
-| Threat | Severity | Vector | Mitigation |
+| Threat                  | Severity | Vector                        | Mitigation                                          |
 | ----------------------- | -------- | ----------------------------- | --------------------------------------------------- |
-| User identity spoofing | Critical | Stolen JWT, session hijacking | Short-lived tokens, httpOnly cookies, auth provider |
-| Agent identity spoofing | High | Agent impersonation | Internal mTLS for service-to-service |
-| Connector OAuth replay | High | Reused OAuth tokens | PKCE, state parameter verification |
+| User identity spoofing  | Critical | Stolen JWT, session hijacking | Short-lived tokens, httpOnly cookies, auth provider |
+| Agent identity spoofing | High     | Agent impersonation           | Internal mTLS for service-to-service                |
+| Connector OAuth replay  | High     | Reused OAuth tokens           | PKCE, state parameter verification                  |
 
 ### Tampering
 
-| Threat | Severity | Vector | Mitigation |
+| Threat                  | Severity | Vector                       | Mitigation                               |
 | ----------------------- | -------- | ---------------------------- | ---------------------------------------- |
-| Memory graph corruption | Critical | Unauthorized memory write | Permission Engine on every write |
-| Document tampering | High | Direct object storage access | Signed URLs, S3 bucket policies |
-| Queue job tampering | Medium | Modified queue messages | Queue authentication, message validation |
+| Memory graph corruption | Critical | Unauthorized memory write    | Permission Engine on every write         |
+| Document tampering      | High     | Direct object storage access | Signed URLs, S3 bucket policies          |
+| Queue job tampering     | Medium   | Modified queue messages      | Queue authentication, message validation |
 
 ### Repudiation
 
-| Threat | Severity | Vector | Mitigation |
+| Threat              | Severity | Vector                          | Mitigation                            |
 | ------------------- | -------- | ------------------------------- | ------------------------------------- |
-| Agent action denial | Medium | Agent claims it didn't act | Append-only audit log with provenance |
-| User action denial | Low | User claims they didn't approve | Signed approval records |
+| Agent action denial | Medium   | Agent claims it didn't act      | Append-only audit log with provenance |
+| User action denial  | Low      | User claims they didn't approve | Signed approval records               |
 
 ### Information Disclosure
 
-| Threat | Severity | Vector | Mitigation |
+| Threat                   | Severity     | Vector                       | Mitigation                                    |
 | ------------------------ | ------------ | ---------------------------- | --------------------------------------------- |
-| Cross-tenant data access | **Critical** | workspace_id manipulation | Scoped on every query, penetration tested |
-| OAuth token leakage | Critical | Secrets exposure | Secrets manager, never in logs |
-| Source document exposure | High | Unauthorized document read | Permission check on every document GET |
-| Memory query leakage | High | Agent returns unrelated data | Workspace-scoped RAG, no cross-tenant context |
+| Cross-tenant data access | **Critical** | workspace_id manipulation    | Scoped on every query, penetration tested     |
+| OAuth token leakage      | Critical     | Secrets exposure             | Secrets manager, never in logs                |
+| Source document exposure | High         | Unauthorized document read   | Permission check on every document GET        |
+| Memory query leakage     | High         | Agent returns unrelated data | Workspace-scoped RAG, no cross-tenant context |
 
 ### Denial of Service
 
-| Threat | Severity | Vector | Mitigation |
+| Threat               | Severity | Vector                     | Mitigation                         |
 | -------------------- | -------- | -------------------------- | ---------------------------------- |
-| API DoS | Medium | Request flooding | Rate limiting, auto-scaling |
-| AI model cost attack | High | Repeated expensive queries | Per-user rate limits, cost alerts |
-| Queue saturation | Medium | Job flooding | Queue depth alerts, prioritization |
+| API DoS              | Medium   | Request flooding           | Rate limiting, auto-scaling        |
+| AI model cost attack | High     | Repeated expensive queries | Per-user rate limits, cost alerts  |
+| Queue saturation     | Medium   | Job flooding               | Queue depth alerts, prioritization |
 
 ### Elevation of Privilege
 
-| Threat | Severity | Vector | Mitigation |
+| Threat                    | Severity | Vector                          | Mitigation                             |
 | ------------------------- | -------- | ------------------------------- | -------------------------------------- |
-| Agent autonomy escalation | High | Agent self-modifies permissions | Permission Engine immutable by agents |
-| Role escalation | High | User modifies own role | RBAC enforced at API layer, not client |
-| Plugin sandbox escape | Medium | Plugin accesses outside scope | Manifest enforcement at runtime |
+| Agent autonomy escalation | High     | Agent self-modifies permissions | Permission Engine immutable by agents  |
+| Role escalation           | High     | User modifies own role          | RBAC enforced at API layer, not client |
+| Plugin sandbox escape     | Medium   | Plugin accesses outside scope   | Manifest enforcement at runtime        |
 
 ## Attack Tree: Cross-Tenant Data Access
 
@@ -280,42 +293,42 @@ export class TenantGuard implements CanActivate {
 
 ## Best Practices
 
-| Practice | Rationale |
+| Practice                             | Rationale                                                      |
 | ------------------------------------ | -------------------------------------------------------------- |
-| workspace_id from token, not request | Prevents tenant spoofing |
-| Rate limit by user, not IP | Users can share IPs; rate limiting per user prevents abuse |
-| Never log sensitive data | Auth tokens, passwords, API keys must not appear in logs |
-| Fail closed on permission check | If permission engine is down, deny access — don't allow |
-| Audit every access attempt | Both allowed and denied — denied attempts may indicate attacks |
-| Test tenant isolation quarterly | Dedicated penetration testing for cross-tenant leakage |
+| workspace_id from token, not request | Prevents tenant spoofing                                       |
+| Rate limit by user, not IP           | Users can share IPs; rate limiting per user prevents abuse     |
+| Never log sensitive data             | Auth tokens, passwords, API keys must not appear in logs       |
+| Fail closed on permission check      | If permission engine is down, deny access — don't allow        |
+| Audit every access attempt           | Both allowed and denied — denied attempts may indicate attacks |
+| Test tenant isolation quarterly      | Dedicated penetration testing for cross-tenant leakage         |
 
 ## Common Mistakes
 
-| Mistake | Consequence | Fix |
+| Mistake                          | Consequence                                     | Fix                                    |
 | -------------------------------- | ----------------------------------------------- | -------------------------------------- |
-| Using request body for tenant ID | User can modify request to access other tenants | Extract from auth token |
-| Logging tokens for debugging | Tokens appear in log aggregation tools | Filter sensitive fields before logging |
-| Permissions as middleware only | Easy to forget on new endpoints | Global guard, not per-route |
-| Weak rate limiting (per IP) | Multiple users behind NAT share limit | Rate limit by user_id in token |
+| Using request body for tenant ID | User can modify request to access other tenants | Extract from auth token                |
+| Logging tokens for debugging     | Tokens appear in log aggregation tools          | Filter sensitive fields before logging |
+| Permissions as middleware only   | Easy to forget on new endpoints                 | Global guard, not per-route            |
+| Weak rate limiting (per IP)      | Multiple users behind NAT share limit           | Rate limit by user_id in token         |
 
 ## Security Considerations
 
-| Concern | Mitigation |
+| Concern                              | Mitigation                                                 |
 | ------------------------------------ | ---------------------------------------------------------- |
-| AI model hallucinates personal data | Agents can only access their workspace's data |
-| Prompt injection bypasses guardrails | Input sanitization, output validation, QA gate |
-| Compromised admin account | MFA required for admin; anomaly detection on admin actions |
-| Third-party plugin vulnerability | Plugin sandboxing, manifest scope enforcement |
-| Insider threat | Access logging, quarterly access reviews |
+| AI model hallucinates personal data  | Agents can only access their workspace's data              |
+| Prompt injection bypasses guardrails | Input sanitization, output validation, QA gate             |
+| Compromised admin account            | MFA required for admin; anomaly detection on admin actions |
+| Third-party plugin vulnerability     | Plugin sandboxing, manifest scope enforcement              |
+| Insider threat                       | Access logging, quarterly access reviews                   |
 
 ## Threat Model Review Schedule
 
-| Review | Frequency | Trigger |
+| Review                     | Frequency      | Trigger                    |
 | -------------------------- | -------------- | -------------------------- |
-| Quarterly review | Every 3 months | Calendar |
-| Architecture change | On change | Major feature, new service |
-| Incident post-mortem | Per incident | Security incident |
-| Penetration test follow-up | Per test | Pen test findings |
+| Quarterly review           | Every 3 months | Calendar                   |
+| Architecture change        | On change      | Major feature, new service |
+| Incident post-mortem       | Per incident   | Security incident          |
+| Penetration test follow-up | Per test       | Pen test findings          |
 
 ## Workflows
 
@@ -364,23 +377,23 @@ Result: Attack blocked at first check. Attacker gains nothing.
 
 ## Risks
 
-| Risk | Likelihood | Impact | Mitigation |
+| Risk                                                           | Likelihood | Impact | Mitigation                                                               |
 | -------------------------------------------------------------- | ---------- | ------ | ------------------------------------------------------------------------ |
-| Threat model becomes stale between quarterly reviews | Medium | High | Trigger automated checks in CI/CD for significant architecture changes |
-| Mitigation effectiveness drifts without automated verification | Medium | High | Include automated control tests in CI pipeline |
-| Manual attack tree analysis misses edge cases | Medium | Medium | Supplement with automated threat modeling tools quarterly |
-| New dependency introduces unpredicted attack surface | Medium | High | Dependency scan in CI; security review for each new external integration |
+| Threat model becomes stale between quarterly reviews           | Medium     | High   | Trigger automated checks in CI/CD for significant architecture changes   |
+| Mitigation effectiveness drifts without automated verification | Medium     | High   | Include automated control tests in CI pipeline                           |
+| Manual attack tree analysis misses edge cases                  | Medium     | Medium | Supplement with automated threat modeling tools quarterly                |
+| New dependency introduces unpredicted attack surface           | Medium     | High   | Dependency scan in CI; security review for each new external integration |
 
 ---
 
 ## Limitations
 
-| Limitation | Impact | Workaround | Future Resolution |
+| Limitation                              | Impact                                | Workaround                           | Future Resolution                               |
 | --------------------------------------- | ------------------------------------- | ------------------------------------ | ----------------------------------------------- |
-| STRIDE analysis manually maintained | Threats may be missed between reviews | Automated tooling supplement | Continuous threat modeling pipeline (Phase 2) |
-| Attack trees limited to known goals | Unknown attack patterns not captured | Regular pentesting | Adversarial ML-based attack discovery (Phase 3) |
-| No threat intelligence feed integration | Zero-day threats not reflected | Manual review of security advisories | Automated threat intel feed ingestion (Phase 2) |
-| Mitigation tests are manual | Human error in verification | Scheduled manual testing | Policy-as-code in CI (Phase 2) |
+| STRIDE analysis manually maintained     | Threats may be missed between reviews | Automated tooling supplement         | Continuous threat modeling pipeline (Phase 2)   |
+| Attack trees limited to known goals     | Unknown attack patterns not captured  | Regular pentesting                   | Adversarial ML-based attack discovery (Phase 3) |
+| No threat intelligence feed integration | Zero-day threats not reflected        | Manual review of security advisories | Automated threat intel feed ingestion (Phase 2) |
+| Mitigation tests are manual             | Human error in verification           | Scheduled manual testing             | Policy-as-code in CI (Phase 2)                  |
 
 ---
 
@@ -413,15 +426,15 @@ threats have explicit mitigation plans with assigned owners and deadlines.
 ## Goals
 
 - Apply STRIDE threat classification to every Vaeloom component with documented
- DFDs and trust boundaries
+  DFDs and trust boundaries
 - Identify and document all threats with risk ratings (critical/high/medium/low)
- using likelihood × impact scoring
+  using likelihood × impact scoring
 - Ensure every high and critical threat has an assigned mitigation plan with
- owner and deadline
+  owner and deadline
 - Review and update the threat model quarterly and on every significant
- architecture change
+  architecture change
 - Achieve zero unmitigated critical threats and zero unmitigated high threats
- after each review cycle
+  after each review cycle
 
 ---
 
@@ -430,25 +443,25 @@ threats have explicit mitigation plans with assigned owners and deadlines.
 ### In Scope
 
 - All Vaeloom platform components: Web (Next.js), Backend (FastAPI), PostgreSQL,
- Redis, Object Storage
+  Redis, Object Storage
 - Third-party integrations: Supabase Auth, OpenAI API, SendGrid, GitHub OAuth,
- Google OAuth
+  Google OAuth
 - All trust boundaries: user ? web, web ? API, API ? AI service, API ? database,
- API ? storage, service ↔ third-party
+  API ? storage, service ↔ third-party
 - Attack vectors: injection, authentication bypass, authorization bypass, SSRF,
- prompt injection, data exfiltration, session hijacking
+  prompt injection, data exfiltration, session hijacking
 - Deployment environments: development, staging, production (different threat
- profiles per environment)
+  profiles per environment)
 
 ### Out of Scope
 
 - Physical security threats to cloud data centers (provider responsibility)
 - Supply chain attacks on third-party CI/CD infrastructure (covered in
- [SBOM-Policy.md](../DevOps/SBOM-Policy.md))
+  [SBOM-Policy.md](../DevOps/SBOM-Policy.md))
 - Social engineering attacks on development team (covered in security awareness
- training)
+  training)
 - Zero-day vulnerabilities in cloud provider infrastructure (provider
- responsibility)
+  responsibility)
 - Threats specific to on-premise deployment (not applicable — cloud-native only)
 
 ---
@@ -545,11 +558,11 @@ sequenceDiagram
 
 ## Future Improvements
 
-| Improvement | Priority | Complexity | Timeline |
+| Improvement                                   | Priority | Complexity | Timeline          |
 | --------------------------------------------- | -------- | ---------- | ----------------- |
-| Continuous threat modeling pipeline in CI/CD | High | Medium | Phase 2 (Q4 2026) |
-| Automated threat intel feed ingestion | Medium | Medium | Phase 2 (Q4 2026) |
-| Policy-as-code for mitigation verification | High | Medium | Phase 2 (Q4 2026) |
-| Adversarial ML-based attack pattern discovery | Low | High | Phase 3 (Q1 2027) |
+| Continuous threat modeling pipeline in CI/CD  | High     | Medium     | Phase 2 (Q4 2026) |
+| Automated threat intel feed ingestion         | Medium   | Medium     | Phase 2 (Q4 2026) |
+| Policy-as-code for mitigation verification    | High     | Medium     | Phase 2 (Q4 2026) |
+| Adversarial ML-based attack pattern discovery | Low      | High       | Phase 3 (Q1 2027) |
 
 ## Related Documents

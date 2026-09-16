@@ -39,6 +39,25 @@ const client = new VaeloomClient({ apiKey: 'your-api-key' });
 const status = await client.healthCheck(); // "ok"
 ```
 
+## OpenAPI Sync (keep the spec + reference current)
+
+`openapi.yaml` (162 paths / 203 ops, regen 2026-09-15) is generated from code —
+`scripts/gen_openapi.py` imports `apps/api/src/api/main.py` with mock env vars,
+so it runs offline. After any router change:
+
+```bash
+python scripts/gen_openapi.py   # from repo root
+# verify: 162 paths (count ^  / keys), 203 ops
+```
+
+Then update [API-Reference.md](./API-Reference.md) (matching router table +
+header counts). Excluded by design: the 10 enterprise-gated routers
+(`enterprise_routes_enabled=true` only) — billing, plugins, analytics, audit,
+iam, recommendations, webhooks, admin_console, scim, feature_flags. Local-dev
+companion: [Local-Development.md](./Local-Development.md).
+
+> _Last verified: 2026-09-15._
+
 ## Related Documents
 
 - [SDK Documentation](../SDK-Documentation.md)

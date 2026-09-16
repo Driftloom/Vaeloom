@@ -25,14 +25,14 @@ data.
 ## Goals
 
 - Identify and resolve the top 20 slowest queries monthly through
- pg_stat_statements analysis
+  pg_stat_statements analysis
 - Maintain p95 query latency under 200ms for 95% of all database operations
 - Keep connection pool utilization under 80% with per-service-tier pool sizing
- (API: max 20, AI Service: max 10, Workers: max 5)
+  (API: max 20, AI Service: max 10, Workers: max 5)
 - Prevent table bloat exceeding 30% dead tuple ratio through tuned vacuum
- strategies
+  strategies
 - Eliminate all N+1 query patterns and unnecessary sequential scans on tables
- larger than 10K rows
+  larger than 10K rows
 
 ## Scope
 
@@ -40,18 +40,18 @@ data.
 
 - Slow query detection via pg_stat_statements with p95 > 200ms threshold
 - Common optimization patterns: N+1 queries, missing indexes, SELECT *
- over-fetching, JSONB abuse
+  over-fetching, JSONB abuse
 - Connection pool sizing per service tier with optimal max/min/idle
- configuration
+  configuration
 - Vacuum strategy differentiated by table churn (aggressive for high-churn,
- light for read-heavy)
+  light for read-heavy)
 - Batch operation sizing for bulk data processing (ingestion, consolidation,
- archival)
+  archival)
 
 **Out of Scope:**
 
 - Query optimization for non-PostgreSQL stores (AGE graph queries, vector
- similarity search)
+  similarity search)
 - Database hardware optimization (CPU, memory, disk I/O configuration)
 - Application-level caching strategies (Redis — covered in Infrastructure docs)
 - Read replica query routing optimization (covered in Replication.md)
@@ -141,12 +141,12 @@ LIMIT 20;
 
 ### Common Optimization Patterns
 
-| Pattern | Issue | Fix |
+| Pattern       | Issue                               | Fix                        |
 | ------------- | ----------------------------------- | -------------------------- |
-| N+1 queries | Loading related entities separately | Use JOINs or batch loading |
-| Missing index | Sequential scans on large tables | Add appropriate indexes |
-| Over-fetching | SELECT * when 2 columns needed | Be selective in queries |
-| JSONB abuse | Heavy JSON operations in WHERE | Extract to indexed columns |
+| N+1 queries   | Loading related entities separately | Use JOINs or batch loading |
+| Missing index | Sequential scans on large tables    | Add appropriate indexes    |
+| Over-fetching | SELECT * when 2 columns needed      | Be selective in queries    |
+| JSONB abuse   | Heavy JSON operations in WHERE      | Extract to indexed columns |
 
 ## Connection Pooling
 
@@ -175,103 +175,103 @@ VACUUM ANALYZE entities;
 
 ## Batch Operations
 
-| Operation | Batch Size | Frequency |
+| Operation            | Batch Size    | Frequency |
 | -------------------- | ------------- | --------- |
-| Document ingestion | 100 files | Per batch |
-| Memory consolidation | 1000 records | Weekly |
-| Entity re-embedding | 500 entities | Monthly |
-| Old data archival | 10000 records | Quarterly |
+| Document ingestion   | 100 files     | Per batch |
+| Memory consolidation | 1000 records  | Weekly    |
+| Entity re-embedding  | 500 entities  | Monthly   |
+| Old data archival    | 10000 records | Quarterly |
 
 ## Common Mistakes
 
-| Mistake | Consequence |
+| Mistake                                                         | Consequence                                                                                                                                                        |
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Premature optimization before measuring | Adding indexes or rewriting queries before identifying actual bottlenecks wastes engineering time — always start with `pg_stat_statements` data |
-| Tuning for the 99th percentile at the expense of the median | Optimizing a query that runs once a day for 10 users while ignoring a query that runs 1000 times a day for everyone — prioritize high-frequency queries |
-| Applying the same vacuum strategy to all tables | High-churn tables (memory_records, agent_actions) need aggressive vacuuming — read-heavy tables (documents, entities) are harmed by unnecessary vacuum overhead |
+| Premature optimization before measuring                         | Adding indexes or rewriting queries before identifying actual bottlenecks wastes engineering time — always start with `pg_stat_statements` data                    |
+| Tuning for the 99th percentile at the expense of the median     | Optimizing a query that runs once a day for 10 users while ignoring a query that runs 1000 times a day for everyone — prioritize high-frequency queries            |
+| Applying the same vacuum strategy to all tables                 | High-churn tables (memory_records, agent_actions) need aggressive vacuuming — read-heavy tables (documents, entities) are harmed by unnecessary vacuum overhead    |
 | Ignoring connection pool saturation as a source of slow queries | A query that normally takes 50ms that takes 5 seconds is often waiting for a connection, not actually executing — monitor pool wait times before blaming the query |
 
 ## Best Practices
 
-| Practice | Why |
+| Practice                                                  | Why                                                                                                                                                                 |
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Measure before optimizing — always use pg_stat_statements | Without data on query frequency, duration, and I/O patterns, optimization is guesswork — pg_stat_statements provides the signal |
-| Optimize for the most frequent query patterns first | A query that runs 10,000 times/day at 100ms costs 1000 seconds/day — optimizing it to 10ms saves 900 seconds. A query that runs once at 10 seconds costs 10 seconds |
-| Keep connection pool sizes appropriate for the workload | Backend servers need more connections (pool_size 20), workers need fewer (pool_size 5) — a single oversized pool causes contention |
-| Use batch operations for bulk data processing | Inserting or updating rows one at a time is 10-100x slower than batch operations — batch sizes of 100-1000 rows provide optimal throughput |
+| Measure before optimizing — always use pg_stat_statements | Without data on query frequency, duration, and I/O patterns, optimization is guesswork — pg_stat_statements provides the signal                                     |
+| Optimize for the most frequent query patterns first       | A query that runs 10,000 times/day at 100ms costs 1000 seconds/day — optimizing it to 10ms saves 900 seconds. A query that runs once at 10 seconds costs 10 seconds |
+| Keep connection pool sizes appropriate for the workload   | Backend servers need more connections (pool_size 20), workers need fewer (pool_size 5) — a single oversized pool causes contention                                  |
+| Use batch operations for bulk data processing             | Inserting or updating rows one at a time is 10-100x slower than batch operations — batch sizes of 100-1000 rows provide optimal throughput                          |
 
 ## Security Considerations
 
-| Consideration | Mitigation |
+| Consideration                    | Mitigation                                                                                                                                                     |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | pg_stat_statements data exposure | Query statistics may contain sensitive data (PII in WHERE clauses, SQL injection patterns) — restrict access to the pg_stat_statements view to database admins |
-| EXPLAIN ANALYZE on production | Running EXPLAIN ANALYZE on production queries executes them and may modify data — use EXPLAIN (no ANALYZE) for SELECT queries, or run on a replica |
-| Connection pool credentials | Pool configuration files may contain database credentials — use environment variables or secrets manager, never hardcode connection strings |
+| EXPLAIN ANALYZE on production    | Running EXPLAIN ANALYZE on production queries executes them and may modify data — use EXPLAIN (no ANALYZE) for SELECT queries, or run on a replica             |
+| Connection pool credentials      | Pool configuration files may contain database credentials — use environment variables or secrets manager, never hardcode connection strings                    |
 
 ## Performance Considerations
 
-| Consideration | Approach |
+| Consideration             | Approach                                                                                                                               |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | Sequential scan detection | A sequential scan on a table >10K rows that runs frequently is the primary optimization target — add an index or restructure the query |
-| N+1 query batching | Loading related entities one-at-a-time destroys performance — use JOINs or batch loading (WHERE id IN (...)) for relationship queries |
-| JSONB extraction overhead | Accessing JSONB fields in WHERE clauses prevents index usage — extract frequently-queried JSONB paths to indexed columns |
+| N+1 query batching        | Loading related entities one-at-a-time destroys performance — use JOINs or batch loading (WHERE id IN (...)) for relationship queries  |
+| JSONB extraction overhead | Accessing JSONB fields in WHERE clauses prevents index usage — extract frequently-queried JSONB paths to indexed columns               |
 
 ---
 
 ## Database
 
-| Table | Optimization Strategy | Key Index | High-Churn? |
+| Table            | Optimization Strategy                                       | Key Index                                    | High-Churn? |
 | ---------------- | ----------------------------------------------------------- | -------------------------------------------- | ----------- |
-| `documents` | Selective SELECT (no SELECT *), pagination with cursor | idx_documents_workspace | No |
-| `memory_records` | Aggressive VACUUM, batch inserts, JSONB extraction | idx_memory_workspace_type | Yes |
-| `entities` | GIN on aliases for search, composite index for type queries | idx_entity_aliases (GIN) | No |
-| `agent_actions` | Time-range composite index, partition by month | idx_agent_actions_time | Yes |
-| `relationships` | Index on from/to for graph traversal | idx_relationships_from, idx_relationships_to | No |
+| `documents`      | Selective SELECT (no SELECT *), pagination with cursor      | idx_documents_workspace                      | No          |
+| `memory_records` | Aggressive VACUUM, batch inserts, JSONB extraction          | idx_memory_workspace_type                    | Yes         |
+| `entities`       | GIN on aliases for search, composite index for type queries | idx_entity_aliases (GIN)                     | No          |
+| `agent_actions`  | Time-range composite index, partition by month              | idx_agent_actions_time                       | Yes         |
+| `relationships`  | Index on from/to for graph traversal                        | idx_relationships_from, idx_relationships_to | No          |
 
 ---
 
 ## Scalability
 
-| Dimension | Current Limit | 10x Strategy | 100x Strategy |
+| Dimension                  | Current Limit              | 10x Strategy                                        | 100x Strategy                                         |
 | -------------------------- | -------------------------- | --------------------------------------------------- | ----------------------------------------------------- |
-| Query throughput | 500 qps on single instance | Read replicas for read-heavy queries | Connection pooling with PgBouncer in transaction mode |
-| Connection pool size (API) | 20 connections | PgBouncer pooling with 100 connections | Per-service connection pools with query routing |
-| Vacuum overhead | 5% CPU sustained | Tune autovacuum per table (scale_factor, threshold) | Partition tables to reduce per-table dead tuple ratio |
-| Batch operation throughput | 1K rows/batch | Increase batch size to 10K for bulk inserts | Parallel batch workers with partition-aware inserts |
+| Query throughput           | 500 qps on single instance | Read replicas for read-heavy queries                | Connection pooling with PgBouncer in transaction mode |
+| Connection pool size (API) | 20 connections             | PgBouncer pooling with 100 connections              | Per-service connection pools with query routing       |
+| Vacuum overhead            | 5% CPU sustained           | Tune autovacuum per table (scale_factor, threshold) | Partition tables to reduce per-table dead tuple ratio |
+| Batch operation throughput | 1K rows/batch              | Increase batch size to 10K for bulk inserts         | Parallel batch workers with partition-aware inserts   |
 
 ---
 
 ## Error Handling
 
-| Scenario | Detection | Mitigation | Recovery |
+| Scenario                   | Detection                               | Mitigation                                              | Recovery                                         |
 | -------------------------- | --------------------------------------- | ------------------------------------------------------- | ------------------------------------------------ |
-| Slow query identified | pg_stat_statements shows p95 > 200ms | Add missing index or rewrite query | Deploy index via migration; verify improvement |
-| Connection pool exhaustion | Application receives connection timeout | Immediate: increase pool size; long-term: add PgBouncer | Monitor pool utilization; alert at 80% |
-| Autovacuum not keeping up | Table bloat > 30% | Manual VACUUM ANALYZE; tune autovacuum settings | Schedule aggressive vacuum for high-churn tables |
-| Deadlock detected | PostgreSQL deadlock error | Retry transaction automatically (up to 3 times) | Log deadlock details; review query order |
+| Slow query identified      | pg_stat_statements shows p95 > 200ms    | Add missing index or rewrite query                      | Deploy index via migration; verify improvement   |
+| Connection pool exhaustion | Application receives connection timeout | Immediate: increase pool size; long-term: add PgBouncer | Monitor pool utilization; alert at 80%           |
+| Autovacuum not keeping up  | Table bloat > 30%                       | Manual VACUUM ANALYZE; tune autovacuum settings         | Schedule aggressive vacuum for high-churn tables |
+| Deadlock detected          | PostgreSQL deadlock error               | Retry transaction automatically (up to 3 times)         | Log deadlock details; review query order         |
 
 ---
 
 ## Monitoring
 
-| Metric | Alert Threshold | Severity | Dashboard |
+| Metric                               | Alert Threshold                        | Severity | Dashboard                      |
 | ------------------------------------ | -------------------------------------- | -------- | ------------------------------ |
-| Slow query count (p95 > 200ms) | > 10/min | Warning | Optimization > Slow Queries |
-| Connection pool utilization | > 80% | Warning | Optimization > Connections |
-| Table bloat (dead tuple ratio) | > 20% dead tuples | Warning | Optimization > Bloat |
-| Sequential scans on large tables | > 5/min on tables > 10K rows | Warning | Optimization > Missing Indexes |
-| Batch operation duration | > 10 min | Info | Optimization > Batch Ops |
-| Vacuum frequency vs. dead tuple rate | Dead tuples growing faster than vacuum | Warning | Optimization > Vacuum |
+| Slow query count (p95 > 200ms)       | > 10/min                               | Warning  | Optimization > Slow Queries    |
+| Connection pool utilization          | > 80%                                  | Warning  | Optimization > Connections     |
+| Table bloat (dead tuple ratio)       | > 20% dead tuples                      | Warning  | Optimization > Bloat           |
+| Sequential scans on large tables     | > 5/min on tables > 10K rows           | Warning  | Optimization > Missing Indexes |
+| Batch operation duration             | > 10 min                               | Info     | Optimization > Batch Ops       |
+| Vacuum frequency vs. dead tuple rate | Dead tuples growing faster than vacuum | Warning  | Optimization > Vacuum          |
 
 ---
 
 ## Limitations
 
-| Limitation | Impact | Workaround | Future Resolution |
+| Limitation                                       | Impact                                                        | Workaround                                                 | Future Resolution                                         |
 | ------------------------------------------------ | ------------------------------------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------- |
-| JSONB queries without extracted columns are slow | Filtering on nested JSONB fields scans all rows | Extract frequently-queried JSONB fields to indexed columns | Automatic JSONB column extraction based on query patterns |
-| Connection pool per service is static | Cannot dynamically allocate connections during traffic spikes | Over-provision pool by 25% | Dynamic connection pool with backpressure signaling |
-| Vacuum cannot keep up with extreme write rates | Dead tuple accumulation slows queries | Partition high-churn tables; increase vacuum frequency | Use table partitioning with partition-level vacuum |
+| JSONB queries without extracted columns are slow | Filtering on nested JSONB fields scans all rows               | Extract frequently-queried JSONB fields to indexed columns | Automatic JSONB column extraction based on query patterns |
+| Connection pool per service is static            | Cannot dynamically allocate connections during traffic spikes | Over-provision pool by 25%                                 | Dynamic connection pool with backpressure signaling       |
+| Vacuum cannot keep up with extreme write rates   | Dead tuple accumulation slows queries                         | Partition high-churn tables; increase vacuum frequency     | Use table partitioning with partition-level vacuum        |
 
 ---
 
@@ -381,14 +381,21 @@ sequenceDiagram
 
 ## Future Improvements
 
-| Improvement | Priority | Complexity | Timeline |
+| Improvement                                                     | Priority | Complexity | Timeline |
 | --------------------------------------------------------------- | -------- | ---------- | -------- |
-| PgBouncer connection pooling for production | High | Medium | Q3 2026 |
-| Automatic pg_stat_statements analysis and index recommendations | Medium | High | Q1 2027 |
-| Dynamic connection pool with backpressure | Low | High | Q2 2027 |
-| Automatic JSONB column extraction from query patterns | Low | Medium | Q2 2027 |
+| PgBouncer connection pooling for production                     | High     | Medium     | Q3 2026  |
+| Automatic pg_stat_statements analysis and index recommendations | Medium   | High       | Q1 2027  |
+| Dynamic connection pool with backpressure                       | Low      | High       | Q2 2027  |
+| Automatic JSONB column extraction from query patterns           | Low      | Medium     | Q2 2027  |
 
 ---
+
+## RLS / Test Note
+
+RLS is enforced on **42/42 tables** (migrations 0010/0019/0020; GUCs
+fail-closed). `EXPLAIN` plans on tenant queries should show policy-filtered
+index scans. Backend tests run on SQLite + `NullPool` with a per-test `tmp_path`
+DB (2731 tests).
 
 ## Related Documents
 

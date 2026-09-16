@@ -5,17 +5,35 @@
 
 ## Overview
 
-Database replication provides read capacity scaling, high availability, and disaster recovery for Vaeloom's PostgreSQL database through streaming WAL-based replication from a primary to up to three read replicas. The primary handles all writes and critical reads, while replicas serve user queries (Replica 1), analytics and reporting (Replica 2), and backups with DR failover (Replica 3). Read/write splitting is implemented at the application layer using a { readOnly } query flag that routes SELECT queries to replicas and mutating queries to the primary.
+Database replication provides read capacity scaling, high availability, and
+disaster recovery for Vaeloom's PostgreSQL database through streaming WAL-based
+replication from a primary to up to three read replicas. The primary handles all
+writes and critical reads, while replicas serve user queries (Replica 1),
+analytics and reporting (Replica 2), and backups with DR failover (Replica 3).
+Read/write splitting is implemented at the application layer using a { readOnly
+} query flag that routes SELECT queries to replicas and mutating queries to the
+primary.
 
-This document defines the replication architecture, scale triggers, replica configuration, read/write splitting implementation, and monitoring for replication lag, replica health, and WAL generation rate. It is intended for infrastructure engineers configuring replication, SRE engineers managing failover procedures, and application developers implementing read/write splitting. Asynchronous replication means lag is inherent — monitoring it is not optional.
+This document defines the replication architecture, scale triggers, replica
+configuration, read/write splitting implementation, and monitoring for
+replication lag, replica health, and WAL generation rate. It is intended for
+infrastructure engineers configuring replication, SRE engineers managing
+failover procedures, and application developers implementing read/write
+splitting. Asynchronous replication means lag is inherent — monitoring it is not
+optional.
 
 ## Goals
 
-- Support up to 3 read replicas for query offload, analytics isolation, and backup/DR separation
-- Maintain replication lag under 5 seconds during normal operation and under 30 seconds under peak load
-- Implement application-layer read/write splitting with explicit { readOnly: true/false } query routing
-- Achieve sub-5-minute manual failover with a documented and quarterly-tested runbook
-- Add replicas reactively based on metrics: 5,000+ reads/sec or replica CPU > 70%
+- Support up to 3 read replicas for query offload, analytics isolation, and
+  backup/DR separation
+- Maintain replication lag under 5 seconds during normal operation and under 30
+  seconds under peak load
+- Implement application-layer read/write splitting with explicit { readOnly:
+  true/false } query routing
+- Achieve sub-5-minute manual failover with a documented and quarterly-tested
+  runbook
+- Add replicas reactively based on metrics: 5,000+ reads/sec or replica CPU >
+  70%
 
 ## Scope
 
@@ -23,10 +41,13 @@ This document defines the replication architecture, scale triggers, replica conf
 
 - Streaming WAL-based replication from primary to up to 3 read replicas
 - Application-layer read/write splitting using { readOnly } query flag
-- Scale triggers: read queries > 5,000/sec → add replica, replica CPU > 70% → add another
-- Replication monitoring: lag, replica count, WAL generation rate, CPU utilization
+- Scale triggers: read queries > 5,000/sec → add replica, replica CPU > 70% →
+  add another
+- Replication monitoring: lag, replica count, WAL generation rate, CPU
+  utilization
 - Failover procedures with quarterly DR drills
-- Connection pool sizing per replica (API: max 30, Analytics: max 10, Backups: max 5)
+- Connection pool sizing per replica (API: max 30, Analytics: max 10, Backups:
+  max 5)
 
 **Out of Scope:**
 
@@ -91,7 +112,12 @@ graph TD
 
 ```
 
-> **Diagram:** Streaming replication from a primary to three read replicas (queries, analytics, backups). **Scale triggers** add replicas based on query volume and CPU utilization. **Read/write splitting** routes queries based on `{ readOnly }` flag at the application layer. **Monitoring** tracks replication lag, replica count, and WAL generation rate with warning/critical thresholds.
+> **Diagram:** Streaming replication from a primary to three read replicas
+> (queries, analytics, backups). **Scale triggers** add replicas based on query
+> volume and CPU utilization. **Read/write splitting** routes queries based on
+> `{ readOnly }` flag at the application layer. **Monitoring** tracks
+> replication lag, replica count, and WAL generation rate with warning/critical
+> thresholds.
 
 ---
 
@@ -105,10 +131,10 @@ Primary (writes) → Streaming Replication → Read Replica 1 (queries)
 
 ## When to Add Replicas
 
-| Threshold | Action |
-|-----------|--------|
-| Read queries > 5000/sec | Add 1st read replica |
-| Read replica CPU > 70% | Add additional replica |
+| Threshold                     | Action                       |
+| ----------------------------- | ---------------------------- |
+| Read queries > 5000/sec       | Add 1st read replica         |
+| Read replica CPU > 70%        | Add additional replica       |
 | Primary connection pool > 80% | Offload reporting to replica |
 
 ## Replica Configuration
@@ -150,101 +176,101 @@ async query(query, params, { readOnly = false } = {}) {
 
 ## Replication Monitoring
 
-| Metric | Warning | Critical |
-|--------|---------|----------|
-| Replication lag | > 5s | > 30s |
-| Replica count | < 2 | 0 |
+| Metric              | Warning     | Critical    |
+| ------------------- | ----------- | ----------- |
+| Replication lag     | > 5s        | > 30s       |
+| Replica count       | < 2         | 0           |
 | WAL generation rate | > 100MB/min | > 500MB/min |
 
 ## Common Mistakes
 
-| Mistake | Consequence |
-|---------|-------------|
-| Adding replicas before addressing read query performance | A read replica of a poorly-indexed database is just a second copy of a slow database — optimize queries and indexes before adding replicas |
-| Not monitoring replication lag | A replica that is 30 seconds behind returns stale data without any error — application users see outdated information with no indication |
-| Using replicas for write-heavy workloads | Replicas cannot accept writes — routing a write to a replica causes a silent failure or an error that the application must handle gracefully |
-| Uneven read distribution across replicas | If queries are not load-balanced across replicas, one replica handles 90% of reads while others sit idle — use a connection pool with round-robin or least-connections routing |
+| Mistake                                                  | Consequence                                                                                                                                                                    |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Adding replicas before addressing read query performance | A read replica of a poorly-indexed database is just a second copy of a slow database — optimize queries and indexes before adding replicas                                     |
+| Not monitoring replication lag                           | A replica that is 30 seconds behind returns stale data without any error — application users see outdated information with no indication                                       |
+| Using replicas for write-heavy workloads                 | Replicas cannot accept writes — routing a write to a replica causes a silent failure or an error that the application must handle gracefully                                   |
+| Uneven read distribution across replicas                 | If queries are not load-balanced across replicas, one replica handles 90% of reads while others sit idle — use a connection pool with round-robin or least-connections routing |
 
 ## Best Practices
 
-| Practice | Why |
-|----------|-----|
-| Monitor replication lag at all times | Lag > 5s triggers a warning, > 30s triggers an alert — automated failover should not activate if lag exceeds acceptable recovery point objective (RPO) |
-| Use read/write splitting at the application layer | The application explicitly marks queries as read-only — this prevents accidental writes to replicas and makes the read path testable |
-| Add replicas based on metrics, not time | Add a replica when read query volume exceeds 5,000/sec or replica CPU exceeds 70% — scheduled quarterly capacity reviews prevent reactive scaling |
-| Test failover procedures quarterly | A failover that has never been practiced will fail at the worst possible moment — run quarterly DR drills that include promoting a replica to primary |
+| Practice                                          | Why                                                                                                                                                    |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Monitor replication lag at all times              | Lag > 5s triggers a warning, > 30s triggers an alert — automated failover should not activate if lag exceeds acceptable recovery point objective (RPO) |
+| Use read/write splitting at the application layer | The application explicitly marks queries as read-only — this prevents accidental writes to replicas and makes the read path testable                   |
+| Add replicas based on metrics, not time           | Add a replica when read query volume exceeds 5,000/sec or replica CPU exceeds 70% — scheduled quarterly capacity reviews prevent reactive scaling      |
+| Test failover procedures quarterly                | A failover that has never been practiced will fail at the worst possible moment — run quarterly DR drills that include promoting a replica to primary  |
 
 ## Security Considerations
 
-| Consideration | Mitigation |
-|--------------|-----------|
-| Replica data access | Read replicas contain the same data as the primary — they must have the same access controls, encryption, and audit logging |
-| Replica as an attack surface | A compromised replica exposes all data — replicas should not be directly accessible from the public internet, should use the same firewall rules as the primary |
-| Cross-region replication compliance | Replicating data across regions may violate data residency requirements — document which data types can be replicated across regional boundaries |
+| Consideration                       | Mitigation                                                                                                                                                      |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Replica data access                 | Read replicas contain the same data as the primary — they must have the same access controls, encryption, and audit logging                                     |
+| Replica as an attack surface        | A compromised replica exposes all data — replicas should not be directly accessible from the public internet, should use the same firewall rules as the primary |
+| Cross-region replication compliance | Replicating data across regions may violate data residency requirements — document which data types can be replicated across regional boundaries                |
 
 ## Performance Considerations
 
-| Consideration | Approach |
-|--------------|----------|
-| Replication lag under write load | High write volume on the primary increases WAL generation and replication lag — batch writes to reduce transaction frequency and rate-limit bulk operations |
-| Replica query performance | Read replicas use the same indexes as the primary — index maintenance (REINDEX, ANALYZE) on the primary propagates to replicas through WAL, causing temporary lag |
-| Connection pool sizing per replica | Each replica has its own connection pool — pool size should scale with the number of services reading from that replica (API vs. analytics vs. backups) |
+| Consideration                      | Approach                                                                                                                                                          |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Replication lag under write load   | High write volume on the primary increases WAL generation and replication lag — batch writes to reduce transaction frequency and rate-limit bulk operations       |
+| Replica query performance          | Read replicas use the same indexes as the primary — index maintenance (REINDEX, ANALYZE) on the primary propagates to replicas through WAL, causing temporary lag |
+| Connection pool sizing per replica | Each replica has its own connection pool — pool size should scale with the number of services reading from that replica (API vs. analytics vs. backups)           |
 
 ---
 
 ## Database
 
-| Replica | Purpose | Connection Pool Size | Reads From |
-|---------|---------|----------------------|------------|
-| Primary | All writes + critical reads | max 20 | API service |
-| Replica 1 | User-facing query offload | max 30 | API service (read-only queries) |
-| Replica 2 | Analytics and reporting | max 10 | Analytics service, reporting cron jobs |
-| Replica 3 | Backups and DR | max 5 | Backup system, failover target |
+| Replica   | Purpose                     | Connection Pool Size | Reads From                             |
+| --------- | --------------------------- | -------------------- | -------------------------------------- |
+| Primary   | All writes + critical reads | max 20               | API service                            |
+| Replica 1 | User-facing query offload   | max 30               | API service (read-only queries)        |
+| Replica 2 | Analytics and reporting     | max 10               | Analytics service, reporting cron jobs |
+| Replica 3 | Backups and DR              | max 5                | Backup system, failover target         |
 
 ---
 
 ## Scalability
 
-| Dimension | Current Limit | 10x Strategy | 100x Strategy |
-|-----------|---------------|--------------|---------------|
-| Read replica count | 3 | Add replicas when read query volume > 5K/s or CPU > 70% | Cascading replicas (replica feeds replica) for read-heavy workloads |
-| Replication lag tolerance | 5s warning, 30s critical | Monitor lag per replica; route critical queries to low-lag replica | Synchronous replication for zero-data-loss workloads |
-| Failover time | 5 min manual | Automated failover with pg_auto_failover | Multi-region active-active with conflict resolution |
-| WAL generation | 100 MB/min | Archive WAL to S3; increase WAL segment size | Separate WAL-only replica for archive offload |
+| Dimension                 | Current Limit            | 10x Strategy                                                       | 100x Strategy                                                       |
+| ------------------------- | ------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| Read replica count        | 3                        | Add replicas when read query volume > 5K/s or CPU > 70%            | Cascading replicas (replica feeds replica) for read-heavy workloads |
+| Replication lag tolerance | 5s warning, 30s critical | Monitor lag per replica; route critical queries to low-lag replica | Synchronous replication for zero-data-loss workloads                |
+| Failover time             | 5 min manual             | Automated failover with pg_auto_failover                           | Multi-region active-active with conflict resolution                 |
+| WAL generation            | 100 MB/min               | Archive WAL to S3; increase WAL segment size                       | Separate WAL-only replica for archive offload                       |
 
 ---
 
 ## Error Handling
 
-| Scenario | Detection | Mitigation | Recovery |
-|----------|-----------|------------|----------|
-| Replication lag exceeds threshold | Lag > 30s | Offload read queries from lagging replica to primary or another replica | Investigate cause (write spike, network, replica CPU); apply fix |
-| Replica failure (crash) | Heartbeat lost | Route reads to remaining replicas or primary; mark failed replica | Auto-restart replica; re-sync from primary |
-| Split-brain (two primaries) | Conflicting WAL positions detected | Manual intervention: identify correct primary, demote other | Use replication management tool (Patroni) to prevent split-brain |
-| WAL corruption | Replication stops with error | Rebuild replica from fresh backup | Regular backup verification ensures clean base for rebuild |
+| Scenario                          | Detection                          | Mitigation                                                              | Recovery                                                         |
+| --------------------------------- | ---------------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Replication lag exceeds threshold | Lag > 30s                          | Offload read queries from lagging replica to primary or another replica | Investigate cause (write spike, network, replica CPU); apply fix |
+| Replica failure (crash)           | Heartbeat lost                     | Route reads to remaining replicas or primary; mark failed replica       | Auto-restart replica; re-sync from primary                       |
+| Split-brain (two primaries)       | Conflicting WAL positions detected | Manual intervention: identify correct primary, demote other             | Use replication management tool (Patroni) to prevent split-brain |
+| WAL corruption                    | Replication stops with error       | Rebuild replica from fresh backup                                       | Regular backup verification ensures clean base for rebuild       |
 
 ---
 
 ## Monitoring
 
-| Metric | Alert Threshold | Severity | Dashboard |
-|--------|-----------------|----------|-----------|
-| Replication lag per replica | > 5s (warning), > 30s (critical) | Warning / Critical | Replication > Lag |
-| Replica CPU utilization | > 70% | Warning | Replication > Resources |
-| WAL generation rate | > 500 MB/min | Critical | Replication > WAL |
-| Replica count (healthy) | < 2 | Critical | Replication > Health |
-| Failover last tested | > 90 days ago | Warning | Replication > DR Readiness |
-| Query routing correctness | Reads incorrectly routed to primary | Critical | Replication > Query Routing |
+| Metric                      | Alert Threshold                     | Severity           | Dashboard                   |
+| --------------------------- | ----------------------------------- | ------------------ | --------------------------- |
+| Replication lag per replica | > 5s (warning), > 30s (critical)    | Warning / Critical | Replication > Lag           |
+| Replica CPU utilization     | > 70%                               | Warning            | Replication > Resources     |
+| WAL generation rate         | > 500 MB/min                        | Critical           | Replication > WAL           |
+| Replica count (healthy)     | < 2                                 | Critical           | Replication > Health        |
+| Failover last tested        | > 90 days ago                       | Warning            | Replication > DR Readiness  |
+| Query routing correctness   | Reads incorrectly routed to primary | Critical           | Replication > Query Routing |
 
 ---
 
 ## Limitations
 
-| Limitation | Impact | Workaround | Future Resolution |
-|------------|--------|------------|-------------------|
-| Asynchronous replication has lag | Read-after-write inconsistency (user writes then reads from replica) | Route critical read-after-write queries to primary | Synchronous replication for critical data paths |
-| Replicas have same indexes as primary | Index bloat affects all replicas equally | Schedule index maintenance during low traffic | Replica-specific partial indexes for read query patterns |
-| Manual failover in current setup | Recovery time objective (RTO) is 5-15 min | Document runbook; practice quarterly | Automated failover with Patroni or pg_auto_failover |
+| Limitation                            | Impact                                                               | Workaround                                         | Future Resolution                                        |
+| ------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------- |
+| Asynchronous replication has lag      | Read-after-write inconsistency (user writes then reads from replica) | Route critical read-after-write queries to primary | Synchronous replication for critical data paths          |
+| Replicas have same indexes as primary | Index bloat affects all replicas equally                             | Schedule index maintenance during low traffic      | Replica-specific partial indexes for read query patterns |
+| Manual failover in current setup      | Recovery time objective (RTO) is 5-15 min                            | Document runbook; practice quarterly               | Automated failover with Patroni or pg_auto_failover      |
 
 ---
 
@@ -270,7 +296,7 @@ const replicaPool = new Pool({
 export async function executeQuery<T>(
   sql: string,
   params: any[] = [],
-  options: { readOnly?: boolean } = {}
+  options: { readOnly?: boolean } = {},
 ): Promise<T> {
   const pool = options.readOnly ? replicaPool : primaryPool;
   const client = await pool.connect();
@@ -286,7 +312,7 @@ export async function executeQuery<T>(
 const activeUsers = await executeQuery<{ id: string }[]>(
   'SELECT id FROM users WHERE last_active > $1',
   [new Date(Date.now() - 3600000)],
-  { readOnly: true }
+  { readOnly: true },
 );
 ```
 
@@ -351,21 +377,31 @@ sequenceDiagram
  end
 ```
 
-> **Diagram:** Replication topology — Primary handles all writes while 3 replicas stream WAL asynchronously. Replica 1 serves user queries, Replica 2 handles analytics/reporting, Replica 3 isolates backups and serves as DR failover target. Application-layer routing splits read vs write queries via a readOnly flag.
+> **Diagram:** Replication topology — Primary handles all writes while 3
+> replicas stream WAL asynchronously. Replica 1 serves user queries, Replica 2
+> handles analytics/reporting, Replica 3 isolates backups and serves as DR
+> failover target. Application-layer routing splits read vs write queries via a
+> readOnly flag.
 
 ---
 
 ## Future Improvements
 
-| Improvement | Priority | Complexity | Timeline |
-|-------------|----------|------------|----------|
-| Automated failover with Patroni | High | Medium | Q1 2027 |
-| Synchronous replication for critical data paths (user profiles, billing) | Medium | Medium | Q1 2027 |
-| Cascading replica topology for read-heavy analytics | Low | High | Q2 2027 |
-| Multi-region active-active with conflict resolution | Low | High | Q3 2027 |
-| Replica-specific partial indexes for optimized read queries | Medium | Medium | Q4 2026 |
+| Improvement                                                              | Priority | Complexity | Timeline |
+| ------------------------------------------------------------------------ | -------- | ---------- | -------- |
+| Automated failover with Patroni                                          | High     | Medium     | Q1 2027  |
+| Synchronous replication for critical data paths (user profiles, billing) | Medium   | Medium     | Q1 2027  |
+| Cascading replica topology for read-heavy analytics                      | Low      | High       | Q2 2027  |
+| Multi-region active-active with conflict resolution                      | Low      | High       | Q3 2027  |
+| Replica-specific partial indexes for optimized read queries              | Medium   | Medium     | Q4 2026  |
 
 ---
+
+## RLS / Test Note
+
+RLS policies (**42/42 tables**, migrations 0010/0019/0020) replicate with the
+schema; replicas enforce the same fail-closed GUCs. Backend tests run on
+SQLite + `NullPool` with a per-test `tmp_path` DB (2731 tests).
 
 ## Related Documents
 

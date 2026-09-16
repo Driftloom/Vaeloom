@@ -24,15 +24,15 @@ application code that depends on the new schema.
 ## Goals
 
 - Ensure every migration is reversible with a tested down migration before
- production deployment
+  production deployment
 - Achieve zero-downtime schema changes at Enterprise scale through progressive
- rollout patterns (add → backfill → constrain → drop)
+  rollout patterns (add → backfill → constrain → drop)
 - Validate every migration against an ephemeral database with the full test
- suite in CI before merging
+  suite in CI before merging
 - Complete production migration rollback within 5 minutes using prepared down
- migrations
+  migrations
 - Maintain a clean migration history with squashed baselines quarterly to keep
- deployment times fast
+  deployment times fast
 
 ## Scope
 
@@ -41,16 +41,16 @@ application code that depends on the new schema.
 - Migration framework: Alembic (Python, used in production)
 - Migration file naming convention: `YYYYMMDD_HHMMSS_description.sql`
 - Reversible migration requirement — every up migration must have a
- corresponding down migration
+  corresponding down migration
 - CI pipeline validation: lint, ephemeral database, apply, test, merge gate
 - Zero-downtime pattern: add column → backfill → add constraint → drop old
- column
+  column
 - Rollback procedures and migration audit logging
 
 **Out of Scope:**
 
 - Online schema change tools (gh-ost, pt-online-schema-change) — future
- improvement
+  improvement
 - Database branching or schema diff tools beyond the ORM migration framework
 - Migration of non-PostgreSQL stores (AGE graph, pgvector, Qdrant)
 - Automated schema drift detection and resolution
@@ -136,139 +136,177 @@ graph TD
 
 ---
 
+## Migration Inventory (42 versions, `apps/api/alembic/versions/`)
+
+| Range                    | Content                                                                                                           |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `0001`–`0004`            | Initial schema, microservice tables, approval tables, memory taxonomy                                             |
+| `0005` (+ `0005_rls.py`) | RLS base policies                                                                                                 |
+| `0006`–`0009`            | Provenance, missing tables, schema gaps, memory domain check                                                      |
+| `0010`                   | RLS force + roles (**34 tables**)                                                                                 |
+| `0011`                   | HNSW vector index                                                                                                 |
+| `0012`–`0015`            | RLS policy fixes (correct columns, memories workspace-only), FK cascades + indexes                                |
+| `0016`–`0018`            | Provider-keys BYOK, events workspace scoping, graph-memory end-to-end                                             |
+| `0019`                   | RLS + sanitize hardening (**+3 tables**)                                                                          |
+| `0020`                   | RLS remaining 5 (**42/42 complete**)                                                                              |
+| `0021`–`0022`            | Retention runs, agent schedules last-run                                                                          |
+| `0023`                   | **`resume_artifacts`** (compiled PDF/DOCX/HTML bytes, workspace RLS)                                              |
+| `0024`–`0026`            | Resume sources, knowledge-graph workspace scoping, tsvector documents                                             |
+| `0027`–`0030`            | Memory taxonomy contract, RLS all policy tables, idempotency checkpoint, learning events                          |
+| `0031`–`0033`            | Profile fields, RLS remaining tables, scale memory nodes                                                          |
+| `0034`–`0035`            | Sovereign trust + credentials, proactive proposals + federation                                                   |
+| `0036`–`0040`            | Least-privilege RLS, shared revocation, scoped HTTP idempotency, claims + checkpoint tenant, worker scope helpers |
+| `0041`–`0042`            | Gmail watch token, users tenant_id                                                                                |
+
+RLS total: **42/42** (34 via 0010 + 3 via 0019 + 5 via 0020). GUCs fail-closed
+via `set_rls_session_vars` (`database.py:30`); `TenantContext` supplies
+`app.workspace_id` / `app.user_id` / `app.tenant_id` per request.
+
+## Dual-URL Least-Privilege (OP-RLS-01)
+
+| Variable                  | Role                                                       | Used for                                                                |
+| ------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `DATABASE__URL`           | Least-privilege runtime (no BYPASSRLS, e.g. `vaeloom_app`) | All runtime queries                                                     |
+| `DATABASE_MIGRATION__URL` | Owner/migrator                                             | DDL + boot migrations (`create_all`, alembic) + startup role guard only |
+
+When `DATABASE_MIGRATION__URL` is unset, current behavior is preserved (runtime
+engine also runs DDL) for SQLite/local workflows. Never derive the owner URL
+from the runtime URL.
+
 ## Migration Framework
 
-| Environment | Tool | Strategy |
+| Environment | Tool             | Strategy                              |
 | ----------- | ---------------- | ------------------------------------- |
 | Development | Alembic (Python) | Auto-generated from SQLAlchemy models |
-| Staging | Same | Applied automatically in CI |
-| Production | Same | Manual approval, applied via CI |
+| Staging     | Same             | Applied automatically in CI           |
+| Production  | Same             | Manual approval, applied via CI       |
 
 ## Migration Conventions
 
-| Convention | Standard |
+| Convention    | Standard                                                |
 | ------------- | ------------------------------------------------------- |
-| File naming | `YYYYMMDD_HHMMSS_description.sql` |
-| Naming style | snake_case, descriptive: `add_memory_confidence_column` |
-| Atomicity | One logical change per migration |
-| Reversibility | Every migration must have a down migration |
+| File naming   | `YYYYMMDD_HHMMSS_description.sql`                       |
+| Naming style  | snake_case, descriptive: `add_memory_confidence_column` |
+| Atomicity     | One logical change per migration                        |
+| Reversibility | Every migration must have a down migration              |
 
 ## Migration Process
 
 ### MVP
 
 ```bash
-# Generate migration
-alembic revision --autogenerate -m "add_memory_confidence"
+# Verify chain + drift before touching anything
+uv run --project apps/api alembic check
 
 # Apply in production
-alembic upgrade head
+uv run --project apps/api alembic upgrade head
 ```
 
 ### Enterprise
 
 - Zero-downtime migrations using progressive rollout:
- 1. Add new columns/tables (no NOT NULL constraints)
- 2. Backfill data in batches
- 3. Add constraints/indexes
- 4. Remove old columns (separate migration)
+
+1.  Add new columns/tables (no NOT NULL constraints)
+2.  Backfill data in batches
+3.  Add constraints/indexes
+4.  Remove old columns (separate migration)
 
 ## Rollback
 
 ```bash
 # Revert last migration
-alembic downgrade -1
+uv run --project apps/api alembic downgrade -1
 
 # Revert to specific version
-alembic downgrade <revision_id>
+uv run --project apps/api alembic downgrade <revision_id>
 ```
 
 ## Common Mistakes
 
-| Mistake | Consequence |
+| Mistake                                                            | Consequence                                                                                                                                                  |
 | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Migrations without a down migration | If a production migration fails, there is no way to revert — the database is stuck in an inconsistent state until a manual fix is developed |
-| Adding NOT NULL constraints to existing columns without a backfill | A column added as NOT NULL to a table with existing NULL rows causes the migration to fail on production — always backfill data first, then add constraints |
-| Running migrations as part of application startup | If the application starts before the migration completes, two instances race to migrate — use explicit `migrate deploy` commands, not auto-migration on boot |
-| Creating indexes on large tables during peak traffic | A sequential index scan blocks writes — create indexes CONCURRENTLY on tables larger than 1M rows or schedule during maintenance windows |
+| Migrations without a down migration                                | If a production migration fails, there is no way to revert — the database is stuck in an inconsistent state until a manual fix is developed                  |
+| Adding NOT NULL constraints to existing columns without a backfill | A column added as NOT NULL to a table with existing NULL rows causes the migration to fail on production — always backfill data first, then add constraints  |
+| Running migrations as part of application startup                  | If the application starts before the migration completes, two instances race to migrate — use explicit `migrate deploy` commands, not auto-migration on boot |
+| Creating indexes on large tables during peak traffic               | A sequential index scan blocks writes — create indexes CONCURRENTLY on tables larger than 1M rows or schedule during maintenance windows                     |
 
 ## Best Practices
 
-| Practice | Why |
+| Practice                                         | Why                                                                                                                                                                      |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Every migration must be reversible | A down migration should be written alongside the up migration and tested — production rollbacks are not the time to write a down migration from scratch |
-| Use zero-downtime patterns for enterprise | Add columns without NOT NULL → backfill → add constraints → remove old columns in a separate release — each step is a reversible, independent deployment |
-| Test migrations against a production-sized copy | A migration that runs in 2 seconds on a development database may take 20 minutes on production — test against realistic data volumes in staging |
+| Every migration must be reversible               | A down migration should be written alongside the up migration and tested — production rollbacks are not the time to write a down migration from scratch                  |
+| Use zero-downtime patterns for enterprise        | Add columns without NOT NULL → backfill → add constraints → remove old columns in a separate release — each step is a reversible, independent deployment                 |
+| Test migrations against a production-sized copy  | A migration that runs in 2 seconds on a development database may take 20 minutes on production — test against realistic data volumes in staging                          |
 | Run migrations before deploying application code | The new application code expects the new schema — apply the migration first, then deploy the code that uses it. This avoids errors from code running against old schemas |
 
 ## Security Considerations
 
-| Consideration | Mitigation |
+| Consideration                      | Mitigation                                                                                                                                                     |
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Migration script access | Migration files execute arbitrary SQL including DROP and DELETE — access to migration files and the ability to run them must be restricted to senior engineers |
-| Data exposure in migration logs | Migrations that SELECT or UPDATE user data may log sensitive information — ensure migration logging redacts PII |
-| Rollback of destructive migrations | A migration that drops a column or table cannot recover data unless a backup exists — always take a backup before destructive migrations |
+| Migration script access            | Migration files execute arbitrary SQL including DROP and DELETE — access to migration files and the ability to run them must be restricted to senior engineers |
+| Data exposure in migration logs    | Migrations that SELECT or UPDATE user data may log sensitive information — ensure migration logging redacts PII                                                |
+| Rollback of destructive migrations | A migration that drops a column or table cannot recover data unless a backup exists — always take a backup before destructive migrations                       |
 
 ## Performance Considerations
 
-| Consideration | Approach |
+| Consideration                    | Approach                                                                                                                                                          |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Index creation during migrations | Use `CREATE INDEX CONCURRENTLY` for tables with active writes — standard CREATE INDEX blocks writes on the table |
-| Data backfill batches | Backfilling millions of rows in a single transaction ties up connection pool and transaction log — backfill in batches of 1,000-10,000 rows with progress logging |
-| Foreign key validation | Adding a foreign key to a large table validates all existing rows — use `NOT VALID` then `VALIDATE CONCURRENTLY` to avoid blocking writes |
+| Index creation during migrations | Use `CREATE INDEX CONCURRENTLY` for tables with active writes — standard CREATE INDEX blocks writes on the table                                                  |
+| Data backfill batches            | Backfilling millions of rows in a single transaction ties up connection pool and transaction log — backfill in batches of 1,000-10,000 rows with progress logging |
+| Foreign key validation           | Adding a foreign key to a large table validates all existing rows — use `NOT VALID` then `VALIDATE CONCURRENTLY` to avoid blocking writes                         |
 
 ---
 
 ## Database
 
-| Table | Purpose | Migration Relevance |
+| Table             | Purpose                               | Migration Relevance                                               |
 | ----------------- | ------------------------------------- | ----------------------------------------------------------------- |
-| `_migrations` | Framework-managed migration tracking | Records all applied migrations with checksums |
-| `schema_versions` | Custom schema version registry | Tracks deployed schema version per environment |
+| `_migrations`     | Framework-managed migration tracking  | Records all applied migrations with checksums                     |
+| `schema_versions` | Custom schema version registry        | Tracks deployed schema version per environment                    |
 | `migration_audit` | Audit log of all migration executions | id, migration_name, status, started_at, completed_at, executed_by |
 
 ---
 
 ## Scalability
 
-| Dimension | Current Limit | 10x Strategy | 100x Strategy |
+| Dimension                     | Current Limit                  | 10x Strategy                                         | 100x Strategy                                               |
 | ----------------------------- | ------------------------------ | ---------------------------------------------------- | ----------------------------------------------------------- |
-| Migration file count | 100 migrations per year | Squash migrations quarterly into baseline | Versioned baseline migrations per release train |
-| Tables affected per migration | 1-3 tables | Zero-downtime patterns (add → backfill → constraint) | Parallel migration execution for independent schema changes |
-| Rollback complexity | One-off rollback per migration | Every migration has reversible down migration | Automated rollback testing in CI/CD |
+| Migration file count          | 100 migrations per year        | Squash migrations quarterly into baseline            | Versioned baseline migrations per release train             |
+| Tables affected per migration | 1-3 tables                     | Zero-downtime patterns (add → backfill → constraint) | Parallel migration execution for independent schema changes |
+| Rollback complexity           | One-off rollback per migration | Every migration has reversible down migration        | Automated rollback testing in CI/CD                         |
 
 ---
 
 ## Error Handling
 
-| Scenario | Detection | Mitigation | Recovery |
+| Scenario                             | Detection                              | Mitigation                                                  | Recovery                                              |
 | ------------------------------------ | -------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------- |
-| Migration fails mid-execution | SQL error returned | Migration framework rolls back transaction; marks as failed | Fix migration file; re-run from failed point |
-| Schema drift (manual DB change) | Migration checksum mismatch | Block deployment; alert on-call | Resolve drift manually or reset checksum |
-| Down migration not tested | Rollback produces error | Manual database fix required | Test down migrations in staging before production |
-| Data loss from destructive migration | DROP COLUMN or DROP TABLE removes data | Restore from backup taken before migration | Apply backup; re-run migration with data preservation |
+| Migration fails mid-execution        | SQL error returned                     | Migration framework rolls back transaction; marks as failed | Fix migration file; re-run from failed point          |
+| Schema drift (manual DB change)      | Migration checksum mismatch            | Block deployment; alert on-call                             | Resolve drift manually or reset checksum              |
+| Down migration not tested            | Rollback produces error                | Manual database fix required                                | Test down migrations in staging before production     |
+| Data loss from destructive migration | DROP COLUMN or DROP TABLE removes data | Restore from backup taken before migration                  | Apply backup; re-run migration with data preservation |
 
 ---
 
 ## Monitoring
 
-| Metric | Alert Threshold | Severity | Dashboard |
+| Metric                              | Alert Threshold                           | Severity | Dashboard                 |
 | ----------------------------------- | ----------------------------------------- | -------- | ------------------------- |
-| Migration execution duration | > 30 min | Warning | Migrations > Duration |
-| Pending migrations count | > 5 | Info | Migrations > Pending |
-| Failed migrations (any environment) | > 0 | Critical | Migrations > Failures |
-| Schema drift detected | Any drift | Critical | Migrations > Schema Drift |
-| Migration-to-deploy lag | Migration applied > 1h before code deploy | Warning | Migrations > Deploy Sync |
+| Migration execution duration        | > 30 min                                  | Warning  | Migrations > Duration     |
+| Pending migrations count            | > 5                                       | Info     | Migrations > Pending      |
+| Failed migrations (any environment) | > 0                                       | Critical | Migrations > Failures     |
+| Schema drift detected               | Any drift                                 | Critical | Migrations > Schema Drift |
+| Migration-to-deploy lag             | Migration applied > 1h before code deploy | Warning  | Migrations > Deploy Sync  |
 
 ---
 
 ## Limitations
 
-| Limitation | Impact | Workaround | Future Resolution |
+| Limitation                                          | Impact                                                                        | Workaround                                               | Future Resolution                                       |
 | --------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------- |
-| No online schema change support (gh-ost, pt-online) | ALTER TABLE on large tables locks writes | Use zero-downtime pattern (add → backfill → swap → drop) | Integrate gh-ost for online schema changes |
-| Migration squashing is manual | 100+ migration files slow down fresh DB setup | Manual quarterly squash into baseline | Automated migration squash tool |
-| Rollback is not always reversible | Some changes (DROP COLUMN, data transformation) cannot be rolled back cleanly | Never perform destructive changes without backup | Immutable migration patterns with forward-only approach |
+| No online schema change support (gh-ost, pt-online) | ALTER TABLE on large tables locks writes                                      | Use zero-downtime pattern (add → backfill → swap → drop) | Integrate gh-ost for online schema changes              |
+| Migration squashing is manual                       | 100+ migration files slow down fresh DB setup                                 | Manual quarterly squash into baseline                    | Automated migration squash tool                         |
+| Rollback is not always reversible                   | Some changes (DROP COLUMN, data transformation) cannot be rolled back cleanly | Never perform destructive changes without backup         | Immutable migration patterns with forward-only approach |
 
 ---
 
@@ -298,20 +336,20 @@ ALTER TABLE users DROP COLUMN preference_language;
 set -euo pipefail
 
 # 1. Check migration chain for conflicts
-alembic check
+uv run --project apps/api alembic check
 
 # 2. Apply migration to ephemeral database
-alembic upgrade head
+uv run --project apps/api alembic upgrade head
 
-# 3. Run full test suite
-cd apps/api && python -m pytest tests/ -q
+# 3. Run full test suite (2731 tests; SQLite + NullPool, per-test tmp_path DB)
+uv run --project apps/api python -m pytest -q -o addopts="-n auto --dist loadfile"
 
 # 4. Verify rollback
-alembic downgrade base
+uv run --project apps/api alembic downgrade base
 
 # 5. Re-apply and confirm tests pass again
-alembic upgrade head
-cd apps/api && python -m pytest tests/ -q
+uv run --project apps/api alembic upgrade head
+uv run --project apps/api python -m pytest -q -o addopts="-n auto --dist loadfile"
 
 echo "Migration verified: up, down, and re-up all pass"
 ```
@@ -364,12 +402,12 @@ sequenceDiagram
 
 ## Future Improvements
 
-| Improvement | Priority | Complexity | Timeline |
+| Improvement                                            | Priority | Complexity | Timeline |
 | ------------------------------------------------------ | -------- | ---------- | -------- |
-| Automated migration squash tool | Medium | Medium | Q4 2026 |
-| gh-ost integration for online schema changes | High | High | Q2 2027 |
-| Automated rollback testing in CI/CD pipeline | Medium | Medium | Q1 2027 |
-| Migration impact analysis (preview locks and duration) | Low | High | Q2 2027 |
+| Automated migration squash tool                        | Medium   | Medium     | Q4 2026  |
+| gh-ost integration for online schema changes           | High     | High       | Q2 2027  |
+| Automated rollback testing in CI/CD pipeline           | Medium   | Medium     | Q1 2027  |
+| Migration impact analysis (preview locks and duration) | Low      | High       | Q2 2027  |
 
 ---
 

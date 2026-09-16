@@ -19,12 +19,12 @@ graph TD
  R5["scripts/ci-local.sh<br/>Run CI pipeline locally"]
  end
 
- subgraph Frontend["Frontend (apps/web)"]
- F1["npm run dev--> Start (port 3000)"]
- F2["npm run build--> Production build"]
- F3["npm run test--> Run tests"]
- F4["npm run lint--> Lint"]
- F5["npm run analyze--> Bundle analysis"]
+  subgraph Frontend["Frontend (repo root via pnpm)"]
+  F1["pnpm dev:web--> Start (port 3000, NEVER pnpm dev)"]
+  F2["pnpm build:web--> Production build"]
+  F3["pnpm test--> Run tests"]
+  F4["pnpm lint--> Lint"]
+  F5["pnpm analyze--> Bundle analysis"]
  end
 
  subgraph Backend["Backend (apps/api)"]
@@ -72,28 +72,28 @@ graph TD
 ./scripts/ci-local.sh
 ```
 
-### Frontend (apps/web)
+### Frontend (repo root — pnpm ONLY; never `pnpm dev`, it hangs via Nx × 25 pkgs)
 
 ```bash
-npm run dev          # Start dev server (port 3000)
-npm run build        # Production build
-npm run start        # Start production server
-npm run lint         # Lint code
-npm run test         # Run tests
-npm run test:watch   # Run tests in watch mode
-npm run analyze      # Bundle analysis
+pnpm dev:web       # Start dev server (port 3000) — or fastest: make dev-web
+pnpm build:web     # Production build
+pnpm start         # Start production server
+pnpm lint          # Lint code
+pnpm test          # Run tests
+pnpm test:watch    # Run tests in watch mode
+pnpm analyze       # Bundle analysis
 ```
 
-### Backend (apps/api)
+### Backend (via uv — no pip, no requirements.txt)
 
 ```bash
-uvicorn api.main:app --reload --port 8000  # Dev server
-alembic upgrade head                             # Run migrations
-alembic downgrade -1                              # Rollback last migration
-pytest                                            # Run tests
-ruff check .                                      # Lint
-mypy .                                           # Type check
-python -m eval.run_all                           # Run evals
+pnpm dev:be  # Dev server (or: uv run --project apps/api python -m uvicorn api.main:app --reload --port 8000)
+uv run --project apps/api alembic upgrade head        # Run migrations
+uv run --project apps/api alembic downgrade -1        # Rollback last migration
+uv run --project apps/api python -m pytest            # Run tests
+uv run --project apps/api ruff check .                # Lint
+uv run --project apps/api mypy .                      # Type check
+uv run --project apps/api python -m eval.run_all      # Run evals
 ```
 
 ## Script Conventions
@@ -105,60 +105,60 @@ python -m eval.run_all                           # Run evals
 
 ## Common Mistakes
 
-| Mistake | Consequence |
+| Mistake                                                       | Consequence                                                                                                                                                             |
 | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Running `reset-db.sh` without checking the target environment | The script drops and recreates all tables — running it against staging or production destroys all user data. Always check `NODE_ENV` or the database URL before running |
-| Hardcoding paths or credentials inside scripts | A script with hardcoded `/Users/name/Vaeloom` paths breaks for every other developer — scripts must use relative paths and environment variables |
-| Skipping error handling in CI scripts | A CI script that doesn't `set -e` continues executing after a failure — the next step may run against corrupted state, masking the original error |
-| Not making scripts idempotent | A seed script that creates the same data twice causes duplicate keys or constraint violations — scripts should check for existing data before inserting |
+| Hardcoding paths or credentials inside scripts                | A script with hardcoded `/Users/name/Vaeloom` paths breaks for every other developer — scripts must use relative paths and environment variables                        |
+| Skipping error handling in CI scripts                         | A CI script that doesn't `set -e` continues executing after a failure — the next step may run against corrupted state, masking the original error                       |
+| Not making scripts idempotent                                 | A seed script that creates the same data twice causes duplicate keys or constraint violations — scripts should check for existing data before inserting                 |
 
 ## Best Practices
 
-| Practice | Why |
+| Practice                                                  | Why                                                                                                                                     |
 | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Always use shell safety flags at the top of shell scripts | Exits on errors, catches unset variables, and surfaces pipe failures — prevents silent failures in script pipelines |
-| Use relative paths derived from the script's own location | `SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"` allows the script to work from any working directory |
-| Add a confirmation prompt to destructive operations | `read -p "Reset database? This will delete all data. Type 'yes': " confirm` — a simple prompt prevents the most common script accidents |
-| Use `--dry-run` flags for operations that change state | Adding a `--dry-run` flag that logs what would happen without executing it lets developers verify script behavior safely |
+| Always use shell safety flags at the top of shell scripts | Exits on errors, catches unset variables, and surfaces pipe failures — prevents silent failures in script pipelines                     |
+| Use relative paths derived from the script's own location | `SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"` allows the script to work from any working directory                       |
+| Add a confirmation prompt to destructive operations       | `read -p "Reset database? This will delete all data. Type 'yes': " confirm` — a simple prompt prevents the most common script accidents |
+| Use `--dry-run` flags for operations that change state    | Adding a `--dry-run` flag that logs what would happen without executing it lets developers verify script behavior safely                |
 
 ## Security Considerations
 
-| Consideration | Mitigation |
+| Consideration                       | Mitigation                                                                                                                                                              |
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Secrets in script output | Scripts that run database queries or API calls may output sensitive data — ensure script output is piped through a redaction filter or only shown in debug mode |
+| Secrets in script output            | Scripts that run database queries or API calls may output sensitive data — ensure script output is piped through a redaction filter or only shown in debug mode         |
 | Script execution by untrusted users | Shell scripts run with the user's permissions — a malicious script in the repository could read `.env` files or access credentials. Review scripts as part of PR review |
-| CI script credential exposure | CI scripts often have access to deployment keys and tokens — scripts should not log environment variables or pass them as command-line arguments |
+| CI script credential exposure       | CI scripts often have access to deployment keys and tokens — scripts should not log environment variables or pass them as command-line arguments                        |
 
 ## Error Handling
 
-| Scenario | Detection | Mitigation | Recovery |
+| Scenario                           | Detection                            | Mitigation                                                                         | Recovery                                                      |
 | ---------------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Script fails mid-execution | Non-zero exit code before completion | Use `set -euo pipefail` to fail fast on first error | Fix the error cause; rerun script (idempotent where possible) |
-| Reset-db.sh run against production | All user data dropped | Environment check at script start; require `--force` flag for non-dev environments | Restore from latest backup; audit what was lost |
-| Seed script creates duplicate data | Unique constraint violation | Check for existing data before inserting; use upsert patterns | Remove duplicates and re-run seed script |
+| Script fails mid-execution         | Non-zero exit code before completion | Use `set -euo pipefail` to fail fast on first error                                | Fix the error cause; rerun script (idempotent where possible) |
+| Reset-db.sh run against production | All user data dropped                | Environment check at script start; require `--force` flag for non-dev environments | Restore from latest backup; audit what was lost               |
+| Seed script creates duplicate data | Unique constraint violation          | Check for existing data before inserting; use upsert patterns                      | Remove duplicates and re-run seed script                      |
 
 ## Risks
 
-| Risk | Likelihood | Impact | Mitigation |
+| Risk                                                  | Likelihood | Impact   | Mitigation                                                                            |
 | ----------------------------------------------------- | ---------- | -------- | ------------------------------------------------------------------------------------- |
-| Destructive script run without confirmation | Medium | Critical | Require `--confirm` flag for all destructive operations; check `ENVIRONMENT` variable |
-| Script path hardcoded and breaks for other developers | High | Medium | Use `SCRIPT_DIR` relative path pattern; CI tests scripts on fresh checkout |
-| Scripts not updated when infrastructure changes | Medium | Medium | Script tests run in CI; broken scripts caught before merge |
+| Destructive script run without confirmation           | Medium     | Critical | Require `--confirm` flag for all destructive operations; check `ENVIRONMENT` variable |
+| Script path hardcoded and breaks for other developers | High       | Medium   | Use `SCRIPT_DIR` relative path pattern; CI tests scripts on fresh checkout            |
+| Scripts not updated when infrastructure changes       | Medium     | Medium   | Script tests run in CI; broken scripts caught before merge                            |
 
 ## Limitations
 
-| Limitation | Impact | Workaround | Future Resolution |
+| Limitation                                      | Impact                                                  | Workaround                                          | Future Resolution                                 |
 | ----------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------- |
-| Shell scripts are Unix-only | Windows developers cannot run scripts without WSL | Provide PowerShell equivalents for critical scripts | Cross-platform Node.js-based script runner (V2) |
-| No progress indication for long-running scripts | Developers may interrupt scripts thinking they're stuck | Add `--verbose` flag with step-by-step logging | Progress bars with ETA for long operations (v1.5) |
+| Shell scripts are Unix-only                     | Windows developers cannot run scripts without WSL       | Provide PowerShell equivalents for critical scripts | Cross-platform Node.js-based script runner (V2)   |
+| No progress indication for long-running scripts | Developers may interrupt scripts thinking they're stuck | Add `--verbose` flag with step-by-step logging      | Progress bars with ETA for long operations (v1.5) |
 
 ## Overview
 
 The Scripts document catalogs all development scripts in the Vaeloom monorepo —
-root-level shell scripts for service orchestration, npm scripts for the
-frontend, and Python commands for the backend. It defines conventions for script
-safety (idempotency, error handling, confirmation prompts) and documents usage
-patterns for each script.
+root-level shell scripts for service orchestration, pnpm scripts for the
+frontend (`pnpm dev:web`, never `pnpm dev`), and uv-run Python commands for the
+backend. It defines conventions for script safety (idempotency, error handling,
+confirmation prompts) and documents usage patterns for each script.
 
 ---
 
@@ -166,7 +166,7 @@ patterns for each script.
 
 - Document every available script and its purpose across all services
 - Establish safety conventions for script development (set -euo pipefail,
- idempotency, confirmation prompts)
+  idempotency, confirmation prompts)
 - Prevent destructive operations against wrong environments
 - Enable consistent developer experience through standardized script interfaces
 - Plan cross-platform compatibility for Windows developers
@@ -178,8 +178,9 @@ patterns for each script.
 ### In Scope
 
 - Root-level scripts (dev, reset-db, seed-data, smoke-test, CI-local)
-- Frontend scripts (dev, build, test, lint, analyze)
-- Backend scripts (uvicorn server, migrations, tests, lint, typecheck, eval)
+- Frontend scripts (dev:web, build:web, test, lint, analyze — via pnpm)
+- Backend scripts (dev:be / uv-run server, migrations, tests, lint, typecheck,
+  eval)
 - Script conventions and safety practices
 
 ### Out of Scope
@@ -193,18 +194,18 @@ patterns for each script.
 
 ## Future Improvements
 
-| Improvement | Priority | Complexity | Timeline |
+| Improvement                                       | Priority | Complexity | Timeline       |
 | ------------------------------------------------- | -------- | ---------- | -------------- |
-| Cross-platform script runner (Node.js-based) | High | Medium | V2 (2027 H2) |
-| Progress bars with ETA for long operations | Medium | Low | v1.5 (2027 H1) |
-| Script dependency graph (run only needed scripts) | Low | Medium | V2 (2027 H2) |
+| Cross-platform script runner (Node.js-based)      | High     | Medium     | V2 (2027 H2)   |
+| Progress bars with ETA for long operations        | Medium   | Low        | v1.5 (2027 H1) |
+| Script dependency graph (run only needed scripts) | Low      | Medium     | V2 (2027 H2)   |
 
 ## Performance Considerations
 
-| Consideration | Approach |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Script startup overhead | Shell scripts invoked via npm run can add 200-500ms startup time — for frequently-run scripts, consider using a faster alternative like a direct command alias |
-| Seed data script execution time | Loading large seed datasets can take minutes — provide a `--minimal` flag that loads only essential seed data for quick setup |
+| Consideration                   | Approach                                                                                                                                                        |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Script startup overhead         | Shell scripts invoked via pnpm run can add 200-500ms startup time — for frequently-run scripts, consider using a faster alternative like a direct command alias |
+| Seed data script execution time | Loading large seed datasets can take minutes — provide a `--minimal` flag that loads only essential seed data for quick setup                                   |
 
 ## Examples
 
@@ -234,17 +235,16 @@ patterns for each script.
 ### Service-specific commands
 
 ```bash
-# Frontend
-cd apps/web && npm run dev      # Start (port 3000)
-npm run analyze                 # Bundle analysis
+# Frontend (repo root — never `pnpm dev`)
+pnpm dev:web      # Start (port 3000); fastest: make dev-web
+pnpm analyze      # Bundle analysis
 
-# Backend
-cd apps/api && source .venv/bin/activate
-uvicorn api.main:app --reload --port 8000   # Dev server
-alembic upgrade head                             # Run migrations
-alembic downgrade -1                              # Rollback last migration
-pytest tests/test_memory_agent.py -v             # Run specific test
-python -m eval.run_all                           # Run all evals
+# Backend (uv — no venv activation needed)
+uv run --project apps/api python -m uvicorn api.main:app --reload --port 8000   # Dev server (or pnpm dev:be)
+uv run --project apps/api alembic upgrade head                                  # Run migrations
+uv run --project apps/api alembic downgrade -1                                   # Rollback last migration
+uv run --project apps/api python -m pytest tests/test_memory_agent.py -v        # Run specific test
+uv run --project apps/api python -m eval.run_all                                 # Run all evals
 ```
 
 ### Script safety pattern

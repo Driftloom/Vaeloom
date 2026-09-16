@@ -69,157 +69,179 @@ graph TD
 
 ## Monitoring Stack
 
-| Component | MVP Technology | Enterprise |
+| Component  | MVP Technology                   | Enterprise               |
 | ---------- | -------------------------------- | ------------------------ |
-| Metrics | OpenTelemetry + hosted APM | Same, expanded retention |
-| Logging | Structured JSON → log store | Same, longer retention |
-| Tracing | OpenTelemetry distributed traces | Same |
-| Alerting | PagerDuty / OpsGenie | Same |
-| Dashboards | Grafana | Same |
+| Metrics    | OpenTelemetry + hosted APM       | Same, expanded retention |
+| Logging    | Structured JSON → log store      | Same, longer retention   |
+| Tracing    | OpenTelemetry distributed traces | Same                     |
+| Alerting   | PagerDuty / OpsGenie             | Same                     |
+| Dashboards | Grafana                          | Same                     |
 
 ## Key Metrics
 
-| Metric | What It Measures | Alert Threshold |
-| --------------------- | ------------------------ | ----------------------------------------------------------------------------------- |
-| `api_request_latency` | API response time | > 2s p99 for 5 min |
-| `ai_request_latency` | Agent response time | > 10s p99 for 5 min |
-| `queue_depth` | BullMQ queue size | > 1000 for 10 min — **NOT_IMPLEMENTED**: BullMQ installed but no consumers deployed |
-| `agent_error_rate` | Agent failure rate | > 5% for 5 min |
-| `memory_write_rate` | Memory writes per second | Drop to 0 for 5 min |
-| `db_connections` | Postgres connection pool | > 80% for 5 min |
+> **WS-D 2026-09-15 — synced to actual (see `IMPLEMENTATION-GAP-REPORT.md`
+> Gap-2/Gap-6):** the deployed rule file
+> `infra/monitoring/alerts/vaeloom-alerts.yml:14-15` fires `HighLatency` on
+> **`histogram_quantile(0.95, …) > 1` for 5m (warning)** — NOT the p99 > 2s P2
+> documented below/diagrammed above. Only 4 rules exist (`HighErrorRate` 5%,
+> `HighLatency` p95>1s, `ServiceDown` up==0, `MemoryUsageHigh` >1GB; `promtool`
+> 4 rules PASS). There are **no AI-latency, queue-depth, DB-connection, or
+> agent-failure alerts** in that file. Observability remains disabled:
+> `/metrics` COMMENTED OUT (`main.py`), Grafana NOT_DEPLOYED, OTel SDK disabled
+> / no Collector, Meilisearch missing (SQL ILIKE). Table below keeps the
+> documented design targets; the Actual column states what fires today. TODOs
+> list what must change before docs match prod.
+
+| Metric                | What It Measures         | Documented target (design)                                                          | Actual (prod, 2026-09-15)                                                            |
+| --------------------- | ------------------------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `api_request_latency` | API response time        | > 2s p99 for 5 min → P2 (design)                                                    | **p95 > 1s for 5 min → warning** (`vaeloom-alerts.yml:14-15`) — MISMATCH, see TODO-1 |
+| `ai_request_latency`  | Agent response time      | > 10s p99 for 5 min → P2 (design)                                                   | **No alert in `vaeloom-alerts.yml`** — MISSING, see TODO-2                           |
+| `queue_depth`         | BullMQ queue size        | > 1000 for 10 min — **NOT_IMPLEMENTED**: BullMQ installed but no consumers deployed | **No alert in `vaeloom-alerts.yml`** — MISSING, see TODO-2                           |
+| `agent_error_rate`    | Agent failure rate       | > 5% for 5 min (design; `Alerting.md` specifies agent failure > 10% → P2)           | **No alert in `vaeloom-alerts.yml`** — MISSING, see TODO-2                           |
+| `memory_write_rate`   | Memory writes per second | Drop to 0 for 5 min                                                                 | No alert in `vaeloom-alerts.yml` — MISSING                                           |
+| `db_connections`      | Postgres connection pool | > 80% for 5 min (design)                                                            | **No alert in `vaeloom-alerts.yml`** — MISSING, see TODO-2                           |
+
+**TODOs (do not close Gap-2/Gap-6 until all are done):**
+
+| ID     | TODO                                                                                                                                                                                                       | Owner          |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| TODO-1 | Align API-latency threshold: either retune `vaeloom-alerts.yml` to p99 > 2s P2 or update `Monitoring.md`/`Alerting.md` diagrams + tables to p95 > 1s warning with rationale; re-run `promtool check rules` | SRE            |
+| TODO-2 | Add missing alerts (AI latency p99>10s, queue depth>1000, DB pool>80%, agent failure>10%) or explicitly mark them out-of-scope for MVP with a date                                                         | SRE            |
+| TODO-3 | Deploy the disabled stack (`/metrics` endpoint, Prometheus, Grafana dashboards, OTel Collector) or mark `Monitoring.md` Spec-Only                                                                          | SRE / Platform |
+| TODO-4 | Wire every alert to a runbook link (per `Alerting.md` best practice)                                                                                                                                       | SRE            |
 
 ## Health Check Endpoints
 
-| Endpoint | Returns | Purpose |
+| Endpoint            | Returns                               | Purpose         |
 | ------------------- | ------------------------------------- | --------------- |
-| `GET /health` | `{ status, version, uptime }` | Overall health |
+| `GET /health`       | `{ status, version, uptime }`         | Overall health  |
 | `GET /health/ready` | `{ status, deps: { db, redis, ai } }` | Readiness probe |
-| `GET /health/live` | `{ status }` | Liveness probe |
+| `GET /health/live`  | `{ status }`                          | Liveness probe  |
 
 ## Common Mistakes
 
-| Mistake | Consequence |
+| Mistake                                                                      | Consequence                                                                                                                                                                                                                                          |
 | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Dashboards that show everything and explain nothing | A dashboard with 30 graphs and no labels, thresholds, or context is impossible to interpret under pressure — organize dashboards by question ("is the system healthy?") with the fewest metrics that answer it, each with a clear threshold line |
+| Dashboards that show everything and explain nothing                          | A dashboard with 30 graphs and no labels, thresholds, or context is impossible to interpret under pressure — organize dashboards by question ("is the system healthy?") with the fewest metrics that answer it, each with a clear threshold line     |
 | Monitoring tool sprawl — using different tools for metrics, logs, and traces | A team that uses Grafana for metrics, Kibana for logs, and Jaeger for traces has to context-switch between tools during an incident — consolidate on a single observability platform (Datadog, Grafana Cloud, SigNoz) that handles all three signals |
-| Health check endpoints that don't actually check dependencies | A `/health` endpoint that returns `200 OK` without connecting to the database gives a false sense of health — health checks must validate downstream dependencies (database, Redis, external APIs) and report actual connectivity status |
+| Health check endpoints that don't actually check dependencies                | A `/health` endpoint that returns `200 OK` without connecting to the database gives a false sense of health — health checks must validate downstream dependencies (database, Redis, external APIs) and report actual connectivity status             |
 
 ## Best Practices
 
-| Practice | Why |
+| Practice                                               | Why                                                                                                                                                                                                                                                                         |
 | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Organize dashboards by question, not by data source | A dashboard titled "Is the API healthy?" with request rate, error rate, latency (p50/p95/p99), and saturation is actionable — a dashboard titled "Metrics" with 30 random graphs requires interpretation |
-| Consolidate observability tools into a single platform | Jumping between Grafana (metrics), Kibana (logs), and Jaeger (traces) during an incident wastes time — a unified platform (Datadog, Grafana Cloud) lets you pivot from a high-latency dashboard to the specific trace and logs in one click |
-| Health checks must validate actual dependencies | A health endpoint that returns `200` without checking the database connection or Redis availability is lying — implement multi-probe health checks (`/health` for deep check, `/ready` for readiness, `/live` for liveness) that each validate the appropriate dependencies |
+| Organize dashboards by question, not by data source    | A dashboard titled "Is the API healthy?" with request rate, error rate, latency (p50/p95/p99), and saturation is actionable — a dashboard titled "Metrics" with 30 random graphs requires interpretation                                                                    |
+| Consolidate observability tools into a single platform | Jumping between Grafana (metrics), Kibana (logs), and Jaeger (traces) during an incident wastes time — a unified platform (Datadog, Grafana Cloud) lets you pivot from a high-latency dashboard to the specific trace and logs in one click                                 |
+| Health checks must validate actual dependencies        | A health endpoint that returns `200` without checking the database connection or Redis availability is lying — implement multi-probe health checks (`/health` for deep check, `/ready` for readiness, `/live` for liveness) that each validate the appropriate dependencies |
 
 ## Security
 
-| Concern | Mitigation |
+| Concern                                                      | Mitigation                                                                                                                                                                                                                    |
 | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Monitoring dashboards exposed without authentication | A publicly accessible Grafana dashboard reveals service names, instance counts, error rates, and request patterns — protect all monitoring tools behind authentication and consider read-only views for external stakeholders |
-| Health check endpoints revealing too much system information | A `/health` endpoint that returns database connection strings, Redis hostnames, or internal IPs in its response is an information leak — health check responses should include only status and version metadata |
-| Monitoring data retention creating an attacker's timeline | Detailed monitoring data that captures every request can be used by an attacker to learn system behavior patterns — aggregate raw monitoring data after 30 days and apply access controls to detailed query logs |
+| Monitoring dashboards exposed without authentication         | A publicly accessible Grafana dashboard reveals service names, instance counts, error rates, and request patterns — protect all monitoring tools behind authentication and consider read-only views for external stakeholders |
+| Health check endpoints revealing too much system information | A `/health` endpoint that returns database connection strings, Redis hostnames, or internal IPs in its response is an information leak — health check responses should include only status and version metadata               |
+| Monitoring data retention creating an attacker's timeline    | Detailed monitoring data that captures every request can be used by an attacker to learn system behavior patterns — aggregate raw monitoring data after 30 days and apply access controls to detailed query logs              |
 
 ## Performance
 
-| Concern | Mitigation |
+| Concern                                                           | Mitigation                                                                                                                                                                                                                                                                                |
 | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Monitoring infrastructure competing with production for resources | Running monitoring agents alongside with production services on the same host can cause resource contention — run monitoring infrastructure (OpenTelemetry collectors, log shippers) as sidecars with resource limits, or use dedicated monitoring hosts for large deployments |
-| High-cardinality metrics overwhelming the monitoring system | A metric like `http_request_duration` with labels for `user_id, document_id, agent_name` creates millions of time series — keep metric cardinality to service-level dimensions (service, endpoint, status_code) and use logs for per-request detail |
-| Health check polling overhead at scale | Every instance of every service being probed every 10 seconds by external monitoring generates significant request load — for a cluster of 20 instances, that's 120 health check requests/minute. Increase polling interval to 30 seconds for internal probes and 60 seconds for external |
+| Monitoring infrastructure competing with production for resources | Running monitoring agents alongside with production services on the same host can cause resource contention — run monitoring infrastructure (OpenTelemetry collectors, log shippers) as sidecars with resource limits, or use dedicated monitoring hosts for large deployments            |
+| High-cardinality metrics overwhelming the monitoring system       | A metric like `http_request_duration` with labels for `user_id, document_id, agent_name` creates millions of time series — keep metric cardinality to service-level dimensions (service, endpoint, status_code) and use logs for per-request detail                                       |
+| Health check polling overhead at scale                            | Every instance of every service being probed every 10 seconds by external monitoring generates significant request load — for a cluster of 20 instances, that's 120 health check requests/minute. Increase polling interval to 30 seconds for internal probes and 60 seconds for external |
 
 ## Security Considerations
 
-| Concern | Mitigation |
+| Concern                                                      | Mitigation                                                                                                                                                                                                                    |
 | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Monitoring dashboards exposed without authentication | A publicly accessible Grafana dashboard reveals service names, instance counts, error rates, and request patterns — protect all monitoring tools behind authentication and consider read-only views for external stakeholders |
-| Health check endpoints revealing too much system information | A `/health` endpoint that returns database connection strings, Redis hostnames, or internal IPs in its response is an information leak — health check responses should include only status and version metadata |
-| Monitoring data retention creating an attacker's timeline | Detailed monitoring data that captures every request can be used by an attacker to learn system behavior patterns — aggregate raw monitoring data after 30 days and apply access controls to detailed query logs |
+| Monitoring dashboards exposed without authentication         | A publicly accessible Grafana dashboard reveals service names, instance counts, error rates, and request patterns — protect all monitoring tools behind authentication and consider read-only views for external stakeholders |
+| Health check endpoints revealing too much system information | A `/health` endpoint that returns database connection strings, Redis hostnames, or internal IPs in its response is an information leak — health check responses should include only status and version metadata               |
+| Monitoring data retention creating an attacker's timeline    | Detailed monitoring data that captures every request can be used by an attacker to learn system behavior patterns — aggregate raw monitoring data after 30 days and apply access controls to detailed query logs              |
 
 ## Performance Considerations
 
-| Concern | Approach |
+| Concern                                                           | Approach                                                                                                                                                                                                                                                                                  |
 | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Monitoring infrastructure competing with production for resources | Running monitoring agents alongside with production services on the same host can cause resource contention — run monitoring infrastructure (OpenTelemetry collectors, log shippers) as sidecars with resource limits, or use dedicated monitoring hosts for large deployments |
-| High-cardinality metrics overwhelming the monitoring system | A metric like `http_request_duration` with labels for `user_id, document_id, agent_name` creates millions of time series — keep metric cardinality to service-level dimensions (service, endpoint, status_code) and use logs for per-request detail |
-| Health check polling overhead at scale | Every instance of every service being probed every 10 seconds by external monitoring generates significant request load — for a cluster of 20 instances, that's 120 health check requests/minute. Increase polling interval to 30 seconds for internal probes and 60 seconds for external |
+| Monitoring infrastructure competing with production for resources | Running monitoring agents alongside with production services on the same host can cause resource contention — run monitoring infrastructure (OpenTelemetry collectors, log shippers) as sidecars with resource limits, or use dedicated monitoring hosts for large deployments            |
+| High-cardinality metrics overwhelming the monitoring system       | A metric like `http_request_duration` with labels for `user_id, document_id, agent_name` creates millions of time series — keep metric cardinality to service-level dimensions (service, endpoint, status_code) and use logs for per-request detail                                       |
+| Health check polling overhead at scale                            | Every instance of every service being probed every 10 seconds by external monitoring generates significant request load — for a cluster of 20 instances, that's 120 health check requests/minute. Increase polling interval to 30 seconds for internal probes and 60 seconds for external |
 
 ## Components
 
-| Component | Responsibility | Technology | Scale Strategy |
+| Component         | Responsibility                   | Technology                                                                                        | Scale Strategy                          |
 | ----------------- | -------------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| Metrics Producer | Emit application metrics | OpenTelemetry SDK (per service) | Async export, non-blocking |
-| Metrics Collector | Aggregate and forward metrics | OpenTelemetry Collector | Horizontally scalable collectors |
-| Metrics Store | Store and query time-series data | Prometheus / Grafana Mimir — **NOT_IMPLEMENTED**: `/metrics` endpoint is COMMENTED OUT in main.py | Retention tiers + downsampling |
-| Visualization | Dashboards and charting | Grafana | Per-service dashboards + global view |
-| Health Endpoint | Service health check | HTTP `/health`, `/ready`, `/live` | Lightweight, no dependencies in `/live` |
+| Metrics Producer  | Emit application metrics         | OpenTelemetry SDK (per service)                                                                   | Async export, non-blocking              |
+| Metrics Collector | Aggregate and forward metrics    | OpenTelemetry Collector                                                                           | Horizontally scalable collectors        |
+| Metrics Store     | Store and query time-series data | Prometheus / Grafana Mimir — **NOT_IMPLEMENTED**: `/metrics` endpoint is COMMENTED OUT in main.py | Retention tiers + downsampling          |
+| Visualization     | Dashboards and charting          | Grafana                                                                                           | Per-service dashboards + global view    |
+| Health Endpoint   | Service health check             | HTTP `/health`, `/ready`, `/live`                                                                 | Lightweight, no dependencies in `/live` |
 
 ---
 
 ## Scalability
 
-| Dimension | Current Limit | 10x Strategy | 100x Strategy |
+| Dimension           | Current Limit      | 10x Strategy                          | 100x Strategy                              |
 | ------------------- | ------------------ | ------------------------------------- | ------------------------------------------ |
-| Metrics throughput | 10K series/min | 100K series: dimensional reduction | 1M series: automatic aggregation |
-| Dashboard count | 5 | 20: per-service + business dashboards | 100: auto-generated from service metadata |
-| Health check probes | 60/min per service | 12/min: reduced probe frequency | 4/min: aggregated health from service mesh |
-| Alert evaluation | 15 rules/min | 150 rules: rule grouping | 1500 rules: auto-generated from SLOs |
+| Metrics throughput  | 10K series/min     | 100K series: dimensional reduction    | 1M series: automatic aggregation           |
+| Dashboard count     | 5                  | 20: per-service + business dashboards | 100: auto-generated from service metadata  |
+| Health check probes | 60/min per service | 12/min: reduced probe frequency       | 4/min: aggregated health from service mesh |
+| Alert evaluation    | 15 rules/min       | 150 rules: rule grouping              | 1500 rules: auto-generated from SLOs       |
 
 ---
 
 ## Error Handling
 
-| Scenario | Detection | Mitigation | Recovery |
+| Scenario                    | Detection                         | Mitigation                           | Recovery                          |
 | --------------------------- | --------------------------------- | ------------------------------------ | --------------------------------- |
-| Metrics collection stops | Flatline on dashboard | Restart OpenTelemetry collector | Check collector config, re-deploy |
-| Metrics store unreachable | Dashboard shows no data | Failover to secondary metrics store | Restore primary from backup |
-| Health check false positive | Service OK but health returns 500 | Add retries, check dependency health | Fix health check logic |
-| Dashboard query timeout | Dashboard fails to load | Optimize query, pre-aggregate data | Add query timeout with fallback |
+| Metrics collection stops    | Flatline on dashboard             | Restart OpenTelemetry collector      | Check collector config, re-deploy |
+| Metrics store unreachable   | Dashboard shows no data           | Failover to secondary metrics store  | Restore primary from backup       |
+| Health check false positive | Service OK but health returns 500 | Add retries, check dependency health | Fix health check logic            |
+| Dashboard query timeout     | Dashboard fails to load           | Optimize query, pre-aggregate data   | Add query timeout with fallback   |
 
 ---
 
 ## Monitoring
 
-| Metric | Alert Threshold | Severity | Dashboard |
+| Metric                    | Alert Threshold     | Severity | Dashboard             |
 | ------------------------- | ------------------- | -------- | --------------------- |
-| Metrics data freshness | No data for > 5 min | Critical | Monitoring Health |
-| Dashboard load time | > 10 seconds | Warning | Dashboard Performance |
-| Health check pass rate | < 99% | Critical | Service Health |
-| Metric cardinality growth | > 20% per month | Info | Metrics Volume |
+| Metrics data freshness    | No data for > 5 min | Critical | Monitoring Health     |
+| Dashboard load time       | > 10 seconds        | Warning  | Dashboard Performance |
+| Health check pass rate    | < 99%               | Critical | Service Health        |
+| Metric cardinality growth | > 20% per month     | Info     | Metrics Volume        |
 
 ---
 
 ## Deployment
 
-| Environment | Method | Trigger | Verification |
+| Environment               | Method                           | Trigger                    | Verification                     |
 | ------------------------- | -------------------------------- | -------------------------- | -------------------------------- |
-| New dashboard | Grafana import/dashboard-as-code | New service or metric | Dashboard renders data correctly |
-| Alert rule | Terraform / config commit | New metric or SLO | Test alert fires correctly |
-| Health endpoint change | Code + deploy | New service version | All probes return correct status |
-| Metrics collector scaling | HPA / horizontal scaling | Metrics volume > threshold | Collector CPU < 70% after scale |
+| New dashboard             | Grafana import/dashboard-as-code | New service or metric      | Dashboard renders data correctly |
+| Alert rule                | Terraform / config commit        | New metric or SLO          | Test alert fires correctly       |
+| Health endpoint change    | Code + deploy                    | New service version        | All probes return correct status |
+| Metrics collector scaling | HPA / horizontal scaling         | Metrics volume > threshold | Collector CPU < 70% after scale  |
 
 ---
 
 ## Configuration
 
-| Variable | Purpose | Default | Required |
+| Variable                      | Purpose                          | Default                      | Required   |
 | ----------------------------- | -------------------------------- | ---------------------------- | ---------- |
-| `OTEL_SERVICE_NAME` | Service name for metrics | — | Yes |
+| `OTEL_SERVICE_NAME`           | Service name for metrics         | —                            | Yes        |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OpenTelemetry collector endpoint | `http://otel-collector:4318` | Yes (prod) |
-| `METRICS_COLLECTION_INTERVAL` | How often to collect metrics | `15s` | No |
-| `HEALTH_CHECK_PORT` | Health check endpoint port | Same as service port | No |
-| `METRICS_RETENTION_DAYS` | Raw metrics retention | `90` | No |
+| `METRICS_COLLECTION_INTERVAL` | How often to collect metrics     | `15s`                        | No         |
+| `HEALTH_CHECK_PORT`           | Health check endpoint port       | Same as service port         | No         |
+| `METRICS_RETENTION_DAYS`      | Raw metrics retention            | `90`                         | No         |
 
 ---
 
 ## Limitations
 
-| Limitation | Impact | Workaround | Future Resolution |
+| Limitation                              | Impact                                 | Workaround                               | Future Resolution                               |
 | --------------------------------------- | -------------------------------------- | ---------------------------------------- | ----------------------------------------------- |
-| MVP uses hosted APM (no self-hosted) | Limited customization | Use provider's dashboard templates | Self-hosted Prometheus + Grafana for enterprise |
-| Health checks are minimal (status only) | Don't reveal root cause | Detailed `/health/ready` for debugging | Structured health check with dependency status |
-| No SLO-based alerting in MVP | Error budget not connected to alerts | Manual SLO tracking | Auto-generated alerts from SLO burn rate |
-| Metric cardinality can explode costs | High storage cost for high-cardinality | Limit labels to service-level dimensions | Automated cardinality management |
+| MVP uses hosted APM (no self-hosted)    | Limited customization                  | Use provider's dashboard templates       | Self-hosted Prometheus + Grafana for enterprise |
+| Health checks are minimal (status only) | Don't reveal root cause                | Detailed `/health/ready` for debugging   | Structured health check with dependency status  |
+| No SLO-based alerting in MVP            | Error budget not connected to alerts   | Manual SLO tracking                      | Auto-generated alerts from SLO burn rate        |
+| Metric cardinality can explode costs    | High storage cost for high-cardinality | Limit labels to service-level dimensions | Automated cardinality management                |
 
 ---
 
@@ -254,15 +276,15 @@ alert boundary.
 ## Goals
 
 - Collect and visualize key Vaeloom metrics (API latency, AI latency, queue
- depth, error rates, DB connections)
+  depth, error rates, DB connections)
 - Implement multi-probe health checks (`/health`, `/health/ready`,
- `/health/live`) on every service
+  `/health/live`) on every service
 - Provide actionable dashboards organized by service health questions, not raw
- data sources
+  data sources
 - Achieve sub-15-second metric collection latency from emission to dashboard
- visualization
+  visualization
 - Consolidate metrics, logs, and traces in a single observability platform to
- reduce incident response time
+  reduce incident response time
 
 ---
 
@@ -271,21 +293,21 @@ alert boundary.
 ### In Scope
 
 - Key Vaeloom metrics: API latency (p50/p95/p99), AI latency, queue depth, error
- rates, DB connection pool usage
+  rates, DB connection pool usage
 - Health check endpoints: `/health` (overall), `/health/ready` (readiness
- probe), `/health/live` (liveness probe)
+  probe), `/health/live` (liveness probe)
 - OpenTelemetry-based metric collection from all services
 - Grafana dashboards organized by service and health question
 - Alert thresholds and severity classification for all key metrics
 - Monitoring infrastructure: OpenTelemetry Collector, Prometheus/Grafana Mimir,
- Grafana
+  Grafana
 
 ### Out of Scope
 
 - Log aggregation and log-based alerting (covered in [Logging.md](./Logging.md))
 - Distributed tracing implementation (covered in [Tracing.md](./Tracing.md))
 - Alert routing and notification channels (covered in
- [Alerting.md](./Alerting.md))
+  [Alerting.md](./Alerting.md))
 - SLO-based burn rate alerting (planned for future)
 - Infrastructure-level monitoring (CPU/memory/disk — managed by cloud provider)
 
@@ -373,13 +395,13 @@ sequenceDiagram
 
 ## Future Improvements
 
-| Improvement | Priority | Complexity | Timeline |
+| Improvement                                           | Priority | Complexity | Timeline |
 | ----------------------------------------------------- | -------- | ---------- | -------- |
-| SLO-based burn rate alerting | High | Medium | Q4 2026 |
-| Self-hosted Prometheus + Grafana for enterprise | High | High | Q2 2027 |
-| Automated dashboard creation from service metadata | Medium | Medium | Q1 2027 |
-| AI-powered anomaly detection on metrics | Medium | High | Q2 2027 |
-| Unified health check framework with dependency status | Low | Medium | Q1 2027 |
+| SLO-based burn rate alerting                          | High     | Medium     | Q4 2026  |
+| Self-hosted Prometheus + Grafana for enterprise       | High     | High       | Q2 2027  |
+| Automated dashboard creation from service metadata    | Medium   | Medium     | Q1 2027  |
+| AI-powered anomaly detection on metrics               | Medium   | High       | Q2 2027  |
+| Unified health check framework with dependency status | Low      | Medium     | Q1 2027  |
 
 ## Related Documents
 

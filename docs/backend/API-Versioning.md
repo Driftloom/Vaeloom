@@ -42,15 +42,15 @@ migrate between versions.
 
 - Detailed migration steps per endpoint (per-release migration guides)
 - Feature flag strategy (see
- [`../Enterprise/Feature-Flags.md`](../Enterprise/Feature-Flags.md))
+  [`../Enterprise/Feature-Flags.md`](../Enterprise/Feature-Flags.md))
 
 ## Versioning Schemes
 
-| API Type | Scheme | Format | Example |
+| API Type           | Scheme                       | Format                  | Example                            |
 | ------------------ | ---------------------------- | ----------------------- | ---------------------------------- |
-| **Public REST** | URL-based major version | `/v{N}/...` | `/v1/documents`, `/v2/documents` |
-| **Internal calls** | Protobuf package version | `vaeloom.internal.v{N}` | `vaeloom.internal.v1.AgentService` |
-| **SDK** | Semantic versioning (semver) | `MAJOR.MINOR.PATCH` | `@vaeloom/sdk@2.1.3` |
+| **Public REST**    | URL-based major version      | `/v{N}/...`             | `/v1/documents`, `/v2/documents`   |
+| **Internal calls** | Protobuf package version     | `vaeloom.internal.v{N}` | `vaeloom.internal.v1.AgentService` |
+| **SDK**            | Semantic versioning (semver) | `MAJOR.MINOR.PATCH`     | `@vaeloom/sdk@2.1.3`               |
 
 ## Public REST API Versioning
 
@@ -224,3 +224,6 @@ SDK major versions align with API major versions: `@vaeloom/sdk@2.x` targets `/v
 
 
 ````
+
+> _Last verified: 2026-09-15 — versioning policy unchanged; service version
+> 0.2.0._

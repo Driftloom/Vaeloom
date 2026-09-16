@@ -41,7 +41,7 @@ teams to work in parallel.
 
 - Detailed implementation of each module — see individual feature docs
 - Database schema per module — see
- [`../Database/Schema.md`](../Database/Schema.md)
+  [`../database/Schema.md`](../database/Schema.md)
 
 ## Architecture
 
@@ -90,77 +90,80 @@ graph TD
 
 ## apps/api Modules (FastAPI)
 
-| Module | Responsibility | Public Interface | Dependencies | Communication |
-| ----------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------- | ------------------------------------- |
-| **AuthModule** | JWT validation, session management, OAuth flows, MFA | `validateToken()`, `createSession()`, `refreshSession()` | PermissionsModule, TenantsModule | Direct call |
-| **UsersModule** | User profile CRUD, preferences, onboarding | `getUser()`, `updateProfile()`, `deleteUser()` | AuthModule | Direct call |
-| **DocumentsModule** | Document upload, metadata CRUD, raw file management | `upload()`, `getMetadata()`, `deleteDocument()`, `listDocuments()` | AuthModule, PermissionsModule, WorkspacesModule | Direct + event (document.uploaded) |
-| **WorkspacesModule** | Workspace CRUD, sharing, member management | `createWorkspace()`, `addMember()`, `listWorkspaces()` | AuthModule, PermissionsModule | Direct call |
-| **PermissionsModule** | RBAC + ABAC evaluation, permission checks | `checkPermission()`, `grantRole()`, `revokeRole()` | AuthModule, TenantsModule | Direct call |
-| **TenantsModule** | Tenant provisioning, isolation config, status management | `createTenant()`, `suspendTenant()`, `getTenant()` | AuthModule | Direct call |
-| **ConnectorsModule** | OAuth flow management, connector config, sync status | `connectGmail()`, `connectGitHub()`, `getSyncStatus()` | AuthModule, PermissionsModule | Direct + event (connector.synced) |
-| **BillingModule** | Subscription management, usage metering, Stripe integration | `getSubscription()`, `getUsage()`, `createCheckoutSession()` | AuthModule, TenantsModule | Direct call |
-| **SearchModule** | Full-text search via SQL ILIKE (Meilisearch NOT_INSTALLED) | `search()`, `suggest()` | AuthModule, PermissionsModule | Direct call (SQL ILIKE) |
-| **NotificationsModule** | Email, in-app, push notifications | `send()`, `markRead()`, `listNotifications()` | AuthModule, UsersModule | Direct + event (notification.created) |
-| **AnalyticsModule** | Usage analytics, feature adoption, tenant-level reporting | `getUsageSummary()`, `getAdoptionMetrics()` | AuthModule, TenantsModule | Direct call (read-only) |
+| Module                  | Responsibility                                                                                                                                                                                                                                          | Public Interface                                                            | Dependencies                                    | Communication                            |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ----------------------------------------------- | ---------------------------------------- |
+| **AuthModule**          | JWT validation, session management, OAuth flows, MFA                                                                                                                                                                                                    | `validateToken()`, `createSession()`, `refreshSession()`                    | PermissionsModule, TenantsModule                | Direct call                              |
+| **UsersModule**         | User profile CRUD, preferences, onboarding                                                                                                                                                                                                              | `getUser()`, `updateProfile()`, `deleteUser()`                              | AuthModule                                      | Direct call                              |
+| **DocumentsModule**     | Document upload, metadata CRUD, raw file management                                                                                                                                                                                                     | `upload()`, `getMetadata()`, `deleteDocument()`, `listDocuments()`          | AuthModule, PermissionsModule, WorkspacesModule | Direct + event (document.uploaded)       |
+| **WorkspacesModule**    | Workspace CRUD, sharing, member management                                                                                                                                                                                                              | `createWorkspace()`, `addMember()`, `listWorkspaces()`                      | AuthModule, PermissionsModule                   | Direct call                              |
+| **PermissionsModule**   | RBAC + ABAC evaluation, permission checks                                                                                                                                                                                                               | `checkPermission()`, `grantRole()`, `revokeRole()`                          | AuthModule, TenantsModule                       | Direct call                              |
+| **TenantsModule**       | Tenant provisioning, isolation config, status management                                                                                                                                                                                                | `createTenant()`, `suspendTenant()`, `getTenant()`                          | AuthModule                                      | Direct call                              |
+| **ConnectorsModule**    | OAuth flow management, connector config, sync status                                                                                                                                                                                                    | `connectGmail()`, `connectGitHub()`, `getSyncStatus()`                      | AuthModule, PermissionsModule                   | Direct + event (connector.synced)        |
+| **BillingModule**       | Subscription management, usage metering, Stripe integration                                                                                                                                                                                             | `getSubscription()`, `getUsage()`, `createCheckoutSession()`                | AuthModule, TenantsModule                       | Direct call                              |
+| **SearchModule**        | Full-text search via SQL ILIKE (Meilisearch NOT_INSTALLED)                                                                                                                                                                                              | `search()`, `suggest()`                                                     | AuthModule, PermissionsModule                   | Direct call (SQL ILIKE)                  |
+| **NotificationsModule** | Email, in-app, push notifications                                                                                                                                                                                                                       | `send()`, `markRead()`, `listNotifications()`                               | AuthModule, UsersModule                         | Direct + event (notification.created)    |
+| **AnalyticsModule**     | Usage analytics, feature adoption, tenant-level reporting                                                                                                                                                                                               | `getUsageSummary()`, `getAdoptionMetrics()`                                 | AuthModule, TenantsModule                       | Direct call (read-only)                  |
+| **ResumesModule**       | Resume CRUD, 5 industry templates, AI tailor, PDF/DOCX/HTML compile (`resume_templates.py`, `document_builder.py`; Playwright Chromium, page-fit loop, 503 without Chromium)                                                                            | `listTemplates()`, `tailor()`, `compile()`, `coverLetter()`, `cheatsheet()` | AuthModule, PermissionsModule, InferenceModule  | Direct call                              |
+| **BrowserModule**       | Read-only job-page tools (`browser_service.py`: `browse_job_page`, `scrape_company_insights`, `verify_application_link`; SSRF-guarded via `utils/url_guard.py` https-only + global-IP; `SCRAPE_QUOTA_PER_HOUR=20`, `BROWSER_TOOLS_ENABLED` kill switch) | `browseJobPage()`, `scrapeCompany()`, `verifyLink()`                        | GuardrailsModule                                | Direct call (read-only, approval-exempt) |
+| **TemporalModule**      | Durable workflows (`temporal/`): ingest, connector-sync, durable-agent; fail-closed 503 when Temporal unreachable                                                                                                                                       | `startIngest()`, `startConnectorSync()`, `startDurableAgent()`, `signal()`  | AgentModule, ConnectorsModule                   | Direct call + durable execution          |
 
 ## Agent & AI Modules (within apps/api)
 
-| Module | Responsibility | Public Interface | Dependencies | Communication |
-| -------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------- | -------------------------------------------------------- |
-| **AgentModule** | Shared agentic loop, orchestrator, request routing | `executeTask()`, `routeRequest()`, `assemblePlan()` | MemoryModule, RAGModule, MCPModule, GuardrailsModule, InferenceModule | Direct call |
-| **MemoryModule** | Knowledge graph (AGE), vector store (pgvector), long-term memory | `readMemory()`, `writeMemory()`, `searchGraph()`, `searchVector()` | None (data layer only) | Direct call |
-| **RAGModule** | Hybrid retrieval (vector + keyword + graph), reranking | `retrieve()`, `rerank()`, `buildContext()` | MemoryModule | Direct call |
-| **InferenceModule** | Model gateway, prompt building, token counting, fallback | `infer()`, `buildPrompt()`, `countTokens()`, `selectModel()` | GuardrailsModule | Direct call (to LLM APIs) |
-| **EvalModule** | Golden dataset testing, evaluation runner, CI integration | `runEval()`, `getEvalResults()`, `registerGoldenSet()` | AgentModule, InferenceModule | Direct call |
-| **IngestionModule** | File parsing, entity extraction, chunking, embedding | `parse()`, `extractEntities()`, `chunk()`, `embed()` | MemoryModule, InferenceModule | Direct call + event (document.parsed, document.embedded) |
-| **MCPModule** | MCP connector tools (Gmail, GitHub, Drive, Slack) | `listTools()`, `executeTool()`, `getConnectorStatus()` | GuardrailsModule | Direct call (to external APIs) |
-| **GuardrailsModule** | Input validation, injection defense, output QA, safety check | `validateInput()`, `checkOutput()`, `scanForPII()` | None (pure logic) | Direct call |
+| Module               | Responsibility                                                                                                                                                                                                                                                                                                                                                                    | Public Interface                                                   | Dependencies                                                          | Communication                                            |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------- | -------------------------------------------------------- |
+| **AgentModule**      | Shared agentic loop, orchestrator, request routing                                                                                                                                                                                                                                                                                                                                | `executeTask()`, `routeRequest()`, `assemblePlan()`                | MemoryModule, RAGModule, MCPModule, GuardrailsModule, InferenceModule | Direct call                                              |
+| **MemoryModule**     | Knowledge graph (AGE), vector store (pgvector), long-term memory                                                                                                                                                                                                                                                                                                                  | `readMemory()`, `writeMemory()`, `searchGraph()`, `searchVector()` | None (data layer only)                                                | Direct call                                              |
+| **RAGModule**        | Hybrid retrieval (vector + keyword + graph), reranking                                                                                                                                                                                                                                                                                                                            | `retrieve()`, `rerank()`, `buildContext()`                         | MemoryModule                                                          | Direct call                                              |
+| **InferenceModule**  | Model gateway, prompt building, token counting, fallback                                                                                                                                                                                                                                                                                                                          | `infer()`, `buildPrompt()`, `countTokens()`, `selectModel()`       | GuardrailsModule                                                      | Direct call (to LLM APIs)                                |
+| **EvalModule**       | Golden dataset testing, evaluation runner, CI integration                                                                                                                                                                                                                                                                                                                         | `runEval()`, `getEvalResults()`, `registerGoldenSet()`             | AgentModule, InferenceModule                                          | Direct call                                              |
+| **IngestionModule**  | File parsing, entity extraction, chunking, embedding                                                                                                                                                                                                                                                                                                                              | `parse()`, `extractEntities()`, `chunk()`, `embed()`               | MemoryModule, InferenceModule                                         | Direct call + event (document.parsed, document.embedded) |
+| **MCPModule**        | MCP bridge (`mcp_client_service.py`, `connector_ext_service.py`): `mcp`-type connectors, shell-interpreter denial, config revalidation, `mcp__<Server>__<Tool>` bridge (300s discovery TTL, 30s timeout, scope `connector.mcp.execute`), approval gate via `approval_gated_tools()`; routes `tools \| tools/refresh \| sync \| call`; seeds in `docs/mcp/servers/seed-configs.md` | `listTools()`, `executeTool()`, `refreshTools()`, `syncBridge()`   | GuardrailsModule                                                      | Direct call (to MCP servers; writes approval-gated)      |
+| **GuardrailsModule** | Input validation, injection defense, output QA, safety check                                                                                                                                                                                                                                                                                                                      | `validateInput()`, `checkOutput()`, `scanForPII()`                 | None (pure logic)                                                     | Direct call                                              |
 
 ## Communication Patterns
 
-| Pattern | When to Use | Example |
+| Pattern                     | When to Use                                               | Example                                                                     |
 | --------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------- |
-| **Direct call** | Synchronous request-response within same app | `PermissionsModule.checkPermission()` called by any API controller |
-| **Event (async)** | Fire-and-forget or fan-out scenarios | `DocumentsModule` emits `document.uploaded` ? `IngestionModule` picks it up |
-| **Direct call (intra-app)** | Synchronous calls between modules in the same FastAPI app | `SearchModule` calls `RAGModule.retrieve()` directly |
-| **Shared kernel** | Shared types, enums, event schemas | Pydantic models, CloudEvents types |
+| **Direct call**             | Synchronous request-response within same app              | `PermissionsModule.checkPermission()` called by any API controller          |
+| **Event (async)**           | Fire-and-forget or fan-out scenarios                      | `DocumentsModule` emits `document.uploaded` ? `IngestionModule` picks it up |
+| **Direct call (intra-app)** | Synchronous calls between modules in the same FastAPI app | `SearchModule` calls `RAGModule.retrieve()` directly                        |
+| **Shared kernel**           | Shared types, enums, event schemas                        | Pydantic models, CloudEvents types                                          |
 
 ## Module Ownership
 
-| Module | Owning Team | PR Review Required From |
+| Module                                                | Owning Team              | PR Review Required From                       |
 | ----------------------------------------------------- | ------------------------ | --------------------------------------------- |
-| AuthModule, PermissionsModule, TenantsModule | Security Team | Architecture Team (for cross-cutting changes) |
-| DocumentsModule, WorkspacesModule, SearchModule | Core Platform Team | AI Team (for search integration) |
-| AgentModule, MemoryModule, RAGModule, InferenceModule | AI Team | Architecture Team |
-| IngestionModule, MCPModule, GuardrailsModule | AI Platform Team | Security Team (for guardrails) |
-| BillingModule, AnalyticsModule, NotificationsModule | Product Engineering Team | Finance (for billing), Data (for analytics) |
+| AuthModule, PermissionsModule, TenantsModule          | Security Team            | Architecture Team (for cross-cutting changes) |
+| DocumentsModule, WorkspacesModule, SearchModule       | Core Platform Team       | AI Team (for search integration)              |
+| AgentModule, MemoryModule, RAGModule, InferenceModule | AI Team                  | Architecture Team                             |
+| IngestionModule, MCPModule, GuardrailsModule          | AI Platform Team         | Security Team (for guardrails)                |
+| BillingModule, AnalyticsModule, NotificationsModule   | Product Engineering Team | Finance (for billing), Data (for analytics)   |
 
 ## Security
 
-| Concern | Mitigation |
+| Concern                                                | Mitigation                                                                   |
 | ------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| Module bypass (controller calling data layer directly) | Architecture lint: controllers may only call module public interfaces |
-| Circular dependencies | Dependency graph validated in CI; circular dep = build failure |
-| Module loading malicious code | Module isolation; no dynamic imports from user-controlled paths |
-| Cross-module PII leak | PII fields encrypted at boundary; modules must declare which PII they handle |
+| Module bypass (controller calling data layer directly) | Architecture lint: controllers may only call module public interfaces        |
+| Circular dependencies                                  | Dependency graph validated in CI; circular dep = build failure               |
+| Module loading malicious code                          | Module isolation; no dynamic imports from user-controlled paths              |
+| Cross-module PII leak                                  | PII fields encrypted at boundary; modules must declare which PII they handle |
 
 ## Best Practices
 
-| # | Practice | Rationale |
+| #   | Practice                                                        | Rationale                                                          |
 | --- | --------------------------------------------------------------- | ------------------------------------------------------------------ |
-| 1 | Every module has a single public interface (**init**.py) | Prevents internal module details from leaking |
-| 2 | Modules communicate via events, not direct calls, when possible | Events decouple modules and enable independent scaling |
-| 3 | Circular dependencies are build failures | Prevents spaghetti coupling that makes the codebase unmaintainable |
-| 4 | Module ownership is documented and enforced | Clear ownership prevents "everyone owns / nobody owns" drift |
+| 1   | Every module has a single public interface (**init**.py)        | Prevents internal module details from leaking                      |
+| 2   | Modules communicate via events, not direct calls, when possible | Events decouple modules and enable independent scaling             |
+| 3   | Circular dependencies are build failures                        | Prevents spaghetti coupling that makes the codebase unmaintainable |
+| 4   | Module ownership is documented and enforced                     | Clear ownership prevents "everyone owns / nobody owns" drift       |
 
 ## Future Improvements
 
-| Improvement | Priority | Complexity | Timeline |
+| Improvement                                    | Priority | Complexity | Timeline |
 | ---------------------------------------------- | -------- | ---------- | -------- |
-| Module dependency visualization in docs portal | Medium | Low | Q4 2026 |
-| Automated circular dependency detection in CI | High | Low | Q3 2026 |
-| Per-module test isolation | Medium | Medium | Q1 2027 |
+| Module dependency visualization in docs portal | Medium   | Low        | Q4 2026  |
+| Automated circular dependency detection in CI  | High     | Low        | Q3 2026  |
+| Per-module test isolation                      | Medium   | Medium     | Q1 2027  |
 
 ## Related Documents
 
@@ -168,5 +171,8 @@ graph TD
 - [`Service-Contracts.md`](./Service-Contracts.md) — cross-service RPC contracts
 - [`Backend-Architecture.md`](./Backend-Architecture.md) — backend overview
 - [`../Architecture/C4-Architecture.md`](../Architecture/C4-Architecture.md) —
- C4 component views
+  C4 component views
 - [`../AI/AI-Agents.md`](../AI/AI-Agents.md) — agent architecture
+
+> _Last verified: 2026-09-15 — added Resumes/Browser/Temporal modules; MCP row
+> reflects the `mcp__<Server>__<Tool>` bridge (ADR-036)._

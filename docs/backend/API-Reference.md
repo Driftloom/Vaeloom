@@ -1,595 +1,402 @@
 # API Reference
 
-> **Purpose:** Complete OpenAPI 3.1 structured reference for all Vaeloom API
-> endpoints, authentication, error handling, and rate limits **Status:** 
-> New **Owner:** Backend Team **Last Updated:** 2026-07-13
+> **Purpose:** Complete endpoint reference for the Vaeloom API, generated from
+> code truth **Status:** Complete **Owner:** Backend Team **Version:** 0.2.0
+> **Last Updated:** 2026-09-15 **Canonical source:**
+> [`./openapi.yaml`](./openapi.yaml) — **162 paths / 203 operations**,
+> regenerated 2026-09-15 via `scripts/gen_openapi.py`
 
-## Overview
+## Base URLs
 
-The Vaeloom API follows RESTful conventions over HTTPS at
-`https://api.Vaeloom.dev/v1`. All endpoints are documented in an OpenAPI 3.1
-specification available at `/.well-known/openapi.json` for tooling integration
-(Postman, Insomnia, SDK generation).
+| Environment           | Base URL                                                                 |
+| --------------------- | ------------------------------------------------------------------------ |
+| Local dev             | `http://localhost:8000`                                                  |
+| API prefix            | `/api/v1` (all resource routers)                                         |
+| Top-level (no prefix) | `/health`, `/health/ready`, `/health/startup`, `/metrics`, `/csrf-token` |
 
-This reference covers all resources: Documents, Agents, Connectors, Workspaces,
-Users, and Admin. Every endpoint requires authentication via Bearer JWT, with
-scoped access based on the Permission Engine.
+Full machine-readable spec: [`./openapi.yaml`](./openapi.yaml). Interactive docs
+(local): `http://localhost:8000/docs` (Swagger UI).
 
-## API Architecture
+## OpenAPI Sync Note
 
-```mermaid
-graph TD
- classDef gateway fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
- classDef auth fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
- classDef resource fill:#fff3e0,stroke:#e65100,color:#000,stroke-width:1.5px
- classDef infra fill:#f3e5f5,stroke:#6a1b9a,color:#000,stroke-width:1px
+`openapi.yaml` is **generated, not hand-written**. After adding, removing, or
+changing any route in `apps/api/src/api/routers/` or `apps/api/src/api/main.py`:
 
- subgraph Gateway["API Gateway -- api.Vaeloom.dev"]
- GW["Gateway<br/>SSL termination, rate limit, routing"]
- end
+1. Regen: `python scripts/gen_openapi.py` (sets mock env vars internally; safe
+   to run offline)
+2. Verify: 162 paths expected — count `^  /` path keys in `openapi.yaml`
+3. Update this file: add/remove the endpoint row in the matching router table
+   below and bump the counts in the header
 
- subgraph Auth["Authentication Layer"]
- MW["Middleware Stack"]
- AUTH["Auth: JWT validation"]
- PERM["Permission Engine<br/>Scope check"]
- RATE["Rate Limiter<br/>Token bucket"]
- end
-
- subgraph Resources["Resource Controllers"]
- DOC["v1/documents<br/>CRUD + search + upload"]
- AGT["v1/agents<br/>Execute + configure + variants"]
- CON["v1/connectors<br/>OAuth flows + sync status"]
- WRK["v1/workspaces<br/>CRUD + members + settings"]
- USR["v1/users<br/>Profile + preferences + billing"]
- ADM["v1/admin<br/>Enterprise: tenants, audit, SSO"]
- end
-
- subgraph Infra["Supporting Infrastructure"]
- CACHE["Redis Cache<br/>ETags + entitlements"]
- QUEUE["Background Queue<br/>Async agent runs"]
- STORE["Object Store<br/>Document content"]
- end
-
- Client["Client"]--> GW
- GW--> MW
- MW--> AUTH--> PERM--> RATE
- RATE--> DOC & AGT & CON & WRK & USR & ADM
- DOC & AGT & CON & WRK & USR & ADM--> CACHE
- AGT--> QUEUE
- DOC--> STORE
-
- class GW gateway
- class MW,AUTH,PERM,RATE auth
- class DOC,AGT,CON,WRK,USR,ADM resource
- class CACHE,QUEUE,STORE infra
-```
+See [API-Overview.md](./API-Overview.md) and
+[Local-Development.md](./Local-Development.md) for the full workflow.
 
 ## Authentication
 
-All endpoints require a Bearer JWT in the `Authorization` header:
+All `/api/v1/*` endpoints require a Bearer JWT except the public paths below:
 
 ```http
-Authorization: Bearer <token>
+Authorization: Bearer <access_token>
 ```
 
-### Token Types
-
-| Token | Lifetime | Use Case |
-| --------------------- | ---------------------- | --------------------------- |
-| Access Token | 15 minutes | Standard API requests |
-| Refresh Token | 7 days | Obtain new access tokens |
-| API Key | Configurable (30d–1yr) | Automated / CI integrations |
-| Enterprise JWT (SAML) | Per-session | SAML/OIDC federated login |
-
-### Token Scopes
-
-```typescript
-// Scopes follow the pattern: {resource}:{action}
-const scopes = {
-  'documents:read': 'Read documents',
-  'documents:write': 'Create/update documents',
-  'documents:delete': 'Delete documents',
-  'agents:execute': 'Run agent actions',
-  'agents:configure': 'Modify agent settings',
-  'connectors:manage': 'Add/remove connectors',
-  'workspaces:admin': 'Manage workspace settings',
-  'admin:tenants': 'Manage enterprise tenants',
-  'admin:audit': 'Read audit logs',
-};
-```
-
-## Endpoint Reference
-
-### Documents
-
-```http
-GET    /v1/documents                     # List documents (paginated)
-POST   /v1/documents                     # Upload document
-GET    /v1/documents/:id                 # Get document metadata
-PUT    /v1/documents/:id                 # Update document metadata
-DELETE /v1/documents/:id                 # Delete document (soft)
-GET    /v1/documents/:id/content         # Download document content
-POST   /v1/documents/:id/search          # Search within document
-```
-
-**List documents:**
-
-```http
-GET /v1/documents?workspace=ws_abc123&limit=20&cursor=next_cursor_xyz
-```
-
-```json
-// Response
-{
-  "data": [
-    {
-      "id": "doc_abc123",
-      "name": "resume_john_doe.pdf",
-      "type": "application/pdf",
-      "size": 245760,
-      "status": "processed",
-      "workspace_id": "ws_abc123",
-      "created_at": "2026-07-13T10:00:00Z",
-      "updated_at": "2026-07-13T10:05:00Z"
-    }
-  ],
-  "pagination": {
-    "next_cursor": "next_cursor_xyz",
-    "has_more": true
-  }
-}
-```
-
-**Upload document:**
-
-```http
-POST /v1/documents
-Content-Type: multipart/form-data
-
-// Form fields:
-// file: binary
-// workspace_id: "ws_abc123"
-```
-
-```json
-// Response (202 Accepted)
-{
-  "id": "doc_abc124",
-  "status": "processing",
-  "estimated_completion_ms": 2500
-}
-```
-
-### Agents
-
-```http
-GET    /v1/agents                         # List available agents
-GET    /v1/agents/:id                     # Get agent configuration
-PUT    /v1/agents/:id                     # Update agent configuration
-POST   /v1/agents/:id/execute            # Execute agent action
-GET    /v1/agents/:id/runs               # List run history
-GET    /v1/agents/runs/:run_id           # Get run result
-```
-
-**Execute agent:**
-
-```http
-POST /v1/agents/agent_resume/execute
-Content-Type: application/json
-
-{
-  "workspace_id": "ws_abc123",
-  "input": {
-    "document_id": "doc_abc123",
-    "job_description": "Senior software engineer at Acme Corp..."
-  },
-  "variant": "professional"
-}
-```
-
-```json
-// Response (202 Accepted)
-{
-  "run_id": "run_xyz789",
-  "status": "queued",
-  "estimated_completion_ms": 15000
-}
-```
-
-**Get run result (poll):**
-
-```json
-// Response — GET /v1/agents/runs/run_xyz789
-{
-  "run_id": "run_xyz789",
-  "status": "completed",
-  "result": {
-    "tailored_resume_url": "https://storage.Vaeloom.dev/...",
-    "summary": "Resume optimized for Senior Software Engineer at Acme Corp. Added keywords: Kubernetes, distributed systems, team leadership.",
-    "match_score": 87
-  },
-  "execution_ms": 12450,
-  "created_at": "2026-07-13T10:00:00Z"
-}
-```
-
-### Connectors
-
-```http
-GET    /v1/connectors                     # List connected integrations
-POST   /v1/connectors                     # Initiate OAuth connection
-DELETE /v1/connectors/:id                 # Disconnect integration
-POST   /v1/connectors/:id/sync           # Trigger manual sync
-GET    /v1/connectors/:id/status          # Get sync status
-```
-
-### Workspaces
-
-```http
-GET    /v1/workspaces                     # List user's workspaces
-POST   /v1/workspaces                     # Create workspace
-GET    /v1/workspaces/:id                 # Get workspace details
-PUT    /v1/workspaces/:id                 # Update workspace
-DELETE /v1/workspaces/:id                 # Delete workspace
-POST   /v1/workspaces/:id/members        # Invite member
-DELETE /v1/workspaces/:id/members/:uid   # Remove member
-```
-
-### Users
-
-```http
-GET    /v1/users/me                       # Current user profile
-PUT    /v1/users/me                       # Update profile
-GET    /v1/users/me/billing              # Billing info
-PUT    /v1/users/me/preferences          # User preferences
-```
-
-### Enterprise Admin
-
-```http
-GET    /v1/admin/tenants                  # List enterprise tenants
-POST   /v1/admin/tenants                  # Create tenant
-GET    /v1/admin/tenants/:id              # Tenant details
-PUT    /v1/admin/tenants/:id              # Update tenant config
-GET    /v1/admin/audit-logs               # Query audit logs
-POST   /v1/admin/audit-logs/export        # Export audit logs
-```
-
-## Error Handling
-
-```json
-// Standard error response
-{
-  "error": {
-    "code": "rate_limit_exceeded",
-    "message": "Too many requests. Please wait before retrying.",
-    "details": {
-      "retry_after_seconds": 30,
-      "limit": 100,
-      "window_seconds": 60
-    },
-    "request_id": "req_abc123"
-  }
-}
-```
-
-| Status | Error Code | Description |
-| ------ | ---------------------- | ----------------------------------------- |
-| 400 | `validation_error` | Invalid request body or parameters |
-| 401 | `unauthorized` | Missing or invalid authentication |
-| 403 | `forbidden` | Insufficient permissions for the resource |
-| 404 | `not_found` | Resource does not exist |
-| 409 | `conflict` | Resource conflict (e.g., duplicate name) |
-| 422 | `unprocessable_entity` | Business logic violation |
-| 429 | `rate_limit_exceeded` | Too many requests |
-| 500 | `internal_error` | Unexpected server error |
-
-## Rate Limits
-
-| Tier | Requests/min (burst) | Concurrency | Scope |
-| ---------- | -------------------- | ------------- | ---------- |
-| Free | 60 (10) | 5 | Per user |
-| Pro | 300 (50) | 20 | Per user |
-| Enterprise | 1000 (200) | 100 | Per tenant |
-| API Key | Configurable | As configured | Per key |
-
-## Best Practices
-
-| Practice | Rationale |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Use cursor-based pagination | Cursor pagination remains stable when new items are inserted — unlike offset pagination which can skip/duplicate results |
-| Implement exponential backoff | Retry 429 responses with `Retry-After` header; use jitter to avoid thundering herd |
-| Send `Idempotency-Key` for mutation requests | Prevents duplicate agent runs and document uploads on network retry |
-| Use conditional requests with ETags | Cache document metadata and agent configurations client-side; saves bandwidth and reduces server load |
-
-## Common Mistakes
-
-| Mistake | Consequence | Fix |
-| ------------------------------------------------------------------------ | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Polling for agent results too aggressively | Rate limit consumption increases; UI appears sluggish | Use WebSocket streaming or webhooks for agent results; poll at most every 3s |
-| Ignoring pagination cursors | Results truncated at default 20-item page; missing data in bulk operations | Always iterate using the `next_cursor` field until `has_more` is false |
-| Caching authenticated responses without `Authorization` key in cache key | User A sees User B's documents | Include user ID and Authorization hash in cache key; never cache across users |
-| Sending full document body in search request | Increased latency and bandwidth; document body already known server-side | Send only `document_id` for existing documents; search endpoint uses stored content |
-
-## Security Considerations
-
-| Concern | Mitigation |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| JWT token theft | Short-lived access tokens (15m); refresh tokens stored in HTTP-only secure cookies; revoked on password change |
-| API key exposure | Keys scoped to minimal required permissions; can be rotated independently; logged on every use |
-| IDOR (Insecure Direct Object Reference) | Every resource ID validated against user's workspace membership server-side; no user/workspace ID in client can access resources outside their scope |
-| Uploaded file validation | File type verified via magic bytes (not extension); size limits enforced; malware scanning via ClamAV |
-| Rate limit bypass | Rate limits enforced at gateway (per IP, per user, per API key); distributed Redis-backed token bucket |
-
-## Performance Considerations
-
-| Concern | Mitigation |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| Slow document processing | Document upload returns 202 immediately; processing happens asynchronously; webhook notifies on completion |
-| Heavy search payloads | Search results paginated; full-text search uses SQL ILIKE, not external search engine |
-| Large file downloads | Direct-to-S3 presigned URLs for document content; API never proxies file bytes |
-| Agent execution latency | Agent runs queued and executed on dedicated workers; result polling via WebSocket push; timeout at 5 minutes |
-| Connection pooling | GraphQL Apollo Server connection pooling to PostgreSQL (max 20); connection acquisition <5ms |
-
----
-
-## Goals
-
-1. **Standardize API access** — Provide a single, consistent RESTful interface
- for all Vaeloom clients (web app, mobile, AI agents, third-party
- integrations)
-2. **Enable self-service integration** — Document every endpoint with
- request/response schemas so external developers and AI agents can integrate
- without source code access
-3. **Define security and rate-limit boundaries** — Specify auth requirements,
- scope permissions, and rate limits so clients know exactly how to interact
- safely
-4. **Support OpenAPI 3.1 tooling** — Expose a machine-readable spec at
- `/.well-known/openapi.json` for automated SDK generation, Postman
- collections, and API gateway validation
-
----
-
-## Scope
-
-### In Scope
-
-- All REST endpoints under `https://api.Vaeloom.dev/v1/` covering Documents,
- Agents, Connectors, Workspaces, Users, and Admin
-- Authentication via Bearer JWT with scope-based access control
-- Rate limiting tiered by subscription plan (Free, Pro, Enterprise)
-- Error responses with structured error codes and request IDs
-- Pagination, filtering, and sorting standards
-
-### Out of Scope
-
-- WebSocket endpoints for real-time agent streaming (separate specification)
-- Internal module endpoints
-- GraphQL schema (evaluated as future addition)
-- Deprecated version 0.x endpoints (removed in v1 launch)
-
----
-
-## Functional Requirements
-
-| ID | Requirement | Priority |
-| ----- | --------------------------------------------------------------------------------------------------- | -------- |
-| F-001 | API SHALL support cursor-based pagination for list endpoints with `cursor` and `limit` parameters | P0 |
-| F-002 | API SHALL return structured error responses with `error.code`, `error.message`, and `error.details` | P0 |
-| F-003 | API SHALL validate all mutation requests against a JSON Schema before processing | P0 |
-| F-004 | API SHALL return `202 Accepted` for asynchronous operations (document upload, agent execution) | P0 |
-| F-005 | API SHALL support `Idempotency-Key` header for at-least-once delivery guarantees | P1 |
-| F-006 | API SHALL expose an OpenAPI 3.1 specification at `/.well-known/openapi.json` | P1 |
-
----
-
-## Non-Functional Requirements
-
-| ID | Requirement | Target |
-| ------ | --------------------------- | ----------------------------------------------------- |
-| NF-001 | API response time (p95) | < 200ms for read endpoints, < 5s for async operations |
-| NF-002 | API availability | 99.9% uptime (excluding planned maintenance) |
-| NF-003 | Rate limit accuracy | Within 5% of configured limit under burst conditions |
-| NF-004 | JSON response serialization | < 50ms for responses up to 100KB |
-| NF-005 | API Gateway connection pool | > 1000 concurrent connections per gateway node |
-
----
-
-## Workflows
-
-1. **Document Upload Flow:** Client POSTs file → API returns 202 with document
- ID → Ingestion queue processes OCR/extraction → Webhook notifies on
- completion → Document status becomes `processed`
-2. **Agent Execution Flow:** Client POSTs agent execution with input → API
- returns 202 with run ID → Agent queued on dedicated worker → Worker executes
- agent logic → Result stored → Client polls or receives WebSocket push with
- result
-3. **Connector Sync Flow:** Client triggers sync → API enqueues sync job →
- Worker fetches external data → Data is deduplicated and classified → Memory
- Agent extracts entities → Sync status updated
-
----
-
-## Sequence Diagrams
-
-```mermaid
-sequenceDiagram
- participant C as Client
- participant GW as API Gateway
- participant CTRL as Controller
- participant SVC as Service
- participant DB as Database
- participant Q as Queue
-
- C->>GW: POST /v1/documents (multipart)
- GW->>GW: Validate JWT + permissions + rate limit
- GW->>CTRL: Route to document controller
- CTRL->>SVC: upload(file, workspace_id)
- SVC->>DB: INSERT document (status: processing)
- SVC->>Q: enqueue(ingestion, {documentId})
- SVC-->>CTRL: {id, status: "processing"}
- CTRL-->>C: 202 Accepted + document metadata
- C-->>C: Poll GET /v1/documents/:id for status
-```
-
-> **Diagram:** Document upload flow — API Gateway validates auth/permissions,
-> controller delegates to service, service persists with `processing` status,
-> enqueues async ingestion, returns 202 immediately.
-
----
-
-## Data Flow
-
-```text
-1. Client sends HTTPS request to api.Vaeloom.dev/v1/{resource}
-2. API Gateway terminates SSL and extracts client IP
-3. Gateway validates Bearer JWT, extracts user_id and workspace_id
-4. Gateway checks Permission Engine for requested scope
-5. Gateway applies token bucket rate limit based on subscription tier
-6. Request routed to appropriate resource controller
-7. Controller validates request body (Pydantic)
-8. Service layer executes business logic (CRUD, agent execution, etc.)
-9. Response serialized as JSON with standard envelope
-10. Rate limit headers attached (X-RateLimit-Limit, X-RateLimit-Remaining)
-11. All errors caught by global exception filter → structured error response
-```
-
----
-
-## APIs
-
-| Resource | Base Path | Available Endpoints |
-| ---------- | ---------------- | ----------------------------------------------------------- |
-| Documents | `/v1/documents` | List, Create, Get, Update, Delete, Download Content, Search |
-| Agents | `/v1/agents` | List, Get, Update, Execute, List Runs, Get Run Result |
-| Connectors | `/v1/connectors` | List, Create (OAuth), Delete, Trigger Sync, Get Status |
-| Workspaces | `/v1/workspaces` | List, Create, Get, Update, Delete, Manage Members |
-| Users | `/v1/users` | Get Profile, Update Profile, Billing, Preferences |
-| Admin | `/v1/admin` | Tenants CRUD, Audit Logs Query, Audit Logs Export |
-
----
-
-## Database
-
-| Table | API Relevance | Key Fields Queried by API |
-| ------------ | --------------------------------------- | -------------------------------------------------------------- |
-| `documents` | All document CRUD and search endpoints | id, workspace_id, path, type, status, raw_storage_key |
-| `agent_runs` | Agent execution and status polling | id, agent_id, workspace_id, status, result (jsonb), created_at |
-| `connectors` | Connector management and sync endpoints | id, workspace_id, type, scopes, status, last_synced_at |
-| `workspaces` | Workspace CRUD and membership | id, user_id, name, created_at |
-| `users` | User profile and preferences | id, email, auth_provider, preferences (jsonb) |
-
----
-
-## Scalability
-
-| Dimension | Current Limit | 10x Strategy | 100x Strategy |
-| -------------------------- | -------------------- | ------------------------------------------- | ----------------------------------------- |
-| Concurrent API requests | 500 per gateway node | Horizontal scaling with auto-scaling groups | Multi-region active-active deployment |
-| Document upload throughput | 50 MB/s per gateway | Direct-to-S3 presigned URLs bypass API | Edge upload acceleration with CDN |
-| API response caching | Per-endpoint ETags | Redis shared cache for document metadata | CDN caching with cache tags per workspace |
-| Endpoint count | 35 endpoints | Modular controller loading per domain | GraphQL federation gateway |
-
----
-
-## Monitoring
-
-| Metric | Alert Threshold | Severity | Dashboard |
-| ------------------- | ------------------ | -------- | ---------------------------- |
-| P95 response time | > 500ms | Warning | API Gateway > Response Times |
-| P99 response time | > 2s | Critical | API Gateway > Response Times |
-| Error rate (5xx) | > 1% | Critical | API Gateway > Error Rates |
-| 429 rate limit hits | > 100/min per user | Info | API Gateway > Rate Limiting |
-| Gateway CPU | > 80% | Warning | API Gateway > Resources |
-| Active connections | > 90% of max | Critical | API Gateway > Connections |
-
----
-
-## Deployment
-
-| Environment | Method | Trigger | Verification |
-| ----------- | ----------------------------------- | -------------------------- | ---------------------------------------------------------- |
-| Development | Docker Compose with hot reload | Git push to feature branch | `make test-api` passes full suite |
-| Staging | Kubernetes deployment (2 replicas) | PR merged to main | Canary 10% traffic for 5 min, verify no error increase |
-| Production | Kubernetes deployment (4+ replicas) | Tagged release via CI/CD | Blue-green deployment with automated rollback on 5xx spike |
-
----
-
-## Configuration
-
-| Variable | Purpose | Default | Required |
-| ------------------------ | ---------------------------- | ------------ | -------- |
-| `API_PORT` | HTTP listen port | 3000 | Yes |
-| `API_RATE_LIMIT_DEFAULT` | Default rate limit (req/min) | 60 | Yes |
-| `API_RATE_LIMIT_BURST` | Burst limit multiplier | 3x | No |
-| `API_BODY_SIZE_LIMIT` | Max request body size | 10MB | Yes |
-| `API_REQUEST_TIMEOUT` | Request timeout | 30000 (ms) | Yes |
-| `API_CORS_ORIGINS` | Allowed CORS origins | * (dev only) | Yes |
-
----
-
-## Limitations
-
-| Limitation | Impact | Workaround | Future Resolution |
-| ---------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------- |
-| Pagination limited to 100 items per page | Large bulk operations require multiple requests | Use cursor-based pagination with `has_more` flag | Increase per-page limit with configurable max |
-| File upload limited to 10MB via API | Large documents (videos, datasets) cannot be uploaded | Use direct-to-S3 presigned URL upload for files > 10MB | Implement multipart upload for files up to 5GB |
-| No WebSocket native support in API spec | Real-time agent streaming not supported | Poll GET /v1/agents/runs/:id endpoint | Add WebSocket gateway for real-time updates |
-
----
-
-## Examples
-
-```typescript
-// List all documents in a workspace
-const documents = await Vaeloom.documents.list({
-  workspaceId: 'ws_abc123',
-  limit: 50,
-  offset: 0,
-});
-
-for (const doc of documents) {
-  console.log(doc.title, doc.status);
-}
-```
-
-```python
-# Upload a document to Vaeloom
-from Vaeloom import Client
-
-client = Client(api_key="...")
-doc = client.documents.upload(
-    workspace_id="ws_abc123",
-    file_path="./resume.pdf",
-    metadata={"source": "email"},
-)
-print(doc.id, doc.status)
-```
-
-```bash
-# Create a new workspace
-curl -X POST "https://api.Vaeloom.ai/v1/workspaces" \
-  -H "X-API-Key: $Vaeloom_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Q3 Hiring", "settings": {"auto_organize": true}}'
-```
-
-## Future Improvements
-
-| Improvement | Priority | Complexity | Timeline |
-| --------------------------------------------------------------- | -------- | ---------- | -------- |
-| WebSocket support for real-time agent streaming | High | Medium | Q4 2026 |
-| OpenAPI 3.1 specification auto-generation from TypeScript types | High | Low | Q3 2026 |
-| API versioning with sunset headers and migration guides | Medium | Medium | Q4 2026 |
-| GraphQL gateway for public plugin SDK | Low | High | Q1 2027 |
-| Self-service API key management portal | Medium | Low | Q3 2026 |
-
----
+| Token                     | Lifetime                  | Notes                                             |
+| ------------------------- | ------------------------- | ------------------------------------------------- |
+| Access token (JWT, HS256) | 1h (`jwt_token_ttl=3600`) | `Authorization: Bearer` header or httpOnly cookie |
+| Refresh token             | 30d                       | Rotated on each use                               |
+| API key                   | Configurable              | `Authorization: Bearer <key>`, scoped             |
+
+Public paths (no JWT): `/health`, `/health/ready`, `/health/startup`,
+`/metrics`, `/csrf-token`, `/api/v1/auth/*`, `/api/v1/gmail/webhook`
+(`middleware/auth.py` `PUBLIC_PATHS`, `middleware/csrf.py` `SKIP_PATHS` /
+`SKIP_PREFIXES`).
+
+## CSRF
+
+Mutating requests (non-GET/HEAD/OPTIONS) require CSRF except under
+`/api/v1/auth` and `/scim` (`SKIP_PREFIXES`) and the `SKIP_PATHS` list above.
+
+1. `GET /csrf-token` → returns `{"csrf_token": ...}` + sets `csrf_token` cookie
+   (`SameSite=Lax`, readable by the SPA for double-submit)
+2. Send it back as `X-CSRF-Token` header on POST/PUT/PATCH/DELETE
+3. Missing/invalid token → `403`
+
+Frontend detail: `middleware.ts` + `next.config.js` `connect-src` must allow
+`http://localhost:8000` in development or API calls are blocked client-side.
+
+## Rate Limiting
+
+Sliding-window limiter, per-endpoint decorator, `Retry-After` header on 429.
+Local override: `RATE_LIMIT_REQUESTS` / `RATE_LIMIT_WINDOW`
+(`RATE_LIMIT_REDIS_URL`, Redis DB 1 for distributed limits). See
+[Rate-Limiting.md](./Rate-Limiting.md).
+
+## Compile / Durability 503s (fail-closed, by design)
+
+| Status                                                                          | When                                   | Fix                                                                       |
+| ------------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------- |
+| `503` from `POST .../compile`, `/compile-typst`, `/cover-letter`, `/cheatsheet` | Playwright Chromium not installed      | `uv run --project apps/api playwright install chromium` (one-time, local) |
+| `503` from `/temporal/*` durable runs                                           | Temporal down but durability requested | Start Temporal or use the non-durable endpoint; never silently falls back |
+
+## Health / Metrics / CSRF (top-level, no prefix)
+
+| Method | Path                                 | Description               |
+| ------ | ------------------------------------ | ------------------------- |
+| GET    | `/health`                            | Liveness                  |
+| GET    | `/health/ready`                      | Readiness (DB + deps)     |
+| GET    | `/health/startup`                    | Startup probe             |
+| GET    | `/metrics`                           | Prometheus metrics        |
+| GET    | `/csrf-token`                        | Issue CSRF token + cookie |
+| GET    | `/api/v1/security/encryption-status` | Encryption/key status     |
+
+## Auth (`/api/v1/auth`, CSRF-exempt)
+
+| Method | Path                                   | Description                       |
+| ------ | -------------------------------------- | --------------------------------- |
+| POST   | `/api/v1/auth/signup`                  | Sign up (email/password)          |
+| POST   | `/api/v1/auth/login`                   | Login, issue tokens               |
+| POST   | `/api/v1/auth/refresh`                 | Rotate refresh → new access token |
+| POST   | `/api/v1/auth/logout`                  | Invalidate session                |
+| GET    | `/api/v1/auth/me`                      | Current user                      |
+| GET    | `/api/v1/auth/sso/{provider}`          | SSO login redirect                |
+| POST   | `/api/v1/auth/sso/{provider}`          | SSO token login                   |
+| GET    | `/api/v1/auth/sso/{provider}/callback` | SSO callback                      |
+| POST   | `/api/v1/auth/saml/callback`           | SAML callback                     |
+
+## Workspaces (`/api/v1/workspaces`, 10 paths)
+
+| Method               | Path                                                                      | Description                |
+| -------------------- | ------------------------------------------------------------------------- | -------------------------- |
+| GET / POST           | `/api/v1/workspaces`                                                      | List / create workspaces   |
+| GET / PATCH / DELETE | `/api/v1/workspaces/{workspace_id}`                                       | Get / update / delete      |
+| GET                  | `/api/v1/workspaces/{workspace_id}/agents`                                | Workspace agents           |
+| GET                  | `/api/v1/workspaces/{workspace_id}/agent-actions`                         | Agent action audit         |
+| GET                  | `/api/v1/workspaces/{workspace_id}/document-actions`                      | Document action audit      |
+| GET                  | `/api/v1/workspaces/{workspace_id}/memories`                              | Workspace memories         |
+| GET                  | `/api/v1/workspaces/{workspace_id}/connectors`                            | Workspace connectors       |
+| GET / POST           | `/api/v1/workspaces/{workspace_id}/applications`                          | List / create applications |
+| GET                  | `/api/v1/workspaces/{workspace_id}/applications/{application_id}`         | Get application            |
+| PATCH                | `/api/v1/workspaces/{workspace_id}/applications/{application_id}/outcome` | Record outcome             |
+
+## Memories (`/api/v1/memories`, 7 paths)
+
+| Method             | Path                                   | Description           |
+| ------------------ | -------------------------------------- | --------------------- |
+| GET / POST         | `/api/v1/memories`                     | List / create         |
+| GET                | `/api/v1/memories/feed`                | Activity feed         |
+| POST               | `/api/v1/memories/search`              | Semantic search       |
+| GET / PUT / DELETE | `/api/v1/memories/{memory_id}`         | Get / update / delete |
+| GET                | `/api/v1/memories/{memory_id}/chunks`  | Chunks                |
+| GET                | `/api/v1/memories/{memory_id}/history` | Version history       |
+| GET                | `/api/v1/memories/{memory_id}/lineage` | Provenance lineage    |
+
+## Agents (`/api/v1/agents`, 10 paths)
+
+| Method             | Path                                          | Description                                                              |
+| ------------------ | --------------------------------------------- | ------------------------------------------------------------------------ |
+| GET / POST         | `/api/v1/agents`                              | List / create agents                                                     |
+| GET                | `/api/v1/agents/catalog`                      | Agent catalog                                                            |
+| POST               | `/api/v1/agents/chat`                         | Chat (non-streaming)                                                     |
+| POST               | `/api/v1/agents/chat/stream`                  | Chat (SSE stream; ReAct tool-calling opt-in via `AGENT_REACT_ENABLED=1`) |
+| GET / PUT / DELETE | `/api/v1/agents/{agent_id}`                   | Get / update / delete                                                    |
+| POST               | `/api/v1/agents/{agent_id}/execute`           | Execute (legacy)                                                         |
+| POST               | `/api/v1/agents/{agent_id}/run`               | Run agent                                                                |
+| GET                | `/api/v1/agents/{agent_id}/executions`        | Execution history                                                        |
+| POST               | `/api/v1/agents/{agent_id}/schedule`          | Schedule agent                                                           |
+| POST               | `/api/v1/agents/runs/{request_id}/cancel`     | Cancel run                                                               |
+| POST               | `/api/v1/chat/workspaces/{workspace_id}/chat` | Workspace chat                                                           |
+| GET                | `/api/v1/admin/agents/usage`                  | Usage report                                                             |
+| GET / PUT / DELETE | `/api/v1/admin/agents/usage/budgets`          | Budget CRUD                                                              |
+| GET                | `/api/v1/admin/agents/usage/costs`            | Cost report                                                              |
+
+## Documents (`/api/v1/documents`, 7 paths)
+
+| Method     | Path                                         | Description      |
+| ---------- | -------------------------------------------- | ---------------- |
+| GET / POST | `/api/v1/documents`                          | List / upload    |
+| PATCH      | `/api/v1/documents/{document_id}`            | Update metadata  |
+| GET        | `/api/v1/documents/{document_id}/content`    | Download content |
+| GET        | `/api/v1/documents/{document_id}/actions`    | Action history   |
+| POST       | `/api/v1/documents/actions/{action_id}/undo` | Undo action      |
+| POST       | `/api/v1/documents/{document_id}/archive`    | Archive          |
+| POST       | `/api/v1/documents/{document_id}/restore`    | Restore          |
+
+## Resumes (`/api/v1/resumes`, 13 paths)
+
+| Method    | Path                                               | Description                                                         |
+| --------- | -------------------------------------------------- | ------------------------------------------------------------------- |
+| GET       | `/api/v1/resumes`                                  | List resumes                                                        |
+| GET       | `/api/v1/resumes/master`                           | Master resume                                                       |
+| GET       | `/api/v1/resumes/templates`                        | 5 industry templates (`resume_templates.py`)                        |
+| POST      | `/api/v1/resumes/{resume_id}/generate`             | Generate resume                                                     |
+| POST      | `/api/v1/resumes/{resume_id}/tailor`               | AI-tailor to job description                                        |
+| GET / PUT | `/api/v1/resumes/{resume_id}/source`               | Get / update source JSON                                            |
+| POST      | `/api/v1/resumes/{resume_id}/compile`              | Compile PDF/DOCX/HTML (`document_builder.py`; 503 without Chromium) |
+| POST      | `/api/v1/resumes/{resume_id}/compile-typst`        | Compile via Typst                                                   |
+| POST      | `/api/v1/resumes/{resume_id}/cover-letter`         | Generate cover letter                                               |
+| POST      | `/api/v1/resumes/{resume_id}/cheatsheet`           | Interview cheatsheet                                                |
+| POST      | `/api/v1/resumes/{resume_id}/ai/inline`            | Inline AI edit                                                      |
+| GET       | `/api/v1/resumes/{resume_id}/artifacts`            | List compiled artifacts (`resume_artifacts`, migration 0023)        |
+| GET       | `/api/v1/resumes/artifacts/{artifact_id}/download` | Download artifact bytes                                             |
+
+## Connectors (`/api/v1/connectors`, 9 paths incl. 4 MCP)
+
+| Method             | Path                                                  | Description                                                                              |
+| ------------------ | ----------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| GET / POST         | `/api/v1/connectors`                                  | List / register (incl. `mcp`-type servers)                                               |
+| GET / PUT / DELETE | `/api/v1/connectors/{connector_id}`                   | Get / update / disconnect                                                                |
+| POST               | `/api/v1/connectors/{connector_id}/sync`              | Trigger sync                                                                             |
+| GET                | `/api/v1/connectors/{connector_id}/sync/status`       | Sync status                                                                              |
+| POST               | `/api/v1/connectors/{connector_id}/test`              | Test connection (mock-safe)                                                              |
+| GET                | `/api/v1/connectors/{connector_id}/mcp/tools`         | List bridged tools (`mcp__<Server>__<Tool>`, 300s discovery TTL)                         |
+| POST               | `/api/v1/connectors/{connector_id}/mcp/tools/refresh` | Force re-discovery                                                                       |
+| POST               | `/api/v1/connectors/{connector_id}/mcp/sync`          | Re-sync tool bridge                                                                      |
+| POST               | `/api/v1/connectors/{connector_id}/mcp/call`          | Call MCP tool (scope `connector.mcp.execute`, 30s timeout; non-readOnly → approval gate) |
+| GET / POST         | `/api/v1/integrations`                                | List / create (legacy)                                                                   |
+| PUT / DELETE       | `/api/v1/integrations/{integration_id}`               | Update / delete                                                                          |
+| POST               | `/api/v1/integrations/{integration_id}/sync`          | Sync (legacy)                                                                            |
+
+See [Connectors.md](./Connectors.md) for the MCP-bridge section and
+`docs/mcp/servers/seed-configs.md` for seed server configs.
+
+## Provider Keys (`/api/v1/provider-keys`, 4 paths)
+
+| Method         | Path                                      | Description                       |
+| -------------- | ----------------------------------------- | --------------------------------- |
+| GET / POST     | `/api/v1/provider-keys`                   | List / store BYOK key (encrypted) |
+| GET            | `/api/v1/provider-keys/effective`         | Effective key resolution          |
+| PATCH / DELETE | `/api/v1/provider-keys/{key_id}`          | Update / delete                   |
+| POST           | `/api/v1/provider-keys/{key_id}/validate` | Validate key                      |
+
+## Temporal (`/api/v1/temporal`, 6 paths)
+
+| Method | Path                                                            | Description                   |
+| ------ | --------------------------------------------------------------- | ----------------------------- |
+| POST   | `/api/v1/temporal/workflows/ingest`                             | Start ingest workflow         |
+| POST   | `/api/v1/temporal/workflows/connector-sync`                     | Start connector-sync workflow |
+| POST   | `/api/v1/temporal/workflows/durable-agent`                      | Start durable agent run       |
+| GET    | `/api/v1/temporal/workflows/{workflow_id}`                      | Workflow status               |
+| POST   | `/api/v1/temporal/workflows/{workflow_id}/cancel`               | Cancel workflow               |
+| POST   | `/api/v1/temporal/workflows/{workflow_id}/signal/{signal_name}` | Signal workflow               |
+
+Disabled locally by default (`TEMPORAL_ENABLED=false`).
+
+## Sovereignty (`/api/v1/sovereignty`, 8 paths)
+
+| Method | Path                                               | Description                 |
+| ------ | -------------------------------------------------- | --------------------------- |
+| GET    | `/api/v1/sovereignty/identity`                     | Sovereign identity          |
+| GET    | `/api/v1/sovereignty/credentials`                  | List credentials            |
+| GET    | `/api/v1/sovereignty/credentials/{credential_id}`  | Get credential              |
+| POST   | `/api/v1/sovereignty/credentials/issue/capability` | Issue capability credential |
+| POST   | `/api/v1/sovereignty/credentials/issue/audit`      | Issue audit credential      |
+| POST   | `/api/v1/sovereignty/credentials/verify`           | Verify credential           |
+| GET    | `/api/v1/sovereignty/sync/pull`                    | Pull CRDT deltas            |
+| POST   | `/api/v1/sovereignty/sync/push`                    | Push CRDT deltas            |
+
+## Cognition (`/api/v1/cognition`, 6 paths)
+
+| Method       | Path                                      | Description               |
+| ------------ | ----------------------------------------- | ------------------------- |
+| GET          | `/api/v1/cognition/briefing/today`        | Morning briefing          |
+| POST         | `/api/v1/cognition/overnight/run`         | Trigger overnight cycle   |
+| GET          | `/api/v1/cognition/reality-gap`           | Reality-gap report        |
+| GET / POST   | `/api/v1/cognition/scale/nodes`           | List / create scale nodes |
+| GET / DELETE | `/api/v1/cognition/scale/nodes/{node_id}` | Get / delete scale node   |
+| POST         | `/api/v1/cognition/scale/rollup`          | Execute rollup            |
+
+## Council (`/api/v1/council`, 3 paths)
+
+| Method | Path                                   | Description        |
+| ------ | -------------------------------------- | ------------------ |
+| POST   | `/api/v1/council/triage`               | Triage artifact    |
+| POST   | `/api/v1/council/review`               | Review artifact    |
+| POST   | `/api/v1/council/evaluate-and-certify` | Evaluate + certify |
+
+## Anticipation (`/api/v1/anticipation`, 4 paths)
+
+| Method | Path                                                   | Description               |
+| ------ | ------------------------------------------------------ | ------------------------- |
+| POST   | `/api/v1/anticipation/scan`                            | Scan + generate proposals |
+| GET    | `/api/v1/anticipation/proposals`                       | List proposals            |
+| POST   | `/api/v1/anticipation/proposals/{proposal_id}/accept`  | Accept                    |
+| POST   | `/api/v1/anticipation/proposals/{proposal_id}/dismiss` | Dismiss                   |
+
+## Federation (`/api/v1/federation`, 1 path)
+
+| Method | Path                          | Description            |
+| ------ | ----------------------------- | ---------------------- |
+| POST   | `/api/v1/federation/dispatch` | Dispatch federated run |
+
+## Profile (`/api/v1/profile`, 15 paths)
+
+| Method       | Path                                  | Description                |
+| ------------ | ------------------------------------- | -------------------------- |
+| GET / PUT    | `/api/v1/profile`                     | Get / update own profile   |
+| GET          | `/api/v1/profile/activity`            | Activity                   |
+| GET          | `/api/v1/profile/completeness`        | Completeness score         |
+| GET          | `/api/v1/profile/ats-readiness`       | ATS readiness              |
+| POST         | `/api/v1/profile/auto-populate`       | Auto-populate from sources |
+| POST         | `/api/v1/profile/avatar`              | Upload avatar (5MB max)    |
+| GET          | `/api/v1/profile/avatar/{user_id}`    | Get avatar                 |
+| POST         | `/api/v1/profile/career`              | Add career entry           |
+| PUT / DELETE | `/api/v1/profile/career/{company}`    | Update / delete entry      |
+| PUT          | `/api/v1/profile/preferences`         | Update preferences         |
+| GET          | `/api/v1/profile/public/{user_id}`    | Public profile             |
+| GET          | `/api/v1/profile/recommendations`     | Recommendations            |
+| POST         | `/api/v1/profile/skills`              | Add skill                  |
+| POST         | `/api/v1/profile/skills/confirm`      | Confirm skill              |
+| DELETE       | `/api/v1/profile/skills/{skill_name}` | Remove skill               |
+
+## Opportunities (`/api/v1/opportunities`, 2 paths)
+
+| Method | Path                          | Description              |
+| ------ | ----------------------------- | ------------------------ |
+| POST   | `/api/v1/opportunities/match` | Match single opportunity |
+| POST   | `/api/v1/opportunities/rank`  | Rank opportunities       |
+
+## Gmail (`/api/v1/gmail`, 3 paths; webhook is CSRF-exempt + public)
+
+| Method              | Path                    | Description                        |
+| ------------------- | ----------------------- | ---------------------------------- |
+| GET / POST          | `/api/v1/gmail/drafts`  | List / create drafts               |
+| GET / POST / DELETE | `/api/v1/gmail/watch`   | Get / start / stop watch           |
+| POST                | `/api/v1/gmail/webhook` | Push webhook (public, CSRF-exempt) |
+
+## Consent + GDPR (`/api/v1/consent` 4 paths, `/api/v1/gdpr` 2 paths)
+
+| Method | Path                             | Description      |
+| ------ | -------------------------------- | ---------------- |
+| GET    | `/api/v1/consent/scopes`         | List scopes      |
+| POST   | `/api/v1/consent/grant`          | Grant consent    |
+| GET    | `/api/v1/consent/me`             | My consents      |
+| POST   | `/api/v1/consent/revoke/{scope}` | Revoke consent   |
+| GET    | `/api/v1/gdpr/export`            | Export user data |
+| POST   | `/api/v1/gdpr/delete`            | Delete user data |
+
+## Scheduler (`/api/v1/scheduler`, 7 paths)
+
+| Method               | Path                                         | Description                   |
+| -------------------- | -------------------------------------------- | ----------------------------- |
+| GET / POST           | `/api/v1/scheduler/events`                   | List / create schedule events |
+| GET / POST           | `/api/v1/scheduler/jobs`                     | List / create jobs            |
+| GET / PATCH / DELETE | `/api/v1/scheduler/jobs/{job_id}`            | Get / update / delete job     |
+| GET                  | `/api/v1/scheduler/jobs/{job_id}/executions` | Execution history             |
+| POST                 | `/api/v1/scheduler/jobs/{job_id}/pause`      | Pause                         |
+| POST                 | `/api/v1/scheduler/jobs/{job_id}/resume`     | Resume                        |
+| POST                 | `/api/v1/scheduler/jobs/{job_id}/trigger`    | Trigger now                   |
+
+## Knowledge Graph (`/api/v1/knowledge-graph`, 7 paths)
+
+| Method             | Path                                            | Description                |
+| ------------------ | ----------------------------------------------- | -------------------------- |
+| GET / POST         | `/api/v1/knowledge-graph/nodes`                 | List / create nodes        |
+| GET / PUT / DELETE | `/api/v1/knowledge-graph/nodes/{node_id}`       | Get / update / delete node |
+| GET / POST         | `/api/v1/knowledge-graph/nodes/{node_id}/edges` | List / create edges        |
+| GET                | `/api/v1/knowledge-graph/edges`                 | List edges                 |
+| DELETE             | `/api/v1/knowledge-graph/edges/{edge_id}`       | Delete edge                |
+| GET                | `/api/v1/knowledge-graph/path`                  | Path query                 |
+| POST               | `/api/v1/knowledge-graph/traverse`              | Traverse                   |
+
+## Search / Events / Notifications / Approvals
+
+| Method     | Path                                               | Description                 |
+| ---------- | -------------------------------------------------- | --------------------------- |
+| POST       | `/api/v1/search`                                   | Unified search              |
+| GET / POST | `/api/v1/events`                                   | List / publish events       |
+| GET / POST | `/api/v1/events/subscriptions`                     | List / create subscriptions |
+| GET        | `/api/v1/notifications`                            | List notifications          |
+| GET        | `/api/v1/notifications/{notification_id}`          | Get notification            |
+| POST       | `/api/v1/notifications/send`                       | Send                        |
+| POST       | `/api/v1/notifications/subscribe`                  | Subscribe                   |
+| GET / POST | `/api/v1/notifications/templates`                  | List / create templates     |
+| POST       | `/api/v1/notifications/webhooks/{notification_id}` | Webhook delivery            |
+| GET / POST | `/api/v1/approvals`                                | List / request approval     |
+| GET        | `/api/v1/approvals/{approval_id}`                  | Get approval                |
+| POST       | `/api/v1/approvals/{approval_id}/approve`          | Approve                     |
+| POST       | `/api/v1/approvals/{approval_id}/reject`           | Reject                      |
+
+## Enterprise-Gated Routers (excluded by design)
+
+Mounted only when `enterprise_routes_enabled=true` (default off in MVP builds,
+`main.py`). Not in `openapi.yaml`:
+
+| Router          | Prefix                    |
+| --------------- | ------------------------- |
+| billing         | `/api/v1/billing`         |
+| plugins         | `/api/v1/plugins`         |
+| analytics       | `/api/v1/analytics`       |
+| audit           | `/api/v1/audit`           |
+| iam             | `/api/v1/iam`             |
+| recommendations | `/api/v1/recommendations` |
+| webhooks        | `/api/v1/webhooks`        |
+| admin_console   | (root, `/admin/*`)        |
+| scim            | `/scim`                   |
+| feature_flags   | `/api/v1/feature-flags`   |
+
+## Errors
+
+| Status | Code                            | Meaning                                   |
+| ------ | ------------------------------- | ----------------------------------------- |
+| 400    | `validation_error`              | Pydantic validation failed                |
+| 401    | `unauthorized`                  | Missing/invalid/expired JWT               |
+| 403    | `forbidden` / CSRF failure      | No scope, or missing `X-CSRF-Token`       |
+| 404    | `not_found`                     | Unknown id / path                         |
+| 409    | `conflict`                      | Duplicate / state conflict                |
+| 422    | `unprocessable_entity`          | Business-rule violation                   |
+| 429    | `rate_limit_exceeded`           | Slow down; honor `Retry-After`            |
+| 503    | Chromium / Temporal unavailable | See Compile 503s above                    |
+| 500    | `internal_error`                | Unexpected failure (`request_id` in body) |
+
+All errors carry a `request_id` / `X-Request-ID` for log correlation.
 
 ## Related Documents
 
-- [API Architecture.md](./API-Architecture.md)
-- [Authentication.md](./Authentication.md)
-- [Authorization.md](./Authorization.md)
-- [Rate Limiting.md](./Rate-Limiting.md)
-- [REST Standards.md](./REST-Standards.md)
+- [API Overview](./API-Overview.md) — index + sync workflow
+- [API Architecture](./API-Architecture.md) — design principles
+- [Authentication](./Authentication.md) — JWT/CSRF details
+- [Rate Limiting](./Rate-Limiting.md) — limits
+- [Connectors](./Connectors.md) — connector + MCP-bridge details
+- [Local Development](./Local-Development.md) — running the API locally
+
+> _Last verified: 2026-09-15 — 162 paths / 203 ops from `openapi.yaml` (regen
+> `scripts/gen_openapi.py`)._

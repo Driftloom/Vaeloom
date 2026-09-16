@@ -337,14 +337,14 @@ graph TD
 
 ## Configuration
 
-| Variable                 | Purpose                          | Default | Required         |
-| ------------------------ | -------------------------------- | ------- | ---------------- |
-| `AUTH_JWT_SECRET`        | RS256 private key for signing    | —       | Yes (production) |
-| `AUTH_JWT_EXPIRY`        | Access token lifetime            | 24h     | Yes              |
-| `AUTH_REFRESH_EXPIRY`    | Refresh token lifetime           | 30d     | Yes              |
-| `AUTH_API_KEY_MAX_AGE`   | Max API key validity             | 365d    | No               |
-| `AUTH_SESSION_CACHE_TTL` | Redis cache TTL for session data | 300s    | No               |
-| `AUTH_PROVIDER_URL`      | Clerk/Auth0 tenant URL           | —       | Yes              |
+| Variable                 | Purpose                                                                                                                                                  | Default | Required                                                             |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------- |
+| `JWT_SECRET`             | HS256 signing secret (code truth: `config.py` `jwt_secret`; `validate_settings()` refuses to boot when empty, shorter than 32 chars, or a known default) | —       | Yes (production, min 32 chars; generate with `openssl rand -hex 32`) |
+| `AUTH_JWT_EXPIRY`        | Access token lifetime                                                                                                                                    | 24h     | Yes                                                                  |
+| `AUTH_REFRESH_EXPIRY`    | Refresh token lifetime                                                                                                                                   | 30d     | Yes                                                                  |
+| `AUTH_API_KEY_MAX_AGE`   | Max API key validity                                                                                                                                     | 365d    | No                                                                   |
+| `AUTH_SESSION_CACHE_TTL` | Redis cache TTL for session data                                                                                                                         | 300s    | No                                                                   |
+| `AUTH_PROVIDER_URL`      | Clerk/Auth0 tenant URL                                                                                                                                   | —       | Yes                                                                  |
 
 ---
 
@@ -407,3 +407,6 @@ curl -X POST "https://auth.Vaeloom.ai/oauth/token" \
 - [Authorization.md](./Authorization.md)
 - [Security Architecture](../Security/Security-Architecture.md)
 - [`/docs/06-Vaeloom-Enterprise-Paper.md#191-authentication--access`](../../docs/06-Vaeloom-Enterprise-Paper.md#191-authentication--access)
+
+> _Last verified: 2026-09-15 — fixed `AUTH_JWT_SECRET` → `JWT_SECRET` (32-char
+> `validate_settings()` boot rule)._

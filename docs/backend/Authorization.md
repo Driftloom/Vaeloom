@@ -384,3 +384,6 @@ curl -X GET "https://api.Vaeloom.ai/v1/users/user_42/permissions" \
 - [Authentication.md](./Authentication.md)
 - [RBAC.md](./RBAC.md)
 - [`/docs/06-Vaeloom-Enterprise-Paper.md#193-permission-engine`](../../docs/06-Vaeloom-Enterprise-Paper.md#193-permission-engine)
+
+> _Last verified: 2026-09-15 — data-layer enforcement is DONE: RLS 42/42
+> (migrations 0010/0019/0020), fail-closed GUCs via `set_rls_session_vars`._

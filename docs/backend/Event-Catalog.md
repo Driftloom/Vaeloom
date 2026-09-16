@@ -1,18 +1,24 @@
 # Event Catalog
 
-> **Purpose:** Provide the authoritative catalog of every event in Vaeloom's event-driven system — name, schema, producer, consumers, version, and retention
-> **Status:** New
-> **Owner:** Architecture Team
-> **Version:** 1.0
-> **Last Updated:** 2026-07-16
-> **Dependencies:** [`../Architecture/Event-Architecture.md`](../Architecture/Event-Architecture.md), [`../Architecture/Event-Flow.md`](../Architecture/Event-Flow.md), [`Queue.md`](./Queue.md)
-> **Implementation Status:** 📁‹ Spec Only
+> **Purpose:** Provide the authoritative catalog of every event in Vaeloom's
+> event-driven system — name, schema, producer, consumers, version, and
+> retention **Status:** New **Owner:** Architecture Team **Version:** 1.0 **Last
+> Updated:** 2026-07-16 **Dependencies:**
+> [`../Architecture/Event-Architecture.md`](../Architecture/Event-Architecture.md),
+> [`../Architecture/Event-Flow.md`](../Architecture/Event-Flow.md),
+> [`Queue.md`](./Queue.md) **Implementation Status:** 📁‹ Spec Only
 
 ## Overview
 
-This is the single source of truth for every event that flows through Vaeloom's event bus. An event is a fact that something happened in the past — "document uploaded," "agent run completed," "tenant suspended." Events are immutable, named in past tense, and carry enough context for any consumer to react. This catalog lists every event type, its payload schema, who produces it, who consumes it, its current version, and how long it is retained.
+This is the single source of truth for every event that flows through Vaeloom's
+event bus. An event is a fact that something happened in the past — "document
+uploaded," "agent run completed," "tenant suspended." Events are immutable,
+named in past tense, and carry enough context for any consumer to react. This
+catalog lists every event type, its payload schema, who produces it, who
+consumes it, its current version, and how long it is retained.
 
-If an event is not in this catalog, it does not exist. Adding a new event requires a PR that updates this document.
+If an event is not in this catalog, it does not exist. Adding a new event
+requires a PR that updates this document.
 
 ## Goals
 
@@ -26,19 +32,22 @@ If an event is not in this catalog, it does not exist. Adding a new event requir
 
 ### In Scope
 
-- All event types across documents, memories, agents, auth, tenants, connectors, notifications, analytics, billing
+- All event types across documents, memories, agents, auth, tenants, connectors,
+  notifications, analytics, billing
 - Event naming convention and envelope format
 - Producer/consumer mapping
 - Versioning and retention
 
 ### Out of Scope
 
-- Event bus transport (see [`../Architecture/Event-Architecture.md`](../Architecture/Event-Architecture.md))
-- Event flow traces (see [`../Architecture/Event-Flow.md`](../Architecture/Event-Flow.md))
+- Event bus transport (see
+  [`../Architecture/Event-Architecture.md`](../Architecture/Event-Architecture.md))
+- Event flow traces (see
+  [`../Architecture/Event-Flow.md`](../Architecture/Event-Flow.md))
 
 ## Architecture
 
-```mermaid
+````mermaid
 graph LR
  classDef producer fill:#e3f2fd,stroke:#1565c0,color:#000,stroke-width:2px
  classDef event fill:#e8f5e9,stroke:#2e7d32,color:#000,stroke-width:1.5px
@@ -287,3 +296,6 @@ DLQ events are reviewed daily; ops can retry, drop, or edit-and-retry.
 - [`../Architecture/Event-Flow.md`](../Architecture/Event-Flow.md) — event flow traces
 - [`Queue.md`](./Queue.md) — queue architecture
 - [`../Security/Audit-Logs.md`](../Security/Audit-Logs.md) — audit event details
+
+> *Last verified: 2026-09-15 — conventions unchanged; event publish/subscribe via `/api/v1/events` (see API-Reference.md).*
+````

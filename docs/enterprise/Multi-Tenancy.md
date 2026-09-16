@@ -2,13 +2,25 @@
 
 > **Purpose:** Define Vaeloom's multi-tenant data architecture, tenant
 > lifecycle, isolation enforcement, and tenant-scoped resource management
-> **Status:** 🆕 New **Owner:** Architecture Team **Version:** 1.0 **Last
-> Updated:** 2026-07-16 **Dependencies:**
+> **Status:** ✅ Implemented 2026-08-22 **Owner:** Architecture Team
+> **Version:** 1.1 **Last Updated:** 2026-09-15 **Dependencies:**
 > [`Enterprise-Architecture.md`](./Enterprise-Architecture.md),
 > [`../Backend/RBAC.md`](../Backend/RBAC.md),
 > [`../Backend/ABAC.md`](../Backend/ABAC.md),
-> [`../Database/Schema.md`](../Database/Schema.md) **Implementation Status:** 📋
-> Spec Only
+> [`../Database/Schema.md`](../Database/Schema.md) **Implementation Status:** ✅
+> Implemented 2026-08-22 — RLS 42/42 via Alembic 0010/0019/0020; `TenantContext`
+>
+> - `set_rls_session_vars` (`apps/api/src/api/middleware/tenant.py:38`,
+>   `apps/api/src/api/database.py:136-168`); GUCs `app.tenant_id` /
+>   `app.workspace_id` / `app.user_id` fail-closed (missing GUC ⇒ zero rows)
+
+> **WS-D update 2026-09-15:** This document was Spec-Only as of 2026-07-16. It
+> is now Implemented. Caveat: the automated test tier runs SQLite where RLS is a
+> no-op (`set_rls_session_vars` returns early on non-PostgreSQL; migration 0020
+> notes "On SQLite this migration is a no-op"), so RLS enforcement is **unproven
+> at the test tier**. Follow-up: verify on PostgreSQL (live-PostgreSQL RLS test,
+> e.g. `tests/test_rls_live_pg.py`, plus staging `SET LOCAL` / GUC audit) before
+> claiming production-grade isolation.
 
 ## Overview
 
@@ -37,7 +49,7 @@ data to another. The model below makes the safe path the default path.
 
 - Define the tenant model and the isolation levels Vaeloom supports
 - Specify how tenant context is established, propagated, and verified on every
- request
+  request
 - Define the tenant lifecycle (provisioning, scaling, suspension, offboarding)
 - Establish verifiable isolation guarantees and the tests that enforce them
 - Document tenant-scoped resource limits, quotas, and rate limiting
@@ -48,7 +60,7 @@ data to another. The model below makes the safe path the default path.
 
 - Tenant data model and identity
 - Isolation models (database-per-tenant, row-level security, hybrid) at the
- implementation level
+  implementation level
 - Tenant context propagation across API, background jobs, and agents
 - Tenant lifecycle operations
 - Tenant quotas, limits, and rate limiting
@@ -57,12 +69,12 @@ data to another. The model below makes the safe path the default path.
 ### Out of Scope
 
 - SSO/SAML/OIDC federation — see
- [`Enterprise-Architecture.md`](./Enterprise-Architecture.md)
+  [`Enterprise-Architecture.md`](./Enterprise-Architecture.md)
 - Billing and metering — see [`Billing.md`](./Billing.md)
 - Organization/team structure within a tenant — see
- [`Organizations.md`](./Organizations.md)
+  [`Organizations.md`](./Organizations.md)
 - Compliance audit pipeline — see
- [`Enterprise-Architecture.md`](./Enterprise-Architecture.md)
+  [`Enterprise-Architecture.md`](./Enterprise-Architecture.md)
 
 ## Architecture
 
@@ -102,27 +114,37 @@ graph TD
 
 ## Components
 
-| Component | Responsibility | Technology | Scale Strategy |
-| ------------------ | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| API Gateway | Resolve `tenant_id` from verified JWT; reject requests with missing/invalid tenant claim | FastAPI dependency injection | Stateless; horizontal scale |
-| Tenant Middleware | Set `app.current_tenant_id` session var per request/connection | FastAPI middleware (**NOT MOUNTED** — code exists in `middleware/tenant.py` but not mounted in `main.py`) | Per-connection for DB-per-tenant; per-statement for RLS pool |
-| RLS Policies | Enforce `tenant_id = current_setting(...)` on every tenant-scoped table | PostgreSQL RLS | Indexed `(tenant_id, ...)` columns |
-| Tenant Registry | Source of truth for tenant existence, status, isolation model, limits | `tenants` table + cache | Read-through cache; invalidate on change |
-| Quota Service | Track per-tenant usage (storage, agent runs, seats) and enforce limits | Redis counters + Postgres | Redis for hot counters; nightly Postgres reconcile |
-| Isolation Verifier | Automated cross-tenant leak test suite | Test runner (pytest/vitest) | Runs in CI + nightly |
+| Component          | Responsibility                                                                                                                                                                                                                                                                                                             | Technology                                                   | Scale Strategy                                     |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | -------------------------------------------------- |
+| API Gateway        | Resolve `tenant_id` from verified JWT; reject requests with missing/invalid tenant claim                                                                                                                                                                                                                                   | FastAPI dependency injection                                 | Stateless; horizontal scale                        |
+| Tenant Middleware  | Set `app.tenant_id` / `app.workspace_id` / `app.user_id` session vars per request/connection via `TenantContext` + `set_rls_session_vars` (`SET LOCAL` / `set_config(..., true)`, fail-closed); mounted in `main.py:322` (`app.add_middleware(TenantMiddleware)`) — the "NOT MOUNTED" note below is stale as of 2026-08-22 | Per-connection for DB-per-tenant; per-statement for RLS pool |
+| RLS Policies       | Enforce `tenant_id = current_setting(...)` on every tenant-scoped table                                                                                                                                                                                                                                                    | PostgreSQL RLS                                               | Indexed `(tenant_id, ...)` columns                 |
+| Tenant Registry    | Source of truth for tenant existence, status, isolation model, limits                                                                                                                                                                                                                                                      | `tenants` table + cache                                      | Read-through cache; invalidate on change           |
+| Quota Service      | Track per-tenant usage (storage, agent runs, seats) and enforce limits                                                                                                                                                                                                                                                     | Redis counters + Postgres                                    | Redis for hot counters; nightly Postgres reconcile |
+| Isolation Verifier | Automated cross-tenant leak test suite                                                                                                                                                                                                                                                                                     | Test runner (pytest/vitest)                                  | Runs in CI + nightly                               |
 
 ## Isolation Models
 
 Vaeloom supports three isolation levels; the choice is per-tenant and recorded
 in `tenants.isolation_mode`:
 
-| Model | Mechanism | When to use | Operational cost |
+| Model                    | Mechanism                                                                | When to use                                                       | Operational cost |
 | ------------------------ | ------------------------------------------------------------------------ | ----------------------------------------------------------------- | ---------------- |
-| **Pool (RLS)** | Single shared database; PostgreSQL RLS filters every row by `tenant_id` | Default; SMB enterprises; most customers | Lowest |
-| **Silo (DB-per-tenant)** | Dedicated database per tenant; full physical isolation | Regulated customers (HIPAA, finance); data-residency requirements | Highest |
-| **Hybrid** | PII/sensitive tables in a per-tenant silo; the rest in a shared RLS pool | Customers needing tiered sensitivity | Medium |
+| **Pool (RLS)**           | Single shared database; PostgreSQL RLS filters every row by `tenant_id`  | Default; SMB enterprises; most customers                          | Lowest           |
+| **Silo (DB-per-tenant)** | Dedicated database per tenant; full physical isolation                   | Regulated customers (HIPAA, finance); data-residency requirements | Highest          |
+| **Hybrid**               | PII/sensitive tables in a per-tenant silo; the rest in a shared RLS pool | Customers needing tiered sensitivity                              | Medium           |
 
 ### Implementation: RLS (default)
+
+> **Implemented 2026-08-22:** RLS covers 42/42 tenant-scoped tables (34 via
+> Alembic 0010 + 3 via 0019 + 5 via 0020 — see `0020_rls_remaining_5.py:1-18`).
+> Enforcement uses `TenantContext` (`middleware/tenant.py:12-36`) +
+> `set_rls_session_vars` (`middleware/tenant.py:38-75`) with
+> `set_config('app.tenant_id' / 'app.workspace_id' / 'app.user_id', ..., true)`
+> (transaction-scoped `SET LOCAL`, fail-closed: missing GUC ⇒ zero rows).
+> `database.py:136-168` re-asserts the same GUCs per session (explicit
+> `tenant_id` wins, else resolved from `workspace_id` via
+> `app_tenant_for_workspace()`).
 
 ```sql
 -- Every tenant-scoped table carries tenant_id and enables RLS
@@ -140,7 +162,10 @@ CREATE INDEX CONCURRENTLY idx_documents_tenant_created
 ```python
 # FastAPI middleware sets the session variable once per request,
 # BEFORE handing control to any service / repository.
-# NOTE: This middleware exists in the codebase but is NOT MOUNTED in main.py.
+# NOTE (STALE as of 2026-08-22 — WS-D 2026-09-15): this middleware IS mounted
+# in production (`main.py:322 app.add_middleware(TenantMiddleware)`); the
+# "NOT MOUNTED" claim below is superseded. Canonical impl is `TenantContext` +
+# `set_rls_session_vars` with app.tenant_id / app.workspace_id / app.user_id.
 from starlette.middleware.base import BaseHTTPMiddleware
 
 class TenantContextMiddleware(BaseHTTPMiddleware):
@@ -211,13 +236,13 @@ stateDiagram-v2
 ### Provisioning steps
 
 1. Create `tenants` row with `isolation_mode`, `region`, `plan`,
- `status = provisioning`.
+   `status = provisioning`.
 2. If silo: provision database via Terraform, run migrations, record connection
- config in secrets manager.
+   config in secrets manager.
 3. If pool: no DDL needed; RLS already in place.
 4. Provision tenant admin user and seed default roles/quotas.
 5. Emit `tenant.provisioned` event
- ([`../Backend/Event-Catalog.md`](../Backend/Event-Catalog.md)).
+   ([`../Backend/Event-Catalog.md`](../Backend/Event-Catalog.md)).
 6. Flip `status = active`.
 
 ## Workflows
@@ -262,82 +287,82 @@ sequenceDiagram
 ## Data Flow
 
 1. **Ingestion**: Every tenant-owned resource is stamped with `tenant_id` at the
- controller boundary — never trusted from the client body.
+   controller boundary — never trusted from the client body.
 2. **Storage**: All tenant-scoped tables have `tenant_id` as the first column of
- their primary/compound index; RLS enforces filtering even if app code
- forgets.
+   their primary/compound index; RLS enforces filtering even if app code
+   forgets.
 3. **Retrieval**: Every read path goes through RLS; there is no "admin bypass"
- path that skips tenant filtering — admin tools operate via explicit, audited,
- per-tenant context switches.
+   path that skips tenant filtering — admin tools operate via explicit, audited,
+   per-tenant context switches.
 4. **Deletion**: Soft-delete per tenant; hard deletion only at archive-purge
- time and only if no legal hold.
+   time and only if no legal hold.
 5. **Export**: Tenant data export is itself a tenant-scoped operation; an export
- job inherits `tenant_id` and cannot read another tenant's data.
+   job inherits `tenant_id` and cannot read another tenant's data.
 
 ## APIs
 
-| Endpoint | Method | Purpose | Auth |
+| Endpoint                   | Method | Purpose                             | Auth           |
 | -------------------------- | ------ | ----------------------------------- | -------------- |
-| `/v1/tenants/:id` | GET | Tenant metadata (admin only) | Platform Admin |
-| `/v1/tenants` | POST | Provision a new tenant | Platform Admin |
-| `/v1/tenants/:id` | PATCH | Update plan, limits, status | Platform Admin |
-| `/v1/tenants/:id/suspend` | POST | Suspend tenant (read-only) | Platform Admin |
-| `/v1/tenants/:id/offboard` | POST | Begin offboarding + retention timer | Platform Admin |
+| `/v1/tenants/:id`          | GET    | Tenant metadata (admin only)        | Platform Admin |
+| `/v1/tenants`              | POST   | Provision a new tenant              | Platform Admin |
+| `/v1/tenants/:id`          | PATCH  | Update plan, limits, status         | Platform Admin |
+| `/v1/tenants/:id/suspend`  | POST   | Suspend tenant (read-only)          | Platform Admin |
+| `/v1/tenants/:id/offboard` | POST   | Begin offboarding + retention timer | Platform Admin |
 
 ## Database
 
-| Table | Purpose | Key Columns | Indexes |
+| Table             | Purpose           | Key Columns                                      | Indexes                                  |
 | ----------------- | ----------------- | ------------------------------------------------ | ---------------------------------------- |
-| `tenants` | Tenant registry | `id, name, isolation_mode, status, plan, region` | PK(id), status |
-| `tenant_quotas` | Per-tenant limits | `tenant_id, resource, limit, used` | (tenant_id, resource) |
-| `tenant_scoped_*` | All tenant data | `..., tenant_id, ...` | `(tenant_id, created_at)` on every table |
+| `tenants`         | Tenant registry   | `id, name, isolation_mode, status, plan, region` | PK(id), status                           |
+| `tenant_quotas`   | Per-tenant limits | `tenant_id, resource, limit, used`               | (tenant_id, resource)                    |
+| `tenant_scoped_*` | All tenant data   | `..., tenant_id, ...`                            | `(tenant_id, created_at)` on every table |
 
 ## Security
 
-| Concern | Mitigation | Verification |
+| Concern                                           | Mitigation                                                                                   | Verification                                                                  |
 | ------------------------------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Cross-tenant read via missing WHERE clause | PostgreSQL RLS enforces filtering at the DB, independent of app code | Nightly + CI cross-tenant leak test suite |
-| Session variable bleed between pooled connections | `SET LOCAL` inside explicit transactions; connection reset on release | Pool wrapper asserts variable is unset on checkout |
-| Background job operating on wrong tenant | Jobs always open a scoped transaction per tenant; `SET LOCAL` auto-clears at commit | Verifier hook fails job if a query runs outside a tenant-scoped txn |
-| Tenant claim forgery | `tenant_id` is a signed JWT claim, never a request body/header field | Gateway rejects any client-supplied tenant_id |
-| Admin tool bypassing isolation | No skip-RLS code path exists; admin context-switch is itself a tenant-scoped, audited action | Code search CI rule blocks `BYPASSRLS` / `SECURITY DEFINER` without exception |
+| Cross-tenant read via missing WHERE clause        | PostgreSQL RLS enforces filtering at the DB, independent of app code                         | Nightly + CI cross-tenant leak test suite                                     |
+| Session variable bleed between pooled connections | `SET LOCAL` inside explicit transactions; connection reset on release                        | Pool wrapper asserts variable is unset on checkout                            |
+| Background job operating on wrong tenant          | Jobs always open a scoped transaction per tenant; `SET LOCAL` auto-clears at commit          | Verifier hook fails job if a query runs outside a tenant-scoped txn           |
+| Tenant claim forgery                              | `tenant_id` is a signed JWT claim, never a request body/header field                         | Gateway rejects any client-supplied tenant_id                                 |
+| Admin tool bypassing isolation                    | No skip-RLS code path exists; admin context-switch is itself a tenant-scoped, audited action | Code search CI rule blocks `BYPASSRLS` / `SECURITY DEFINER` without exception |
 
 ## Performance
 
-| Concern | Budget | Measurement | Optimization |
+| Concern                            | Budget                         | Measurement              | Optimization                                                   |
 | ---------------------------------- | ------------------------------ | ------------------------ | -------------------------------------------------------------- |
-| RLS predicate cost | <1ms per query | Query timing percentiles | Composite index on `(tenant_id, ...)` for every access pattern |
-| Tenant existence check per request | <5ms (cached) | Middleware timing | Read-through cache; invalidate on tenant change event |
-| Quota check per write | <3ms | Quota service latency | Redis counters; nightly Postgres reconciliation |
-| Silo connection-pool memory | Linear in tenant count, capped | Pool registry size | Idle pool eviction; shared infra for cold tenants |
+| RLS predicate cost                 | <1ms per query                 | Query timing percentiles | Composite index on `(tenant_id, ...)` for every access pattern |
+| Tenant existence check per request | <5ms (cached)                  | Middleware timing        | Read-through cache; invalidate on tenant change event          |
+| Quota check per write              | <3ms                           | Quota service latency    | Redis counters; nightly Postgres reconciliation                |
+| Silo connection-pool memory        | Linear in tenant count, capped | Pool registry size       | Idle pool eviction; shared infra for cold tenants              |
 
 ## Scalability
 
-| Dimension | Current Limit | 10x Strategy | 100x Strategy |
+| Dimension               | Current Limit           | 10x Strategy                                            | 100x Strategy                                |
 | ----------------------- | ----------------------- | ------------------------------------------------------- | -------------------------------------------- |
-| Tenants (pool mode) | ~5,000 on shared DB | Read replicas + connection pooling (PgBouncer txn mode) | Shard by tenant_id hash; routing layer |
-| Tenants (silo mode) | ~500 (ops cost bound) | Automated DB provisioning + connection registry cap | Pool-of-silos; cold tenants archived to pool |
-| Rows per tenant | ~10M | Partitioning by created_at within tenant | Archival of cold rows to object storage |
-| Requests/sec per tenant | Tenant-level rate limit | Token-bucket in Redis per tenant | Distributed limiter; per-region buckets |
+| Tenants (pool mode)     | ~5,000 on shared DB     | Read replicas + connection pooling (PgBouncer txn mode) | Shard by tenant_id hash; routing layer       |
+| Tenants (silo mode)     | ~500 (ops cost bound)   | Automated DB provisioning + connection registry cap     | Pool-of-silos; cold tenants archived to pool |
+| Rows per tenant         | ~10M                    | Partitioning by created_at within tenant                | Archival of cold rows to object storage      |
+| Requests/sec per tenant | Tenant-level rate limit | Token-bucket in Redis per tenant                        | Distributed limiter; per-region buckets      |
 
 ## Error Handling
 
-| Error Scenario | Detection | Mitigation | Recovery |
+| Error Scenario                      | Detection                                          | Mitigation                                             | Recovery                                                |
 | ----------------------------------- | -------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------- |
-| Tenant not found / status != active | Middleware lookup | Return 401/403; do not leak existence | Admin reactivates tenant |
-| Session variable not set (pool bug) | Verifier: any query with NULL tenant context fails | Connection wrapper sets default that matches zero rows | Pool eviction + alert |
-| Quota exceeded | Quota service check | 402/429 with Retry-After | Plan upgrade or usage cleanup |
-| Cross-tenant leak detected | Verifier in CI/nightly | Page on-call; freeze deploy | Root-cause; add regression test; rotate any leaked data |
+| Tenant not found / status != active | Middleware lookup                                  | Return 401/403; do not leak existence                  | Admin reactivates tenant                                |
+| Session variable not set (pool bug) | Verifier: any query with NULL tenant context fails | Connection wrapper sets default that matches zero rows | Pool eviction + alert                                   |
+| Quota exceeded                      | Quota service check                                | 402/429 with Retry-After                               | Plan upgrade or usage cleanup                           |
+| Cross-tenant leak detected          | Verifier in CI/nightly                             | Page on-call; freeze deploy                            | Root-cause; add regression test; rotate any leaked data |
 
 ## Monitoring
 
-| Metric | Alert Threshold | Severity | Dashboard |
+| Metric                                                               | Alert Threshold            | Severity | Dashboard |
 | -------------------------------------------------------------------- | -------------------------- | -------- | --------- |
-| `tenant_query_tenant_missing_total` (queries with no tenant context) | >0 | P1 | Isolation |
-| `cross_tenant_leak_test_failures` | >0 | P1 | Isolation |
-| `tenant_quota_rejections{resource}` | Sustained spike per tenant | P3 | Quotas |
-| `tenant_provisioning_duration_seconds` | p99 > 120s | P3 | Lifecycle |
-| `suspended_tenants_count` | Any unexpected | P2 | Lifecycle |
+| `tenant_query_tenant_missing_total` (queries with no tenant context) | >0                         | P1       | Isolation |
+| `cross_tenant_leak_test_failures`                                    | >0                         | P1       | Isolation |
+| `tenant_quota_rejections{resource}`                                  | Sustained spike per tenant | P3       | Quotas    |
+| `tenant_provisioning_duration_seconds`                               | p99 > 120s                 | P3       | Lifecycle |
+| `suspended_tenants_count`                                            | Any unexpected             | P2       | Lifecycle |
 
 ## Examples
 
@@ -366,58 +391,59 @@ abstract class TenantScopedRepository<T> {
 
 ## Best Practices
 
-| # | Practice | Rationale |
+| #   | Practice                                                        | Rationale                                                                           |
 | --- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| 1 | Make RLS the default; require explicit justification for silo | RLS gives sufficient isolation for ~95% of customers at a fraction of the ops cost |
-| 2 | Never accept `tenant_id` from the client body | The tenant claim must come only from the verified JWT |
-| 3 | Use `SET LOCAL`, not `SET`, for tenant context | `SET LOCAL` is scoped to the transaction and cannot bleed across pooled connections |
-| 4 | Add a cross-tenant leak test for every new tenant-scoped table | Isolation that isn't continuously tested will silently decay |
-| 5 | Cap silo connection pools and evict idle ones | Unbounded per-tenant pools exhaust database connections at scale |
-| 6 | Treat admin "view as tenant" as an audited tenant-scoped action | Preserves the audit trail and prevents unscoped admin reads |
+| 1   | Make RLS the default; require explicit justification for silo   | RLS gives sufficient isolation for ~95% of customers at a fraction of the ops cost  |
+| 2   | Never accept `tenant_id` from the client body                   | The tenant claim must come only from the verified JWT                               |
+| 3   | Use `SET LOCAL`, not `SET`, for tenant context                  | `SET LOCAL` is scoped to the transaction and cannot bleed across pooled connections |
+| 4   | Add a cross-tenant leak test for every new tenant-scoped table  | Isolation that isn't continuously tested will silently decay                        |
+| 5   | Cap silo connection pools and evict idle ones                   | Unbounded per-tenant pools exhaust database connections at scale                    |
+| 6   | Treat admin "view as tenant" as an audited tenant-scoped action | Preserves the audit trail and prevents unscoped admin reads                         |
 
 ## Common Mistakes
 
-| Mistake | Consequence | Fix |
+| Mistake                                                   | Consequence                                                 | Fix                                                       |
 | --------------------------------------------------------- | ----------------------------------------------------------- | --------------------------------------------------------- |
-| Forgetting `FORCE ROW LEVEL SECURITY` | Table owner bypasses RLS; app bugs leak data | Always use `FORCE`; CI rule blocks tables without it |
-| Setting tenant context with `SET` (not `SET LOCAL`) | Context leaks to next request reusing the pooled connection | Use `SET LOCAL` inside an explicit transaction |
-| Querying the `tenants` table without caching | Per-request DB hit for tenant existence at high QPS | Read-through cache invalidated by `tenant.updated` events |
-| Sharing a single Redis quota key namespace across tenants | One tenant's counter collides with another's | Namespaced keys: `quota:{tenant_id}:{resource}` |
+| Forgetting `FORCE ROW LEVEL SECURITY`                     | Table owner bypasses RLS; app bugs leak data                | Always use `FORCE`; CI rule blocks tables without it      |
+| Setting tenant context with `SET` (not `SET LOCAL`)       | Context leaks to next request reusing the pooled connection | Use `SET LOCAL` inside an explicit transaction            |
+| Querying the `tenants` table without caching              | Per-request DB hit for tenant existence at high QPS         | Read-through cache invalidated by `tenant.updated` events |
+| Sharing a single Redis quota key namespace across tenants | One tenant's counter collides with another's                | Namespaced keys: `quota:{tenant_id}:{resource}`           |
 
 ## Risks
 
-| Risk | Likelihood | Impact | Mitigation |
+| Risk                                    | Likelihood | Impact                   | Mitigation                                                      |
 | --------------------------------------- | ---------- | ------------------------ | --------------------------------------------------------------- |
-| RLS policy drift as schema evolves | Medium | High (cross-tenant leak) | CI gate: any tenant-scoped table without RLS fails the build |
-| Silo ops cost grows faster than revenue | Medium | Medium | Migrate cold/quiet silo tenants to pool mode via archive/replay |
-| Quota check becomes a write hot-spot | Low | Medium | Redis counters with periodic Postgres reconcile; cache limits |
+| RLS policy drift as schema evolves      | Medium     | High (cross-tenant leak) | CI gate: any tenant-scoped table without RLS fails the build    |
+| Silo ops cost grows faster than revenue | Medium     | Medium                   | Migrate cold/quiet silo tenants to pool mode via archive/replay |
+| Quota check becomes a write hot-spot    | Low        | Medium                   | Redis counters with periodic Postgres reconcile; cache limits   |
 
 ## Limitations
 
-| Limitation | Impact | Workaround | Future Resolution |
-| ---------------------------------------------- | ---------------------------------------------- | ------------------------------------------------ | ------------------------------------------------ |
-| Cross-tenant analytics require an explicit ETL | Platform reporting needs a separate warehouse | Nightly anonymized export to analytics warehouse | Tenant-aware data-mart with differential privacy |
-| Silo-to-pool migration is offline | Customer downtime during migration | Schedule in maintenance window | Online dual-write migration tool |
-| No cross-tenant search by design | Global search is impossible (correct behavior) | Per-tenant search only | Intentional; not a gap |
+| Limitation                                     | Impact                                                                                                            | Workaround                                                                 | Future Resolution                                                                                                                                                      |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Test tier runs SQLite where RLS is a no-op     | RLS enforcement unproven by unit tests (SQLite skips `set_rls_session_vars`; migration 0020 is a no-op on SQLite) | Live-PostgreSQL RLS test (`tests/test_rls_live_pg.py`) + staging GUC audit | **Postgres follow-up (required):** run RLS suite against PostgreSQL in CI/staging; assert `SET LOCAL` per txn + fail-closed on missing GUC before prod isolation claim |
+| Cross-tenant analytics require an explicit ETL | Platform reporting needs a separate warehouse                                                                     | Nightly anonymized export to analytics warehouse                           | Tenant-aware data-mart with differential privacy                                                                                                                       |
+| Silo-to-pool migration is offline              | Customer downtime during migration                                                                                | Schedule in maintenance window                                             | Online dual-write migration tool                                                                                                                                       |
+| No cross-tenant search by design               | Global search is impossible (correct behavior)                                                                    | Per-tenant search only                                                     | Intentional; not a gap                                                                                                                                                 |
 
 ## Future Improvements
 
-| Improvement | Priority | Complexity | Timeline |
+| Improvement                                      | Priority | Complexity | Timeline |
 | ------------------------------------------------ | -------- | ---------- | -------- |
-| Automated silo→pool migration tool | High | High | Q2 2027 |
-| Per-tenant encryption keys with auto-rotation | High | Medium | Q1 2027 |
-| Tenant-aware cost attribution dashboard | Medium | Medium | Q1 2027 |
-| Self-service tenant provisioning via marketplace | Low | High | Q3 2027 |
+| Automated silo→pool migration tool               | High     | High       | Q2 2027  |
+| Per-tenant encryption keys with auto-rotation    | High     | Medium     | Q1 2027  |
+| Tenant-aware cost attribution dashboard          | Medium   | Medium     | Q1 2027  |
+| Self-service tenant provisioning via marketplace | Low      | High       | Q3 2027  |
 
 ## Related Documents
 
 - [`Enterprise-Architecture.md`](./Enterprise-Architecture.md) — broader
- enterprise architecture (SSO, audit, compliance)
+  enterprise architecture (SSO, audit, compliance)
 - [`Organizations.md`](./Organizations.md) — team/department structure within a
- tenant
+  tenant
 - [`Billing.md`](./Billing.md) — tenant billing and metering
 - [`../Backend/RBAC.md`](../Backend/RBAC.md) ·
- [`../Backend/ABAC.md`](../Backend/ABAC.md) — authorization models
+  [`../Backend/ABAC.md`](../Backend/ABAC.md) — authorization models
 - [`../Database/Schema.md`](../Database/Schema.md) ·
- [`../Database/Data-Dictionary.md`](../Database/Data-Dictionary.md) — schema
- and dictionary
+  [`../Database/Data-Dictionary.md`](../Database/Data-Dictionary.md) — schema
+  and dictionary
