@@ -61,6 +61,8 @@ ehthumbs.db
 ehthumbs_vista.db
 [Dd]esktop.ini
 $RECYCLE.BIN/
+.Spotlight-V100
+.Trashes
 
 # Environment and Secrets
 .env
@@ -74,6 +76,8 @@ $RECYCLE.BIN/
 .env.production.local
 .env.test
 .env.test.local
+.env*.backup
+.env.vault
 infra/kubernetes/secrets/*.yaml
 *.pem
 *.key
@@ -93,6 +97,8 @@ yarn-error.log*
 coverage/
 .hypothesis/
 junit.xml
+lcov.info
+*.lcov
 *.prof
 *.lprof
 
