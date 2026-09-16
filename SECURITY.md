@@ -4,10 +4,22 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.x     | :white_check_mark: |
+| 0.2.0   | :white_check_mark: |
+| < 0.2.0 | :x:                |
 
-Only the latest minor release of the current major version receives security patches.
-Older versions are not supported and users are strongly advised to upgrade.
+Only the latest minor release (`0.2.0`) receives security patches. Older
+versions are not supported and users are strongly advised to upgrade.
+
+## Implemented Controls (0.2.0)
+
+- **Multi-tenancy:** 42/42 Row-Level Security policies, fail-closed (tenant GUCs
+  always SET via `TenantContext` + `set_rls_session_vars`).
+- **CSRF:** Redis-backed CSRF protection; auth routes exempt via
+  `SKIP_PREFIXES`, `/csrf-token` in `PUBLIC_PATHS`.
+- **Network:** IP-allowlist middleware always mounted (no-op when empty),
+  hardened CORS (restricted origins/methods/headers), security headers.
+- **Auth:** JWT validation fails fast on default secret (32+ chars required);
+  API-key rotation, GDPR coverage, data retention enforced.
 
 ## Reporting a Vulnerability
 
@@ -16,7 +28,8 @@ security vulnerability, please report it to us as described below.
 
 **Do not report security vulnerabilities through public GitHub issues.**
 
-Instead, please send an email to **[security@vaeloom.dev](mailto:security@vaeloom.dev)**.
+Instead, please send an email to
+**[security@vaeloom.dev](mailto:security@vaeloom.dev)**.
 
 You should receive an acknowledgement within **48 hours**. If for some reason
 you do not, please follow up via email to ensure we received your message.
@@ -46,9 +59,10 @@ You may encrypt sensitive information using the PGP key above.
 
 ### Dependency Scanning
 
-All dependencies are scanned automatically via GitHub Dependabot and Snyk on
-every commit. Pull requests introducing vulnerable dependencies are blocked
-from merging.
+All dependencies are scanned automatically via GitHub Dependabot on every
+commit. Pull requests introducing vulnerable dependencies are blocked from
+merging. Snyk integration is **planned** (not yet active) — Dependabot is
+currently the only active scanner.
 
 ### Static Application Security Testing (SAST)
 
@@ -89,8 +103,8 @@ Vaeloom operates a **paid bug bounty program** for verified vulnerabilities.
 
 ### Rewards
 
-| Severity | Reward        |
-| -------- | ------------- |
+| Severity | Reward         |
+| -------- | -------------- |
 | Critical | $5,000–$10,000 |
 | High     | $2,000–$5,000  |
 | Medium   | $500–$2,000    |
@@ -102,8 +116,8 @@ sole discretion of the Vaeloom security team.
 
 ## Disclosure Policy
 
-- Reporters are expected to allow a **90-day** disclosure window from the date
-  a fix is released before making any information public.
+- Reporters are expected to allow a **90-day** disclosure window from the date a
+  fix is released before making any information public.
 - Vaeloom will release a security advisory on GitHub and may assign a CVE for
   confirmed vulnerabilities.
 - Reporters will be credited in the advisory unless they request anonymity.

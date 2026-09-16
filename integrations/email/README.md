@@ -1,5 +1,10 @@
 # @vaeloom/integration-email
 
+> **DEPRECATED per ADR-037 (2026-08-27):** this TS package is orphaned — do not
+> import or extend it. Live integration code is `apps/api/src/api/clients/` with
+> tools bridged via MCP (`docs/mcp/servers/seed-configs.md`). See
+> `integrations/DEPRECATED.md`.
+
 Email integration for Vaeloom. Connects via IMAP (read) and SMTP (send),
 fetches/searches mailboxes, watches a mailbox with IMAP IDLE, and syncs emails
 into Vaeloom memories. Email is polling/IDLE based — there is no inbound
@@ -13,15 +18,17 @@ pnpm add @vaeloom/integration-email
 
 ## Setup
 
-Use an app password (not your account password) for `password`. Enable IMAP
-and SMTP access in your mail provider.
+Use an app password (not your account password) for `password`. Enable IMAP and
+SMTP access in your mail provider.
 
 ## Usage
 
 ```ts
 import { EmailIntegration, parseEmailConfig } from '@vaeloom/integration-email';
 
-const email = new EmailIntegration({ masterKey: process.env.VAELOOM_MASTER_KEY! });
+const email = new EmailIntegration({
+  masterKey: process.env.VAELOOM_MASTER_KEY!,
+});
 
 const config = parseEmailConfig({
   imapHost: 'imap.gmail.com',
@@ -32,9 +39,19 @@ const config = parseEmailConfig({
 
 const connection = await email.connect({ provider: 'email', settings: config });
 
-await email.sendEmail(connection.connectionId, 'friend@example.com', 'Hello', 'Body text');
+await email.sendEmail(
+  connection.connectionId,
+  'friend@example.com',
+  'Hello',
+  'Body text',
+);
 
-const mails = await email.fetchEmails(connection.connectionId, 'INBOX', new Date('2024-01-01'), 25);
+const mails = await email.fetchEmails(
+  connection.connectionId,
+  'INBOX',
+  new Date('2024-01-01'),
+  25,
+);
 const found = await email.searchEmails(connection.connectionId, 'invoice');
 
 // Live watch with IDLE

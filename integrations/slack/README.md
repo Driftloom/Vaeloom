@@ -1,5 +1,10 @@
 # @vaeloom/integration-slack
 
+> **DEPRECATED per ADR-037 (2026-08-27):** this TS package is orphaned — do not
+> import or extend it. Live integration code is `apps/api/src/api/clients/` with
+> tools bridged via MCP (`docs/mcp/servers/seed-configs.md`). See
+> `integrations/DEPRECATED.md`.
+
 Slack integration for Vaeloom. Provides messaging, channel listing, OAuth2
 authentication, signed-webhook verification and memory synchronization.
 
@@ -21,7 +26,9 @@ pnpm add @vaeloom/integration-slack
 ```ts
 import { SlackIntegration, parseSlackConfig } from '@vaeloom/integration-slack';
 
-const slack = new SlackIntegration({ masterKey: process.env.VAELOOM_MASTER_KEY! });
+const slack = new SlackIntegration({
+  masterKey: process.env.VAELOOM_MASTER_KEY!,
+});
 
 const config = parseSlackConfig({
   clientId: process.env.SLACK_CLIENT_ID!,
@@ -34,16 +41,32 @@ const config = parseSlackConfig({
 const connection = await slack.connect({ provider: 'slack', settings: config });
 
 // Messaging
-await slack.sendMessage(connection.connectionId, '#general', 'Hello from Vaeloom');
+await slack.sendMessage(
+  connection.connectionId,
+  '#general',
+  'Hello from Vaeloom',
+);
 await slack.sendDirectMessage(connection.connectionId, 'U123', 'Hi there');
-await slack.postEphemeral(connection.connectionId, 'C123', 'U123', 'Only you see this');
+await slack.postEphemeral(
+  connection.connectionId,
+  'C123',
+  'U123',
+  'Only you see this',
+);
 
 // Channels
 const channels = await slack.listChannels(connection.connectionId);
-const history = await slack.getChannelHistory(connection.connectionId, 'C123', 50);
+const history = await slack.getChannelHistory(
+  connection.connectionId,
+  'C123',
+  50,
+);
 
 // OAuth flow
-const authClient = slack.buildAuthClient({ provider: 'slack', settings: config });
+const authClient = slack.buildAuthClient({
+  provider: 'slack',
+  settings: config,
+});
 const authorizeUrl = authClient.getAuthorizeUrl('state-xyz');
 // ... redirect user, then on callback:
 const token = await authClient.exchangeCodeForToken(code);
@@ -63,6 +86,6 @@ const syncResult = await slack.sync(connection.connectionId);
 
 ## Security
 
-OAuth tokens are encrypted at rest with AES-256-GCM using
-`VAELOOM_MASTER_KEY`. Webhook requests are verified against the Slack
-signing secret with a constant-time comparison and a 5-minute replay window.
+OAuth tokens are encrypted at rest with AES-256-GCM using `VAELOOM_MASTER_KEY`.
+Webhook requests are verified against the Slack signing secret with a
+constant-time comparison and a 5-minute replay window.

@@ -2,7 +2,24 @@
 
 This guide explains how to create, test, and publish plugins for Vaeloom.
 
-## Plugin Architecture
+## Which runtime to use (read first)
+
+Vaeloom has **two** plugin runtimes. They are not interchangeable:
+
+|             | Python sandbox plugins (THIS document)                                                                                       | TS `official/` + `community/` packages                                                                          |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Location    | Registered via `POST /api/v1/plugins` with inline `code`                                                                     | `plugins/official/*`, `plugins/community/*` (e.g. translator, summarizer, sentiment, word-count, tag-generator) |
+| Interface   | `run(input: dict, context: dict) -> dict`                                                                                    | TS module (`src/index.ts` per package)                                                                          |
+| Execution   | Server-side, sandboxed subprocess (no network, no FS)                                                                        | Editor/extension-side TS packages                                                                               |
+| Use when    | You need a **server-executed** data transform (word count, sentiment, summarise, translate) callable through the plugins API | You are extending the **editor/client** experience or contributing a reusable TS package                        |
+| Publish via | Plugins API (`POST /api/v1/plugins`, lifecycle `REGISTERED > ACTIVE`)                                                        | Package PR under `plugins/official/` or `plugins/community/`                                                    |
+
+Rule of thumb: if the plugin must run on user data inside the backend trust
+boundary, write a Python `run(input, context)` plugin below. If it is UI-side or
+editor-side logic, use the TS packages instead. Do not wrap one runtime in the
+other.
+
+## Plugin Architecture (Python sandbox — the live server path)
 
 A Vaeloom plugin is a self-contained Python module that:
 

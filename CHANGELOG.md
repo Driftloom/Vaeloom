@@ -10,7 +10,27 @@ and this project adheres to
 
 ### Added
 
-- (New features will appear here)
+- **API:** OpenAPI spec regenerated 2026-09-15 via `scripts/gen_openapi.py` —
+  162 paths / 203 ops (was 110 on 2026-08-29)
+- **Docs:** ADR-040 (tenant cells control plane) through ADR-044 (zero-trust P1
+  hardening) — 44 ADRs total (was 39)
+- **Docs:** Root hygiene + governance pass — new root `README.md`,
+  `docs/GLOSSARY.md`, `docs/SUPPORT.md`, `docs/ROADMAP.md`,
+  `docs/ARCHITECTURE.md`; historical `00-*` reports bannered, duplicate
+  `05-vaeloom-mvp-spec.md` / `vaeloom-mvp-e2e.md` marked superseded
+- **Auth/Security:** 42/42 Row-Level Security policies confirmed fail-closed (34
+  via 0010 + 3 via 0019 + 5 via 0020); CSRF Redis backend + IP-allowlist
+  middleware mounted
+- **AI/Agent System:** Resume document pipeline (5 templates, PDF/DOCX compile,
+  semantic ATS tools), MCP native integration (`mcp__<Server>__<Tool>` bridge),
+  browser scraping tools (SSRF-guarded, per-workspace quota)
+
+### Fixed
+
+- Corrected stale doc stats (110 paths → 162, 39 ADRs → 44) in `AGENTS.md`,
+  `docs/README.md`, `docs/DOCUMENTATION-MAP.md`, `docs/API_REFERENCE.md`
+- Fixed case-sensitive doc links (`USAGE-GUIDE.md` → `usage-guide.md`,
+  `TEMPLATE.md` → `template.md`); removed stale `(to add)` diagram slots
 
 ## [0.2.0] - 2026-08-22
 
@@ -77,10 +97,11 @@ and this project adheres to
 - **Monitoring:** 9 alert rules, SLO 99.9%, synthetic health probes
 - **Operations:** Incident response runbooks (3 runbooks)
 - **Operations:** Rollback strategy, disaster recovery plan
-- **Documentation:** 39 Architecture Decision Records (ADR-001 through ADR-039)
-- **Documentation:** 793+ documentation files across 22 categories
+- **Documentation:** 44 Architecture Decision Records (ADR-001 through ADR-044)
+- **Documentation:** ~1033 documentation files across 22 categories
 - **Documentation:** 66 phase prompts (3 tracks x 22 phases)
-- **Documentation:** OpenAPI spec with 110 paths (7199 lines)
+- **Documentation:** OpenAPI spec with 162 paths / 203 ops (v0.2.0, regen
+  2026-09-15)
 - **Testing:** 2731 pytest tests (94% coverage)
 - **Testing:** 34 Jest tests, 60 E2E tests (24 gating + 36 visual)
 - **Testing:** Smoke test infrastructure

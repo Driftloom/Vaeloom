@@ -1,8 +1,13 @@
 # @vaeloom/integration-notion
 
-Notion integration for Vaeloom. Lists and queries databases, reads/writes
-pages, and syncs Notion content into Vaeloom memories. Notion has no native
-webhooks, so synchronization is poll-based.
+> **DEPRECATED per ADR-037 (2026-08-27):** this TS package is orphaned — do not
+> import or extend it. Live integration code is `apps/api/src/api/clients/` with
+> tools bridged via MCP (`docs/mcp/servers/seed-configs.md`). See
+> `integrations/DEPRECATED.md`.
+
+Notion integration for Vaeloom. Lists and queries databases, reads/writes pages,
+and syncs Notion content into Vaeloom memories. Notion has no native webhooks,
+so synchronization is poll-based.
 
 ## Install
 
@@ -14,15 +19,20 @@ pnpm add @vaeloom/integration-notion
 
 1. Create an internal integration at <https://www.notion.com/my-integrations>.
 2. Share the target databases/pages with the integration.
-3. Use the **Internal Integration Token** as `botToken`, or implement the
-   OAuth flow with `clientId`/`clientSecret`.
+3. Use the **Internal Integration Token** as `botToken`, or implement the OAuth
+   flow with `clientId`/`clientSecret`.
 
 ## Usage
 
 ```ts
-import { NotionIntegration, parseNotionConfig } from '@vaeloom/integration-notion';
+import {
+  NotionIntegration,
+  parseNotionConfig,
+} from '@vaeloom/integration-notion';
 
-const notion = new NotionIntegration({ masterKey: process.env.VAELOOM_MASTER_KEY! });
+const notion = new NotionIntegration({
+  masterKey: process.env.VAELOOM_MASTER_KEY!,
+});
 
 const config = parseNotionConfig({
   clientId: process.env.NOTION_CLIENT_ID!,
@@ -31,7 +41,10 @@ const config = parseNotionConfig({
   botToken: process.env.NOTION_BOT_TOKEN!,
 });
 
-const connection = await notion.connect({ provider: 'notion', settings: config });
+const connection = await notion.connect({
+  provider: 'notion',
+  settings: config,
+});
 
 const databases = await notion.listDatabases(connection.connectionId);
 const db = await notion.getDatabase(connection.connectionId, databases[0].id);

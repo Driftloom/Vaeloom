@@ -24,7 +24,10 @@ from everyone. By participating in this project, you agree to abide by our
 - **pnpm** >= 9.0.0
 - **Docker** & **Docker Compose** — required for local services (PostgreSQL,
   Redis, etc.)
-- **Python** >= 3.12 — required for the Python backend (FastAPI)
+- **Python** >= 3.12 — required for the Python backend (FastAPI). Use
+  [`uv`](https://docs.astral.sh/uv/) to manage the venv and run tests — never
+  bare `pip`/`venv`/`python` (repo pins 3.12 via `uv python pin 3.12`; `.venv`
+  is `uv`-managed).
 - **Nx CLI** — installed via pnpm (`pnpm add -g nx` or use `pnpm nx`)
 
 ## Development Setup
@@ -49,6 +52,19 @@ from everyone. By participating in this project, you agree to abide by our
    # Edit .env with your local configuration
    ```
 
+   > WARNING: Pydantic does **not** read `.env` (`model_config` lacks
+   > `env_file`). For local API runs and tests, export vars in your shell using
+   > the **double-underscore** name `DATABASE__URL` (single-underscore
+   > `DATABASE_URL` is ignored by the app config):
+   >
+   > ```powershell
+   > $env:DATABASE__URL="sqlite+aiosqlite:///./dev.db"
+   > ```
+   >
+   > `JWT_SECRET` must be **32+ characters** — `validate_settings()` fails fast
+   > on the default/placeholder secret. Generate one with
+   > `openssl rand -hex 32`.
+
 4. **Start infrastructure services**
 
    ```bash
@@ -64,8 +80,12 @@ from everyone. By participating in this project, you agree to abide by our
 6. **Run the development environment**
 
    ```bash
-   pnpm dev
+   pnpm dev:web
    ```
+
+   > WARNING: NEVER run bare `pnpm dev` — it spawns `nx run-many` across all 25
+   > packages (most have no `dev` script) and hangs forever. Frontend only via
+   > `pnpm dev:web` (or `make dev-web`, fastest); API only via `pnpm dev:be`.
 
 7. **Verify the setup**
 
@@ -259,8 +279,8 @@ fix(auth): handle token refresh race condition
 Run tests:
 
 ```bash
-# Backend tests
-cd apps/api && python -m pytest tests/ -q
+# Backend tests (uv-managed venv + Python 3.12 — never bare pip/venv/python)
+cd apps/api && uv run --project apps/api python -m pytest -q
 
 # Frontend tests
 cd apps/web && pnpm test

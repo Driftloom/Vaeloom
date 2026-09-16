@@ -1,6 +1,7 @@
 # Vaeloom Connectors
 
-Unified connector architecture for integrating with external data sources and AI services.
+Unified connector architecture for integrating with external data sources and AI
+services.
 
 ## Architecture
 
@@ -19,15 +20,15 @@ Each connector follows the same lifecycle:
 
 ## Connector Comparison
 
-| Feature            | REST          | GraphQL       | MCP           |
-|--------------------|---------------|---------------|---------------|
-| Transport          | HTTP/HTTPS    | HTTP/HTTPS    | stdio / SSE   |
-| Auth Strategies    | API Key, OAuth2, Basic | Headers passthrough | N/A (transport-level) |
-| Pagination         | Offset, Cursor, Page | N/A       | N/A           |
-| Rate Limiting      | Token bucket  | N/A           | N/A           |
-| Retry              | Exponential backoff | N/A     | N/A           |
-| Introspection      | N/A           | Full schema   | tools/list, resources/list |
-| Query Building     | Manual        | Builder + raw | N/A           |
+| Feature         | REST                   | GraphQL             | MCP                        |
+| --------------- | ---------------------- | ------------------- | -------------------------- |
+| Transport       | HTTP/HTTPS             | HTTP/HTTPS          | stdio / streamable-http    |
+| Auth Strategies | API Key, OAuth2, Basic | Headers passthrough | N/A (transport-level)      |
+| Pagination      | Offset, Cursor, Page   | N/A                 | N/A                        |
+| Rate Limiting   | Token bucket           | N/A                 | N/A                        |
+| Retry           | Exponential backoff    | N/A                 | N/A                        |
+| Introspection   | N/A                    | Full schema         | tools/list, resources/list |
+| Query Building  | Manual                 | Builder + raw       | N/A                        |
 
 ## Usage Guide
 
@@ -42,7 +43,8 @@ await connector.disconnect();
 
 ### Error Handling
 
-All connectors throw typed errors with descriptive messages. Wrap calls in try/catch:
+All connectors throw typed errors with descriptive messages. Wrap calls in
+try/catch:
 
 ```typescript
 try {

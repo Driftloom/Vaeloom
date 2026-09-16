@@ -1,5 +1,10 @@
 # @vaeloom/integration-google-drive
 
+> **DEPRECATED per ADR-037 (2026-08-27):** this TS package is orphaned — do not
+> import or extend it. Live integration code is `apps/api/src/api/clients/` with
+> tools bridged via MCP (`docs/mcp/servers/seed-configs.md`). See
+> `integrations/DEPRECATED.md`.
+
 Google Drive integration for Vaeloom. Lists, downloads, uploads, and searches
 files, registers push-notification channels, and ingests files as Vaeloom
 memories.
@@ -20,9 +25,14 @@ pnpm add @vaeloom/integration-google-drive
 ## Usage
 
 ```ts
-import { GoogleDriveIntegration, parseGoogleDriveConfig } from '@vaeloom/integration-google-drive';
+import {
+  GoogleDriveIntegration,
+  parseGoogleDriveConfig,
+} from '@vaeloom/integration-google-drive';
 
-const drive = new GoogleDriveIntegration({ masterKey: process.env.VAELOOM_MASTER_KEY! });
+const drive = new GoogleDriveIntegration({
+  masterKey: process.env.VAELOOM_MASTER_KEY!,
+});
 
 const config = parseGoogleDriveConfig({
   clientId: process.env.GDRIVE_CLIENT_ID!,
@@ -35,15 +45,29 @@ const config = parseGoogleDriveConfig({
 const url = drive.getAuthorizeUrl(config, 'state');
 const tokens = await drive.exchangeCodeForToken(config, code);
 
-const connection = await drive.connect({ provider: 'google-drive', settings: config });
+const connection = await drive.connect({
+  provider: 'google-drive',
+  settings: config,
+});
 
 const files = await drive.listFiles(connection.connectionId, 'folder-id');
 const data = await drive.downloadFile(connection.connectionId, 'file-id');
-await drive.uploadFile(connection.connectionId, 'report.pdf', buffer, 'folder-id');
+await drive.uploadFile(
+  connection.connectionId,
+  'report.pdf',
+  buffer,
+  'folder-id',
+);
 const found = await drive.searchFiles(connection.connectionId, 'budget');
 
 // Push notifications
-await drive.watchFile(connection.connectionId, 'file-id', 'https://app.vaeloom.com/webhooks/gdrive', 'chan-1', 'tok-1');
+await drive.watchFile(
+  connection.connectionId,
+  'file-id',
+  'https://app.vaeloom.com/webhooks/gdrive',
+  'chan-1',
+  'tok-1',
+);
 
 // Verify webhook
 await drive.handleWebhook({
@@ -59,7 +83,7 @@ const result = await drive.sync(connection.connectionId);
 
 ## Security
 
-Access/refresh tokens are encrypted at rest with AES-256-GCM. Push
-notifications are verified by matching the registered `channelId` and
-`resourceToken` with a constant-time comparison. Tokens are refreshed
-automatically by the underlying `google-auth-library` client.
+Access/refresh tokens are encrypted at rest with AES-256-GCM. Push notifications
+are verified by matching the registered `channelId` and `resourceToken` with a
+constant-time comparison. Tokens are refreshed automatically by the underlying
+`google-auth-library` client.
