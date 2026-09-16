@@ -5,14 +5,23 @@ corruption, and region-level outages.
 
 ## RTO/RPO Targets
 
-| Tier | Metric | Target | Severity |
+> **WS-D 2026-09-15 — RTO/RPO reconciliation (target vs committed SLA):** the
+> table below states **engineering targets** (what recovery procedures are
+> designed for: Critical RTO ≤1h / RPO 5m). `docs/security/SOC2.md` CC7.4 states
+> the **committed SLA ceiling** (RPO <1h / RTO <4h — the contractual maximum
+> offered to enterprise customers). Both are **unevidenced targets**: no dated
+> drill report exists (see `docs/operations/DR-Drill-Log.md`: no drill executed
+> yet). Do not cite either number as an achieved SLA until a drill is executed
+> and logged.
+
+| Tier         | Metric                   | Target    | Severity                      |
 | ------------ | ------------------------ | --------- | ----------------------------- |
-| **Critical** | Recovery Time Objective | 1 hour | Full outage, data loss |
-| **High** | Recovery Time Objective | 4 hours | Partial outage, degraded perf |
-| **Medium** | Recovery Time Objective | 24 hours | Non-critical feature down |
-| **Critical** | Recovery Point Objective | 5 minutes | Database writes |
-| **High** | Recovery Point Objective | 1 hour | File storage writes |
-| **Critical** | Availability SLA | 99.95% | Overall platform uptime |
+| **Critical** | Recovery Time Objective  | 1 hour    | Full outage, data loss        |
+| **High**     | Recovery Time Objective  | 4 hours   | Partial outage, degraded perf |
+| **Medium**   | Recovery Time Objective  | 24 hours  | Non-critical feature down     |
+| **Critical** | Recovery Point Objective | 5 minutes | Database writes               |
+| **High**     | Recovery Point Objective | 1 hour    | File storage writes           |
+| **Critical** | Availability SLA         | 99.95%    | Overall platform uptime       |
 
 ## Backup Strategy
 
@@ -273,12 +282,12 @@ curl -f https://app.vaeloom.dev
 
 ## Incident Response
 
-| Severity | Definition | Response | Escalation |
+| Severity | Definition                | Response        | Escalation       |
 | -------- | ------------------------- | --------------- | ---------------- |
-| SEV-1 | Complete platform outage | 15 min response | VP Eng |
-| SEV-2 | Major feature unavailable | 30 min response | Engineering lead |
-| SEV-3 | Minor feature degraded | 4 hour response | Team lead |
-| SEV-4 | Cosmetic/bug | Next sprint | Jira ticket |
+| SEV-1    | Complete platform outage  | 15 min response | VP Eng           |
+| SEV-2    | Major feature unavailable | 30 min response | Engineering lead |
+| SEV-3    | Minor feature degraded    | 4 hour response | Team lead        |
+| SEV-4    | Cosmetic/bug              | Next sprint     | Jira ticket      |
 
 ### Incident Communication
 
@@ -290,19 +299,24 @@ curl -f https://app.vaeloom.dev
 
 ## Key Contacts
 
-| Role | Contact |
+| Role             | Contact            |
 | ---------------- | ------------------ |
 | On-call engineer | PagerDuty schedule |
-| Engineering lead | Slack @eng-lead |
-| VP Engineering | Slack @vp-eng |
-| Database admin | Slack @dba-team |
-| Security officer | Slack @security |
+| Engineering lead | Slack @eng-lead    |
+| VP Engineering   | Slack @vp-eng      |
+| Database admin   | Slack @dba-team    |
+| Security officer | Slack @security    |
 
 ## DR Test Schedule
 
-| Test | Frequency | Quarter |
+> **WS-D 2026-09-15:** the schedule below is planned cadence, not history. No
+> drill has been executed yet — see `docs/operations/DR-Drill-Log.md` (first
+> entry: no drill executed yet). Log every future drill there with date, scope,
+> RTO/RPO achieved, and gaps before claiming SLA compliance.
+
+| Test                        | Frequency          | Quarter        |
 | --------------------------- | ------------------ | -------------- |
-| Database restore to staging | Weekly (automated) | Ongoing |
-| Cross-region failover | Quarterly | Q1, Q2, Q3, Q4 |
-| Full DR演习 (tabletop) | Bi-annual | Q2, Q4 |
-| Backup integrity check | Monthly | Ongoing |
+| Database restore to staging | Weekly (automated) | Ongoing        |
+| Cross-region failover       | Quarterly          | Q1, Q2, Q3, Q4 |
+| Full DR演习 (tabletop)      | Bi-annual          | Q2, Q4         |
+| Backup integrity check      | Monthly            | Ongoing        |

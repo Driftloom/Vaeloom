@@ -55,29 +55,30 @@ graph LR
 ## Related Documents
 
 - [Master Index](./README.md)
-- [Usage Guide](./USAGE-GUIDE.md)
-- [Document Template](./TEMPLATE.md)
+- [Usage Guide](./usage-guide.md)
+- [Document Template](./template.md)
 
 **Note on stale numbers in phase docs:** Phase evidence files (`docs/phases/`)
 contain historical baselines that were accurate at the time of execution (e.g.,
 `2557` tests, `99` OpenAPI paths). These are frozen audit records and should NOT
-be modified. Current values: **2731 tests**, **110 OpenAPI paths**, **44 ADRs**
-— see `AGENTS.md` and `docs/backend/openapi.yaml`.
+be modified. Current values: **2731 tests**, **162 OpenAPI paths / 203 ops**
+(v0.2.0, regen 2026-09-15 via `scripts/gen_openapi.py`), **44 ADRs** — see
+`AGENTS.md` and `docs/backend/openapi.yaml`.
 
 ## Diagram Index
 
-| Diagram                    | Purpose                                          | Documentation                                                        |
-| -------------------------- | ------------------------------------------------ | -------------------------------------------------------------------- |
-| System Architecture        | 6-layer MVP + 8-layer Enterprise overlay         | `02-system-architecture.md`                                          |
-| Agent Execution Lifecycle  | Router → Supervisor/Loop → approval → QA → audit | `03-agent-workflow.md`                                               |
-| Memory + Retrieval Reality | 6 types, dual stores, 3 disjoint RAG paths       | `04-memory-knowledge-graph.md`                                       |
-| Agent Architecture         | 10 MVP-canonical / 22 routable + QA gate         | `ai/AI-Agents.md`, `agents/mvp/agent-inventory.md`                   |
-| Security Architecture      | AuthN/AuthZ/tenant/RBAC reality                  | `security/Security-Architecture.md`                                  |
-| Connector Architecture     | 15 built-in connectors + OAuth lifecycle         | `backend/Connectors.md` (to add)                                     |
-| Approval / HITL            | HMAC ledger + pending proposal cards             | `03-agent-workflow.md`, `backend/Authorization.md` (to add)          |
-| Event / Temporal           | Workflows + activities + queues                  | `architecture/Event-Architecture.md`, `temporal/catalog.md` (to add) |
-| Career Flows (as-built)    | Resume/ATS-as-tools/Job-fallback/Application     | `product/Feature-Specs/*` (to add)                                   |
-| Frontend / Backend         | 27 pages → REST gateway → FastAPI monolith       | `frontend/Frontend-Architecture.md` (to add)                         |
+| Diagram                    | Purpose                                          | Documentation                                               |
+| -------------------------- | ------------------------------------------------ | ----------------------------------------------------------- |
+| System Architecture        | 6-layer MVP + 8-layer Enterprise overlay         | `02-system-architecture.md`                                 |
+| Agent Execution Lifecycle  | Router → Supervisor/Loop → approval → QA → audit | `03-agent-workflow.md`                                      |
+| Memory + Retrieval Reality | 6 types, dual stores, 3 disjoint RAG paths       | `04-memory-knowledge-graph.md`                              |
+| Agent Architecture         | 10 MVP-canonical / 22 routable + QA gate         | `ai/AI-Agents.md`, `agents/mvp/agent-inventory.md`          |
+| Security Architecture      | AuthN/AuthZ/tenant/RBAC reality                  | `security/Security-Architecture.md`                         |
+| Connector Architecture     | 15 built-in connectors + OAuth lifecycle         | `backend/Connectors.md`                                     |
+| Approval / HITL            | HMAC ledger + pending proposal cards             | `03-agent-workflow.md`, `backend/Authorization.md`          |
+| Event / Temporal           | Workflows + activities + queues                  | `architecture/Event-Architecture.md`, `temporal/catalog.md` |
+| Career Flows (as-built)    | Resume/ATS-as-tools/Job-fallback/Application     | `product/Feature-Specs/`                                    |
+| Frontend / Backend         | 27 pages → REST gateway → FastAPI monolith       | `frontend/Frontend-Architecture.md`                         |
 
 ## Canonical Phase Sources (added 2026-08-11)
 

@@ -30,9 +30,12 @@ Date: 2026-09-15 | Branch: master @10499d4b | Verdict basis: evidence only
 - Tests: 207 files apps/api/tests/.
   testing/{accessibility,e2e,integration,performance,smoke,unit}. 11 workflows
   .github/workflows/
-- Docs: 44 ADRs (001..044), docs/phases 37 dirs (mvp-p00..p21 COMPLETE,
-  cont-p00..p12 CLOSED, cont-p13+ NOT STARTED, ent-p00..p21 NOT STARTED),
-  docs/Audits 40+ files, 66 phase prompts source-of-truth
+- Docs: 44 ADRs (001..044), docs/phases **49 dirs / 570 files** (mvp-p00..p21
+  COMPLETE 22/22, cont-p00..p21 CLOSED 22/22, agentic-safety-w1..w5
+  reports-only, ent-p00..p21 NOT STARTED — **WS-E 2026-09-15 correction: prior
+  `37 dirs (cont-p00..p12 CLOSED, cont-p13+ NOT STARTED)` is STALE self-drift;
+  boundary moved — cont-p13..p21 also gated 95.72-96.91**), docs/Audits 40+
+  files, 66 phase prompts source-of-truth
 - Env: 68 keys in .env.example. Infra: infra/* 11 dirs, docker-compose x3, K8s,
   terraform 12 modules
 
@@ -41,7 +44,7 @@ Date: 2026-09-15 | Branch: master @10499d4b | Verdict basis: evidence only
 | ID                                               | Path                                                                               | Type                                                         | Authority                                        |
 | ------------------------------------------------ | ---------------------------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------ |
 | S-01                                             | docs/prompts/vaeloom-66.../00-master-index.md + EXECUTION-STATUS.md                | phase contract + status                                      | AUTHORITATIVE                                    |
-| S-02                                             | docs/phases/mvp-p00..p21, cont-p00..p12 (gate reports, evidence bundles, handoffs) | phase evidence                                               | PRIMARY_EVIDENCE                                 |
+| S-02                                             | docs/phases/mvp-p00..p21, cont-p00..p21 (gate reports, evidence bundles, handoffs) | phase evidence                                               | PRIMARY_EVIDENCE                                 |
 | S-03                                             | docs/adr/ADR-001..044                                                              | decisions                                                    | PROJECT_DOCUMENTATION                            |
 | S-04                                             | docs/backend/openapi.yaml (162 paths)                                              | contract                                                     | PRIMARY_EVIDENCE                                 |
 | S-05                                             | apps/api/src/api/{routers,services,agents,middleware,models,migrations}            | code                                                         | PRIMARY_EVIDENCE                                 |
@@ -200,6 +203,11 @@ Verify command | Evidence required
 - GAP-P1-02 CONT-P13..P21 + ENT-P00..P21 NOT STARTED: enterprise cutover, pilot,
   scale-out unproven. Fix: execute in order per 66-prompt contract. Verify: gate
   reports.
+  - **WS-E 2026-09-15 note: CONT-P13..P21 half of this gap is CLOSED on disk
+    (gates 95.72–96.91 + handoffs through `09-handoff-to-ent-p00.md`);
+    ENT-P00..P21 remains NOT STARTED (0/22 evidence). Verdict RED unchanged
+    (dirty tree + drift + migrations + scripts + suite not re-run today still
+    block release).**
 - GAP-P1-03 COVERAGE/WCAG/PERF NOT RE-MEASURED (EXC-P14-01..03): 94.2% +
   jest-axe + k6 p95 stale. Fix: re-run --cov, jest-axe, k6. Verify: fresh
   reports.
@@ -239,7 +247,8 @@ verification#2 + clean-clone + dry-run + evidence index.
 
 RED — NOT READY for release/submission (dirty tree + contract drift + dual
 migrations + 7 untracked scripts + full suite not re-run today). MVP track
-COMPLETE (93.6) and CONT through P12 CLOSED (96.16) stand as historical
-evidence; next work is CONT-P13 Security/Identity Uplift after tree is clean.
-YELLOW conditionally ready for local dev/demo only (pnpm dev:web + uvicorn api
-with JWT_SECRET/ENCRYPTION_KEY/DATABASE__URL/LLM_API_KEY/OTEL_SDK_DISABLED).
+COMPLETE (93.6) and CONT through P21 CLOSED (95.72–96.76) stand as historical
+evidence (**WS-E 2026-09-15: was `through P12`; boundary corrected**); next work
+is ENT-P00 Intake after tree is clean. YELLOW conditionally ready for local
+dev/demo only (pnpm dev:web + uvicorn api with
+JWT_SECRET/ENCRYPTION_KEY/DATABASE__URL/LLM_API_KEY/OTEL_SDK_DISABLED).

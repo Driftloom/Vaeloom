@@ -2,7 +2,7 @@
 
 > **Purpose:** Master index and navigation hub for all Vaeloom documentation
 > **Status:** ✅ Published **Owner:** Platform Team **Version:** 2.1 **Last
-> Updated:** 2026-08-29 **Total Documents:** 793+
+> Updated:** 2026-09-15 **Total Documents:** ~1033
 
 ## Documentation Taxonomy
 
@@ -160,7 +160,7 @@ graph TD
 | 8   | [Release Process](./Engineering/Release-Process.md)     | Release management |
 | 9   | [Versioning](./Engineering/Versioning.md)               | Version strategy   |
 | 10  | [Folder Structure](./Engineering/Folder-Structure.md)   | Repository layout  |
-| 11  | [TEMPLATE.md](./TEMPLATE.md)                            | Document template  |
+| 11  | [template.md](./template.md)                            | Document template  |
 
 ### 🏢 Enterprise
 
@@ -335,7 +335,7 @@ graph TD
 
 ---
 
-_Last updated: 2026-08-29 | Total documents: 793+ markdown files across 28
+_Last updated: 2026-09-15 | Total documents: ~1033 markdown files across 28
 directories_
 
 ### 🕐 Temporal / LangGraph Integration

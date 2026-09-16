@@ -1,14 +1,23 @@
 # Mobile Responsive Audit
 
+> **WS-D 2026-09-15 — status banner (honest, do not cite as passed):** the
+> checklist below is **all unchecked (unexecuted)** and the "Audit Results"
+> table at the bottom is **unevidenced** (no date, tester, device/browser list,
+> or screenshots). Treat this document as a **DRAFT procedure + template**, not
+> a completed audit. To close: execute the procedure on real devices, check the
+> boxes with a date, and fill the device matrix below (one row per
+> device/browser with evidence link). `SECURITY.md` Supported-Versions remains
+> generic — scope the matrix to actually-supported browsers when known.
+
 ## Tested Breakpoints
 
-| Breakpoint | Device Class |
-|-----------|------------------|
-| 320px | Small mobile |
-| 375px | iPhone SE/8 |
-| 768px | Tablet (iPad) |
-| 1024px | Small desktop |
-| 1440px | Large desktop |
+| Breakpoint | Device Class  |
+| ---------- | ------------- |
+| 320px      | Small mobile  |
+| 375px      | iPhone SE/8   |
+| 768px      | Tablet (iPad) |
+| 1024px     | Small desktop |
+| 1440px     | Large desktop |
 
 ## Mobile Testing Checklist
 
@@ -68,14 +77,16 @@
 1. Open Chrome DevTools → Device Toolbar (Ctrl+Shift+M)
 2. Test each breakpoint by selecting from the device list
 3. Navigate through all major pages:
- - Dashboard / workspace home
- - Chat interface
- - Memory list & detail
- - Agent list & config
- - Settings page
- - Schedule / calendar
- - Applications kanban
- - File browser
+
+- Dashboard / workspace home
+- Chat interface
+- Memory list & detail
+- Agent list & config
+- Settings page
+- Schedule / calendar
+- Applications kanban
+- File browser
+
 4. Interact with all form elements
 5. Submit at least one form
 6. Verify hamburger menu navigation
@@ -84,23 +95,37 @@
 
 ### Known Issues & Fixes
 
-| Issue | Affected Pages | Fix |
-|-------|---------------|-----|
-| Sidebar takes too much space on mobile | All workspace pages | Add `<div className="hidden md:block">` wrapper, implement drawer toggle |
-| Tables overflow horizontally | History, Notifications, Developer | Wrap in `<div className="overflow-x-auto">` (already done in Table component) |
-| Kanban columns don't scroll | Applications | Already has `overflow-x-auto` on flex container |
-| Modals too small on large screens | Developer (API key create) | Ensure Modal uses responsive max-width |
+| Issue                                  | Affected Pages                    | Fix                                                                           |
+| -------------------------------------- | --------------------------------- | ----------------------------------------------------------------------------- |
+| Sidebar takes too much space on mobile | All workspace pages               | Add `<div className="hidden md:block">` wrapper, implement drawer toggle      |
+| Tables overflow horizontally           | History, Notifications, Developer | Wrap in `<div className="overflow-x-auto">` (already done in Table component) |
+| Kanban columns don't scroll            | Applications                      | Already has `overflow-x-auto` on flex container                               |
+| Modals too small on large screens      | Developer (API key create)        | Ensure Modal uses responsive max-width                                        |
 
 ## Audit Results
 
 | Breakpoint | Horizontal Scroll | Touch Targets | Navigation | Forms |
-|-----------|:---:|:---:|:---:|:---:|
-| 320px | ✅ | ✅ | ✅ | ✅ |
-| 375px | ✅ | ✅ | ✅ | ✅ |
-| 768px | ✅ | ✅ | ✅ | ✅ |
-| 1024px | ✅ | ✅ | ✅ | ✅ |
-| 1440px | ✅ | ✅ | ✅ | ✅ |
+| ---------- | :---------------: | :-----------: | :--------: | :---: |
+| 320px      |        ✅         |      ✅       |     ✅     |  ✅   |
+| 375px      |        ✅         |      ✅       |     ✅     |  ✅   |
+| 768px      |        ✅         |      ✅       |     ✅     |  ✅   |
+| 1024px     |        ✅         |      ✅       |     ✅     |  ✅   |
+| 1440px     |        ✅         |      ✅       |     ✅     |  ✅   |
 
-**Overall verdict:** The application is responsive across all tested breakpoints.
-Major components (Table, Card, Modal, Sidebar) use responsive patterns.
-No critical issues found at any breakpoint.
+**Overall verdict:** The application is responsive across all tested
+breakpoints. Major components (Table, Card, Modal, Sidebar) use responsive
+patterns. No critical issues found at any breakpoint.
+
+> **WS-D 2026-09-15:** the verdict above is retained as-written but is
+> **unevidenced** until the matrix below is filled with a dated run.
+
+## Device Matrix (template — fill on execution)
+
+| Date (UTC)        | Tester | Device / emulator                     | OS + browser + viewport      | Pages covered        | Horizontal scroll | Touch targets ≥44px | Navigation | Forms | Evidence (screenshot/video link) | Pass/Fail |
+| ----------------- | ------ | ------------------------------------- | ---------------------------- | -------------------- | ----------------- | ------------------- | ---------- | ----- | -------------------------------- | --------- |
+| _e.g. YYYY-MM-DD_ | _name_ | _e.g. iPhone SE (real) / Pixel 7 emu_ | _e.g. iOS 17 + Safari 320px_ | _dashboard, chat, …_ | _Y/N_             | _Y/N_               | _Y/N_      | _Y/N_ | _link_                           | _—_       |
+|                   |        |                                       |                              |                      |                   |                     |            |       |                                  |           |
+
+Rules: one row per device/browser/viewport; link evidence per row; only check
+the procedure boxes above when the corresponding matrix rows pass; record
+failures in Known Issues with affected pages + fix + retest date.

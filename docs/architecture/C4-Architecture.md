@@ -46,11 +46,11 @@ to?"
 ### Out of Scope
 
 - Detailed sequence diagrams — see
- [`../AI/Agentic-RAG.md`](../AI/Agentic-RAG.md) and individual feature docs
+  [`../AI/Agentic-RAG.md`](../AI/Agentic-RAG.md) and individual feature docs
 - Infrastructure-as-code specifics — see
- [`../DevOps/Terraform.md`](../DevOps/Terraform.md)
+  [`../DevOps/Terraform.md`](../DevOps/Terraform.md)
 - Event architecture — see [`Event-Architecture.md`](./Event-Architecture.md)
- and [`Event-Flow.md`](./Event-Flow.md)
+  and [`Event-Flow.md`](./Event-Flow.md)
 
 ## Level 1: System Context
 
@@ -108,6 +108,18 @@ graph TB
 > data sources, payments, and observability.
 
 ## Level 2: Container (Runtime State — Verified 2026-08-16)
+
+> **WS-D 2026-09-15 — honest self-report retained:** the runtime-status table
+> below is kept as-written (including ⚠️/❌ rows). RLS progress since the
+> 2026-08-16 snapshot: **42/42 via Alembic 0010/0019/0020 (2026-08-22)**,
+> `TenantContext` + `set_rls_session_vars` setting `app.tenant_id` /
+> `app.workspace_id` / `app.user_id` fail-closed — so the "RLS: 4/36" and "GUC
+> never SET" cells are superseded (see `docs/enterprise/Multi-Tenancy.md`);
+> caveat: test tier runs SQLite where RLS is a no-op (unproven at test tier,
+> Postgres follow-up required). Observability rows remain accurate: **Prometheus
+> COMMENTED OUT, Grafana NOT_DEPLOYED, OTel SDK disabled / no Collector,
+> Meilisearch NOT_INSTALLED (search = SQL ILIKE).** Do not treat this diagram as
+> claiming operational observability.
 
 The Container diagram shows the major deployable units within Vaeloom. **Status
 labels reflect actual runtime state, not documentation claims.**
@@ -168,18 +180,18 @@ graph TB
 
 ### Container Runtime Status
 
-| Container | Technology | Runtime Status | Gap Reference |
+| Container         | Technology              | Runtime Status | Gap Reference                                   |
 | ----------------- | ----------------------- | -------------- | ----------------------------------------------- |
-| **apps/web** | Next.js 15 (App Router) | ✅ OPERATIONAL | — |
-| **apps/api** | FastAPI (Python 3.12) | ✅ OPERATIONAL | — |
-| **PostgreSQL 16** | RDS / Docker | ⚠️ PARTIAL | RLS: 4/36 tables; GUC `app.tenant_id` never SET |
-| **Redis 7** | ElastiCache / Docker | ⚠️ PARTIAL | BullMQ installed, 0 consumers deployed |
-| **MinIO (S3)** | Docker | ✅ OPERATIONAL | — |
-| **Meilisearch** | NOT_INSTALLED | ❌ MISSING | Search uses SQL ILIKE |
-| **Prometheus** | COMMENTED OUT | ❌ DISABLED | `main.py:135-136` |
-| **Grafana** | NOT_DEPLOYED | ❌ MISSING | No dashboard JSON files |
-| **OpenTelemetry** | SDK disabled | ⚠️ PARTIAL | No Collector config |
-| **Apache AGE** | Provisioned in Docker | ❌ UNUSED | No code references |
+| **apps/web**      | Next.js 15 (App Router) | ✅ OPERATIONAL | —                                               |
+| **apps/api**      | FastAPI (Python 3.12)   | ✅ OPERATIONAL | —                                               |
+| **PostgreSQL 16** | RDS / Docker            | ⚠️ PARTIAL     | RLS: 4/36 tables; GUC `app.tenant_id` never SET |
+| **Redis 7**       | ElastiCache / Docker    | ⚠️ PARTIAL     | BullMQ installed, 0 consumers deployed          |
+| **MinIO (S3)**    | Docker                  | ✅ OPERATIONAL | —                                               |
+| **Meilisearch**   | NOT_INSTALLED           | ❌ MISSING     | Search uses SQL ILIKE                           |
+| **Prometheus**    | COMMENTED OUT           | ❌ DISABLED    | `main.py:135-136`                               |
+| **Grafana**       | NOT_DEPLOYED            | ❌ MISSING     | No dashboard JSON files                         |
+| **OpenTelemetry** | SDK disabled            | ⚠️ PARTIAL     | No Collector config                             |
+| **Apache AGE**    | Provisioned in Docker   | ❌ UNUSED      | No code references                              |
 
 ## Level 3: Component
 
@@ -342,56 +354,56 @@ graph TB
 
 ## Components Summary
 
-| Container | Technology | Components | Deployment |
+| Container         | Technology              | Components                                                                                                   | Deployment                      |
 | ----------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------- |
-| **apps/web** | Next.js 15 (App Router) | Dashboard, Workspace, Admin Portal, Auth pages | CDN (CloudFront) + Edge |
-| **apps/api** | FastAPI (Python 3.12) | Auth, Users, Documents, Workspaces, Connectors, Tenants, Billing, Search, Notifications, Agents, Memory, RAG | EKS (HPA: 2-20 pods) |
-| **PostgreSQL 16** | RDS Multi-AZ | Relational data + pgvector (embeddings) | Primary + 2 read replicas |
-| **Redis 7** | ElastiCache Cluster | Session cache, metering counters, cache | 3-node cluster + replica |
-| **S3** | AWS S3 | Document files, exports, audit archive | Versioned, lifecycle policy |
-| **Kubernetes** | EKS | Container orchestration, ingress, HPA | Multi-AZ, 3+ availability zones |
+| **apps/web**      | Next.js 15 (App Router) | Dashboard, Workspace, Admin Portal, Auth pages                                                               | CDN (CloudFront) + Edge         |
+| **apps/api**      | FastAPI (Python 3.12)   | Auth, Users, Documents, Workspaces, Connectors, Tenants, Billing, Search, Notifications, Agents, Memory, RAG | EKS (HPA: 2-20 pods)            |
+| **PostgreSQL 16** | RDS Multi-AZ            | Relational data + pgvector (embeddings)                                                                      | Primary + 2 read replicas       |
+| **Redis 7**       | ElastiCache Cluster     | Session cache, metering counters, cache                                                                      | 3-node cluster + replica        |
+| **S3**            | AWS S3                  | Document files, exports, audit archive                                                                       | Versioned, lifecycle policy     |
+| **Kubernetes**    | EKS                     | Container orchestration, ingress, HPA                                                                        | Multi-AZ, 3+ availability zones |
 
 ## Security
 
-| Concern | Mitigation | Verification |
+| Concern                             | Mitigation                                                      | Verification                              |
 | ----------------------------------- | --------------------------------------------------------------- | ----------------------------------------- |
-| Inter-service traffic not encrypted | mTLS between all Kubernetes services via service mesh | Network policy enforcement; traffic audit |
-| Database accessible from internet | RDS in private subnets; no public IP | Security group rules; VPC flow logs |
-| LLM API key leakage | Keys in Secrets Manager; injected at runtime; never in code | CI secret scanning; runtime audit |
-| Pod escape | gVisor runtime on AI pods (untrusted code); non-root containers | Penetration testing; CIS benchmarks |
+| Inter-service traffic not encrypted | mTLS between all Kubernetes services via service mesh           | Network policy enforcement; traffic audit |
+| Database accessible from internet   | RDS in private subnets; no public IP                            | Security group rules; VPC flow logs       |
+| LLM API key leakage                 | Keys in Secrets Manager; injected at runtime; never in code     | CI secret scanning; runtime audit         |
+| Pod escape                          | gVisor runtime on AI pods (untrusted code); non-root containers | Penetration testing; CIS benchmarks       |
 
 ## Performance
 
-| Concern | Budget | Measurement | Optimization |
+| Concern                    | Budget                 | Measurement                | Optimization                                              |
 | -------------------------- | ---------------------- | -------------------------- | --------------------------------------------------------- |
-| API request latency (p99) | <500ms | Distributed tracing | Connection pooling; read replicas; caching |
-| AI inference latency (p99) | <5s (depends on model) | Model gateway timing | Model routing (fast model for easy tasks); prompt caching |
-| Page load time | <2s | RUM (Real User Monitoring) | CDN; code splitting; lazy loading |
+| API request latency (p99)  | <500ms                 | Distributed tracing        | Connection pooling; read replicas; caching                |
+| AI inference latency (p99) | <5s (depends on model) | Model gateway timing       | Model routing (fast model for easy tasks); prompt caching |
+| Page load time             | <2s                    | RUM (Real User Monitoring) | CDN; code splitting; lazy loading                         |
 
 ## Scalability
 
-| Dimension | Current Limit | 10x Strategy | 100x Strategy |
+| Dimension            | Current Limit   | 10x Strategy                      | 100x Strategy                            |
 | -------------------- | --------------- | --------------------------------- | ---------------------------------------- |
-| API pods | 20 (HPA max) | Increase HPA max; add node pool | Sharding by tenant_id; regional clusters |
-| AI service pods | 10 | GPU node pool autoscaling | Model-specific serving clusters |
-| Database connections | 500 (PgBouncer) | Connection pooling; read replicas | Writer-leader separation; sharding |
-| Redis memory | 10 GB | Cluster mode upgrade | Sharded keyspace |
+| API pods             | 20 (HPA max)    | Increase HPA max; add node pool   | Sharding by tenant_id; regional clusters |
+| AI service pods      | 10              | GPU node pool autoscaling         | Model-specific serving clusters          |
+| Database connections | 500 (PgBouncer) | Connection pooling; read replicas | Writer-leader separation; sharding       |
+| Redis memory         | 10 GB           | Cluster mode upgrade              | Sharded keyspace                         |
 
 ## Future Improvements
 
-| Improvement | Priority | Complexity | Timeline |
+| Improvement                                          | Priority | Complexity | Timeline |
 | ---------------------------------------------------- | -------- | ---------- | -------- |
-| Regional deployment (EU, APAC) for data residency | High | High | Q2 2027 |
-| Service mesh (Istio) for mTLS and traffic management | Medium | High | Q1 2027 |
-| Edge caching for AI inference results | Medium | Medium | Q2 2027 |
+| Regional deployment (EU, APAC) for data residency    | High     | High       | Q2 2027  |
+| Service mesh (Istio) for mTLS and traffic management | Medium   | High       | Q1 2027  |
+| Edge caching for AI inference results                | Medium   | Medium     | Q2 2027  |
 
 ## Related Documents
 
 - [`System-Design.md`](./System-Design.md) — detailed system design
 - [`High-Level-Design.md`](./High-Level-Design.md) — HLD view
 - [`Service-Architecture.md`](./Service-Architecture.md) — service-level
- architecture
+  architecture
 - [`Infrastructure.md`](./Infrastructure.md) — infrastructure details
 - [`../DevOps/Kubernetes.md`](../DevOps/Kubernetes.md) — Kubernetes
- configuration
+  configuration
 - [`../DevOps/Terraform.md`](../DevOps/Terraform.md) — IaC definitions

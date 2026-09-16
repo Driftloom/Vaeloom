@@ -100,10 +100,10 @@ a11y scanning.
 **Reality:** `apps/web/src/app/` contains **20 page routes** (including nested
 dynamic routes). The discrepancy may include future routes or counting errors.
 
-| Source | Count |
+| Source                | Count |
 | --------------------- | ----- |
-| Doc reference | 22 |
-| Actual `page.*` files | 20 |
+| Doc reference         | 22    |
+| Actual `page.*` files | 20    |
 
 **Impact:** Low. Minor counting discrepancy in documentation.
 
@@ -153,14 +153,14 @@ dependency scanning, secret scanning, accessibility checks, and security gates.
 
 **Reality:** Existing `.github/workflows/`:
 
-| Workflow | Status |
+| Workflow            | Status                   |
 | ------------------- | ------------------------ |
-| `ci.yml` | Exists — basic CI |
-| `deploy.yml` | Exists — deployment |
+| `ci.yml`            | Exists — basic CI        |
+| `deploy.yml`        | Exists — deployment      |
 | `docs-validate.yml` | Exists — docs validation |
-| `security-scan.yml` | Exists — but minimal |
-| Security audit | ✅ Added by I1 |
-| a11y audit | ✅ Added by I2 |
+| `security-scan.yml` | Exists — but minimal     |
+| Security audit      | ✅ Added by I1           |
+| a11y audit          | ✅ Added by I2           |
 
 **Impact:** Medium. Several documented pipeline stages were missing.
 
@@ -170,18 +170,34 @@ dependency scanning, secret scanning, accessibility checks, and security gates.
 
 ## Summary
 
-| Gap | Severity | Status |
+| Gap                                | Severity | Status                     |
 | ---------------------------------- | -------- | -------------------------- |
-| G1: Snyk missing | Medium | Open |
-| G2: Alert thresholds mismatch | High | Open (partially addressed) |
-| G3: a11y infra missing | High | ✅ Closed |
-| G4: Insecure defaults | High | ✅ Closed |
-| G5: Route count mismatch | Low | Open |
-| G6: Monitoring stack unimplemented | Critical | Open |
-| G7: URL validation weak | Medium | ✅ Closed |
-| G8: CI/CD pipeline gaps | Medium | ✅ Closed |
+| G1: Snyk missing                   | Medium   | Open                       |
+| G2: Alert thresholds mismatch      | High     | Open (partially addressed) |
+| G3: a11y infra missing             | High     | ✅ Closed                  |
+| G4: Insecure defaults              | High     | ✅ Closed                  |
+| G5: Route count mismatch           | Low      | Open                       |
+| G6: Monitoring stack unimplemented | Critical | Open                       |
+| G7: URL validation weak            | Medium   | ✅ Closed                  |
+| G8: CI/CD pipeline gaps            | Medium   | ✅ Closed                  |
 
 **Overall assessment:** The documentation corpus is comprehensive (93/100 per
 completion report) but has significant gaps between what is documented and what
 is implemented. Priority items for remediation: G6 (monitoring stack), G2 (alert
 thresholds), G1 (Snyk).
+
+---
+
+## Addendum — 2026-09-15 (WS-D)
+
+Re-verified Gap-1, Gap-2, and Gap-6 against HEAD. No status is fabricated;
+original gaps above are retained as history.
+
+| Item                               | WS-D 2026-09-15 finding                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Status                                    |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| **Snyk absent (Gap-1)**            | Still no Snyk workflow/config/token reference; dependency scanning remains Dependabot (`.github/dependabot.yml`) + `security-audit.yml` (pnpm audit + pip-audit). No license-compliance scanning beyond GitHub Advisory DB.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | **Open (unchanged)**                      |
+| **Alert mismatch (Gap-2)**         | Actual `infra/monitoring/alerts/vaeloom-alerts.yml:14-15` fires `HighLatency` on **p95 > 1s for 5m (warning)**; `docs/devops/Monitoring.md:41,84` and `docs/devops/Alerting.md:98` document **p99 > 2s for 5m (P2)**. The 4-rule file (`HighErrorRate` 5% / `HighLatency` p95>1s / `ServiceDown` up==0 / `MemoryUsageHigh` >1GB, `promtool` 4 rules PASS) has **no AI-latency, queue-depth, DB-connection, or agent-failure alerts** — those live only in docs (and partly in `infra/ops/monitoring/alerts.yml` 9-rule set). Operators following the docs will expect alerts that don't fire from `vaeloom-alerts.yml`. `docs/devops/Monitoring.md` now carries a WS-D sync note pointing at the actual p95>1s rule + TODOs. | **Open (partially addressed, unchanged)** |
+| **Observability disabled (Gap-6)** | Still accurate: Prometheus `/metrics` COMMENTED OUT (`main.py`), Grafana NOT_DEPLOYED (no dashboard JSON in deploy path — `infra/ops/monitoring/grafana/dashboards/*.json` exist as artifacts but no deployed instance per C4), OTel SDK disabled with no Collector, Meilisearch NOT_INSTALLED (search = SQL ILIKE). `docs/architecture/C4-Architecture.md` Level 2 retains these ⚠️/❌ rows explicitly (WS-D note 2026-09-15); do not cite observability docs as operational.                                                                                                                                                                                                                                               | **Open / Critical (unchanged)**           |
+
+**Caveats preserved:** G3/G4/G7/G8 remain ✅ Closed per original report; G5
+(route count) remains Open/Low and is out of WS-D scope (not re-verified here).

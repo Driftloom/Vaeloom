@@ -7,6 +7,16 @@
 > 2026-07-13 **Canonical source:**
 > [`docs/Integration-Guide.md`](./Integration-Guide.md)
 
+> **ADR-037 NOTICE (2026-08-27):** the TypeScript examples in this guide
+> (`@vaeloom/connector-sdk`, `ConnectorBase`, `integrations/*` packages) are
+> **SUPERSEDED**. `integrations/` holds 6 orphaned, deprecated TS packages — see
+> `integrations/DEPRECATED.md` (archived at `archive/integrations-legacy-ts/`).
+> The **live** integration code is `apps/api/src/api/clients/` (provider
+> clients + framework) with tools bridged via MCP
+> (`docs/mcp/servers/seed-configs.md`, transports **stdio + streamable-http**).
+> Keep reading for OAuth / webhook / rate-limit / sync patterns (still valid
+> prose); do NOT copy the TS scaffolding as buildable code.
+
 ---
 
 ## Overview
