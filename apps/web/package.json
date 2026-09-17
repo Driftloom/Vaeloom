@@ -10,10 +10,13 @@
     "analyze": "ANALYZE=true next build",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "jest --passWithNoTests"
+    "test": "jest --passWithNoTests",
+    "trigger:dev": "npx trigger.dev@latest dev",
+    "trigger:deploy": "npx trigger.dev@latest deploy"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
+    "@trigger.dev/sdk": "4.6.3",
     "@vaeloom/shared-types": "workspace:*",
     "@vaeloom/ui-kit": "workspace:*",
     "motion": "^13.1.1",
@@ -29,6 +32,7 @@
     "@next/bundle-analyzer": "^15.0.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
+    "@trigger.dev/build": "4.6.3",
     "@types/node": "^20.14.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",

@@ -37,6 +37,8 @@ build/
 .turbo/
 .cache/
 .swc/
+.trigger/
+.trigger
 
 # Nx
 .nx/
