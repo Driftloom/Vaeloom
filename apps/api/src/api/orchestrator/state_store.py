@@ -601,7 +601,17 @@ class CompositeStateStore(StateStore):
         try:
             await self.fallback.save(request_id, merged, workspace_id, expected_version)
         except ConcurrentUpdateError as exc:
-            logger.warning(f"CompositeStateStore fallback diverged for {request_id}: {exc}")
+            logger.warning(
+                "STATE_STORE_FALLBACK_DIVERGENCE: CompositeStateStore fallback diverged for %s: %s",
+                request_id,
+                exc,
+            )
+        except Exception as exc:
+            logger.warning(
+                "STATE_STORE_FALLBACK_SAVE_FAILED: CompositeStateStore fallback mirror save failed for %s: %s",
+                request_id,
+                exc,
+            )
         return new_version
 
     async def delete(self, request_id: str) -> None:
@@ -619,6 +629,8 @@ def get_state_store() -> StateStore:
         return _default_store
 
     backend = os.environ.get("VAELOOM_STATE_BACKEND", "file").lower()
+    is_prod = os.environ.get("ENVIRONMENT") == "production"
+
     if backend == "memory":
         _default_store = MemoryStateStore()
     elif backend in ("db", "database", "postgres", "postgresql"):
@@ -626,6 +638,11 @@ def get_state_store() -> StateStore:
     elif backend == "redis":
         _default_store = CompositeStateStore(primary=RedisStateStore(), fallback=FileStateStore())
     else:
+        if is_prod:
+            logger.error(
+                "STATE_STORE_EPHEMERAL_FALLBACK: FileStateStore active in production environment! "
+                "Local disk storage is not shared across multi-replica nodes and will cause state divergence."
+            )
         _default_store = FileStateStore()
     return _default_store
 

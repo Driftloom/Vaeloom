@@ -64,13 +64,41 @@ class PDFParser(BaseParser):
                 except ImportError:
                     raise RuntimeError("No PDF library available (try: pip install PyMuPDF pdfplumber PyPDF2)")
 
-        full_text = "\n\n".join(text_parts)
+        full_text = "\n\n".join(text_parts).strip()
         word_count = len(full_text.split())
-        return ParsedDocument(full_text.strip(), {
+        metadata: dict[str, Any] = {
             "format": "pdf",
             "pages": num_pages,
             "word_count": word_count,
-        })
+        }
+
+        # Zero-trust scanned image detection: pages exist but 0 text was extractable
+        if num_pages > 0 and word_count == 0:
+            logger.warning(
+                "PDF has %d pages but 0 words extracted. Document appears to be a scanned image.",
+                num_pages,
+            )
+            metadata["warning"] = "DOC_SCANNED_IMAGE_NO_TEXT"
+            metadata["ocr_required"] = True
+            try:
+                import pytesseract
+                from pdf2image import convert_from_bytes
+
+                images = convert_from_bytes(content)
+                ocr_parts = [pytesseract.image_to_string(img) for img in images]
+                ocr_text = "\n\n".join(ocr_parts).strip()
+                if ocr_text:
+                    full_text = ocr_text
+                    word_count = len(full_text.split())
+                    metadata["word_count"] = word_count
+                    metadata["ocr_applied"] = True
+                    metadata.pop("warning", None)
+            except Exception:
+                metadata["ocr_hint"] = (
+                    "Scanned image PDF detected. Install tesseract-ocr and pytesseract for image text extraction."
+                )
+
+        return ParsedDocument(full_text, metadata)
 
 
 class MarkdownParser(BaseParser):

@@ -2647,13 +2647,46 @@ async def _execute_query_notebooklm(params: dict[str, Any], workspace_id: str) -
         }
 
 
-async def _execute_mock(tool: ToolDefinition, params: dict[str, Any]) -> dict[str, Any]:
+async def _handle_unrecognized_tool(
+    params: dict[str, Any] | ToolDefinition,
+    workspace_id: str | dict[str, Any] = "",
+    tool_name: str | None = None,
+) -> dict[str, Any]:
+    """Diagnostic handler for unrecognized or hallucinated tools.
+
+    Provides structured diagnostic feedback listing registered tools to enable
+    the agent to self-correct rather than crashing or looping blindly.
+    """
+    if isinstance(params, ToolDefinition):
+        actual_tool = params.name
+    elif tool_name:
+        actual_tool = tool_name
+    elif isinstance(params, dict) and "tool" in params:
+        actual_tool = str(params.get("tool", "unknown_tool"))
+    else:
+        actual_tool = "unknown_tool"
+
+    logger.warning(
+        "UNRECOGNIZED_TOOL_INVOKED: Tool '%s' has no registered handler in workspace '%s'.",
+        actual_tool,
+        workspace_id,
+    )
+    available_tools = sorted(list(TOOL_DISPATCH.keys()))[:15]
     return {
         "status": "error",
-        "tool": tool.name,
-        "result": f"Tool {tool.name} not configured — no handler",
+        "tool": actual_tool,
+        "result": f"Tool {actual_tool} not configured — no handler in tool registry",
+        "diagnostics": {
+            "error_type": "TOOL_NOT_RECOGNIZED",
+            "suggested_tools": available_tools,
+            "actionable_fix": "Select a registered tool from suggested_tools or configure the appropriate external connector.",
+        },
         "setup_hint": "Configure connector or check tool registry",
     }
+
+
+# Backwards compatibility alias
+_execute_mock = _handle_unrecognized_tool
 
 
 TOOL_DISPATCH: dict[str, Any] = {
@@ -3153,10 +3186,14 @@ async def execute_tool(
         try:
             handler = TOOL_DISPATCH.get(tool.name) or DYNAMIC_HANDLERS.get(tool.name)
             if handler is None:
-                handler = _execute_mock
-            result = await asyncio.wait_for(
-                handler(params, workspace_id), timeout=timeout
-            )
+                try:
+                    result = await _execute_mock(params, workspace_id, tool_name=tool.name)
+                except TypeError:
+                    result = await _execute_mock(params, workspace_id)
+            else:
+                result = await asyncio.wait_for(
+                    handler(params, workspace_id), timeout=timeout
+                )
             # ── 0b. Tool result schema validation (P1 — output_schema best-effort + hardening)
             # Ensures handler returns dict with status/tool/result; malformed → error shape.
             # If output_schema declares type array/object, validate top-level result type.

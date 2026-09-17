@@ -484,12 +484,22 @@ class KnowledgeGraphService:
         from collections import deque
 
         tenant_id, workspace_id = self._read_scope(tenant_id, workspace_id)
+        # Defense-in-depth: clamp depth between 1 and 10; enforce maximum node visit bound to prevent DoS
+        depth = max(1, min(depth, 10))
+        max_nodes = 500
         visited = {start_id}
         queue = deque([(start_id, 0)]) if mode == "bfs" else [(start_id, 0)]
 
         result = []
 
         while queue:
+            if len(result) >= max_nodes:
+                logger.warning(
+                    "KG_TRAVERSAL_LIMIT: Traversal reached maximum node limit of %d in workspace %s",
+                    max_nodes,
+                    workspace_id,
+                )
+                break
             if mode == "bfs":
                 current_id, lvl = queue.popleft()
             else:

@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 import os
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -207,14 +210,64 @@ class QdrantStore(VectorStore):
 
 
 class FallbackVectorStore(VectorStore):
-    async def upsert(self, embeddings: Sequence[VectorRecord]) -> None:
-        pass
+    """In-memory cosine similarity vector store used when external vector engines
+    (pgvector, qdrant) are unavailable.
 
-    async def search(self, query_vector: list[float], limit: int = 10, filters: dict[str, Any] | None = None) -> list[VectorRecord]:
-        return []
+    Provides functional vector search and metadata filtering in development, CI,
+    and fallback scenarios rather than silently dropping ingested vectors.
+    """
+
+    def __init__(self) -> None:
+        self._records: dict[str, VectorRecord] = {}
+        if os.environ.get("ENVIRONMENT") == "production":
+            logger.error(
+                "VECTOR_STORE_DEGRADED: FallbackVectorStore active in production! "
+                "Vectors stored only in process memory and lost on restart."
+            )
+        else:
+            logger.info("FallbackVectorStore initialized (in-memory cosine similarity).")
+
+    @staticmethod
+    def _cosine_similarity(v1: list[float], v2: list[float]) -> float:
+        if not v1 or not v2 or len(v1) != len(v2):
+            return 0.0
+        dot = sum(a * b for a, b in zip(v1, v2))
+        norm1 = sum(a * a for a in v1) ** 0.5
+        norm2 = sum(b * b for b in v2) ** 0.5
+        if norm1 == 0.0 or norm2 == 0.0:
+            return 0.0
+        return dot / (norm1 * norm2)
+
+    async def upsert(self, embeddings: Sequence[VectorRecord]) -> None:
+        if os.environ.get("ENVIRONMENT") == "production":
+            logger.error(
+                "VECTOR_STORE_EPHEMERAL_UPSERT: Storing vectors in ephemeral fallback store in production!"
+            )
+        for rec in embeddings:
+            self._records[rec.id] = rec
+
+    async def search(
+        self, query_vector: list[float], limit: int = 10, filters: dict[str, Any] | None = None
+    ) -> list[VectorRecord]:
+        scored: list[tuple[float, VectorRecord]] = []
+        for rec in self._records.values():
+            if filters:
+                match = True
+                for k, v in filters.items():
+                    if rec.metadata.get(k) != v:
+                        match = False
+                        break
+                if not match:
+                    continue
+            sim = self._cosine_similarity(query_vector, rec.vector)
+            scored.append((sim, rec))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return [rec for _, rec in scored[:limit]]
 
     async def delete(self, ids: Sequence[str]) -> None:
-        pass
+        for id_ in ids:
+            self._records.pop(id_, None)
 
 
 def get_vector_store() -> VectorStore:

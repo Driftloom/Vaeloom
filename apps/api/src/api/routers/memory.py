@@ -264,14 +264,28 @@ async def get_memory_lineage(
         forwards = list(result.scalars().all())
         for f in forwards:
             chain_forward.append(MemoryResponse.model_validate(f).model_dump(mode="json"))
-            # Recursively walk forward successors
-            # Depth 2 only for simplicity
-            stmt2 = select(Memory).where(Memory.supersedes_id == f.id).where(Memory.workspace_id == memory.workspace_id)
-            r2 = await db.execute(stmt2)
-            for ff in r2.scalars().all():
-                chain_forward.append(MemoryResponse.model_validate(ff).model_dump(mode="json"))
-    except Exception:
-        pass
+            # Iteratively walk forward successors with cycle detection (up to 5 hops)
+            visited_ids = {memory_id, f.id}
+            frontier = [f.id]
+            walk_depth = 0
+            max_walk_depth = 5
+            while frontier and walk_depth < max_walk_depth:
+                walk_depth += 1
+                stmt2 = (
+                    select(Memory)
+                    .where(Memory.supersedes_id.in_(frontier))
+                    .where(Memory.workspace_id == memory.workspace_id)
+                )
+                r2 = await db.execute(stmt2)
+                next_frontier = []
+                for ff in r2.scalars().all():
+                    if ff.id not in visited_ids:
+                        visited_ids.add(ff.id)
+                        next_frontier.append(ff.id)
+                        chain_forward.append(MemoryResponse.model_validate(ff).model_dump(mode="json"))
+                frontier = next_frontier
+    except Exception as exc:
+        logger.warning("Error traversing forward memory lineage: %s", exc)
 
     # Provenance nodes via service
     provenance_nodes: list[dict] = []
