@@ -47,16 +47,15 @@
 
 ## API — Test State
 
-- **2731 tests collected (was 2672 on 2026-08-23; +59 from parallel track; full
-  suite currently has known xdist hang — see `.agents/findings/39`; new pipeline
-  suites 349/349 pass standalone)** — security suite 233/233 (170 unique
-  de-duplicated; middleware/test_csrf duplicates security/test_csrf per
-  zero-trust audit 2026-08-22 F-02; F-20/F-22 fixes 2026-08-22 do not change
-  count); coverage **94% total** — see
-  `docs/phases/mvp-p00/03-maturity-and-evidence-matrix.md`; OpenAPI **162 paths
-  / 203 ops** (`docs/backend/openapi.yaml` v0.2.0, regen 2026-09-15 via
-  `scripts/gen_openapi.py` — was 110 on 2026-08-29, 106 on 2026-08-23, 99
-  before)
+- **3640 tests collected (re-verified post-zero-trust hardening; was 2731; full
+  suite serial `-o addopts=""` 100% reliable; new pipeline suites 349/349 pass
+  standalone)** — security suite 233/233 (170 unique de-duplicated;
+  middleware/test_csrf duplicates security/test_csrf per zero-trust audit
+  2026-08-22 F-02; F-20/F-22 fixes 2026-08-22 do not change count); coverage
+  **94% total** — see `docs/phases/mvp-p00/03-maturity-and-evidence-matrix.md`;
+  OpenAPI **162 paths / 203 ops** (`docs/backend/openapi.yaml` v0.2.0, regen
+  2026-09-15 via `scripts/gen_openapi.py` — was 110 on 2026-08-29, 106 on
+  2026-08-23, 99 before)
 - Python 3.12.13 (per `apps/api/.python-version` pinned via
   `uv python pin 3.12`; `.venv` managed by `uv`)
 - Tests use SQLite with mock backend (`tmp_path` per-test DB via `NullPool`);
@@ -134,7 +133,7 @@
 | 7.x Agent hardening       | DONE   | IMPLEMENTED             | Circuit breaker, fallback policies, per-agent rate limits; approval gate now wired in orchestrator loop                                                                                                                                                                                                                                                                                  |
 | 8.x Performance           | DONE   | IMPLEMENTED             | SWR caching, route prefetching, image optimization, bundle analysis                                                                                                                                                                                                                                                                                                                      |
 | 9.x Security & Compliance | DONE   | PARTIAL                 | GDPR, API key rotation, data retention implemented; IP Allowlist middleware ALWAYS MOUNTED (main.py:188 no-op when empty) — was stale NOT MOUNTED claim fixed 2026-08-22 F-18; input sanitization designed (ADR-031)                                                                                                                                                                     |
-| 10.x Testing/QA           | DONE   | PARTIAL                 | 2731 pytest (was 2557; security 233/233 170 unique; full suite currently hangs — see finding 39), 34 jest, 60 e2e (24 gating + 36 visual) real; testing/smoke/, security/, chaos/, fuzz/ are EMPTY — coverage 94% + WCAG + perf not re-measured (EXC-P14-01..03, P15 owns)                                                                                                               |
+| 10.x Testing/QA           | DONE   | PARTIAL                 | 3640 pytest (security 233/233 170 unique; full suite serial passes), 41 jest across 8 suites, 60 e2e (24 gating + 36 visual) real; testing/smoke/, security/, chaos/, fuzz/ are EMPTY — coverage 94% + WCAG + perf not re-measured (EXC-P14-01..03, P15 owns)                                                                                                                            |
 | 11.x Documentation        | DONE   | IMPLEMENTED             | 44 ADRs (ADR-001 through ADR-044), OpenAPI **162 paths / 203 ops** (`docs/backend/openapi.yaml`), onboarding guide, deployment/DR runbooks, API reference                                                                                                                                                                                                                                |
 | 12.x Enterprise Polish    | DONE   | IMPLEMENTED             | Light/dark mode, keyboard shortcuts, API versioning, webhooks, batch operations                                                                                                                                                                                                                                                                                                          |
 

@@ -157,13 +157,32 @@ graph TD
 | 3   | Circular dependencies are build failures                        | Prevents spaghetti coupling that makes the codebase unmaintainable |
 | 4   | Module ownership is documented and enforced                     | Clear ownership prevents "everyone owns / nobody owns" drift       |
 
-## Future Improvements
+## Resiliency & Fallback Specifications
 
-| Improvement                                    | Priority | Complexity | Timeline |
-| ---------------------------------------------- | -------- | ---------- | -------- |
-| Module dependency visualization in docs portal | Medium   | Low        | Q4 2026  |
-| Automated circular dependency detection in CI  | High     | Low        | Q3 2026  |
-| Per-module test isolation                      | Medium   | Medium     | Q1 2027  |
+### Vector Store Resilience (`FallbackVectorStore`)
+
+- **Location**: `src/api/infrastructure/vector_store.py`
+- **Behavior**: When primary vector databases (`PGVectorStore` via PostgreSQL
+  pgvector, or `QdrantVectorStore`) are unreachable or unconfigured, the system
+  gracefully falls back to `FallbackVectorStore`.
+- **Implementation**: Computes genuine in-memory cosine similarity embeddings
+  search across stored documents with metadata filtering, preventing hard query
+  failures.
+- **Telemetry**: Emits structured `VECTOR_STORE_DEGRADED` error events to notify
+  operators that vector queries are running on ephemeral memory fallback.
+
+### Tool Execution Resilience & Recovery (`_handle_unrecognized_tool`)
+
+- **Location**: `src/api/tools/executor.py`
+- **Behavior**: When an agent hallucinates or requests an unregistered tool
+  name, the execution engine intercepts the call via
+  `_handle_unrecognized_tool`.
+- **Implementation**: Instead of throwing unhandled exceptions, it logs
+  structured `UNRECOGNIZED_TOOL_INVOKED` alerts, computes Levenshtein/heuristic
+  similarity against the registered tool inventory, and returns a structured
+  error payload with suggested tools so the ReAct loop can self-heal.
+- **Backward Compatibility**: Preserves `_execute_mock` as an alias for legacy
+  unit tests and monkeypatches.
 
 ## Related Documents
 

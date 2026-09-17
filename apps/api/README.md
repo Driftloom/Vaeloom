@@ -55,10 +55,24 @@ uv run --project apps/api python -m pytest -q -o addopts="-n auto --dist loadfil
 uv run --project apps/api python -m pytest -q -o addopts=""
 ```
 
-2731 tests · 94% coverage · security 233/233. SQLite + `NullPool`, per-test
-`tmp_path` DB; `mock_llm` + `mock_connector_test` autouse fixtures. Known xdist
-hang (finding 39) — see
+3640 tests collected · 94% coverage · security 233/233. SQLite + `NullPool`,
+per-test `tmp_path` DB; `mock_llm` + `mock_connector_test` autouse fixtures.
+Known xdist hang (finding 39) — see
 [`docs/backend/Troubleshooting.md`](../../docs/backend/Troubleshooting.md).
+
+## System Dependencies & Parsing Prerequisites
+
+- **PDF & Document Parsing**: `pdfplumber`, `python-docx`, `pypdf` are installed
+  via `uv`.
+- **OCR Engine (Scanned PDFs/Images)**: Scanned image/PDF extraction requires
+  Tesseract OCR (`tesseract-ocr` + `tesseract-ocr-eng`). In production Docker
+  images, Tesseract is pre-installed. In local development, install via
+  `winget install UB-Mannheim.TesseractOCR` (Windows) or
+  `apt install tesseract-ocr` (Linux). If missing, `parsers.py` flags
+  `DOC_SCANNED_IMAGE_NO_TEXT` and logs structured alerts gracefully.
+- **Headless Chromium (Resume Compilation)**: Run
+  `uv run --project apps/api playwright install chromium` once locally for PDF
+  compilation.
 
 ## Migrate
 
