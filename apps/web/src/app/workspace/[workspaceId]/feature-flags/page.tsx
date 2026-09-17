@@ -21,6 +21,13 @@ export default function FeatureFlagsPage() {
   const [newFlagDesc, setNewFlagDesc] = useState('');
   const [newFlagCategory, setNewFlagCategory] = useState('general');
 
+  const [abTestName, setAbTestName] = useState('');
+  const [abTestDesc, setAbTestDesc] = useState('');
+  const [variantALabel, setVariantALabel] = useState('Control');
+  const [variantBLabel, setVariantBLabel] = useState('Treatment');
+  const [splitPct, setSplitPct] = useState(50);
+  const [isCreatingTest, setIsCreatingTest] = useState(false);
+
   const {
     data: flags,
     mutate,
@@ -116,6 +123,56 @@ export default function FeatureFlagsPage() {
     },
     [mutate, appendAudit, toast],
   );
+
+  const handleCreateAbTest = useCallback(async () => {
+    if (!abTestName.trim()) {
+      toast({
+        tone: 'error',
+        title: 'Test name required',
+        detail: 'Please enter a name for the A/B test.',
+      });
+      return;
+    }
+    setIsCreatingTest(true);
+    try {
+      const description = `${abTestDesc.trim() || 'A/B Experiment'} [Split: ${variantALabel} (${100 - splitPct}%) vs ${variantBLabel} (${splitPct}%)]`;
+      const created = await featureFlagsApi.create(workspaceId, {
+        name: abTestName.trim(),
+        description,
+        category: 'features',
+        rollout_percentage: splitPct,
+        enabled: true,
+      });
+      mutate((prev) => (prev ? [...prev, created] : [created]), { revalidate: false });
+      appendAudit(created.name, `A/B test created with ${splitPct}% rollout`);
+      toast({
+        tone: 'success',
+        title: 'A/B Test Created',
+        detail: `Created ${created.name} targeting ${splitPct}% traffic`,
+      });
+      setAbTestName('');
+      setAbTestDesc('');
+      setActiveTab('flags');
+    } catch {
+      toast({
+        tone: 'error',
+        title: 'Create failed',
+        detail: 'Could not create A/B experiment flag.',
+      });
+    } finally {
+      setIsCreatingTest(false);
+    }
+  }, [
+    abTestName,
+    abTestDesc,
+    variantALabel,
+    variantBLabel,
+    splitPct,
+    workspaceId,
+    mutate,
+    appendAudit,
+    toast,
+  ]);
 
   if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Feature Flags" />;
 
@@ -245,38 +302,64 @@ export default function FeatureFlagsPage() {
             A/B Test Configuration
           </h2>
           <div className="space-y-4">
-            <Input label="Test Name" placeholder="e.g. new-onboarding-flow" />
-            <Input label="Description" placeholder="Describe what this test compares" />
+            <Input
+              label="Test Name"
+              value={abTestName}
+              onChange={(e) => setAbTestName(e.target.value)}
+              placeholder="e.g. new-onboarding-flow"
+            />
+            <Input
+              label="Description"
+              value={abTestDesc}
+              onChange={(e) => setAbTestDesc(e.target.value)}
+              placeholder="Describe what this test compares"
+            />
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-text">Variants</label>
+              <label className="block text-sm font-medium text-text">Variants & Split</label>
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
-                  <Input placeholder="Variant A label" className="flex-1" />
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    className="w-20 bg-background border border-border rounded-md px-3 py-2 text-sm text-text"
-                    placeholder="50%"
+                  <Input
+                    placeholder="Variant A label (Control)"
+                    value={variantALabel}
+                    onChange={(e) => setVariantALabel(e.target.value)}
+                    className="flex-1"
                   />
+                  <div className="w-20 px-3 py-2 text-sm text-text-muted bg-surface-active rounded-md text-center font-mono">
+                    {100 - splitPct}%
+                  </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Input placeholder="Variant B label" className="flex-1" />
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    className="w-20 bg-background border border-border rounded-md px-3 py-2 text-sm text-text"
-                    placeholder="50%"
+                  <Input
+                    placeholder="Variant B label (Treatment)"
+                    value={variantBLabel}
+                    onChange={(e) => setVariantBLabel(e.target.value)}
+                    className="flex-1"
                   />
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      className="w-20 bg-background border border-border rounded-md px-3 py-2 text-sm text-text font-mono"
+                      value={splitPct}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        setSplitPct(isNaN(val) ? 0 : Math.max(0, Math.min(100, val)));
+                      }}
+                      placeholder="50"
+                    />
+                    <span className="text-xs text-text-muted font-mono">%</span>
+                  </div>
                 </div>
               </div>
             </div>
-            <Button>Create Test</Button>
+            <Button onClick={handleCreateAbTest} disabled={isCreatingTest}>
+              {isCreatingTest ? 'Creating…' : 'Create Test'}
+            </Button>
           </div>
           <p className="mt-4 text-xs text-text-dim font-mono">
-            A/B tests use feature flags with rollout percentages. Create a flag above, then split
-            traffic via rollout.
+            A/B tests configure live feature flags with rollout splits. Variants and allocations
+            sync directly to the backend flag service.
           </p>
         </Card>
       )}

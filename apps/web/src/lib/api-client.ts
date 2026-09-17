@@ -1645,6 +1645,20 @@ export interface AssignRolesRequest {
   role_ids: string[];
 }
 
+export interface OrganizationInviteRequest {
+  email: string;
+  role?: string;
+  organization_id?: string;
+}
+
+export interface OrganizationInviteResponse {
+  id: string;
+  email: string;
+  role: string;
+  status: string;
+  message: string;
+}
+
 export const iamApi = {
   createUser(body: IAMCreateUserRequest): Promise<IAMUserResponse> {
     return apiClient.post<IAMUserResponse>('/iam/users', body);
@@ -1675,6 +1689,9 @@ export const iamApi = {
   },
   getPermissions(userId: string): Promise<string[]> {
     return apiClient.get<string[]>(`/iam/users/${userId}/permissions`);
+  },
+  inviteMember(body: OrganizationInviteRequest): Promise<OrganizationInviteResponse> {
+    return apiClient.post<OrganizationInviteResponse>('/iam/organizations/invites', body);
   },
 };
 

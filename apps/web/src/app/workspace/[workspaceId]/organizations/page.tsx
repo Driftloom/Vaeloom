@@ -6,6 +6,7 @@ import { StatusBadge, type StatusVariant } from '@/components/shared/StatusBadge
 import useSWR from 'swr';
 import { useParams } from 'next/navigation';
 import { iamApi } from '@/lib/api-client';
+import { useToast } from '@/components/shared/Toast';
 
 interface OrgNode {
   id: string;
@@ -176,12 +177,52 @@ export default function OrganizationsPage() {
   const params = useParams();
   const workspaceId = (params?.['workspaceId'] as string | undefined) ?? null;
   void workspaceId;
+  const { toast } = useToast();
 
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('Editor');
+  const [isInviting, setIsInviting] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState<string | null>(null);
   const [members, setMembers] = useState<Member[]>(mockMembers);
+
+  const handleSendInvite = async () => {
+    if (!inviteEmail.trim()) {
+      toast({ tone: 'error', title: 'Email required', detail: 'Please enter an email address.' });
+      return;
+    }
+    setIsInviting(true);
+    try {
+      const res = await iamApi.inviteMember({
+        email: inviteEmail.trim(),
+        role: inviteRole,
+      });
+      const newMember: Member = {
+        id: res.id,
+        name: inviteEmail.trim().split('@')[0] ?? 'New Member',
+        email: res.email,
+        role: res.role,
+        status: 'invited',
+        department: 'General',
+      };
+      setMembers((prev) => [newMember, ...prev]);
+      toast({
+        tone: 'success',
+        title: 'Invitation Sent',
+        detail: `Sent invitation to ${res.email} as ${res.role}`,
+      });
+      setShowInviteModal(false);
+      setInviteEmail('');
+    } catch {
+      toast({
+        tone: 'error',
+        title: 'Invitation Failed',
+        detail: 'Could not send organization invitation. Ensure backend is running.',
+      });
+    } finally {
+      setIsInviting(false);
+    }
+  };
 
   const { data: iamRes, isLoading: iamLoading } = useSWR(
     'orgs-iam-users',
@@ -360,17 +401,12 @@ export default function OrganizationsPage() {
             <Button variant="secondary" onClick={() => setShowInviteModal(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={() => {
-                setShowInviteModal(false);
-                setInviteEmail('');
-              }}
-            >
-              Send Invite
+            <Button onClick={handleSendInvite} disabled={isInviting}>
+              {isInviting ? 'Sending…' : 'Send Invite'}
             </Button>
           </div>
           <p className="text-xs text-text-dim font-mono">
-            Invite is local only — no POST /iam/organizations/invites backend yet
+            Sends genuine invitation via POST /iam/organizations/invites
           </p>
         </div>
       </Modal>
