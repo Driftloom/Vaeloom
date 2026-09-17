@@ -196,6 +196,8 @@ docs/openapi.yaml
 backups/
 *.backup
 *.bak
+*.dump
+*.sql
 
 # Seed output
 seed_output/
