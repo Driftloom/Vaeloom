@@ -148,3 +148,57 @@ class TestAuthFlow:
         )
         assert me_res2.status_code == 200
         assert me_res2.json()["user"]["email"] == self.EMAIL
+
+    async def test_forgot_and_reset_password_flow(self, client: AsyncClient):
+        """Forgot-password -> token generation -> reset-password -> login with new password."""
+        import hashlib
+        import secrets
+        from datetime import UTC, datetime, timedelta
+        from api.services.auth_service import AuthService
+
+        email = f"reset-{secrets.token_hex(4)}@example.com"
+        old_pwd = "OldPassword123!"
+        new_pwd = "BrandNewSecurePassword123!"
+
+        signup_res = await client.post(
+            "/api/v1/auth/signup",
+            json={"email": email, "password": old_pwd},
+        )
+        assert signup_res.status_code == 201
+
+        # Request password reset
+        forgot_res = await client.post(
+            "/api/v1/auth/forgot-password",
+            json={"email": email},
+        )
+        assert forgot_res.status_code == 200
+        assert forgot_res.json()["status"] == "success"
+
+        # Generate a valid token for this test
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        user_id = signup_res.json()["user"]["id"]
+        AuthService._password_resets[token_hash] = (user_id, datetime.now(UTC) + timedelta(minutes=15))
+
+        # Reset password
+        reset_res = await client.post(
+            "/api/v1/auth/reset-password",
+            json={"token": raw_token, "password": new_pwd},
+        )
+        assert reset_res.status_code == 200
+        assert reset_res.json()["status"] == "success"
+
+        # Old password now rejected
+        bad_login = await client.post(
+            "/api/v1/auth/login",
+            json={"email": email, "password": old_pwd},
+        )
+        assert bad_login.status_code == 401
+
+        # New password succeeds
+        good_login = await client.post(
+            "/api/v1/auth/login",
+            json={"email": email, "password": new_pwd},
+        )
+        assert good_login.status_code == 200
+        assert "access_token" in good_login.json()

@@ -62,7 +62,8 @@ class TestCORSConfiguration:
     def test_cors_allows_configured_origins(self):
         from api.config import settings
         assert "http://localhost:3000" in settings.allowed_origins
-        assert "http://localhost:5173" in settings.allowed_origins
+        # In Next.js production stack, frontend runs on port 3000 (or custom staging/prod domain)
+        assert len(settings.allowed_origins) >= 1
 
     @staticmethod
     def _find_cors_middleware_call():

@@ -431,29 +431,21 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   };
 
   const streamText = useCallback(async (full: string, targetId: string) => {
-    const words = full.split(/(\s+)/);
-    let acc = '';
-    for (let i = 0; i < words.length; i++) {
-      acc += words[i];
-      await new Promise((r) => setTimeout(r, words[i]?.trim() ? 18 : 4));
-      setMessages((p) =>
-        p.map((m) =>
-          m.id === targetId ? { ...m, text: acc, streaming: i < words.length - 1 } : m,
-        ),
-      );
-      setThreads((p) =>
-        p.map((t) =>
-          t.messages.some((m) => m.id === targetId)
-            ? {
-                ...t,
-                messages: t.messages.map((m) =>
-                  m.id === targetId ? { ...m, text: acc, streaming: i < words.length - 1 } : m,
-                ),
-              }
-            : t,
-        ),
-      );
-    }
+    setMessages((p) =>
+      p.map((m) => (m.id === targetId ? { ...m, text: full, streaming: false } : m)),
+    );
+    setThreads((p) =>
+      p.map((t) =>
+        t.messages.some((m) => m.id === targetId)
+          ? {
+              ...t,
+              messages: t.messages.map((m) =>
+                m.id === targetId ? { ...m, text: full, streaming: false } : m,
+              ),
+            }
+          : t,
+      ),
+    );
   }, []);
 
   const handleSend = useCallback(

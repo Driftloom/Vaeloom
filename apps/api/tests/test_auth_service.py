@@ -60,6 +60,8 @@ class TestAuthService:
         user.auth_provider = "email"
         user.created_at = datetime.now(timezone.utc)
         user.preferences = {}
+        user.avatar_url = None
+        user.tenant_id = None
         return user
 
     # ── signup ────────────────────────────────────────────────────────
@@ -220,6 +222,8 @@ class TestAuthService:
         user.display_name = "User"
         user.auth_provider = "email"
         user.created_at = datetime.now(timezone.utc)
+        user.avatar_url = None
+        user.tenant_id = None
 
         mock_db.execute = AsyncMock(side_effect=[
             _MockScalarResult(scalar=session),
@@ -255,15 +259,17 @@ class TestAuthService:
 
     def test_create_jwt_without_tenant(self, service):
         with patch('jwt.encode', return_value="jwt_token") as mock_encode:
-            token = service._create_jwt("uid", "email@test.com")
+            token, jti = service._create_jwt("uid", "email@test.com")
             assert token == "jwt_token"
+            assert isinstance(jti, str) and len(jti) > 0
             payload = mock_encode.call_args[0][0]
             assert payload["sub"] == "uid"
             assert "tenant_id" not in payload
 
     def test_create_jwt_with_tenant(self, service):
         with patch('jwt.encode', return_value="jwt_token") as mock_encode:
-            token = service._create_jwt("uid", "email@test.com", tenant_id="tid")
+            token, jti = service._create_jwt("uid", "email@test.com", tenant_id="tid")
             assert token == "jwt_token"
+            assert isinstance(jti, str) and len(jti) > 0
             payload = mock_encode.call_args[0][0]
             assert payload["tenant_id"] == "tid"

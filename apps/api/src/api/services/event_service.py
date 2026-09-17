@@ -68,14 +68,39 @@ class EventService:
             async def _trigger():
                 try:
                     from ..config import settings as _settings
-                    if not getattr(_settings, "temporal_enabled", False):
-                        return
-                    from ..temporal.client import get_temporal_client
-                    from ..temporal.queues import queue_name
-                    from ..temporal.workflows import EventTriggerInput  # type: ignore
+                    from ..trigger.client import (
+                        TASK_INGEST_DOCUMENT,
+                        TASK_SYNC_CONNECTOR,
+                        get_trigger_client,
+                        is_trigger_enabled,
+                    )
+
                     # Only durable-execute for configured event types (prevent infinite loop)
                     DURABLE_EVENT_TYPES = {"document.created", "document.updated", "connector.updated", "application.status_changed", "deadline.created"}
                     if event.type not in DURABLE_EVENT_TYPES:
+                        return
+
+                    if is_trigger_enabled():
+                        tclient = get_trigger_client()
+                        task_mapping = {
+                            "document.created": TASK_INGEST_DOCUMENT,
+                            "document.updated": TASK_INGEST_DOCUMENT,
+                            "connector.updated": TASK_SYNC_CONNECTOR,
+                        }
+                        target_task = task_mapping.get(event.type, f"vaeloom.event.{event.type}")
+                        await tclient.trigger(
+                            task_name=target_task,
+                            payload={
+                                "event_id": str(event.id),
+                                "event_type": event.type,
+                                "workspace_id": str(event.workspace_id) if event.workspace_id else None,
+                                "payload": event.payload if isinstance(event.payload, dict) else {},
+                            },
+                            options={"idempotencyKey": f"event:{event.id}"},
+                        )
+                        return
+
+                    if not getattr(_settings, "temporal_enabled", False):
                         return
                     client = await get_temporal_client()
                     if client is None:

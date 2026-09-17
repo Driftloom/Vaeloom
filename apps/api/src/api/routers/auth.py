@@ -50,6 +50,40 @@ async def login(dto: LoginRequest, db: AsyncSession = Depends(get_db)):
     )
 
 
+@router.post("/forgot-password")
+@rate_limit(max_requests=5, window_seconds=900)
+async def forgot_password(dto: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    await auth_service.request_password_reset(email=dto.email, db=db)
+    return {
+        "status": "success",
+        "message": "If an account with that email exists, password reset instructions have been sent.",
+    }
+
+
+@router.post("/reset-password")
+@rate_limit(max_requests=5, window_seconds=900)
+async def reset_password(dto: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    if not dto.token and dto.email:
+        await auth_service.request_password_reset(email=dto.email, db=db)
+        return {
+            "status": "success",
+            "message": "If an account with that email exists, password reset instructions have been sent.",
+        }
+
+    if not dto.token:
+        raise HTTPException(status_code=400, detail="Reset token is required")
+
+    new_password = dto.password or dto.new_password
+    if not new_password:
+        raise HTTPException(status_code=400, detail="New password is required")
+
+    await auth_service.reset_password_with_token(token=dto.token, new_password=new_password, db=db)
+    return {
+        "status": "success",
+        "message": "Password has been successfully reset.",
+    }
+
+
 @router.post("/logout", status_code=204)
 async def logout(
     current_user: dict = Depends(get_current_user),
