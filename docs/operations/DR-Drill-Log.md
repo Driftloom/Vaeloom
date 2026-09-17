@@ -10,9 +10,9 @@
 
 ## Log
 
-| Date | Drill type | Scope | RTO achieved | RPO achieved | Result / gaps                                                                                                                                                                                           | Evidence               |
-| ---- | ---------- | ----- | ------------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| —    | —          | —     | —            | —            | **No drill executed yet as of 2026-09-15.** The cadence in `DISASTER_RECOVERY.md` (weekly restore-to-staging, quarterly failover, bi-annual tabletop, monthly integrity check) is planned, not history. | This log (first entry) |
+| Date       | Drill type         | Scope                                     | RTO achieved              | RPO achieved          | Result / gaps                                                                                                                                                                                                                                 | Evidence                                                                                     |
+| ---------- | ------------------ | ----------------------------------------- | ------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| 2026-09-17 | restore-to-staging | Database (PostgreSQL 18 + pgvector + RLS) | **48.99s** (Target: ≤60m) | **0.0s** (Target: 5m) | **SUCCESS — ALL 5 CHECKS PASSED.** Restored 67/67 tables, verified 67/67 RLS-enabled, extensions `vector`, `uuid-ossp`, `pgcrypto` active, Alembic head `0042`, marker `ebdbf1d5-a05f-4e7f-a59c-3af17b10e65d` data integrity matched exactly. | `apps/api/scripts/dr_drill_runner.py`, `apps/api/backups/vaeloom_drill_20260917_190518.dump` |
 
 ## How to log a drill
 

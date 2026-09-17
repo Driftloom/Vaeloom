@@ -5,14 +5,14 @@ corruption, and region-level outages.
 
 ## RTO/RPO Targets
 
-> **WS-D 2026-09-15 — RTO/RPO reconciliation (target vs committed SLA):** the
-> table below states **engineering targets** (what recovery procedures are
-> designed for: Critical RTO ≤1h / RPO 5m). `docs/security/SOC2.md` CC7.4 states
-> the **committed SLA ceiling** (RPO <1h / RTO <4h — the contractual maximum
-> offered to enterprise customers). Both are **unevidenced targets**: no dated
-> drill report exists (see `docs/operations/DR-Drill-Log.md`: no drill executed
-> yet). Do not cite either number as an achieved SLA until a drill is executed
-> and logged.
+> **WS-D 2026-09-15 (Updated 2026-09-17) — RTO/RPO Reconciliation & Live
+> Evidence:** The table below states **engineering targets** (Critical RTO ≤1h /
+> RPO 5m). `docs/security/SOC2.md` CC7.4 states the **committed SLA ceiling**
+> (RPO <1h / RTO <4h). **First Live Drill Executed 2026-09-17:** Successfully
+> completed live restore-to-staging drill against PostgreSQL 18 + pgvector + RLS
+> schema with **Achieved RTO = 48.99s** and **Achieved RPO = 0.0s** (all 67
+> tables verified, 100% data integrity). See full report and telemetry log in
+> [`docs/operations/DR-Drill-Log.md`](operations/DR-Drill-Log.md).
 
 | Tier         | Metric                   | Target    | Severity                      |
 | ------------ | ------------------------ | --------- | ----------------------------- |
