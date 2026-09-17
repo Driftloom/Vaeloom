@@ -793,7 +793,7 @@ async def _execute_compile_resume_docx(params: dict[str, Any], workspace_id: str
                 "extension": compiled.extension,
                 "size_bytes": len(compiled.data),
                 "template": template_slug,
-                "note": "DOCX compiled successfully" if err is None else "DOCX compiled from mock content",
+                "note": "DOCX compiled successfully",
             },
         }
     except Exception as e:

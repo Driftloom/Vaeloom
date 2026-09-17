@@ -73,10 +73,32 @@ async def upload_document(
     doc = await document_service.upload(file=file, workspace_id=workspace_id, user_id=_user_id(current_user), db=db)
     await db.commit()
     await db.refresh(doc)
-    # Auto-start Temporal ingest workflow (fail-open — DB row is source of truth)
+    # Auto-start durable ingest workflow (Trigger.dev / BullMQ / Temporal — fail-open)
     try:
         from ..config import settings as _settings
-        if getattr(_settings, "temporal_enabled", False):
+        from ..trigger.client import TASK_INGEST_DOCUMENT, get_trigger_client, is_trigger_enabled
+
+        if is_trigger_enabled():
+            import asyncio as _aio
+
+            async def _start_trigger() -> None:
+                try:
+                    tclient = get_trigger_client()
+                    await tclient.trigger(
+                        task_name=TASK_INGEST_DOCUMENT,
+                        payload={
+                            "workspace_id": workspace_id,
+                            "document_id": str(doc.id),
+                            "filename": getattr(doc, "path", "untitled"),
+                            "requested_by": _user_id(current_user),
+                        },
+                        options={"idempotencyKey": f"ingest:{doc.id}"},
+                    )
+                except Exception as ex:
+                    logger.warning(f"Trigger.dev document ingest dispatch failed: {ex}")
+
+            _aio.create_task(_start_trigger())
+        elif getattr(_settings, "temporal_enabled", False):
             import asyncio as _aio
             import hashlib as _hash
 

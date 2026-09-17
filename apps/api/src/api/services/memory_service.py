@@ -94,30 +94,28 @@ class MemoryService:
         db.add(memory)
         await db.flush()
         await db.refresh(memory)
-        if embedding and not os.environ.get("PYTEST_CURRENT_TEST"):
+        if embedding:
             try:
                 from ..infrastructure.vector_store import (
-                    QdrantStore,
                     VectorRecord,
                     get_vector_store,
                 )
                 vstore = get_vector_store()
-                if isinstance(vstore, QdrantStore):
-                    await vstore.upsert([
-                        VectorRecord(
-                            id=str(memory.id),
-                            vector=embedding,
-                            metadata={
-                                "source_type": "memory",
-                                "source_id": str(memory.id),
-                                "workspace_id": str(resolved_ws_id) if resolved_ws_id else "",
-                                "tenant_id": tenant_id or "",
-                                "title": memory.title or "",
-                            },
-                        )
-                    ])
-            except Exception:
-                pass
+                await vstore.upsert([
+                    VectorRecord(
+                        id=str(memory.id),
+                        vector=embedding,
+                        metadata={
+                            "source_type": "memory",
+                            "source_id": str(memory.id),
+                            "workspace_id": str(resolved_ws_id) if resolved_ws_id else "",
+                            "tenant_id": tenant_id or "",
+                            "title": memory.title or "",
+                        },
+                    )
+                ], session=db)
+            except Exception as e:
+                logger.debug(f"Vector store upsert bypassed or failed: {e}")
         return memory
 
     async def list_memories(
@@ -291,10 +289,9 @@ class MemoryService:
         memory.deleted_at = datetime.now(UTC)
         await db.flush()
         try:
-            from ..infrastructure.vector_store import QdrantStore, get_vector_store
+            from ..infrastructure.vector_store import get_vector_store
             vstore = get_vector_store()
-            if isinstance(vstore, QdrantStore):
-                await vstore.delete([str(memory_id)])
+            await vstore.delete([str(memory_id)], session=db)
         except Exception:
             pass
         return True
@@ -314,24 +311,26 @@ class MemoryService:
         content_for_embedding = dto.query
         query_embedding = await llm_service.generate_embedding(content_for_embedding)
 
-        # Primary: query Qdrant if configured (and not running isolated unit tests)
-        if not os.environ.get("PYTEST_CURRENT_TEST"):
-            try:
-                from ..infrastructure.vector_store import QdrantStore, get_vector_store
-                vstore = get_vector_store()
-                if isinstance(vstore, QdrantStore):
-                    filters: dict[str, Any] = {}
-                    if target_ws:
-                        filters["workspace_id"] = str(target_ws)
-                    q_records = await vstore.search(query_vector=query_embedding, limit=dto.top_k, filters=filters or None)
-                    if q_records:
-                        mem_ids = [_to_uuid(r.metadata.get("source_id") or r.id) for r in q_records if _to_uuid(r.metadata.get("source_id") or r.id)]
-                        if mem_ids:
-                            res = await db.execute(select(Memory).where(Memory.id.in_(mem_ids)))
-                            mem_map = {m.id: m for m in res.scalars().all()}
-                            return [(mem_map[mid], 0.95) for mid in mem_ids if mid in mem_map]
-            except Exception:
-                pass
+        # Primary: query configured vector store polymorphically
+        try:
+            from ..infrastructure.vector_store import get_vector_store
+            vstore = get_vector_store()
+            filters: dict[str, Any] = {}
+            if target_ws:
+                filters["workspace_id"] = str(target_ws)
+            vrecords = await vstore.search(
+                query_vector=query_embedding, limit=dto.top_k, filters=filters or None, session=db
+            )
+            if vrecords:
+                mem_ids = [_to_uuid(r.metadata.get("source_id") or r.id) for r in vrecords if _to_uuid(r.metadata.get("source_id") or r.id)]
+                if mem_ids:
+                    res = await db.execute(select(Memory).where(Memory.id.in_(mem_ids)))
+                    mem_map = {m.id: m for m in res.scalars().all()}
+                    found = [(mem_map[mid], 0.95) for mid in mem_ids if mid in mem_map]
+                    if found:
+                        return found
+        except Exception as e:
+            logger.debug(f"Vector store search failed or bypassed: {e}")
 
         stmt = select(Memory, func.cosine_distance(Memory.embedding, query_embedding).label("distance"))
         conditions = [Memory.status == "active", Memory.embedding.isnot(None)]

@@ -42,15 +42,12 @@ async def vector_search(query: str, workspace_id: str, limit: int) -> list[Retri
         query_embedding = await llm_service.generate_embedding(query)
     except Exception as e:
         logger.warning(f"Embedding generation failed: {e}")
-    # Primary: check dedicated vector store (Qdrant Cloud) if configured
+    # Primary: check configured vector store polymorphically
     try:
-        import os as _os
-        if _os.environ.get("VECTOR_STORE", "").lower() == "qdrant" or bool(_os.environ.get("QDRANT_URL")):
-            from api.infrastructure.vector_store import QdrantStore, get_vector_store
-            vstore = get_vector_store()
-            if isinstance(vstore, QdrantStore):
-                records = await vstore.search(query_vector=query_embedding, limit=limit, filters={"workspace_id": workspace_id})
-                if records:
+        from api.infrastructure.vector_store import get_vector_store
+        vstore = get_vector_store()
+        records = await vstore.search(query_vector=query_embedding, limit=limit, filters={"workspace_id": workspace_id})
+        if records:
                     async with scoped_session(workspace_id=workspace_id, require=False) as session:
                         memories = []
                         for r in records:

@@ -528,41 +528,19 @@ async def _assemble_rag_context(
                         from api.services.llm_service import llm_service
                         vec = await llm_service.generate_embedding(query[:2000])
                         rows: list[tuple[str, str]] = []
-                        # Check dedicated vector store (e.g. Qdrant Cloud) first
-                        vstore_type = _os.environ.get("VECTOR_STORE", "").lower()
-                        if vstore_type == "qdrant" or bool(_os.environ.get("QDRANT_URL")):
-                            try:
-                                from api.infrastructure.vector_store import (
-                                    QdrantStore,
-                                    get_vector_store,
-                                )
-                                vstore = get_vector_store()
-                                if isinstance(vstore, QdrantStore):
-                                    vrecords = await vstore.search(query_vector=vec, limit=8, filters={"workspace_id": workspace_id})
-                                    for vr in vrecords:
-                                        sid = str(vr.metadata.get("source_id") or vr.id)
-                                        stype = str(vr.metadata.get("source_type", "entity"))
-                                        rows.append((sid, stype))
-                            except Exception as qe:
-                                logger.debug(f"Qdrant RAG search failed, fallback to DB: {qe}")
-
-                        # If no dedicated vector store results, try embeddings table (pgvector)
-                        if not rows:
-                            try:
-                                vec_str = f"[{','.join(str(x) for x in vec)}]"
-                                res = await session.execute(
-                                    _text("""
-                                        SELECT source_id, source_type, 1 - (vector <=> CAST(:vec AS vector)) AS score
-                                        FROM embeddings
-                                        WHERE workspace_id = :wid AND source_type IN ('entity', 'memory', 'document', 'document_chunk')
-                                        ORDER BY vector <=> CAST(:vec AS vector)
-                                        LIMIT 8
-                                    """),
-                                    {"wid": workspace_id, "vec": vec_str},
-                                )
-                                rows = [(str(r[0]), str(r[1])) for r in res.fetchall()]
-                            except Exception as ve:
-                                logger.debug(f"RAG vector SQL failed, falling back to LIKE: {ve}")
+                        # Query configured vector store polymorphically
+                        try:
+                            from api.infrastructure.vector_store import get_vector_store
+                            vstore = get_vector_store()
+                            vrecords = await vstore.search(
+                                query_vector=vec, limit=8, filters={"workspace_id": workspace_id}, session=session
+                            )
+                            for vr in vrecords:
+                                sid = str(vr.metadata.get("source_id") or vr.id)
+                                stype = str(vr.metadata.get("source_type", "entity"))
+                                rows.append((sid, stype))
+                        except Exception as ve:
+                            logger.debug(f"RAG vector search failed, falling back to LIKE: {ve}")
 
                         for sid, stype in rows:
                             try:

@@ -19,15 +19,15 @@ class VectorRecord:
 
 class VectorStore(ABC):
     @abstractmethod
-    async def upsert(self, embeddings: Sequence[VectorRecord]) -> None: ...
+    async def upsert(self, embeddings: Sequence[VectorRecord], **kwargs: Any) -> None: ...
 
     @abstractmethod
     async def search(
-        self, query_vector: list[float], limit: int = 10, filters: dict[str, Any] | None = None
+        self, query_vector: list[float], limit: int = 10, filters: dict[str, Any] | None = None, **kwargs: Any
     ) -> list[VectorRecord]: ...
 
     @abstractmethod
-    async def delete(self, ids: Sequence[str]) -> None: ...
+    async def delete(self, ids: Sequence[str], **kwargs: Any) -> None: ...
 
 
 class PGVectorStore(VectorStore):
@@ -45,42 +45,47 @@ class PGVectorStore(VectorStore):
         self._engine = create_async_engine(self._url, pool_pre_ping=True, pool_size=5, max_overflow=5)
         self._session_factory = async_sessionmaker(self._engine, expire_on_commit=False)
 
-    async def upsert(self, embeddings: Sequence[VectorRecord]) -> None:
-        await self._ensure_connected()
+    async def _execute_upsert(self, session: Any, embeddings: Sequence[VectorRecord]) -> None:
         from sqlalchemy import text
+        for rec in embeddings:
+            vector_str = "[" + ",".join(f"{v}" for v in rec.vector) + "]"
+            dims = len(rec.vector) if rec.vector else None
+            stmt = text("""
+                INSERT INTO embeddings (id, source_type, source_id, vector, model_version, workspace_id, dimensions, source_table)
+                VALUES (:id, :source_type, :source_id, CAST(:vector AS vector), :model_version, :workspace_id, :dimensions, :source_table)
+                ON CONFLICT (id) DO UPDATE SET
+                    vector = EXCLUDED.vector,
+                    model_version = EXCLUDED.model_version,
+                    dimensions = EXCLUDED.dimensions,
+                    source_table = EXCLUDED.source_table
+            """)
+            await session.execute(
+                stmt,
+                {
+                    "id": rec.id,
+                    "source_type": rec.metadata.get("source_type", "unknown"),
+                    "source_id": rec.metadata.get("source_id", rec.id),
+                    "vector": vector_str,
+                    "model_version": rec.metadata.get("model_version", "text-embedding-3-small"),
+                    "workspace_id": rec.metadata.get("workspace_id", "00000000-0000-0000-0000-000000000000"),
+                    "dimensions": dims,
+                    "source_table": rec.metadata.get("source_table"),
+                },
+            )
 
-        async with self._session_factory() as session:
-            for rec in embeddings:
-                vector_str = "[" + ",".join(f"{v}" for v in rec.vector) + "]"
-                dims = len(rec.vector) if rec.vector else None
-                stmt = text("""
-                    INSERT INTO embeddings (id, source_type, source_id, vector, model_version, workspace_id, dimensions, source_table)
-                    VALUES (:id, :source_type, :source_id, CAST(:vector AS vector), :model_version, :workspace_id, :dimensions, :source_table)
-                    ON CONFLICT (id) DO UPDATE SET
-                        vector = EXCLUDED.vector,
-                        model_version = EXCLUDED.model_version,
-                        dimensions = EXCLUDED.dimensions,
-                        source_table = EXCLUDED.source_table
-                """)
-                await session.execute(
-                    stmt,
-                    {
-                        "id": rec.id,
-                        "source_type": rec.metadata.get("source_type", "unknown"),
-                        "source_id": rec.metadata.get("source_id", rec.id),
-                        "vector": vector_str,
-                        "model_version": rec.metadata.get("model_version", "text-embedding-3-small"),
-                        "workspace_id": rec.metadata.get("workspace_id", "00000000-0000-0000-0000-000000000000"),
-                        "dimensions": dims,
-                        "source_table": rec.metadata.get("source_table"),
-                    },
-                )
-            await session.commit()
+    async def upsert(self, embeddings: Sequence[VectorRecord], **kwargs: Any) -> None:
+        session = kwargs.get("session")
+        if session is not None:
+            await self._execute_upsert(session, embeddings)
+        else:
+            await self._ensure_connected()
+            async with self._session_factory() as s:
+                await self._execute_upsert(s, embeddings)
+                await s.commit()
 
-    async def search(
-        self, query_vector: list[float], limit: int = 10, filters: dict[str, Any] | None = None
+    async def _execute_search(
+        self, session: Any, query_vector: list[float], limit: int = 10, filters: dict[str, Any] | None = None
     ) -> list[VectorRecord]:
-        await self._ensure_connected()
         from sqlalchemy import text
 
         vector_str = "[" + ",".join(f"{v}" for v in query_vector) + "]"
@@ -104,9 +109,8 @@ class PGVectorStore(VectorStore):
             ORDER BY vector <=> CAST(:vector_str AS vector)
             LIMIT :limit
         """)
-        async with self._session_factory() as session:
-            result = await session.execute(stmt, params)
-            rows = result.fetchall()
+        result = await session.execute(stmt, params)
+        rows = result.fetchall()
 
         records = []
         for row in rows:
@@ -126,14 +130,30 @@ class PGVectorStore(VectorStore):
             )
         return records
 
-    async def delete(self, ids: Sequence[str]) -> None:
+    async def search(
+        self, query_vector: list[float], limit: int = 10, filters: dict[str, Any] | None = None, **kwargs: Any
+    ) -> list[VectorRecord]:
+        session = kwargs.get("session")
+        if session is not None:
+            return await self._execute_search(session, query_vector, limit, filters)
         await self._ensure_connected()
-        from sqlalchemy import text
+        async with self._session_factory() as s:
+            return await self._execute_search(s, query_vector, limit, filters)
 
-        async with self._session_factory() as session:
-            for id_ in ids:
-                await session.execute(text("DELETE FROM embeddings WHERE id = :id"), {"id": id_})
-            await session.commit()
+    async def _execute_delete(self, session: Any, ids: Sequence[str]) -> None:
+        from sqlalchemy import text
+        for id_ in ids:
+            await session.execute(text("DELETE FROM embeddings WHERE id = :id"), {"id": id_})
+
+    async def delete(self, ids: Sequence[str], **kwargs: Any) -> None:
+        session = kwargs.get("session")
+        if session is not None:
+            await self._execute_delete(session, ids)
+        else:
+            await self._ensure_connected()
+            async with self._session_factory() as s:
+                await self._execute_delete(s, ids)
+                await s.commit()
 
 
 class QdrantStore(VectorStore):
@@ -169,7 +189,7 @@ class QdrantStore(VectorStore):
         except ImportError:
             raise RuntimeError("qdrant_client is not installed; cannot use QdrantStore")
 
-    async def upsert(self, embeddings: Sequence[VectorRecord]) -> None:
+    async def upsert(self, embeddings: Sequence[VectorRecord], **kwargs: Any) -> None:
         await self._ensure_connected()
         points = []
         for rec in embeddings:
@@ -179,7 +199,7 @@ class QdrantStore(VectorStore):
         await self._client.upsert(collection_name=self._collection, points=points)
 
     async def search(
-        self, query_vector: list[float], limit: int = 10, filters: dict[str, Any] | None = None
+        self, query_vector: list[float], limit: int = 10, filters: dict[str, Any] | None = None, **kwargs: Any
     ) -> list[VectorRecord]:
         await self._ensure_connected()
         qfilter = None
@@ -204,7 +224,7 @@ class QdrantStore(VectorStore):
             records.append(VectorRecord(id=id_, vector=list(point.vector or []), metadata=payload))
         return records
 
-    async def delete(self, ids: Sequence[str]) -> None:
+    async def delete(self, ids: Sequence[str], **kwargs: Any) -> None:
         await self._ensure_connected()
         await self._client.delete(collection_name=self._collection, points_selector=self._models.PointIdsList(points=list(ids)))
 
@@ -238,7 +258,7 @@ class FallbackVectorStore(VectorStore):
             return 0.0
         return dot / (norm1 * norm2)
 
-    async def upsert(self, embeddings: Sequence[VectorRecord]) -> None:
+    async def upsert(self, embeddings: Sequence[VectorRecord], **kwargs: Any) -> None:
         if os.environ.get("ENVIRONMENT") == "production":
             logger.error(
                 "VECTOR_STORE_EPHEMERAL_UPSERT: Storing vectors in ephemeral fallback store in production!"
@@ -247,7 +267,7 @@ class FallbackVectorStore(VectorStore):
             self._records[rec.id] = rec
 
     async def search(
-        self, query_vector: list[float], limit: int = 10, filters: dict[str, Any] | None = None
+        self, query_vector: list[float], limit: int = 10, filters: dict[str, Any] | None = None, **kwargs: Any
     ) -> list[VectorRecord]:
         scored: list[tuple[float, VectorRecord]] = []
         for rec in self._records.values():
@@ -265,7 +285,7 @@ class FallbackVectorStore(VectorStore):
         scored.sort(key=lambda x: x[0], reverse=True)
         return [rec for _, rec in scored[:limit]]
 
-    async def delete(self, ids: Sequence[str]) -> None:
+    async def delete(self, ids: Sequence[str], **kwargs: Any) -> None:
         for id_ in ids:
             self._records.pop(id_, None)
 
@@ -279,12 +299,15 @@ def get_vector_store() -> VectorStore:
         except Exception:
             pass
     store_type = (store_type or "pgvector").lower()
+
     if store_type == "qdrant":
         try:
             import qdrant_client  # noqa: F401
             return QdrantStore()
         except ImportError:
-            pass
+            return FallbackVectorStore()
+
     if store_type == "pgvector":
         return PGVectorStore()
+
     return FallbackVectorStore()
