@@ -11,9 +11,11 @@ from ..dependencies import get_current_user
 from ..middleware.rate_limit import rate_limit
 from ..schemas.auth import (
     AuthResponse,
+    ForgotPasswordRequest,
     LoginRequest,
     MeResponse,
     RefreshRequest,
+    ResetPasswordRequest,
     SignupRequest,
 )
 from ..services.auth_service import auth_service
@@ -94,6 +96,28 @@ async def refresh(dto: RefreshRequest, db: AsyncSession = Depends(get_db)):
         refresh_token=dto.refresh_token,
         db=db,
     )
+
+
+@router.post("/forgot-password", status_code=200)
+@rate_limit(max_requests=5, window_seconds=300)
+async def forgot_password(dto: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    await auth_service.request_password_reset(email=dto.email, db=db)
+    return {"message": "If that email is registered, a password reset link has been sent"}
+
+
+@router.post("/reset-password", status_code=200)
+@rate_limit(max_requests=5, window_seconds=300)
+async def reset_password(dto: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    # Handles both request reset (with email) and complete reset (with token + password)
+    if dto.token and (dto.password or dto.new_password):
+        pwd = dto.new_password or dto.password or ""
+        await auth_service.reset_password_with_token(token=dto.token, new_password=pwd, db=db)
+        return {"message": "Password has been successfully reset. Please log in with your new password."}
+    elif dto.email:
+        await auth_service.request_password_reset(email=dto.email, db=db)
+        return {"message": "If that email is registered, a password reset link has been sent"}
+    else:
+        raise HTTPException(status_code=400, detail="Must provide email or token with new password")
 
 
 from pydantic import BaseModel

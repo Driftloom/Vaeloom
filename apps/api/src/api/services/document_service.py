@@ -56,9 +56,31 @@ class DocumentService:
 
         from ..utils.sanitize import sanitize_text
 
-        content = await file.read()
-        if len(content) > 10 * 1024 * 1024:
-            raise HTTPException(status_code=413, detail="File too large — max 10MB")
+        import hashlib
+        import tempfile
+
+        # Stream upload chunks to a spooled temporary file (G-36)
+        # Prevents high memory allocation during large uploads (> 20MB)
+        hasher = hashlib.sha256()
+        total_size = 0
+        max_upload_bytes = 25 * 1024 * 1024  # 25 MB limit matching BodySizeLimitMiddleware
+        chunk_size = 1024 * 1024  # 1 MB chunk
+
+        with tempfile.SpooledTemporaryFile(max_size=5 * 1024 * 1024, mode="w+b") as spooled:
+            while True:
+                chunk = await file.read(chunk_size)
+                if not chunk:
+                    break
+                total_size += len(chunk)
+                if total_size > max_upload_bytes:
+                    raise HTTPException(status_code=413, detail="File too large — max 25MB")
+                hasher.update(chunk)
+                spooled.write(chunk)
+
+            spooled.seek(0)
+            content = spooled.read()
+
+        checksum = hasher.hexdigest()
         raw_name = file.filename or "untitled"
         # Sanitize filename and prevent path traversal
         filename = sanitize_text(raw_name)[:255]
@@ -73,7 +95,7 @@ class DocumentService:
             type=doc_type,
             raw_storage_key=None,
             content=content,
-            metadata_={"original_name": filename, "size": len(content)},
+            metadata_={"original_name": filename, "size": len(content), "sha256": checksum},
         )
         db.add(doc)
         await db.flush()

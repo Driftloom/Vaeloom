@@ -241,3 +241,16 @@ class TestIAM:
             "display_name": "Nope",
         }, headers=headers)
         assert res.status_code == 404
+
+    async def test_create_organization_invite(self, client: AsyncClient):
+        headers = self._admin_headers()
+        res = await client.post("/api/v1/iam/organizations/invites", json={
+            "email": "invitee@company.test",
+            "role": "Editor",
+        }, headers=headers)
+        assert res.status_code == 201
+        data = res.json()
+        assert data["email"] == "invitee@company.test"
+        assert data["role"] == "Editor"
+        assert data["status"] == "invited"
+        assert "id" in data

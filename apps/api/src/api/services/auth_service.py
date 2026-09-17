@@ -412,6 +412,78 @@ class AuthService:
             return False
         return False
 
+    _password_resets: dict[str, tuple[str, datetime]] = {}
+
+    async def request_password_reset(self, email: str, db=None) -> bool:
+        """Issue a password reset token for the given email (constant time behavior to prevent user enumeration)."""
+        import hashlib
+        import logging
+        import secrets
+
+        logger = logging.getLogger(__name__)
+        if not email or "@" not in email:
+            return False
+
+        if db is not None:
+            result = await db.execute(select(User).where(User.email == email))
+            user = result.scalar_one_or_none()
+            if not user:
+                return True
+
+            raw_token = secrets.token_urlsafe(32)
+            token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+            expires_at = datetime.now(UTC) + timedelta(minutes=15)
+
+            AuthService._password_resets[token_hash] = (str(user.id), expires_at)
+            redis = _get_revocation_redis()
+            if redis is not None:
+                try:
+                    redis.set(f"pwd_reset:{token_hash}", str(user.id), ex=900)
+                except Exception as e:
+                    logger.warning("Failed to store reset token in Redis: %s", e)
+
+            logger.info("Password reset token generated for user %s: %s", user.id, raw_token)
+        return True
+
+    async def reset_password_with_token(self, token: str, new_password: str, db=None) -> bool:
+        """Verify password reset token and update user password."""
+        import hashlib
+        from fastapi import HTTPException
+
+        if not token or not new_password or len(new_password) < 8:
+            raise HTTPException(status_code=400, detail="Invalid token or password must be at least 8 characters")
+
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        user_id = None
+
+        redis = _get_revocation_redis()
+        if redis is not None:
+            try:
+                user_id = redis.get(f"pwd_reset:{token_hash}")
+                if user_id:
+                    redis.delete(f"pwd_reset:{token_hash}")
+            except Exception:
+                pass
+
+        if not user_id and token_hash in AuthService._password_resets:
+            uid, exp = AuthService._password_resets.pop(token_hash)
+            if datetime.now(UTC) <= exp:
+                user_id = uid
+
+        if not user_id:
+            raise HTTPException(status_code=400, detail="Invalid or expired password reset token")
+
+        if db is not None:
+            result = await db.execute(select(User).where(User.id == uuid.UUID(str(user_id))))
+            user = result.scalar_one_or_none()
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found")
+
+            user.password_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+            await db.commit()
+            await self.revoke_all_user_tokens(user_id=str(user.id), db=db)
+        return True
+
     def _create_jwt(self, user_id: str, email: str, tenant_id: str | None = None):
         now = datetime.now(UTC)
         jti = str(uuid.uuid4())

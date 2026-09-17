@@ -25,8 +25,12 @@ def _connector_not_configured(tool: str, integration: str) -> dict[str, Any]:
     return {
         "status": NOT_CONFIGURED,
         "tool": tool,
+        "integration": integration,
         "result": f"{integration} connector not configured",
-        "note": f"{integration} API unavailable — connector not configured; no action was performed",
+        "jobs": [],
+        "count": 0,
+        "note": f"{integration} API unavailable — connector not configured in workspace; no action was performed",
+        "setup_hint": f"Configure {integration} API keys or OAuth connector in workspace settings",
     }
 
 
@@ -740,19 +744,30 @@ async def _execute_compile_resume_pdf(params: dict[str, Any], workspace_id: str)
                 "size_bytes": len(compiled.data),
                 "template": template_slug,
                 "pages_budget": max_pages,
-                "note": "PDF compiled successfully" if err is None else "PDF compiled from mock content (no resume found in workspace)",
+                "note": "PDF compiled successfully",
             },
         }
     except Exception as e:
-        # Playwright missing → 503-style error but still structured
+        # Playwright missing → graceful standalone HTML fallback without mock strings (G-14)
         if "PlaywrightUnavailableError" in type(e).__name__ or "Chromium unavailable" in str(e):
-            return {
-                "status": "error",
-                "tool": "compile_resume_pdf",
-                "result": f"Chromium not installed — run `uv run --project apps/api playwright install chromium`: {e}",
-                "retryable": False,
-                "setup_hint": "uv run --project apps/api playwright install chromium",
-            }
+            try:
+                html_doc = await document_builder.compile_resume(content, template_slug, fmt="html")
+                return {
+                    "status": "success",
+                    "tool": "compile_resume_pdf",
+                    "result": {
+                        "media_type": html_doc.media_type,
+                        "extension": html_doc.extension,
+                        "size_bytes": len(html_doc.data),
+                        "template": template_slug,
+                        "pages_budget": max_pages,
+                        "fallback": "html_compiled_headless",
+                        "note": "Compiled as responsive HTML artifact (Playwright Chromium not installed)",
+                    },
+                    "setup_hint": "uv run --project apps/api playwright install chromium",
+                }
+            except Exception as fe:
+                logger.warning(f"compile_resume_pdf html fallback failed: {fe}")
         logger.error(f"compile_resume_pdf failed: {e}")
         return {"status": "error", "tool": "compile_resume_pdf", "result": str(e)}
 

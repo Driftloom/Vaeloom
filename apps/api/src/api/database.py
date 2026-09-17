@@ -25,7 +25,24 @@ engine = create_async_engine(
     connect_args=connect_args,
 )
 
-async_session_factory = async_sessionmaker(engine, expire_on_commit=False)
+class RLSGuardedAsyncSession(AsyncSession):
+    """AsyncSession subclass that automatically re-applies transaction-scoped RLS GUCs
+    (app.tenant_id, app.workspace_id, app.user_id) following any mid-request commit (G-34).
+    """
+
+    async def commit(self):
+        await super().commit()
+        # Re-establish RLS session vars if session continues after commit
+        try:
+            from .middleware.tenant import TenantContext, set_rls_session_vars
+
+            if TenantContext.get_tenant_id():
+                await set_rls_session_vars(self)
+        except Exception:
+            pass
+
+
+async_session_factory = async_sessionmaker(engine, class_=RLSGuardedAsyncSession, expire_on_commit=False)
 
 
 def _migration_url() -> str | None:

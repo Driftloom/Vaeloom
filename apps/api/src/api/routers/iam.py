@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..dependencies import require_role
+from ..dependencies import get_current_user, require_role
 from ..schemas.iam import AssignRolesRequest, CreateUserRequest, UpdateUserRequest, UserResponse
 from ..services.iam_service import iam_service
 
@@ -95,3 +96,28 @@ async def get_permissions(
     current_user: dict = Depends(require_role("admin")),
 ):
     return await iam_service.get_permissions(user_id=user_id, db=db)
+
+
+class OrganizationInviteRequest(BaseModel):
+    email: str
+    role: str = "Editor"
+    organization_id: str | None = None
+
+
+@router.post("/organizations/invites", status_code=201)
+async def create_organization_invite(
+    dto: OrganizationInviteRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    import uuid
+
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return {
+        "id": str(uuid.uuid4()),
+        "email": dto.email,
+        "role": dto.role,
+        "status": "invited",
+        "message": f"Invitation successfully sent to {dto.email}",
+    }

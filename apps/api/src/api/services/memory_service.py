@@ -126,6 +126,7 @@ class MemoryService:
         query: MemoryQuery,
         tenant_id: str | None,
         workspace_id: str | None = None,
+        allow_tenant_wide: bool = False,
     ) -> tuple[list[Memory], int]:
         stmt = select(Memory)
         count_stmt = select(func.count(Memory.id))
@@ -148,9 +149,11 @@ class MemoryService:
             conditions.append(Memory.domain == query.domain)
         if tenant_id:
             conditions.append(Memory.tenant_id == tenant_id)
-        # Enforced workspace scoping (F-03): authoritative workspace_id from auth context
-        # takes precedence over any client-supplied DTO value.
+        # Enforced workspace scoping (F-03, G-41): authoritative workspace_id from auth context
+        # takes precedence over any client-supplied DTO value. Accidental tenant-wide queries are rejected.
         enforced_ws = workspace_id or query.workspace_id
+        if not enforced_ws and not allow_tenant_wide:
+            raise ValueError("workspace_id is required for memory operations")
         if enforced_ws:
             ws_uuid = _to_uuid(enforced_ws)
             if ws_uuid is not None:
@@ -302,7 +305,12 @@ class MemoryService:
         dto: MemorySearch,
         tenant_id: str | None,
         workspace_id: str | None = None,
+        allow_tenant_wide: bool = False,
     ) -> list[tuple[Memory, float]]:
+        target_ws = workspace_id or getattr(dto, "workspace_id", None)
+        if not target_ws and not allow_tenant_wide:
+            raise ValueError("workspace_id is required for memory operations")
+
         content_for_embedding = dto.query
         query_embedding = await llm_service.generate_embedding(content_for_embedding)
 
@@ -313,8 +321,8 @@ class MemoryService:
                 vstore = get_vector_store()
                 if isinstance(vstore, QdrantStore):
                     filters: dict[str, Any] = {}
-                    if workspace_id:
-                        filters["workspace_id"] = str(workspace_id)
+                    if target_ws:
+                        filters["workspace_id"] = str(target_ws)
                     q_records = await vstore.search(query_vector=query_embedding, limit=dto.top_k, filters=filters or None)
                     if q_records:
                         mem_ids = [_to_uuid(r.metadata.get("source_id") or r.id) for r in q_records if _to_uuid(r.metadata.get("source_id") or r.id)]
@@ -329,11 +337,11 @@ class MemoryService:
         conditions = [Memory.status == "active", Memory.embedding.isnot(None)]
         if tenant_id:
             conditions.append(Memory.tenant_id == tenant_id)
-        # Enforced workspace scoping (F-03): MemoryService.search_memories now scopes by
+        # Enforced workspace scoping (F-03, G-41): MemoryService.search_memories now scopes by
         # the authoritative workspace_id, so workspace B cannot retrieve workspace A's
         # memories even within the same tenant.
-        if workspace_id:
-            ws_uuid = _to_uuid(workspace_id)
+        if target_ws:
+            ws_uuid = _to_uuid(target_ws)
             if ws_uuid is not None:
                 conditions.append(Memory.workspace_id == ws_uuid)
         if dto.type:

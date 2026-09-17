@@ -99,7 +99,8 @@ class TestListMemories:
             return results.pop(0)
 
         db.execute = execute
-        query = MemoryQuery()
+        ws_id = str(uuid.uuid4())
+        query = MemoryQuery(workspace_id=ws_id)
         memories, total = await svc.list_memories(db, query, tenant_id=None)
         assert total == 2
         assert len(memories) == 2
@@ -117,7 +118,8 @@ class TestListMemories:
             return results.pop(0)
 
         db.execute = execute
-        query = MemoryQuery(type="doc", tags=["tag1"])
+        ws_id = str(uuid.uuid4())
+        query = MemoryQuery(type="doc", tags=["tag1"], workspace_id=ws_id)
         memories, total = await svc.list_memories(db, query, tenant_id="t-1")
         assert total == 1
 
@@ -133,10 +135,20 @@ class TestListMemories:
             return results.pop(0)
 
         db.execute = execute
-        query = MemoryQuery()
+        ws_id = str(uuid.uuid4())
+        query = MemoryQuery(workspace_id=ws_id)
         memories, total = await svc.list_memories(db, query, tenant_id=None)
         assert total == 0
         assert memories == []
+
+    async def test_strict_workspace_required(self, svc):
+        db = MagicMock()
+        # Missing workspace_id without allow_tenant_wide must raise ValueError (G-41)
+        with pytest.raises(ValueError, match="workspace_id is required"):
+            await svc.list_memories(db, MemoryQuery(), tenant_id="t-1", allow_tenant_wide=False)
+
+        with pytest.raises(ValueError, match="workspace_id is required"):
+            await svc.search_memories(db, MemorySearch(query="test"), tenant_id="t-1", allow_tenant_wide=False)
 
 
 class TestGetMemory:
@@ -298,8 +310,9 @@ class TestSearchMemories:
             return result
 
         db.execute = execute
-        dto = MemorySearch(query="test")
-        results = await svc.search_memories(db, dto, tenant_id=None)
+        ws_id = uuid.uuid4()
+        dto = MemorySearch(query="test", workspace_id=ws_id)
+        results = await svc.search_memories(db, dto, tenant_id=None, workspace_id=ws_id)
         assert len(results) == 2
         assert results[0][1] == pytest.approx(0.9)
         assert results[1][1] == pytest.approx(0.8)
@@ -314,8 +327,9 @@ class TestSearchMemories:
             return result
 
         db.execute = execute
-        dto = MemorySearch(query="ai", type="doc", tags=["ai"], top_k=5, threshold=0.8)
-        results = await svc.search_memories(db, dto, tenant_id="t-1")
+        ws_id = uuid.uuid4()
+        dto = MemorySearch(query="ai", type="doc", tags=["ai"], top_k=5, threshold=0.8, workspace_id=ws_id)
+        results = await svc.search_memories(db, dto, tenant_id="t-1", workspace_id=ws_id)
         assert len(results) == 1
 
     async def test_search_no_threshold(self, svc):
@@ -328,8 +342,9 @@ class TestSearchMemories:
             return result
 
         db.execute = execute
-        dto = MemorySearch(query="test", threshold=None)
-        results = await svc.search_memories(db, dto, tenant_id=None)
+        ws_id = uuid.uuid4()
+        dto = MemorySearch(query="test", threshold=None, workspace_id=ws_id)
+        results = await svc.search_memories(db, dto, tenant_id=None, workspace_id=ws_id)
         assert len(results) == 1
 
 
@@ -391,8 +406,9 @@ class TestMemoryTaxonomy:
             return results.pop(0)
 
         db.execute = execute
-        query = MemoryQuery(domain="hr")
-        memories, total = await svc.list_memories(db, query, tenant_id="t-1")
+        ws_id = str(uuid.uuid4())
+        query = MemoryQuery(domain="hr", workspace_id=ws_id)
+        memories, total = await svc.list_memories(db, query, tenant_id="t-1", workspace_id=ws_id)
         assert total == 1
         assert memories[0].domain == "hr"
 
@@ -406,8 +422,9 @@ class TestMemoryTaxonomy:
             return result
 
         db.execute = execute
-        dto = MemorySearch(query="deal", domain="sales")
-        results = await svc.search_memories(db, dto, tenant_id="t-1")
+        ws_id = uuid.uuid4()
+        dto = MemorySearch(query="deal", domain="sales", workspace_id=ws_id)
+        results = await svc.search_memories(db, dto, tenant_id="t-1", workspace_id=ws_id)
         assert len(results) == 1
 
 

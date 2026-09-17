@@ -79,6 +79,14 @@ class EventService:
                         return
                     client = await get_temporal_client()
                     if client is None:
+                        import logging
+                        logging.getLogger(__name__).warning(
+                            "Temporal cluster unreachable or disabled; degraded to synchronous local fallback for event %s",
+                            event.id,
+                            extra={"event_id": str(event.id), "event_type": event.type, "fallback": True},
+                        )
+                        from ..temporal.metrics import inc_temporal_fallback
+                        inc_temporal_fallback("EventTriggeredWorkflow", reason="temporal_client_disabled")
                         return
                     from temporalio.common import WorkflowIDReusePolicy as _WIDP  # type: ignore
 
@@ -105,7 +113,14 @@ class EventService:
                     if "AlreadyStarted" not in msg and "WorkflowExecutionAlreadyStarted" not in msg:
                         import logging
 
-                        logging.getLogger(__name__).debug(f"EventTriggeredWorkflow trigger skipped for {event.id}: {e}")
+                        logging.getLogger(__name__).warning(
+                            "Temporal workflow dispatch error for event %s (%s); degraded to local fallback",
+                            event.id,
+                            e,
+                            extra={"event_id": str(event.id), "error": str(e), "fallback": True},
+                        )
+                        from ..temporal.metrics import inc_temporal_fallback
+                        inc_temporal_fallback("EventTriggeredWorkflow", reason="dispatch_exception")
 
             _aio.create_task(_trigger())
         except Exception:

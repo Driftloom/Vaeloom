@@ -187,3 +187,16 @@ class TestWorkspaces:
         res = await client.get(f"/api/v1/workspaces/{uuid.uuid4()}/connectors", headers=headers)
         assert res.status_code == 401
         assert "not authenticated" in res.json()["error"]["message"].lower()
+
+    async def test_create_workspace_invite(self, client: AsyncClient):
+        headers = await self._auth_header(client)
+        wid = await self._create_workspace(client, headers, "InviteWS")
+        res = await client.post(f"/api/v1/workspaces/{wid}/invites", json={
+            "email": "teammate@vaeloom.test",
+            "role": "Editor",
+        }, headers=headers)
+        assert res.status_code == 201
+        data = res.json()
+        assert data["email"] == "teammate@vaeloom.test"
+        assert data["workspace_id"] == wid
+        assert data["status"] == "invited"

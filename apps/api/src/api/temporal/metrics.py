@@ -53,6 +53,14 @@ try:
         except Exception:
             pass
 
+    temporal_fallback_total = Counter("temporal_fallback_total", "Executions degraded to synchronous local fallback", ["workflow_type", "reason"])
+
+    def inc_temporal_fallback(workflow_type: str, reason: str = "disabled_or_unreachable") -> None:
+        try:
+            temporal_fallback_total.labels(workflow_type=workflow_type, reason=reason).inc()
+        except Exception:
+            pass
+
 except Exception:  # pragma: no cover
     HAS_METRICS = False
     temporal_workflow_started = temporal_workflow_completed = temporal_workflow_failed = None  # type: ignore
@@ -62,6 +70,7 @@ except Exception:  # pragma: no cover
     langgraph_run_started_total = langgraph_run_completed_total = langgraph_run_failed_total = None  # type: ignore
     langgraph_node_execution_total = langgraph_tool_execution_total = langgraph_interrupt_total = None  # type: ignore
     langgraph_run_duration_seconds = langgraph_node_duration_seconds = None  # type: ignore
+    temporal_fallback_total = None  # type: ignore
 
     def _inc_workflow_started(workflow_type: str, task_queue: str) -> None:  # type: ignore[no-redef]
         return None
@@ -73,4 +82,7 @@ except Exception:  # pragma: no cover
         return None
 
     def _inc_activity_failed(activity_type: str, reason: str = "exception") -> None:  # type: ignore[no-redef]
+        return None
+
+    def inc_temporal_fallback(workflow_type: str, reason: str = "disabled_or_unreachable") -> None:  # type: ignore[no-redef]
         return None

@@ -28,6 +28,17 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str | None = None
+    email: str | None = None
+    password: str | None = None
+    new_password: str | None = None
+
+
 class PublicUser(BaseModel):
     id: uuid.UUID
     email: str
