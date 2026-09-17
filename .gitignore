@@ -201,6 +201,12 @@ seed_output/
 # Misc
 *.tsbuildinfo
 .eslintcache
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.npm/
+.parcel-cache/
 
 # Deploy tooling
 .vercel/
