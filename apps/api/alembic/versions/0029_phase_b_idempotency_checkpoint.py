@@ -41,6 +41,19 @@ def upgrade() -> None:
     END $$;
     """))
     op.execute(sa.text("CREATE INDEX IF NOT EXISTS idx_tool_idempotency_ws_tool ON tool_idempotency (workspace_id, tool_name);"))
+    op.execute(sa.text("""
+    CREATE TABLE IF NOT EXISTS loop_checkpoints (
+        id UUID PRIMARY KEY,
+        request_id VARCHAR(255) NOT NULL UNIQUE,
+        workspace_id VARCHAR(255),
+        state_json JSON NOT NULL DEFAULT '{}',
+        state_version INTEGER NOT NULL DEFAULT 1,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+    );
+    """))
+    op.execute(sa.text("CREATE INDEX IF NOT EXISTS idx_loop_checkpoints_workspace_id ON loop_checkpoints (workspace_id);"))
+    op.execute(sa.text("CREATE INDEX IF NOT EXISTS idx_loop_checkpoints_request_id ON loop_checkpoints (request_id);"))
     op.execute(sa.text("ALTER TABLE loop_checkpoints ADD COLUMN IF NOT EXISTS state_version INTEGER NOT NULL DEFAULT 1;"))
 
 

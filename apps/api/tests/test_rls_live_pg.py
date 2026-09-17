@@ -52,7 +52,12 @@ def _app_url() -> str:
     app connects as vaeloom_app per 0005_rls_expanded.py).
     """
     parts = urlsplit(PG_URL)
-    netloc = f"{APP_USER}:{APP_PASSWORD}@{parts.hostname}"
+    app_user = APP_USER
+    if parts.username and "." in parts.username:
+        # Supabase pooler requires username.project_ref format
+        project_ref = parts.username.split(".", 1)[1]
+        app_user = f"{APP_USER}.{project_ref}"
+    netloc = f"{app_user}:{APP_PASSWORD}@{parts.hostname}"
     if parts.port:
         netloc += f":{parts.port}"
     return urlunsplit((parts.scheme, netloc, parts.path, parts.query, ""))
@@ -69,7 +74,6 @@ ROLE_SQL = (
     f"    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{APP_USER}') THEN\n"
     f"        CREATE ROLE {APP_USER} LOGIN PASSWORD '{APP_PASSWORD}';\n"
     "    END IF;\nEND $$;\n"
-    f"ALTER ROLE {APP_USER} WITH PASSWORD '{APP_PASSWORD}';\n"
     f'GRANT CONNECT ON DATABASE "{_target_db()}" TO {APP_USER};\n'
     f"GRANT USAGE ON SCHEMA public TO {APP_USER};\n"
     "GRANT SELECT, INSERT, UPDATE, DELETE\n"
@@ -80,6 +84,7 @@ ROLE_SQL = (
 POLICY_SQL = """
 DO $$
 BEGIN
+    DROP POLICY IF EXISTS p_users_service ON users;
     IF NOT EXISTS (
         SELECT 1 FROM pg_policies
         WHERE policyname = 'p_memories_workspace' AND tablename = 'memories'
