@@ -23,9 +23,9 @@ graph TD
 
   subgraph AuthN["Authentication Layer"]
   direction TB
-  A1["Auth Provider<br/>Self-issued bcrypt + JWT<br/>(docs mentioning Clerk-Auth0 are stale)"]
+  A1["Auth Service<br/>Native bcrypt + HS256 JWT<br/>(Stateless FastAPI nodes)"]
   A2["JWT + Session Mgmt<br/>HS256, 1h access + 30d refresh<br/>(config.py:53-56)"]
-  A3["MFA<br/>Enterprise only"]
+  A3["MFA / SAML<br/>Enterprise SSO (services/saml.py)"]
   end
 
  subgraph AuthZ["Authorization Layer -- Permission Engine"]
@@ -143,8 +143,9 @@ graph TD
 **In Scope:**
 
 - Perimeter security: TLS 1.3, WAF, CORS, CSP headers
-- Authentication: Auth provider (Clerk/Auth0), JWT with short-lived tokens
-  (15min), MFA for enterprise
+- Authentication: Native auth service (FastAPI + bcrypt), HS256 JWT with
+  short-lived tokens (1h access + 30d refresh), Redis revocation blocklist,
+  enterprise SAML SSO
 - Authorization: 4-axis Permission Engine (connector, action type, agent,
   workspace)
 - Encryption: AES-256 at rest for database and object storage, TLS 1.3 in
@@ -190,7 +191,7 @@ graph TD
 
 | Component          | Responsibility                             | Technology                               | Scale Strategy                           |
 | ------------------ | ------------------------------------------ | ---------------------------------------- | ---------------------------------------- |
-| Auth Provider      | Identity management, MFA, session handling | Clerk / Auth0                            | Managed service, auto-scales             |
+| Auth Service       | Identity management, credentials, sessions | FastAPI + bcrypt + PyJWT + Redis         | Stateless API nodes, auto-scaled         |
 | Permission Engine  | 4-axis scope checking at runtime           | FastAPI dependency / middleware          | Cached permission resolution, horizontal |
 | Secrets Manager    | Encrypted storage and rotation of secrets  | AWS Secrets Manager / GCP Secret Manager | Managed service, auto-scaled             |
 | Encryption Service | AES-256 encryption/decryption at rest      | PostgreSQL TDE + S3 SSE-S3               | Hardware-accelerated (AES-NI)            |
@@ -202,9 +203,9 @@ graph TD
 1. **Request Arrival** — External request hits edge layer; WAF inspects for
    common attack patterns, TLS 1.3 terminates at the load balancer, CORS and CSP
    headers are validated
-2. **Authentication** — Request reaches auth layer; Clerk/Auth0 validates JWT
-   (signature, expiry, issuer), checks MFA status for enterprise users, and
-   extracts user_id and workspace_id claims
+2. **Authentication** — Request reaches auth layer; FastAPI auth middleware
+   validates JWT (HS256 signature, expiry), extracts user_id and tenant_id,
+   verifies workspace membership, and sets PostgreSQL RLS GUCs
 3. **Authorization** — Permission Engine evaluates the 4-axis check: which
    connector is targeted, what action type (read/write/act), which agent is
    requesting, and which workspace is accessed; resolves against stored
@@ -228,13 +229,13 @@ graph TD
 
 ## Error Handling
 
-| Error Scenario                  | Detection                         | Mitigation                                                   | Recovery                                          |
-| ------------------------------- | --------------------------------- | ------------------------------------------------------------ | ------------------------------------------------- |
-| Auth provider unreachable       | Connection timeout to Clerk/Auth0 | Cache last-known valid sessions, deny new auth requests      | Failover to secondary auth provider               |
-| Permission Engine failure       | Exception during scope check      | Deny request by default (fail closed)                        | Restart Permission Engine, verify cache integrity |
-| Secrets manager outage          | API error from secrets manager    | Use cached secrets (24-hour cache), deny new secret creation | Pager duty alert, switch to backup region         |
-| Encryption key rotation failure | Key rotation job error            | Continue with current key, alert                             | Manual key rotation with operator oversight       |
-| Audit log write failure         | PostgreSQL write error            | Queue audit entries in memory, flush on recovery             | Increase audit log partition size, retry writes   |
+| Error Scenario                  | Detection                      | Mitigation                                                   | Recovery                                          |
+| ------------------------------- | ------------------------------ | ------------------------------------------------------------ | ------------------------------------------------- |
+| Auth service / Redis failure    | Connection timeout to Redis    | Fallback to stateless JWT signature and expiry checks        | Redis auto-reconnects, sessions re-established    |
+| Permission Engine failure       | Exception during scope check   | Deny request by default (fail closed)                        | Restart Permission Engine, verify cache integrity |
+| Secrets manager outage          | API error from secrets manager | Use cached secrets (24-hour cache), deny new secret creation | Pager duty alert, switch to backup region         |
+| Encryption key rotation failure | Key rotation job error         | Continue with current key, alert                             | Manual key rotation with operator oversight       |
+| Audit log write failure         | PostgreSQL write error         | Queue audit entries in memory, flush on recovery             | Increase audit log partition size, retry writes   |
 
 ## Monitoring
 

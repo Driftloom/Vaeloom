@@ -2,7 +2,8 @@ import asyncio
 import logging
 import secrets
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
@@ -349,6 +350,79 @@ async def sso_callback(
         refresh_token=refresh_token,
         user=PublicUser.model_validate(user),
     )
+
+
+@router.get('/saml/metadata')
+async def saml_sp_metadata(request: Request):
+    """SAML 2.0 Service Provider Metadata endpoint.
+
+    Returns standard XML metadata for Okta, Azure AD, Ping, and other enterprise IdPs.
+    """
+    saml_cfg = settings.sso_providers.get('saml', {})
+    base_url = saml_cfg.get('sp_base_url') or str(request.base_url).rstrip('/')
+    entity_id = saml_cfg.get('sp_entity_id') or f"{base_url}/api/v1/auth/saml/metadata"
+    acs_url = f"{base_url}/api/v1/auth/saml/callback"
+
+    metadata_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="{entity_id}">
+  <md:SPSSODescriptor AuthnRequestsSigned="false" WantAssertionsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>
+    <md:AssertionConsumerService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="{acs_url}" index="1" isDefault="true"/>
+  </md:SPSSODescriptor>
+</md:EntityDescriptor>"""
+    return Response(content=metadata_xml.strip(), media_type="application/xml")
+
+
+@router.get('/saml/login')
+async def saml_login(request: Request, redirect_url: str | None = None):
+    """Initiate SAML 2.0 Single Sign-On.
+
+    Generates AuthnRequest and redirects to the configured enterprise IdP SSO URL.
+    """
+    import base64
+    import os
+    import urllib.parse
+    import uuid
+    import zlib
+    from datetime import datetime, timezone
+
+    saml_cfg = settings.sso_providers.get('saml', {})
+    idp_sso_url = saml_cfg.get('idp_sso_url') or os.environ.get('SAML_IDP_SSO_URL')
+    if not idp_sso_url:
+        raise HTTPException(
+            status_code=503,
+            detail="SAML IdP not provisioned: SAML_IDP_SSO_URL is not configured",
+        )
+
+    base_url = saml_cfg.get('sp_base_url') or str(request.base_url).rstrip('/')
+    sp_entity_id = saml_cfg.get('sp_entity_id') or f"{base_url}/api/v1/auth/saml/metadata"
+    acs_url = f"{base_url}/api/v1/auth/saml/callback"
+    req_id = f"id_{uuid.uuid4().hex}"
+    issue_instant = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    authn_request = (
+        f'<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" '
+        f'xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" '
+        f'ID="{req_id}" Version="2.0" IssueInstant="{issue_instant}" '
+        f'Destination="{idp_sso_url}" AssertionConsumerServiceURL="{acs_url}" '
+        f'ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST">'
+        f'<saml:Issuer>{sp_entity_id}</saml:Issuer>'
+        f'<samlp:NameIDPolicy Format="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress" AllowCreate="true"/>'
+        f'</samlp:AuthnRequest>'
+    )
+
+    # SAML HTTP-Redirect binding: Deflate -> Base64 -> URL encode
+    deflated = zlib.compress(authn_request.encode('utf-8'))[2:-4]
+    b64_req = base64.b64encode(deflated).decode('ascii')
+    params = {"SAMLRequest": b64_req}
+    if redirect_url:
+        params["RelayState"] = redirect_url
+
+    delim = "&" if "?" in idp_sso_url else "?"
+    target_url = f"{idp_sso_url}{delim}{urllib.parse.urlencode(params)}"
+    return RedirectResponse(url=target_url, status_code=302)
+
+
 # SAML POST binding (ENT track, F-ENT-05 fix)
 @router.post('/saml/callback', response_model=AuthResponse)
 async def saml_callback_post(request: Request, db: AsyncSession = Depends(get_db)):

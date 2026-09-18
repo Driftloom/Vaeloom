@@ -22,6 +22,8 @@ PUBLIC_PATHS = frozenset({
     "/api/v1/auth/forgot-password",
     "/api/v1/auth/reset-password",
     "/api/v1/auth/saml/callback",
+    "/api/v1/auth/saml/metadata",
+    "/api/v1/auth/saml/login",
     "/api/v1/gmail/webhook",
     "/api/v1/consent/scopes",
 })
