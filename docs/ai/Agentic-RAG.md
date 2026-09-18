@@ -23,15 +23,15 @@ ranking, context assembly, and implementation patterns.
 ## Goals
 
 - Enable per-query retrieval strategy selection so agents choose the optimal
- search method (vector, keyword, graph, or hybrid) for each context need
+  search method (vector, keyword, graph, or hybrid) for each context need
 - Achieve sub-2-second end-to-end retrieval latency through parallel store
- queries and efficient context assembly
+  queries and efficient context assembly
 - Maintain >90% relevance precision (Precision@5) via multi-factor ranking
- across relevance, freshness, importance, and confidence
+  across relevance, freshness, importance, and confidence
 - Ensure zero cross-tenant data leakage by scoping every retrieval operation to
- the originating workspace_id
+  the originating workspace_id
 - Provide full source provenance on every assembled context result for
- auditability and explainability
+  auditability and explainability
 
 ---
 
@@ -104,11 +104,12 @@ stateDiagram-v2
  end note
 
  note right of Ranking
- Weighted score =
- Relevance(0.50) +
- Freshness(0.20) +
- Importance(0.15) +
- Confidence(0.15)
+ Production Re-Ranking:
+ Relevance(0.40) +
+ Recency(0.30) +
+ Importance(0.20) +
+ Preference(0.10)
+ (services/search_ranking.py)
  end note
 
  note right of Pruning
@@ -281,14 +282,34 @@ graph LR
  Prune--> Return[Return to Agent]
 ```text
 
-### Score Calculation
+### Score Calculation & Scoped Formulas
+
+Vaeloom scopes ranking formulas to the specific functional retrieval path:
+
+#### Path A: Production Memory & Entity Re-Ranking (`services/search_ranking.py` & `orchestrator/loop.py`)
+This is the live production ranker used during agent execution loop to fuse vector and BM25 results with temporal decay and user profile preferences:
 
 | Factor | Weight | Source | Calculation |
 |--------|--------|--------|-------------|
-| Relevance | 0.50 | Cross-encoder reranker | `reranker.score(query, memory)` → 0-1 |
-| Freshness | 0.20 | Timestamp | `max(0, 1 - days_since_update / 365)` |
-| Importance | 0.15 | Entity centrality | `entity.degree_centrality / max_centrality` |
-| Confidence | 0.15 | Source reliability | `min(1, source_documents / 3)` |
+| **Relevance** | **0.40** | Vector cosine / BM25 RRF fusion | `_relevance_score(result, query)` (normalized similarity) |
+| **Recency** | **0.30** | Timestamp / `freshness_at` | Exponential half-life decay based on entity timestamp |
+| **Importance** | **0.20** | Entity importance metadata | Stored importance rating (0.0 to 1.0) |
+| **User Preference** | **0.10** | Active workspace / user context | Domain alignment overlap with user context |
+
+*Note: Production weights can be dynamically tuned via the `RANKING_WEIGHTS` environment variable JSON.*
+
+#### Path B: Agent Fast-Path Memory Retrieval (`agents/memory_agent/retrieval.py`)
+Heuristic scoring used for fast memory slot matching:
+- **Direct Entity Match**: `0.70`
+- **Memory Record Match**: `0.60`
+- **Fallback Match**: `0.50`
+
+#### Path C: Document Cross-Encoder Specification (Eval Benchmarking)
+Evaluated in offline benchmarks (`test_golden_retrieval.py`):
+- Relevance: 0.50 (Cross-encoder reranker score)
+- Freshness: 0.20 (Time decay)
+- Importance: 0.15 (Graph centrality)
+- Confidence: 0.15 (Source multi-document consensus)
 
 ## Context Assembly
 

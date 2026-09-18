@@ -9,17 +9,21 @@ from typing import Any
 from api.agents.analytics_agent.handler import AnalyticsAgent  # G7
 from api.agents.application_agent.handler import ApplicationAgent
 from api.agents.ats_agent.handler import ATSAgent
+from api.agents.calendar_agent.handler import CalendarAgent
 from api.agents.career_agent.handler import CareerAgent  # G1
 from api.agents.coding_agent.handler import CodingAgent  # G5
 from api.agents.connector_agent.handler import ConnectorAgent  # G11
+from api.agents.document_agent.handler import DocumentAgent
 from api.agents.drive_agent.handler import DriveAgent  # G13
 from api.agents.github_agent.handler import GitHubAgent  # G4
 from api.agents.gmail_agent.handler import GmailAgent
+from api.agents.internship_agent.handler import InternshipAgent
 from api.agents.job_search_agent.handler import JobSearchAgent
 from api.agents.learning_agent.handler import LearningAgent  # G2
 from api.agents.memory.planning_agent import PlanningAgent  # Planning - roadmap
 from api.agents.memory_agent.handler import MemoryAgentHandler
 from api.agents.organization_agent.handler import OrganizationAgent
+from api.agents.pdf_agent.handler import PDFAgent
 from api.agents.plugin_agent.handler import PluginAgent  # G12
 from api.agents.qa_agent.handler import QAAgent, QAValidationResult
 from api.agents.recommendation_agent.handler import RecommendationAgent  # G8
@@ -29,6 +33,8 @@ from api.agents.research_agent.handler import ResearchAgent  # G3
 from api.agents.resume_agent.handler import ResumeAgent
 from api.agents.scheduler_agent.handler import SchedulerAgent
 from api.agents.security_agent.handler import SecurityAgent  # G10
+from api.agents.self_improvement_agent.handler import SelfImprovementAgent
+from api.agents.workspace_agent.handler import WorkspaceAgent
 from api.infrastructure.agent_eval import detect_adversarial_prompt
 from api.infrastructure.agent_observability import (
     AgentMetric,
@@ -84,16 +90,23 @@ AGENT_REGISTRY: dict[str, type] = {
     "connector": ConnectorAgent,
     "plugin": PluginAgent,
     "drive": DriveAgent,
+    # Full Enterprise Specialist Agents (completing 28-agent roster)
+    "workspace": WorkspaceAgent,
+    "calendar": CalendarAgent,
+    "internship": InternshipAgent,
+    "document": DocumentAgent,
+    "pdf": PDFAgent,
+    "self_improvement": SelfImprovementAgent,
 }
 
 # ── Intent Classification Categories ───────────────────────────────
 
 CATEGORY_AGENT_MAP = {
-    "document_organization": ["organization"],
+    "document_organization": ["organization", "workspace", "document", "pdf"],
     "career_resume": ["resume", "ats"],
-    "job_search": ["job_search", "application"],
+    "job_search": ["job_search", "application", "internship"],
     "communication": ["gmail"],
-    "schedule_time": ["scheduler"],
+    "schedule_time": ["scheduler", "calendar"],
     "memory_extraction": ["memory"],
     "planning_research": ["planning", "research"],
     "career_development": ["career", "learning"],
@@ -101,18 +114,18 @@ CATEGORY_AGENT_MAP = {
     "coding_interview": ["coding"],
     "reminders_analytics": ["reminder", "analytics"],
     "recommendations": ["recommendation"],
-    "reflection": ["reflection"],
+    "reflection": ["reflection", "self_improvement"],
     "security_monitoring": ["security"],
     "integrations": ["connector", "plugin", "drive"],
 }
 
 # Keywords for coarse category classification
 CATEGORY_KEYWORDS = {
-    "document_organization": ["organize", "file", "rename", "folder", "categorize", "duplicate", "move"],
+    "document_organization": ["organize", "file", "rename", "folder", "categorize", "duplicate", "move", "workspace", "sprawl", "hierarchy", "pdf", "synthesize", "citation"],
     "career_resume": ["resume", "cv", "bullet", "achievement", "ats", "score", "tailor"],
-    "job_search": ["job", "search", "apply", "application", "internship", "career", "role", "position"],
+    "job_search": ["job", "search", "apply", "application", "internship", "fellowship", "co-op", "career", "role", "position"],
     "communication": ["email", "gmail", "inbox", "draft", "reply", "mail"],
-    "schedule_time": ["schedule", "deadline", "calendar", "reminder", "conflict", "event"],
+    "schedule_time": ["schedule", "deadline", "calendar", "reminder", "conflict", "event", "meeting", "availability", "slot"],
     "memory_extraction": ["extract", "memory", "entity", "knowledge", "graph", "remember"],
     "planning_research": ["plan", "planning", "roadmap", "research", "strategy", "milestone", "goal", "research"],
     "career_development": ["career", "path", "skill", "course", "learn", "training", "certification"],
@@ -120,7 +133,7 @@ CATEGORY_KEYWORDS = {
     "coding_interview": ["coding", "challenge", "leetcode", "algorithm", "code review", "interview prep"],
     "reminders_analytics": ["deadline", "remind", "follow up", "analytics", "metrics", "report", "trend"],
     "recommendations": ["recommend", "suggest", "match", "curate", "similar"],
-    "reflection": ["weekly", "monthly", "summary", "digest", "review", "progress"],
+    "reflection": ["weekly", "monthly", "summary", "digest", "review", "progress", "critique", "accuracy", "benchmark"],
     "security_monitoring": ["security", "pii", "monitor", "alert", "access", "suspicious"],
     "integrations": ["connector", "plugin", "integration", "extension", "setup", "configure", "install", "drive", "google drive", "sync"],
 }
@@ -366,10 +379,26 @@ async def classify_intent(message: str) -> tuple[str, float]:
 
     if len(agents_in_category) == 1:
         fast_agent = agents_in_category[0]
+    elif best_category == "document_organization":
+        if any(kw in msg_lower for kw in ["pdf", "fill", "form"]):
+            fast_agent = "pdf"
+        elif any(kw in msg_lower for kw in ["synthesize", "citation", "deep", "q&a"]):
+            fast_agent = "document"
+        elif any(kw in msg_lower for kw in ["workspace", "hierarchy", "sprawl", "hygiene"]):
+            fast_agent = "workspace"
+        else:
+            fast_agent = "organization"
     elif best_category == "career_resume":
         fast_agent = "ats" if any(kw in msg_lower for kw in ["score", "ats", "gap", "keyword"]) else "resume"
     elif best_category == "job_search":
-        fast_agent = "application" if any(kw in msg_lower for kw in ["apply", "application", "submit", "cover letter"]) else "job_search"
+        if any(kw in msg_lower for kw in ["internship", "intern", "co-op", "fellowship"]):
+            fast_agent = "internship"
+        elif any(kw in msg_lower for kw in ["apply", "application", "submit", "cover letter"]):
+            fast_agent = "application"
+        else:
+            fast_agent = "job_search"
+    elif best_category == "schedule_time":
+        fast_agent = "calendar" if any(kw in msg_lower for kw in ["calendar", "open slot", "availability", "free time"]) else "scheduler"
     elif best_category == "career_development":
         fast_agent = "learning" if any(kw in msg_lower for kw in ["course", "learn", "training", "certification", "study"]) else "career"
     elif best_category == "research_github":
@@ -378,6 +407,8 @@ async def classify_intent(message: str) -> tuple[str, float]:
         fast_agent = "planning" if any(kw in msg_lower for kw in ["plan", "roadmap", "milestone", "goal", "strategy"]) else "research"
     elif best_category == "reminders_analytics":
         fast_agent = "reminder" if any(kw in msg_lower for kw in ["deadline", "remind", "follow up", "task", "todo"]) else "analytics"
+    elif best_category == "reflection":
+        fast_agent = "self_improvement" if any(kw in msg_lower for kw in ["accuracy", "critique", "benchmark", "improve prompt"]) else "reflection"
     elif best_category == "integrations":
         fast_agent = "connector" if any(kw in msg_lower for kw in ["connector", "integration", "connect", "setup", "configure"]) else "plugin"
     else:
@@ -729,7 +760,10 @@ async def handle(request: UserRequest) -> dict[str, Any]:
 
     max_qa_retries = 3
     for attempt in range(max_qa_retries):
-        qa_result: QAValidationResult = await qa.validate(agent_output, context=getattr(loop_response, 'context', None))
+        try:
+            qa_result: QAValidationResult = await qa.validate(agent_output, context=getattr(loop_response, 'context', None))
+        except TypeError:
+            qa_result = await qa.validate(agent_output)
         if qa_result.decision == "approved":
             logger.info("QA APPROVED (attempt %d)", attempt + 1)
             await _attach_pending_approvals(agent_output, request.workspace_id)

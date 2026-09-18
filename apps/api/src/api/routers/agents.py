@@ -103,6 +103,18 @@ async def get_agent_catalog(
             skills = ["Inbox Watch", "Deadline Extraction", "Draft-Only Email"]
         elif name == "scheduler":
             skills = ["Calendar Merge", "Conflict Check", "Reminder Dispatch"]
+        elif name == "workspace":
+            skills = ["Workspace Hierarchy", "Sprawl Detection", "Folder Cleanup"]
+        elif name == "calendar":
+            skills = ["Meeting Scheduling", "Conflict Detection", "Slot Optimization"]
+        elif name == "internship":
+            skills = ["Internship Discovery", "Requirement Matching", "Cycle Tracking"]
+        elif name == "document":
+            skills = ["Multi-Document Q&A", "Cross-Doc Synthesis", "Citation Tracing"]
+        elif name == "pdf":
+            skills = ["PDF Form Filling", "Field Detection", "Layout Compilation"]
+        elif name == "self_improvement":
+            skills = ["Accuracy Auditing", "Trajectory Critique", "Prompt Refinement"]
         else:
             # Enterprise extras: derive from tools
             skills = [td["name"].replace("_", " ").title() for td in tool_defs[:3]] or [name.title()]
@@ -338,7 +350,30 @@ async def chat_stream(
                 yield "event: done\ndata: {}\n\n"
                 return
 
-            # ── 4. Instantiate & stream loop ─────────────────────
+            # ── 4. LangGraph state machine vs ReAct loop dispatch ──
+            try:
+                from ..graph.runner import should_use_graph, run_graph_direct
+                if should_use_graph(req_id):
+                    logger.info(f"Dispatching request {req_id} via LangGraph state machine")
+                    graph_ctx = {
+                        "workspace_id": str(dto.workspaceId),
+                        "user_id": str((current_user.get("sub") or current_user.get("user_id")) if current_user else ""),
+                        "agent_id": agent_name,
+                        "request_id": req_id,
+                        "correlation_id": req_id,
+                        "tenant_id": str(current_user.get("tenant_id") or ""),
+                        "task": dto.message,
+                    }
+                    graph_res = await run_graph_direct(graph_ctx)
+                    summary = graph_res.get("summary") or str(graph_res.get("result", ""))
+                    if not summary and "final_answer" in graph_res:
+                        summary = str(graph_res["final_answer"])
+                    yield f"event: token\ndata: {json.dumps({'token': summary})}\n\n"
+                    yield f"event: done\ndata: {json.dumps({'status': 'completed', 'result': summary})}\n\n"
+                    return
+            except Exception as ge:
+                logger.warning(f"LangGraph execution bypassed/failed, continuing via ReAct loop: {ge}")
+
             agent_cls = AGENT_REGISTRY.get(agent_name)
             if not agent_cls:
                 yield f"event: error\ndata: {json.dumps({'message': f'No agent for {agent_name}'})}\n\n"

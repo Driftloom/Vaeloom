@@ -20,10 +20,9 @@ tools, permissions, autonomy, fallback), communication patterns, and the QA
 Agent validation gate. It serves as the reference for AI engineers building new
 agents, platform engineers integrating agent workflows, and operations engineers
 monitoring agent health. The architecture supports 10 agents at MVP scale
-(`MVP_CANONICAL_AGENTS` in `orchestrator/router.py:416-437`), 22 routable agents
-in code (`AGENT_REGISTRY` in `orchestrator/router.py:64-87`), with strict
-isolation boundaries to prevent agent interference. Docs claiming 8 MVP / 28
-Enterprise are stale.
+(`MVP_CANONICAL_AGENTS` in `orchestrator/router.py`), and exactly 28 routable
+enterprise agents in code (`AGENT_REGISTRY` in `orchestrator/router.py`), with
+strict isolation boundaries to prevent agent interference.
 
 ---
 
@@ -41,7 +40,7 @@ graph TD
  QA["QA Agent<br/>Validates output<br/>before delivery"]
  end
 
-  subgraph Agents["Specialized Agents (MVP-canonical 10 shown)"]
+  subgraph Agents["Specialized Agents (MVP-canonical 10 + 18 Enterprise)"]
   direction TB
   A1["Memory Agent<br/>Extract and merge entities"]
   A2["Organization Agent<br/>Name and categorize files"]
@@ -51,7 +50,7 @@ graph TD
   A6["Scheduler Agent<br/>Detect conflicts and deadlines"]
   A7["Application Agent<br/>Submit and track applications"]
   A8["ATS + Planning + Research<br/>Score, plan, investigate"]
-  AX["+12 Enterprise-gated agents<br/>career, learning, github, coding,<br/>reminder, analytics, recommendation,<br/>reflection, security, connector, plugin, drive"]
+  AX["+18 Enterprise agents<br/>career, learning, github, coding,<br/>reminder, analytics, recommendation,<br/>reflection, security, connector, plugin, drive,<br/>workspace, calendar, internship, document, pdf, self_improvement"]
   end
 
  subgraph Tools["Tool Layer"]

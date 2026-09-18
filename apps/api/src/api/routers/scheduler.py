@@ -1,3 +1,10 @@
+"""Scheduler Router.
+
+NOTE: This router manages background infrastructure cron jobs and automated tasks
+at `/api/v1/scheduler/jobs`. Career employment listings and matching are managed
+separately under `/api/v1/opportunities` and the JobSearchAgent / ATS tools.
+"""
+
 import uuid
 from datetime import datetime
 from typing import Any

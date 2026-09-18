@@ -14,6 +14,7 @@ class QueueDef:
     name: str
     description: str
     max_concurrent_activities: int
+    is_active: bool = True
 
 
 TASK_QUEUES: dict[str, QueueDef] = {
@@ -21,36 +22,43 @@ TASK_QUEUES: dict[str, QueueDef] = {
         name=getattr(settings, "temporal_task_queue_ingest", "vaeloom-ingest-q"),
         description="Document ingest: parse→extract→memory-write→index",
         max_concurrent_activities=20,
+        is_active=True,
     ),
     "documents": QueueDef(
         name=getattr(settings, "temporal_task_queue_documents", "vaeloom-documents-q"),
-        description="Document rendering (Playwright) — Chromium-capped",
+        description="[PLANNED] Document rendering (Playwright) — Chromium-capped",
         max_concurrent_activities=2,
+        is_active=False,
     ),
     "agent": QueueDef(
         name=getattr(settings, "temporal_task_queue_agent", "vaeloom-agent-q"),
         description="Durable agent runs (wraps DurableAgentRunActivity → future LangGraph)",
         max_concurrent_activities=8,
+        is_active=True,
     ),
     "connectors": QueueDef(
         name=getattr(settings, "temporal_task_queue_connectors", "vaeloom-connectors-q"),
         description="Connector sync/fetch (per-provider throttled)",
         max_concurrent_activities=6,
+        is_active=True,
     ),
     "schedules": QueueDef(
         name=getattr(settings, "temporal_task_queue_schedules", "vaeloom-schedules-q"),
-        description="Schedule dispatcher (lightweight)",
+        description="[PLANNED] Schedule dispatcher (lightweight)",
         max_concurrent_activities=4,
+        is_active=False,
     ),
     "approvals": QueueDef(
         name=getattr(settings, "temporal_task_queue_approvals", "vaeloom-approvals-q"),
         description="Human-in-loop approval waits (signal-driven)",
         max_concurrent_activities=20,
+        is_active=True,
     ),
     "memory": QueueDef(
         name=getattr(settings, "temporal_task_queue_memory", "vaeloom-memory-q"),
-        description="Nightly consolidation/dedup graph writes",
+        description="[PLANNED] Nightly consolidation/dedup graph writes",
         max_concurrent_activities=2,
+        is_active=False,
     ),
     "events": QueueDef(
         name=getattr(settings, "temporal_task_queue_events", "vaeloom-events-q") if hasattr(settings, "temporal_task_queue_events") else "vaeloom-events-q",
