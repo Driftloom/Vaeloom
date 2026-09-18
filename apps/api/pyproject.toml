@@ -52,6 +52,7 @@ dependencies = [
     "pillow>=12.3.0",
     "pytesseract>=0.3.13",
     "qdrant-client>=1.19.0",
+    "composio>=0.21.1",
 ]
 
 [tool.pytest.ini_options]

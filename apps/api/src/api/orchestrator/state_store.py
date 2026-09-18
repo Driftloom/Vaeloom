@@ -601,13 +601,13 @@ class CompositeStateStore(StateStore):
         try:
             await self.fallback.save(request_id, merged, workspace_id, expected_version)
         except ConcurrentUpdateError as exc:
-            logger.warning(
+            logger.error(
                 "STATE_STORE_FALLBACK_DIVERGENCE: CompositeStateStore fallback diverged for %s: %s",
                 request_id,
                 exc,
             )
         except Exception as exc:
-            logger.warning(
+            logger.error(
                 "STATE_STORE_FALLBACK_SAVE_FAILED: CompositeStateStore fallback mirror save failed for %s: %s",
                 request_id,
                 exc,
@@ -629,7 +629,7 @@ def get_state_store() -> StateStore:
         return _default_store
 
     backend = os.environ.get("VAELOOM_STATE_BACKEND", "file").lower()
-    is_prod = os.environ.get("ENVIRONMENT") == "production"
+    is_prod = os.environ.get("ENVIRONMENT", "").lower() in ("production", "prod")
 
     if backend == "memory":
         _default_store = MemoryStateStore()

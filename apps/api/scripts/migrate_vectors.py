@@ -48,7 +48,7 @@ async def migrate(limit: int = 0, force: bool = False) -> None:
                     metadata={
                         "source_type": emb.source_type,
                         "source_id": str(emb.source_id),
-                        "model_version": emb.model_version or "text-embedding-3-small",
+                        "model_version": emb.model_version or "gemini-embedding-2",
                         "workspace_id": str(emb.workspace_id),
                     },
                 )

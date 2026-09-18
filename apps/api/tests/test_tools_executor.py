@@ -22,6 +22,7 @@ from api.tools.executor import (
     _execute_merge_entities,
     _execute_mock,
     _execute_move_file,
+    _handle_unrecognized_tool,
     _execute_notify_user,
     _execute_query_graph,
     _execute_rename_file,
@@ -1356,3 +1357,31 @@ def test_tool_dispatch_has_known_tools():
     assert "create_calendar_event" in TOOL_DISPATCH
     assert "merge_entities" in TOOL_DISPATCH
     assert "categorize_document" in TOOL_DISPATCH
+
+
+@pytest.mark.asyncio
+async def test_unrecognized_tool_fuzzy_ranking():
+    # When an agent hallucinates read_calendar, calendar tools must rank at the top
+    result = await _handle_unrecognized_tool(
+        params={},
+        workspace_id=WS_ID,
+        tool_name="read_calendar_schedule",
+    )
+    assert result["status"] == "error"
+    assert result["diagnostics"]["error_type"] == "TOOL_NOT_RECOGNIZED"
+    suggestions = result["diagnostics"]["suggested_tools"]
+    assert any("calendar" in s for s in suggestions[:3])
+
+
+@pytest.mark.asyncio
+async def test_unrecognized_tool_mcp_namespace_routing():
+    # When an agent invokes an MCP tool from an unattached server
+    result = await _handle_unrecognized_tool(
+        params={},
+        workspace_id=WS_ID,
+        tool_name="mcp__slack__post_message",
+    )
+    assert result["status"] == "error"
+    assert result["diagnostics"]["error_type"] == "MCP_CONNECTOR_UNAVAILABLE"
+    assert result["diagnostics"]["server_name"] == "slack"
+    assert "Settings > Connectors > MCP" in result["setup_hint"]

@@ -3,6 +3,7 @@ import uuid
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from api.config import settings
 from api.infrastructure.vector_store import (
     FallbackVectorStore,
     VectorRecord,
@@ -22,14 +23,19 @@ pytestmark = pytest.mark.asyncio
 # -----------------------------------------------------------------------------
 # 1. Trigger.dev Client & Fallback Tests
 # -----------------------------------------------------------------------------
-async def test_is_trigger_enabled():
-    with patch.dict("os.environ", {"TRIGGER_API_KEY": ""}, clear=False):
+async def test_is_trigger_enabled(monkeypatch):
+    if hasattr(settings, "trigger_api_key"):
+        monkeypatch.setattr(settings, "trigger_api_key", "")
+    if hasattr(settings, "trigger_secret_key"):
+        monkeypatch.setattr(settings, "trigger_secret_key", "")
+
+    with patch.dict("os.environ", {"TRIGGER_API_KEY": "", "TRIGGER_SECRET_KEY": ""}, clear=False):
         assert not is_trigger_enabled()
 
-    with patch.dict("os.environ", {"TRIGGER_API_KEY": "tr_dev_test_123", "BACKGROUND_ENGINE": "auto"}, clear=False):
+    with patch.dict("os.environ", {"TRIGGER_API_KEY": "tr_dev_test_123", "TRIGGER_SECRET_KEY": "", "BACKGROUND_ENGINE": "auto"}, clear=False):
         assert is_trigger_enabled()
 
-    with patch.dict("os.environ", {"TRIGGER_API_KEY": "tr_dev_test_123", "BACKGROUND_ENGINE": "bullmq"}, clear=False):
+    with patch.dict("os.environ", {"TRIGGER_API_KEY": "tr_dev_test_123", "TRIGGER_SECRET_KEY": "", "BACKGROUND_ENGINE": "bullmq"}, clear=False):
         assert not is_trigger_enabled()
 
 

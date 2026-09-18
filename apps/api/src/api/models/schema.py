@@ -532,7 +532,7 @@ class Embedding(Base):
     source_type: Mapped[str] = mapped_column(String(50), nullable=False)
     source_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     vector = Column(Vector(1536))
-    model_version: Mapped[str] = mapped_column(String(100), default="text-embedding-3-small")
+    model_version: Mapped[str] = mapped_column(String(100), default="gemini-embedding-2")
     dimensions: Mapped[int | None] = mapped_column(Integer)
     source_table: Mapped[str | None] = mapped_column(String(100))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

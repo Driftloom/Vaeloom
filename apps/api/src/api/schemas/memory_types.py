@@ -1,6 +1,25 @@
+"""
+DEPRECATED / TOMBSTONE MODULE:
+This module (`api.schemas.memory_types`) is retained strictly for backward-compatibility
+with legacy unit tests.
+
+THE CANONICAL SOURCE OF TRUTH FOR ALL MEMORY SCHEMAS AND TYPES IS:
+    `api.schemas.memory` (MemoryType enum with 6 canonical + 16 enterprise types,
+    matching Alembic migration 0027 and PostgreSQL enum constraints).
+
+DO NOT IMPORT OR USE THIS MODULE FOR NEW CODE OR PRODUCTION WORKFLOWS.
+"""
+
 import enum
+import warnings
 from dataclasses import dataclass, field
 from datetime import timedelta
+
+warnings.warn(
+    "api.schemas.memory_types is deprecated. Use api.schemas.memory instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 class MemoryType(enum.StrEnum):

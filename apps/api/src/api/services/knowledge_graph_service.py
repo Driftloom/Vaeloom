@@ -1,5 +1,6 @@
 import contextlib
 import json
+import logging
 import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -8,6 +9,8 @@ from typing import Any
 from sqlalchemy import text
 
 from ..services.llm_service import LLMProviderError, llm_service
+
+logger = logging.getLogger(__name__)
 
 
 class KnowledgeGraphService:
@@ -540,6 +543,10 @@ class KnowledgeGraphService:
         from collections import deque
 
         tenant_id, workspace_id = self._read_scope(tenant_id, workspace_id)
+        # Defense-in-depth: clamp max_depth between 1 and 10; enforce maximum node visit bound
+        max_depth = max(1, min(max_depth, 10))
+        max_nodes = 500
+        visited_count = 0
 
         if from_id == to_id:
             node = await self.get_node(from_id, db, workspace_id, tenant_id)
@@ -558,6 +565,14 @@ class KnowledgeGraphService:
         found_depth = None
 
         while queue:
+            visited_count += 1
+            if visited_count >= max_nodes:
+                logger.warning(
+                    "KG_TRAVERSAL_LIMIT: Shortest path reached maximum node limit of %d in workspace %s",
+                    max_nodes,
+                    workspace_id,
+                )
+                break
             current_id, lvl = queue.popleft()
 
             if current_id == to_id:

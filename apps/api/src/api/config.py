@@ -211,9 +211,11 @@ class Settings(BaseSettings):
 
     # ── Trigger.dev durable workflows & task execution ────────────────
     trigger_api_key: str = ""
+    trigger_secret_key: str = ""
     trigger_api_url: str = "https://api.trigger.dev"
     trigger_project_id: str = ""
     background_engine: str = "auto"  # "trigger", "bullmq", or "auto"
+    composio_api_key: str = ""
 
     # ── LangGraph agent reasoning (ADR-039) — topology only (Temporal owns durability) ──
     # Controlled via LANGGRAPH_ENABLED flag; safe default False. Production must never

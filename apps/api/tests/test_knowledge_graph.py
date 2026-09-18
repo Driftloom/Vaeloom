@@ -364,3 +364,52 @@ class TestKnowledgeGraph:
         data = res.json()
         assert "items" in data
         assert "total" in data
+
+    async def test_kg_traversal_depth_clamping(self, client: AsyncClient, db_session):
+        headers = await self._auth_header(client)
+        n1 = await client.post("/api/v1/knowledge-graph/nodes", json={
+            "label": "Clamping Node A",
+            "type": "entity",
+        }, headers=headers)
+        assert n1.status_code == 201
+        n1_id = n1.json()["id"]
+
+        # 1. API Schema Boundary: depth > 10 is rejected with 422 Unprocessable Entity
+        res_over = await client.post("/api/v1/knowledge-graph/traverse", json={
+            "start_id": str(n1_id),
+            "depth": 99,
+            "mode": "bfs",
+        }, headers=headers)
+        assert res_over.status_code == 422
+
+        # 2. API Schema Boundary: depth < 1 is rejected with 422 Unprocessable Entity
+        res_under = await client.post("/api/v1/knowledge-graph/traverse", json={
+            "start_id": str(n1_id),
+            "depth": 0,
+            "mode": "bfs",
+        }, headers=headers)
+        assert res_under.status_code == 422
+
+        # 3. Direct Service Layer Defense-in-Depth Clamping:
+        from api.services.knowledge_graph_service import kg_service
+        # depth=99 clamped to 10; does not raise
+        res_svc_over = await kg_service.traverse(
+            uuid.UUID(n1_id),
+            depth=99,
+            mode="bfs",
+            db=db_session,
+            workspace_id="test-workspace",
+            tenant_id="test-tenant",
+        )
+        assert isinstance(res_svc_over, list)
+
+        # depth=-5 clamped to 1; does not raise
+        res_svc_under = await kg_service.traverse(
+            uuid.UUID(n1_id),
+            depth=-5,
+            mode="bfs",
+            db=db_session,
+            workspace_id="test-workspace",
+            tenant_id="test-tenant",
+        )
+        assert isinstance(res_svc_under, list)

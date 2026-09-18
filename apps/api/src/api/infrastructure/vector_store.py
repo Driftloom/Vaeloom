@@ -66,7 +66,7 @@ class PGVectorStore(VectorStore):
                     "source_type": rec.metadata.get("source_type", "unknown"),
                     "source_id": rec.metadata.get("source_id", rec.id),
                     "vector": vector_str,
-                    "model_version": rec.metadata.get("model_version", "text-embedding-3-small"),
+                    "model_version": rec.metadata.get("model_version", "gemini-embedding-2"),
                     "workspace_id": rec.metadata.get("workspace_id", "00000000-0000-0000-0000-000000000000"),
                     "dimensions": dims,
                     "source_table": rec.metadata.get("source_table"),

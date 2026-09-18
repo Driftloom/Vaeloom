@@ -1689,19 +1689,29 @@ async def _execute_parse_document_ocr(params: dict[str, Any], workspace_id: str)
             doc = await session.get(Document, uuid.UUID(document_id))
             if not doc:
                 return {"status": "error", "tool": "parse_document_ocr", "result": f"Document {document_id} not found"}
-            # Try to load content via storage if available
-            content = b""
-            try:
-                from api.services.storage_service import storage_service
-                content = await storage_service.get_object(doc.path) or b""
-            except Exception:
-                pass
+            # Try to load content from doc.content or storage_service.download
+            content = getattr(doc, "content", b"") or b""
+            if not content:
+                try:
+                    from api.services.storage_service import storage_service
+                    if hasattr(storage_service, "download"):
+                        content = await storage_service.download(doc.path) or b""
+                    elif hasattr(storage_service, "get_object"):
+                        content = await storage_service.get_object(doc.path) or b""
+                except Exception:
+                    pass
             if content:
                 parsed = await parse_document(filename or doc.path, content)
+                extracted_text = getattr(parsed, "text", getattr(parsed, "content", str(parsed)))
                 return {
                     "status": "success",
                     "tool": "parse_document_ocr",
-                    "result": {"text": parsed.text[:10000] if hasattr(parsed, "text") else str(parsed)[:10000], "tables": parsed.tables if hasattr(parsed, "tables") and extract_tables else [], "filename": doc.path},
+                    "result": {
+                        "text": extracted_text[:10000],
+                        "tables": getattr(parsed, "tables", []) if extract_tables else [],
+                        "filename": doc.path,
+                        "metadata": getattr(parsed, "metadata", {}),
+                    },
                 }
             # Fallback: return metadata text if no content blob
             return {
@@ -2647,6 +2657,46 @@ async def _execute_query_notebooklm(params: dict[str, Any], workspace_id: str) -
         }
 
 
+def _rank_suggested_tools(actual_tool: str, available_tools: list[str], max_suggestions: int = 15) -> list[str]:
+    """Rank registered tools by relevance to an unrecognized/hallucinated tool name.
+
+    Combines Levenshtein-style fuzzy matching (difflib) and domain token overlap
+    to surface the most probable intended tool first for agent self-healing.
+    """
+    import difflib
+
+    tool_lower = actual_tool.lower().strip()
+    # 1. Fuzzy close matches with moderate cutoff
+    fuzzy_matches = difflib.get_close_matches(tool_lower, available_tools, n=max_suggestions, cutoff=0.30)
+
+    # 2. Token / keyword overlap (e.g. "calendar", "resume", "job", "email")
+    tokens = set(tool_lower.replace("-", "_").split("_")) - {
+        "get", "set", "fetch", "run", "do", "read", "tool", "api", "find", "list", "show", "check"
+    }
+    overlap_matches = []
+    if tokens:
+        for t in available_tools:
+            if t not in fuzzy_matches:
+                t_tokens = set(t.lower().split("_"))
+                if tokens.intersection(t_tokens):
+                    overlap_matches.append(t)
+
+    # 3. Canonical high-frequency fallback tools if match pool is too small
+    canonical_fallbacks = [
+        "search_documents", "list_calendar_events", "search_jobs",
+        "compile_resume_pdf", "query_graph", "web_search", "categorize_document",
+        "draft_email", "calculate_semantic_ats_score", "browse_job_page"
+    ]
+    fallback_pool = [t for t in canonical_fallbacks if t in available_tools and t not in fuzzy_matches and t not in overlap_matches]
+
+    combined = fuzzy_matches + overlap_matches + fallback_pool
+    if len(combined) < max_suggestions:
+        remainder = [t for t in sorted(available_tools) if t not in combined]
+        combined.extend(remainder)
+
+    return combined[:max_suggestions]
+
+
 async def _handle_unrecognized_tool(
     params: dict[str, Any] | ToolDefinition,
     workspace_id: str | dict[str, Any] = "",
@@ -2654,8 +2704,9 @@ async def _handle_unrecognized_tool(
 ) -> dict[str, Any]:
     """Diagnostic handler for unrecognized or hallucinated tools.
 
-    Provides structured diagnostic feedback listing registered tools to enable
-    the agent to self-correct rather than crashing or looping blindly.
+    Provides structured diagnostic feedback listing intelligently ranked tools
+    or MCP connector remediation to enable the agent to self-correct rather than
+    crashing or looping blindly.
     """
     if isinstance(params, ToolDefinition):
         actual_tool = params.name
@@ -2671,14 +2722,34 @@ async def _handle_unrecognized_tool(
         actual_tool,
         workspace_id,
     )
-    available_tools = sorted(list(TOOL_DISPATCH.keys()))[:15]
+
+    all_registered = list(TOOL_DISPATCH.keys()) + list(DYNAMIC_HANDLERS.keys())
+    suggested_tools = _rank_suggested_tools(actual_tool, all_registered)
+
+    # Special handling for Model Context Protocol namespace (mcp__<server>__<tool>)
+    if actual_tool.startswith("mcp__"):
+        parts = actual_tool.split("__")
+        server_name = parts[1] if len(parts) >= 3 else "unknown"
+        return {
+            "status": "error",
+            "tool": actual_tool,
+            "result": f"Tool {actual_tool} not configured — MCP server '{server_name}' is not active or connected in workspace",
+            "diagnostics": {
+                "error_type": "MCP_CONNECTOR_UNAVAILABLE",
+                "server_name": server_name,
+                "suggested_tools": suggested_tools,
+                "actionable_fix": f"Authenticate and connect the '{server_name}' MCP connector in workspace settings before calling '{actual_tool}'.",
+            },
+            "setup_hint": f"Connect '{server_name}' via Settings > Connectors > MCP",
+        }
+
     return {
         "status": "error",
         "tool": actual_tool,
         "result": f"Tool {actual_tool} not configured — no handler in tool registry",
         "diagnostics": {
             "error_type": "TOOL_NOT_RECOGNIZED",
-            "suggested_tools": available_tools,
+            "suggested_tools": suggested_tools,
             "actionable_fix": "Select a registered tool from suggested_tools or configure the appropriate external connector.",
         },
         "setup_hint": "Configure connector or check tool registry",

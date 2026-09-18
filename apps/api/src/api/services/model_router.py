@@ -94,6 +94,12 @@ AGENT_TASK_TYPE_MAP: dict[str, str] = {
     "connector": "document_summarize",
     "plugin": "document_summarize",
     "drive": "document_tag",
+    "workspace": "document_tag",
+    "calendar": "calendar_check",
+    "internship": "job_search",
+    "document": "document_summarize",
+    "pdf": "document_tag",
+    "self_improvement": "qa_validate",
 }
 
 

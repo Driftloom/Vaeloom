@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -16,6 +17,8 @@ from ..schemas.memory import (
     MemoryUpdate,
 )
 from ..services.memory_service import memory_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -242,7 +245,10 @@ async def get_memory_lineage(
     chain_backward: list[dict] = []
     current = memory
     visited: set[str] = set()
-    while current and str(current.id) not in visited:
+    max_backward_depth = 20
+    backward_depth = 0
+    while current and str(current.id) not in visited and backward_depth < max_backward_depth:
+        backward_depth += 1
         visited.add(str(current.id))
         chain_backward.append(MemoryResponse.model_validate(current).model_dump(mode="json"))
         if current.supersedes_id:

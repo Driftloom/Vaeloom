@@ -32,10 +32,13 @@ TASK_GENERATE_REPORT = "vaeloom.generate-report"
 
 def is_trigger_enabled() -> bool:
     """Return True if Trigger.dev credentials are configured and engine is not pinned to bullmq."""
-    if "TRIGGER_API_KEY" in os.environ:
-        api_key = os.environ["TRIGGER_API_KEY"]
-    else:
-        api_key = getattr(settings, "trigger_api_key", "") or ""
+    api_key = (
+        os.environ.get("TRIGGER_SECRET_KEY")
+        or os.environ.get("TRIGGER_API_KEY")
+        or getattr(settings, "trigger_secret_key", None)
+        or getattr(settings, "trigger_api_key", "")
+        or ""
+    )
 
     if "BACKGROUND_ENGINE" in os.environ:
         engine = os.environ["BACKGROUND_ENGINE"].lower()
@@ -58,10 +61,14 @@ class TriggerClient:
     ) -> None:
         if api_key is not None:
             self._api_key = api_key
-        elif "TRIGGER_API_KEY" in os.environ:
-            self._api_key = os.environ["TRIGGER_API_KEY"]
         else:
-            self._api_key = getattr(settings, "trigger_api_key", "") or ""
+            self._api_key = (
+                os.environ.get("TRIGGER_SECRET_KEY")
+                or os.environ.get("TRIGGER_API_KEY")
+                or getattr(settings, "trigger_secret_key", None)
+                or getattr(settings, "trigger_api_key", "")
+                or ""
+            )
 
         if api_url is not None:
             self._api_url = api_url.rstrip("/")

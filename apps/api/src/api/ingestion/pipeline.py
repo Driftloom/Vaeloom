@@ -278,7 +278,7 @@ async def _persist_chunks_with_embeddings(
                                 source_type="document_chunk",
                                 source_id=uuid.uuid4(),  # placeholder; will be updated to chunk id after chunk insert if needed
                                 vector=emb_vec,
-                                model_version=getattr(llm_service, "embedding_model", "text-embedding-3-small"),
+                                model_version=getattr(llm_service, "embedding_model", "gemini-embedding-2"),
                                 dimensions=len(emb_vec),
                                 source_table="document_chunks",
                             )

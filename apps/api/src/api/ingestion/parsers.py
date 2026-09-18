@@ -13,6 +13,13 @@ class ParsedDocument:
         self.content = content
         self.metadata = metadata
 
+    @property
+    def text(self) -> str:
+        return self.content
+
+    def __str__(self) -> str:
+        return self.content
+
 
 class BaseParser:
     def __init__(self, timeout: int = 30):
@@ -82,18 +89,34 @@ class PDFParser(BaseParser):
             metadata["ocr_required"] = True
             try:
                 import pytesseract
-                from pdf2image import convert_from_bytes
+                from PIL import Image
 
-                images = convert_from_bytes(content)
-                ocr_parts = [pytesseract.image_to_string(img) for img in images]
-                ocr_text = "\n\n".join(ocr_parts).strip()
-                if ocr_text:
-                    full_text = ocr_text
-                    word_count = len(full_text.split())
-                    metadata["word_count"] = word_count
-                    metadata["ocr_applied"] = True
-                    metadata.pop("warning", None)
-            except Exception:
+                images = []
+                # First attempt in-memory page rendering via PyMuPDF (fitz) — requires 0 external Poppler binaries
+                try:
+                    import fitz
+                    doc = fitz.open(stream=content, filetype="pdf")
+                    for page in doc:
+                        pix = page.get_pixmap()
+                        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                        images.append(img)
+                    doc.close()
+                except Exception as fitz_err:
+                    logger.debug("PyMuPDF page rendering failed: %s; trying pdf2image", fitz_err)
+                    from pdf2image import convert_from_bytes
+                    images = convert_from_bytes(content)
+
+                if images:
+                    ocr_parts = [pytesseract.image_to_string(img) for img in images]
+                    ocr_text = "\n\n".join(ocr_parts).strip()
+                    if ocr_text:
+                        full_text = ocr_text
+                        word_count = len(full_text.split())
+                        metadata["word_count"] = word_count
+                        metadata["ocr_applied"] = True
+                        metadata.pop("warning", None)
+            except Exception as ocr_err:
+                logger.debug("OCR execution skipped or unavailable: %s", ocr_err)
                 metadata["ocr_hint"] = (
                     "Scanned image PDF detected. Install tesseract-ocr and pytesseract for image text extraction."
                 )
@@ -352,9 +375,15 @@ class ImageParser(BaseParser):
             )
         except Exception as e:
             logger.error(f"Image OCR failed: {e}")
+            metadata: dict[str, Any] = {"format": "image", "error": str(e), "needs_review": True}
+            err_str = str(e).lower()
+            if "tesseract is not installed" in err_str or "not in your path" in err_str or "not found" in err_str:
+                metadata["ocr_hint"] = (
+                    "Image OCR requires tesseract-ocr binary on the host system. Install tesseract-ocr to extract text from images."
+                )
             return ParsedDocument(
                 content="Image OCR failed",
-                metadata={"format": "image", "error": str(e), "needs_review": True},
+                metadata=metadata,
             )
 
 
