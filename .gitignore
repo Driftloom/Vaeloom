@@ -136,6 +136,15 @@ blob-report/
 .copilot/
 .aider*
 .continue/
+.codebuddy/
+.factory/
+.junie/
+.kiro/
+.pi/
+.qwen/
+.trae/
+.supermaven/
+.augment/
 
 # Vaeloom local orchestrator checkpoints (home ~/.vaeloom is outside repo, but repo-local .vaeloom/ if ever created)
 .vaeloom/
