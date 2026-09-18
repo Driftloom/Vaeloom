@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { useWorkspaceConnectors } from '../../../../hooks/useWorkspace';
@@ -264,12 +265,21 @@ export default function ConnectorsPage() {
 
   return (
     <div className="flex flex-col h-full" data-testid="connectors-page">
-      <header className="mb-6">
-        <h1 className="text-3xl font-display font-medium text-text mb-2">Connectors</h1>
-        <p className="text-text-muted">
-          Least-privilege OAuth. Each connector shows the exact scopes granted — review before
-          connecting. Sync progress and errors surface inline with retry.
-        </p>
+      <header className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-display font-medium text-text mb-2">Connectors</h1>
+          <p className="text-text-muted">
+            Least-privilege OAuth. Each connector shows the exact scopes granted — review before
+            connecting. Sync progress and errors surface inline with retry.
+          </p>
+        </div>
+        <Link
+          href={`/workspace/${workspaceId}/connectors/dynamic`}
+          className="self-start md:self-auto px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1.5 transition-colors shadow-sm shrink-0"
+        >
+          <span>✨ Dynamic MCP & SaaS Hub</span>
+          <span>→</span>
+        </Link>
       </header>
 
       <section className="mb-8">

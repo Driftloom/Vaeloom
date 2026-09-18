@@ -296,3 +296,90 @@ async def sync_mcp_bridge(
         "registered": registered,
         "bridged_total": len(get_bridge_definitions()),
     }
+
+
+@router.get("/composio/status")
+async def get_composio_status(
+    current_user: dict = Depends(get_current_user),
+):
+    """Check if Composio SaaS integration is enabled and list supported apps."""
+    from ..services.composio_service import composio_service
+
+    return {
+        "enabled": composio_service.is_enabled,
+        "popular_apps": [
+            {"id": "slack", "name": "Slack", "description": "Send notifications and query channels"},
+            {"id": "notion", "name": "Notion", "description": "Search and create workspace docs"},
+            {"id": "github", "name": "GitHub", "description": "Inspect PRs, issues, and repositories"},
+            {"id": "linkedin", "name": "LinkedIn", "description": "Post updates and fetch job posts"},
+            {"id": "jira", "name": "Jira", "description": "Track issues and create tickets"},
+        ],
+    }
+
+
+@router.post("/composio/auth-url")
+async def get_composio_auth_url(
+    payload: dict,
+    current_user: dict = Depends(get_current_user),
+    workspace_id: str | None = Depends(get_workspace_id),
+):
+    """Generate an OAuth connect URL for a specific SaaS app."""
+    if not current_user:
+        raise HTTPException(401, "Not authenticated")
+    app_name = payload.get("app", "")
+    wid = str(workspace_id or payload.get("workspace_id", ""))
+    if not app_name or not wid:
+        raise HTTPException(400, "app and workspace_id are required")
+
+    from ..services.composio_service import composio_service
+
+    return composio_service.get_auth_url(app_name, wid)
+
+
+@router.post("/composio/sync")
+async def sync_composio_tools(
+    payload: dict | None = None,
+    current_user: dict = Depends(get_current_user),
+    workspace_id: str | None = Depends(get_workspace_id),
+):
+    """Discover and bridge workspace SaaS tools from Composio into dynamic executor."""
+    if not current_user:
+        raise HTTPException(401, "Not authenticated")
+    wid = str(workspace_id or (payload or {}).get("workspace_id", ""))
+    if not wid:
+        raise HTTPException(400, "workspace_id required")
+
+    from ..services.composio_service import composio_service
+
+    registered = composio_service.bridge_workspace_tools(wid)
+    return {
+        "workspace_id": wid,
+        "registered": registered,
+        "count": len(registered),
+    }
+
+
+@router.get("/mcp/builtin")
+async def get_builtin_mcp_servers(
+    current_user: dict = Depends(get_current_user),
+):
+    """Returns catalog of built-in MCP servers ready to attach to any workspace."""
+    import sys
+
+    py_exe = sys.executable
+    return {
+        "builtin_servers": [
+            {
+                "id": "job-search-mcp",
+                "name": "Public ATS Job Search MCP",
+                "description": "Searches live jobs across Greenhouse, Lever, and Ashby boards without API keys",
+                "transport": "stdio",
+                "config": {
+                    "transport": "stdio",
+                    "command": py_exe,
+                    "args": ["-m", "api.mcp_servers.job_search_mcp"],
+                },
+                "tools": ["search_public_ats_jobs", "fetch_job_details"],
+            },
+        ]
+    }

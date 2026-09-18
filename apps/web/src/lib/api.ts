@@ -212,6 +212,26 @@ export const api = {
   request<T>(path: string, init?: RequestInit): Promise<T> {
     return request<T>(path, init);
   },
+  get<T>(path: string, init?: RequestInit): Promise<T> {
+    return request<T>(path, { ...init, method: 'GET' });
+  },
+  post<T>(path: string, body?: unknown, init?: RequestInit): Promise<T> {
+    return request<T>(path, {
+      ...init,
+      method: 'POST',
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  },
+  put<T>(path: string, body?: unknown, init?: RequestInit): Promise<T> {
+    return request<T>(path, {
+      ...init,
+      method: 'PUT',
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  },
+  delete<T>(path: string, init?: RequestInit): Promise<T> {
+    return request<T>(path, { ...init, method: 'DELETE' });
+  },
 
   // Auth
   signup(body: SignupRequest): Promise<AuthResponse> {
