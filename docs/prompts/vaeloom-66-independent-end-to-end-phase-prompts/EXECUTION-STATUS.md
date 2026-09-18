@@ -89,11 +89,13 @@
 | CONT-P20 Pilot Validation, Rollback Decision, and Stabilization | ✅ CLOSED — 96.65 APPROVED PROCEED | `docs/phases/cont-p20/06-gate-report.md`, `09-handoff-to-cont-p21.md` (item 42) |
 | CONT-P21 Scale-Out, Legacy Retirement, and Continuous Optimization | ✅ CLOSED — 96.76 APPROVED PROCEED | `docs/phases/cont-p21/06-gate-report.md`, `09-handoff-to-ent-p00.md` (item 43) |
 
-## Track 3 — Enterprise (`03-enterprise/`) — **ENT NOT STARTED (evidence dirs absent — verified 2026-09-15)**
+## Track 3 — Enterprise (`03-enterprise/`) — **ENT TRACK ACTIVATED 2026-09-19 (ENT-P00 GATED & CLOSED)**
 
-| Prompt | Status |
-| ----------------- | ----------------------------------------------------- |
-| ENT-P00 … ENT-P21 | ⬜ NOT STARTED (blocked on MVP + continuation tracks; `docs/phases/ent-p*` dirs DO NOT EXIST — see `docs/ENT-Backlog.md`) |
+| Prompt | Status | Evidence / Notes |
+| ------ | ------ | ---------------- |
+| ENT-P00 Intake and Existing-State Assessment | ✅ CLOSED — 97.75 APPROVED PROCEED | `docs/phases/ent-p00/06-gate-report.md`, `09-handoff-to-ent-p01.md` (baseline verified: 42/42 RLS, 3640 tests, 0 blockers) |
+| ENT-P01 … ENT-P21 | 🔄 IN PROGRESS (ENT-P01 ready to enter; see `docs/phases/ent-p00/09-handoff-to-ent-p01.md`) |
+
 
 ## Next Actions
 

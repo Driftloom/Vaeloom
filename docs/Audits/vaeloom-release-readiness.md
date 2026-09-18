@@ -169,15 +169,15 @@ AuthnRequest generation with fail-closed security, and real Server-Sent Events
 
 ## 5. Reclassification Log
 
-| Gap                  | Original Severity | Final Severity | Reason                                                           |
-| -------------------- | ----------------- | -------------- | ---------------------------------------------------------------- |
-| G-01 (Vector upsert) | P0                | **P2**         | FallbackVectorStore is graceful fallback; PGVector + Qdrant work |
-| G-03 (State store)   | P0                | **NOT A GAP**  | ABC with 4 concrete implementations                              |
-| G-06 (Mock executor) | P0                | **P2**         | Error handler for unknown tools, returns error status            |
-| G-13 (E2E count)     | P0                | **NOT A GAP**  | Actually 68 test cases (> 60 claimed)                            |
-| G-18 (Agent stubs)   | P1                | **NOT A GAP**  | All 28 agents verified FULL                                      |
-| G-35 (PDF OCR)       | P1                | **P2**         | Tesseract + Chromium baked into Dockerfile                       |
-| G-39 (xdist hang)    | P0                | **P1**         | CI runs successfully; local xdist issue only                     |
+| Gap                  | Original Severity | Final Severity        | Reason                                                                                     |
+| -------------------- | ----------------- | --------------------- | ------------------------------------------------------------------------------------------ |
+| G-01 (Vector upsert) | P0                | **P2**                | FallbackVectorStore is graceful fallback; PGVector + Qdrant work                           |
+| G-03 (State store)   | P0                | **NOT A GAP**         | ABC with 4 concrete implementations                                                        |
+| G-06 (Mock executor) | P0                | **P2**                | Error handler for unknown tools, returns error status                                      |
+| G-13 (E2E count)     | P0                | **VERIFIED 73 TESTS** | 73 test cases across 6 active spec files in apps/web/e2e (33 gating + 40 visual baselines) |
+| G-18 (Agent stubs)   | P1                | **NOT A GAP**         | All 28 agents verified FULL                                                                |
+| G-35 (PDF OCR)       | P1                | **P2**                | Tesseract + Chromium baked into Dockerfile                                                 |
+| G-39 (xdist hang)    | P0                | **P1**                | CI runs successfully; local xdist issue only                                               |
 
 ---
 
