@@ -1,33 +1,15 @@
-# Prompts
+# Phase Contracts & Prompts (Relocated to `specs/`)
 
-> **Purpose:** Source-of-truth prompt packages and runtime prompt references for
-> Vaeloom. **Status:** Active **Owner:** Engineering Team **Last Updated:**
-> 2026-08-11
+> **NOTICE:** In accordance with the Vaeloom Documentation Architecture (Phase 5 Refactoring), authoritative phase engineering prompts and prompt specifications have been elevated from `docs/prompts/` to top-level authoritative specifications:
 
-## Prompt Packages
+## New Canonical Locations
 
-| Package | Location | Count | Role |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **66 Independent End-to-End Phase Prompts** | [`./vaeloom-66-independent-end-to-end-phase-prompts/`](./vaeloom-66-independent-end-to-end-phase-prompts/) | 66 files (3 tracks x 22 phases) | **Source of truth** for phase execution: MVP (`01-mvp/`), MVP-to-Enterprise continuation (`02-mvp-to-enterprise-continuation/`), Enterprise (`03-enterprise/`) |
-
-The 66 phase prompts are the governing contract for how Vaeloom phases are
-executed:
-
-- Each prompt is standalone: source-corpus inspection, standards overlay,
- predecessor forensic audit, GO / CONDITIONAL GO / NO-GO, requirements and
- acceptance, tests and security, weighted gate, remediation loop, next-phase
- handoff, future-readiness.
-- Phase execution evidence lives under [`../phases/`](../phases/) (e.g.
- `mvp-p00` … `mvp-p10` gate reports).
-- Execution status per track is tracked in
- [`./vaeloom-66-independent-end-to-end-phase-prompts/EXECUTION-STATUS.md`](./vaeloom-66-independent-end-to-end-phase-prompts/EXECUTION-STATUS.md).
-- Structural integrity is pinned by `SHA256SUMS.md` and `manifest.json` inside
- the package; re-verify with `VALIDATION-REPORT.md`.
-
-## Runtime System Prompts
-
-| Prompt | Location |
-| -------------------- | ---------------------------------------------------------------------- |
-| Agent system prompt | [`./agents/agent-system-prompt.md`](./agents/agent-system-prompt.md) |
-| Memory system prompt | [`./memory/memory-system-prompt.md`](./memory/memory-system-prompt.md) |
-| RAG pipeline prompt | [`./rag/rag-pipeline-prompt.md`](./rag/rag-pipeline-prompt.md) |
+| Resource | New Location | Description |
+| :--- | :--- | :--- |
+| **66 Phase Prompts & Contracts** | [`../../specs/phase-contracts/`](../../specs/phase-contracts/) | Authoritative governing engineering contracts (3 tracks x 22 phases), integrity-pinned by `SHA256SUMS.md` |
+| **Phase Execution Status** | [`../../specs/phase-contracts/EXECUTION-STATUS.md`](../../specs/phase-contracts/EXECUTION-STATUS.md) | Single live source of truth for phase progress |
+| **Cross-Track Gate Policy** | [`../../specs/phase-contracts/05-cross-track-gate-policy.md`](../../specs/phase-contracts/05-cross-track-gate-policy.md) | Quality gate scoring policy (≥95/100 threshold) |
+| **Standards Snapshot** | [`../../specs/phase-contracts/04-standards-snapshot.md`](../../specs/phase-contracts/04-standards-snapshot.md) | Normative compliance standards overlay |
+| **Agent System Prompts** | [`../../specs/ai/prompts/`](../../specs/ai/prompts/) | Abstract prompt specifications for agents, memory, and RAG |
+| **Phase Execution Evidence** | [`../../evidence/phases/`](../../evidence/phases/) | Immutable historical gate scorecards, test runs, and handoffs |
+| **Runtime Code Prompts** | [`../../apps/api/src/api/prompts/`](../../apps/api/src/api/prompts/) | Dynamic system prompt templates loaded by `prompt_manager.py` |

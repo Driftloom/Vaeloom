@@ -3,32 +3,40 @@
 > **Purpose:** Complete map of all documentation with status, ownership, and
 > relationships
 
-## Category Summary
+## Architecture Tier Summary
 
-| Category             | Directory                    | Files     | Owner       | Maturity                        |
-| -------------------- | ---------------------------- | --------- | ----------- | ------------------------------- |
-| Architecture         | `docs/architecture/`         | 19        | Platform    | ✅ Stable                       |
-| AI / Agents          | `docs/ai/`                   | 24        | AI Team     | ✅ Stable                       |
-| Backend              | `docs/backend/`              | 23        | Backend     | ✅ Stable                       |
-| Database             | `docs/database/`             | 11        | Backend     | ✅ Stable                       |
-| DevOps               | `docs/devops/`               | 13        | DevOps      | ✅ Stable                       |
-| Engineering          | `docs/engineering/`          | 29        | Engineering | ✅ Stable                       |
-| Enterprise           | `docs/enterprise/`           | 11        | Enterprise  | ✅ Stable                       |
-| Frontend             | `docs/frontend/`             | 25        | Frontend    | ✅ Stable                       |
-| Operations           | `docs/operations/`           | 18        | DevOps      | ✅ Stable                       |
-| Product              | `docs/product/`              | 35        | Product     | ✅ Stable                       |
-| Security             | `docs/security/`             | 17        | Security    | ✅ Stable                       |
-| Testing              | `docs/testing/`              | 13        | QA          | ✅ Stable                       |
-| Compliance           | `docs/compliance/`           | 4         | Security    | ✅ Stable                       |
-| ADRs                 | `docs/adr/`                  | 39        | Platform    | ✅ Stable                       |
-| Temporal             | `docs/temporal/`             | 9         | Platform    | ✅ Stable                       |
-| MCP                  | `docs/mcp/`                  | 3         | Platform    | ✅ Stable                       |
-| Developer Experience | `docs/developer-experience/` | 9         | Platform    | ✅ Stable                       |
-| API Reference        | `docs/backend/openapi.yaml`  | 1         | Backend     | ✅ Stable                       |
-| Root-level docs      | `docs/*.md`                  | 33        | Mixed       | 🔄 Needs Update                 |
-| Phase Evidence       | `docs/phases/`               | 492       | Platform    | 🧊 Frozen — do not modify       |
-| Phase Prompts        | `docs/prompts/`              | 81        | Platform    | 🔒 SHA-pinned — do not reformat |
-| **Total**            | **22 categories**            | **~1033** | —           | —                               |
+| Tier | Directory | Scope & Purpose | Authority |
+| :--- | :--- | :--- | :--- |
+| **SPECS** | `specs/` | Authoritative system contracts, schemas, API contracts (`openapi.yaml`), and 66 phase engineering prompts | 🔒 Canonical SPEC |
+| **DOCS** | `docs/` | Human-facing architecture explanations, developer onboarding, reference guides, ADR history, and runbooks | 📖 Human Knowledge |
+| **EVIDENCE** | `evidence/` | Immutable point-in-time compliance logs, 50 phase execution audits (`mvp/`, `cont/`, `ent/`), and DR drill logs | 🧾 Audit Evidence |
+| **ARCHIVE** | `archive/` | Historical milestone audits (107 files), superseded monolithic drafts from July 2026, and dated temporal reports | 🗄️ Historical Archive |
+
+### Category Breakdown
+
+| Category | Directory | Files | Owner | Role |
+| :--- | :--- | :--- | :--- | :--- |
+| **Phase Contracts** | `specs/phase-contracts/` | 80 | Platform | 🔒 Canonical Phase Specifications |
+| **API Specifications** | `specs/api/` | 4 | Backend | 🔒 OpenAPI (162 paths / 203 ops) + API Reference |
+| **Product Specifications** | `specs/product/` | 20 | Product | 🔒 Functional Requirements & 13 Feature Specs |
+| **System Invariants** | `specs/architecture/` | 6 | Platform | 🔒 C4 Architecture, LLD, Event Catalog |
+| **Database Schemas** | `specs/database/` | 4 | Backend | 🔒 67 Tables (Schema, Data Dict, Indexes, ERD) |
+| **AI & Agent Cards** | `specs/ai/` | 10 | AI Team | 🔒 28 Agents, Tool Calling, Safety Guardrails |
+| **Security Policies** | `specs/security/` | 9 | Security | 🔒 IAM, Encryption, Threat Model, Retention |
+| **Durable Execution** | `specs/temporal/` | 2 | Platform | 🔒 8 Queues, 6 Workflows, Idempotency |
+| **UI Design System** | `specs/frontend/` | 4 | Frontend | 🔒 Design Tokens, Components, WCAG AA Rules |
+| **Quality & Coverage** | `specs/quality/` | 7 | QA | 🔒 Test Pyramid (75/20/5), SLAs/SLOs, Coverage Floor |
+| **Architecture Guides** | `docs/architecture/` | 13 | Platform | 📖 System Narrative & High-Level Design |
+| **ADR History** | `docs/adr/` | 45 | Platform | 📖 44 Architecture Decision Records & Index |
+| **Backend Guides** | `docs/backend/` | 20 | Backend | 📖 Local Dev, Troubleshooting, Connectors |
+| **Frontend Guides** | `docs/frontend/` | 21 | Frontend | 📖 App Router (41 routes), SWR, UX Guides |
+| **AI Concept Guides** | `docs/ai/` | 19 | AI Team | 📖 Memory Taxonomy, RAG Architecture, Graph |
+| **Operational Runbooks** | `docs/operations/` | 20 | DevOps | 📖 SRE Runbooks, Incident Response, Backup |
+| **Security Guides** | `docs/security/` | 12 | Security | 📖 Audit Logs Guide, GDPR, SOC 2, DPIA |
+| **Testing Tutorials** | `docs/testing/` | 10 | QA | 📖 Unit, Integration, E2E, Load Testing Guides |
+| **Phase Evidence** | `evidence/phases/` | 574 | Platform | 🧊 Immutable Phase Gate Reports & Scorecards |
+| **Historical Audits** | `archive/audits/` | 114 | Security/QA | 🗄️ Point-in-Time Audits & Verification Logs |
+| **Monolith Archive** | `archive/monoliths/` | 6 | Platform | 🗄️ Superseded Pre-Modular July 2026 Monoliths |
 
 ## Dependency Graph
 
@@ -80,14 +88,13 @@ be modified. Current values: **2731 tests**, **162 OpenAPI paths / 203 ops**
 | Career Flows (as-built)    | Resume/ATS-as-tools/Job-fallback/Application     | `product/Feature-Specs/`                                    |
 | Frontend / Backend         | 27 pages → REST gateway → FastAPI monolith       | `frontend/Frontend-Architecture.md`                         |
 
-## Canonical Phase Sources (added 2026-08-11)
+## Canonical Phase Sources
 
-| Item                                                    | Location                                                                                                                                                         | Role                                                                                               |
-| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| 66 Independent End-to-End Phase Prompts (3 tracks x 22) | [`./prompts/vaeloom-66-independent-end-to-end-phase-prompts/`](./prompts/vaeloom-66-independent-end-to-end-phase-prompts/)                                       | **Source of truth** for phase execution; integrity-pinned by `SHA256SUMS.md` (do not reformat)     |
-| Execution status overlay                                | [`./prompts/vaeloom-66-independent-end-to-end-phase-prompts/EXECUTION-STATUS.md`](./prompts/vaeloom-66-independent-end-to-end-phase-prompts/EXECUTION-STATUS.md) | Live GO / IN PROGRESS / NOT STARTED per phase                                                      |
-| Phase execution evidence                                | [`./phases/`](./phases/)                                                                                                                                         | `mvp-p00` … `mvp-p21` (MVP COMPLETE) + `cont-p00` … `cont-p04` gate reports, registers, handoffs   |
-| MVP e2e baseline — enterprise-hardened (GOVERNING)      | `./vaeloom-mvp-e2e-enterprise-hardened.md`                                                                                                                       | Canonical MVP corrections/hardening (INT-02)                                                       |
-| MVP e2e baseline                                        | `./vaeloom-mvp-e2e.md`                                                                                                                                           | Original 22-phase MVP execution baseline (INT-03)                                                  |
-| Enterprise e2e baseline                                 | `./vaeloom-enterprise-e2e.md`                                                                                                                                    | Enterprise 0–21 execution baseline (INT-04, reference)                                             |
-| Gatekeeper compendium zip (INT-01 substitute)           | `C:\Users\Dell\Downloads\vaeloom\vaeloom-complete-three-track-phase-gatekeeper-deliverables.zip`                                                                 | Governing 3-track 32-section gatekeepers; SHA-256 pinned in `phases/mvp-p00/01-source-register.md` |
+| Item | Location | Role |
+| :--- | :--- | :--- |
+| **66 Phase Prompts & Contracts (3 tracks x 22)** | [`../specs/phase-contracts/`](../specs/phase-contracts/) | **Governing contract** for phase execution; integrity-pinned by `SHA256SUMS.md` |
+| **Live Execution Status Overlay** | [`../specs/phase-contracts/EXECUTION-STATUS.md`](../specs/phase-contracts/EXECUTION-STATUS.md) | Single canonical source of truth for phase progress |
+| **Phase Execution Evidence** | [`../evidence/phases/`](../evidence/phases/) | `mvp/` (P00..P21 COMPLETE), `cont/` (P00..P21 COMPLETE), `ent/` (active) |
+| **MVP E2E Baseline — Enterprise Hardened** | [`../specs/product/vaeloom-mvp-e2e-enterprise-hardened.md`](../specs/product/vaeloom-mvp-e2e-enterprise-hardened.md) | Canonical MVP hardening specification baseline (INT-02) |
+| **Enterprise E2E Baseline** | [`../specs/product/vaeloom-enterprise-e2e.md`](../specs/product/vaeloom-enterprise-e2e.md) | Enterprise execution specification baseline (INT-04) |
+| **Superseded Monoliths** | [`../archive/monoliths/`](../archive/monoliths/) | Pre-modular July 2026 baselines (`vaeloom-mvp-e2e.md`, `vaeloom-complete-documentation.md`) |

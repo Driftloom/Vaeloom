@@ -3,8 +3,10 @@
 Base URL: `https://api.vaeloom.dev` (production) or `http://localhost:8000`
 (local)
 
-Version: `0.2.0` — **162 paths / 203 operations** (machine-readable contract:
-`docs/backend/openapi.yaml`, regen 2026-09-15 via `scripts/gen_openapi.py`)
+Version: `0.2.0` — **162 paths / 203 operations**  
+- **Machine-readable contract (SPEC):** [`specs/api/openapi.yaml`](../specs/api/openapi.yaml) (regen via `scripts/gen_openapi.py`)  
+- **Authoritative endpoint specification:** [`specs/api/API-Reference.md`](../specs/api/API-Reference.md)  
+- **REST standards & error envelopes:** [`specs/api/REST-Standards.md`](../specs/api/REST-Standards.md), [`specs/api/Error-Standards.md`](../specs/api/Error-Standards.md)  
 
 > 10 enterprise-gated routers are excluded from this reference unless
 > `enterprise_routes_enabled` — by design, not missing coverage.

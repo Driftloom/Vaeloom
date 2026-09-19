@@ -14,6 +14,9 @@ connector syncs, and scheduled tasks. Queues decouple request submission from
 processing, allowing the system to handle spikes, retry failures, and prioritize
 critical work.
 
+> [!NOTE]
+> **Durable Workflow Execution (Temporal):** For distributed, durable, multi-step agent workflows, activity retries, and long-running schedules, Vaeloom has adopted **Temporal** as defined in [ADR-038](../adr/ADR-038-temporal-durable-execution.md) and specified in [`specs/temporal/catalog.md`](../../specs/temporal/catalog.md). The Redis/BullMQ queue architecture below covers high-throughput ephemeral background processing.
+
 This document defines the queue structure, job lifecycle, dead letter handling,
 and monitoring thresholds.
 

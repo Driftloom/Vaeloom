@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 from pathlib import Path
 import yaml
@@ -15,10 +15,16 @@ sys.path.insert(0, str(REPO_ROOT / "apps" / "api" / "src"))
 from api.main import app
 
 spec = app.openapi()
-out_path = REPO_ROOT / "docs" / "backend" / "openapi.yaml"
+out_path = REPO_ROOT / "specs" / "api" / "openapi.yaml"
 out_path.parent.mkdir(parents=True, exist_ok=True)
 
 with open(out_path, "w", encoding="utf-8") as f:
     yaml.dump(spec, f, sort_keys=False, allow_unicode=True)
 
-print(f"Generated {out_path} with {len(spec.get('paths', {}))} paths.")
+# Also maintain backward-compatible mirror at docs/backend/openapi.yaml
+mirror_path = REPO_ROOT / "docs" / "backend" / "openapi.yaml"
+mirror_path.parent.mkdir(parents=True, exist_ok=True)
+with open(mirror_path, "w", encoding="utf-8") as f:
+    yaml.dump(spec, f, sort_keys=False, allow_unicode=True)
+
+print(f"Generated {out_path} and {mirror_path} with {len(spec.get('paths', {}))} paths.")

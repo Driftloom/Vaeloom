@@ -5,6 +5,8 @@
 > Status:** BullMQ is installed but NO consumers are deployed. The actual worker
 > is `apps/api/queue_worker.py` (Python). TypeScript BullMQ workers shown below
 > are SPEC ONLY — not implemented.
+>
+> **Durable Workflow Execution:** For durable multi-step workflows, activity retries, and cron schedules, see [ADR-038](../adr/ADR-038-temporal-durable-execution.md) and [`specs/temporal/catalog.md`](../../specs/temporal/catalog.md).
 
 ## Queue Architecture
 

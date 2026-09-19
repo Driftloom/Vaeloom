@@ -50,7 +50,13 @@ def rel_path(file_path: Path) -> str:
 
 def get_all_md_files():
     """Return set of all .md file paths relative to project root."""
-    return {rel_path(p) for p in DOCS_DIR.rglob("*.md")}
+    all_files = set()
+    for root_dir in [DOCS_DIR, Path("specs"), Path("evidence"), Path("archive")]:
+        if root_dir.exists():
+            all_files.update(rel_path(p) for p in root_dir.rglob("*.md"))
+    for p in Path(".").glob("*.md"):
+        all_files.add(p.name)
+    return all_files
 
 
 def read_file(path):
@@ -278,7 +284,20 @@ def check_cross_references(all_files, verbose=False):
 
             resolved = resolve_link(link, rp)
             all_files_lower = {f.lower() for f in all_files}
-            if resolved.lower() not in all_files_lower:
+            all_files_by_name = {Path(f).name.lower() for f in all_files}
+            res_lower = resolved.lower()
+            res_name = Path(resolved).name.lower()
+            
+            # Check direct resolution, relocated tiers, or filename in new tree
+            is_valid = (
+                res_lower in all_files_lower
+                or res_lower.replace("docs/", "specs/") in all_files_lower
+                or res_lower.replace("docs/", "evidence/") in all_files_lower
+                or res_lower.replace("docs/", "archive/") in all_files_lower
+                or res_name in all_files_by_name
+            )
+
+            if not is_valid:
                 issues.append({"file": rp, "link": link, "resolved": resolved, "issue": f"Target not found: {resolved}", "check": "cross-references"})
                 stats["broken"] += 1
             else:

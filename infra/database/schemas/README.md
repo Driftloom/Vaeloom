@@ -50,12 +50,13 @@ erDiagram
 
 | Environment | Strategy | Rollback |
 |---|---|---|
-| Development | `prisma migrate dev` | `prisma migrate reset` |
-| Staging | `prisma migrate deploy` | Manual rollback via migration history |
-| Production | `prisma migrate deploy` with CI approval | Point-in-time recovery + migration revert |
+| Development | `alembic upgrade head` | `alembic downgrade -1` |
+| Staging | `alembic upgrade head` (via CI) | `alembic downgrade <target_rev>` |
+| Production | Automated Alembic migration run | Point-in-time recovery + migration rollback |
 
 ## Related Documents
 
-- [Prisma Schema](../../apps/api/prisma/schema.prisma)
+- [Alembic Migrations](../../../apps/api/alembic/versions/)
+- [Database Schema Specification](../../../specs/database/Schema.md)
+- [Database Migrations Guide](../../../docs/database/Migrations.md)
 - [Event Schemas](../../events/schemas/README.md)
-- [Backend Architecture](../../docs/Backend/Backend-Architecture.md)

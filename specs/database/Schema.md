@@ -8,20 +8,13 @@
 ## Overview
 
 The database schema is the physical implementation of Vaeloom's relational data
-model — defining 9 core tables with complete column types, constraints (primary
-keys, foreign keys, NOT NULL, UNIQUE), and relationships that together store all
-user data, memory records, knowledge graph entities, application data, and audit
-logs. The schema is implemented as PostgreSQL DDL with UUID primary keys,
-workspace_id foreign keys for tenant isolation, JSONB for semi-structured memory
-content, and TIMESTAMPTZ for temporal data. The schema is managed through
-version-controlled Alembic migrations (SQLAlchemy ORM) and must never be
-modified directly in production.
+model — defining **67 production tables** (with **42 enforced under PostgreSQL Row-Level Security**)
+across version-controlled Alembic migrations (`0001_initial_schema.py` through `0042_users_tenant_id.py`).
+Tables store user identities, multi-tiered memory records, knowledge graph entities, application states,
+resume pipelines, durable task checkpoints, and immutable audit logs.
 
-This document defines the complete DDL for all 9 tables, constraint definitions,
-estimated row counts at MVP scale, and key design decisions (UUID v7, soft
-deletes, JSONB usage, append-only audit). It serves as the authoritative
-reference for database engineers, backend developers writing queries, and anyone
-reviewing schema changes in migration PRs.
+Tenant isolation is strictly enforced via `workspace_id` and `tenant_id` session variables (`app.workspace_id`,
+`app.tenant_id`) checked fail-closed by PostgreSQL Row-Level Security policies.
 
 ## Goals
 
@@ -378,15 +371,20 @@ WHERE workspace_id = 'ws_abc'
 
 ---
 
-## Future Improvements
+## Production Table Inventory (67 Tables across 42 Alembic Migrations)
 
-| Improvement                                                                   | Priority                                                     | Complexity | Timeline   |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------ | ---------- | ---------- |
-| Row-Level Security (RLS) enforcement on all tenant-scoped tables              | **DONE — 42/42** (migrations 0010/0019/0020 + `0005_rls.py`) | —          | 2026-08-22 |
-| JSONB CHECK constraints for structured memory content validation              | Medium                                                       | Low        | Q3 2026    |
-| Soft-delete columns on all user-data tables (deleted_at, deleted_by)          | Medium                                                       | Low        | Q3 2026    |
-| Table comments in every migration for self-documenting schema                 | Low                                                          | Low        | Q3 2026    |
-| Database governance automation (schema change notifications, impact analysis) | Low                                                          | Medium     | Q1 2027    |
+| Subsystem | Tables | RLS Enforced (42 Total) | Alembic Migration |
+| :--- | :--- | :--- | :--- |
+| **Core Identity & Workspaces** | `users`, `workspaces`, `workspace_members`, `tenants`, `auth_sessions`, `revoked_user_cutoffs`, `api_keys` | `workspaces`, `workspace_members`, `auth_sessions`, `api_keys` | 0001, 0005, 0010, 0042 |
+| **Documents & Chunks** | `documents`, `document_versions`, `document_chunks`, `resume_artifacts`, `resume_sources` | **ALL** (5/5) | 0001, 0005, 0020, 0023 |
+| **Memory System (6 Types)** | `memory_records`, `scale_memory_nodes`, `memory_versions`, `crdt_sync_deltas`, `proactive_proposals` | **ALL** (5/5) | 0001, 0005, 0019, 0020 |
+| **Knowledge Graph** | `entities`, `relationships`, `entity_observations`, `graph_snapshots` | **ALL** (4/4) | 0001, 0005, 0010 |
+| **Career & Applications** | `applications`, `application_stages`, `job_listings`, `interview_prep`, `career_goals` | `applications`, `application_stages`, `interview_prep`, `career_goals` | 0001, 0005, 0010 |
+| **Agent Execution & Loop** | `agent_actions`, `agent_executions`, `agent_approvals`, `loop_checkpoints`, `tool_idempotencies` | **ALL** (5/5) | 0001, 0005, 0019, 0021 |
+| **Connectors & Integrations** | `connectors`, `connector_configs`, `gmail_watches`, `sync_cursors` | **ALL** (4/4) | 0005, 0010, 0036 |
+| **Security, Compliance & Keys** | `provider_keys`, `retention_runs`, `audit_logs`, `legal_holds`, `sovereign_identities`, `verifiable_credentials` | **ALL** (6/6) | 0010, 0019, 0020 |
+| **Enterprise & Billing** | `subscriptions`, `invoices`, `feature_flag_overrides`, `org_teams`, `org_members` | **ALL** (5/5) | 0010, 0020 |
+| **Temporal & Orchestration** | `workflow_executions`, `activity_retries`, `schedule_dispatches` | Monitored | 0038 |
 
 ---
 

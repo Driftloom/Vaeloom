@@ -1,8 +1,11 @@
-# Vaeloom Documentation
+# Vaeloom Documentation Portal
 
-> **Purpose:** Master index and navigation hub for all Vaeloom documentation
-> **Status:** ✅ Published **Owner:** Platform Team **Version:** 2.1 **Last
-> Updated:** 2026-09-15 **Total Documents:** ~1033
+> **Purpose:** Master index and navigation hub for Vaeloom documentation  
+> **Architecture Tiers:**
+> - 🔒 **[Specifications (`specs/`)](../specs/):** Authoritative machine/developer contracts, OpenAPI, schemas, and 66 phase engineering prompts
+> - 📖 **[Documentation (`docs/`)](./):** Living human-facing guides, architectural explanations, ADR history, and runbooks
+> - 🧾 **[Evidence (`evidence/`)](../evidence/):** Immutable historical phase execution trails, signed gate scorecards, and DR drill logs
+> - 🗄️ **[Archive (`archive/`)](../archive/):** Historical point-in-time milestone audits, superseded monoliths, and closed reports
 
 ## Documentation Taxonomy
 
@@ -58,7 +61,7 @@ graph TD
 | 15  | [Performance](./Architecture/Performance.md)                   | Performance targets              |
 | 16  | [Disaster Recovery](./Architecture/Disaster-Recovery.md)       | DR plan                          |
 | 17  | [Infrastructure](./Architecture/Infrastructure.md)             | Infrastructure overview          |
-| 18  | [ADRs](./Architecture/03-adrs.md)                              | Architecture Decision Records    |
+| 18  | [ADRs](./adr/README.md)                                        | 44 Architecture Decision Records |
 
 ### 🤖 AI / Agents
 

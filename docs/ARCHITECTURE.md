@@ -25,7 +25,7 @@ overview (6-layer MVP + 8-layer Enterprise overlay).
 | [Caching](architecture/Caching.md), [Queue](architecture/Queue.md), [Search](architecture/Search.md), [Storage](architecture/Storage.md) | Cross-cutting infrastructure           |
 | [Scalability](architecture/Scalability.md), [Performance](architecture/Performance.md)                                                   | Scaling strategy, targets              |
 | [Infrastructure](architecture/Infrastructure.md), [Disaster Recovery](architecture/Disaster-Recovery.md)                                 | Infra overview, DR plan                |
-| [ADRs](architecture/03-adrs.md) + [`docs/adr/`](adr/)                                                                                    | 44 records, ADR-001..ADR-044           |
+| [Architecture Decision Records (ADRs)](adr/README.md)                                                                    | 44 records, ADR-001..ADR-044           |
 
 ## Enterprise Architecture
 

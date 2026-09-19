@@ -5,13 +5,13 @@
 - **The 66 independent end-to-end phase prompts** (3 tracks x 22 phases: MVP,
   MVP-to-Enterprise continuation, Enterprise) are the **governing contract** for
   phase execution.
-- Location: `docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/` —
+- Location: `specs/phase-contracts/` (canonical) or `docs/prompts/` (redirect) —
   start with `00-master-index.md`, then `EXECUTION-STATUS.md` for what is
   done/in progress/next.
 - Each prompt is standalone: predecessor forensic audit → GO / CONDITIONAL GO /
   NO-GO → requirements → tests/security → weighted gate → handoff.
-- Execution evidence lives in `docs/phases/<track>-pXX/` (gate reports,
-  registers, handoffs).
+- Execution evidence lives in `evidence/phases/<track>-pXX/` (legacy redirect at
+  `docs/phases/`) (gate reports, registers, handoffs).
 
 ## Quick Commands
 
@@ -52,8 +52,8 @@
   standalone)** — security suite 233/233 (170 unique de-duplicated;
   middleware/test_csrf duplicates security/test_csrf per zero-trust audit
   2026-08-22 F-02; F-20/F-22 fixes 2026-08-22 do not change count); coverage
-  **94% total** — see `docs/phases/mvp-p00/03-maturity-and-evidence-matrix.md`;
-  OpenAPI **162 paths / 203 ops** (`docs/backend/openapi.yaml` v0.2.0, regen
+  **94% total** — see `evidence/phases/mvp-p00/03-maturity-and-evidence-matrix.md`;
+  OpenAPI **162 paths / 203 ops** (`specs/api/openapi.yaml` v0.2.0, regen
   2026-09-15 via `scripts/gen_openapi.py` — was 110 on 2026-08-29, 106 on
   2026-08-23, 99 before)
 - Python 3.12.13 (per `apps/api/.python-version` pinned via

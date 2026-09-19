@@ -31,7 +31,7 @@ suggest-mode by default, and a monolithic FastAPI backend.
 | C4 Architecture Model                   | [`C4-Architecture.md`](./C4-Architecture.md)                                                                                                      | ?? New      |
 | Event Flow                              | [`Event-Flow.md`](./Event-Flow.md)                                                                                                                | ?? New      |
 | Data Flow                               | [`Data-Flow.md`](./Data-Flow.md)                                                                                                                  | ?? New      |
-| Architecture Decision Records           | [`03-adrs.md`](./03-adrs.md)                                                                                                                      | ? Started   |
+| Architecture Decision Records           | [`ADRs`](../adr/README.md)                                                                                                                        | ✅ 44 ADRs  |
 
 ## Architecture overview
 
@@ -229,6 +229,6 @@ Vaeloom arch diagram --format mermaid --output arch.mmd
 
 - [System Architecture](../02-system-architecture.md) — Six-layer system
   architecture overview
-- [Architecture Decision Records](03-adrs.md) — Key architectural decisions
+- [Architecture Decision Records](../adr/README.md) — 44 architectural decision records (ADR-001..ADR-044)
 - [Enterprise Architecture](../Enterprise/Enterprise-Architecture.md) —
   Multi-tenant architecture
