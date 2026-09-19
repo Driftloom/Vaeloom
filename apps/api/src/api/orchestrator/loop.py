@@ -2371,6 +2371,24 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
             summary=message,
         )
 
+    if agent_type == "WorkspaceAgent" or registry_key == "workspace":
+        return agent.process(request)
+
+    if agent_type == "CalendarAgent" or registry_key == "calendar":
+        return agent.process(request)
+
+    if agent_type == "InternshipAgent" or registry_key == "internship":
+        return agent.process(request)
+
+    if agent_type == "DocumentAgent" or registry_key == "document":
+        return agent.process(request)
+
+    if agent_type == "PDFAgent" or registry_key == "pdf":
+        return agent.process(request)
+
+    if agent_type == "SelfImprovementAgent" or registry_key == "self_improvement":
+        return agent.process(request)
+
     logger.warning(
         "dispatch_unknown_agent",
         extra={"agent_type": agent_type, "request_id": str(request.id), "action": "fallback"},
