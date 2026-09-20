@@ -400,7 +400,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
                     <text
                       textAnchor="middle"
                       dy={isSelected ? 54 : 48}
-                      className="fill-text-dim text-[10px] font-mono uppercase"
+                      className="fill-text-dim text-2xs font-mono uppercase"
                     >
                       {node.type}
                     </text>

@@ -48,7 +48,7 @@ export function ConnectorSection() {
                     <Icon name={c.icon} className="h-4 w-4 text-primary-300" />
                     <p className="text-xs font-semibold text-text">{c.name}</p>
                   </div>
-                  <p className="mt-1 text-[11px] leading-snug text-text-muted">{c.scope}</p>
+                  <p className="mt-1 text-xs leading-snug text-text-muted">{c.scope}</p>
                 </li>
               ))}
             </ul>
@@ -80,7 +80,7 @@ export function ConnectorSection() {
               <ul className="pointer-events-none absolute inset-0">
                 {CONNECTORS.items.map((c, i) => (
                   <li key={c.name} className={`absolute ${SOURCE_CHIPS[i]}`}>
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-background/70 px-2 py-0.5 text-[10px] font-medium text-text-secondary backdrop-blur-sm">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-background/70 px-2 py-0.5 text-2xs font-medium text-text-secondary backdrop-blur-sm">
                       <span
                         className="h-1.5 w-1.5 rounded-full"
                         style={{ background: SOURCE_HUES[i] }}
@@ -111,11 +111,11 @@ export function ConnectorSection() {
             </svg>
 
             <div className="rounded-xl border border-border-strong bg-gradient-to-br from-primary-600/20 to-transparent p-4 text-center shadow-glow-lg">
-              <p className="font-mono text-[11px] uppercase tracking-widest text-text-muted">
+              <p className="font-mono text-xs uppercase tracking-widest text-text-muted">
                 Destination
               </p>
               <p className="mt-1 font-display text-sm font-bold text-text">One memory</p>
-              <p className="mt-1 text-[11px] text-text-secondary">
+              <p className="mt-1 text-xs text-text-secondary">
                 graph + vectors + structured records
               </p>
             </div>
@@ -152,7 +152,7 @@ export function OrganizationSection() {
                     {String(i + 1).padStart(2, '0')}
                   </span>
                   <p className="mt-2 text-sm font-bold text-text">{f.step}</p>
-                  <p className="mt-1 font-mono text-[11px] leading-relaxed text-text-muted">
+                  <p className="mt-1 font-mono text-xs leading-relaxed text-text-muted">
                     {f.detail}
                   </p>
                 </div>
@@ -208,7 +208,7 @@ export function ResumeSection() {
               {RESUME.templates.map((t) => (
                 <span
                   key={t}
-                  className="rounded-md border border-border-subtle bg-surface-elevated px-2 py-1 font-mono text-[10px] text-text-secondary"
+                  className="rounded-md border border-border-subtle bg-surface-elevated px-2 py-1 font-mono text-2xs text-text-secondary"
                 >
                   {t}
                 </span>
@@ -220,7 +220,7 @@ export function ResumeSection() {
           <Reveal delay={0.1}>
             <GlassCard className="overflow-hidden !p-0" hover={false} tilt>
               <div className="border-b border-border-subtle px-5 py-3">
-                <p className="font-mono text-[11px] uppercase tracking-widest text-text-muted">
+                <p className="font-mono text-xs uppercase tracking-widest text-text-muted">
                   Master resume · assembled from memory
                 </p>
               </div>
@@ -259,7 +259,7 @@ export function ResumeSection() {
                       <p className="text-sm font-bold text-text">
                         {entry.role} · <span className="text-text-secondary">{entry.org}</span>
                       </p>
-                      <span className="inline-flex items-center gap-1 rounded-md bg-success/10 px-1.5 py-0.5 font-mono text-[10px] text-success-fg">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-success/10 px-1.5 py-0.5 font-mono text-2xs text-success-fg">
                         <svg
                           viewBox="0 0 24 24"
                           fill="none"
@@ -286,7 +286,7 @@ export function ResumeSection() {
                     </ul>
                   </div>
                 ))}
-                <p className="text-center font-mono text-[10px] text-text-dim">
+                <p className="text-center font-mono text-2xs text-text-dim">
                   confidence &lt; 80% → asks you a specific question · never fabricates
                 </p>
               </div>
@@ -390,7 +390,7 @@ export function SchedulerSection() {
                 {SCHEDULER.email.snippet}
               </p>
               <div className="space-y-2 border-t border-border-subtle bg-surface-elevated/60 px-5 py-4">
-                <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                <p className="font-mono text-2xs uppercase tracking-widest text-text-muted">
                   Vaeloom extracted
                 </p>
                 {SCHEDULER.email.extracted.map((e, i) => (
@@ -398,7 +398,7 @@ export function SchedulerSection() {
                     key={e.label}
                     className="flex items-center justify-between gap-3 rounded-lg border border-border-subtle bg-background/70 px-3 py-2"
                   >
-                    <span className="font-mono text-[11px] text-text-muted">{e.label}</span>
+                    <span className="font-mono text-xs text-text-muted">{e.label}</span>
                     <span
                       className={`text-xs font-semibold ${i === 2 ? 'text-warning' : 'text-text'}`}
                     >
@@ -407,8 +407,8 @@ export function SchedulerSection() {
                   </div>
                 ))}
                 <div className="flex items-center justify-between pt-1">
-                  <span className="font-mono text-[11px] text-text-muted">Action</span>
-                  <span className="rounded-md bg-action px-2.5 py-1 text-[11px] font-semibold text-action-fg">
+                  <span className="font-mono text-xs text-text-muted">Action</span>
+                  <span className="rounded-md bg-action px-2.5 py-1 text-xs font-semibold text-action-fg">
                     Awaiting your approval
                   </span>
                 </div>

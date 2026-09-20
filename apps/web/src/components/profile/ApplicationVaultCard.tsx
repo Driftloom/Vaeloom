@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { ApplicationVaultData, ProfileData, profileApi } from '@/lib/api-client';
@@ -144,7 +144,7 @@ export default function ApplicationVaultCard({
                 placeholder="US, CA, UK, IN"
                 className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
               />
-              <span className="text-[10px] text-text-dim mt-0.5 block">
+              <span className="text-2xs text-text-dim mt-0.5 block">
                 Countries legally authorized to work in
               </span>
             </div>
@@ -216,7 +216,7 @@ export default function ApplicationVaultCard({
             <h3 className="text-xs font-semibold text-text uppercase tracking-wider">
               2. Voluntary Demographics & EEO-1 Policy
             </h3>
-            <span className="text-[11px] text-text-dim">Federal EEO & Section 503 Survey</span>
+            <span className="text-xs text-text-dim">Federal EEO & Section 503 Survey</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -236,7 +236,7 @@ export default function ApplicationVaultCard({
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-semibold text-text">{pol.title}</span>
                       <span
-                        className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                        className={`text-2xs font-medium px-2 py-0.5 rounded-full ${
                           selected
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-surface-200 text-text-muted border border-border'

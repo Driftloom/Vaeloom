@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { BlacklistItem, ProfileData, profileApi } from '@/lib/api-client';
@@ -222,12 +222,12 @@ export default function CompanyBlacklistCard({
                     {item.companyName}
                   </span>
                   {item.autoInferred && (
-                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                    <span className="text-2xs font-mono px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
                       Auto-Protected
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2 text-[11px] text-text-dim mt-0.5">
+                <div className="flex items-center gap-2 text-xs text-text-dim mt-0.5">
                   <span>{item.reason}</span>
                   {item.domain && <span>• {item.domain}</span>}
                 </div>

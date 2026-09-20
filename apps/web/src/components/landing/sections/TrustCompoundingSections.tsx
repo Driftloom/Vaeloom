@@ -35,7 +35,7 @@ export function TrustSection() {
                 <p className="w-40 shrink-0 text-sm font-bold text-text">{r.axis}</p>
                 <p className="flex-1 text-xs leading-relaxed text-text-secondary">{r.mvp}</p>
                 <span
-                  className={`inline-flex w-fit shrink-0 rounded-md px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider ${
+                  className={`inline-flex w-fit shrink-0 rounded-md px-2 py-1 font-mono text-2xs font-semibold uppercase tracking-wider ${
                     STATE_STYLE[r.state]?.cls ?? 'bg-surface-elevated text-text-secondary'
                   }`}
                 >
@@ -89,7 +89,7 @@ export function CompoundingSection() {
             aria-label="Memory lattice assembling as you scroll — sparse at day one, dense by year one. Scroll to grow the memory."
           >
             <StageSlot beat="growth" className="absolute inset-0" />
-            <p className="pointer-events-none absolute bottom-3 left-0 right-0 text-center font-mono text-[11px] uppercase tracking-widest text-text-muted">
+            <p className="pointer-events-none absolute bottom-3 left-0 right-0 text-center font-mono text-xs uppercase tracking-widest text-text-muted">
               scroll to compound
             </p>
             <p className="sr-only">
@@ -101,7 +101,7 @@ export function CompoundingSection() {
             {COMPOUNDING.milestones.map((m) => (
               <li key={m.when} className="text-center">
                 <p className="font-mono text-xs font-semibold text-primary-300">{m.when}</p>
-                <p className="mt-1 text-[11px] leading-snug text-text-muted">{m.state}</p>
+                <p className="mt-1 text-xs leading-snug text-text-muted">{m.state}</p>
               </li>
             ))}
           </ol>

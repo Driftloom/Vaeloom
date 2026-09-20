@@ -56,11 +56,7 @@ function KindBadge({ kind }: { kind: string }) {
 function ConfidenceBar({ value }: { value: number | undefined }) {
   // F-02: absent confidence renders an honest label instead of a fake bar.
   if (value === undefined || value === null) {
-    return (
-      <span className="font-mono text-xs text-[var(--color-text-muted,#71717a)]">
-        confidence: not reported
-      </span>
-    );
+    return <span className="font-mono text-xs text-text-muted">confidence: not reported</span>;
   }
   return <ConfidenceIndicator score={value} />;
 }
@@ -249,7 +245,7 @@ export default function MemoryGraphPage() {
                         </button>
                       )}
                       {item.action && (
-                        <span className="text-[10px] font-mono text-text-dim text-right">
+                        <span className="text-2xs font-mono text-text-dim text-right">
                           {item.action.actionType}
                         </span>
                       )}
@@ -370,7 +366,7 @@ export default function MemoryGraphPage() {
                         <p className="text-xs text-text-muted line-clamp-2">
                           {String(mem['summary'] || '')}
                         </p>
-                        <p className="font-mono text-[10px] text-text-dim mt-1">
+                        <p className="font-mono text-2xs text-text-dim mt-1">
                           {String(mem['id']).slice(0, 8)}
                         </p>
                       </div>
@@ -447,7 +443,7 @@ export default function MemoryGraphPage() {
                           <span className="mx-1 text-text-dim">•</span>
                           <span className="text-text-muted">{a.actionType}</span>
                           <span
-                            className={`ml-2 rounded px-1 py-0.5 text-[10px] border ${a.status === 'completed' ? 'bg-success/10 text-success border-success/30' : 'bg-surface text-text-muted border-border'}`}
+                            className={`ml-2 rounded px-1 py-0.5 text-2xs border ${a.status === 'completed' ? 'bg-success/10 text-success border-success/30' : 'bg-surface text-text-muted border-border'}`}
                           >
                             {a.status}
                           </span>

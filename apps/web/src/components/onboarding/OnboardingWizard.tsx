@@ -482,11 +482,11 @@ export function OnboardingWizard() {
                       </div>
                       <div className="mt-3 flex items-center gap-1.5">
                         <span
-                          className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${item.badgeColor}`}
+                          className={`inline-block px-1.5 py-0.5 rounded text-2xs font-medium ${item.badgeColor}`}
                         >
                           {item.badge}
                         </span>
-                        <span className="text-[10px] text-text-muted">
+                        <span className="text-2xs text-text-muted">
                           {isChecked ? 'Ready to sync' : 'Available'}
                         </span>
                       </div>

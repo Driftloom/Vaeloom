@@ -349,7 +349,7 @@ export default function PortfolioShowcase({
                   <p className="text-xs text-text-muted line-clamp-3">{proj.description}</p>
 
                   {proj.metricsSummary && (
-                    <div className="p-2 rounded-lg bg-success/10 border border-success/20 text-[11px] text-success font-mono">
+                    <div className="p-2 rounded-lg bg-success/10 border border-success/20 text-xs text-success font-mono">
                       ⚡ {proj.metricsSummary}
                     </div>
                   )}

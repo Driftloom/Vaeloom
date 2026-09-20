@@ -131,8 +131,11 @@ export default function DashboardPage() {
                 upload a file
               </a>{' '}
               or{' '}
-              <a href={`/workspace/${workspaceId}/agents`} className="text-primary underline">
-                create an agent
+              <a
+                href={`/workspace/${workspaceId}/capabilities?category=agents`}
+                className="text-primary underline"
+              >
+                view capabilities
               </a>{' '}
               to get started.
             </>

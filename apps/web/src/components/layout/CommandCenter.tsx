@@ -126,7 +126,7 @@ export function CommandCenter({
           </svg>
         ),
         perform: () => {
-          router.push(ws('/agents'));
+          router.push(ws('/capabilities?category=agents'));
           onClose();
         },
       },
@@ -460,7 +460,7 @@ export function CommandCenter({
           </svg>
         ),
         perform: () => {
-          router.push(ws('/agents?action=new'));
+          router.push(ws('/capabilities?category=agents&action=new'));
           onClose();
         },
       },
@@ -694,7 +694,7 @@ export function CommandCenter({
         perform: () => {
           if (r.source === 'memory') router.push(ws('/memory'));
           else if (r.source === 'document') router.push(ws('/files'));
-          else if (r.source === 'agent') router.push(ws('/agents'));
+          else if (r.source === 'agent') router.push(ws('/capabilities?category=agents'));
           else router.push(ws('/schedule'));
           onClose();
         },
@@ -816,7 +816,7 @@ export function CommandCenter({
               Clear
             </button>
           )}
-          <kbd className="hidden sm:inline-flex items-center gap-1 font-mono text-[10px] text-text-dim border border-border rounded px-1.5 py-0.5 bg-background">
+          <kbd className="hidden sm:inline-flex items-center gap-1 font-mono text-2xs text-text-dim border border-border rounded px-1.5 py-0.5 bg-background">
             ESC
           </kbd>
         </div>
@@ -844,7 +844,7 @@ export function CommandCenter({
             </button>
           ))}
           {isSearching && (
-            <span className="ml-auto text-[11px] text-text-dim animate-pulse flex items-center gap-1">
+            <span className="ml-auto text-xs text-text-dim animate-pulse flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-primary" />
               Searching…
             </span>
@@ -904,12 +904,12 @@ export function CommandCenter({
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {item.badge && (
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-surface-100 border border-border text-text-dim">
+                      <span className="text-2xs font-mono px-2 py-0.5 rounded-full bg-surface-100 border border-border text-text-dim">
                         {item.badge}
                       </span>
                     )}
                     {item.shortcut && (
-                      <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded border border-border bg-background text-text-muted">
+                      <kbd className="font-mono text-2xs px-1.5 py-0.5 rounded border border-border bg-background text-text-muted">
                         {item.shortcut}
                       </kbd>
                     )}
@@ -921,7 +921,7 @@ export function CommandCenter({
         </div>
 
         {/* Footer command legend */}
-        <div className="px-4 py-2.5 border-t border-border bg-surface-50/70 flex items-center justify-between text-[11px] text-text-dim">
+        <div className="px-4 py-2.5 border-t border-border bg-surface-50/70 flex items-center justify-between text-xs text-text-dim">
           <div className="flex items-center gap-3">
             <span>
               <kbd className="font-mono px-1 py-0.5 border border-border rounded bg-background text-text-muted">
@@ -945,7 +945,7 @@ export function CommandCenter({
               filter
             </span>
           </div>
-          <span className="font-mono text-[10px]">Vaeloom Command Center</span>
+          <span className="font-mono text-2xs">Vaeloom Command Center</span>
         </div>
       </div>
     </div>

@@ -137,10 +137,7 @@ export default function MemorySection() {
               </fieldset>
               <ul className="flex flex-wrap items-center gap-x-4 gap-y-1.5" aria-label="Node types">
                 {MEMORY.legend.map((l) => (
-                  <li
-                    key={l.type}
-                    className="flex items-center gap-1.5 text-[11px] text-text-muted"
-                  >
+                  <li key={l.type} className="flex items-center gap-1.5 text-xs text-text-muted">
                     <span
                       className="h-2 w-2 rounded-full"
                       style={{ background: l.color }}

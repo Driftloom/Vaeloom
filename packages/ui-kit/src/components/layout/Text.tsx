@@ -27,13 +27,13 @@ const weightMap = {
 };
 
 const colorMap = {
-  primary: 'text-[var(--color-text-primary,#f4f4f5)]',
-  secondary: 'text-[var(--color-text-secondary,#a1a1aa)]',
-  muted: 'text-[var(--color-text-muted,#71717a)]',
-  inverse: 'text-[var(--color-text-inverse,#09090b)]',
-  danger: 'text-[var(--color-status-danger,#ef4444)]',
-  success: 'text-[var(--color-status-success,#10b981)]',
-  ai: 'text-[var(--color-ai-accent,#6366f1)]',
+  primary: 'text-text',
+  secondary: 'text-text-secondary',
+  muted: 'text-text-muted',
+  inverse: 'text-background',
+  danger: 'text-error',
+  success: 'text-success',
+  ai: 'text-accent',
 };
 
 export const Text = React.forwardRef<HTMLParagraphElement, TextProps>(

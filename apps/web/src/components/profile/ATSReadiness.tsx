@@ -143,7 +143,7 @@ export default function ATSReadiness({ workspaceId, onSkillAdded }: ATSReadiness
         <div className="space-y-2 pt-1 border-t border-border">
           <p className="text-xs font-medium text-text-muted flex items-center justify-between">
             <span>Missing ATS Keywords</span>
-            <span className="text-[10px] text-text-dim">Click + to add</span>
+            <span className="text-2xs text-text-dim">Click + to add</span>
           </p>
           <div className="flex flex-wrap gap-1.5">
             {missingSkills.map((skill) => (

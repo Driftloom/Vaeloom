@@ -30,7 +30,7 @@ export function ConfidenceMeter({ value, label = 'Confidence' }: ConfidenceMeter
           style={{ width: `${percent}%` }}
         />
       </div>
-      <span className="font-mono text-[11px] text-text-muted">
+      <span className="font-mono text-xs text-text-muted">
         {label}: {percent}%
       </span>
     </div>

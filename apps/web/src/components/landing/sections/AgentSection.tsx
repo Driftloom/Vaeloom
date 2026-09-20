@@ -71,7 +71,7 @@ export default function AgentSection() {
                     aria-controls="agent-tabpanel"
                     tabIndex={a.id === selectedId ? 0 : -1}
                     onClick={() => setSelectedId(a.id)}
-                    className={`rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+                    className={`rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
                       a.id === selectedId
                         ? 'bg-surface-active text-text shadow-glow'
                         : 'text-text-muted hover:bg-surface-hover hover:text-text'
@@ -112,13 +112,13 @@ export default function AgentSection() {
 
               <dl className="mt-6 space-y-4 border-t border-border-subtle pt-5">
                 <div>
-                  <dt className="font-mono text-[11px] uppercase tracking-widest text-text-muted">
+                  <dt className="font-mono text-xs uppercase tracking-widest text-text-muted">
                     Autonomy
                   </dt>
                   <dd className="mt-1 text-sm font-semibold text-success">{selected.autonomy}</dd>
                 </div>
                 <div>
-                  <dt className="font-mono text-[11px] uppercase tracking-widest text-text-muted">
+                  <dt className="font-mono text-xs uppercase tracking-widest text-text-muted">
                     Operates with
                   </dt>
                   <dd className="mt-2 flex flex-wrap gap-1.5">
@@ -133,7 +133,7 @@ export default function AgentSection() {
                   </dd>
                 </div>
                 <div>
-                  <dt className="font-mono text-[11px] uppercase tracking-widest text-text-muted">
+                  <dt className="font-mono text-xs uppercase tracking-widest text-text-muted">
                     Shared memory access
                   </dt>
                   <dd className="mt-1 flex items-center gap-2 text-sm text-text-secondary">

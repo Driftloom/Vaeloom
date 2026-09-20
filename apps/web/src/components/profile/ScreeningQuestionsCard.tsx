@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { ScreeningQuestionItem, ProfileData, profileApi } from '@/lib/api-client';
@@ -239,7 +239,7 @@ export default function ScreeningQuestionsCard({
                 <span>{q.question}</span>
               </span>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-surface border border-border text-text-dim">
+                <span className="text-2xs font-mono px-2 py-0.5 rounded bg-surface border border-border text-text-dim">
                   {q.category}
                 </span>
                 {workspaceId && (

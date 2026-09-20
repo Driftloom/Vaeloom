@@ -46,7 +46,7 @@ export function ExpiryTimer({ expiresAt, onExpire }: ExpiryTimerProps) {
 
   return (
     <span
-      className={`font-mono text-[11px] ${state.expired ? 'text-accent-hover' : 'text-warning-muted'}`}
+      className={`font-mono text-xs ${state.expired ? 'text-accent-hover' : 'text-warning-muted'}`}
       aria-live="polite"
       title={new Date(expiresAt).toLocaleString()}
     >

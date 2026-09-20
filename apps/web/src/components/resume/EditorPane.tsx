@@ -105,7 +105,7 @@ export function EditorPane({
         />
         {/* Provenance gutter badges — floating top-right */}
         {provenanceMap && provenanceMap.size > 0 && (
-          <div className="absolute top-2 right-2 flex flex-col gap-1 pointer-events-none opacity-60 text-[10px]">
+          <div className="absolute top-2 right-2 flex flex-col gap-1 pointer-events-none opacity-60 text-2xs">
             {Array.from(provenanceMap.entries())
               .slice(0, 3)
               .map(([line, docId]) => (

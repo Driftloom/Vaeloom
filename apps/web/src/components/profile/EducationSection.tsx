@@ -317,7 +317,7 @@ export default function EducationSection({
                     {item.fieldOfStudy ? ` • ${item.fieldOfStudy}` : ''}
                   </p>
                   {item.gpa && (
-                    <p className="text-[11px] text-text-dim">
+                    <p className="text-xs text-text-dim">
                       GPA: <span className="text-text font-medium">{item.gpa}</span>
                       {item.showGpaOnResume && (
                         <Badge variant="success" size="sm" className="ml-2">

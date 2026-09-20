@@ -14,7 +14,7 @@ export function ProvenanceBadge({ label, confidence }: ProvenanceItem) {
 
   return (
     <span
-      className="inline-flex items-center gap-1 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] text-text-muted"
+      className="inline-flex items-center gap-1 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-xs text-text-muted"
       aria-label={ariaLabel}
     >
       <span aria-hidden="true">◎</span>

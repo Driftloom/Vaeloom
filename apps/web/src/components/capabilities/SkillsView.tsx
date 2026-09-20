@@ -265,7 +265,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <span
-                        className={`text-[13px] font-sans font-medium tracking-tight truncate ${
+                        className={`text-sm font-sans font-medium tracking-tight truncate ${
                           isSelected
                             ? 'text-white font-semibold'
                             : 'text-[#d4d4d8] group-hover:text-white'
@@ -332,7 +332,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                   </span>
                 </div>
 
-                <p className="text-[13px] text-[#a1a1aa] leading-relaxed max-w-2xl mt-0.5 font-sans">
+                <p className="text-sm text-text-muted leading-relaxed max-w-2xl mt-0.5 font-sans">
                   {selectedItem.description}
                 </p>
 

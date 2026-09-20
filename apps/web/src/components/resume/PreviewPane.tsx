@@ -30,7 +30,7 @@ export function PreviewPane({
           <span className="font-medium">{title}</span>
           {atsScore !== null && atsScore !== undefined && (
             <span
-              className={`px-2 py-0.5 rounded-full text-[11px] font-medium border ${
+              className={`px-2 py-0.5 rounded-full text-xs font-medium border ${
                 atsScore >= 90
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   : atsScore >= 75
@@ -86,7 +86,7 @@ export function PreviewPane({
         )}
       </div>
 
-      <div className="px-3 py-1 border-t border-border bg-white text-[11px] text-muted flex items-center justify-between">
+      <div className="px-3 py-1 border-t border-border bg-white text-xs text-muted flex items-center justify-between">
         <span>Page 1 of 1 · A4 · {zoom}%</span>
         <span className="opacity-70">Hybrid: Typst WASM 50ms live → Playwright PDF for export</span>
       </div>

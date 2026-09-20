@@ -211,7 +211,7 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
             — Overleaf way · split-pane live
           </span>
           <span
-            className={`text-[10px] px-1.5 py-0.5 rounded border ${saving ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}
+            className={`text-2xs px-1.5 py-0.5 rounded border ${saving ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}
           >
             {saving ? 'Saving…' : 'Saved'}
           </span>
@@ -249,7 +249,7 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
             {t === 'source' ? 'Source Code' : t === 'visual' ? 'Visual Form' : 'AI Chat'}
           </button>
         ))}
-        <span className="ml-auto text-[11px] text-muted">
+        <span className="ml-auto text-xs text-muted">
           Monaco {selectedSlug} · Typst WASM 50ms live → Playwright PDF
         </span>
       </div>
@@ -390,7 +390,7 @@ function VisualForm({ resume, onUpdate }: { resume: ResumeResponse; onUpdate: (c
   return (
     <div className="p-4 space-y-4 overflow-auto h-full bg-surface-50">
       <div className="text-xs font-medium">Visual Form ↔ Source (bidirectional)</div>
-      <div className="text-[11px] text-muted">
+      <div className="text-xs text-muted">
         Edits here sync to Monaco source via Typst transpiler. Non-tech users stay here; power users
         edit source.
       </div>
@@ -441,7 +441,7 @@ function VisualForm({ resume, onUpdate }: { resume: ResumeResponse; onUpdate: (c
       >
         Sync → Source (Transpile to Typst)
       </button>
-      <div className="text-[11px] text-muted">
+      <div className="text-xs text-muted">
         Why edit/see: you see both JSON form and live Typst source + PDF. Control for high-stakes
         ATS, provenance for trust, 50ms feedback for speed — Overleaf way.
       </div>

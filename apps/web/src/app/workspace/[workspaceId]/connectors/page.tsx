@@ -1308,7 +1308,7 @@ export default function ConnectorsPage() {
             >
               <span>Yours</span>
               {totalConnectedCount > 0 && (
-                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-[#3a3935] text-[#d4d2cc]">
+                <span className="text-2xs font-mono px-1.5 py-0.2 rounded-full bg-[#3a3935] text-[#d4d2cc]">
                   {totalConnectedCount}
                 </span>
               )}
@@ -1400,7 +1400,7 @@ export default function ConnectorsPage() {
                 </h2>
                 <span className="text-xs text-[#716f6a] font-mono">({filteredCatalog.length})</span>
                 {!showAllConnectors && !searchQuery.trim() && selectedFilter === 'All' && (
-                  <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-[#1e293b] border border-[#38bdf8]/30 text-[#38bdf8] font-mono ml-2 hidden sm:inline-flex items-center gap-1">
+                  <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-[#1e293b] border border-[#38bdf8]/30 text-[#38bdf8] font-mono ml-2 hidden sm:inline-flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#38bdf8] animate-pulse" />
                     260+ available
                   </span>
@@ -1464,7 +1464,7 @@ export default function ConnectorsPage() {
                             </h3>
                             <VerifiedCheck />
                             {item.actionCount ? (
-                              <span className="text-[10px] font-mono text-[#8e8c85] bg-[#22211e] px-1.5 py-0.5 rounded border border-[#2a2926] ml-2 hidden sm:inline-block">
+                              <span className="text-2xs font-mono text-[#8e8c85] bg-[#22211e] px-1.5 py-0.5 rounded border border-[#2a2926] ml-2 hidden sm:inline-block">
                                 {item.actionCount} actions
                               </span>
                             ) : null}

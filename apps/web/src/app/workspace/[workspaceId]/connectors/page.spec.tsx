@@ -27,7 +27,17 @@ jest.mock('../../../../lib/api', () => ({
   },
 }));
 
-jest.mock('../../../../lib/api-client', () => ({
+jest.mock('@/lib/api-client', () => ({
+  connectorsApi: {
+    list: jest.fn().mockResolvedValue([]),
+    composio: {
+      status: jest.fn().mockResolvedValue({ popular_apps: [], total_apps: 0 }),
+      apps: jest.fn().mockResolvedValue({ apps: [], total: 0 }),
+    },
+    mcp: {
+      builtin: jest.fn().mockResolvedValue({ builtin_servers: [] }),
+    },
+  },
   temporalApi: {
     startConnectorSync: jest.fn().mockRejectedValue({ status: 503 }),
     getStatus: jest.fn(),

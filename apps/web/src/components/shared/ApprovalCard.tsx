@@ -86,17 +86,17 @@ export function ApprovalCard({
         </div>
         <div className="flex items-center gap-2">
           {expiresAt && <ExpiryTimer expiresAt={expiresAt} onExpire={() => setExpired(true)} />}
-          <span className="font-mono text-[11px] text-text-muted">{actionType}</span>
+          <span className="font-mono text-xs text-text-muted">{actionType}</span>
         </div>
       </div>
 
       {/* Trust UX: proposed !== executed — always label the state explicitly. */}
       <div className="flex items-center gap-2">
-        <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-primary">
+        <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-2xs font-mono uppercase tracking-wider text-primary">
           Proposed — not yet executed
         </span>
         {expiresAt && (
-          <span className="text-[10px] text-text-muted font-mono">decide before expiry</span>
+          <span className="text-2xs text-text-muted font-mono">decide before expiry</span>
         )}
       </div>
 
@@ -125,11 +125,11 @@ export function ApprovalCard({
 
       {scopes.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] text-text-muted">Scopes:</span>
+          <span className="text-xs text-text-muted">Scopes:</span>
           {scopes.map((s) => (
             <span
               key={s}
-              className="rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] text-text-muted"
+              className="rounded border border-border bg-background px-1.5 py-0.5 font-mono text-xs text-text-muted"
             >
               {s}
             </span>
@@ -147,7 +147,7 @@ export function ApprovalCard({
         </p>
       )}
 
-      <p className="text-[11px] text-text-muted leading-relaxed">
+      <p className="text-xs text-text-muted leading-relaxed">
         {t3Warning
           ? 'This action sends an email and cannot be undone once executed.'
           : 'If this changes a document, you can undo it later from History.'}

@@ -79,7 +79,7 @@ export default function AgentInsights({ workspaceId, onUpdate }: AgentInsightsPr
             </p>
           </div>
         </div>
-        <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium">
+        <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium">
           Live Agents
         </span>
       </div>
@@ -96,10 +96,10 @@ export default function AgentInsights({ workspaceId, onUpdate }: AgentInsightsPr
             >
               <div className="space-y-1.5 flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[11px] font-mono font-medium px-2 py-0.5 rounded bg-surface-200 text-text-muted border border-border">
+                  <span className="text-xs font-mono font-medium px-2 py-0.5 rounded bg-surface-200 text-text-muted border border-border">
                     {rec.agentName}
                   </span>
-                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                     {rec.impact}
                   </span>
                 </div>

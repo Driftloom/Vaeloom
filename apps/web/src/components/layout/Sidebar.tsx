@@ -47,7 +47,6 @@ function groupLinks(workspaceId: string): NavGroup[] {
       label: 'Assist',
       links: [
         { name: 'Dashboard', path: ws(''), icon: <CpuIcon size={16} /> },
-        { name: 'Agents', path: ws('/agents'), icon: <CpuIcon size={16} /> },
         { name: 'Capabilities', path: ws('/capabilities'), icon: <TerminalIcon size={16} /> },
         { name: 'Chat', path: ws('/chat'), icon: <BrainIcon size={16} /> },
       ],

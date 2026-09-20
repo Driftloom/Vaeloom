@@ -139,7 +139,7 @@ export default function SkillsShowcase({
             >
               <span>{cat}</span>
               <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                className={`text-2xs px-1.5 py-0.2 rounded-full ${
                   selected ? 'bg-white/20 text-white' : 'bg-surface-hover text-text-dim'
                 }`}
               >
@@ -218,17 +218,17 @@ export default function SkillsShowcase({
                 <span className="font-medium text-text">{skill.name}</span>
 
                 {skill.proficiency && (
-                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-background border border-border text-text-dim">
+                  <span className="text-2xs font-mono px-1.5 py-0.2 rounded bg-background border border-border text-text-dim">
                     {skill.proficiency}
                   </span>
                 )}
 
-                <Badge variant="default" size="sm" className="text-[10px] font-mono py-0 px-1.5">
+                <Badge variant="default" size="sm" className="text-2xs font-mono py-0 px-1.5">
                   {tier}
                 </Badge>
 
                 {decay !== 'fresh' && (
-                  <span className="text-[10px] font-medium text-warning">• {decay}</span>
+                  <span className="text-2xs font-medium text-warning">• {decay}</span>
                 )}
 
                 {skill.verified ? (
@@ -240,7 +240,7 @@ export default function SkillsShowcase({
                     <button
                       onClick={() => handleConfirm(skill.name)}
                       disabled={isLoading}
-                      className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-success/10 text-success hover:bg-success/20 transition-colors"
+                      className="text-2xs font-medium px-1.5 py-0.5 rounded bg-success/10 text-success hover:bg-success/20 transition-colors"
                       title="Confirm this skill"
                     >
                       {isLoading ? '...' : 'Confirm'}

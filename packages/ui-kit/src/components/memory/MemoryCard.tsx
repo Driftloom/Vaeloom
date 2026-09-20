@@ -27,15 +27,13 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
 }) => {
   return (
     <div
-      className={`rounded-lg border border-[var(--color-border-subtle,#27272a)] bg-[var(--color-bg-surface,#111114)] p-4 hover:border-[var(--color-border-strong,#3f3f46)] transition-colors shadow-sm ${className}`.trim()}
+      className={`rounded-lg border border-border-subtle bg-surface p-4 hover:border-border-strong transition-colors shadow-sm ${className}`.trim()}
     >
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex items-center gap-2">
-          <BrainIcon size={16} className="text-[var(--color-ai-accent,#6366f1)]" />
+          <BrainIcon size={16} className="text-accent" />
           <ConfidenceIndicator score={confidence} showLabel={false} />
-          <span className="text-xs text-[var(--color-text-muted,#71717a)] tabular-nums">
-            {timestamp}
-          </span>
+          <span className="text-xs text-text-muted tabular-nums">{timestamp}</span>
         </div>
         <div className="flex items-center gap-1">
           {onEdit && (
@@ -43,7 +41,7 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
               type="button"
               aria-label="Edit memory"
               onClick={() => onEdit(id)}
-              className="p-1 text-[var(--color-text-muted,#71717a)] hover:text-[var(--color-text-primary,#f4f4f5)] rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-focus-ring,#3b82f6)]"
+              className="p-1 text-text-muted hover:text-text rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
             >
               <EditIcon size={14} />
             </button>
@@ -53,7 +51,7 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
               type="button"
               aria-label="Delete memory"
               onClick={() => onDelete(id)}
-              className="p-1 text-[var(--color-text-muted,#71717a)] hover:text-[var(--color-status-danger,#ef4444)] rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-focus-ring,#3b82f6)]"
+              className="p-1 text-text-muted hover:text-error rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
             >
               <TrashIcon size={14} />
             </button>
@@ -61,16 +59,11 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
         </div>
       </div>
 
-      <p className="text-sm text-[var(--color-text-primary,#f4f4f5)] leading-relaxed mb-3">
-        {content}
-      </p>
+      <p className="text-sm text-text leading-relaxed mb-3">{content}</p>
 
-      <div className="flex items-center justify-between text-xs text-[var(--color-text-muted,#71717a)] pt-2 border-t border-[var(--color-border-subtle,#27272a)]">
+      <div className="flex items-center justify-between text-xs text-text-muted pt-2 border-t border-border-subtle">
         <span>
-          Source:{' '}
-          <strong className="text-[var(--color-text-secondary,#a1a1aa)] font-medium">
-            {source}
-          </strong>
+          Source: <strong className="text-text-secondary font-medium">{source}</strong>
         </span>
         {entityCount !== undefined && (
           <span className="font-mono">

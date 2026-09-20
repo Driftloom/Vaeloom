@@ -408,7 +408,7 @@ export default function SchedulePage() {
                         );
                       })}
                       {cell.events.length > 3 && (
-                        <p className="text-[10px] text-text-dim">+{cell.events.length - 3} more</p>
+                        <p className="text-2xs text-text-dim">+{cell.events.length - 3} more</p>
                       )}
                     </div>
                   </>

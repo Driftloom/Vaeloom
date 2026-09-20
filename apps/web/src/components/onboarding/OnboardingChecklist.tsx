@@ -109,7 +109,7 @@ export function OnboardingChecklist({ workspaceId }: { workspaceId?: string }) {
           </div>
         ))}
       </div>
-      <p className="mt-3 text-[11px] text-text-dim">
+      <p className="mt-3 text-xs text-text-dim">
         Tip: after connecting sources, ask the agent in Chat for a summary of what it found.
       </p>
     </div>

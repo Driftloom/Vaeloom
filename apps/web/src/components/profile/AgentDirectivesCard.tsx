@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { AgentDirectivesData, ProfileData, profileApi } from '@/lib/api-client';
@@ -162,7 +162,7 @@ export default function AgentDirectivesCard({
                     <div className="flex items-center justify-between">
                       <span className="text-lg">{mode.icon}</span>
                       <span
-                        className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                        className={`text-2xs font-medium px-2 py-0.5 rounded-full ${
                           selected
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-surface text-text-muted border border-border'
@@ -175,9 +175,9 @@ export default function AgentDirectivesCard({
                     <p className="text-xs text-text-muted leading-relaxed">{mode.description}</p>
                   </div>
                   <div className="pt-3 mt-3 border-t border-border flex items-center justify-between">
-                    <span className="text-[11px] text-text-dim">Status:</span>
+                    <span className="text-xs text-text-dim">Status:</span>
                     <span
-                      className={`text-[11px] font-medium ${selected ? 'text-primary' : 'text-text-muted'}`}
+                      className={`text-xs font-medium ${selected ? 'text-primary' : 'text-text-muted'}`}
                     >
                       {selected ? 'Active Policy' : 'Select'}
                     </span>
@@ -206,7 +206,7 @@ export default function AgentDirectivesCard({
               onChange={(e) => setMinMatchThreshold(Number(e.target.value))}
               className="w-full accent-primary cursor-pointer"
             />
-            <p className="text-[11px] text-text-muted mt-1.5">
+            <p className="text-xs text-text-muted mt-1.5">
               Agents will skip applications where semantic ATS match score is below{' '}
               {minMatchThreshold}%.
             </p>
@@ -228,7 +228,7 @@ export default function AgentDirectivesCard({
               onChange={(e) => setDailyQuota(Number(e.target.value))}
               className="w-full accent-primary cursor-pointer"
             />
-            <p className="text-[11px] text-text-muted mt-1.5">
+            <p className="text-xs text-text-muted mt-1.5">
               Safety governor: Limits total submissions to prevent platform rate limits and preserve
               reputation.
             </p>
@@ -268,7 +268,7 @@ export default function AgentDirectivesCard({
                 placeholder="e.g. 140000"
                 className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
               />
-              <span className="text-[10px] text-text-dim mt-0.5 block">
+              <span className="text-2xs text-text-dim mt-0.5 block">
                 Reject jobs below this floor
               </span>
             </div>
@@ -283,7 +283,7 @@ export default function AgentDirectivesCard({
                 placeholder="e.g. 185000"
                 className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
               />
-              <span className="text-[10px] text-text-dim mt-0.5 block">
+              <span className="text-2xs text-text-dim mt-0.5 block">
                 Auto-fills salary questions
               </span>
             </div>
@@ -298,7 +298,7 @@ export default function AgentDirectivesCard({
                 placeholder="e.g. 240000"
                 className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
               />
-              <span className="text-[10px] text-text-dim mt-0.5 block">Base + Bonus + Equity</span>
+              <span className="text-2xs text-text-dim mt-0.5 block">Base + Bonus + Equity</span>
             </div>
           </div>
         </div>

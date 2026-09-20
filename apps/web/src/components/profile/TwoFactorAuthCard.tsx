@@ -149,7 +149,7 @@ export function TwoFactorAuthCard({
             <div className="flex items-center gap-2">
               <h2 className="text-base font-semibold text-text">Two-Factor Authentication (2FA)</h2>
               <span
-                className={`inline-flex items-center px-2 py-0.5 text-[11px] font-semibold rounded-full border ${
+                className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full border ${
                   enabled
                     ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
                     : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
@@ -226,7 +226,7 @@ export function TwoFactorAuthCard({
                 )}
 
                 <div className="rounded-lg bg-background p-3 border border-border text-left">
-                  <span className="block text-[11px] font-medium text-text-muted mb-1">
+                  <span className="block text-xs font-medium text-text-muted mb-1">
                     Can&apos;t scan? Enter key manually:
                   </span>
                   <div className="flex items-center justify-between gap-2">

@@ -409,7 +409,7 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
                     <span className="font-medium text-text text-sm truncate">{t.name}</span>
                   </div>
                   <p className="text-xs text-text-muted mt-1 leading-snug">{t.category}</p>
-                  <p className="text-[11px] text-text-dim font-mono mt-1">
+                  <p className="text-xs text-text-dim font-mono mt-1">
                     ATS {t.atsCompatibility}% · {t.bestFor.slice(0, 2).join(', ')}
                   </p>
                 </button>

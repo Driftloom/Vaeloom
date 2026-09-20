@@ -460,7 +460,7 @@ export default function JobsPage() {
                             <button
                               onClick={() => handleMatchProposal(p.title, p.detail)}
                               disabled={isMatching}
-                              className="text-[11px] px-2 py-0.5 rounded-full bg-surface-200 hover:bg-surface-hover text-text-muted hover:text-text border border-border transition-colors shrink-0"
+                              className="text-xs px-2 py-0.5 rounded-full bg-surface-200 hover:bg-surface-hover text-text-muted hover:text-text border border-border transition-colors shrink-0"
                             >
                               {isMatching ? 'Matching…' : '⚡ PIOS Fit'}
                             </button>
@@ -478,11 +478,11 @@ export default function JobsPage() {
                             </p>
                             {piosMatch.matchedSkills.length > 0 && (
                               <div className="flex flex-wrap gap-1 items-center">
-                                <span className="text-[10px] text-text-muted">Matched:</span>
+                                <span className="text-2xs text-text-muted">Matched:</span>
                                 {piosMatch.matchedSkills.map((ms, idx) => (
                                   <span
                                     key={idx}
-                                    className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px]"
+                                    className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-2xs"
                                   >
                                     {ms.name} ({ms.validationTier || 'V1'})
                                   </span>
@@ -491,7 +491,7 @@ export default function JobsPage() {
                             )}
                             {piosMatch.missingSkills.length > 0 && (
                               <div className="flex flex-wrap gap-1 items-center">
-                                <span className="text-[10px] text-text-muted">Gaps:</span>
+                                <span className="text-2xs text-text-muted">Gaps:</span>
                                 {piosMatch.missingSkills.map((gs, idx) => (
                                   <span
                                     key={idx}
@@ -555,18 +555,18 @@ export default function JobsPage() {
             <div className="card">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-medium text-text">Opportunity Definition</h3>
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                <span className="text-xs font-mono px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
                   PIOS Engine
                 </span>
               </div>
               <p className="text-xs text-text-muted mb-4">
                 Define an opportunity to evaluate against your Human Capability Graph using the PIOS{' '}
-                <code className="text-text font-mono text-[10px]">matcher_core</code> algorithm.
+                <code className="text-text font-mono text-2xs">matcher_core</code> algorithm.
               </p>
 
               {/* Quick Presets */}
               <div className="mb-4">
-                <label className="text-[11px] font-medium text-text-muted mb-1.5 block">
+                <label className="text-xs font-medium text-text-muted mb-1.5 block">
                   Quick Presets
                 </label>
                 <div className="flex flex-wrap gap-1.5">
@@ -601,7 +601,7 @@ export default function JobsPage() {
                         setMatcherSkills(preset.skills);
                         setMatcherDesc(preset.desc);
                       }}
-                      className="text-[11px] px-2 py-1 rounded-md bg-surface-200 hover:bg-surface-hover text-text border border-border transition-colors"
+                      className="text-xs px-2 py-1 rounded-md bg-surface-200 hover:bg-surface-hover text-text border border-border transition-colors"
                     >
                       {preset.label}
                     </button>
@@ -687,7 +687,7 @@ export default function JobsPage() {
                     onChange={(e) => setMatcherNetworkCount(parseInt(e.target.value, 10))}
                     className="w-full accent-primary cursor-pointer"
                   />
-                  <div className="flex justify-between text-[10px] text-text-dim">
+                  <div className="flex justify-between text-2xs text-text-dim">
                     <span>0 (Cold)</span>
                     <span>5 (1-hop mutuals)</span>
                     <span>10 (Dense cluster)</span>
@@ -720,7 +720,7 @@ export default function JobsPage() {
                 <div className="card bg-gradient-to-br from-surface to-surface-200 border-primary/30">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-[11px] font-mono uppercase tracking-wider text-text-dim">
+                      <span className="text-xs font-mono uppercase tracking-wider text-text-dim">
                         PIOS Alignment Score
                       </span>
                       <h3 className="text-2xl font-bold text-text mt-0.5">{matchResult.title}</h3>
@@ -740,7 +740,7 @@ export default function JobsPage() {
                       >
                         {Math.round(matchResult.matchScore * 100)}%
                       </div>
-                      <span className="text-[10px] text-text-dim">
+                      <span className="text-2xs text-text-dim">
                         {matchResult.matchScore >= 0.75
                           ? 'High Demonstrated Fit'
                           : matchResult.matchScore >= 0.5
@@ -762,28 +762,28 @@ export default function JobsPage() {
                 {/* 4-Dimensional Mathematical Breakdown */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="card p-3 text-center">
-                    <span className="text-[10px] text-text-dim block mb-1">Cosine Similarity</span>
+                    <span className="text-2xs text-text-dim block mb-1">Cosine Similarity</span>
                     <span className="text-base font-mono font-bold text-text">
                       {(matchResult.metrics.cosineSimilarity * 100).toFixed(1)}%
                     </span>
                     <span className="text-[9px] text-text-muted block mt-0.5">Semantic Fit</span>
                   </div>
                   <div className="card p-3 text-center">
-                    <span className="text-[10px] text-text-dim block mb-1">Recency Decay</span>
+                    <span className="text-2xs text-text-dim block mb-1">Recency Decay</span>
                     <span className="text-base font-mono font-bold text-emerald-400">
                       {(matchResult.metrics.decayWeightedConfidence * 100).toFixed(1)}%
                     </span>
                     <span className="text-[9px] text-text-muted block mt-0.5">Half-Life Model</span>
                   </div>
                   <div className="card p-3 text-center">
-                    <span className="text-[10px] text-text-dim block mb-1">Network Proximity</span>
+                    <span className="text-2xs text-text-dim block mb-1">Network Proximity</span>
                     <span className="text-base font-mono font-bold text-primary">
                       {matchResult.metrics.networkProximity.toFixed(2)}x
                     </span>
                     <span className="text-[9px] text-text-muted block mt-0.5">Graph Boost</span>
                   </div>
                   <div className="card p-3 text-center">
-                    <span className="text-[10px] text-text-dim block mb-1">Skill Gap Penalty</span>
+                    <span className="text-2xs text-text-dim block mb-1">Skill Gap Penalty</span>
                     <span className="text-base font-mono font-bold text-rose-400">
                       -{(matchResult.metrics.skillGapPenalty * 100).toFixed(1)}%
                     </span>
@@ -799,7 +799,7 @@ export default function JobsPage() {
 
                   {matchResult.matchedSkills.length > 0 ? (
                     <div>
-                      <span className="text-[11px] font-medium text-text-muted block mb-1.5">
+                      <span className="text-xs font-medium text-text-muted block mb-1.5">
                         Matched Capabilities ({matchResult.matchedSkills.length})
                       </span>
                       <div className="flex flex-wrap gap-2">
@@ -828,7 +828,7 @@ export default function JobsPage() {
 
                   {matchResult.missingSkills.length > 0 && (
                     <div className="pt-2 border-t border-border">
-                      <span className="text-[11px] font-medium text-text-muted block mb-1.5">
+                      <span className="text-xs font-medium text-text-muted block mb-1.5">
                         Skill Gaps ({matchResult.missingSkills.length})
                       </span>
                       <div className="flex flex-wrap gap-1.5">
@@ -874,7 +874,7 @@ export default function JobsPage() {
                   capabilities, validation tiers (V0–V4), and memory recency half-life against
                   external roles.
                 </p>
-                <div className="text-[11px] font-mono text-text-dim bg-surface-200 px-3 py-1.5 rounded-lg border border-border">
+                <div className="text-xs font-mono text-text-dim bg-surface-200 px-3 py-1.5 rounded-lg border border-border">
                   matcher_core = cosine × proximity × decay − gap_penalty
                 </div>
               </div>

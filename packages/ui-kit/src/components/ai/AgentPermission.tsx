@@ -9,10 +9,10 @@ export interface AgentPermissionProps {
 }
 
 const levelColors = {
-  read: 'bg-blue-950/30 text-blue-300 border-blue-800/30',
-  write: 'bg-amber-950/30 text-amber-300 border-amber-800/30',
-  execute: 'bg-purple-950/30 text-purple-300 border-purple-800/30',
-  admin: 'bg-red-950/30 text-red-300 border-red-800/30',
+  read: 'bg-info/15 text-info border-info/30',
+  write: 'bg-warning/15 text-warning border-warning/30',
+  execute: 'bg-accent/15 text-accent border-accent/30',
+  admin: 'bg-error/15 text-error border-error/30',
 };
 
 export const AgentPermission: React.FC<AgentPermissionProps> = ({
@@ -30,7 +30,7 @@ export const AgentPermission: React.FC<AgentPermissionProps> = ({
     >
       <LockIcon size={12} />
       <span className="font-semibold">{scope}</span>
-      <span className="text-[10px] uppercase opacity-75">[{level}]</span>
+      <span className="text-2xs uppercase opacity-75">[{level}]</span>
     </div>
   );
 };

@@ -448,7 +448,7 @@ export default function ProfileHeader({ profile, workspaceId, onUpdate }: Profil
             />
             <label className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center rounded-full text-white cursor-pointer transition-opacity duration-200">
               <UploadIcon size={18} className="mb-0.5" />
-              <span className="text-[10px] font-medium tracking-wide uppercase">Change</span>
+              <span className="text-2xs font-medium tracking-wide uppercase">Change</span>
               <input
                 type="file"
                 className="hidden"

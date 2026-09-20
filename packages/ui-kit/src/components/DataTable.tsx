@@ -68,7 +68,7 @@ export function DataTable<T>({
                   <div className="flex items-center gap-1.5">
                     <span>{col.header}</span>
                     {col.sortable && (
-                      <span className="flex flex-col text-[10px] leading-none">
+                      <span className="flex flex-col text-2xs leading-none">
                         <svg
                           className={`w-3 h-3 ${isSorted && sortDir === 'asc' ? 'text-action' : 'text-text-muted/40'}`}
                           fill="none"

@@ -873,7 +873,7 @@ export default function OrganizationsPage() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-sm text-text">{role.name}</span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-200 text-text-secondary">
+                    <span className="text-2xs font-mono px-1.5 py-0.5 rounded bg-surface-200 text-text-secondary">
                       {role.permissions.length} scopes
                     </span>
                   </div>
@@ -882,7 +882,7 @@ export default function OrganizationsPage() {
                     {role.permissions.map((perm) => (
                       <span
                         key={perm}
-                        className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface border border-border/70 text-text-dim"
+                        className="text-2xs font-mono px-1.5 py-0.5 rounded bg-surface border border-border/70 text-text-dim"
                       >
                         {perm}
                       </span>

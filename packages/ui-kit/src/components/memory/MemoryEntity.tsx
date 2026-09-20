@@ -18,11 +18,11 @@ const typeIconMap = {
 };
 
 const typeColors = {
-  person: 'border-blue-800/30 text-blue-300 bg-blue-950/20',
-  company: 'border-emerald-800/30 text-emerald-300 bg-emerald-950/20',
-  skill: 'border-purple-800/30 text-purple-300 bg-purple-950/20',
-  project: 'border-amber-800/30 text-amber-300 bg-amber-950/20',
-  topic: 'border-zinc-700 text-zinc-300 bg-zinc-900',
+  person: 'border-primary/30 text-primary bg-primary/10',
+  company: 'border-success/30 text-success bg-success/15',
+  skill: 'border-accent/30 text-accent bg-accent/15',
+  project: 'border-warning/30 text-warning bg-warning/15',
+  topic: 'border-border-strong text-text-secondary bg-surface-200',
 };
 
 export const MemoryEntity: React.FC<MemoryEntityProps> = ({
@@ -46,7 +46,7 @@ export const MemoryEntity: React.FC<MemoryEntityProps> = ({
     >
       <IconComponent size={12} />
       <span>{name}</span>
-      {count !== undefined && <span className="text-[10px] opacity-70 font-mono">({count})</span>}
+      {count !== undefined && <span className="text-2xs opacity-70 font-mono">({count})</span>}
     </button>
   );
 };
