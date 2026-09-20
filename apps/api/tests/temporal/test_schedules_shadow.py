@@ -36,9 +36,17 @@ async def test_schedule_spec_uses_utc_jitter():
 
     assert timedelta(seconds=60).total_seconds() == 60
     # Verify file contains expected strings (schedule spec contract)
+    # NOTE: resolve relative to this file, not CWD — CI runs pytest with
+    # working-directory apps/api while local runs often use the repo root.
     import pathlib
 
-    src = pathlib.Path("apps/api/src/api/temporal/schedules.py").read_text()
+    here = pathlib.Path(__file__).resolve()
+    candidates = [
+        here.parents[4] / "apps" / "api" / "src" / "api" / "temporal" / "schedules.py",
+        here.parents[2] / "src" / "api" / "temporal" / "schedules.py",
+    ]
+    src_path = next((p for p in candidates if p.is_file()), candidates[0])
+    src = src_path.read_text()
     assert 'time_zone_name="UTC"' in src
     assert "jitter=timedelta(seconds=60)" in src
     assert "OverlapPolicy.SKIP" in src

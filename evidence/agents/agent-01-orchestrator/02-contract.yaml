@@ -1,0 +1,184 @@
+# Canonical Interface & Operational Contract
+# Agent 01: Orchestrator / Supervisor
+schema_version: '2.0.0'
+agent:
+  id: 'agent-01-orchestrator'
+  name: 'Orchestrator / Supervisor'
+  type: 'SUPERVISOR_ORCHESTRATOR'
+  description: 'Central entrypoint, intent router, ReAct loop driver, supervisor DAG coordinator, and QA verification gate for the enterprise agent system.'
+  version: '2.1.0'
+  status: 'ACTIVE'
+
+capabilities:
+  - 'intent_classification'
+  - 'multi_intent_decomposition'
+  - 'dag_task_orchestration'
+  - 'react_loop_lifecycle'
+  - 'qa_verification_gating'
+  - 'human_in_the_loop_approval_pausing'
+  - 'tenant_isolated_state_persistence'
+
+inputs:
+  user_request:
+    type: 'object'
+    required:
+      - 'id'
+      - 'message'
+      - 'workspace_id'
+    properties:
+      id:
+        type: 'string'
+        description: 'Unique client request UUID'
+      message:
+        type: 'string'
+        description: 'Raw user prompt or query'
+      workspace_id:
+        type: 'string'
+        format: 'uuid'
+        description: 'Target workspace UUID'
+      preferred_agent:
+        type: 'string'
+        nullable: true
+        description: 'Explicit agent override'
+      user_id:
+        type: 'string'
+        format: 'uuid'
+        nullable: true
+        description: 'Authenticated caller UUID (from JWT sub)'
+      tenant_id:
+        type: 'string'
+        format: 'uuid'
+        nullable: true
+        description: 'Authenticated tenant UUID (from JWT tenant_id)'
+      correlation_id:
+        type: 'string'
+        nullable: true
+        description: 'Distributed trace correlation ID'
+
+  agent_request:
+    type: 'object'
+    required:
+      - 'agent'
+      - 'request_id'
+      - 'message'
+      - 'workspace_id'
+    properties:
+      agent:
+        type: 'BaseAgent'
+        description: 'Target agent instance'
+      request_id:
+        type: 'string'
+      message:
+        type: 'string'
+      workspace_id:
+        type: 'string'
+        format: 'uuid'
+      agent_name:
+        type: 'string'
+      user_id:
+        type: 'string'
+        format: 'uuid'
+        nullable: true
+      tenant_id:
+        type: 'string'
+        format: 'uuid'
+        nullable: true
+      correlation_id:
+        type: 'string'
+        nullable: true
+
+lifecycle_state_machine:
+  initial_state: 'context_manifest'
+  transitions:
+    context_manifest:
+      next: 'plan'
+      on_error: 'escalate_to_user'
+    plan:
+      next: 'act'
+      on_error: 'escalate_to_user'
+    act:
+      next: 'observe'
+      on_approval_needed: 'pause_awaiting_approval'
+      on_error: 'escalate_to_user'
+    observe:
+      next: 'qa_validate'
+    qa_validate:
+      on_approved: 'reflect'
+      on_rejected: 'plan' # Self-correction retry loop (max 3)
+      on_max_retries: 'escalate_to_user'
+    reflect:
+      next: 'improve'
+    improve:
+      next: 'terminal_success'
+    pause_awaiting_approval:
+      resume_signal: 'resume_supervisor'
+      on_approved: 'act'
+      on_rejected: 'terminal_aborted'
+
+outputs:
+  agent_response:
+    type: 'object'
+    required:
+      - 'status'
+      - 'action'
+      - 'result'
+      - 'final_result'
+    properties:
+      status:
+        type: 'string'
+        enum: ['success', 'error', 'escalated', 'aborted', 'paused_awaiting_approval']
+      action:
+        type: 'string'
+        enum: ['suggest', 'execute', 'request_approval', 'ask_clarification', 'error']
+      result:
+        type: 'object'
+        required:
+          - 'summary'
+        properties:
+          summary:
+            type: 'string'
+          details:
+            type: 'object'
+            nullable: true
+          proposals:
+            type: 'array'
+            items:
+              type: 'object'
+          questions:
+            type: 'array'
+            items:
+              type: 'string'
+      final_result:
+        type: 'string'
+      confidence:
+        type: 'number'
+        minimum: 0.0
+        maximum: 1.0
+      termination_reason:
+        type: 'string'
+        nullable: true
+      failure_code:
+        type: 'string'
+        nullable: true
+      metadata:
+        type: 'object'
+
+sla_and_constraints:
+  latency:
+    p50_target_ms: 500
+    p95_target_ms: 1500
+    max_timeout_ms: 30000
+  concurrency:
+    max_parallel_agents_per_dag_layer: 5
+  quality:
+    min_confidence_threshold: 0.30
+    clarification_confidence_threshold: 0.70
+    max_qa_retries: 3
+    pii_policy: 'FAIL_CLOSED_ON_MATCH'
+    grounding_policy: 'REJECT_UNSOURCED_CLAIMS'
+
+security_rules:
+  tenant_isolation: 'STRICT_RLS_ENFORCED'
+  idor_prevention: 'FAIL_CLOSED_ON_WORKSPACE_OR_AGENT_MISMATCH'
+  database_uuid_guard: 'REJECT_NON_UUID_BEFORE_SQL'
+  adversarial_screening: 'PRE_ROUTING_TIER0_BLOCK'

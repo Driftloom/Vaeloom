@@ -165,42 +165,42 @@ class AgentContextLoader:
                         res = await session.execute(stmt)
                         entities = res.scalars().all()
 
-                    skills = []
-                    education = []
-                    experience = []
-                    preferences = []
+                        skills = []
+                        education = []
+                        experience = []
+                        preferences = []
 
-                    for ent in entities:
-                        meta = ent.metadata_ or {}
-                        if ent.type == "skill":
-                            skills.append(ent.canonical_name)
-                        elif ent.type == "education":
-                            education.append({
-                                "institution": ent.canonical_name,
-                                "degree": meta.get("degree", "Degree"),
-                                "year": meta.get("year"),
-                            })
-                        elif ent.type == "experience":
-                            experience.append({
-                                "company": ent.canonical_name,
-                                "role": meta.get("role", "Role"),
-                                "achievements": meta.get("achievements", []),
-                            })
-                        elif ent.type == "preference":
-                            preferences.append({
-                                "name": ent.canonical_name,
-                                "metadata": meta,
-                            })
+                        for ent in entities:
+                            meta = ent.metadata_ or {}
+                            if ent.type == "skill":
+                                skills.append(ent.canonical_name)
+                            elif ent.type == "education":
+                                education.append({
+                                    "institution": ent.canonical_name,
+                                    "degree": meta.get("degree", "Degree"),
+                                    "year": meta.get("year"),
+                                })
+                            elif ent.type == "experience":
+                                experience.append({
+                                    "company": ent.canonical_name,
+                                    "role": meta.get("role", "Role"),
+                                    "achievements": meta.get("achievements", []),
+                                })
+                            elif ent.type == "preference":
+                                preferences.append({
+                                    "name": ent.canonical_name,
+                                    "metadata": meta,
+                                })
 
-                    context.preferences = preferences
-                    if "skills" not in context.profile or not context.profile["skills"]:
-                        context.profile["skills"] = skills
-                    context.profile.setdefault("education", education)
-                    context.profile.setdefault("experience", experience)
-                    context.profile.setdefault("name", context.profile.get("name") or "User")
-                    context.profile.setdefault("email", context.profile.get("email") or "user@example.com")
-                except Exception as e:
-                    logger.debug(f"Entities load skipped: {e}")
+                        context.preferences = preferences
+                        if "skills" not in context.profile or not context.profile["skills"]:
+                            context.profile["skills"] = skills
+                        context.profile.setdefault("education", education)
+                        context.profile.setdefault("experience", experience)
+                        context.profile.setdefault("name", context.profile.get("name") or "User")
+                        context.profile.setdefault("email", context.profile.get("email") or "user@example.com")
+                    except Exception as e:
+                        logger.debug(f"Entities load skipped: {e}")
 
                 # 3. Load Latest Master Resume Document if available
                 if w_uuid is not None:
