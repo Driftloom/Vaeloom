@@ -27,6 +27,9 @@ class SkillItem(BaseModel):
     decay_status: str | None = "fresh"  # fresh, active, stale
     decay_factor: float | None = 1.0
     is_matchable: bool = False
+    category: str | None = "General"  # Languages, Frameworks, Cloud & DevOps, Databases, AI / ML, Soft Skills, Tools
+    proficiency: str | None = "Intermediate"  # Beginner, Intermediate, Advanced, Expert
+    years_experience: int | None = None
 
 
 class CareerEntry(BaseModel):
@@ -36,6 +39,9 @@ class CareerEntry(BaseModel):
     end_date: str | None = None
     achievements: list[str] = []
     confidence: float = 0.0
+    location: str | None = None
+    employment_type: str | None = "Full-time"
+    is_current: bool = False
 
 
 class JobPreferences(BaseModel):
@@ -50,6 +56,71 @@ class MemorySummary(BaseModel):
     type: str
     count: int
     last_updated: datetime | None = None
+
+
+class EducationEntry(BaseModel):
+    id: str | None = None
+    institution: str
+    degree: str
+    field_of_study: str
+    start_year: int | None = None
+    graduation_year: int | None = None
+    gpa: str | None = None
+    show_gpa_on_resume: bool = False
+    honors: list[str] = []
+
+
+class ProjectEntry(BaseModel):
+    id: str | None = None
+    title: str
+    tagline: str | None = None
+    description: str
+    technologies: list[str] = []
+    metrics_summary: str | None = None
+    live_url: str | None = None
+    github_url: str | None = None
+    featured: bool = True
+
+
+class ApplicationVaultData(BaseModel):
+    demographics_policy: str = "decline"  # "autofill", "decline", "blank"
+    gender: str | None = None
+    ethnicity: str | None = None
+    veteran_status: str | None = None
+    disability_status: str | None = None
+    authorized_countries: list[str] = ["US"]
+    visa_status: str = "Citizen"
+    requires_sponsorship: bool = False
+    security_clearance: str = "None"
+
+
+class AgentDirectivesData(BaseModel):
+    autonomy_mode: str = "copilot"  # "copilot", "semi_autonomous", "full_autopilot"
+    min_match_threshold: int = 80
+    daily_application_quota: int = 10
+    min_base_salary: int | None = None
+    target_base_salary: int | None = None
+    target_total_comp: int | None = None
+    currency: str = "USD"
+    notice_period: str = "2 weeks"
+    relocation_preference: str = "Remote only"
+    travel_percentage: str = "0%"
+    cover_letter_policy: str = "when_required"
+
+
+class BlacklistItem(BaseModel):
+    id: str
+    company_name: str
+    domain: str | None = None
+    reason: str = "Current Employer"
+    auto_inferred: bool = False
+
+
+class ScreeningQuestionItem(BaseModel):
+    id: str
+    question: str
+    answer: str
+    category: str = "general"
 
 
 class ProfileResponse(BaseModel):
@@ -73,6 +144,13 @@ class ProfileResponse(BaseModel):
     job_preferences: JobPreferences | None = None
     memory_summary: list[MemorySummary] = []
     years_experience: int | None = None
+    # Extended Enterprise Agent Brain fields
+    education: list[EducationEntry] = []
+    projects: list[ProjectEntry] = []
+    application_vault: ApplicationVaultData | None = None
+    agent_directives: AgentDirectivesData | None = None
+    company_blacklist: list[BlacklistItem] = []
+    screening_questions: list[ScreeningQuestionItem] = []
 
     model_config = {"from_attributes": True}
 
@@ -164,6 +242,9 @@ class AddCareerEntryRequest(BaseModel):
     start_date: str | None = None
     end_date: str | None = None
     achievements: list[str] = []
+    location: str | None = None
+    employment_type: str | None = "Full-time"
+    is_current: bool = False
 
 
 class UpdateCareerEntryRequest(BaseModel):
@@ -172,6 +253,9 @@ class UpdateCareerEntryRequest(BaseModel):
     start_date: str | None = None
     end_date: str | None = None
     achievements: list[str] | None = None
+    location: str | None = None
+    employment_type: str | None = None
+    is_current: bool | None = None
 
 
 class ProfileActivityItem(BaseModel):
@@ -182,5 +266,93 @@ class ProfileActivityItem(BaseModel):
     timestamp: str
     status: str = "completed"
     agent_name: str | None = None
+
+
+class AddEducationRequest(BaseModel):
+    workspace_id: str
+    institution: str
+    degree: str
+    field_of_study: str
+    start_year: int | None = None
+    graduation_year: int | None = None
+    gpa: str | None = None
+    show_gpa_on_resume: bool = False
+    honors: list[str] = []
+
+
+class UpdateEducationRequest(BaseModel):
+    workspace_id: str
+    institution: str | None = None
+    degree: str | None = None
+    field_of_study: str | None = None
+    start_year: int | None = None
+    graduation_year: int | None = None
+    gpa: str | None = None
+    show_gpa_on_resume: bool | None = None
+    honors: list[str] | None = None
+
+
+class AddProjectRequest(BaseModel):
+    workspace_id: str
+    title: str
+    tagline: str | None = None
+    description: str
+    technologies: list[str] = []
+    metrics_summary: str | None = None
+    live_url: str | None = None
+    github_url: str | None = None
+    featured: bool = True
+
+
+class UpdateProjectRequest(BaseModel):
+    workspace_id: str
+    title: str | None = None
+    tagline: str | None = None
+    description: str | None = None
+    technologies: list[str] | None = None
+    metrics_summary: str | None = None
+    live_url: str | None = None
+    github_url: str | None = None
+    featured: bool | None = None
+
+
+class UpdateApplicationVaultRequest(BaseModel):
+    workspace_id: str
+    demographics_policy: str = "decline"
+    gender: str | None = None
+    ethnicity: str | None = None
+    veteran_status: str | None = None
+    disability_status: str | None = None
+    authorized_countries: list[str] = ["US"]
+    visa_status: str = "Citizen"
+    requires_sponsorship: bool = False
+    security_clearance: str = "None"
+
+
+class UpdateAgentDirectivesRequest(BaseModel):
+    workspace_id: str
+    autonomy_mode: str = "copilot"
+    min_match_threshold: int = 80
+    daily_application_quota: int = 10
+    min_base_salary: int | None = None
+    target_base_salary: int | None = None
+    target_total_comp: int | None = None
+    currency: str = "USD"
+    notice_period: str = "2 weeks"
+    relocation_preference: str = "Remote only"
+    travel_percentage: str = "0%"
+    cover_letter_policy: str = "when_required"
+
+
+class AddBlacklistRequest(BaseModel):
+    workspace_id: str
+    company_name: str
+    domain: str | None = None
+    reason: str = "Current Employer"
+
+
+class UpdateScreeningQuestionsRequest(BaseModel):
+    workspace_id: str
+    questions: list[ScreeningQuestionItem] = []
 
 

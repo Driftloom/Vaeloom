@@ -7,7 +7,10 @@ from ..config import settings
 from ..database import get_db
 from ..dependencies import get_current_user
 from ..schemas.profile import (
+    AddBlacklistRequest,
     AddCareerEntryRequest,
+    AddEducationRequest,
+    AddProjectRequest,
     AddSkillRequest,
     ATSReadinessResponse,
     AutoPopulateRequest,
@@ -18,9 +21,14 @@ from ..schemas.profile import (
     ProfileRecommendationItem,
     ProfileResponse,
     PublicProfileResponse,
+    UpdateAgentDirectivesRequest,
+    UpdateApplicationVaultRequest,
     UpdateCareerEntryRequest,
+    UpdateEducationRequest,
     UpdateJobPreferencesRequest,
     UpdateProfileRequest,
+    UpdateProjectRequest,
+    UpdateScreeningQuestionsRequest,
 )
 from ..services.profile_service import profile_service
 
@@ -307,5 +315,198 @@ async def get_profile_activity(
         raise HTTPException(status_code=401, detail="Invalid token")
 
     return await profile_service.get_profile_activity(user_id, workspace_id, db=db)
+
+
+@router.post("/education", response_model=ProfileResponse)
+async def add_education(
+    body: AddEducationRequest,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Add a new academic degree/credential to profile memory."""
+    user_id = current_user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    profile = await profile_service.add_education_entry(user_id, body, db=db)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+    return profile
+
+
+@router.put("/education/{education_id}", response_model=ProfileResponse)
+async def update_education(
+    education_id: str,
+    body: UpdateEducationRequest,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update an academic degree/credential in profile memory."""
+    user_id = current_user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    profile = await profile_service.update_education_entry(user_id, education_id, body, db=db)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+    return profile
+
+
+@router.delete("/education/{education_id}", response_model=ProfileResponse)
+async def delete_education(
+    education_id: str,
+    workspace_id: str = Query(..., description="Workspace ID"),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete an academic degree/credential from profile memory."""
+    user_id = current_user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    profile = await profile_service.delete_education_entry(user_id, workspace_id, education_id, db=db)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+    return profile
+
+
+@router.post("/projects", response_model=ProfileResponse)
+async def add_project(
+    body: AddProjectRequest,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Add a showcase portfolio project to profile memory."""
+    user_id = current_user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    profile = await profile_service.add_project_entry(user_id, body, db=db)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+    return profile
+
+
+@router.put("/projects/{project_id}", response_model=ProfileResponse)
+async def update_project(
+    project_id: str,
+    body: UpdateProjectRequest,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a showcase portfolio project in profile memory."""
+    user_id = current_user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    profile = await profile_service.update_project_entry(user_id, project_id, body, db=db)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+    return profile
+
+
+@router.delete("/projects/{project_id}", response_model=ProfileResponse)
+async def delete_project(
+    project_id: str,
+    workspace_id: str = Query(..., description="Workspace ID"),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a showcase portfolio project from profile memory."""
+    user_id = current_user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    profile = await profile_service.delete_project_entry(user_id, workspace_id, project_id, db=db)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+    return profile
+
+
+@router.put("/vault", response_model=ProfileResponse)
+async def update_vault(
+    body: UpdateApplicationVaultRequest,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update encrypted EEO & work authorization application vault."""
+    user_id = current_user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    profile = await profile_service.update_application_vault(user_id, body, db=db)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+    return profile
+
+
+@router.put("/directives", response_model=ProfileResponse)
+async def update_directives(
+    body: UpdateAgentDirectivesRequest,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update autonomous agent directives, thresholds, and autopilot quota."""
+    user_id = current_user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    profile = await profile_service.update_agent_directives(user_id, body, db=db)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+    return profile
+
+
+@router.post("/blacklist", response_model=ProfileResponse)
+async def add_blacklist(
+    body: AddBlacklistRequest,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Add a company/employer to the agent application blacklist."""
+    user_id = current_user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    profile = await profile_service.add_company_blacklist(user_id, body, db=db)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+    return profile
+
+
+@router.delete("/blacklist/{company_name}", response_model=ProfileResponse)
+async def delete_blacklist(
+    company_name: str,
+    workspace_id: str = Query(..., description="Workspace ID"),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Remove a company from the agent application blacklist."""
+    user_id = current_user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    profile = await profile_service.delete_company_blacklist(user_id, workspace_id, company_name, db=db)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+    return profile
+
+
+@router.put("/screening-questions", response_model=ProfileResponse)
+async def update_screening_questions(
+    body: UpdateScreeningQuestionsRequest,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update pre-saved recruiter screening questions and answers."""
+    user_id = current_user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    profile = await profile_service.update_screening_questions(user_id, body, db=db)
+    if not profile:
+        raise HTTPException(status_code=404, detail="User not found")
+    return profile
+
 
 

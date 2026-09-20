@@ -7,20 +7,34 @@ from sqlalchemy import func, select
 
 from ..models.schema import Document, Entity, Memory, Resume, User
 from ..schemas.profile import (
+    AddBlacklistRequest,
     AddCareerEntryRequest,
+    AddEducationRequest,
+    AddProjectRequest,
+    AgentDirectivesData,
+    ApplicationVaultData,
     ATSReadinessResponse,
+    BlacklistItem,
     CareerEntry,
+    EducationEntry,
     JobPreferences,
     MemorySummary,
     ProfileActivityItem,
     ProfileCompletenessResponse,
     ProfileRecommendationItem,
     ProfileResponse,
+    ProjectEntry,
     PublicProfileResponse,
+    ScreeningQuestionItem,
     SkillItem,
+    UpdateAgentDirectivesRequest,
+    UpdateApplicationVaultRequest,
     UpdateCareerEntryRequest,
+    UpdateEducationRequest,
     UpdateJobPreferencesRequest,
     UpdateProfileRequest,
+    UpdateProjectRequest,
+    UpdateScreeningQuestionsRequest,
 )
 from ..utils.sanitize import sanitize_text
 
@@ -62,14 +76,40 @@ class ProfileService:
 
         return ProfileResponse(**profile_data)
 
+    def _classify_skill(self, name: str) -> tuple[str, str]:
+        """Classify a skill into domain category and proficiency tier."""
+        lower = name.lower()
+        languages = {"python", "typescript", "javascript", "go", "golang", "rust", "c++", "c#", "java", "ruby", "php", "swift", "kotlin", "sql", "html", "css", "bash", "shell"}
+        frameworks = {"react", "next.js", "nextjs", "vue", "angular", "svelte", "django", "fastapi", "flask", "express", "nest", "spring", "rails", "node.js", "tailwind", "redux"}
+        cloud_devops = {"aws", "gcp", "azure", "docker", "kubernetes", "k8s", "terraform", "ci/cd", "github actions", "linux", "nginx", "helm", "serverless"}
+        databases = {"postgresql", "postgres", "mysql", "mongodb", "redis", "sqlite", "elasticsearch", "supabase", "dynamodb", "cassandra", "prisma", "sqlalchemy"}
+        ai_ml = {"pytorch", "tensorflow", "langchain", "llamaindex", "openai", "llm", "rag", "embeddings", "vector db", "nlp", "computer vision", "scikit-learn", "huggingface"}
+
+        cat = "Tools & Core"
+        if any(k in lower for k in languages):
+            cat = "Languages"
+        elif any(k in lower for k in frameworks):
+            cat = "Frameworks"
+        elif any(k in lower for k in cloud_devops):
+            cat = "Cloud & DevOps"
+        elif any(k in lower for k in databases):
+            cat = "Databases"
+        elif any(k in lower for k in ai_ml):
+            cat = "AI & Machine Learning"
+
+        return cat, "Advanced"
+
     async def _aggregate_memory_data(self, workspace_id: str, db) -> dict:
-        """Pull skills, career history, preferences from Memory records."""
+        """Pull skills, career history, education, projects, vault, directives, and preferences from Memory records."""
         from ..models.schema import Memory as MemoryModel
 
         result = await db.execute(
             select(MemoryModel).where(
                 MemoryModel.workspace_id == uuid.UUID(workspace_id),
-                MemoryModel.type.in_(["profile", "career", "preference", "episodic", "document", "working"]),
+                MemoryModel.type.in_([
+                    "profile", "career", "preference", "episodic", "document", "working",
+                    "education", "project", "eeo_vault", "agent_directives", "company_blacklist", "screening_questions"
+                ]),
                 ~MemoryModel.status.in_(["superseded", "deleted"]),
                 MemoryModel.deleted_at.is_(None),
             )
@@ -78,6 +118,12 @@ class ProfileService:
 
         skills = []
         career_history = []
+        education = []
+        projects = []
+        application_vault = None
+        agent_directives = None
+        company_blacklist = []
+        screening_questions = []
         job_preferences = None
         years_experience = None
         memory_counts = {}
@@ -105,11 +151,17 @@ class ProfileService:
                         s_conf = s.get("confidence", confidence)
                         s_ver = s.get("verified", s_conf >= 0.9)
                         s_src = s.get("source", "memory")
+                        s_cat = s.get("category")
+                        s_prof = s.get("proficiency")
+                        s_yrs = s.get("yearsExperience")
                     else:
                         s_name = str(s)
                         s_ver = (s_name in verified_skills) or (confidence >= 0.9)
                         s_conf = 1.0 if s_ver else confidence
                         s_src = "user" if s_ver else "memory"
+                        s_cat = None
+                        s_prof = None
+                        s_yrs = None
 
                     if s_name and s_name not in [sk.name for sk in skills]:
                         from .capability_engine import capability_engine
@@ -119,6 +171,7 @@ class ProfileService:
                             last_demonstrated=getattr(mem, 'updated_at', None) or getattr(mem, 'created_at', None),
                             is_certified=s_ver and s_conf >= 0.95,
                         )
+                        auto_cat, auto_prof = self._classify_skill(s_name)
                         skills.append(SkillItem(
                             name=s_name,
                             confidence=s_conf,
@@ -130,18 +183,101 @@ class ProfileService:
                             decay_status=assessment.decay_status.value,
                             decay_factor=assessment.decay_factor,
                             is_matchable=assessment.is_matchable,
+                            category=s_cat or auto_cat,
+                            proficiency=s_prof or auto_prof,
+                            years_experience=s_yrs or (3 if s_ver else 2),
                         ))
                 years_experience = content.get("yearsExperience")
 
             elif mem_type == "career":
+                end_d = content.get("endDate")
+                is_curr = content.get("isCurrent", False) or not bool(end_d) or str(end_d).lower() in ["present", "current"]
                 career_history.append(CareerEntry(
                     company=content.get("company", "Unknown"),
                     role=content.get("role", "Unknown"),
                     start_date=content.get("startDate"),
-                    end_date=content.get("endDate"),
+                    end_date=end_d,
                     achievements=content.get("achievements", []),
                     confidence=confidence,
+                    location=content.get("location"),
+                    employment_type=content.get("employmentType", "Full-time"),
+                    is_current=is_curr,
                 ))
+
+            elif mem_type == "education":
+                education.append(EducationEntry(
+                    id=str(mem.id),
+                    institution=content.get("institution", "Unknown"),
+                    degree=content.get("degree", "Degree"),
+                    field_of_study=content.get("fieldOfStudy", content.get("field_of_study", "")),
+                    start_year=content.get("startYear", content.get("start_year")),
+                    graduation_year=content.get("graduationYear", content.get("graduation_year")),
+                    gpa=content.get("gpa"),
+                    show_gpa_on_resume=content.get("showGpaOnResume", content.get("show_gpa_on_resume", False)),
+                    honors=content.get("honors", []),
+                ))
+
+            elif mem_type == "project":
+                projects.append(ProjectEntry(
+                    id=str(mem.id),
+                    title=content.get("title", "Untitled Project"),
+                    tagline=content.get("tagline"),
+                    description=content.get("description", ""),
+                    technologies=content.get("technologies", []),
+                    metrics_summary=content.get("metricsSummary", content.get("metrics_summary")),
+                    live_url=content.get("liveUrl", content.get("live_url")),
+                    github_url=content.get("githubUrl", content.get("github_url")),
+                    featured=content.get("featured", True),
+                ))
+
+            elif mem_type == "eeo_vault":
+                application_vault = ApplicationVaultData(
+                    demographics_policy=content.get("demographicsPolicy", content.get("demographics_policy", "decline")),
+                    gender=content.get("gender"),
+                    ethnicity=content.get("ethnicity"),
+                    veteran_status=content.get("veteranStatus", content.get("veteran_status")),
+                    disability_status=content.get("disabilityStatus", content.get("disability_status")),
+                    authorized_countries=content.get("authorizedCountries", content.get("authorized_countries", ["US"])),
+                    visa_status=content.get("visaStatus", content.get("visa_status", "Citizen")),
+                    requires_sponsorship=content.get("requiresSponsorship", content.get("requires_sponsorship", False)),
+                    security_clearance=content.get("securityClearance", content.get("security_clearance", "None")),
+                )
+
+            elif mem_type == "agent_directives":
+                agent_directives = AgentDirectivesData(
+                    autonomy_mode=content.get("autonomyMode", content.get("autonomy_mode", "copilot")),
+                    min_match_threshold=content.get("minMatchThreshold", content.get("min_match_threshold", 80)),
+                    daily_application_quota=content.get("dailyApplicationQuota", content.get("daily_application_quota", 10)),
+                    min_base_salary=content.get("minBaseSalary", content.get("min_base_salary")),
+                    target_base_salary=content.get("targetBaseSalary", content.get("target_base_salary")),
+                    target_total_comp=content.get("targetTotalComp", content.get("target_total_comp")),
+                    currency=content.get("currency", "USD"),
+                    notice_period=content.get("noticePeriod", content.get("notice_period", "2 weeks")),
+                    relocation_preference=content.get("relocationPreference", content.get("relocation_preference", "Remote only")),
+                    travel_percentage=content.get("travelPercentage", content.get("travel_percentage", "0%")),
+                    cover_letter_policy=content.get("coverLetterPolicy", content.get("cover_letter_policy", "when_required")),
+                )
+
+            elif mem_type == "company_blacklist":
+                raw_bl = content.get("blacklist", [])
+                for b in raw_bl:
+                    company_blacklist.append(BlacklistItem(
+                        id=b.get("id", f"bl-{uuid.uuid4().hex[:8]}"),
+                        company_name=b.get("companyName", b.get("company_name", "")),
+                        domain=b.get("domain"),
+                        reason=b.get("reason", "Company Blacklist"),
+                        auto_inferred=b.get("autoInferred", b.get("auto_inferred", False)),
+                    ))
+
+            elif mem_type == "screening_questions":
+                raw_sq = content.get("questions", [])
+                for q in raw_sq:
+                    screening_questions.append(ScreeningQuestionItem(
+                        id=q.get("id", f"sq-{uuid.uuid4().hex[:8]}"),
+                        question=q.get("question", ""),
+                        answer=q.get("answer", ""),
+                        category=q.get("category", "general"),
+                    ))
 
             elif mem_type == "preference":
                 job_preferences = JobPreferences(
@@ -166,6 +302,7 @@ class ProfileService:
                 verified = meta.get("verified", False) or conf >= 0.9
                 source = meta.get("source", "memory")
                 existing = next((s for s in skills if s.name.lower() == ent.canonical_name.lower()), None)
+                auto_cat, auto_prof = self._classify_skill(ent.canonical_name)
                 if not existing:
                     from .capability_engine import capability_engine
                     assessment = capability_engine.assess_capability(
@@ -185,6 +322,9 @@ class ProfileService:
                         decay_status=assessment.decay_status.value,
                         decay_factor=assessment.decay_factor,
                         is_matchable=assessment.is_matchable,
+                        category=auto_cat,
+                        proficiency=auto_prof,
+                        years_experience=3 if verified else 1,
                     ))
                 elif verified and not existing.verified:
                     existing.verified = True
@@ -194,6 +334,25 @@ class ProfileService:
                     existing.is_matchable = True
         except Exception as e:
             logger.debug("Entity skill merge skipped: %s", e)
+
+        # Auto-infer current employer into company blacklist if not present
+        active_companies = [c.company for c in career_history if c.is_current and c.company and c.company != "Unknown"]
+        existing_bl_names = {b.company_name.lower() for b in company_blacklist}
+        for act_comp in active_companies:
+            if act_comp.lower() not in existing_bl_names:
+                company_blacklist.append(BlacklistItem(
+                    id=f"auto-cur-{uuid.uuid4().hex[:8]}",
+                    company_name=act_comp,
+                    reason="Current Employer (Auto-Protected)",
+                    auto_inferred=True,
+                ))
+                existing_bl_names.add(act_comp.lower())
+
+        # Fallback defaults for vault and directives if empty
+        if application_vault is None:
+            application_vault = ApplicationVaultData()
+        if agent_directives is None:
+            agent_directives = AgentDirectivesData()
 
         # Build memory summary
         # Count ALL memory types for the summary
@@ -213,6 +372,12 @@ class ProfileService:
             "job_preferences": job_preferences,
             "years_experience": years_experience,
             "memory_summary": memory_summary,
+            "education": education,
+            "projects": projects,
+            "application_vault": application_vault,
+            "agent_directives": agent_directives,
+            "company_blacklist": company_blacklist,
+            "screening_questions": screening_questions,
         }
 
     async def update_profile(
@@ -1376,6 +1541,451 @@ class ProfileService:
 
         activities.sort(key=lambda a: a.timestamp, reverse=True)
         return activities[:10]
+
+    async def add_education_entry(
+        self, user_id: str, data: AddEducationRequest, db=None
+    ) -> ProfileResponse | None:
+        """Add an academic degree/credential to Memory and Entity graph."""
+        ws_uuid = uuid.UUID(data.workspace_id)
+        mem_content = {
+            "institution": sanitize_text(data.institution),
+            "degree": sanitize_text(data.degree),
+            "fieldOfStudy": sanitize_text(data.field_of_study),
+            "startYear": data.start_year,
+            "graduationYear": data.graduation_year,
+            "gpa": sanitize_text(data.gpa) if data.gpa else None,
+            "showGpaOnResume": data.show_gpa_on_resume,
+            "honors": [sanitize_text(h) for h in data.honors if h],
+        }
+        content_str = json.dumps(mem_content)
+        mem = Memory(
+            id=uuid.uuid4(),
+            type="education",
+            domain="education",
+            status="active",
+            title=f"{data.degree} at {data.institution}",
+            summary=f"{data.degree} in {data.field_of_study} from {data.institution}",
+            content=content_str,
+            content_hash=f"edu_{uuid.uuid4().hex[:12]}",
+            size=len(content_str),
+            metadata_={"confidence": 1.0, "source": "user", "verified": True},
+            workspace_id=ws_uuid,
+            user_id=uuid.UUID(user_id) if isinstance(user_id, str) else user_id,
+        )
+        db.add(mem)
+
+        ent_stmt = select(Entity).where(
+            Entity.workspace_id == ws_uuid,
+            Entity.type == "education",
+            func.lower(Entity.canonical_name) == data.institution.lower(),
+        )
+        ent_res = await db.execute(ent_stmt)
+        ent = ent_res.scalar_one_or_none()
+        if not ent:
+            ent = Entity(
+                id=uuid.uuid4(),
+                workspace_id=ws_uuid,
+                type="education",
+                canonical_name=data.institution,
+                metadata_={
+                    "degree": data.degree,
+                    "fieldOfStudy": data.field_of_study,
+                    "graduationYear": data.graduation_year,
+                    "source": "user",
+                },
+            )
+            db.add(ent)
+
+        await db.flush()
+        return await self.get_profile(user_id, workspace_id=data.workspace_id, db=db)
+
+    async def update_education_entry(
+        self, user_id: str, education_id: str, data: UpdateEducationRequest, db=None
+    ) -> ProfileResponse | None:
+        """Update an education entry in Memory."""
+        ws_uuid = uuid.UUID(data.workspace_id)
+        stmt = select(Memory).where(
+            Memory.workspace_id == ws_uuid,
+            Memory.type == "education",
+            Memory.status == "active",
+        )
+        res = await db.execute(stmt)
+        mems = res.scalars().all()
+        target = None
+        for m in mems:
+            if str(m.id) == education_id or (m.title and education_id.lower() in m.title.lower()):
+                target = m
+                break
+
+        if target:
+            content = json.loads(target.content) if isinstance(target.content, str) else dict(target.content or {})
+            if data.institution is not None:
+                content["institution"] = sanitize_text(data.institution)
+            if data.degree is not None:
+                content["degree"] = sanitize_text(data.degree)
+            if data.field_of_study is not None:
+                content["fieldOfStudy"] = sanitize_text(data.field_of_study)
+            if data.start_year is not None:
+                content["startYear"] = data.start_year
+            if data.graduation_year is not None:
+                content["graduationYear"] = data.graduation_year
+            if data.gpa is not None:
+                content["gpa"] = sanitize_text(data.gpa)
+            if data.show_gpa_on_resume is not None:
+                content["showGpaOnResume"] = data.show_gpa_on_resume
+            if data.honors is not None:
+                content["honors"] = [sanitize_text(h) for h in data.honors if h]
+
+            target.content = json.dumps(content)
+            target.title = f"{content.get('degree', 'Degree')} at {content.get('institution', 'Institution')}"
+            target.summary = f"{content.get('degree')} in {content.get('fieldOfStudy')} from {content.get('institution')}"
+            target.updated_at = datetime.now(UTC)
+
+        await db.flush()
+        return await self.get_profile(user_id, workspace_id=data.workspace_id, db=db)
+
+    async def delete_education_entry(
+        self, user_id: str, workspace_id: str, education_id: str, db=None
+    ) -> ProfileResponse | None:
+        """Soft delete an education entry from Memory."""
+        ws_uuid = uuid.UUID(workspace_id)
+        stmt = select(Memory).where(
+            Memory.workspace_id == ws_uuid,
+            Memory.type == "education",
+            Memory.status == "active",
+        )
+        res = await db.execute(stmt)
+        mems = res.scalars().all()
+        for m in mems:
+            if str(m.id) == education_id or (m.title and education_id.lower() in m.title.lower()):
+                m.status = "deleted"
+                m.deleted_at = datetime.now(UTC)
+
+        await db.flush()
+        return await self.get_profile(user_id, workspace_id=workspace_id, db=db)
+
+    async def add_project_entry(
+        self, user_id: str, data: AddProjectRequest, db=None
+    ) -> ProfileResponse | None:
+        """Add a project/portfolio entry to Memory."""
+        ws_uuid = uuid.UUID(data.workspace_id)
+        mem_content = {
+            "title": sanitize_text(data.title),
+            "tagline": sanitize_text(data.tagline) if data.tagline else None,
+            "description": sanitize_text(data.description),
+            "technologies": [sanitize_text(t) for t in data.technologies if t],
+            "metricsSummary": sanitize_text(data.metrics_summary) if data.metrics_summary else None,
+            "liveUrl": sanitize_text(data.live_url) if data.live_url else None,
+            "githubUrl": sanitize_text(data.github_url) if data.github_url else None,
+            "featured": data.featured,
+        }
+        content_str = json.dumps(mem_content)
+        mem = Memory(
+            id=uuid.uuid4(),
+            type="project",
+            domain="project",
+            status="active",
+            title=f"Project: {data.title}",
+            summary=data.tagline or f"Showcase project: {data.title}",
+            content=content_str,
+            content_hash=f"proj_{uuid.uuid4().hex[:12]}",
+            size=len(content_str),
+            metadata_={"confidence": 1.0, "source": "user", "featured": data.featured},
+            workspace_id=ws_uuid,
+            user_id=uuid.UUID(user_id) if isinstance(user_id, str) else user_id,
+        )
+        db.add(mem)
+        await db.flush()
+        return await self.get_profile(user_id, workspace_id=data.workspace_id, db=db)
+
+    async def update_project_entry(
+        self, user_id: str, project_id: str, data: UpdateProjectRequest, db=None
+    ) -> ProfileResponse | None:
+        """Update a project/portfolio entry in Memory."""
+        ws_uuid = uuid.UUID(data.workspace_id)
+        stmt = select(Memory).where(
+            Memory.workspace_id == ws_uuid,
+            Memory.type == "project",
+            Memory.status == "active",
+        )
+        res = await db.execute(stmt)
+        mems = res.scalars().all()
+        target = None
+        for m in mems:
+            if str(m.id) == project_id or (m.title and project_id.lower() in m.title.lower()):
+                target = m
+                break
+
+        if target:
+            content = json.loads(target.content) if isinstance(target.content, str) else dict(target.content or {})
+            if data.title is not None:
+                content["title"] = sanitize_text(data.title)
+            if data.tagline is not None:
+                content["tagline"] = sanitize_text(data.tagline)
+            if data.description is not None:
+                content["description"] = sanitize_text(data.description)
+            if data.technologies is not None:
+                content["technologies"] = [sanitize_text(t) for t in data.technologies if t]
+            if data.metrics_summary is not None:
+                content["metricsSummary"] = sanitize_text(data.metrics_summary)
+            if data.live_url is not None:
+                content["liveUrl"] = sanitize_text(data.live_url)
+            if data.github_url is not None:
+                content["githubUrl"] = sanitize_text(data.github_url)
+            if data.featured is not None:
+                content["featured"] = data.featured
+
+            target.content = json.dumps(content)
+            target.title = f"Project: {content.get('title', 'Project')}"
+            target.summary = content.get('tagline') or f"Showcase project: {content.get('title')}"
+            target.updated_at = datetime.now(UTC)
+
+        await db.flush()
+        return await self.get_profile(user_id, workspace_id=data.workspace_id, db=db)
+
+    async def delete_project_entry(
+        self, user_id: str, workspace_id: str, project_id: str, db=None
+    ) -> ProfileResponse | None:
+        """Soft delete a project/portfolio entry from Memory."""
+        ws_uuid = uuid.UUID(workspace_id)
+        stmt = select(Memory).where(
+            Memory.workspace_id == ws_uuid,
+            Memory.type == "project",
+            Memory.status == "active",
+        )
+        res = await db.execute(stmt)
+        mems = res.scalars().all()
+        for m in mems:
+            if str(m.id) == project_id or (m.title and project_id.lower() in m.title.lower()):
+                m.status = "deleted"
+                m.deleted_at = datetime.now(UTC)
+
+        await db.flush()
+        return await self.get_profile(user_id, workspace_id=workspace_id, db=db)
+
+    async def update_application_vault(
+        self, user_id: str, data: UpdateApplicationVaultRequest, db=None
+    ) -> ProfileResponse | None:
+        """Update encrypted EEO & work authorization application vault in Memory."""
+        ws_uuid = uuid.UUID(data.workspace_id)
+        stmt = select(Memory).where(
+            Memory.workspace_id == ws_uuid,
+            Memory.type == "eeo_vault",
+            Memory.status == "active",
+        )
+        res = await db.execute(stmt)
+        mem = res.scalar_one_or_none()
+
+        vault_content = {
+            "demographicsPolicy": data.demographics_policy,
+            "gender": sanitize_text(data.gender) if data.gender else None,
+            "ethnicity": sanitize_text(data.ethnicity) if data.ethnicity else None,
+            "veteranStatus": sanitize_text(data.veteran_status) if data.veteran_status else None,
+            "disabilityStatus": sanitize_text(data.disability_status) if data.disability_status else None,
+            "authorizedCountries": [sanitize_text(c) for c in data.authorized_countries if c],
+            "visaStatus": sanitize_text(data.visa_status) or "Citizen",
+            "requiresSponsorship": data.requires_sponsorship,
+            "securityClearance": sanitize_text(data.security_clearance) or "None",
+        }
+        content_str = json.dumps(vault_content)
+
+        if not mem:
+            mem = Memory(
+                id=uuid.uuid4(),
+                type="eeo_vault",
+                domain="vault",
+                status="active",
+                title="EEO & Application Vault",
+                summary="Encrypted candidate demographic & work authorization credentials",
+                content=content_str,
+                content_hash=f"vault_{uuid.uuid4().hex[:12]}",
+                size=len(content_str),
+                metadata_={"policy": data.demographics_policy},
+                workspace_id=ws_uuid,
+                user_id=uuid.UUID(user_id) if isinstance(user_id, str) else user_id,
+            )
+            db.add(mem)
+        else:
+            mem.content = content_str
+            mem.metadata_ = {"policy": data.demographics_policy}
+            mem.updated_at = datetime.now(UTC)
+
+        await db.flush()
+        return await self.get_profile(user_id, workspace_id=data.workspace_id, db=db)
+
+    async def update_agent_directives(
+        self, user_id: str, data: UpdateAgentDirectivesRequest, db=None
+    ) -> ProfileResponse | None:
+        """Update candidate agent autopilot directives and guardrails in Memory."""
+        ws_uuid = uuid.UUID(data.workspace_id)
+        stmt = select(Memory).where(
+            Memory.workspace_id == ws_uuid,
+            Memory.type == "agent_directives",
+            Memory.status == "active",
+        )
+        res = await db.execute(stmt)
+        mem = res.scalar_one_or_none()
+
+        directives_content = {
+            "autonomyMode": data.autonomy_mode,
+            "minMatchThreshold": data.min_match_threshold,
+            "dailyApplicationQuota": data.daily_application_quota,
+            "minBaseSalary": data.min_base_salary,
+            "targetBaseSalary": data.target_base_salary,
+            "targetTotalComp": data.target_total_comp,
+            "currency": sanitize_text(data.currency) or "USD",
+            "noticePeriod": sanitize_text(data.notice_period) or "2 weeks",
+            "relocationPreference": sanitize_text(data.relocation_preference) or "Remote only",
+            "travelPercentage": sanitize_text(data.travel_percentage) or "0%",
+            "coverLetterPolicy": sanitize_text(data.cover_letter_policy) or "when_required",
+        }
+        content_str = json.dumps(directives_content)
+
+        if not mem:
+            mem = Memory(
+                id=uuid.uuid4(),
+                type="agent_directives",
+                domain="agent",
+                status="active",
+                title="Agent Directives & Autopilot Settings",
+                summary=f"Autonomy Mode: {data.autonomy_mode} | Quota: {data.daily_application_quota}/day",
+                content=content_str,
+                content_hash=f"dir_{uuid.uuid4().hex[:12]}",
+                size=len(content_str),
+                workspace_id=ws_uuid,
+                user_id=uuid.UUID(user_id) if isinstance(user_id, str) else user_id,
+            )
+            db.add(mem)
+        else:
+            mem.content = content_str
+            mem.summary = f"Autonomy Mode: {data.autonomy_mode} | Quota: {data.daily_application_quota}/day"
+            mem.updated_at = datetime.now(UTC)
+
+        await db.flush()
+        return await self.get_profile(user_id, workspace_id=data.workspace_id, db=db)
+
+    async def add_company_blacklist(
+        self, user_id: str, data: AddBlacklistRequest, db=None
+    ) -> ProfileResponse | None:
+        """Add an excluded company to the blacklist in Memory."""
+        ws_uuid = uuid.UUID(data.workspace_id)
+        stmt = select(Memory).where(
+            Memory.workspace_id == ws_uuid,
+            Memory.type == "company_blacklist",
+            Memory.status == "active",
+        )
+        res = await db.execute(stmt)
+        mem = res.scalar_one_or_none()
+
+        new_item = {
+            "id": f"bl-{uuid.uuid4().hex[:8]}",
+            "companyName": sanitize_text(data.company_name),
+            "domain": sanitize_text(data.domain) if data.domain else None,
+            "reason": sanitize_text(data.reason) or "Company Blacklist",
+            "autoInferred": False,
+        }
+
+        if not mem:
+            content = {"blacklist": [new_item]}
+            content_str = json.dumps(content)
+            mem = Memory(
+                id=uuid.uuid4(),
+                type="company_blacklist",
+                domain="preferences",
+                status="active",
+                title="Company Blacklist & Excluded Employers",
+                summary="Protected employer and competitor exclusion list",
+                content=content_str,
+                content_hash=f"bl_{uuid.uuid4().hex[:12]}",
+                size=len(content_str),
+                workspace_id=ws_uuid,
+                user_id=uuid.UUID(user_id) if isinstance(user_id, str) else user_id,
+            )
+            db.add(mem)
+        else:
+            content = json.loads(mem.content) if isinstance(mem.content, str) else dict(mem.content or {})
+            bl_list = content.get("blacklist", [])
+            # Only add if not already in list
+            if not any(b.get("companyName", "").lower() == data.company_name.lower() for b in bl_list):
+                bl_list.append(new_item)
+            content["blacklist"] = bl_list
+            mem.content = json.dumps(content)
+            mem.updated_at = datetime.now(UTC)
+
+        await db.flush()
+        return await self.get_profile(user_id, workspace_id=data.workspace_id, db=db)
+
+    async def delete_company_blacklist(
+        self, user_id: str, workspace_id: str, company_name: str, db=None
+    ) -> ProfileResponse | None:
+        """Remove a company from the blacklist in Memory."""
+        ws_uuid = uuid.UUID(workspace_id)
+        stmt = select(Memory).where(
+            Memory.workspace_id == ws_uuid,
+            Memory.type == "company_blacklist",
+            Memory.status == "active",
+        )
+        res = await db.execute(stmt)
+        mem = res.scalar_one_or_none()
+        if mem:
+            content = json.loads(mem.content) if isinstance(mem.content, str) else dict(mem.content or {})
+            bl_list = content.get("blacklist", [])
+            clean_name = company_name.strip().lower()
+            filtered = [b for b in bl_list if b.get("companyName", "").lower() != clean_name and b.get("id") != company_name]
+            content["blacklist"] = filtered
+            mem.content = json.dumps(content)
+            mem.updated_at = datetime.now(UTC)
+
+        await db.flush()
+        return await self.get_profile(user_id, workspace_id=workspace_id, db=db)
+
+    async def update_screening_questions(
+        self, user_id: str, data: UpdateScreeningQuestionsRequest, db=None
+    ) -> ProfileResponse | None:
+        """Update the screening questions memory repository."""
+        ws_uuid = uuid.UUID(data.workspace_id)
+        stmt = select(Memory).where(
+            Memory.workspace_id == ws_uuid,
+            Memory.type == "screening_questions",
+            Memory.status == "active",
+        )
+        res = await db.execute(stmt)
+        mem = res.scalar_one_or_none()
+
+        questions_list = [
+            {
+                "id": q.id or f"sq-{uuid.uuid4().hex[:8]}",
+                "question": sanitize_text(q.question),
+                "answer": sanitize_text(q.answer),
+                "category": sanitize_text(q.category) or "general",
+            }
+            for q in data.questions
+        ]
+        content = {"questions": questions_list}
+        content_str = json.dumps(content)
+
+        if not mem:
+            mem = Memory(
+                id=uuid.uuid4(),
+                type="screening_questions",
+                domain="application",
+                status="active",
+                title="Screening Question Auto-Answer Bank",
+                summary=f"Saved answers for {len(questions_list)} standard recruiter questions",
+                content=content_str,
+                content_hash=f"sq_{uuid.uuid4().hex[:12]}",
+                size=len(content_str),
+                workspace_id=ws_uuid,
+                user_id=uuid.UUID(user_id) if isinstance(user_id, str) else user_id,
+            )
+            db.add(mem)
+        else:
+            mem.content = content_str
+            mem.summary = f"Saved answers for {len(questions_list)} standard recruiter questions"
+            mem.updated_at = datetime.now(UTC)
+
+        await db.flush()
+        return await self.get_profile(user_id, workspace_id=data.workspace_id, db=db)
 
 
 profile_service = ProfileService()
