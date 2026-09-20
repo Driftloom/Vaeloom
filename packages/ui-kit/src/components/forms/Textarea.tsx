@@ -19,12 +19,10 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         {label && (
           <label
             htmlFor={textareaId}
-            className="block text-xs font-medium text-[var(--color-text-secondary,#a1a1aa)] mb-1.5"
+            className="block text-xs font-medium text-text-secondary mb-1.5"
           >
             {label}
-            {props.required && (
-              <span className="text-[var(--color-status-danger,#ef4444)] ml-1">*</span>
-            )}
+            {props.required && <span className="text-error ml-1">*</span>}
           </label>
         )}
         <textarea
@@ -33,24 +31,18 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           disabled={disabled}
           aria-invalid={error ? 'true' : undefined}
           aria-describedby={error ? errorId : helperText ? helperId : undefined}
-          className={`w-full rounded-md border bg-[var(--color-bg-surface,#111114)] px-3 py-2 text-sm text-[var(--color-text-primary,#f4f4f5)] placeholder-[var(--color-text-muted,#71717a)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring,#3b82f6)] focus-visible:border-transparent disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px] ${
-            error
-              ? 'border-[var(--color-status-danger,#ef4444)]'
-              : 'border-[var(--color-border-subtle,#27272a)] hover:border-[var(--color-border-strong,#3f3f46)]'
+          className={`w-full rounded-md border bg-surface px-3 py-2 text-sm text-text placeholder-text-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:border-transparent disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px] ${
+            error ? 'border-error' : 'border-border-subtle hover:border-border-strong'
           } ${className}`.trim()}
           {...props}
         />
         {error && (
-          <p
-            id={errorId}
-            className="mt-1 text-xs text-[var(--color-status-danger,#ef4444)]"
-            role="alert"
-          >
+          <p id={errorId} className="mt-1 text-xs text-error" role="alert">
             {error}
           </p>
         )}
         {helperText && !error && (
-          <p id={helperId} className="mt-1 text-xs text-[var(--color-text-muted,#71717a)]">
+          <p id={helperId} className="mt-1 text-xs text-text-muted">
             {helperText}
           </p>
         )}

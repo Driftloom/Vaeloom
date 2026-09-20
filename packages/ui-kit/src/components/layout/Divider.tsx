@@ -12,7 +12,7 @@ export const Divider = React.forwardRef<HTMLHRElement, DividerProps>(
         <div
           role="separator"
           aria-orientation="vertical"
-          className={`inline-block w-[1px] self-stretch bg-[var(--color-border-subtle,#27272a)] ${className}`.trim()}
+          className={`inline-block w-[1px] self-stretch bg-border-subtle ${className}`.trim()}
         />
       );
     }
@@ -22,7 +22,7 @@ export const Divider = React.forwardRef<HTMLHRElement, DividerProps>(
         ref={ref}
         role="separator"
         aria-orientation="horizontal"
-        className={`w-full border-t border-[var(--color-border-subtle,#27272a)] my-4 ${className}`.trim()}
+        className={`w-full border-t border-border-subtle my-4 ${className}`.trim()}
         {...props}
       />
     );

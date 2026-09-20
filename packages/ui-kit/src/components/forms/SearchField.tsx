@@ -16,7 +16,7 @@ export const SearchField = React.forwardRef<HTMLInputElement, SearchFieldProps>(
   ({ value, onChange, onClear, placeholder = 'Search...', className = '', ...props }, ref) => {
     return (
       <div className={`relative flex items-center w-full ${className}`.trim()}>
-        <div className="absolute left-3 pointer-events-none text-[var(--color-text-muted,#71717a)] flex items-center">
+        <div className="absolute left-3 pointer-events-none text-text-muted flex items-center">
           <SearchIcon size={16} />
         </div>
         <input
@@ -25,7 +25,7 @@ export const SearchField = React.forwardRef<HTMLInputElement, SearchFieldProps>(
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full rounded-md border border-[var(--color-border-subtle,#27272a)] bg-[var(--color-bg-surface,#111114)] pl-9 pr-8 py-1.5 text-sm text-[var(--color-text-primary,#f4f4f5)] placeholder-[var(--color-text-muted,#71717a)] transition-colors hover:border-[var(--color-border-strong,#3f3f46)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring,#3b82f6)] focus-visible:border-transparent"
+          className="w-full rounded-md border border-border-subtle bg-surface pl-9 pr-8 py-1.5 text-sm text-text placeholder-text-muted transition-colors hover:border-border-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:border-transparent"
           {...props}
         />
         {value && (
@@ -36,7 +36,7 @@ export const SearchField = React.forwardRef<HTMLInputElement, SearchFieldProps>(
               onChange('');
               onClear?.();
             }}
-            className="absolute right-2.5 text-[var(--color-text-muted,#71717a)] hover:text-[var(--color-text-primary,#f4f4f5)] p-0.5 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-focus-ring,#3b82f6)]"
+            className="absolute right-2.5 text-text-muted hover:text-text p-0.5 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
           >
             <XIcon size={14} />
           </button>

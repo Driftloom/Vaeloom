@@ -33,12 +33,12 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
             {...props}
           />
           <div
-            className={`h-4 w-4 rounded border transition-colors flex items-center justify-center cursor-pointer peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--color-focus-ring,#3b82f6)] peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-[var(--color-bg-canvas,#08080a)] ${
+            className={`h-4 w-4 rounded border transition-colors flex items-center justify-center cursor-pointer peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface-100 ${
               disabled ? 'cursor-not-allowed opacity-50' : ''
             } ${
               props.checked || indeterminate
-                ? 'bg-[var(--color-action-primary,#3b82f6)] border-transparent text-white'
-                : 'bg-[var(--color-bg-surface,#111114)] border-[var(--color-border-subtle,#27272a)] hover:border-[var(--color-border-strong,#3f3f46)]'
+                ? 'bg-action border-transparent text-white'
+                : 'bg-surface border-border-subtle hover:border-border-strong'
             }`}
             onClick={() => innerRef.current?.click()}
           >
@@ -49,7 +49,7 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
         {label && (
           <label
             htmlFor={checkboxId}
-            className={`text-sm text-[var(--color-text-primary,#f4f4f5)] select-none cursor-pointer ${
+            className={`text-sm text-text select-none cursor-pointer ${
               disabled ? 'cursor-not-allowed opacity-50' : ''
             }`}
           >

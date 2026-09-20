@@ -63,42 +63,30 @@ export const Drawer: React.FC<DrawerProps> = ({
       {/* Drawer Body */}
       <div
         ref={drawerRef}
-        className={`relative z-10 w-full ${sStyle} bg-[var(--color-bg-surface,#111114)] border-l border-[var(--color-border-subtle,#27272a)] shadow-2xl flex flex-col h-full animate-in slide-in-from-right duration-200`}
+        className={`relative z-10 w-full ${sStyle} bg-surface border-l border-border-subtle shadow-2xl flex flex-col h-full animate-in slide-in-from-right duration-200`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border-subtle,#27272a)]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
           <div>
-            {title && (
-              <h3 className="text-base font-semibold text-[var(--color-text-primary,#f4f4f5)]">
-                {title}
-              </h3>
-            )}
-            {description && (
-              <p className="text-xs text-[var(--color-text-secondary,#a1a1aa)] mt-0.5">
-                {description}
-              </p>
-            )}
+            {title && <h3 className="text-base font-semibold text-text">{title}</h3>}
+            {description && <p className="text-xs text-text-secondary mt-0.5">{description}</p>}
           </div>
           <button
             type="button"
             aria-label="Close drawer"
             onClick={onClose}
-            className="p-1.5 text-[var(--color-text-muted,#71717a)] hover:text-[var(--color-text-primary,#f4f4f5)] rounded-md hover:bg-[var(--color-bg-elevated,#18181c)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring,#3b82f6)]"
+            className="p-1.5 text-text-muted hover:text-text rounded-md hover:bg-surface-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <XIcon size={18} />
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5 text-sm text-[var(--color-text-primary,#f4f4f5)]">
-          {children}
-        </div>
+        <div className="flex-1 overflow-y-auto p-5 text-sm text-text">{children}</div>
 
         {/* Footer */}
         {footer && (
-          <div className="px-5 py-3 border-t border-[var(--color-border-subtle,#27272a)] bg-[var(--color-bg-elevated,#18181c)]">
-            {footer}
-          </div>
+          <div className="px-5 py-3 border-t border-border-subtle bg-surface-200">{footer}</div>
         )}
       </div>
     </div>
