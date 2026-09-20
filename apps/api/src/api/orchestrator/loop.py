@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 _circuit_breakers: dict[str, CircuitBreaker] = {}
 _rate_limiter = AgentRateLimiter()
+_BACKGROUND_TASKS: set[asyncio.Task] = set()
 
 
 async def _broadcast_ws(workspace_id: Any, event_type: str, payload: dict[str, Any]) -> None:
@@ -411,15 +412,42 @@ class AgentRequest:
 
 
 class AgentResponse:
-    def __init__(self, status: str, final_result: Any, termination_reason: str | None = None):
+    def __init__(
+        self,
+        status: str,
+        final_result: Any,
+        termination_reason: str | None = None,
+        action: str | None = None,
+        result: Any | None = None,
+        metadata: dict[str, Any] | None = None,
+    ):
         self.status = status
         self.final_result = final_result
         self.termination_reason = termination_reason
+        self.action = action or ("suggest" if status == "success" else ("ask_clarification" if status == "escalated" else "error"))
+        if result is not None:
+            self.result = result
+        elif isinstance(final_result, dict):
+            self.result = final_result
+        else:
+            self.result = {"summary": str(final_result), "details": None, "proposals": [], "questions": []}
+        self.metadata = metadata or {}
         try:
             from .state import failure_code_for
             self.failure_code = failure_code_for(status, termination_reason)
         except Exception:
             self.failure_code = "OK" if status == "success" else "TOOL_FAILURE"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "status": self.status,
+            "action": self.action,
+            "result": self.result,
+            "final_result": self.final_result,
+            "termination_reason": self.termination_reason,
+            "failure_code": self.failure_code,
+            "metadata": self.metadata,
+        }
 
 
 class ReflectResult:
@@ -503,8 +531,9 @@ async def _assemble_rag_context(
         import uuid as _uuid
         try:
             w_uuid = _uuid.UUID(str(workspace_id))
-        except Exception:
-            w_uuid = workspace_id
+        except (ValueError, TypeError):
+            logger.debug(f"RAG assembly skipped: workspace_id '{workspace_id}' is not a valid UUID")
+            return {"entities": [], "documents": [], "preferences": []}
 
         _session_factory = session_factory
         if _session_factory is None:
@@ -2605,14 +2634,29 @@ async def improve_phase(state: LoopState, request: AgentRequest) -> AgentRespons
         logger.warning(f"LEARNING_IMPROVE_FAILED correlation={getattr(request, 'correlation_id', '?')} "
                        f"workspace={str(getattr(request, 'workspace_id', '?'))[:8]} error={exc}")
 
-    return AgentResponse(status="success", final_result=final_summary)
+    return AgentResponse(
+        status="success",
+        final_result=final_summary,
+        action="suggest",
+        result={"summary": str(final_summary), "details": None, "proposals": [], "questions": []},
+    )
 
 
 # ── Escalate ────────────────────────────────────────────────────────
 
 async def escalate_to_user(state: LoopState) -> AgentResponse:
     logger.warning("ESCALATE: max iterations exceeded")
-    return AgentResponse(status="escalated", final_result="max retries exceeded")
+    return AgentResponse(
+        status="escalated",
+        final_result="max retries exceeded",
+        action="ask_clarification",
+        result={
+            "summary": "Max retries exceeded — escalating to user.",
+            "details": "The agent reached maximum iterations without reaching satisfied confidence.",
+            "proposals": [],
+            "questions": ["Would you like to provide additional details or try a different request?"],
+        },
+    )
 
 
 # ── Streaming Loop — phase-by-phase SSE events ──────────────────────
@@ -3081,6 +3125,32 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
                                  final_result="Run stopped: no progress across iterations",
                                  termination_reason=state.termination_reason)
 
+        # QA Verification Gate: validate schema, PII, harm, and grounding before reflection
+        from ..agents.qa_agent.handler import QAAgent
+
+        qa_agent = QAAgent()
+        qa_res = await qa_agent.validate(act_result, context=plan.get("agent_context"))
+        state.add_phase(f"qa_{iteration}", {"decision": qa_res.decision, "issues": qa_res.issues})
+        await save_checkpoint(state)
+
+        if qa_res.decision == "rejected" and iteration < max_iters - 1:
+            logger.warning(f"QA REJECTED loop iteration {iteration}: {qa_res.issues} — retrying for self-correction")
+            continue
+
+        if qa_res.decision == "rejected":
+            # Validation failure is explicit — never reported as success.
+            state.terminate("failed", "qa_failed")
+            state.add_phase(f"terminated_{iteration}", {"reason": "qa_failed", "issues": qa_res.issues})
+            await save_checkpoint(state)
+            _eval_fail(state, request)
+            return AgentResponse(
+                status=state.status,
+                final_result="Run failed: output did not pass verification",
+                termination_reason=state.termination_reason,
+                action="error",
+                result={"summary": "Run failed: output did not pass verification", "details": qa_res.issues, "proposals": [], "questions": []},
+            )
+
         reflect_result = await reflect_phase(request, observe_result, iteration)
         state.add_phase(f"reflect_{iteration}", {
             "is_satisfied": reflect_result.is_satisfied,
@@ -3089,28 +3159,6 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
         await save_checkpoint(state)
 
         if reflect_result.is_satisfied:
-            # QA Verification Gate: validate schema, PII, harm, and grounding before commit
-            from ..agents.qa_agent.handler import QAAgent
-
-            qa_agent = QAAgent()
-            qa_res = await qa_agent.validate(act_result, context=plan.get("agent_context"))
-            state.add_phase(f"qa_{iteration}", {"decision": qa_res.decision, "issues": qa_res.issues})
-            await save_checkpoint(state)
-
-            if qa_res.decision == "rejected" and iteration < max_iters - 1:
-                logger.warning(f"QA REJECTED loop iteration {iteration}: {qa_res.issues} — retrying for self-correction")
-                continue
-
-            if qa_res.decision == "rejected":
-                # Validation failure is explicit — never reported as success.
-                state.terminate("failed", "qa_failed")
-                state.add_phase(f"terminated_{iteration}", {"reason": "qa_failed", "issues": qa_res.issues})
-                await save_checkpoint(state)
-                _eval_fail(state, request)
-                return AgentResponse(status=state.status,
-                                     final_result="Run failed: output did not pass verification",
-                                     termination_reason=state.termination_reason)
-
             state.terminate("success", "success")
             resp = await improve_phase(state, request)
             await save_checkpoint(state)
@@ -3145,7 +3193,9 @@ def _eval_ok(state, request, resp=None) -> None:
         import asyncio as _aio
         try:
             loop = _aio.get_running_loop()
-            loop.create_task(_save_eval_phase(state))
+            task = loop.create_task(_save_eval_phase(state))
+            _BACKGROUND_TASKS.add(task)
+            task.add_done_callback(_BACKGROUND_TASKS.discard)
         except RuntimeError:
             pass
     except Exception as exc:

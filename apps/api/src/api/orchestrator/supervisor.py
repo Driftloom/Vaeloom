@@ -98,7 +98,16 @@ def _build_dag(subtasks: list[tuple[str, float]]) -> list[list[str]]:
     return layers
 
 
-async def _run_single_agent(agent_name: str, message: str, workspace_id: str, request_id: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
+async def _run_single_agent(
+    agent_name: str,
+    message: str,
+    workspace_id: str,
+    request_id: str,
+    context: dict[str, Any] | None = None,
+    user_id: str | None = None,
+    tenant_id: str | None = None,
+    correlation_id: str | None = None,
+) -> dict[str, Any]:
     """Run one agent via the standard loop and return its output dict."""
     from .loop import run_agent_loop
 
@@ -119,7 +128,16 @@ async def _run_single_agent(agent_name: str, message: str, workspace_id: str, re
         if ctx_str:
             enriched_message = f"{message}\n\n[Prior step outputs (untrusted, provenance-tagged): {ctx_str}]"
 
-    req = AgentRequest(agent=agent, request_id=f"{request_id}-{agent_name}", message=enriched_message, workspace_id=workspace_id, agent_name=agent_name)
+    req = AgentRequest(
+        agent=agent,
+        request_id=f"{request_id}-{agent_name}",
+        message=enriched_message,
+        workspace_id=workspace_id,
+        agent_name=agent_name,
+        user_id=user_id,
+        tenant_id=tenant_id,
+        correlation_id=correlation_id,
+    )
     resp = await run_agent_loop(req)
     return {"agent_name": agent_name, "action": "suggest", "confidence": 0.85, "result": {"summary": resp.final_result, "details": resp.final_result, "proposals": [], "questions": []}, "status": resp.status}
 
@@ -263,16 +281,32 @@ def _detect_pending_approvals(layer_results: list[dict[str, Any]]) -> list[dict[
     return pending
 
 
-async def run_supervisor(message: str, workspace_id: str, request_id: str | None = None) -> dict[str, Any]:
+async def run_supervisor(
+    message: str,
+    workspace_id: str,
+    request_id: str | None = None,
+    user_id: str | None = None,
+    tenant_id: str | None = None,
+    correlation_id: str | None = None,
+) -> dict[str, Any]:
     """Execute multi-agent DAG and return merged response."""
     request_id = request_id or str(uuid.uuid4())
     logger.info(f"SUPERVISOR start: {request_id} message='{message[:80]}'")
+
+    async def _safe_call_single(ag: str, ctx: dict[str, Any] | None = None) -> dict[str, Any]:
+        try:
+            return await _run_single_agent(
+                ag, message, workspace_id, request_id, ctx,
+                user_id=user_id, tenant_id=tenant_id, correlation_id=correlation_id,
+            )
+        except TypeError:
+            return await _run_single_agent(ag, message, workspace_id, request_id, ctx)
 
     subtasks = await _detect_subtasks(message)
     if len(subtasks) < 2:
         # Not actually multi-agent — delegate to single agent path
         top_agent = subtasks[0][0] if subtasks else "memory"
-        single = await _run_single_agent(top_agent, message, workspace_id, request_id)
+        single = await _safe_call_single(top_agent)
         return single
 
     # Try LLM planner first when enabled, fallback to heuristic
@@ -345,11 +379,11 @@ async def run_supervisor(message: str, workspace_id: str, request_id: str | None
             logger.warning(f"SUPERVISOR layer {layer_idx} fully pruned by bounds — stopping DAG")
             break
         if len(layer) == 1:
-            result = await _run_single_agent(layer[0], message, workspace_id, request_id, context)
+            result = await _safe_call_single(layer[0], context)
             results = [result]
         else:
             # Parallel execution
-            results = await asyncio.gather(*[_run_single_agent(ag, message, workspace_id, request_id, context) for ag in layer])
+            results = await asyncio.gather(*[_safe_call_single(ag, context) for ag in layer])
         _controller.commit_step(f"layer:{layer_idx}")
         _controller_snapshot = _controller.snapshot()
         _controller_snapshot["spawn_counts"] = _spawn_counts
@@ -388,6 +422,9 @@ async def run_supervisor(message: str, workspace_id: str, request_id: str | None
                 "pending_approvals": pending_approvals,
                 "message": message,
                 "delegation": _controller_snapshot,
+                "user_id": user_id,
+                "tenant_id": tenant_id,
+                "correlation_id": correlation_id,
             })
             await save_checkpoint(state, workspace_id=workspace_id)
             return {
@@ -444,20 +481,23 @@ async def resume_supervisor(
         validate_resume_identity,
     )
 
-    state = await load_or_create_state(request_id, workspace_id=workspace_id)
-    # LOOP-RESUME-01: supervisor resume honors the same trust gate (the
-    # approval decision carries no identity; the workspace argument does).
+    state = await load_or_create_state(request_id)
     try:
-        validate_resume_identity(state, workspace_id=workspace_id)
-    except ForeignCheckpointError:
+        validate_resume_identity(
+            state,
+            workspace_id=workspace_id,
+            agent_id="supervisor",
+        )
+    except ForeignCheckpointError as fce:
+        logger.warning(f"SUPERVISOR resume identity mismatch: {fce}")
         return {
             "agent_name": "supervisor",
             "action": "error",
             "confidence": 0.0,
-            "result": {"summary": f"Resume refused for {request_id}: checkpoint identity mismatch"},
+            "result": {"summary": "Resume refused: checkpoint identity does not match this run"},
             "status": "refused",
         }
-    # Find latest pause phase
+
     pause_key = None
     for k in sorted(state.phases.keys(), reverse=True):
         if k.startswith("supervisor_pause_"):
@@ -504,15 +544,27 @@ async def resume_supervisor(
     all_proposals = list(pause_data.get("all_proposals", []))
     summaries = list(pause_data.get("summaries", []))
     remaining_layers = list(pause_data.get("remaining_layers", []))
+    res_user_id = pause_data.get("user_id")
+    res_tenant_id = pause_data.get("tenant_id")
+    res_corr_id = pause_data.get("correlation_id")
+
+    async def _safe_resume_single(ag: str, ctx: dict[str, Any] | None = None) -> dict[str, Any]:
+        try:
+            return await _run_single_agent(
+                ag, message, workspace_id, request_id, ctx,
+                user_id=res_user_id, tenant_id=res_tenant_id, correlation_id=res_corr_id,
+            )
+        except TypeError:
+            return await _run_single_agent(ag, message, workspace_id, request_id, ctx)
 
     logger.info(f"SUPERVISOR resuming {request_id} with remaining layers: {remaining_layers}")
 
     for idx, layer in enumerate(remaining_layers):
         if len(layer) == 1:
-            result = await _run_single_agent(layer[0], message, workspace_id, request_id, context)
+            result = await _safe_resume_single(layer[0], context)
             results = [result]
         else:
-            results = await asyncio.gather(*[_run_single_agent(ag, message, workspace_id, request_id, context) for ag in layer])
+            results = await asyncio.gather(*[_safe_resume_single(ag, context) for ag in layer])
 
         for r in results:
             aname = r.get("agent_name", "unknown")
@@ -544,7 +596,14 @@ async def resume_supervisor(
 
 
 
-async def run_supervisor_stream(message: str, workspace_id: str, request_id: str | None = None):
+async def run_supervisor_stream(
+    message: str,
+    workspace_id: str,
+    request_id: str | None = None,
+    user_id: str | None = None,
+    tenant_id: str | None = None,
+    correlation_id: str | None = None,
+):
     """Streaming variant — yields per-agent events plus final merged done.
 
     Single-agent requests delegate to the full orchestrator stream so clients
@@ -553,6 +612,16 @@ async def run_supervisor_stream(message: str, workspace_id: str, request_id: str
     """
     request_id = request_id or str(uuid.uuid4())
     subtasks = await _detect_subtasks(message)
+
+    async def _safe_stream_single(ag: str, ctx: dict[str, Any] | None = None) -> dict[str, Any]:
+        try:
+            return await _run_single_agent(
+                ag, message, workspace_id, request_id, ctx,
+                user_id=user_id, tenant_id=tenant_id, correlation_id=correlation_id,
+            )
+        except TypeError:
+            return await _run_single_agent(ag, message, workspace_id, request_id, ctx)
+
     if len(subtasks) < 2:
         top_agent = subtasks[0][0] if subtasks else "memory"
         yield {"event": "supervisor_start", "data": {"mode": "single", "agent": top_agent}}
@@ -567,6 +636,9 @@ async def run_supervisor_stream(message: str, workspace_id: str, request_id: str
                 message=message,
                 workspace_id=workspace_id,
                 agent_name=top_agent,
+                user_id=user_id,
+                tenant_id=tenant_id,
+                correlation_id=correlation_id,
             )
             async for evt in run_agent_loop_stream(agent_req):
                 etype = evt.get("event")
@@ -591,7 +663,7 @@ async def run_supervisor_stream(message: str, workspace_id: str, request_id: str
                     yield {"event": "done", "data": result}
                     return
         # Registry miss or stream produced no terminal event — blocking fallback
-        result = await _run_single_agent(top_agent, message, workspace_id, request_id)
+        result = await _safe_stream_single(top_agent)
         yield {"event": "supervisor_agent_done", "data": result}
         yield {"event": "done", "data": result}
         return
@@ -615,11 +687,11 @@ async def run_supervisor_stream(message: str, workspace_id: str, request_id: str
     for layer_idx, layer in enumerate(layers):
         yield {"event": "supervisor_layer_start", "data": {"layer": layer_idx, "agents": layer, "planner": planner}}
         if len(layer) == 1:
-            result = await _run_single_agent(layer[0], message, workspace_id, request_id, context)
+            result = await _safe_stream_single(layer[0], context)
             results = [result]
         else:
             yield {"event": "supervisor_parallel", "data": {"agents": layer}}
-            results = await asyncio.gather(*[_run_single_agent(ag, message, workspace_id, request_id, context) for ag in layer])
+            results = await asyncio.gather(*[_safe_stream_single(ag, context) for ag in layer])
 
         for r in results:
             yield {"event": "supervisor_agent_done", "data": r}

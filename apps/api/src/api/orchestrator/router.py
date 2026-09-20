@@ -141,7 +141,7 @@ CATEGORY_KEYWORDS = {
 
 class UserRequest:
     def __init__(self, request_id: str, message: str, workspace_id: str, preferred_agent: str | None = None,
-                 user_id: str | None = None, tenant_id: str | None = None):
+                 user_id: str | None = None, tenant_id: str | None = None, correlation_id: str | None = None):
         self.id = request_id
         self.message = message
         self.workspace_id = workspace_id
@@ -150,6 +150,7 @@ class UserRequest:
         # None in non-HTTP/test contexts — consumers must fail closed).
         self.user_id = user_id
         self.tenant_id = tenant_id
+        self.correlation_id = correlation_id or request_id
 
 
 # ── Muse §7 capability-aware selection ─────────────────────────────
@@ -645,7 +646,14 @@ async def handle(request: UserRequest) -> dict[str, Any]:
             from .supervisor import run_supervisor
             logger.info(f"SUPERVISOR triggered for multi-intent request: {request.message[:80]}")
             sup_start = time.monotonic()
-            supervisor_output = await run_supervisor(request.message, request.workspace_id, request.id)
+            supervisor_output = await run_supervisor(
+                request.message,
+                request.workspace_id,
+                request.id,
+                user_id=request.user_id,
+                tenant_id=request.tenant_id,
+                correlation_id=getattr(request, "correlation_id", None) or request.id,
+            )
             sup_latency = (time.monotonic() - sup_start) * 1000
             # Record metrics for supervisor
             metrics_collector.record(AgentMetric(
@@ -732,6 +740,9 @@ async def handle(request: UserRequest) -> dict[str, Any]:
         message=request.message,
         workspace_id=request.workspace_id,
         agent_name=agent_name,
+        user_id=request.user_id,
+        tenant_id=request.tenant_id,
+        correlation_id=getattr(request, "correlation_id", None) or request.id,
     )
     loop_start = time.monotonic()
     # P1c: OTel span per orchestrator dispatch

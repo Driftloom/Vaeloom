@@ -62,12 +62,15 @@ async def send_chat_message(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     await _verify_workspace_access(workspace_id, current_user, db)
-    # Delegate to governed orchestrator (fixes SEC-001 — no direct LLM bypass)
+    user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
+    tenant_id = current_user.get("tenant_id")
     req = UserRequest(
         request_id=str(uuid.uuid4()),
         message=dto.message,
         workspace_id=workspace_id,
         preferred_agent=dto.agent_name.strip().lower() if dto.agent_name else None,
+        user_id=str(user_id) if user_id else None,
+        tenant_id=str(tenant_id) if tenant_id else None,
     )
     result = await orchestrator_handle(req)
     # Preserve legacy shape: {"reply": str} while returning full orchestrator result for callers that need it

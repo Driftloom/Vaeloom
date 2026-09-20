@@ -49,6 +49,17 @@ class AgentContextLoader:
             return context
 
         try:
+            uuid.UUID(str(workspace_id))
+        except (ValueError, TypeError):
+            logger.debug(f"AgentContextLoader skipped: invalid workspace UUID '{workspace_id}'")
+            context.profile.setdefault("name", "User")
+            context.profile.setdefault("email", "user@example.com")
+            context.profile.setdefault("education", [])
+            context.profile.setdefault("experience", [])
+            context.profile.setdefault("skills", [])
+            return context
+
+        try:
             if db is not None:
                 await self._hydrate_context(context, workspace_id, user_id, db)
             else:
@@ -139,19 +150,20 @@ class AgentContextLoader:
 
                 try:
                     w_uuid = uuid.UUID(str(workspace_id))
-                except Exception:
-                    w_uuid = workspace_id
+                except (ValueError, TypeError):
+                    w_uuid = None
 
                 # 2. Load Career & Skills Entities
-                try:
-                    stmt = (
-                        select(Entity)
-                        .where(Entity.workspace_id == w_uuid)
-                        .where(Entity.type.in_(["skill", "career", "preference", "education", "experience"]))
-                        .limit(50)
-                    )
-                    res = await session.execute(stmt)
-                    entities = res.scalars().all()
+                if w_uuid is not None:
+                    try:
+                        stmt = (
+                            select(Entity)
+                            .where(Entity.workspace_id == w_uuid)
+                            .where(Entity.type.in_(["skill", "career", "preference", "education", "experience"]))
+                            .limit(50)
+                        )
+                        res = await session.execute(stmt)
+                        entities = res.scalars().all()
 
                     skills = []
                     education = []
@@ -191,24 +203,25 @@ class AgentContextLoader:
                     logger.debug(f"Entities load skipped: {e}")
 
                 # 3. Load Latest Master Resume Document if available
-                try:
-                    doc_stmt = (
-                        select(Document)
-                        .where(Document.workspace_id == w_uuid)
-                        .where(Document.path.ilike("%resume%"))
-                        .order_by(Document.updated_at.desc())
-                        .limit(1)
-                    )
-                    doc_res = await session.execute(doc_stmt)
-                    latest_resume_doc = doc_res.scalars().first()
-                    if latest_resume_doc:
-                        context.master_resume = {
-                            "document_id": str(latest_resume_doc.id),
-                            "path": latest_resume_doc.path,
-                            "summary": latest_resume_doc.summary,
-                        }
-                except Exception as e:
-                    logger.debug(f"Resume document load skipped: {e}")
+                if w_uuid is not None:
+                    try:
+                        doc_stmt = (
+                            select(Document)
+                            .where(Document.workspace_id == w_uuid)
+                            .where(Document.path.ilike("%resume%"))
+                            .order_by(Document.updated_at.desc())
+                            .limit(1)
+                        )
+                        doc_res = await session.execute(doc_stmt)
+                        latest_resume_doc = doc_res.scalars().first()
+                        if latest_resume_doc:
+                            context.master_resume = {
+                                "document_id": str(latest_resume_doc.id),
+                                "path": latest_resume_doc.path,
+                                "summary": latest_resume_doc.summary,
+                            }
+                    except Exception as e:
+                        logger.debug(f"Resume document load skipped: {e}")
 
 
 context_loader = AgentContextLoader()
