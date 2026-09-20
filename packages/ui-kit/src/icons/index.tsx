@@ -732,3 +732,36 @@ export const LogOutIcon: React.FC<IconProps> = ({ size = 16, className = '', col
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
   </svg>
 );
+
+export const KeyIcon: React.FC<IconProps> = ({ size = 16, className = '', color, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    {...defaultProps}
+    stroke={color || 'currentColor'}
+    className={className}
+    {...props}
+  >
+    <circle cx="7.5" cy="15.5" r="5.5" />
+    <path d="m21 2-9.6 9.6M15.5 7.5l3 3M18.5 4.5l3 3" />
+  </svg>
+);
+
+export const SparklesIcon: React.FC<IconProps> = ({
+  size = 16,
+  className = '',
+  color,
+  ...props
+}) => (
+  <svg
+    width={size}
+    height={size}
+    {...defaultProps}
+    stroke={color || 'currentColor'}
+    className={className}
+    {...props}
+  >
+    <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
+    <path d="M5 3v4M3 5h4M19 17v4M17 19h4" />
+  </svg>
+);
