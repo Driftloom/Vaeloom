@@ -3,14 +3,21 @@
 import React, { useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import useSWR from 'swr';
-import { Tabs, TabPanel } from '@/components/shared/Tabs';
+import {
+  Tabs,
+  TabPanel,
+  Modal,
+  EmptyState,
+  ConfidenceIndicator,
+  Button,
+  Card,
+  Badge,
+} from '@vaeloom/ui-kit';
 import { DynamicGraphViewer } from '@/lib/dynamic-imports';
 import { MemoryCorrectionPanel } from '@/components/memory/MemoryCorrectionPanel';
 import { ScaleMemoryViewer } from '@/components/memory/ScaleMemoryViewer';
 import { memoryApi, memoryFeedApi } from '@/lib/api-client';
-import { Modal } from '@vaeloom/ui-kit';
 import { useToast } from '@/components/shared/Toast';
-import { EmptyState } from '@/components/shared/EmptyState';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 
 function formatRelative(iso: string | null | undefined) {
@@ -49,17 +56,13 @@ function KindBadge({ kind }: { kind: string }) {
 function ConfidenceBar({ value }: { value: number | undefined }) {
   // F-02: absent confidence renders an honest label instead of a fake bar.
   if (value === undefined || value === null) {
-    return <span className="font-mono text-xs text-text-muted">confidence: not reported</span>;
+    return (
+      <span className="font-mono text-xs text-[var(--color-text-muted,#71717a)]">
+        confidence: not reported
+      </span>
+    );
   }
-  const pct = Math.round((value || 0) * 100);
-  return (
-    <div className="flex items-center gap-1.5">
-      <div className="h-1.5 w-16 rounded-full bg-surface-hover overflow-hidden">
-        <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
-      </div>
-      <span className="font-mono text-xs text-text-muted">{pct}%</span>
-    </div>
-  );
+  return <ConfidenceIndicator score={value} />;
 }
 
 export default function MemoryGraphPage() {
