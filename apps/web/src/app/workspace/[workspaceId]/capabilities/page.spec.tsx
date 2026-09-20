@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import CapabilitiesPage from './page';
 
 jest.mock('next/navigation', () => ({
@@ -172,5 +172,106 @@ describe('CapabilitiesPage', () => {
     const outputHeader = await screen.findByText('Execution Output');
     expect(outputHeader).toBeInTheDocument();
     expect(screen.getByText('200 OK')).toBeInTheDocument();
+  });
+
+  it('toggles the Hub browser visibility and triggers Update installed toast', () => {
+    render(<CapabilitiesPage />);
+
+    expect(screen.getByText('Capabilities Hub')).toBeInTheDocument();
+    expect(screen.getByText('Capabilities & Plugin Catalog')).toBeInTheDocument();
+
+    // Toggle collapse
+    const hideBtn = screen.getByRole('button', { name: /Hide the hub browser/i });
+    fireEvent.click(hideBtn);
+
+    expect(screen.queryByText('Capabilities & Plugin Catalog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Show the hub browser/i })).toBeInTheDocument();
+
+    // Toggle expand
+    const showBtn = screen.getByRole('button', { name: /Show the hub browser/i });
+    fireEvent.click(showBtn);
+    expect(screen.getByText('Capabilities & Plugin Catalog')).toBeInTheDocument();
+
+    // Trigger update installed
+    const updateBtn = screen.getByRole('button', { name: /Update installed/i });
+    fireEvent.click(updateBtn);
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tone: 'info',
+        title: expect.stringContaining('Updating installed capabilities'),
+      }),
+    );
+  });
+
+  it('installs a capability from the Hub into the workspace via 1-click', () => {
+    render(<CapabilitiesPage />);
+
+    // Find a hub install button
+    const addBtns = screen.getAllByRole('button', { name: /\+ Add to workspace/i });
+    expect(addBtns.length).toBeGreaterThan(0);
+
+    // Click the first install button
+    fireEvent.click(addBtns[0]);
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tone: 'success',
+        title: expect.stringMatching(/Installed/i),
+      }),
+    );
+  });
+
+  it('opens and submits Import Capability from Git / URL modal', () => {
+    jest.useFakeTimers();
+    render(<CapabilitiesPage />);
+
+    const importBtn = screen.getByRole('button', { name: /Import URL \/ Git/i });
+    fireEvent.click(importBtn);
+
+    expect(screen.getByText('Import Capability from Git / URL')).toBeInTheDocument();
+
+    const urlInput = screen.getByPlaceholderText(/https:\/\/github\.com/i);
+    fireEvent.change(urlInput, {
+      target: { value: 'https://github.com/vaeloom/skills-community/tree/main/rag-eval' },
+    });
+
+    const submitBtn = screen.getByRole('button', { name: /Import & Activate/i });
+    fireEvent.click(submitBtn);
+
+    // Fast-forward simulated compilation timer
+    act(() => {
+      jest.advanceTimersByTime(600);
+    });
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tone: 'success',
+        title: expect.stringContaining('Imported'),
+      }),
+    );
+    jest.useRealTimers();
+  });
+
+  it('filters Hub items when clicking category pills and dynamically updates subheader', () => {
+    render(<CapabilitiesPage />);
+
+    // Click Memory category pill
+    const memoryPill = screen.getByRole('button', { name: /Memory/i });
+    fireEvent.click(memoryPill);
+
+    // Dynamic subheader should update
+    expect(screen.getByText(/Episodic recall, knowledge graph storage/i)).toBeInTheDocument();
+
+    // Cards for memory should appear
+    expect(screen.getByText('chroma-vector-vault')).toBeInTheDocument();
+    expect(screen.queryByText('No catalog items match criteria')).not.toBeInTheDocument();
+
+    // Click Automation category pill
+    const automationPill = screen.getByRole('button', { name: /Automation/i });
+    fireEvent.click(automationPill);
+
+    expect(screen.getByText(/Scheduled cron triggers, webhook relays/i)).toBeInTheDocument();
+    expect(screen.getByText('cron-workflow-scheduler')).toBeInTheDocument();
+    expect(screen.queryByText('No catalog items match criteria')).not.toBeInTheDocument();
   });
 });

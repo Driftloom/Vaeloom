@@ -912,22 +912,44 @@ Translates documents and messages between 24 supported languages while preservin
 ];
 
 const STORAGE_KEY_PREFIX = 'vaeloom.capabilities.';
+const CUSTOM_STORAGE_KEY_PREFIX = 'vaeloom.capabilities.custom.';
 
 export function getStoredCapabilities(workspaceId: string): CapabilityItem[] {
   if (typeof window === 'undefined') return SEED_CAPABILITIES;
   try {
     const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${workspaceId}`);
+    const customRaw = localStorage.getItem(`${CUSTOM_STORAGE_KEY_PREFIX}${workspaceId}`);
+    let customItems: CapabilityItem[] = [];
+    if (customRaw) {
+      customItems = JSON.parse(customRaw) as CapabilityItem[];
+    }
+
+    const allBase = [...customItems, ...SEED_CAPABILITIES];
     if (raw) {
       const storedMap = JSON.parse(raw) as Record<string, boolean>;
-      return SEED_CAPABILITIES.map((item) => ({
+      return allBase.map((item) => ({
         ...item,
         enabled: storedMap[item.id] !== undefined ? Boolean(storedMap[item.id]) : item.enabled,
       }));
     }
+    return allBase;
   } catch {
     // fallback
   }
   return SEED_CAPABILITIES;
+}
+
+export function saveCustomCapability(workspaceId: string, item: CapabilityItem): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const customRaw = localStorage.getItem(`${CUSTOM_STORAGE_KEY_PREFIX}${workspaceId}`);
+    const customItems: CapabilityItem[] = customRaw ? JSON.parse(customRaw) : [];
+    const filtered = customItems.filter((c) => c.id !== item.id);
+    filtered.unshift(item);
+    localStorage.setItem(`${CUSTOM_STORAGE_KEY_PREFIX}${workspaceId}`, JSON.stringify(filtered));
+  } catch {
+    // ignore
+  }
 }
 
 export function setStoredCapabilityEnabled(
@@ -949,4 +971,940 @@ export function setStoredCapabilityEnabled(
     }
   }
   return updated;
+}
+
+// ─── Hub Discovery Catalog (Marketplace & Community Browser) ───────────────
+
+export type HubCategory =
+  | 'all'
+  | 'desktop'
+  | 'memory'
+  | 'platforms'
+  | 'web-browser'
+  | 'tools'
+  | 'voice'
+  | 'automation'
+  | 'models'
+  | 'general';
+
+export interface HubCapabilityItem {
+  id: string;
+  name: string;
+  hubCategory: HubCategory;
+  category: CapabilityCategory;
+  description: string;
+  isOfficial: boolean;
+  stars: number;
+  version: string;
+  tags: string[];
+  toolsCount?: number;
+  author: string;
+  capabilityItem: CapabilityItem;
+}
+
+export const SEED_HUB_ITEMS: HubCapabilityItem[] = [
+  {
+    id: 'hub-mnemosyne-dashboard',
+    name: 'mnemosyne-dashboard',
+    hubCategory: 'desktop',
+    category: 'plugins',
+    description:
+      'Local-only web dashboard for browsing and visualising sovereign memories, triples, stats, and consolidation.',
+    isOfficial: false,
+    stars: 215,
+    version: '1.4.2',
+    tags: ['Desktop', 'Memory', 'Dashboard'],
+    toolsCount: 4,
+    author: 'Vaeloom Community',
+    capabilityItem: {
+      id: 'plugin-mnemosyne-dashboard',
+      name: 'mnemosyne-dashboard',
+      category: 'plugins',
+      tags: ['Desktop', 'Memory', 'Dashboard'],
+      description:
+        'Local web dashboard for browsing knowledge graph triples, stats, and episodic memory recall.',
+      enabled: true,
+      source: 'community',
+      usageCount: 215,
+      lastUsed: 'Just now',
+      requiredScope: 'memory.read,plugin.execute',
+      trustClass: 'first_party',
+      version: '1.4.2',
+      author: 'Vaeloom Community',
+      markdownDoc: `# Mnemosyne Dashboard\n\nInteractive desktop memory visualization dashboard for inspecting entity nodes, edge saliency weights, and active agent memory footprints.\n`,
+    },
+  },
+  {
+    id: 'hub-vaeloom-resetwatch',
+    name: 'hermes-resetwatch',
+    hubCategory: 'desktop',
+    category: 'skills',
+    description:
+      'Track subscription quotas, rate limits, and reset times in agent sessions. Auto-notifies before exhaustion.',
+    isOfficial: false,
+    stars: 69,
+    version: '0.2.19',
+    tags: ['Desktop', 'Quota', 'Observability'],
+    author: 'Community Contributor',
+    capabilityItem: {
+      id: 'skill-hermes-resetwatch',
+      name: 'hermes-resetwatch',
+      category: 'skills',
+      tags: ['Desktop', 'Quota', 'Observability'],
+      description: 'Track subscription quotas, rate limits, and reset times in agent sessions.',
+      enabled: true,
+      source: 'community',
+      usageCount: 69,
+      requiredScope: 'system.observe',
+      trustClass: 'first_party',
+      version: '0.2.19',
+      author: 'Community Contributor',
+      markdownDoc: `# ResetWatch Skill\n\nContinuously tracks LLM quota ceilings, active token consumption, and scheduled quota reset windows across all configured providers.\n`,
+    },
+  },
+  {
+    id: 'hub-hermes-memory-ui',
+    name: 'hermes-memory-ui',
+    hubCategory: 'memory',
+    category: 'plugins',
+    description:
+      'Real-only memory dashboard and desktop plugin for inspecting episodic recall, Mem0, and Honcho state.',
+    isOfficial: false,
+    stars: 55,
+    version: '1.1.0',
+    tags: ['Memory', 'Desktop', 'Inspection'],
+    author: 'Community',
+    capabilityItem: {
+      id: 'plugin-hermes-memory-ui',
+      name: 'hermes-memory-ui',
+      category: 'plugins',
+      tags: ['Memory', 'Desktop', 'Inspection'],
+      description: 'Desktop plugin for inspecting episodic recall, Mem0, and Honcho state.',
+      enabled: true,
+      source: 'community',
+      usageCount: 55,
+      requiredScope: 'memory.read',
+      trustClass: 'first_party',
+      version: '1.1.0',
+      author: 'Community',
+      markdownDoc: `# Hermes Memory UI\n\nLive episodic memory inspector with graph visualizer and recall audit timeline.\n`,
+    },
+  },
+  {
+    id: 'hub-hermes-rss',
+    name: 'hermes-rss',
+    hubCategory: 'web-browser',
+    category: 'skills',
+    description:
+      'Read RSS and Atom feeds and discuss articles with agents directly within workspace sessions.',
+    isOfficial: false,
+    stars: 51,
+    version: '1.0.4',
+    tags: ['Web & Browser', 'RSS', 'Feeds'],
+    author: 'Community',
+    capabilityItem: {
+      id: 'skill-hermes-rss',
+      name: 'hermes-rss',
+      category: 'skills',
+      tags: ['Web & Browser', 'RSS', 'Feeds'],
+      description:
+        'Read RSS and Atom feeds and discuss articles with agents directly within workspace sessions.',
+      enabled: true,
+      source: 'community',
+      usageCount: 51,
+      requiredScope: 'connector.read',
+      trustClass: 'first_party',
+      version: '1.0.4',
+      author: 'Community',
+      markdownDoc: `# RSS Feeds Skill\n\nFetches and extracts full-text articles from curated RSS feeds and injects summaries into agent contexts.\n`,
+    },
+  },
+  {
+    id: 'hub-hermes-tailscale',
+    name: 'hermes-tailscale',
+    hubCategory: 'platforms',
+    category: 'mcp',
+    description:
+      'Browse Tailscale devices and connect to remote agent nodes across encrypted private mesh networks.',
+    isOfficial: false,
+    stars: 41,
+    version: '2.1.0',
+    tags: ['Platforms', 'Networking', 'Mesh'],
+    author: 'Tailscale Community',
+    capabilityItem: {
+      id: 'mcp-hermes-tailscale',
+      name: 'hermes-tailscale',
+      category: 'mcp',
+      tags: ['Platforms', 'Networking', 'Mesh'],
+      description: 'Connect to remote agent nodes across encrypted Tailscale mesh networks.',
+      enabled: true,
+      source: 'mcp',
+      usageCount: 41,
+      requiredScope: 'connector.mcp.execute',
+      trustClass: 'mcp.workspace.write',
+      version: '2.1.0',
+      author: 'Tailscale Community',
+      markdownDoc: `# Tailscale Mesh Connector\n\nEnables agent-to-agent peer communication across private Tailscale overlay networks without exposing public ports.\n`,
+    },
+  },
+  {
+    id: 'hub-hermes-newswire',
+    name: 'hermes-newswire',
+    hubCategory: 'desktop',
+    category: 'plugins',
+    description:
+      'Breaking-news ticker for workspace desktop: scrolling RSS/Atom feed strip above the status bar.',
+    isOfficial: false,
+    stars: 12,
+    version: '0.9.1',
+    tags: ['Desktop', 'News', 'Ticker'],
+    author: 'Community',
+    capabilityItem: {
+      id: 'plugin-hermes-newswire',
+      name: 'hermes-newswire',
+      category: 'plugins',
+      tags: ['Desktop', 'News', 'Ticker'],
+      description: 'Breaking news ticker for workspace desktop: scrolling RSS/Atom feed strip.',
+      enabled: true,
+      source: 'community',
+      usageCount: 12,
+      requiredScope: 'plugin.execute',
+      trustClass: 'first_party',
+      version: '0.9.1',
+      author: 'Community',
+      markdownDoc: `# Newswire Plugin\n\nDisplays continuous real-time market and developer news headlines directly in the workspace status line.\n`,
+    },
+  },
+  {
+    id: 'hub-agent-analytics',
+    name: 'agent-analytics',
+    hubCategory: 'tools',
+    category: 'tools',
+    description:
+      'Telemetry and dashboard-only read plugin for agent analytics, cost tracking, and execution metrics.',
+    isOfficial: false,
+    stars: 27,
+    version: '1.3.0',
+    tags: ['Tools', 'Analytics', 'Metrics'],
+    author: 'Community',
+    capabilityItem: {
+      id: 'tool-agent-analytics',
+      name: 'agent-analytics',
+      category: 'tools',
+      tags: ['Tools', 'Analytics', 'Metrics'],
+      description:
+        'Dashboard-only read tool for agent analytics, cost tracking, and execution metrics.',
+      enabled: true,
+      source: 'community',
+      usageCount: 27,
+      requiredScope: 'system.observe',
+      trustClass: 'first_party',
+      version: '1.3.0',
+      author: 'Community',
+      markdownDoc: `# Agent Analytics Tool\n\nAggregates per-agent execution times, tool failure rates, token expenditures, and trajectory quality scores.\n`,
+    },
+  },
+  {
+    id: 'hub-home-dashboard',
+    name: 'home-dashboard',
+    hubCategory: 'desktop',
+    category: 'plugins',
+    description:
+      'Personalizable home page with draggable, resizable widgets for workspace documents and active sessions.',
+    isOfficial: false,
+    stars: 13,
+    version: '1.0.0',
+    tags: ['Desktop', 'Widgets', 'Customization'],
+    author: 'Community',
+    capabilityItem: {
+      id: 'plugin-home-dashboard',
+      name: 'home-dashboard',
+      category: 'plugins',
+      tags: ['Desktop', 'Widgets', 'Customization'],
+      description: 'Personalizable home page with draggable, resizable widgets.',
+      enabled: true,
+      source: 'community',
+      usageCount: 13,
+      requiredScope: 'plugin.execute',
+      trustClass: 'first_party',
+      version: '1.0.0',
+      author: 'Community',
+      markdownDoc: `# Home Dashboard Plugin\n\nModular dashboard framework allowing users to arrange live status widgets, document recents, and agent feeds.\n`,
+    },
+  },
+  {
+    id: 'hub-hermes-ledgerline',
+    name: 'hermes-ledgerline',
+    hubCategory: 'tools',
+    category: 'tools',
+    description:
+      'Inspect session costs and token usage in workspace desktop with fine-grained per-model cost ledger.',
+    isOfficial: false,
+    stars: 11,
+    version: '1.0.2',
+    tags: ['Tools', 'Ledger', 'Costs'],
+    author: 'Community',
+    capabilityItem: {
+      id: 'tool-hermes-ledgerline',
+      name: 'hermes-ledgerline',
+      category: 'tools',
+      tags: ['Tools', 'Ledger', 'Costs'],
+      description:
+        'Inspect session costs and token usage in workspace with fine-grained per-model cost ledger.',
+      enabled: true,
+      source: 'community',
+      usageCount: 11,
+      requiredScope: 'system.observe',
+      trustClass: 'first_party',
+      version: '1.0.2',
+      author: 'Community',
+      markdownDoc: `# LedgerLine Cost Audit\n\nDetailed breakdown of input, output, and cache token costs per model, workspace, and autonomous agent run.\n`,
+    },
+  },
+  {
+    id: 'hub-playwright-automator',
+    name: 'playwright-browser-scraper',
+    hubCategory: 'web-browser',
+    category: 'tools',
+    description:
+      'Headless Chromium browser automation tool for job boards, company pages, and portal navigation with SSRF guards.',
+    isOfficial: true,
+    stars: 142,
+    version: '2.4.0',
+    tags: ['Web & Browser', 'Chromium', 'Official'],
+    toolsCount: 6,
+    author: 'Vaeloom Official',
+    capabilityItem: {
+      id: 'tool-playwright-browser-scraper',
+      name: 'playwright-browser-scraper',
+      category: 'tools',
+      tags: ['Web & Browser', 'Chromium', 'Official'],
+      description:
+        'Headless Chromium browser automation tool with SSRF guards and anti-bot evasions.',
+      enabled: true,
+      source: 'built-in',
+      usageCount: 142,
+      requiredScope: 'connector.read',
+      trustClass: 'first_party',
+      version: '2.4.0',
+      author: 'Vaeloom Official',
+      markdownDoc: `# Playwright Browser Scraper\n\nOfficial headless browser tool enabling agents to navigate external web applications and extract live HTML.\n`,
+    },
+  },
+  {
+    id: 'hub-whisper-transcriber',
+    name: 'whisper-voice-transcriber',
+    hubCategory: 'voice',
+    category: 'plugins',
+    description:
+      'Local speech-to-text audio transcriber with Whisper engine, timestamping, and multi-lingual voice notes.',
+    isOfficial: true,
+    stars: 88,
+    version: '1.2.0',
+    tags: ['Voice', 'Whisper', 'Audio'],
+    author: 'Vaeloom Official',
+    capabilityItem: {
+      id: 'plugin-whisper-voice-transcriber',
+      name: 'whisper-voice-transcriber',
+      category: 'plugins',
+      tags: ['Voice', 'Whisper', 'Audio'],
+      description:
+        'Local speech-to-text audio transcriber with Whisper engine and speaker diarization.',
+      enabled: true,
+      source: 'built-in',
+      usageCount: 88,
+      requiredScope: 'plugin.execute',
+      trustClass: 'first_party',
+      version: '1.2.0',
+      author: 'Vaeloom Official',
+      markdownDoc: `# Whisper Voice Transcriber\n\nTranscribes voice recordings and audio attachments directly into workspace document markdown.\n`,
+    },
+  },
+  {
+    id: 'hub-github-copilot-bridge',
+    name: 'github-copilot-bridge',
+    hubCategory: 'platforms',
+    category: 'mcp',
+    description:
+      'Bidirectional GitHub platform bridge for managing pull requests, review comments, and repo code search.',
+    isOfficial: true,
+    stars: 176,
+    version: '3.0.1',
+    tags: ['Platforms', 'GitHub', 'Official'],
+    author: 'Vaeloom Official',
+    capabilityItem: {
+      id: 'mcp-github-copilot-bridge',
+      name: 'github-copilot-bridge',
+      category: 'mcp',
+      tags: ['Platforms', 'GitHub', 'Official'],
+      description: 'Bidirectional GitHub platform bridge for managing PRs and repositories.',
+      enabled: true,
+      source: 'mcp',
+      usageCount: 176,
+      requiredScope: 'connector.mcp.execute',
+      trustClass: 'mcp.workspace.write',
+      version: '3.0.1',
+      author: 'Vaeloom Official',
+      markdownDoc: `# GitHub Copilot Bridge\n\nModel Context Protocol connector to GitHub APIs, pull requests, and commit verification workflows.\n`,
+    },
+  },
+  {
+    id: 'hub-chroma-vector-vault',
+    name: 'chroma-vector-vault',
+    hubCategory: 'memory',
+    category: 'plugins',
+    description:
+      'Local embedded vector vault for semantic embedding storage, document chunk indexing, and similarity lookups.',
+    isOfficial: true,
+    stars: 310,
+    version: '2.1.0',
+    tags: ['Memory', 'Vector', 'Chroma'],
+    toolsCount: 5,
+    author: 'Vaeloom Official',
+    capabilityItem: {
+      id: 'plugin-chroma-vector-vault',
+      name: 'chroma-vector-vault',
+      category: 'plugins',
+      tags: ['Memory', 'Vector', 'Chroma'],
+      description:
+        'Local embedded vector vault for semantic embedding storage and similarity lookups.',
+      enabled: true,
+      source: 'built-in',
+      usageCount: 310,
+      requiredScope: 'memory.write',
+      trustClass: 'first_party',
+      version: '2.1.0',
+      author: 'Vaeloom Official',
+      markdownDoc: `# Chroma Vector Vault\n\nEmbedded vector store enabling semantic search and similarity retrieval across workspace documents.\n`,
+    },
+  },
+  {
+    id: 'hub-episodic-decay-monitor',
+    name: 'episodic-decay-monitor',
+    hubCategory: 'memory',
+    category: 'skills',
+    description:
+      'Monitors memory node saliency and automatically decays unreferenced episodic memories over time.',
+    isOfficial: false,
+    stars: 94,
+    version: '1.2.1',
+    tags: ['Memory', 'Decay', 'Graph'],
+    author: 'Community',
+    capabilityItem: {
+      id: 'skill-episodic-decay-monitor',
+      name: 'episodic-decay-monitor',
+      category: 'skills',
+      tags: ['Memory', 'Decay', 'Graph'],
+      description:
+        'Monitors memory node saliency and decays unreferenced episodic memories over time.',
+      enabled: true,
+      source: 'community',
+      usageCount: 94,
+      requiredScope: 'memory.write',
+      trustClass: 'first_party',
+      version: '1.2.1',
+      author: 'Community',
+      markdownDoc: `# Episodic Decay Monitor\n\nManages knowledge graph lifecycle by dynamically adjusting entity saliency weights based on recall frequency.\n`,
+    },
+  },
+  {
+    id: 'hub-mem0-sovereign-bridge',
+    name: 'mem0-sovereign-bridge',
+    hubCategory: 'memory',
+    category: 'mcp',
+    description:
+      'Model Context Protocol connector synchronizing sovereign workspace memories with Mem0 semantic storage.',
+    isOfficial: true,
+    stars: 245,
+    version: '1.5.0',
+    tags: ['Memory', 'MCP', 'Mem0'],
+    toolsCount: 3,
+    author: 'Vaeloom Official',
+    capabilityItem: {
+      id: 'mcp-mem0-sovereign-bridge',
+      name: 'mem0-sovereign-bridge',
+      category: 'mcp',
+      tags: ['Memory', 'MCP', 'Mem0'],
+      description:
+        'MCP connector synchronizing sovereign workspace memories with Mem0 semantic storage.',
+      enabled: true,
+      source: 'mcp',
+      usageCount: 245,
+      requiredScope: 'connector.mcp.execute',
+      trustClass: 'mcp.workspace.write',
+      version: '1.5.0',
+      author: 'Vaeloom Official',
+      markdownDoc: `# Mem0 Sovereign Bridge\n\nProvides bidirectional synchronization between Vaeloom knowledge graph nodes and external Mem0 persistence.\n`,
+    },
+  },
+  {
+    id: 'hub-cron-workflow-scheduler',
+    name: 'cron-workflow-scheduler',
+    hubCategory: 'automation',
+    category: 'plugins',
+    description:
+      'Enterprise cron scheduler for recurring background agent executions, automated rollups, and hygiene sweeps.',
+    isOfficial: true,
+    stars: 188,
+    version: '2.0.1',
+    tags: ['Automation', 'Cron', 'Scheduler'],
+    toolsCount: 4,
+    author: 'Vaeloom Official',
+    capabilityItem: {
+      id: 'plugin-cron-workflow-scheduler',
+      name: 'cron-workflow-scheduler',
+      category: 'plugins',
+      tags: ['Automation', 'Cron', 'Scheduler'],
+      description: 'Enterprise cron scheduler for recurring background agent executions.',
+      enabled: true,
+      source: 'built-in',
+      usageCount: 188,
+      requiredScope: 'plugin.execute',
+      trustClass: 'core_trusted',
+      version: '2.0.1',
+      author: 'Vaeloom Official',
+      markdownDoc: `# Cron Workflow Scheduler\n\nRuns recurring scheduled tasks and autonomous agent sweeps with configurable cron expressions and logging.\n`,
+    },
+  },
+  {
+    id: 'hub-webhook-action-dispatcher',
+    name: 'webhook-action-dispatcher',
+    hubCategory: 'automation',
+    category: 'tools',
+    description:
+      'Inbound and outbound webhook router delivering event payloads to external APIs with automatic retries and HMAC verification.',
+    isOfficial: false,
+    stars: 76,
+    version: '1.1.4',
+    tags: ['Automation', 'Webhooks', 'HTTP'],
+    author: 'Community',
+    capabilityItem: {
+      id: 'tool-webhook-action-dispatcher',
+      name: 'webhook-action-dispatcher',
+      category: 'tools',
+      tags: ['Automation', 'Webhooks', 'HTTP'],
+      description:
+        'Webhook router delivering event payloads to external APIs with HMAC signatures.',
+      enabled: true,
+      source: 'community',
+      usageCount: 76,
+      requiredScope: 'connector.write',
+      trustClass: 'first_party',
+      version: '1.1.4',
+      author: 'Community',
+      markdownDoc: `# Webhook Action Dispatcher\n\nDispatches webhook notifications and triggers agent loops upon receipt of signed webhooks.\n`,
+    },
+  },
+  {
+    id: 'hub-event-stream-relay',
+    name: 'event-stream-relay',
+    hubCategory: 'automation',
+    category: 'mcp',
+    description:
+      'Model Context Protocol bridge streaming Server-Sent Events (SSE) and Kafka pub/sub events into agent contexts.',
+    isOfficial: false,
+    stars: 112,
+    version: '1.3.0',
+    tags: ['Automation', 'Kafka', 'SSE'],
+    author: 'Community',
+    capabilityItem: {
+      id: 'mcp-event-stream-relay',
+      name: 'event-stream-relay',
+      category: 'mcp',
+      tags: ['Automation', 'Kafka', 'SSE'],
+      description: 'MCP bridge streaming SSE and Kafka pub/sub events into agent contexts.',
+      enabled: true,
+      source: 'mcp',
+      usageCount: 112,
+      requiredScope: 'connector.mcp.execute',
+      trustClass: 'mcp.workspace.write',
+      version: '1.3.0',
+      author: 'Community',
+      markdownDoc: `# Event Stream Relay\n\nSubscribes to enterprise event topics and streams relevant messages to autonomous listening agents.\n`,
+    },
+  },
+  {
+    id: 'hub-elevenlabs-voice-synthesis',
+    name: 'elevenlabs-voice-synthesis',
+    hubCategory: 'voice',
+    category: 'plugins',
+    description:
+      'Ultra-low latency streaming voice synthesis transforming agent responses into natural, human-like voice audio.',
+    isOfficial: false,
+    stars: 164,
+    version: '2.2.0',
+    tags: ['Voice', 'ElevenLabs', 'Audio'],
+    author: 'Community',
+    capabilityItem: {
+      id: 'plugin-elevenlabs-voice-synthesis',
+      name: 'elevenlabs-voice-synthesis',
+      category: 'plugins',
+      tags: ['Voice', 'ElevenLabs', 'Audio'],
+      description: 'Ultra-low latency streaming voice synthesis generating natural audio output.',
+      enabled: true,
+      source: 'community',
+      usageCount: 164,
+      requiredScope: 'plugin.execute',
+      trustClass: 'first_party',
+      version: '2.2.0',
+      author: 'Community',
+      markdownDoc: `# ElevenLabs Voice Synthesis\n\nHigh fidelity neural voice generator providing lifelike audio responses for agent conversations.\n`,
+    },
+  },
+  {
+    id: 'hub-voice-command-trigger',
+    name: 'voice-command-trigger',
+    hubCategory: 'voice',
+    category: 'skills',
+    description:
+      'Hands-free voice recognition trigger that activates agent workflows upon detecting spoken hotwords.',
+    isOfficial: true,
+    stars: 82,
+    version: '1.0.3',
+    tags: ['Voice', 'Hotwords', 'HandsFree'],
+    author: 'Vaeloom Official',
+    capabilityItem: {
+      id: 'skill-voice-command-trigger',
+      name: 'voice-command-trigger',
+      category: 'skills',
+      tags: ['Voice', 'Hotwords', 'HandsFree'],
+      description:
+        'Hands-free voice recognition trigger activating workflows upon spoken hotwords.',
+      enabled: true,
+      source: 'built-in',
+      usageCount: 82,
+      requiredScope: 'system.observe',
+      trustClass: 'first_party',
+      version: '1.0.3',
+      author: 'Vaeloom Official',
+      markdownDoc: `# Voice Command Trigger\n\nListens for customizable audio wake phrases to initiate hands-free agent dialogs.\n`,
+    },
+  },
+  {
+    id: 'hub-ollama-local-gateway',
+    name: 'ollama-local-gateway',
+    hubCategory: 'models',
+    category: 'plugins',
+    description:
+      'Connects local Ollama instances running Llama 3, Mistral, and DeepSeek for offline, zero-data-leakage inference.',
+    isOfficial: true,
+    stars: 390,
+    version: '3.1.0',
+    tags: ['Models', 'Ollama', 'LocalLLM'],
+    toolsCount: 6,
+    author: 'Vaeloom Official',
+    capabilityItem: {
+      id: 'plugin-ollama-local-gateway',
+      name: 'ollama-local-gateway',
+      category: 'plugins',
+      tags: ['Models', 'Ollama', 'LocalLLM'],
+      description:
+        'Connects local Ollama instances running open-weight models for private inference.',
+      enabled: true,
+      source: 'built-in',
+      usageCount: 390,
+      requiredScope: 'plugin.execute',
+      trustClass: 'core_trusted',
+      version: '3.1.0',
+      author: 'Vaeloom Official',
+      markdownDoc: `# Ollama Local Gateway\n\nRoutes LLM prompts to localhost or LAN Ollama instances without routing data over the public internet.\n`,
+    },
+  },
+  {
+    id: 'hub-anthropic-claude-routing',
+    name: 'anthropic-claude-routing',
+    hubCategory: 'models',
+    category: 'tools',
+    description:
+      'Dynamic tiered model router that selects Claude 3.5 Sonnet, Haiku, or Opus based on prompt difficulty and token budget.',
+    isOfficial: true,
+    stars: 278,
+    version: '2.0.0',
+    tags: ['Models', 'Anthropic', 'Router'],
+    author: 'Vaeloom Official',
+    capabilityItem: {
+      id: 'tool-anthropic-claude-routing',
+      name: 'anthropic-claude-routing',
+      category: 'tools',
+      tags: ['Models', 'Anthropic', 'Router'],
+      description: 'Tiered model router selecting optimal Claude model based on prompt complexity.',
+      enabled: true,
+      source: 'built-in',
+      usageCount: 278,
+      requiredScope: 'system.observe',
+      trustClass: 'first_party',
+      version: '2.0.0',
+      author: 'Vaeloom Official',
+      markdownDoc: `# Anthropic Claude Routing\n\nIntelligent prompt complexity evaluator that minimizes cost by routing simple queries to Haiku and complex reasoning to Sonnet.\n`,
+    },
+  },
+  {
+    id: 'hub-groq-speed-gateway',
+    name: 'groq-speed-gateway',
+    hubCategory: 'models',
+    category: 'tools',
+    description:
+      'Ultra-high-speed inference gateway leveraging Groq LPU hardware for sub-second agent reasoning loops.',
+    isOfficial: false,
+    stars: 153,
+    version: '1.4.0',
+    tags: ['Models', 'Groq', 'LPU'],
+    author: 'Community',
+    capabilityItem: {
+      id: 'tool-groq-speed-gateway',
+      name: 'groq-speed-gateway',
+      category: 'tools',
+      tags: ['Models', 'Groq', 'LPU'],
+      description: 'Ultra-high-speed inference gateway leveraging Groq LPU hardware.',
+      enabled: true,
+      source: 'community',
+      usageCount: 153,
+      requiredScope: 'connector.read',
+      trustClass: 'first_party',
+      version: '1.4.0',
+      author: 'Community',
+      markdownDoc: `# Groq Speed Gateway\n\nAccesses ultra-fast LPU inference endpoints for real-time interactive voice agents and instant search indexing.\n`,
+    },
+  },
+  {
+    id: 'hub-slack-agent-relay',
+    name: 'slack-agent-relay',
+    hubCategory: 'platforms',
+    category: 'mcp',
+    description:
+      'Bidirectional Slack workspace bot relay for querying agents, triggering tasks, and posting status updates directly in channels.',
+    isOfficial: true,
+    stars: 220,
+    version: '2.3.0',
+    tags: ['Platforms', 'Slack', 'Official'],
+    author: 'Vaeloom Official',
+    capabilityItem: {
+      id: 'mcp-slack-agent-relay',
+      name: 'slack-agent-relay',
+      category: 'mcp',
+      tags: ['Platforms', 'Slack', 'Official'],
+      description:
+        'Bidirectional Slack workspace bot relay for querying agents and receiving alerts.',
+      enabled: true,
+      source: 'mcp',
+      usageCount: 220,
+      requiredScope: 'connector.mcp.execute',
+      trustClass: 'mcp.workspace.write',
+      version: '2.3.0',
+      author: 'Vaeloom Official',
+      markdownDoc: `# Slack Agent Relay\n\nLinks team Slack channels to sovereign agent workflows with thread continuity and action buttons.\n`,
+    },
+  },
+  {
+    id: 'hub-linear-sync-bridge',
+    name: 'linear-sync-bridge',
+    hubCategory: 'platforms',
+    category: 'mcp',
+    description:
+      'Syncs workspace tasks and project roadmaps with Linear issues, cycles, and team backlogs.',
+    isOfficial: false,
+    stars: 145,
+    version: '1.2.2',
+    tags: ['Platforms', 'Linear', 'Project'],
+    author: 'Community',
+    capabilityItem: {
+      id: 'mcp-linear-sync-bridge',
+      name: 'linear-sync-bridge',
+      category: 'mcp',
+      tags: ['Platforms', 'Linear', 'Project'],
+      description: 'Syncs workspace tasks and roadmaps with Linear issues and cycles.',
+      enabled: true,
+      source: 'mcp',
+      usageCount: 145,
+      requiredScope: 'connector.mcp.execute',
+      trustClass: 'mcp.workspace.write',
+      version: '1.2.2',
+      author: 'Community',
+      markdownDoc: `# Linear Sync Bridge\n\nAutomatically manages Linear tickets, updates issue states upon code completion, and generates release notes.\n`,
+    },
+  },
+  {
+    id: 'hub-firecrawl-deep-extractor',
+    name: 'firecrawl-deep-extractor',
+    hubCategory: 'web-browser',
+    category: 'tools',
+    description:
+      'Recursively crawls web documentation and dynamic single-page applications, extracting clean markdown for LLM ingestion.',
+    isOfficial: false,
+    stars: 260,
+    version: '1.8.0',
+    tags: ['Web & Browser', 'Crawler', 'Markdown'],
+    author: 'Community',
+    capabilityItem: {
+      id: 'tool-firecrawl-deep-extractor',
+      name: 'firecrawl-deep-extractor',
+      category: 'tools',
+      tags: ['Web & Browser', 'Crawler', 'Markdown'],
+      description: 'Recursively crawls web documentation, producing LLM-ready markdown.',
+      enabled: true,
+      source: 'community',
+      usageCount: 260,
+      requiredScope: 'connector.read',
+      trustClass: 'first_party',
+      version: '1.8.0',
+      author: 'Community',
+      markdownDoc: `# Firecrawl Deep Extractor\n\nPerforms multi-page web document scraping with JavaScript execution, cookie handling, and noise filtering.\n`,
+    },
+  },
+  {
+    id: 'hub-code-complexity-analyzer',
+    name: 'code-complexity-analyzer',
+    hubCategory: 'tools',
+    category: 'tools',
+    description:
+      'AST static code analysis utility computing cyclomatic complexity, Halstead metrics, and maintainability index.',
+    isOfficial: true,
+    stars: 118,
+    version: '1.1.0',
+    tags: ['Tools', 'AST', 'Metrics'],
+    author: 'Vaeloom Official',
+    capabilityItem: {
+      id: 'tool-code-complexity-analyzer',
+      name: 'code-complexity-analyzer',
+      category: 'tools',
+      tags: ['Tools', 'AST', 'Metrics'],
+      description: 'AST static code analysis computing complexity and maintainability index.',
+      enabled: true,
+      source: 'built-in',
+      usageCount: 118,
+      requiredScope: 'system.observe',
+      trustClass: 'first_party',
+      version: '1.1.0',
+      author: 'Vaeloom Official',
+      markdownDoc: `# Code Complexity Analyzer\n\nEvaluates cyclomatic complexity and nesting depth across Python, TypeScript, and Go source files.\n`,
+    },
+  },
+  {
+    id: 'hub-json-schema-guard',
+    name: 'json-schema-guard',
+    hubCategory: 'tools',
+    category: 'tools',
+    description:
+      'High-speed JSON schema validation tool verifying agent tool inputs and structured model outputs against OpenAPI schemas.',
+    isOfficial: true,
+    stars: 92,
+    version: '1.0.5',
+    tags: ['Tools', 'Schema', 'Validation'],
+    author: 'Vaeloom Official',
+    capabilityItem: {
+      id: 'tool-json-schema-guard',
+      name: 'json-schema-guard',
+      category: 'tools',
+      tags: ['Tools', 'Schema', 'Validation'],
+      description: 'High-speed JSON schema validation verifying structured agent outputs.',
+      enabled: true,
+      source: 'built-in',
+      usageCount: 92,
+      requiredScope: 'system.observe',
+      trustClass: 'first_party',
+      version: '1.0.5',
+      author: 'Vaeloom Official',
+      markdownDoc: `# JSON Schema Guard\n\nValidates incoming and outgoing payloads against strict Draft-07 JSON schemas before tool dispatch.\n`,
+    },
+  },
+  {
+    id: 'hub-markdown-pdf-compiler',
+    name: 'markdown-pdf-compiler',
+    hubCategory: 'general',
+    category: 'plugins',
+    description:
+      'Headless document compiler generating professional, publication-ready PDFs from Markdown specifications.',
+    isOfficial: true,
+    stars: 175,
+    version: '2.1.0',
+    tags: ['General', 'PDF', 'Markdown'],
+    author: 'Vaeloom Official',
+    capabilityItem: {
+      id: 'plugin-markdown-pdf-compiler',
+      name: 'markdown-pdf-compiler',
+      category: 'plugins',
+      tags: ['General', 'PDF', 'Markdown'],
+      description: 'Headless document compiler generating publication-ready PDFs from Markdown.',
+      enabled: true,
+      source: 'built-in',
+      usageCount: 175,
+      requiredScope: 'plugin.execute',
+      trustClass: 'first_party',
+      version: '2.1.0',
+      author: 'Vaeloom Official',
+      markdownDoc: `# Markdown PDF Compiler\n\nConverts Markdown documents into paginated, typography-optimized PDFs with syntax-highlighted code blocks.\n`,
+    },
+  },
+  {
+    id: 'hub-document-diff-engine',
+    name: 'document-diff-engine',
+    hubCategory: 'general',
+    category: 'tools',
+    description:
+      'High-precision Myers diffing and semantic patch generator for comparing document versions and workspace artifacts.',
+    isOfficial: false,
+    stars: 84,
+    version: '1.2.0',
+    tags: ['General', 'Diff', 'Patch'],
+    author: 'Community',
+    capabilityItem: {
+      id: 'tool-document-diff-engine',
+      name: 'document-diff-engine',
+      category: 'tools',
+      tags: ['General', 'Diff', 'Patch'],
+      description: 'Myers diffing and semantic patch generator for comparing document revisions.',
+      enabled: true,
+      source: 'community',
+      usageCount: 84,
+      requiredScope: 'system.observe',
+      trustClass: 'first_party',
+      version: '1.2.0',
+      author: 'Community',
+      markdownDoc: `# Document Diff Engine\n\nGenerates side-by-side visual diffs and unified patch representations for file version auditing.\n`,
+    },
+  },
+  {
+    id: 'hub-regex-pattern-extractor',
+    name: 'regex-pattern-extractor',
+    hubCategory: 'general',
+    category: 'skills',
+    description:
+      'Synthesizes and audits complex regular expression patterns for unstructured text parsing and log analysis.',
+    isOfficial: false,
+    stars: 62,
+    version: '1.0.1',
+    tags: ['General', 'Regex', 'Parser'],
+    author: 'Community',
+    capabilityItem: {
+      id: 'skill-regex-pattern-extractor',
+      name: 'regex-pattern-extractor',
+      category: 'skills',
+      tags: ['General', 'Regex', 'Parser'],
+      description: 'Synthesizes and audits regex patterns for unstructured text parsing.',
+      enabled: true,
+      source: 'community',
+      usageCount: 62,
+      requiredScope: 'system.observe',
+      trustClass: 'first_party',
+      version: '1.0.1',
+      author: 'Community',
+      markdownDoc: `# Regex Pattern Extractor\n\nBuilds, validates, and benchmarks Re2-compatible regular expressions for high-throughput pattern matching.\n`,
+    },
+  },
+];
+
+export function installHubCapability(
+  workspaceId: string,
+  hubItem: HubCapabilityItem,
+): CapabilityItem[] {
+  const current = getStoredCapabilities(workspaceId);
+  const exists = current.find(
+    (c) => c.id === hubItem.capabilityItem.id || c.name === hubItem.capabilityItem.name,
+  );
+  if (exists) {
+    return setStoredCapabilityEnabled(workspaceId, exists.id, true);
+  }
+
+  saveCustomCapability(workspaceId, { ...hubItem.capabilityItem, enabled: true });
+  return setStoredCapabilityEnabled(workspaceId, hubItem.capabilityItem.id, true);
 }
