@@ -23,6 +23,9 @@ dmypy.json
 .venv/
 .venv*/
 .venv-old/
+.uv/
+.uv_cache/
+uv.cache/
 
 # Dependencies
 node_modules/
@@ -85,6 +88,10 @@ infra/kubernetes/secrets/*.yaml
 *.key
 *.p12
 *.pfx
+*.secret
+*.secrets
+.secrets/
+secrets/
 
 # Logs
 logs/
@@ -187,6 +194,7 @@ query_engine-*.node
 *.sqlite
 *.sqlite3
 dump.rdb
+*.rdb
 temporal_data/
 
 # Coverage artifacts
