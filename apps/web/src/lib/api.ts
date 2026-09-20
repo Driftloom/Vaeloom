@@ -533,6 +533,77 @@ export const api = {
     },
   },
 
+  // Connectors
+  connectors: {
+    list(workspaceId?: string, type?: string): Promise<any[]> {
+      const qs = new URLSearchParams();
+      if (workspaceId) qs.set('workspace_id', workspaceId);
+      if (type) qs.set('type', type);
+      const qStr = qs.toString() ? `?${qs.toString()}` : '';
+      return request<any[]>(`/connectors${qStr}`);
+    },
+    get(id: string): Promise<any> {
+      return request(`/connectors/${id}`);
+    },
+    create(body: Record<string, any>): Promise<any> {
+      return request('/connectors', { method: 'POST', body: JSON.stringify(body) });
+    },
+    update(id: string, body: Record<string, any>): Promise<any> {
+      return request(`/connectors/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+    },
+    delete(id: string): Promise<void> {
+      return request<void>(`/connectors/${id}`, { method: 'DELETE' });
+    },
+    sync(id: string): Promise<{ status: string; records_synced?: number; error?: string }> {
+      return request(`/connectors/${id}/sync`, { method: 'POST' });
+    },
+    getSyncStatus(id: string): Promise<any> {
+      return request(`/connectors/${id}/sync/status`);
+    },
+    test(id: string): Promise<any> {
+      return request(`/connectors/${id}/test`, { method: 'POST' });
+    },
+    health(id: string): Promise<any> {
+      return request(`/connectors/${id}/health`);
+    },
+    listMcpTools(id: string, refresh = false): Promise<any[]> {
+      return request(`/connectors/${id}/mcp/tools?refresh=${refresh}`);
+    },
+    refreshMcpTools(id: string): Promise<any[]> {
+      return request(`/connectors/${id}/mcp/tools/refresh`, { method: 'POST' });
+    },
+    syncMcp(id: string, workspaceId?: string): Promise<any> {
+      return request(`/connectors/${id}/mcp/sync`, {
+        method: 'POST',
+        body: JSON.stringify(workspaceId ? { workspace_id: workspaceId } : {}),
+      });
+    },
+    callMcp(id: string, toolName: string, args: Record<string, any> = {}): Promise<any> {
+      return request(`/connectors/${id}/mcp/call`, {
+        method: 'POST',
+        body: JSON.stringify({ tool_name: toolName, arguments: args }),
+      });
+    },
+    builtinMcp(): Promise<{ builtin_servers: any[] }> {
+      return request('/connectors/mcp/builtin');
+    },
+    composioStatus(): Promise<{ enabled: boolean; popular_apps: any[] }> {
+      return request('/connectors/composio/status');
+    },
+    composioAuthUrl(app: string, workspaceId: string, redirectUrl?: string): Promise<any> {
+      return request('/connectors/composio/auth-url', {
+        method: 'POST',
+        body: JSON.stringify({ app, workspace_id: workspaceId, redirect_url: redirectUrl }),
+      });
+    },
+    composioSync(workspaceId: string): Promise<any> {
+      return request('/connectors/composio/sync', {
+        method: 'POST',
+        body: JSON.stringify({ workspace_id: workspaceId }),
+      });
+    },
+  },
+
   // Billing
   billing: {
     usage(params?: { metric?: string; from?: string; to?: string }): Promise<any[]> {

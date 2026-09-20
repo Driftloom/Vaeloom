@@ -1,11 +1,6 @@
 import useSWR from 'swr';
 import { request } from '../lib/api';
-import type { 
-  Workspace, 
-  Agent, 
-  Memory,
-  Connector 
-} from '@vaeloom/shared-types';
+import type { Workspace, Agent, Memory, Connector } from '@vaeloom/shared-types';
 
 const fetcher = <T>(url: string) => request<T>(url);
 
@@ -25,55 +20,55 @@ export function useWorkspaces() {
 export function useWorkspace(workspaceId: string | undefined) {
   const { data, error, isLoading, mutate } = useSWR<Workspace>(
     workspaceId ? `/workspaces/${workspaceId}` : null,
-    fetcher
+    fetcher,
   );
 
   return {
     workspace: data,
     isLoading,
     isError: error,
-    mutate
+    mutate,
   };
 }
 
 export function useWorkspaceAgents(workspaceId: string | undefined) {
   const { data, error, isLoading, mutate } = useSWR<Agent[]>(
     workspaceId ? `/workspaces/${workspaceId}/agents` : null,
-    fetcher
+    fetcher,
   );
 
   return {
     agents: data ?? [],
     isLoading,
     isError: error,
-    mutate
+    mutate,
   };
 }
 
 export function useWorkspaceMemories(workspaceId: string | undefined) {
   const { data, error, isLoading, mutate } = useSWR<Memory[]>(
     workspaceId ? `/workspaces/${workspaceId}/memories` : null,
-    fetcher
+    fetcher,
   );
 
   return {
     memories: data ?? [],
     isLoading,
     isError: error,
-    mutate
+    mutate,
   };
 }
 
 export function useWorkspaceConnectors(workspaceId: string | undefined) {
   const { data, error, isLoading, mutate } = useSWR<Connector[]>(
-    workspaceId ? `/workspaces/${workspaceId}/connectors` : null,
-    fetcher
+    workspaceId ? `/connectors?workspace_id=${workspaceId}` : null,
+    fetcher,
   );
 
   return {
     connectors: data ?? [],
     isLoading,
     isError: error,
-    mutate
+    mutate,
   };
 }

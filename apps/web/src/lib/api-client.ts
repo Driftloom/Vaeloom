@@ -3135,3 +3135,168 @@ export const capabilitiesApi = {
     });
   },
 };
+
+// ─── Connectors API ─────────────────────────────────────────────────────────
+
+export interface ConnectorItem {
+  id: string;
+  name: string;
+  type: 'rest' | 'graphql' | 'mcp';
+  config: Record<string, any>;
+  syncInterval?: number;
+  lastSync?: string;
+  status: 'active' | 'syncing' | 'error' | 'paused';
+  errorMessage?: string;
+  createdAt: string;
+  updatedAt: string;
+  workspaceId?: string;
+  tenantId?: string;
+}
+
+export interface CreateConnectorRequest {
+  name: string;
+  type: 'rest' | 'graphql' | 'mcp';
+  config: Record<string, any>;
+  workspace_id?: string;
+  sync_interval?: number;
+}
+
+export interface UpdateConnectorRequest {
+  name?: string;
+  config?: Record<string, any>;
+  sync_interval?: number;
+  status?: string;
+}
+
+export interface McpToolInfo {
+  name: string;
+  description?: string;
+  inputSchema?: Record<string, any>;
+  outputSchema?: Record<string, any>;
+  readOnly?: boolean;
+}
+
+export interface BuiltinMcpServer {
+  id: string;
+  name: string;
+  description: string;
+  transport: string;
+  tools: string[];
+  config: Record<string, any>;
+}
+
+export interface ComposioAppInfo {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface ComposioStatusResponse {
+  enabled: boolean;
+  popular_apps: ComposioAppInfo[];
+}
+
+export interface ComposioAuthUrlResponse {
+  status: string;
+  app: string;
+  auth_url?: string;
+  url?: string;
+  workspace_id?: string;
+  connection_status?: string;
+  error_code?: string;
+  message?: string;
+}
+
+export interface ConnectorHealthResponse {
+  status: string;
+  connector_id: string;
+  type: string;
+  name: string;
+  last_sync?: string;
+  error_message?: string;
+  config_keys: string[];
+}
+
+export const connectorsApi = {
+  list(workspaceId?: string, type?: string): Promise<ConnectorItem[]> {
+    const params: Record<string, string | undefined> = {};
+    if (workspaceId) params['workspace_id'] = workspaceId;
+    if (type) params['type'] = type;
+    return apiClient.get<ConnectorItem[]>('/connectors', params);
+  },
+  get(connectorId: string): Promise<ConnectorItem> {
+    return apiClient.get<ConnectorItem>(`/connectors/${connectorId}`);
+  },
+  create(body: CreateConnectorRequest): Promise<ConnectorItem> {
+    return apiClient.post<ConnectorItem>('/connectors', body);
+  },
+  update(connectorId: string, body: UpdateConnectorRequest): Promise<ConnectorItem> {
+    return apiClient.put<ConnectorItem>(`/connectors/${connectorId}`, body);
+  },
+  delete(connectorId: string): Promise<void> {
+    return apiClient.delete<void>(`/connectors/${connectorId}`);
+  },
+  sync(connectorId: string): Promise<{ status: string; records_synced?: number; error?: string }> {
+    return apiClient.post(`/connectors/${connectorId}/sync`);
+  },
+  getSyncStatus(
+    connectorId: string,
+  ): Promise<{ status: string; records_synced?: number; error?: string }> {
+    return apiClient.get(`/connectors/${connectorId}/sync/status`);
+  },
+  test(
+    connectorId: string,
+  ): Promise<{ status: string; code?: number; error?: string; message?: string }> {
+    return apiClient.post(`/connectors/${connectorId}/test`);
+  },
+  health(connectorId: string): Promise<ConnectorHealthResponse> {
+    return apiClient.get<ConnectorHealthResponse>(`/connectors/${connectorId}/health`);
+  },
+  mcp: {
+    listTools(connectorId: string, refresh = false): Promise<McpToolInfo[]> {
+      return apiClient.get<McpToolInfo[]>(`/connectors/${connectorId}/mcp/tools`, { refresh });
+    },
+    refreshTools(connectorId: string): Promise<McpToolInfo[]> {
+      return apiClient.post<McpToolInfo[]>(`/connectors/${connectorId}/mcp/tools/refresh`);
+    },
+    sync(
+      connectorId: string,
+      workspaceId?: string,
+    ): Promise<{ connector_id: string; registered: string[]; bridged_total: number }> {
+      return apiClient.post(
+        `/connectors/${connectorId}/mcp/sync`,
+        workspaceId ? { workspace_id: workspaceId } : undefined,
+      );
+    },
+    call(connectorId: string, toolName: string, args: Record<string, unknown> = {}): Promise<any> {
+      return apiClient.post(`/connectors/${connectorId}/mcp/call`, {
+        tool_name: toolName,
+        arguments: args,
+      });
+    },
+    builtin(): Promise<{ builtin_servers: BuiltinMcpServer[] }> {
+      return apiClient.get<{ builtin_servers: BuiltinMcpServer[] }>('/connectors/mcp/builtin');
+    },
+  },
+  composio: {
+    status(): Promise<ComposioStatusResponse> {
+      return apiClient.get<ComposioStatusResponse>('/connectors/composio/status');
+    },
+    authUrl(
+      app: string,
+      workspaceId: string,
+      redirectUrl?: string,
+    ): Promise<ComposioAuthUrlResponse> {
+      return apiClient.post<ComposioAuthUrlResponse>('/connectors/composio/auth-url', {
+        app,
+        workspace_id: workspaceId,
+        redirect_url: redirectUrl,
+      });
+    },
+    sync(
+      workspaceId: string,
+    ): Promise<{ workspace_id: string; registered: string[]; count: number }> {
+      return apiClient.post(`/connectors/composio/sync`, { workspace_id: workspaceId });
+    },
+  },
+};
