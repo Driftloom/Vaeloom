@@ -18,6 +18,23 @@ class SignupRequest(BaseModel):
             raise ValueError("Invalid email format")
         return v
 
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if "\x00" in v:
+            raise ValueError("Password cannot contain null bytes")
+        return v
+
+    @field_validator("display_name")
+    @classmethod
+    def validate_display_name(cls, v: str | None) -> str | None:
+        if v is not None:
+            if "\x00" in v:
+                raise ValueError("Display name cannot contain null bytes")
+            import re
+            v = re.sub(r"<[^>]*>", "", v).strip()
+        return v
+
 
 class LoginRequest(BaseModel):
     email: str
@@ -27,6 +44,13 @@ class LoginRequest(BaseModel):
     @classmethod
     def validate_email(cls, v: str) -> str:
         return v.strip().lower()
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if "\x00" in v:
+            raise ValueError("Password cannot contain null bytes")
+        return v
 
 
 class RefreshRequest(BaseModel):
@@ -48,6 +72,13 @@ class ResetPasswordRequest(BaseModel):
     email: str | None = None
     password: str | None = None
     new_password: str | None = None
+
+    @field_validator("password", "new_password")
+    @classmethod
+    def validate_password(cls, v: str | None) -> str | None:
+        if v is not None and "\x00" in v:
+            raise ValueError("Password cannot contain null bytes")
+        return v
 
 
 class PublicUser(BaseModel):

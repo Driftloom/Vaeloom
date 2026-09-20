@@ -96,6 +96,8 @@ def _build_test_app(db_session, enable_rate_limit=False):
     from sqlalchemy.ext.asyncio import async_sessionmaker as _sm
 
     _test_session_factory = _sm(db_session.bind, expire_on_commit=False)
+    from api.middleware.tenant import TenantMiddleware
+    test_app.add_middleware(TenantMiddleware, session_factory=_test_session_factory)
     test_app.add_middleware(AuthMiddleware, session_factory=_test_session_factory)
 
     test_app.include_router(health.router, prefix="/health")
@@ -122,6 +124,8 @@ def _build_test_app(db_session, enable_rate_limit=False):
     test_app.include_router(recommendations.router, prefix="/api/v1/recommendations")
     test_app.include_router(consent_router, prefix="/api/v1")
     test_app.include_router(gdpr_router, prefix="/api/v1")
+    from api.routers import onboarding
+    test_app.include_router(onboarding.router, prefix="/api/v1/onboarding")
 
     async def override_get_db():
         yield db_session

@@ -70,6 +70,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
                     algorithms=[settings.jwt_algorithm],
                     options={"require": ["exp", "sub"]},
                 )
+            except jwt.ExpiredSignatureError:
+                raise
             except Exception:
                 supa_secret = getattr(settings, "supabase_jwt_secret", "")
                 supa_url = getattr(settings, "supabase_url", "")
@@ -85,6 +87,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
                             options={"verify_aud": False, "require": ["exp", "sub"]},
                         )
                         verified = True
+                    except jwt.ExpiredSignatureError:
+                        raise
                     except Exception:
                         pass
 
@@ -102,16 +106,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
                             options={"verify_aud": False, "require": ["exp", "sub"]},
                         )
                         verified = True
+                    except jwt.ExpiredSignatureError:
+                        raise
                     except Exception:
                         pass
 
-                # 3. Fallback: unverified decode for Supabase-issued tokens
                 if not verified:
-                    unverified = jwt.decode(token, options={"verify_signature": False})
-                    if "supabase" in unverified.get("iss", ""):
-                        payload = unverified
-                    else:
-                        raise
+                    raise jwt.InvalidTokenError("Token verification failed: untrusted or invalid signature")
 
             jti = payload.get("jti")
             user_id = payload.get("sub") or payload.get("user_id")

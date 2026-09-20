@@ -53,11 +53,12 @@ class TestSupabaseAuth:
         assert user_in_db.auth_provider == "supabase"
 
     async def test_supabase_token_without_secret_fallback(self, client: AsyncClient, monkeypatch):
-        """Verify that in dev mode, a Supabase token with 'supabase' in iss can pass fallback."""
+        """Verify that under Zero Trust, a Supabase token signed with an unknown secret is strictly rejected (HTTP 401)."""
         test_uid = str(uuid.uuid4())
         test_email = f"dev_user_{uuid.uuid4().hex[:8]}@example.com"
 
         monkeypatch.setattr(settings, "supabase_jwt_secret", "")
+        monkeypatch.setattr(settings, "supabase_url", "")
 
         token = jwt.encode(
             {
@@ -72,6 +73,6 @@ class TestSupabaseAuth:
         )
 
         resp = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
-        assert resp.status_code == 200
+        assert resp.status_code == 401
         data = resp.json()
-        assert data["user"]["email"] == test_email
+        assert data["detail"] == "Invalid token"
