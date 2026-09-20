@@ -280,7 +280,9 @@ export function AddCapabilityModal({
   const [validationError, setValidationError] = useState<string | null>(null);
 
   // 1. Skill Specific State
-  const [capDoc, setCapDoc] = useState('');
+  const [capDoc, setCapDoc] = useState(
+    `# Operational Playbook & Guidelines\n\n## Mission\nExecute designated tasks with verifiable evidence, zero hallucinations, and clear audit trails.\n\n## Operating Rules\n1. Always analyze assumptions against workspace context before proceeding.\n2. Produce structured outputs following project-specific formatting standards.\n3. Fall back to safe heuristics when tools or network resources are unavailable.\n`,
+  );
   const [capTriggers, setCapTriggers] = useState('');
   const [skillPreviewOpen, setSkillPreviewOpen] = useState(false);
 
@@ -358,84 +360,154 @@ OPERATIONAL BOUNDARIES:
   useEffect(() => {
     if (isOpen) {
       setActiveTab(initialMode);
+      setCapCategory(defaultCategory);
       setValidationError(null);
     }
-  }, [isOpen, initialMode]);
+  }, [isOpen, initialMode, defaultCategory]);
 
   // Enterprise Readiness Score (0 - 100%)
   const readinessAudit = useMemo(() => {
-    const checks = [
-      {
-        id: 'slug',
-        label: 'Identifier defined',
-        passed: Boolean(capName.trim()),
-        weight: 25,
-      },
-      {
-        id: 'description',
-        label: 'Executive description (≥ 10 chars)',
-        passed: Boolean(capDescription.trim().length >= 10),
-        weight: 20,
-      },
-      {
-        id: 'taxonomy',
-        label: 'Taxonomy tag defined',
-        passed: capTags.length > 0,
-        weight: 15,
-      },
-      {
-        id: 'protocol',
-        label:
-          capCategory === 'mcp'
-            ? 'MCP Command & Transport'
-            : capCategory === 'tools'
-              ? 'Input Parameters Schema'
-              : capCategory === 'plugins'
-                ? 'Python Sandbox Code'
-                : capCategory === 'agents'
-                  ? 'Tools & System Prompt'
-                  : 'Playbook Operating Rules',
-        passed:
-          capCategory === 'mcp'
-            ? Boolean(mcpCommand.trim())
-            : capCategory === 'tools'
-              ? toolParams.some((p) => Boolean(p.name.trim()))
-              : capCategory === 'plugins'
-                ? Boolean(pluginCode.trim().includes('def run'))
-                : capCategory === 'agents'
-                  ? agentSelectedTools.length > 0
-                  : Boolean(capDoc.trim().length >= 20),
-        weight: 20,
-      },
-      {
-        id: 'docs',
-        label:
-          capCategory === 'skills'
-            ? 'Playbook Rules & Instructions'
-            : capCategory === 'mcp'
-              ? 'mcp.json Protocol Spec'
-              : capCategory === 'plugins'
-                ? 'Plugin Manifest & Hook'
-                : capCategory === 'agents'
-                  ? 'System Template Fences'
-                  : 'Output Envelope Contract',
-        passed: true,
-        weight: 20,
-      },
-    ];
+    let checks: Array<{ id: string; label: string; passed: boolean; weight: number }> = [];
+
+    if (capCategory === 'skills') {
+      checks = [
+        {
+          id: 'slug',
+          label: 'Skill Identifier Defined',
+          passed: Boolean(capName.trim()),
+          weight: 25,
+        },
+        {
+          id: 'desc',
+          label: 'Activation Context & Description',
+          passed: Boolean(capDescription.trim()),
+          weight: 20,
+        },
+        {
+          id: 'playbook',
+          label: 'Playbook Operating Rules',
+          passed: Boolean(capDoc.trim().length >= 20),
+          weight: 35,
+        },
+        {
+          id: 'triggers',
+          label: 'Taxonomy & Routing Triggers',
+          passed: capTags.length > 0 || Boolean(capTriggers.trim()),
+          weight: 20,
+        },
+      ];
+    } else if (capCategory === 'agents') {
+      checks = [
+        {
+          id: 'slug',
+          label: 'Agent Identifier Defined',
+          passed: Boolean(capName.trim()),
+          weight: 25,
+        },
+        {
+          id: 'role',
+          label: 'Role & Autonomy Policy',
+          passed: Boolean(agentArchetype && capAutonomy),
+          weight: 25,
+        },
+        {
+          id: 'prompt',
+          label: 'System Template & Boundaries',
+          passed: Boolean(agentPromptTemplate.trim().length >= 20),
+          weight: 25,
+        },
+        {
+          id: 'tools',
+          label: 'Tool Fleet Assigned',
+          passed: agentSelectedTools.length > 0,
+          weight: 25,
+        },
+      ];
+    } else if (capCategory === 'mcp') {
+      checks = [
+        {
+          id: 'slug',
+          label: 'Server Identifier Defined',
+          passed: Boolean(capName.trim()),
+          weight: 25,
+        },
+        {
+          id: 'transport',
+          label: 'Transport & Execution Command',
+          passed: Boolean(mcpCommand.trim()),
+          weight: 35,
+        },
+        { id: 'protocol', label: 'MCP v2 Protocol Contract', passed: true, weight: 20 },
+        { id: 'env', label: 'Encrypted Secrets / Configuration', passed: true, weight: 20 },
+      ];
+    } else if (capCategory === 'plugins') {
+      checks = [
+        {
+          id: 'slug',
+          label: 'Plugin Identifier Defined',
+          passed: Boolean(capName.trim()),
+          weight: 25,
+        },
+        {
+          id: 'code',
+          label: 'Python Sandbox Handler',
+          passed: Boolean(pluginCode.includes('def run')),
+          weight: 35,
+        },
+        {
+          id: 'hook',
+          label: 'Target & Lifecycle Hook',
+          passed: Boolean(pluginHook && pluginTarget),
+          weight: 20,
+        },
+        {
+          id: 'license',
+          label: 'Author & SPDX License',
+          passed: Boolean(pluginAuthor && pluginLicense),
+          weight: 20,
+        },
+      ];
+    } else {
+      // tools
+      checks = [
+        {
+          id: 'slug',
+          label: 'Tool Function Name Defined',
+          passed: Boolean(capName.trim()),
+          weight: 25,
+        },
+        {
+          id: 'params',
+          label: 'Parameter Schema Defined',
+          passed: toolParams.length > 0 && toolParams.some((p) => Boolean(p.name.trim())),
+          weight: 35,
+        },
+        { id: 'scope', label: 'Required Security Scope', passed: Boolean(toolScope), weight: 20 },
+        { id: 'envelope', label: 'JSONSchema 2020-12 Output Envelope', passed: true, weight: 20 },
+      ];
+    }
 
     const total = checks.reduce((acc, c) => acc + (c.passed ? c.weight : 0), 0);
     return { checks, score: total };
   }, [
+    capCategory,
     capName,
     capDescription,
-    capTags,
-    capCategory,
-    mcpCommand,
-    toolParams,
-    pluginCode,
-    agentSelectedTools,
     capDoc,
+    capTags,
+    capTriggers,
+    agentArchetype,
+    capAutonomy,
+    agentPromptTemplate,
+    agentSelectedTools,
+    mcpCommand,
+    pluginCode,
+    pluginHook,
+    pluginTarget,
+    pluginAuthor,
+    pluginLicense,
+    toolParams,
+    toolScope,
   ]);
 
   // Select Preset Template
@@ -824,29 +896,47 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
               <div className="flex items-center gap-2">
                 <h2
                   id="add-capability-modal-title"
-                  className="text-sm font-semibold text-white tracking-tight font-sans"
+                  className="text-sm font-semibold text-white tracking-tight font-sans flex items-center gap-1.5"
                 >
-                  Add Custom Capability
+                  <span>Add Custom Capability</span>
+                  <span className="text-[#52525b] font-normal">•</span>
+                  <span className="text-[#93c5fd] font-medium">
+                    {capCategory === 'skills'
+                      ? 'Skill Studio'
+                      : capCategory === 'agents'
+                        ? 'Agent Studio'
+                        : capCategory === 'tools'
+                          ? 'Tool Function Studio'
+                          : capCategory === 'mcp'
+                            ? 'MCP Protocol Studio'
+                            : 'Plugin Lifecycle Studio'}
+                  </span>
                 </h2>
                 {activeTab === 'builder' && (
                   <Badge
-                    variant={
-                      readinessAudit.score >= 90
-                        ? 'success'
-                        : readinessAudit.score >= 50
-                          ? 'info'
-                          : 'warning'
-                    }
+                    variant={readinessAudit.score >= 90 ? 'success' : 'info'}
                     size="sm"
                     className="text-[10px] font-mono"
                   >
-                    Score: {readinessAudit.score}%{' '}
-                    {readinessAudit.score >= 90 ? '• Enterprise Ready' : '• In Progress'}
+                    {readinessAudit.score}% Validated •{' '}
+                    {readinessAudit.score >= 90
+                      ? 'Enterprise Ready'
+                      : readinessAudit.score >= 70
+                        ? 'Production Spec'
+                        : 'Draft Spec'}
                   </Badge>
                 )}
               </div>
               <p id="add-capability-modal-desc" className="text-[11px] text-[#a1a1aa] font-sans">
-                Author custom skills, agents, MCP connectors, plugins, or tools
+                {capCategory === 'skills'
+                  ? 'Author Claude & Codex reasoning playbooks with sovereign operating rules'
+                  : capCategory === 'agents'
+                    ? 'Configure autonomous AgentCards with custom autonomy policies and tool fleets'
+                    : capCategory === 'tools'
+                      ? 'Define typed function schemas and JSON Schema 2020-12 parameter contracts'
+                      : capCategory === 'mcp'
+                        ? 'Register Model Context Protocol (v2) server endpoints and secrets'
+                        : 'Implement isolated Python sandbox lifecycle hooks and transform pipelines'}
               </p>
             </div>
           </div>
@@ -1062,19 +1152,25 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                 </div>
               </div>
 
-              {/* Master-Detail 2-Column Responsive Studio Layout */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
-                {/* ── Left Column: Controls & Configuration (col-span-7) ───── */}
-                <div className="md:col-span-7 space-y-3.5">
-                  {/* Name and Autonomy Policy (Always visible across all categories) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="sm:col-span-2">
-                      <label
-                        htmlFor="cap-name-input"
-                        className="block text-xs font-medium text-[#a1a1aa] mb-1"
-                      >
-                        Capability Name / Identifier *
-                      </label>
+              {/* ──────────────────────────────────────────────────────────── */}
+              {/* STUDIO 1: SKILLS STUDIO (Claude & Codex Playbooks)           */}
+              {/* ──────────────────────────────────────────────────────────── */}
+              {capCategory === 'skills' && (
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+                  {/* Left Column: Skill Configuration (col-span-6) */}
+                  <div className="md:col-span-6 space-y-3.5">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label
+                          htmlFor="cap-name-input"
+                          className="block text-xs font-medium text-[#a1a1aa]"
+                        >
+                          Skill Name / Identifier *
+                        </label>
+                        <span className="text-[10px] font-mono text-[#71717a]">
+                          slug: lowercase-hyphenated
+                        </span>
+                      </div>
                       <input
                         ref={nameInputRef}
                         id="cap-name-input"
@@ -1092,117 +1188,554 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
 
                     <div>
                       <label
-                        htmlFor="cap-autonomy-select"
+                        htmlFor="cap-desc-input"
                         className="block text-xs font-medium text-[#a1a1aa] mb-1"
                       >
-                        Autonomy Policy
+                        When to Activate / Skill Description
                       </label>
-                      <select
-                        id="cap-autonomy-select"
-                        value={capAutonomy}
-                        onChange={(e) =>
-                          setCapAutonomy(
-                            e.target.value as 'autonomous' | 'approval_required' | 'suggest',
-                          )
-                        }
-                        className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary text-xs"
-                      >
-                        <option value="autonomous">Autonomous Execution</option>
-                        <option value="approval_required">Human Approval Gate</option>
-                        <option value="suggest">Suggest to User Only</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Summary Description */}
-                  <div>
-                    <label
-                      htmlFor="cap-desc-input"
-                      className="block text-xs font-medium text-[#a1a1aa] mb-1"
-                    >
-                      Summary Description
-                    </label>
-                    <input
-                      id="cap-desc-input"
-                      type="text"
-                      value={capDescription}
-                      onChange={(e) => setCapDescription(e.target.value)}
-                      placeholder="Brief description explaining when agents should activate this capability"
-                      className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary text-xs"
-                    />
-                  </div>
-
-                  {/* Interactive Tag Manager */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label htmlFor="cap-tag-input" className="text-xs font-medium text-[#a1a1aa]">
-                        Tags &amp; Taxonomy
-                      </label>
-                      <span className="text-[11px] text-[#71717a]">
-                        Click a chip to quickly add
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-[#12141c] border border-[#232636] min-h-[38px]">
-                      {capTags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#1a1c26] text-[#e4e4e7] border border-[#292c3a]"
-                        >
-                          <span>{tag}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveTag(tag)}
-                            className="text-[#71717a] hover:text-white ml-0.5"
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
                       <input
-                        id="cap-tag-input"
+                        id="cap-desc-input"
                         type="text"
-                        value={tagInput}
-                        onChange={(e) => setTagInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ',') {
-                            e.preventDefault();
-                            handleAddTag(tagInput);
-                          }
-                        }}
-                        placeholder="+ Type tag and hit Enter..."
-                        className="bg-transparent text-xs text-white placeholder-[#71717a] focus:outline-none flex-1 min-w-[120px] px-1 font-sans"
+                        value={capDescription}
+                        onChange={(e) => setCapDescription(e.target.value)}
+                        placeholder="e.g. Activate when reviewing pull requests, evaluating code security, or checking diffs"
+                        className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary text-xs"
                       />
                     </div>
 
-                    {/* Quick Suggestion Chips */}
-                    <div className="flex flex-wrap items-center gap-1 mt-1.5">
-                      {QUICK_TAG_SUGGESTIONS.filter((s) => !capTags.includes(s))
-                        .slice(0, 6)
-                        .map((suggest) => (
-                          <button
-                            key={suggest}
-                            type="button"
-                            onClick={() => handleAddTag(suggest)}
-                            className="text-[10px] px-1.5 py-0.2 rounded bg-[#10121a] text-[#8b8e99] hover:text-white hover:bg-[#181a24] border border-[#20222e] transition-colors"
+                    <div>
+                      <label
+                        htmlFor="cap-triggers-input"
+                        className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                      >
+                        Routing &amp; Trigger Keywords (comma-separated)
+                      </label>
+                      <input
+                        id="cap-triggers-input"
+                        type="text"
+                        value={capTriggers}
+                        onChange={(e) => setCapTriggers(e.target.value)}
+                        placeholder="e.g. /review, /ats-audit, pr audit, check code quality"
+                        className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary text-xs font-mono"
+                      />
+                    </div>
+
+                    {/* Interactive Tag Manager */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label
+                          htmlFor="cap-tag-input-skills"
+                          className="text-xs font-medium text-[#a1a1aa]"
+                        >
+                          Tags &amp; Taxonomy
+                        </label>
+                        <span className="text-[11px] text-[#71717a]">
+                          Click a chip to quickly add
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-[#12141c] border border-[#232636] min-h-[38px]">
+                        {capTags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#1a1c26] text-[#e4e4e7] border border-[#292c3a]"
                           >
-                            + {suggest}
-                          </button>
+                            <span>{tag}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTag(tag)}
+                              className="text-[#71717a] hover:text-white ml-0.5"
+                            >
+                              ×
+                            </button>
+                          </span>
                         ))}
+                        <input
+                          id="cap-tag-input-skills"
+                          type="text"
+                          value={tagInput}
+                          onChange={(e) => setTagInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ',') {
+                              e.preventDefault();
+                              handleAddTag(tagInput);
+                            }
+                          }}
+                          placeholder="+ Type tag and hit Enter..."
+                          className="bg-transparent text-xs text-white placeholder-[#71717a] focus:outline-none flex-1 min-w-[120px] px-1 font-sans"
+                        />
+                      </div>
+
+                      {/* Quick Suggestion Chips */}
+                      <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                        {QUICK_TAG_SUGGESTIONS.filter((s) => !capTags.includes(s))
+                          .slice(0, 6)
+                          .map((suggest) => (
+                            <button
+                              key={suggest}
+                              type="button"
+                              onClick={() => handleAddTag(suggest)}
+                              className="text-[10px] px-1.5 py-0.2 rounded bg-[#10121a] text-[#8b8e99] hover:text-white hover:bg-[#181a24] border border-[#20222e] transition-colors"
+                            >
+                              + {suggest}
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+
+                    {/* Claude & Codex Directives Card */}
+                    <div className="p-3 rounded-xl bg-[#101118] border border-[#202330] space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-white">
+                          Claude &amp; Codex Directives
+                        </span>
+                        <Badge variant="mono" size="sm" className="text-[10px]">
+                          SKILL.md Spec
+                        </Badge>
+                      </div>
+                      <p className="text-[11px] text-[#8b8e99] leading-relaxed">
+                        Skills inject deterministic prompts and operating rules into agent context
+                        windows. They provide multi-step guidelines without requiring code execution
+                        or approval gates.
+                      </p>
                     </div>
                   </div>
 
-                  {/* ────────────────────────────────────────────────────────── */}
-                  {/* Category-Adaptive Left Section: MCP                       */}
-                  {/* ────────────────────────────────────────────────────────── */}
-                  {capCategory === 'mcp' && (
-                    <div className="p-3 rounded-xl bg-[#101118] border border-[#222430] space-y-2.5">
-                      <div className="flex items-center justify-between pb-1.5 border-b border-[#1b1c24]">
-                        <h4 className="font-semibold text-white text-xs">
-                          MCP Protocol Configuration
-                        </h4>
-                        <Badge variant="primary" size="sm">
-                          MCP v2 Standard
+                  {/* Right Column: Playbook Markdown Studio (col-span-6) */}
+                  <div className="md:col-span-6 flex flex-col min-h-[380px] bg-[#090a0f] rounded-xl border border-[#1e202d] p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#1a1c26]">
+                      <span className="font-semibold text-white text-xs">
+                        Playbook Documentation &amp; Rules
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSkillPreviewOpen(!skillPreviewOpen)}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        {skillPreviewOpen ? 'Edit Raw Markdown' : 'Preview Rendered'}
+                      </button>
+                    </div>
+
+                    {!skillPreviewOpen ? (
+                      <textarea
+                        rows={11}
+                        value={capDoc}
+                        onChange={(e) => setCapDoc(e.target.value)}
+                        placeholder={`# ${capName || 'Skill Title'}\n\n## Mission\nExecute mission with verifiable evidence.\n\n## Operating Rules\n1. Always verify assumptions.`}
+                        className="w-full flex-1 p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary font-mono text-xs leading-relaxed resize-none"
+                      />
+                    ) : (
+                      <div className="w-full flex-1 p-3 rounded-lg bg-[#12141c] border border-[#232636] text-[#e4e4e7] overflow-y-auto max-h-[290px] prose prose-invert prose-xs max-w-none">
+                        {capDoc ? (
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{capDoc}</ReactMarkdown>
+                        ) : (
+                          <span className="text-[#71717a] italic">
+                            No documentation entered yet.
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap items-center gap-1 pt-1 text-[10px] text-[#71717a]">
+                      <span>Insert:</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCapDoc(
+                            (prev) =>
+                              `${prev}\n\n## Mission\nExecute mission with verifiable evidence.`,
+                          )
+                        }
+                        className="px-1.5 py-0.5 rounded bg-[#141620] hover:text-white border border-[#232636]"
+                      >
+                        + Mission
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCapDoc(
+                            (prev) =>
+                              `${prev}\n\n## Operating Rules\n1. Enforce zero-trust boundaries.\n2. Fall back to deterministic heuristics.`,
+                          )
+                        }
+                        className="px-1.5 py-0.5 rounded bg-[#141620] hover:text-white border border-[#232636]"
+                      >
+                        + Rules
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCapDoc(
+                            (prev) =>
+                              `${prev}\n\n## Security Fence\nRequires supervisor audit before network egress.`,
+                          )
+                        }
+                        className="px-1.5 py-0.5 rounded bg-[#141620] hover:text-white border border-[#232636]"
+                      >
+                        + Security
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ──────────────────────────────────────────────────────────── */}
+              {/* STUDIO 2: AGENTS STUDIO (AgentCard Specification)           */}
+              {/* ──────────────────────────────────────────────────────────── */}
+              {capCategory === 'agents' && (
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+                  {/* Left Column: Agent Persona & Policy (col-span-6) */}
+                  <div className="md:col-span-6 space-y-3.5">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label
+                          htmlFor="cap-name-input"
+                          className="block text-xs font-medium text-[#a1a1aa]"
+                        >
+                          Agent Name / Identifier *
+                        </label>
+                        <Badge variant="mono" size="sm" className="text-[10px]">
+                          AgentCard v1.0
                         </Badge>
+                      </div>
+                      <input
+                        ref={nameInputRef}
+                        id="cap-name-input"
+                        type="text"
+                        required
+                        value={capName}
+                        onChange={(e) => {
+                          setCapName(e.target.value);
+                          setValidationError(null);
+                        }}
+                        placeholder="e.g. code-synthesizer or ats-scoring"
+                        className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-primary"
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="cap-desc-input"
+                        className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                      >
+                        Agent Role Mission &amp; Specialization
+                      </label>
+                      <input
+                        id="cap-desc-input"
+                        type="text"
+                        value={capDescription}
+                        onChange={(e) => setCapDescription(e.target.value)}
+                        placeholder="e.g. Autonomous forensic auditor validating zero-trust evidence and pull requests"
+                        className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary text-xs"
+                      />
+                    </div>
+
+                    {/* Role Archetype & Autonomy Policy (Grid 2 cols) */}
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label
+                          htmlFor="agent-archetype-select"
+                          className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                        >
+                          Role Archetype
+                        </label>
+                        <select
+                          id="agent-archetype-select"
+                          value={agentArchetype}
+                          onChange={(e) => setAgentArchetype(e.target.value as any)}
+                          className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
+                        >
+                          <option value="specialist">Specialist Worker</option>
+                          <option value="supervisor">Supervisor Orchestrator</option>
+                          <option value="auditor">Forensic Auditor</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="cap-autonomy-select"
+                          className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                        >
+                          Autonomy Policy
+                        </label>
+                        <select
+                          id="cap-autonomy-select"
+                          value={capAutonomy}
+                          onChange={(e) =>
+                            setCapAutonomy(
+                              e.target.value as 'autonomous' | 'approval_required' | 'suggest',
+                            )
+                          }
+                          className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
+                        >
+                          <option value="autonomous">Autonomous Execution</option>
+                          <option value="approval_required">Human Approval Gate</option>
+                          <option value="suggest">Suggest to User Only</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Model Tier & Max ReAct Rounds (Grid 2 cols) */}
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label
+                          htmlFor="agent-model-select"
+                          className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                        >
+                          Model Tier
+                        </label>
+                        <select
+                          id="agent-model-select"
+                          value={agentModelTier}
+                          onChange={(e) => setAgentModelTier(e.target.value as any)}
+                          className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
+                        >
+                          <option value="pro">Pro (Claude 3.7 / GPT-4o)</option>
+                          <option value="flash">Flash (Fast Heuristic)</option>
+                          <option value="open_weights">Open-Weights (Qwen / Ollama)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="agent-max-turns"
+                          className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                        >
+                          Max ReAct Rounds
+                        </label>
+                        <input
+                          id="agent-max-turns"
+                          type="number"
+                          min={1}
+                          max={30}
+                          value={agentMaxTurns}
+                          onChange={(e) => setAgentMaxTurns(parseInt(e.target.value, 10) || 12)}
+                          className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Tool Fleet Assignment Checkboxes */}
+                    <div>
+                      <label className="block text-xs font-medium text-[#a1a1aa] mb-1.5">
+                        Assigned Workspace Tools ({agentSelectedTools.length} selected)
+                      </label>
+                      <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto pr-1">
+                        {AVAILABLE_AGENT_TOOLS.map((tool) => {
+                          const checked = agentSelectedTools.includes(tool.id);
+                          return (
+                            <label
+                              key={tool.id}
+                              className={`flex items-center gap-2 p-1.5 rounded border text-xs cursor-pointer transition-colors ${
+                                checked
+                                  ? 'bg-[#181a24] border-primary/50 text-white'
+                                  : 'bg-[#12141c] border-[#222432] text-[#8b8e99] hover:text-white'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => {
+                                  setAgentSelectedTools((prev) =>
+                                    checked
+                                      ? prev.filter((t) => t !== tool.id)
+                                      : [...prev, tool.id],
+                                  );
+                                }}
+                                className="rounded border-[#2c2e3c] bg-[#151722] text-primary"
+                              />
+                              <span className="font-mono text-[11px] truncate">{tool.name}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Interactive Tag Manager */}
+                    <div>
+                      <label
+                        htmlFor="cap-tag-input-agent"
+                        className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                      >
+                        Tags &amp; Archetype Taxonomy
+                      </label>
+                      <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-[#12141c] border border-[#232636] min-h-[38px]">
+                        {capTags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#1a1c26] text-[#e4e4e7] border border-[#292c3a]"
+                          >
+                            <span>{tag}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTag(tag)}
+                              className="text-[#71717a] hover:text-white ml-0.5"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                        <input
+                          id="cap-tag-input-agent"
+                          type="text"
+                          value={tagInput}
+                          onChange={(e) => setTagInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ',') {
+                              e.preventDefault();
+                              handleAddTag(tagInput);
+                            }
+                          }}
+                          placeholder="+ Type tag and hit Enter..."
+                          className="bg-transparent text-xs text-white placeholder-[#71717a] focus:outline-none flex-1 min-w-[120px] px-1 font-sans"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: System Template & AgentCard JSON (col-span-6) */}
+                  <div className="md:col-span-6 flex flex-col min-h-[380px] bg-[#090a0f] rounded-xl border border-[#1e202d] p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#1a1c26]">
+                      <div className="flex items-center gap-2 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setAgentRightTab('prompt')}
+                          className={`font-medium pb-0.5 border-b-2 transition-colors ${
+                            agentRightTab === 'prompt'
+                              ? 'text-white border-primary'
+                              : 'text-[#8b8e99] border-transparent hover:text-white'
+                          }`}
+                        >
+                          System Template (Jinja2)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAgentRightTab('card')}
+                          className={`font-medium pb-0.5 border-b-2 transition-colors ${
+                            agentRightTab === 'card'
+                              ? 'text-white border-primary'
+                              : 'text-[#8b8e99] border-transparent hover:text-white'
+                          }`}
+                        >
+                          AgentCard JSON
+                        </button>
+                      </div>
+                    </div>
+
+                    {agentRightTab === 'prompt' && (
+                      <>
+                        <textarea
+                          rows={11}
+                          value={agentPromptTemplate}
+                          onChange={(e) => setAgentPromptTemplate(e.target.value)}
+                          className="w-full flex-1 p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary font-mono text-xs leading-relaxed resize-none"
+                        />
+                        <div className="flex flex-wrap items-center gap-1 pt-1 text-[10px] text-[#71717a]">
+                          <span>Insert Context:</span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAgentPromptTemplate(
+                                (prev) => `${prev}\n\nUSER PROFILE:\n{{ profile | tojson }}`,
+                              )
+                            }
+                            className="px-1.5 py-0.5 rounded bg-[#141620] hover:text-white border border-[#232636]"
+                          >
+                            + profile
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAgentPromptTemplate(
+                                (prev) =>
+                                  `${prev}\n\nRETRIEVED KNOWLEDGE:\n{{ rag_context | tojson }}`,
+                              )
+                            }
+                            className="px-1.5 py-0.5 rounded bg-[#141620] hover:text-white border border-[#232636]"
+                          >
+                            + rag_context
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAgentPromptTemplate(
+                                (prev) => `${prev}\n\nAVAILABLE TOOLS:\n{{ tools | tojson }}`,
+                              )
+                            }
+                            className="px-1.5 py-0.5 rounded bg-[#141620] hover:text-white border border-[#232636]"
+                          >
+                            + tools
+                          </button>
+                        </div>
+                      </>
+                    )}
+
+                    {agentRightTab === 'card' && (
+                      <div className="p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-[#93c5fd] font-mono text-[11px] overflow-x-auto max-h-[290px] whitespace-pre select-all">
+                        {generatedSpecString}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ──────────────────────────────────────────────────────────── */}
+              {/* STUDIO 3: MCP PROTOCOL STUDIO (Model Context Protocol v2)    */}
+              {/* ──────────────────────────────────────────────────────────── */}
+              {capCategory === 'mcp' && (
+                <div className="space-y-3">
+                  {/* Top Protocol Banner */}
+                  <div className="p-2.5 rounded-xl bg-[#101118] border border-[#222430] flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-white text-xs">
+                        MCP Protocol Configuration
+                      </h4>
+                      <span className="text-[11px] text-[#71717a]">
+                        Model Context Protocol v2 Connector Bridge
+                      </span>
+                    </div>
+                    <Badge variant="primary" size="sm">
+                      MCP v2 Standard
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+                    {/* Left Column: Server Config (col-span-6) */}
+                    <div className="md:col-span-6 space-y-3.5">
+                      <div>
+                        <label
+                          htmlFor="cap-name-input"
+                          className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                        >
+                          MCP Server Identifier *
+                        </label>
+                        <input
+                          ref={nameInputRef}
+                          id="cap-name-input"
+                          type="text"
+                          required
+                          value={capName}
+                          onChange={(e) => {
+                            setCapName(e.target.value);
+                            setValidationError(null);
+                          }}
+                          placeholder="e.g. code-synthesizer or ats-scoring"
+                          className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-primary"
+                        />
+                      </div>
+
+                      <div>
+                        <label
+                          htmlFor="cap-desc-input"
+                          className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                        >
+                          Server Description &amp; Scope
+                        </label>
+                        <input
+                          id="cap-desc-input"
+                          type="text"
+                          value={capDescription}
+                          onChange={(e) => setCapDescription(e.target.value)}
+                          placeholder="e.g. Connects local filesystem tools or remote GitHub MCP server"
+                          className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary text-xs"
+                        />
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -1297,450 +1830,51 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                           </div>
                         )}
                       </div>
-                    </div>
-                  )}
 
-                  {/* ────────────────────────────────────────────────────────── */}
-                  {/* Category-Adaptive Left Section: Plugins                   */}
-                  {/* ────────────────────────────────────────────────────────── */}
-                  {capCategory === 'plugins' && (
-                    <div className="p-3 rounded-xl bg-[#101118] border border-[#222430] space-y-2.5">
-                      <div className="flex items-center justify-between pb-1.5 border-b border-[#1b1c24]">
-                        <h4 className="font-semibold text-white text-xs">
-                          Plugin Sandbox &amp; Scope Architecture
-                        </h4>
-                        <Badge variant="mono" size="sm">
-                          Python Sandbox
-                        </Badge>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2.5">
-                        <div>
-                          <label
-                            htmlFor="plugin-target-select"
-                            className="block text-xs font-medium text-[#a1a1aa] mb-1"
-                          >
-                            Execution Target
-                          </label>
-                          <select
-                            id="plugin-target-select"
-                            value={pluginTarget}
-                            onChange={(e) => setPluginTarget(e.target.value as any)}
-                            className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
-                          >
-                            <option value="both">Both (Desktop UI &amp; Agent Runtime)</option>
-                            <option value="desktop">Desktop UI Only</option>
-                            <option value="agent">Agent Runtime Only</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label
-                            htmlFor="plugin-hook-select"
-                            className="block text-xs font-medium text-[#a1a1aa] mb-1"
-                          >
-                            Lifecycle Hook Point
-                          </label>
-                          <select
-                            id="plugin-hook-select"
-                            value={pluginHook}
-                            onChange={(e) => setPluginHook(e.target.value as any)}
-                            className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
-                          >
-                            <option value="on_tool_call">
-                              on_tool_call (Inspect / Egress DLP)
-                            </option>
-                            <option value="on_agent_start">on_agent_start (Inject Context)</option>
-                            <option value="on_agent_complete">
-                              on_agent_complete (Audit Sink)
-                            </option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2.5 pt-1">
-                        <div>
-                          <label
-                            htmlFor="plugin-author-input"
-                            className="block text-xs font-medium text-[#a1a1aa] mb-1"
-                          >
-                            Author / Organization
-                          </label>
-                          <input
-                            id="plugin-author-input"
-                            type="text"
-                            value={pluginAuthor}
-                            onChange={(e) => setPluginAuthor(e.target.value)}
-                            className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label
-                            htmlFor="plugin-license-input"
-                            className="block text-xs font-medium text-[#a1a1aa] mb-1"
-                          >
-                            SPDX License
-                          </label>
-                          <input
-                            id="plugin-license-input"
-                            type="text"
-                            value={pluginLicense}
-                            onChange={(e) => setPluginLicense(e.target.value)}
-                            className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ────────────────────────────────────────────────────────── */}
-                  {/* Category-Adaptive Left Section: Agents                    */}
-                  {/* ────────────────────────────────────────────────────────── */}
-                  {capCategory === 'agents' && (
-                    <div className="p-3 rounded-xl bg-[#101118] border border-[#222430] space-y-2.5">
-                      <div className="flex items-center justify-between pb-1.5 border-b border-[#1b1c24]">
-                        <h4 className="font-semibold text-white text-xs">
-                          Agent Persona &amp; Tool Fleet
-                        </h4>
-                        <Badge variant="mono" size="sm">
-                          AgentCard v1.0
-                        </Badge>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-2">
-                        <div>
-                          <label
-                            htmlFor="agent-archetype-select"
-                            className="block text-xs font-medium text-[#a1a1aa] mb-1"
-                          >
-                            Role Archetype
-                          </label>
-                          <select
-                            id="agent-archetype-select"
-                            value={agentArchetype}
-                            onChange={(e) => setAgentArchetype(e.target.value as any)}
-                            className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
-                          >
-                            <option value="specialist">Specialist Worker</option>
-                            <option value="supervisor">Supervisor Orchestrator</option>
-                            <option value="auditor">Forensic Auditor</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label
-                            htmlFor="agent-model-select"
-                            className="block text-xs font-medium text-[#a1a1aa] mb-1"
-                          >
-                            Model Tier
-                          </label>
-                          <select
-                            id="agent-model-select"
-                            value={agentModelTier}
-                            onChange={(e) => setAgentModelTier(e.target.value as any)}
-                            className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
-                          >
-                            <option value="pro">Pro (Claude 3.7 / GPT-4o)</option>
-                            <option value="flash">Flash (Fast Heuristic)</option>
-                            <option value="open_weights">Open-Weights (Qwen / Ollama)</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label
-                            htmlFor="agent-max-turns"
-                            className="block text-xs font-medium text-[#a1a1aa] mb-1"
-                          >
-                            Max ReAct Rounds
-                          </label>
-                          <input
-                            id="agent-max-turns"
-                            type="number"
-                            min={1}
-                            max={30}
-                            value={agentMaxTurns}
-                            onChange={(e) => setAgentMaxTurns(parseInt(e.target.value, 10) || 12)}
-                            className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Tool Fleet Assignment Checkboxes */}
+                      {/* Tag Manager */}
                       <div>
-                        <label className="block text-xs font-medium text-[#a1a1aa] mb-1.5">
-                          Assigned Workspace Tools ({agentSelectedTools.length} selected)
+                        <label
+                          htmlFor="cap-tag-input-mcp"
+                          className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                        >
+                          Tags &amp; Taxonomy
                         </label>
-                        <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto pr-1">
-                          {AVAILABLE_AGENT_TOOLS.map((tool) => {
-                            const checked = agentSelectedTools.includes(tool.id);
-                            return (
-                              <label
-                                key={tool.id}
-                                className={`flex items-center gap-2 p-1.5 rounded border text-xs cursor-pointer transition-colors ${
-                                  checked
-                                    ? 'bg-[#181a24] border-primary/50 text-white'
-                                    : 'bg-[#12141c] border-[#222432] text-[#8b8e99] hover:text-white'
-                                }`}
+                        <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-[#12141c] border border-[#232636] min-h-[38px]">
+                          {capTags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#1a1c26] text-[#e4e4e7] border border-[#292c3a]"
+                            >
+                              <span>{tag}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveTag(tag)}
+                                className="text-[#71717a] hover:text-white ml-0.5"
                               >
-                                <input
-                                  type="checkbox"
-                                  checked={checked}
-                                  onChange={() => {
-                                    setAgentSelectedTools((prev) =>
-                                      checked
-                                        ? prev.filter((t) => t !== tool.id)
-                                        : [...prev, tool.id],
-                                    );
-                                  }}
-                                  className="rounded border-[#2c2e3c] bg-[#151722] text-primary"
-                                />
-                                <span className="font-mono text-[11px] truncate">{tool.name}</span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ────────────────────────────────────────────────────────── */}
-                  {/* Category-Adaptive Left Section: Tools                     */}
-                  {/* ────────────────────────────────────────────────────────── */}
-                  {capCategory === 'tools' && (
-                    <div className="p-3 rounded-xl bg-[#101118] border border-[#222430] space-y-2.5">
-                      <div className="flex items-center justify-between pb-1.5 border-b border-[#1b1c24]">
-                        <h4 className="font-semibold text-white text-xs">
-                          Visual Parameter Builder (JSON Schema)
-                        </h4>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          onClick={handleAddParam}
-                        >
-                          + Add Param
-                        </Button>
-                      </div>
-
-                      <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                        {toolParams.map((p, idx) => (
-                          <div key={idx} className="flex items-center gap-1.5">
-                            <input
-                              type="text"
-                              placeholder="name"
-                              value={p.name}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setToolParams((prev) =>
-                                  prev.map((item, i) =>
-                                    i === idx ? { ...item, name: val } : item,
-                                  ),
-                                );
-                              }}
-                              className="w-28 px-2 py-1 rounded bg-[#151722] border border-[#272a38] text-white font-mono text-xs focus:outline-none focus:border-primary"
-                            />
-                            <select
-                              value={p.type}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setToolParams((prev) =>
-                                  prev.map((item, i) =>
-                                    i === idx ? { ...item, type: val } : item,
-                                  ),
-                                );
-                              }}
-                              className="w-20 px-2 py-1 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
-                            >
-                              <option value="string">string</option>
-                              <option value="number">number</option>
-                              <option value="boolean">boolean</option>
-                              <option value="object">object</option>
-                              <option value="array">array</option>
-                            </select>
-                            <input
-                              type="text"
-                              placeholder="Description"
-                              value={p.description}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setToolParams((prev) =>
-                                  prev.map((item, i) =>
-                                    i === idx ? { ...item, description: val } : item,
-                                  ),
-                                );
-                              }}
-                              className="flex-1 px-2 py-1 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
-                            />
-                            <label className="flex items-center gap-1 text-[10px] text-[#a1a1aa] shrink-0">
-                              <input
-                                type="checkbox"
-                                checked={p.required}
-                                onChange={(e) => {
-                                  const checked = e.target.checked;
-                                  setToolParams((prev) =>
-                                    prev.map((item, i) =>
-                                      i === idx ? { ...item, required: checked } : item,
-                                    ),
-                                  );
-                                }}
-                                className="rounded border-[#2c2e3c] bg-[#151722] text-primary"
-                              />
-                              <span>Req</span>
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveParam(idx)}
-                              className="text-[#71717a] hover:text-red-400 p-0.5"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[#1b1c24]">
-                        <div>
-                          <label className="block text-xs font-medium text-[#a1a1aa] mb-1">
-                            Required Security Scope
-                          </label>
-                          <select
-                            value={toolScope}
-                            onChange={(e) => setToolScope(e.target.value)}
-                            className="w-full px-2 py-1 rounded bg-[#151722] border border-[#272a38] text-white text-xs"
-                          >
-                            <option value="memory.read">memory.read</option>
-                            <option value="memory.write">memory.write</option>
-                            <option value="connector.mcp.execute">connector.mcp.execute</option>
-                            <option value="system.execute">system.execute</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-[#a1a1aa] mb-1">
-                            Category Classification
-                          </label>
-                          <select
-                            value={toolCategoryGroup}
-                            onChange={(e) => setToolCategoryGroup(e.target.value)}
-                            className="w-full px-2 py-1 rounded bg-[#151722] border border-[#272a38] text-white text-xs"
-                          >
-                            <option value="memory_read">memory_read</option>
-                            <option value="memory_write">memory_write</option>
-                            <option value="connector_read">connector_read</option>
-                            <option value="connector_write">connector_write</option>
-                            <option value="system">system</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ────────────────────────────────────────────────────────── */}
-                  {/* Category-Adaptive Left Section: Skills                    */}
-                  {/* ────────────────────────────────────────────────────────── */}
-                  {capCategory === 'skills' && (
-                    <div>
-                      <label
-                        htmlFor="cap-triggers-input"
-                        className="block text-xs font-medium text-[#a1a1aa] mb-1"
-                      >
-                        Routing &amp; Trigger Keywords (comma-separated)
-                      </label>
-                      <input
-                        id="cap-triggers-input"
-                        type="text"
-                        value={capTriggers}
-                        onChange={(e) => setCapTriggers(e.target.value)}
-                        placeholder="e.g. /review, pr audit, check code quality"
-                        className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary text-xs"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* ── Right Column: Category-Adaptive Dedicated Studio (col-span-5) ─ */}
-                <div className="md:col-span-5 flex flex-col min-h-[380px] bg-[#090a0f] rounded-xl border border-[#1e202d] p-3.5 space-y-2.5">
-                  {/* ────────────────────────────────────────────────────────── */}
-                  {/* 1. SKILLS RIGHT PANE: Playbook Markdown Studio             */}
-                  {/* ────────────────────────────────────────────────────────── */}
-                  {capCategory === 'skills' && (
-                    <>
-                      <div className="flex items-center justify-between pb-2 border-b border-[#1a1c26]">
-                        <span className="font-semibold text-white text-xs">
-                          Playbook Documentation &amp; Rules
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setSkillPreviewOpen(!skillPreviewOpen)}
-                          className="text-xs text-primary hover:underline"
-                        >
-                          {skillPreviewOpen ? 'Edit Raw Markdown' : 'Preview Rendered'}
-                        </button>
-                      </div>
-
-                      {!skillPreviewOpen ? (
-                        <textarea
-                          rows={11}
-                          value={capDoc}
-                          onChange={(e) => setCapDoc(e.target.value)}
-                          placeholder={`# ${capName || 'Capability Title'}\n\n## When to Use\n- Use when...\n\n## Operating Rules\n1. Always verify assumptions.`}
-                          className="w-full flex-1 p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary font-mono text-xs leading-relaxed resize-none"
-                        />
-                      ) : (
-                        <div className="w-full flex-1 p-3 rounded-lg bg-[#12141c] border border-[#232636] text-[#e4e4e7] overflow-y-auto max-h-[290px] prose prose-invert prose-xs max-w-none">
-                          {capDoc ? (
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{capDoc}</ReactMarkdown>
-                          ) : (
-                            <span className="text-[#71717a] italic">
-                              No documentation entered yet.
+                                ×
+                              </button>
                             </span>
-                          )}
+                          ))}
+                          <input
+                            id="cap-tag-input-mcp"
+                            type="text"
+                            value={tagInput}
+                            onChange={(e) => setTagInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ',') {
+                                e.preventDefault();
+                                handleAddTag(tagInput);
+                              }
+                            }}
+                            placeholder="+ Type tag and hit Enter..."
+                            className="bg-transparent text-xs text-white placeholder-[#71717a] focus:outline-none flex-1 min-w-[120px] px-1 font-sans"
+                          />
                         </div>
-                      )}
-
-                      <div className="flex flex-wrap items-center gap-1 pt-1 text-[10px] text-[#71717a]">
-                        <span>Insert:</span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setCapDoc(
-                              (prev) =>
-                                `${prev}\n\n## Mission\nExecute mission with verifiable evidence.`,
-                            )
-                          }
-                          className="px-1.5 py-0.5 rounded bg-[#141620] hover:text-white border border-[#232636]"
-                        >
-                          + Mission
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setCapDoc(
-                              (prev) =>
-                                `${prev}\n\n## Operating Rules\n1. Enforce zero-trust boundaries.\n2. Fall back to deterministic heuristics.`,
-                            )
-                          }
-                          className="px-1.5 py-0.5 rounded bg-[#141620] hover:text-white border border-[#232636]"
-                        >
-                          + Rules
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setCapDoc(
-                              (prev) =>
-                                `${prev}\n\n## Security Fence\nRequires supervisor audit before network egress.`,
-                            )
-                          }
-                          className="px-1.5 py-0.5 rounded bg-[#141620] hover:text-white border border-[#232636]"
-                        >
-                          + Security
-                        </button>
                       </div>
-                    </>
-                  )}
+                    </div>
 
-                  {/* ────────────────────────────────────────────────────────── */}
-                  {/* 2. MCP RIGHT PANE: Live mcp.json & Exposed Tools           */}
-                  {/* ────────────────────────────────────────────────────────── */}
-                  {capCategory === 'mcp' && (
-                    <>
+                    {/* Right Column: Manifest, Tools, Audit (col-span-6) */}
+                    <div className="md:col-span-6 flex flex-col min-h-[380px] bg-[#090a0f] rounded-xl border border-[#1e202d] p-3.5 space-y-2.5">
                       <div className="flex items-center justify-between pb-2 border-b border-[#1a1c26]">
                         <div className="flex items-center gap-2 text-xs">
                           <button
@@ -1835,14 +1969,193 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                           </div>
                         </div>
                       )}
-                    </>
-                  )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
-                  {/* ────────────────────────────────────────────────────────── */}
-                  {/* 3. PLUGINS RIGHT PANE: Python Sandbox Code & Simulator     */}
-                  {/* ────────────────────────────────────────────────────────── */}
-                  {capCategory === 'plugins' && (
-                    <>
+              {/* ──────────────────────────────────────────────────────────── */}
+              {/* STUDIO 4: PLUGINS STUDIO (Python Sandbox Lifecycle Hooks)    */}
+              {/* ──────────────────────────────────────────────────────────── */}
+              {capCategory === 'plugins' && (
+                <div className="space-y-3">
+                  {/* Top Scope Banner */}
+                  <div className="p-2.5 rounded-xl bg-[#101118] border border-[#222430] flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-white text-xs">
+                        Plugin Sandbox &amp; Scope Architecture
+                      </h4>
+                      <span className="text-[11px] text-[#71717a]">
+                        Subprocess-isolated Python lifecycle interceptor
+                      </span>
+                    </div>
+                    <Badge variant="mono" size="sm">
+                      Python Sandbox
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+                    {/* Left Column: Plugin Scope & Target (col-span-6) */}
+                    <div className="md:col-span-6 space-y-3.5">
+                      <div>
+                        <label
+                          htmlFor="cap-name-input"
+                          className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                        >
+                          Plugin Name / Identifier *
+                        </label>
+                        <input
+                          ref={nameInputRef}
+                          id="cap-name-input"
+                          type="text"
+                          required
+                          value={capName}
+                          onChange={(e) => {
+                            setCapName(e.target.value);
+                            setValidationError(null);
+                          }}
+                          placeholder="e.g. code-synthesizer or ats-scoring"
+                          className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-primary"
+                        />
+                      </div>
+
+                      <div>
+                        <label
+                          htmlFor="cap-desc-input"
+                          className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                        >
+                          Summary Description
+                        </label>
+                        <input
+                          id="cap-desc-input"
+                          type="text"
+                          value={capDescription}
+                          onChange={(e) => setCapDescription(e.target.value)}
+                          placeholder="Brief description explaining when agents should activate this capability"
+                          className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary text-xs"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div>
+                          <label
+                            htmlFor="plugin-target-select"
+                            className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                          >
+                            Execution Target
+                          </label>
+                          <select
+                            id="plugin-target-select"
+                            value={pluginTarget}
+                            onChange={(e) => setPluginTarget(e.target.value as any)}
+                            className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
+                          >
+                            <option value="both">Both (Desktop UI &amp; Agent Runtime)</option>
+                            <option value="desktop">Desktop UI Only</option>
+                            <option value="agent">Agent Runtime Only</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label
+                            htmlFor="plugin-hook-select"
+                            className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                          >
+                            Lifecycle Hook Point
+                          </label>
+                          <select
+                            id="plugin-hook-select"
+                            value={pluginHook}
+                            onChange={(e) => setPluginHook(e.target.value as any)}
+                            className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
+                          >
+                            <option value="on_tool_call">
+                              on_tool_call (Inspect / Egress DLP)
+                            </option>
+                            <option value="on_agent_start">on_agent_start (Inject Context)</option>
+                            <option value="on_agent_complete">
+                              on_agent_complete (Audit Sink)
+                            </option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2.5 pt-1">
+                        <div>
+                          <label
+                            htmlFor="plugin-author-input"
+                            className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                          >
+                            Author / Organization
+                          </label>
+                          <input
+                            id="plugin-author-input"
+                            type="text"
+                            value={pluginAuthor}
+                            onChange={(e) => setPluginAuthor(e.target.value)}
+                            className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label
+                            htmlFor="plugin-license-input"
+                            className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                          >
+                            SPDX License
+                          </label>
+                          <input
+                            id="plugin-license-input"
+                            type="text"
+                            value={pluginLicense}
+                            onChange={(e) => setPluginLicense(e.target.value)}
+                            className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Tag Manager */}
+                      <div>
+                        <label
+                          htmlFor="cap-tag-input-plugin"
+                          className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                        >
+                          Tags &amp; Taxonomy
+                        </label>
+                        <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-[#12141c] border border-[#232636] min-h-[38px]">
+                          {capTags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#1a1c26] text-[#e4e4e7] border border-[#292c3a]"
+                            >
+                              <span>{tag}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveTag(tag)}
+                                className="text-[#71717a] hover:text-white ml-0.5"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                          <input
+                            id="cap-tag-input-plugin"
+                            type="text"
+                            value={tagInput}
+                            onChange={(e) => setTagInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ',') {
+                                e.preventDefault();
+                                handleAddTag(tagInput);
+                              }
+                            }}
+                            placeholder="+ Type tag and hit Enter..."
+                            className="bg-transparent text-xs text-white placeholder-[#71717a] focus:outline-none flex-1 min-w-[120px] px-1 font-sans"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Code Editor & Simulator (col-span-6) */}
+                    <div className="md:col-span-6 flex flex-col min-h-[380px] bg-[#090a0f] rounded-xl border border-[#1e202d] p-3.5 space-y-2.5">
                       <div className="flex items-center justify-between pb-2 border-b border-[#1a1c26]">
                         <div className="flex items-center gap-2 text-xs">
                           <button
@@ -1970,122 +2283,247 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                           {generatedSpecString}
                         </div>
                       )}
-                    </>
-                  )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
-                  {/* ────────────────────────────────────────────────────────── */}
-                  {/* 4. AGENTS RIGHT PANE: System Prompt & AgentCard Spec       */}
-                  {/* ────────────────────────────────────────────────────────── */}
-                  {capCategory === 'agents' && (
-                    <>
-                      <div className="flex items-center justify-between pb-2 border-b border-[#1a1c26]">
-                        <div className="flex items-center gap-2 text-xs">
-                          <button
-                            type="button"
-                            onClick={() => setAgentRightTab('prompt')}
-                            className={`font-medium pb-0.5 border-b-2 transition-colors ${
-                              agentRightTab === 'prompt'
-                                ? 'text-white border-primary'
-                                : 'text-[#8b8e99] border-transparent hover:text-white'
-                            }`}
-                          >
-                            System Template (Jinja2)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setAgentRightTab('card')}
-                            className={`font-medium pb-0.5 border-b-2 transition-colors ${
-                              agentRightTab === 'card'
-                                ? 'text-white border-primary'
-                                : 'text-[#8b8e99] border-transparent hover:text-white'
-                            }`}
-                          >
-                            AgentCard JSON
-                          </button>
-                        </div>
+              {/* ──────────────────────────────────────────────────────────── */}
+              {/* STUDIO 5: TOOLS STUDIO (Typed Functions & JSON Schema)       */}
+              {/* ──────────────────────────────────────────────────────────── */}
+              {capCategory === 'tools' && (
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+                  {/* Left Column: Parameter Schema & Scope (col-span-6) */}
+                  <div className="md:col-span-6 space-y-3.5">
+                    <div>
+                      <label
+                        htmlFor="cap-name-input"
+                        className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                      >
+                        Tool Function Name *
+                      </label>
+                      <input
+                        ref={nameInputRef}
+                        id="cap-name-input"
+                        type="text"
+                        required
+                        value={capName}
+                        onChange={(e) => {
+                          setCapName(e.target.value);
+                          setValidationError(null);
+                        }}
+                        placeholder="e.g. code-synthesizer or ats-scoring"
+                        className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-primary"
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="cap-desc-input"
+                        className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                      >
+                        Function Description (Injected in LLM Tool Schema)
+                      </label>
+                      <input
+                        id="cap-desc-input"
+                        type="text"
+                        value={capDescription}
+                        onChange={(e) => setCapDescription(e.target.value)}
+                        placeholder="Brief description explaining what this tool does"
+                        className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary text-xs"
+                      />
+                    </div>
+
+                    {/* Parameter Builder */}
+                    <div className="p-3 rounded-xl bg-[#101118] border border-[#222430] space-y-2.5">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-[#1b1c24]">
+                        <h4 className="font-semibold text-white text-xs">
+                          Visual Parameter Builder (JSON Schema)
+                        </h4>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={handleAddParam}
+                        >
+                          + Add Param
+                        </Button>
                       </div>
 
-                      {agentRightTab === 'prompt' && (
-                        <>
-                          <textarea
-                            rows={11}
-                            value={agentPromptTemplate}
-                            onChange={(e) => setAgentPromptTemplate(e.target.value)}
-                            className="w-full flex-1 p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary font-mono text-xs leading-relaxed resize-none"
-                          />
-                          <div className="flex flex-wrap items-center gap-1 pt-1 text-[10px] text-[#71717a]">
-                            <span>Insert Context:</span>
+                      <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                        {toolParams.map((p, idx) => (
+                          <div key={idx} className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              placeholder="name"
+                              value={p.name}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setToolParams((prev) =>
+                                  prev.map((item, i) =>
+                                    i === idx ? { ...item, name: val } : item,
+                                  ),
+                                );
+                              }}
+                              className="w-28 px-2 py-1 rounded bg-[#151722] border border-[#272a38] text-white font-mono text-xs focus:outline-none focus:border-primary"
+                            />
+                            <select
+                              value={p.type}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setToolParams((prev) =>
+                                  prev.map((item, i) =>
+                                    i === idx ? { ...item, type: val } : item,
+                                  ),
+                                );
+                              }}
+                              className="w-20 px-2 py-1 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
+                            >
+                              <option value="string">string</option>
+                              <option value="number">number</option>
+                              <option value="boolean">boolean</option>
+                              <option value="object">object</option>
+                              <option value="array">array</option>
+                            </select>
+                            <input
+                              type="text"
+                              placeholder="Description"
+                              value={p.description}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setToolParams((prev) =>
+                                  prev.map((item, i) =>
+                                    i === idx ? { ...item, description: val } : item,
+                                  ),
+                                );
+                              }}
+                              className="flex-1 px-2 py-1 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
+                            />
+                            <label className="flex items-center gap-1 text-[10px] text-[#a1a1aa] shrink-0">
+                              <input
+                                type="checkbox"
+                                checked={p.required}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  setToolParams((prev) =>
+                                    prev.map((item, i) =>
+                                      i === idx ? { ...item, required: checked } : item,
+                                    ),
+                                  );
+                                }}
+                                className="rounded border-[#2c2e3c] bg-[#151722] text-primary"
+                              />
+                              <span>Req</span>
+                            </label>
                             <button
                               type="button"
-                              onClick={() =>
-                                setAgentPromptTemplate(
-                                  (prev) => `${prev}\n\nUSER PROFILE:\n{{ profile | tojson }}`,
-                                )
-                              }
-                              className="px-1.5 py-0.5 rounded bg-[#141620] hover:text-white border border-[#232636]"
+                              onClick={() => handleRemoveParam(idx)}
+                              className="text-[#71717a] hover:text-red-400 p-0.5"
                             >
-                              + profile
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setAgentPromptTemplate(
-                                  (prev) =>
-                                    `${prev}\n\nRETRIEVED KNOWLEDGE:\n{{ rag_context | tojson }}`,
-                                )
-                              }
-                              className="px-1.5 py-0.5 rounded bg-[#141620] hover:text-white border border-[#232636]"
-                            >
-                              + rag_context
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setAgentPromptTemplate(
-                                  (prev) => `${prev}\n\nAVAILABLE TOOLS:\n{{ tools | tojson }}`,
-                                )
-                              }
-                              className="px-1.5 py-0.5 rounded bg-[#141620] hover:text-white border border-[#232636]"
-                            >
-                              + tools
+                              ×
                             </button>
                           </div>
-                        </>
-                      )}
+                        ))}
+                      </div>
 
-                      {agentRightTab === 'card' && (
-                        <div className="p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-[#93c5fd] font-mono text-[11px] overflow-x-auto max-h-[290px] whitespace-pre select-all">
-                          {generatedSpecString}
+                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[#1b1c24]">
+                        <div>
+                          <label className="block text-xs font-medium text-[#a1a1aa] mb-1">
+                            Required Security Scope
+                          </label>
+                          <select
+                            value={toolScope}
+                            onChange={(e) => setToolScope(e.target.value)}
+                            className="w-full px-2 py-1 rounded bg-[#151722] border border-[#272a38] text-white text-xs"
+                          >
+                            <option value="memory.read">memory.read</option>
+                            <option value="memory.write">memory.write</option>
+                            <option value="connector.mcp.execute">connector.mcp.execute</option>
+                            <option value="system.execute">system.execute</option>
+                          </select>
                         </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* ────────────────────────────────────────────────────────── */}
-                  {/* 5. TOOLS RIGHT PANE: JSON Schema Contract                  */}
-                  {/* ────────────────────────────────────────────────────────── */}
-                  {capCategory === 'tools' && (
-                    <>
-                      <div className="flex items-center justify-between pb-2 border-b border-[#1a1c26]">
-                        <span className="font-semibold text-white text-xs">
-                          JSON Schema Input &amp; Output Contract
-                        </span>
-                        <Badge variant="mono" size="sm">
-                          JSONSchema 2020-12
-                        </Badge>
+                        <div>
+                          <label className="block text-xs font-medium text-[#a1a1aa] mb-1">
+                            Category Classification
+                          </label>
+                          <select
+                            value={toolCategoryGroup}
+                            onChange={(e) => setToolCategoryGroup(e.target.value)}
+                            className="w-full px-2 py-1 rounded bg-[#151722] border border-[#272a38] text-white text-xs"
+                          >
+                            <option value="memory_read">memory_read</option>
+                            <option value="memory_write">memory_write</option>
+                            <option value="connector_read">connector_read</option>
+                            <option value="connector_write">connector_write</option>
+                            <option value="system">system</option>
+                          </select>
+                        </div>
                       </div>
+                    </div>
 
-                      <div className="p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-[#93c5fd] font-mono text-[11px] overflow-x-auto max-h-[290px] whitespace-pre leading-relaxed select-all">
-                        {generatedSpecString}
+                    {/* Tag Manager */}
+                    <div>
+                      <label
+                        htmlFor="cap-tag-input-tools"
+                        className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                      >
+                        Tags &amp; Taxonomy
+                      </label>
+                      <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-[#12141c] border border-[#232636] min-h-[38px]">
+                        {capTags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#1a1c26] text-[#e4e4e7] border border-[#292c3a]"
+                          >
+                            <span>{tag}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTag(tag)}
+                              className="text-[#71717a] hover:text-white ml-0.5"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                        <input
+                          id="cap-tag-input-tools"
+                          type="text"
+                          value={tagInput}
+                          onChange={(e) => setTagInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ',') {
+                              e.preventDefault();
+                              handleAddTag(tagInput);
+                            }
+                          }}
+                          placeholder="+ Type tag and hit Enter..."
+                          className="bg-transparent text-xs text-white placeholder-[#71717a] focus:outline-none flex-1 min-w-[120px] px-1 font-sans"
+                        />
                       </div>
+                    </div>
+                  </div>
 
-                      <p className="text-[10px] text-[#71717a]">
-                        Strict schema contract enforced at tool dispatch and validation gates.
-                      </p>
-                    </>
-                  )}
+                  {/* Right Column: JSON Schema Specification (col-span-6) */}
+                  <div className="md:col-span-6 flex flex-col min-h-[380px] bg-[#090a0f] rounded-xl border border-[#1e202d] p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#1a1c26]">
+                      <span className="font-semibold text-white text-xs">
+                        JSON Schema Input &amp; Output Contract
+                      </span>
+                      <Badge variant="mono" size="sm">
+                        JSONSchema 2020-12
+                      </Badge>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-[#93c5fd] font-mono text-[11px] overflow-x-auto max-h-[290px] whitespace-pre leading-relaxed select-all">
+                      {generatedSpecString}
+                    </div>
+
+                    <p className="text-[10px] text-[#71717a]">
+                      Strict schema contract enforced at tool dispatch and validation gates.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
             </form>
           )}
 

@@ -647,7 +647,7 @@ export default function CapabilitiesPage() {
             {/* Minimalist Search Input */}
             <div className="relative flex-1 max-w-[280px] sm:max-w-sm">
               <svg
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#71717a] pointer-events-none"
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -665,12 +665,12 @@ export default function CapabilitiesPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder='Try "general"'
-                className="w-full pl-8 pr-6 py-1 text-xs rounded-md bg-[#14151a] border border-[#23242c] text-[#e4e4e7] placeholder-[#71717a] focus:outline-none focus:border-primary/80 focus:ring-1 focus:ring-primary/40 transition-all font-sans"
+                className="w-full pl-8 pr-6 py-1 text-xs rounded-md bg-[#14151a] border border-[#23242c] text-text placeholder:text-text-muted focus:outline-none focus:border-primary/80 focus:ring-1 focus:ring-primary/40 transition-all font-sans"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#71717a] hover:text-white p-0.5"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-text p-0.5"
                   title="Clear search"
                   aria-label="Clear search"
                 >
@@ -749,7 +749,17 @@ export default function CapabilitiesPage() {
                   d="M12 4.5v15m7.5-7.5h-15"
                 />
               </svg>
-              <span>New Capability</span>
+              <span>
+                {selectedCategory === 'skills'
+                  ? '+ New Skill'
+                  : selectedCategory === 'agents'
+                    ? '+ New Agent'
+                    : selectedCategory === 'tools'
+                      ? '+ New Tool'
+                      : selectedCategory === 'mcp'
+                        ? '+ New MCP Server'
+                        : '+ New Plugin'}
+              </span>
             </button>
           </div>
         </div>
@@ -975,7 +985,7 @@ export default function CapabilitiesPage() {
             <div className="max-w-xl mx-auto space-y-3">
               <div className="relative">
                 <svg
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#71717a] pointer-events-none"
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -992,7 +1002,7 @@ export default function CapabilitiesPage() {
                   value={hubSearchQuery}
                   onChange={(e) => setHubSearchQuery(e.target.value)}
                   placeholder="Search plugins by name or by what you want Vaeloom to do"
-                  className="w-full pl-10 pr-4 py-2.5 text-xs rounded-full bg-[#121318] border border-[#23252d] text-[#f4f4f5] placeholder-[#71717a] focus:outline-none focus:border-[#3b3e4e] shadow-xs transition-all font-sans"
+                  className="w-full pl-10 pr-4 py-2.5 text-xs rounded-full bg-[#121318] border border-[#23252d] text-text placeholder:text-text-muted focus:outline-none focus:border-[#3b3e4e] shadow-xs transition-all font-sans"
                 />
               </div>
 
