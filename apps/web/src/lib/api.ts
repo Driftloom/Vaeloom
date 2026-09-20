@@ -190,6 +190,18 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
         headers['X-Workspace-ID'] = locMatch[1];
       }
     }
+    if (!headers['X-Workspace-ID'] && typeof init.body === 'string') {
+      try {
+        const parsed = JSON.parse(init.body);
+        if (parsed.workspace_id) {
+          headers['X-Workspace-ID'] = parsed.workspace_id;
+        } else if (parsed.workspaceId) {
+          headers['X-Workspace-ID'] = parsed.workspaceId;
+        }
+      } catch {
+        /* non-JSON body */
+      }
+    }
   }
   if (mutating) {
     const csrf = await getCsrfToken();
@@ -205,11 +217,11 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   const serverCorrelationId =
     res.headers.get('x-correlation-id') ?? res.headers.get('x-request-id') ?? requestId;
 
-  // CSRF token may have expired server-side (1h TTL) — refresh and retry once.
-  if (res.status === 403 && mutating && headers[CSRF_HEADER]) {
+  // CSRF token may have expired server-side (1h TTL) or was missing — refresh and retry once.
+  if (res.status === 403 && mutating) {
     resetCsrfToken();
     const fresh = await getCsrfToken();
-    if (fresh) {
+    if (fresh && headers[CSRF_HEADER] !== fresh) {
       headers[CSRF_HEADER] = fresh;
       res = await fetchWith();
     }
@@ -266,10 +278,19 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
       const body = (await res.json()) as {
         error?: { message?: string; code?: string };
         message?: string | string[];
+        detail?: string | Array<{ msg?: string; loc?: string[] }>;
       };
       if (body.error) {
         message = body.error.message ?? message;
         code = body.error.code;
+      } else if (body?.detail) {
+        if (typeof body.detail === 'string') {
+          message = body.detail;
+        } else if (Array.isArray(body.detail)) {
+          message = body.detail
+            .map((d) => (typeof d === 'string' ? d : (d?.msg ?? JSON.stringify(d))))
+            .join(', ');
+        }
       } else if (body?.message) {
         message = Array.isArray(body.message) ? body.message.join(', ') : body.message;
       }
@@ -642,7 +663,8 @@ export const api = {
       }>;
       total: number;
     }> {
-      return request('/anticipation/scan', {
+      const qs = new URLSearchParams({ workspace_id: workspaceId });
+      return request(`/anticipation/scan?${qs.toString()}`, {
         method: 'POST',
         body: JSON.stringify({ workspace_id: workspaceId }),
       });
@@ -664,7 +686,8 @@ export const api = {
       dismissedReason?: string | null;
       createdAt: string;
     }> {
-      return request(`/anticipation/proposals/${proposalId}/accept`, {
+      const qs = new URLSearchParams({ workspace_id: workspaceId });
+      return request(`/anticipation/proposals/${proposalId}/accept?${qs.toString()}`, {
         method: 'POST',
         body: JSON.stringify({ workspace_id: workspaceId }),
       });
@@ -687,7 +710,8 @@ export const api = {
       dismissedReason?: string | null;
       createdAt: string;
     }> {
-      return request(`/anticipation/proposals/${proposalId}/dismiss`, {
+      const qs = new URLSearchParams({ workspace_id: workspaceId });
+      return request(`/anticipation/proposals/${proposalId}/dismiss?${qs.toString()}`, {
         method: 'POST',
         body: JSON.stringify({ workspace_id: workspaceId, reason }),
       });

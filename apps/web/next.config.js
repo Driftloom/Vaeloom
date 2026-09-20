@@ -70,6 +70,14 @@ const nextConfig = {
         source: '/api/v1/:path*',
         destination: `${target}/api/v1/:path*`,
       },
+      {
+        source: '/csrf-token',
+        destination: `${target}/csrf-token`,
+      },
+      {
+        source: '/health/:path*',
+        destination: `${target}/health/:path*`,
+      },
     ];
   },
   async redirects() {
