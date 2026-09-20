@@ -102,7 +102,7 @@ class Settings(BaseSettings):
             return json.loads(v)
         return v or {}
 
-    allowed_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
+    allowed_origins: list[str] = ["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000"]
     log_level: str = "INFO"
     log_format: str = ""
 
