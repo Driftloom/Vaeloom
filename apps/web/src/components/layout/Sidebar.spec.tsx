@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { Sidebar } from './Sidebar';
 
 jest.mock('next/navigation', () => ({
@@ -46,5 +46,41 @@ describe('Sidebar', () => {
     render(<Sidebar workspaceId="ws-1" open={false} onClose={jest.fn()} />);
     const icons = document.querySelectorAll('[aria-hidden="true"]');
     expect(icons.length).toBeGreaterThanOrEqual(10);
+  });
+
+  it('supports collapsing and expanding via onToggleCollapse', () => {
+    const onToggle = jest.fn();
+    const { rerender } = render(
+      <Sidebar
+        workspaceId="ws-1"
+        open={false}
+        onClose={jest.fn()}
+        collapsed={false}
+        onToggleCollapse={onToggle}
+      />,
+    );
+    const collapseBtn = screen.getByRole('button', { name: 'Collapse sidebar' });
+    fireEvent.click(collapseBtn);
+    expect(onToggle).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <Sidebar
+        workspaceId="ws-1"
+        open={false}
+        onClose={jest.fn()}
+        collapsed={true}
+        onToggleCollapse={onToggle}
+      />,
+    );
+    const expandBtn = screen.getByRole('button', { name: 'Expand sidebar' });
+    fireEvent.click(expandBtn);
+    expect(onToggle).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps links accessible with sr-only text and title tooltip in collapsed mode', () => {
+    render(<Sidebar workspaceId="ws-1" open={false} onClose={jest.fn()} collapsed={true} />);
+    const link = screen.getByRole('link', { name: 'Memory Graph' });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute('title', 'Memory Graph');
   });
 });

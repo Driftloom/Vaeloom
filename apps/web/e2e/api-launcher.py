@@ -10,6 +10,13 @@ include it.
 
 import os
 import sqlite3
+import sys
+from pathlib import Path
+
+_api_src = str(Path(__file__).resolve().parents[2] / "apps" / "api" / "src")
+if _api_src not in sys.path:
+    sys.path.insert(0, _api_src)
+
 
 
 # ── Raw-SQL table bootstrap ──────────────────────────────────────────────────
@@ -85,7 +92,10 @@ def ensure_sqlite_tables() -> None:
 # A fresh checkout has no dev.db; Playwright specs log in as this account.
 # Runs INSIDE the wrapped lifespan so /health only turns OK once the user
 # exists — no race between Playwright readiness and the first login.
-E2E_USER = ("audit@vaeloom.test", "AuditPass123!", "E2E Audit")
+E2E_USERS = [
+    ("audit@vaeloom.test", "AuditPass123!", "E2E Audit"),
+    ("demo@vaeloom.app", "demo1234", "Demo User"),
+]
 
 
 async def _seed_e2e_user() -> None:
@@ -95,15 +105,16 @@ async def _seed_e2e_user() -> None:
     from api.services.auth_service import AuthService
 
     async with async_session_factory() as db:
-        try:
-            await AuthService().signup(*E2E_USER, db=db)
-            await db.commit()
-            print(f"[api-launcher] seeded e2e user {E2E_USER[0]}")
-        except HTTPException as exc:
-            if exc.status_code == 409:
-                print(f"[api-launcher] e2e user {E2E_USER[0]} already present")
-            else:
-                raise
+        for user_tuple in E2E_USERS:
+            try:
+                await AuthService().signup(*user_tuple, db=db)
+                await db.commit()
+                print(f"[api-launcher] seeded user {user_tuple[0]}")
+            except HTTPException as exc:
+                if exc.status_code == 409:
+                    print(f"[api-launcher] user {user_tuple[0]} already present")
+                else:
+                    raise
 
 
 def _wrap_lifespan_with_seeding(app) -> None:

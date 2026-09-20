@@ -16,6 +16,8 @@
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.116.0",
     "@trigger.dev/sdk": "4.6.3",
     "@vaeloom/shared-types": "workspace:*",
     "@vaeloom/ui-kit": "workspace:*",

@@ -106,12 +106,16 @@ from .routers import (
     iam,
     integrations,
     knowledge_graph,
+    marketplace,
     memory,
     notifications,
+    onboarding,
     opportunities,
+    organizations,
     plugins,
     profile,
     provider_keys,
+    realtime,
     recommendations,
     resumes,
     scheduler,
@@ -144,6 +148,7 @@ async def lifespan(app: FastAPI):
     # least-privilege non-BYPASSRLS role without DDL rights.
     from .database import get_migration_engine
 
+    from . import models  # noqa: F401
     _ddl_engine = get_migration_engine() or engine
     async with _ddl_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -161,6 +166,8 @@ async def lifespan(app: FastAPI):
             # Fallback: try relative to current working directory
             alembic_ini = "alembic.ini"
         alembic_cfg = Config(alembic_ini)
+        alembic_dir = os.path.dirname(os.path.abspath(alembic_ini))
+        alembic_cfg.set_main_option("script_location", os.path.join(alembic_dir, "alembic"))
         # Point alembic at the migration (owner) URL when configured; env.py
         # prefers VAELOOM_TARGET_URL over everything else.
         from .database import _migration_url
@@ -428,6 +435,11 @@ _safe_include(cognition.router, "/api/v1/cognition", ["cognition"])
 _safe_include(sovereignty.router, "/api/v1/sovereignty", ["sovereignty"])
 _safe_include(anticipation.router, "/api/v1/anticipation", ["anticipation"])
 _safe_include(federation.router, "/api/v1/federation", ["federation"])
+_safe_include(realtime.router, "/api/v1/realtime", ["realtime"])
+_safe_include(organizations.router, "/api/v1/organizations", ["organizations"])
+_safe_include(marketplace.router, "/api/v1/marketplace", ["marketplace"])
+_safe_include(onboarding.router, "/api/v1/onboarding", ["onboarding"])
+
 
 # ── Enterprise routes (CF-06 / R6) ──────────────────────────────────
 # Out of MVP scope. Mounted only when explicitly enabled via

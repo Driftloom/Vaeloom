@@ -40,7 +40,15 @@ export function transformKeys<T>(obj: unknown): T {
 
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return window.localStorage.getItem(TOKEN_KEY);
+  const ls = window.localStorage.getItem(TOKEN_KEY);
+  if (ls) return ls;
+  const match = document.cookie.match(/(?:^|; )vaeloom\.accessToken=([^;]*)/);
+  if (match && match[1]) {
+    const token = decodeURIComponent(match[1]);
+    window.localStorage.setItem(TOKEN_KEY, token);
+    return token;
+  }
+  return null;
 }
 
 export function setToken(token: string): void {
@@ -78,12 +86,21 @@ const REFRESH_KEY = 'vaeloom.refreshToken';
 export function setRefreshToken(token: string): void {
   if (typeof window !== 'undefined') {
     window.localStorage.setItem(REFRESH_KEY, token);
+    document.cookie = `vaeloom.refreshToken=${token}; path=/; max-age=2592000; SameSite=Lax`;
   }
 }
 
 export function getRefreshToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return window.localStorage.getItem(REFRESH_KEY);
+  const ls = window.localStorage.getItem(REFRESH_KEY);
+  if (ls) return ls;
+  const match = document.cookie.match(/(?:^|; )vaeloom\.refreshToken=([^;]*)/);
+  if (match && match[1]) {
+    const token = decodeURIComponent(match[1]);
+    window.localStorage.setItem(REFRESH_KEY, token);
+    return token;
+  }
+  return null;
 }
 
 export function clearRefreshToken(): void {
@@ -127,6 +144,17 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     ...(init.headers as Record<string, string> | undefined),
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (!headers['X-Workspace-ID']) {
+    const urlParamsMatch = path.match(/[?&]workspace_?id=([a-f0-9-]+)/i);
+    if (urlParamsMatch && urlParamsMatch[1]) {
+      headers['X-Workspace-ID'] = urlParamsMatch[1];
+    } else if (typeof window !== 'undefined') {
+      const locMatch = window.location.pathname.match(/\/workspace\/([a-f0-9-]+)/i);
+      if (locMatch && locMatch[1]) {
+        headers['X-Workspace-ID'] = locMatch[1];
+      }
+    }
+  }
   if (mutating) {
     const csrf = await getCsrfToken();
     if (csrf) headers[CSRF_HEADER] = csrf;

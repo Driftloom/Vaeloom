@@ -5,8 +5,8 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 
 const cspConnectSrc =
   process.env.NODE_ENV === 'development' || process.env.ALLOW_LOCAL_API === 'true'
-    ? "'self' http://localhost:8000 ws://localhost:8000 https://*.algolia.net https://*.algolianet.com"
-    : "'self' https://vaeloom.app https://*.algolia.net https://*.algolianet.com";
+    ? "'self' http://localhost:8000 ws://localhost:8000 https://*.supabase.co https://accounts.google.com https://*.algolia.net https://*.algolianet.com https://analytics.vaeloom.app"
+    : "'self' https://vaeloom.app https://*.supabase.co https://accounts.google.com https://*.algolia.net https://*.algolianet.com https://analytics.vaeloom.app";
 
 const nextConfig = {
   output: process.env.CI === 'true' && process.platform !== 'win32' ? 'standalone' : undefined,

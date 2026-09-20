@@ -2612,3 +2612,206 @@ export const councilApi = {
     );
   },
 };
+
+// ─── Organizations ──────────────────────────────────────────────────────────
+
+export interface OrganizationNode {
+  id: string;
+  name: string;
+  type: 'organization' | 'department' | 'team';
+  tenantId: string;
+  workspaceId?: string | null;
+  parentId?: string | null;
+  membersCount: number;
+  createdAt: string;
+  updatedAt: string;
+  children: OrganizationNode[];
+}
+
+export interface OrganizationMember {
+  id: string;
+  organizationId: string;
+  userId: string;
+  role: 'admin' | 'lead' | 'member' | 'viewer';
+  status: 'active' | 'invited' | 'suspended';
+  createdAt: string;
+}
+
+export interface CreateOrganizationRequest {
+  name: string;
+  type?: 'organization' | 'department' | 'team';
+  workspace_id?: string | null;
+  parent_id?: string | null;
+  allowed_domains?: string[];
+  default_role?: string;
+}
+
+export interface UpdateOrganizationRequest {
+  name?: string;
+  type?: 'organization' | 'department' | 'team';
+  parent_id?: string | null;
+  allowed_domains?: string[];
+  default_role?: string;
+}
+
+export interface AddOrganizationMemberRequest {
+  user_id: string;
+  role?: 'admin' | 'lead' | 'member' | 'viewer';
+}
+
+export interface OrganizationInvitation {
+  id: string;
+  organizationId: string;
+  email: string;
+  role: 'admin' | 'lead' | 'member' | 'viewer';
+  status: 'pending' | 'accepted' | 'revoked' | 'expired';
+  token?: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface CreateInvitationRequest {
+  email: string;
+  role?: 'admin' | 'lead' | 'member' | 'viewer';
+}
+
+export const organizationsApi = {
+  getTree(workspaceId?: string | null): Promise<OrganizationNode[]> {
+    return apiClient.get<OrganizationNode[]>(
+      '/organizations/tree',
+      workspaceId ? { workspace_id: workspaceId } : undefined,
+    );
+  },
+  create(body: CreateOrganizationRequest): Promise<OrganizationNode> {
+    return apiClient.post<OrganizationNode>('/organizations', body);
+  },
+  update(id: string, body: UpdateOrganizationRequest): Promise<OrganizationNode> {
+    return apiClient.patch<OrganizationNode>(`/organizations/${id}`, body);
+  },
+  delete(id: string): Promise<{ ok: boolean }> {
+    return apiClient.delete<{ ok: boolean }>(`/organizations/${id}`);
+  },
+  getMembers(id: string): Promise<OrganizationMember[]> {
+    return apiClient.get<OrganizationMember[]>(`/organizations/${id}/members`);
+  },
+  addMember(id: string, body: AddOrganizationMemberRequest): Promise<OrganizationMember> {
+    return apiClient.post<OrganizationMember>(`/organizations/${id}/members`, body);
+  },
+  removeMember(id: string, userId: string): Promise<{ ok: boolean }> {
+    return apiClient.delete<{ ok: boolean }>(`/organizations/${id}/members/${userId}`);
+  },
+  createInvitation(orgId: string, body: CreateInvitationRequest): Promise<OrganizationInvitation> {
+    return apiClient.post<OrganizationInvitation>(`/organizations/${orgId}/invitations`, body);
+  },
+  getInvitations(orgId: string): Promise<OrganizationInvitation[]> {
+    return apiClient.get<OrganizationInvitation[]>(`/organizations/${orgId}/invitations`);
+  },
+  revokeInvitation(invitationId: string): Promise<{ ok: boolean }> {
+    return apiClient.delete<{ ok: boolean }>(`/organizations/invitations/${invitationId}`);
+  },
+  acceptInvitation(
+    token: string,
+  ): Promise<{ status: string; organizationId: string; role: string }> {
+    return apiClient.post<{ status: string; organizationId: string; role: string }>(
+      `/organizations/invitations/${token}/accept`,
+      {},
+    );
+  },
+};
+
+// ─── Marketplace ────────────────────────────────────────────────────────────
+
+export interface MarketplaceListingItem {
+  id: string;
+  pluginId: string;
+  name: string;
+  slug: string;
+  category: string;
+  author: string;
+  description: string;
+  version: string;
+  rating: number;
+  installCount: number;
+  tags: string[];
+  configSchema?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface MarketplaceListingsResponse {
+  items: MarketplaceListingItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+}
+
+export interface WorkspacePluginInstallItem {
+  id: string;
+  workspaceId: string;
+  listingId: string;
+  installedBy: string;
+  isActive: boolean;
+  config: Record<string, unknown>;
+  installedAt: string;
+  listing?: MarketplaceListingItem;
+}
+
+export const marketplaceApi = {
+  getListings(params?: {
+    category?: string;
+    search?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<MarketplaceListingsResponse> {
+    return apiClient.get<MarketplaceListingsResponse>(
+      '/marketplace/listings',
+      params as Record<string, string | number | boolean | undefined | null>,
+    );
+  },
+  getListing(id: string): Promise<MarketplaceListingItem> {
+    return apiClient.get<MarketplaceListingItem>(`/marketplace/listings/${id}`);
+  },
+  install(
+    listingId: string,
+    body: { workspace_id: string; config?: Record<string, unknown> },
+  ): Promise<WorkspacePluginInstallItem> {
+    return apiClient.post<WorkspacePluginInstallItem>(
+      `/marketplace/listings/${listingId}/install`,
+      body,
+    );
+  },
+  uninstall(
+    listingId: string,
+    workspaceId: string,
+  ): Promise<{ ok: boolean; uninstalled: boolean }> {
+    return apiClient.delete<{ ok: boolean; uninstalled: boolean }>(
+      `/marketplace/listings/${listingId}/uninstall?workspace_id=${encodeURIComponent(workspaceId)}`,
+    );
+  },
+  getInstalled(workspaceId: string): Promise<WorkspacePluginInstallItem[]> {
+    return apiClient.get<WorkspacePluginInstallItem[]>('/marketplace/installed', {
+      workspace_id: workspaceId,
+    });
+  },
+  seed(): Promise<{ message: string; count: number }> {
+    return apiClient.post<{ message: string; count: number }>('/marketplace/seed');
+  },
+  rate(
+    listingId: string,
+    body: { rating: number; review?: string },
+  ): Promise<{
+    listing_id: string;
+    user_id: string;
+    rating: number;
+    review?: string;
+    average_rating: number;
+  }> {
+    return apiClient.post(`/marketplace/listings/${listingId}/rate`, body);
+  },
+  execute(
+    installId: string,
+    body: { workspace_id: string; action: string; params?: Record<string, unknown> },
+  ): Promise<{ status: string; plugin: string; action: string; result: Record<string, unknown> }> {
+    return apiClient.post(`/marketplace/installed/${installId}/execute`, body);
+  },
+};

@@ -7,7 +7,13 @@ import { useAuth } from '../../hooks/useAuth';
 import { searchApi } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 
-export function TopNav({ onMenuClick }: { onMenuClick?: () => void }) {
+export function TopNav({
+  onMenuClick,
+  sidebarCollapsed,
+}: {
+  onMenuClick?: () => void;
+  sidebarCollapsed?: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, logout } = useAuth();
@@ -104,11 +110,12 @@ export function TopNav({ onMenuClick }: { onMenuClick?: () => void }) {
 
   return (
     <header className="h-14 border-b border-border bg-surface flex items-center justify-between px-4 sm:px-6 shrink-0">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <button
           onClick={onMenuClick}
-          aria-label="Open navigation"
-          className="md:hidden text-text-muted hover:text-text transition-colors"
+          aria-label="Toggle navigation"
+          title={sidebarCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
+          className="p-1.5 -ml-1.5 rounded-lg text-text-muted hover:text-text hover:bg-surface-hover transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
           <svg
             className="w-5 h-5"
@@ -117,11 +124,8 @@ export function TopNav({ onMenuClick }: { onMenuClick?: () => void }) {
             strokeWidth={1.5}
             stroke="currentColor"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
-            />
+            <rect width="18" height="18" x="3" y="3" rx="2" />
+            <path d="M9 3v18" />
           </svg>
         </button>
         <div className="font-display text-sm text-text-muted">Workspace</div>

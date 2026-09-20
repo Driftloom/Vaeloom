@@ -20,6 +20,7 @@ export default function WorkspaceLayout({
   const { isAuthenticated, loading } = useAuth();
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     void params.then((p) => setWorkspaceId(p.workspaceId));
@@ -29,6 +30,46 @@ export default function WorkspaceLayout({
     setSidebarOpen(false);
   }, [pathname]);
 
+  // Load persisted desktop collapsed state
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('vaeloom.sidebar.collapsed');
+      if (saved === 'true') {
+        setSidebarCollapsed(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const toggleSidebar = React.useCallback(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setSidebarOpen((prev) => !prev);
+    } else {
+      setSidebarCollapsed((prev) => {
+        const next = !prev;
+        try {
+          localStorage.setItem('vaeloom.sidebar.collapsed', String(next));
+        } catch {
+          // ignore
+        }
+        return next;
+      });
+    }
+  }, []);
+
+  // Shortcut: Ctrl+B or Cmd+B toggles sidebar
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [toggleSidebar]);
+
   // F-13: Escape closes the mobile drawer and returns focus to the trigger.
   useEffect(() => {
     if (!sidebarOpen) return;
@@ -36,7 +77,7 @@ export default function WorkspaceLayout({
       if (e.key === 'Escape') {
         setSidebarOpen(false);
         const trigger = document.querySelector<HTMLButtonElement>(
-          'button[aria-label="Open navigation"]',
+          'button[aria-label="Toggle navigation"], button[aria-label="Open navigation"]',
         );
         trigger?.focus();
       }
@@ -61,7 +102,13 @@ export default function WorkspaceLayout({
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar workspaceId={workspaceId} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar
+        workspaceId={workspaceId}
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={toggleSidebar}
+      />
       {sidebarOpen && (
         <div
           className="md:hidden fixed inset-0 z-30 bg-black/40"
@@ -70,7 +117,7 @@ export default function WorkspaceLayout({
         />
       )}
       <div className="flex-1 flex flex-col min-w-0">
-        <TopNav onMenuClick={() => setSidebarOpen(true)} />
+        <TopNav onMenuClick={toggleSidebar} sidebarCollapsed={sidebarCollapsed} />
         {/* F-08: the root layout owns the single <main id="main-content">
               landmark; this wrapper stays a plain div to avoid nested/duplicate
               main landmarks on every workspace route. */}

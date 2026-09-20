@@ -486,22 +486,33 @@ function groupLinks(workspaceId: string): NavGroup[] {
   return enableEnterprise ? allGroups : allGroups.filter((g) => !g.enterprise);
 }
 
-function SidebarNavLink({ link, current }: { link: NavLink; current: boolean }) {
+function SidebarNavLink({
+  link,
+  current,
+  collapsed = false,
+}: {
+  link: NavLink;
+  current: boolean;
+  collapsed?: boolean;
+}) {
   return (
     <li>
       <Link
         href={link.path}
         aria-current={current ? 'page' : undefined}
-        className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
+        title={collapsed ? link.name : undefined}
+        className={`flex items-center rounded-md text-sm transition-colors ${
+          collapsed ? 'justify-center p-2.5 mx-auto' : 'gap-3 px-3 py-2'
+        } ${
           current
-            ? 'bg-surface-200 text-text'
+            ? 'bg-surface-200 text-text font-medium'
             : 'text-text-muted hover:bg-surface-hover hover:text-text'
         }`}
       >
-        <span aria-hidden="true" className="text-text-muted">
+        <span aria-hidden="true" className="text-text-muted shrink-0">
           {link.icon}
         </span>
-        <span>{link.name}</span>
+        <span className={collapsed ? 'sr-only' : 'truncate'}>{link.name}</span>
       </Link>
     </li>
   );
@@ -511,15 +522,22 @@ export function Sidebar({
   workspaceId,
   open,
   onClose,
+  collapsed = false,
+  onToggleCollapse,
 }: {
   workspaceId: string;
   open: boolean;
   onClose: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }) {
   const pathname = usePathname();
   const { user } = useAuth();
   const groups = groupLinks(workspaceId);
   const ws = (path: string) => `/workspace/${workspaceId}${path}`;
+
+  // On mobile drawer (open === true), show full width expanded view
+  const isCollapsed = collapsed && !open;
 
   const userInitials = user?.displayName
     ? user.displayName
@@ -535,60 +553,130 @@ export function Sidebar({
   return (
     <aside
       data-testid="sidebar"
-      className={`fixed inset-y-0 left-0 z-40 w-60 bg-surface border-r border-border flex flex-col h-screen shrink-0 transition-transform duration-200 md:static ${
-        open ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-      }`}
+      aria-label="Workspace sidebar"
+      className={`fixed inset-y-0 left-0 z-40 bg-surface border-r border-border flex flex-col h-screen shrink-0 transition-[width,transform] duration-200 ease-in-out md:static ${
+        isCollapsed ? 'w-60 md:w-[68px]' : 'w-60'
+      } ${open ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
     >
-      <div className="px-4 h-14 border-b border-border flex items-center justify-between shrink-0">
-        <h1 className="text-lg font-display font-semibold text-primary">Vaeloom</h1>
-        <button
-          onClick={onClose}
-          aria-label="Close navigation"
-          className="md:hidden text-text-muted hover:text-text transition-colors"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1.5}
-            stroke="currentColor"
+      <div
+        className={`h-14 border-b border-border flex items-center shrink-0 ${
+          isCollapsed ? 'justify-center px-2' : 'justify-between px-4'
+        }`}
+      >
+        {isCollapsed ? (
+          <button
+            onClick={onToggleCollapse}
+            aria-label="Expand sidebar"
+            title="Expand sidebar (Ctrl+B)"
+            className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-sm hover:bg-primary/20 transition-colors"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+            V
+          </button>
+        ) : (
+          <>
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                V
+              </div>
+              <h1 className="text-lg font-display font-semibold text-primary truncate">Vaeloom</h1>
+            </div>
+            <div className="flex items-center gap-1">
+              {onToggleCollapse && (
+                <button
+                  onClick={onToggleCollapse}
+                  aria-label="Collapse sidebar"
+                  title="Collapse sidebar (Ctrl+B)"
+                  className="hidden md:flex p-1.5 rounded-md text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5"
+                    />
+                  </svg>
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                aria-label="Close navigation"
+                className="md:hidden p-1.5 rounded-md text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </>
+        )}
       </div>
+
       {/* User card */}
-      <div className="px-3 py-3 border-b border-border shrink-0">
+      <div
+        className={`border-b border-border shrink-0 ${
+          isCollapsed ? 'p-2 flex justify-center' : 'px-3 py-3'
+        }`}
+      >
         <Link
           href={ws('/profile')}
-          className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-surface-hover transition-colors group"
+          title={isCollapsed ? `${userName} (Profile)` : undefined}
+          className={`flex items-center rounded-lg hover:bg-surface-hover transition-colors group ${
+            isCollapsed ? 'p-1.5 justify-center' : 'gap-3 px-2 py-2'
+          }`}
         >
           <div className="w-9 h-9 rounded-full bg-surface-active border border-border flex items-center justify-center text-text-muted font-mono text-xs shrink-0">
             {userInitials}
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-text truncate">{userName}</p>
-            <p className="text-xs text-text-dim truncate">View profile</p>
-          </div>
+          {!isCollapsed && (
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-text truncate">{userName}</p>
+              <p className="text-xs text-text-dim truncate">View profile</p>
+            </div>
+          )}
         </Link>
       </div>
-      <nav className="flex-1 overflow-y-auto py-3 px-2" aria-label="Workspace navigation">
+
+      <nav
+        className={`flex-1 overflow-y-auto py-3 ${isCollapsed ? 'px-1.5' : 'px-2'}`}
+        aria-label="Workspace navigation"
+      >
         {groups.map((group) => (
-          <div key={group.label} className="mb-4">
-            <p className="px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-text-dim">
-              {group.label}
-              {group.enterprise && (
-                <span
-                  className="ml-1.5 rounded border border-border px-1 py-0.5 text-[9px] normal-case tracking-normal text-text-dim"
-                  title="Enterprise features are visible but gated out of MVP scope"
-                >
-                  gated
-                </span>
-              )}
-            </p>
+          <div key={group.label} className={isCollapsed ? 'mb-2' : 'mb-4'}>
+            {isCollapsed ? (
+              <div className="mx-2 my-2 border-t border-border/40" title={group.label} />
+            ) : (
+              <p className="px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-text-dim">
+                {group.label}
+                {group.enterprise && (
+                  <span
+                    className="ml-1.5 rounded border border-border px-1 py-0.5 text-[9px] normal-case tracking-normal text-text-dim"
+                    title="Enterprise features are visible but gated out of MVP scope"
+                  >
+                    gated
+                  </span>
+                )}
+              </p>
+            )}
             <ul className="space-y-0.5">
               {group.links.map((link) => (
-                <SidebarNavLink key={link.name} link={link} current={pathname === link.path} />
+                <SidebarNavLink
+                  key={link.name}
+                  link={link}
+                  current={pathname === link.path}
+                  collapsed={isCollapsed}
+                />
               ))}
             </ul>
           </div>
