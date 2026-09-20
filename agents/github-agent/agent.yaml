@@ -1,0 +1,33 @@
+schema_version: 1.0.0
+agent_id: github-agent
+name: GitHub Agent
+version: 1.0.0
+description: Portfolio repository inspection, issue tracking, and PR staging.
+category: developer
+autonomy_level: approval_gated
+tools:
+  - fetch_github_repo
+  - create_github_issue
+  - create_github_pull_request
+gated_tools:
+  - create_github_issue
+  - create_github_pull_request
+memory_scopes:
+  read_scopes:
+    - github_profile
+  write_scopes:
+    - staged_prs
+  denied_scopes: []
+delegation:
+  allowed_targets: []
+  max_depth: 0
+  can_delegate: false
+budget:
+  max_tokens_per_turn: 8192
+  max_steps_per_turn: 15
+  max_usd_per_turn: 0.5
+  timeout_seconds: 60
+fallback:
+  fallback_agent: null
+  on_timeout: abort
+  on_rate_limit: retry_exponential

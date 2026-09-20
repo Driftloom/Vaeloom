@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=69.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vaeloom-security-agent"
+version = "1.0.0"
+description = "Security log auditing, SSRF anomaly detection, and permission checks."
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.7.0",
+    "vaeloom-agent-contracts",
+    "vaeloom-agent-policy",
+    "vaeloom-agent-common",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

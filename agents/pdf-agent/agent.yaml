@@ -1,0 +1,29 @@
+schema_version: 1.0.0
+agent_id: pdf-agent
+name: PDF Agent
+version: 1.0.0
+description: PDF layout analysis, form field mapping, and visual structure parsing.
+category: productivity
+autonomy_level: full
+tools:
+  - parse_document_ocr
+gated_tools: []
+memory_scopes:
+  read_scopes:
+    - pdf_files
+  write_scopes:
+    - pdf_metadata
+  denied_scopes: []
+delegation:
+  allowed_targets: []
+  max_depth: 0
+  can_delegate: false
+budget:
+  max_tokens_per_turn: 8192
+  max_steps_per_turn: 15
+  max_usd_per_turn: 0.5
+  timeout_seconds: 60
+fallback:
+  fallback_agent: null
+  on_timeout: abort
+  on_rate_limit: retry_exponential

@@ -1,0 +1,31 @@
+schema_version: 1.0.0
+agent_id: gmail-agent
+name: Gmail Agent
+version: 1.0.0
+description: Recruiter communication, email classification, and draft preparation.
+category: productivity
+autonomy_level: approval_gated
+tools:
+  - search_gmail
+  - draft_email
+gated_tools:
+  - draft_email
+memory_scopes:
+  read_scopes:
+    - email_cache
+  write_scopes:
+    - email_drafts
+  denied_scopes: []
+delegation:
+  allowed_targets: []
+  max_depth: 0
+  can_delegate: false
+budget:
+  max_tokens_per_turn: 8192
+  max_steps_per_turn: 15
+  max_usd_per_turn: 0.5
+  timeout_seconds: 60
+fallback:
+  fallback_agent: null
+  on_timeout: abort
+  on_rate_limit: retry_exponential

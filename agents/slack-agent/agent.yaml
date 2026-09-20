@@ -1,0 +1,30 @@
+schema_version: 1.0.0
+agent_id: slack-agent
+name: Slack Agent
+version: 1.0.0
+description: Team notifications and Slack channel message dispatch.
+category: productivity
+autonomy_level: approval_gated
+tools:
+  - send_slack_message
+gated_tools:
+  - send_slack_message
+memory_scopes:
+  read_scopes:
+    - slack_channels
+  write_scopes:
+    - slack_outbox
+  denied_scopes: []
+delegation:
+  allowed_targets: []
+  max_depth: 0
+  can_delegate: false
+budget:
+  max_tokens_per_turn: 8192
+  max_steps_per_turn: 15
+  max_usd_per_turn: 0.5
+  timeout_seconds: 60
+fallback:
+  fallback_agent: null
+  on_timeout: abort
+  on_rate_limit: retry_exponential

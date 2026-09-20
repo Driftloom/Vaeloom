@@ -1,0 +1,36 @@
+schema_version: 1.0.0
+agent_id: resume-agent
+name: Resume Agent
+version: 1.0.0
+description: Resume authoring, tailoring, and document optimization.
+category: career
+autonomy_level: approval_gated
+tools:
+  - compile_resume_pdf
+  - compile_resume_docx
+  - compile_cover_letter
+gated_tools:
+  - compile_resume_pdf
+  - compile_resume_docx
+  - compile_cover_letter
+memory_scopes:
+  read_scopes:
+    - resume_history
+    - profile
+  write_scopes:
+    - resume_variants
+  denied_scopes: []
+delegation:
+  allowed_targets:
+    - ats-agent
+  max_depth: 2
+  can_delegate: true
+budget:
+  max_tokens_per_turn: 8192
+  max_steps_per_turn: 15
+  max_usd_per_turn: 0.5
+  timeout_seconds: 60
+fallback:
+  fallback_agent: null
+  on_timeout: abort
+  on_rate_limit: retry_exponential

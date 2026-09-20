@@ -1,0 +1,32 @@
+schema_version: 1.0.0
+agent_id: application-agent
+name: Application Agent
+version: 1.0.0
+description: Job application package compilation and portal link verification.
+category: career
+autonomy_level: approval_gated
+tools:
+  - verify_application_link
+  - notify_user
+gated_tools:
+  - notify_user
+memory_scopes:
+  read_scopes:
+    - saved_jobs
+    - profile
+  write_scopes:
+    - application_packages
+  denied_scopes: []
+delegation:
+  allowed_targets: []
+  max_depth: 0
+  can_delegate: false
+budget:
+  max_tokens_per_turn: 8192
+  max_steps_per_turn: 15
+  max_usd_per_turn: 0.5
+  timeout_seconds: 60
+fallback:
+  fallback_agent: null
+  on_timeout: abort
+  on_rate_limit: retry_exponential

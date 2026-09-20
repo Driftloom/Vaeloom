@@ -1,0 +1,29 @@
+schema_version: 1.0.0
+agent_id: self-improvement-agent
+name: Self-Improvement Agent
+version: 1.0.0
+description: Agent prompt optimization and trajectory failure critique.
+category: system
+autonomy_level: full
+tools:
+  - search_documents
+gated_tools: []
+memory_scopes:
+  read_scopes:
+    - execution_logs
+  write_scopes:
+    - policy_updates
+  denied_scopes: []
+delegation:
+  allowed_targets: []
+  max_depth: 0
+  can_delegate: false
+budget:
+  max_tokens_per_turn: 8192
+  max_steps_per_turn: 15
+  max_usd_per_turn: 0.5
+  timeout_seconds: 60
+fallback:
+  fallback_agent: null
+  on_timeout: abort
+  on_rate_limit: retry_exponential

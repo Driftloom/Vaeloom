@@ -1,0 +1,30 @@
+schema_version: 1.0.0
+agent_id: plugin-agent
+name: Plugin Agent
+version: 1.0.0
+description: Third-party community plugin orchestration and sandbox verification.
+category: developer
+autonomy_level: approval_gated
+tools:
+  - execute_code_sandbox
+gated_tools:
+  - execute_code_sandbox
+memory_scopes:
+  read_scopes:
+    - plugin_registry
+  write_scopes:
+    - plugin_runs
+  denied_scopes: []
+delegation:
+  allowed_targets: []
+  max_depth: 0
+  can_delegate: false
+budget:
+  max_tokens_per_turn: 8192
+  max_steps_per_turn: 15
+  max_usd_per_turn: 0.5
+  timeout_seconds: 60
+fallback:
+  fallback_agent: null
+  on_timeout: abort
+  on_rate_limit: retry_exponential

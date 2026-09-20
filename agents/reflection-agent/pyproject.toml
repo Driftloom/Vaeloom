@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=69.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vaeloom-reflection-agent"
+version = "1.0.0"
+description = "Post-execution memory reflection, preference extraction, and learning closure."
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.7.0",
+    "vaeloom-agent-contracts",
+    "vaeloom-agent-policy",
+    "vaeloom-agent-common",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
