@@ -166,10 +166,12 @@ async def get_composio_status(
     current_user: dict = Depends(get_current_user),
 ):
     """Check if Composio SaaS integration is enabled and list supported apps."""
+    from ..services.composio_catalog import COMPOSIO_SUPPORTED_APPS
     from ..services.composio_service import composio_service
 
     return {
         "enabled": composio_service.is_enabled,
+        "total_apps": len(COMPOSIO_SUPPORTED_APPS),
         "popular_apps": [
             {"id": "slack", "name": "Slack", "description": "Send notifications and query channels"},
             {"id": "notion", "name": "Notion", "description": "Search and create workspace docs"},
@@ -178,6 +180,26 @@ async def get_composio_status(
             {"id": "jira", "name": "Jira", "description": "Track issues and create tickets"},
         ],
     }
+
+
+@router.get("/composio/apps")
+async def list_composio_apps(
+    category: str | None = None,
+    search: str | None = None,
+    limit: int = 300,
+    offset: int = 0,
+    current_user: dict = Depends(get_current_user),
+):
+    """List 260+ supported enterprise SaaS applications from the Composio catalog."""
+    from ..services.composio_service import composio_service
+
+    return await composio_service.get_apps(
+        category=category,
+        search=search,
+        limit=limit,
+        offset=offset,
+    )
+
 
 
 @router.post("/composio/auth-url")

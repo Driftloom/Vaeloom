@@ -3189,10 +3189,21 @@ export interface ComposioAppInfo {
   id: string;
   name: string;
   description: string;
+  category?: string;
+  action_count?: number;
+}
+
+export interface ComposioAppsResponse {
+  total: number;
+  limit: number;
+  offset: number;
+  apps: ComposioAppInfo[];
+  categories: string[];
 }
 
 export interface ComposioStatusResponse {
   enabled: boolean;
+  total_apps?: number;
   popular_apps: ComposioAppInfo[];
 }
 
@@ -3281,6 +3292,17 @@ export const connectorsApi = {
   composio: {
     status(): Promise<ComposioStatusResponse> {
       return apiClient.get<ComposioStatusResponse>('/connectors/composio/status');
+    },
+    apps(params?: {
+      category?: string;
+      search?: string;
+      limit?: number;
+      offset?: number;
+    }): Promise<ComposioAppsResponse> {
+      return apiClient.get<ComposioAppsResponse>(
+        '/connectors/composio/apps',
+        params as Record<string, string | number | boolean | undefined | null>,
+      );
     },
     authUrl(
       app: string,

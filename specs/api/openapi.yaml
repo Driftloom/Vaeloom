@@ -232,6 +232,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/sessions/revoke-others:
+    post:
+      tags:
+        - auth
+      summary: Revoke Other Sessions
+      operationId: revoke_other_sessions_api_v1_auth_sessions_revoke_others_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
   /api/v1/auth/forgot-password:
     post:
       tags:
@@ -463,6 +475,68 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
+  /api/v1/auth/mfa/setup:
+    post:
+      tags:
+        - auth
+      summary: Setup Mfa
+      operationId: setup_mfa_api_v1_auth_mfa_setup_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaSetupResponse'
+  /api/v1/auth/mfa/enable:
+    post:
+      tags:
+        - auth
+      summary: Enable Mfa
+      operationId: enable_mfa_api_v1_auth_mfa_enable_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaVerifyRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/mfa/verify:
+    post:
+      tags:
+        - auth
+      summary: Verify Mfa Login
+      operationId: verify_mfa_login_api_v1_auth_mfa_verify_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaVerifyRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/workspaces:
     get:
       tags:
@@ -1205,6 +1279,31 @@ paths:
                 type: object
                 additionalProperties: true
                 title: Response List Agents Api V1 Agents Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/agents/capabilities/test:
+    post:
+      tags:
+        - agents
+      summary: Test Capability
+      description: Interactive capability test runner endpoint for workspace playground.
+      operationId: test_capability_api_v1_agents_capabilities_test_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CapabilityTestRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
         '422':
           description: Validation Error
           content:
@@ -2952,6 +3051,141 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/connectors/composio/status:
+    get:
+      tags:
+        - connectors
+      summary: Get Composio Status
+      description: Check if Composio SaaS integration is enabled and list supported
+        apps.
+      operationId: get_composio_status_api_v1_connectors_composio_status_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/connectors/composio/apps:
+    get:
+      tags:
+        - connectors
+      summary: List Composio Apps
+      description: List 260+ supported enterprise SaaS applications from the Composio
+        catalog.
+      operationId: list_composio_apps_api_v1_connectors_composio_apps_get
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Category
+        - name: search
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Search
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 300
+            title: Limit
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+            title: Offset
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/connectors/composio/auth-url:
+    post:
+      tags:
+        - connectors
+      summary: Get Composio Auth Url
+      description: Generate an OAuth connect URL for a specific SaaS app.
+      operationId: get_composio_auth_url_api_v1_connectors_composio_auth_url_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: true
+              type: object
+              title: Payload
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/connectors/composio/sync:
+    post:
+      tags:
+        - connectors
+      summary: Sync Composio Tools
+      description: Discover and bridge workspace SaaS tools from Composio into dynamic
+        executor.
+      operationId: sync_composio_tools_api_v1_connectors_composio_sync_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - additionalProperties: true
+                  type: object
+                - type: 'null'
+              title: Payload
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/connectors/mcp/builtin:
+    get:
+      tags:
+        - connectors
+      summary: Get Builtin Mcp Servers
+      description: Returns catalog of built-in MCP servers ready to attach to any
+        workspace.
+      operationId: get_builtin_mcp_servers_api_v1_connectors_mcp_builtin_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
   /api/v1/connectors/{connector_id}:
     get:
       tags:
@@ -3027,6 +3261,33 @@ paths:
       responses:
         '204':
           description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/connectors/{connector_id}/health:
+    get:
+      tags:
+        - connectors
+      summary: Get Connector Health
+      description: Inspect connector health diagnostics without exposing credentials.
+      operationId: get_connector_health_api_v1_connectors__connector_id__health_get
+      parameters:
+        - name: connector_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Connector Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
         '422':
           description: Validation Error
           content:
@@ -3245,90 +3506,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-  /api/v1/connectors/composio/status:
-    get:
-      tags:
-        - connectors
-      summary: Get Composio Status
-      description: Check if Composio SaaS integration is enabled and list supported
-        apps.
-      operationId: get_composio_status_api_v1_connectors_composio_status_get
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema: {}
-  /api/v1/connectors/composio/auth-url:
-    post:
-      tags:
-        - connectors
-      summary: Get Composio Auth Url
-      description: Generate an OAuth connect URL for a specific SaaS app.
-      operationId: get_composio_auth_url_api_v1_connectors_composio_auth_url_post
-      requestBody:
-        content:
-          application/json:
-            schema:
-              additionalProperties: true
-              type: object
-              title: Payload
-        required: true
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema: {}
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-  /api/v1/connectors/composio/sync:
-    post:
-      tags:
-        - connectors
-      summary: Sync Composio Tools
-      description: Discover and bridge workspace SaaS tools from Composio into dynamic
-        executor.
-      operationId: sync_composio_tools_api_v1_connectors_composio_sync_post
-      requestBody:
-        content:
-          application/json:
-            schema:
-              anyOf:
-                - additionalProperties: true
-                  type: object
-                - type: 'null'
-              title: Payload
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema: {}
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-  /api/v1/connectors/mcp/builtin:
-    get:
-      tags:
-        - connectors
-      summary: Get Builtin Mcp Servers
-      description: Returns catalog of built-in MCP servers ready to attach to any
-        workspace.
-      operationId: get_builtin_mcp_servers_api_v1_connectors_mcp_builtin_get
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema: {}
   /api/v1/scheduler/jobs:
     post:
       tags:
@@ -4145,6 +4322,32 @@ paths:
           content:
             application/json:
               schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/tenants/{tenant_id}/export:
+    post:
+      tags:
+        - gdpr
+      summary: Export Tenant Gdpr
+      operationId: export_tenant_gdpr_api_v1_tenants__tenant_id__export_post
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Tenant Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantDataExportResponse'
         '422':
           description: Validation Error
           content:
@@ -5330,6 +5533,67 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/import/resume:
+    post:
+      tags:
+        - profile
+      summary: Import From Resume
+      description: Import profile data from an uploaded resume file (PDF, DOCX, TXT).
+      operationId: import_from_resume_api_v1_profile_import_resume_post
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_import_from_resume_api_v1_profile_import_resume_post'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileImportSummaryResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/import/linkedin:
+    post:
+      tags:
+        - profile
+      summary: Import From Linkedin
+      description: Import profile data from a LinkedIn profile URL.
+      operationId: import_from_linkedin_api_v1_profile_import_linkedin_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportLinkedInRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileImportSummaryResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/profile/public/{user_id}:
     get:
       tags:
@@ -5539,6 +5803,331 @@ paths:
                 items:
                   $ref: '#/components/schemas/ProfileActivityItem'
                 title: Response Get Profile Activity Api V1 Profile Activity Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/education:
+    post:
+      tags:
+        - profile
+      summary: Add Education
+      description: Add a new academic degree/credential to profile memory.
+      operationId: add_education_api_v1_profile_education_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddEducationRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/education/{education_id}:
+    put:
+      tags:
+        - profile
+      summary: Update Education
+      description: Update an academic degree/credential in profile memory.
+      operationId: update_education_api_v1_profile_education__education_id__put
+      parameters:
+        - name: education_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Education Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEducationRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+        - profile
+      summary: Delete Education
+      description: Delete an academic degree/credential from profile memory.
+      operationId: delete_education_api_v1_profile_education__education_id__delete
+      parameters:
+        - name: education_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Education Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/projects:
+    post:
+      tags:
+        - profile
+      summary: Add Project
+      description: Add a showcase portfolio project to profile memory.
+      operationId: add_project_api_v1_profile_projects_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddProjectRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/projects/{project_id}:
+    put:
+      tags:
+        - profile
+      summary: Update Project
+      description: Update a showcase portfolio project in profile memory.
+      operationId: update_project_api_v1_profile_projects__project_id__put
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Project Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+        - profile
+      summary: Delete Project
+      description: Delete a showcase portfolio project from profile memory.
+      operationId: delete_project_api_v1_profile_projects__project_id__delete
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Project Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/vault:
+    put:
+      tags:
+        - profile
+      summary: Update Vault
+      description: Update encrypted EEO & work authorization application vault.
+      operationId: update_vault_api_v1_profile_vault_put
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateApplicationVaultRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/directives:
+    put:
+      tags:
+        - profile
+      summary: Update Directives
+      description: Update autonomous agent directives, thresholds, and autopilot quota.
+      operationId: update_directives_api_v1_profile_directives_put
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAgentDirectivesRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/blacklist:
+    post:
+      tags:
+        - profile
+      summary: Add Blacklist
+      description: Add a company/employer to the agent application blacklist.
+      operationId: add_blacklist_api_v1_profile_blacklist_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddBlacklistRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/blacklist/{company_name}:
+    delete:
+      tags:
+        - profile
+      summary: Delete Blacklist
+      description: Remove a company from the agent application blacklist.
+      operationId: delete_blacklist_api_v1_profile_blacklist__company_name__delete
+      parameters:
+        - name: company_name
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Company Name
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/profile/screening-questions:
+    put:
+      tags:
+        - profile
+      summary: Update Screening Questions
+      description: Update pre-saved recruiter screening questions and answers.
+      operationId: update_screening_questions_api_v1_profile_screening_questions_put
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateScreeningQuestionsRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponse'
         '422':
           description: Validation Error
           content:
@@ -7138,6 +7727,98 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/onboarding/reset:
+    post:
+      tags:
+        - onboarding
+      summary: Reset Onboarding
+      operationId: reset_onboarding_api_v1_onboarding_reset_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingStateResponse'
+  /api/v1/onboarding/resume:
+    post:
+      tags:
+        - onboarding
+      summary: Upload Onboarding Resume
+      operationId: upload_onboarding_resume_api_v1_onboarding_resume_post
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_upload_onboarding_resume_api_v1_onboarding_resume_post'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeUploadResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/onboarding/join:
+    post:
+      tags:
+        - onboarding
+      summary: Join Onboarding Workspace
+      operationId: join_onboarding_workspace_api_v1_onboarding_join_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinWorkspaceRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingStateResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/orchestrator/execute:
+    post:
+      tags:
+        - orchestrator
+      summary: Execute Orchestrator Turn
+      description: Execute an agent turn via the governed orchestrator boundary.
+      operationId: execute_orchestrator_turn_api_v1_orchestrator_execute_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrchestratorExecuteRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Execute Orchestrator Turn Api V1 Orchestrator Execute
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
 components:
   schemas:
     ATSReadinessResponse:
@@ -7194,6 +7875,28 @@ components:
       required:
         - workspace_id
       title: AcceptProposalRequest
+    AddBlacklistRequest:
+      properties:
+        workspace_id:
+          type: string
+          title: Workspace Id
+        company_name:
+          type: string
+          title: Company Name
+        domain:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Domain
+        reason:
+          type: string
+          title: Reason
+          default: Current Employer
+      type: object
+      required:
+        - workspace_id
+        - company_name
+      title: AddBlacklistRequest
     AddCareerEntryRequest:
       properties:
         workspace_id:
@@ -7221,12 +7924,73 @@ components:
           type: array
           title: Achievements
           default: []
+        location:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Location
+        employment_type:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Employment Type
+          default: Full-time
+        is_current:
+          type: boolean
+          title: Is Current
+          default: false
       type: object
       required:
         - workspace_id
         - company
         - role
       title: AddCareerEntryRequest
+    AddEducationRequest:
+      properties:
+        workspace_id:
+          type: string
+          title: Workspace Id
+        institution:
+          type: string
+          title: Institution
+        degree:
+          type: string
+          title: Degree
+        field_of_study:
+          type: string
+          title: Field Of Study
+        start_year:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Start Year
+        graduation_year:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Graduation Year
+        gpa:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Gpa
+        show_gpa_on_resume:
+          type: boolean
+          title: Show Gpa On Resume
+          default: false
+        honors:
+          items:
+            type: string
+          type: array
+          title: Honors
+          default: []
+      type: object
+      required:
+        - workspace_id
+        - institution
+        - degree
+        - field_of_study
+      title: AddEducationRequest
     AddMemberRequest:
       properties:
         user_id:
@@ -7247,6 +8011,53 @@ components:
       required:
         - user_id
       title: AddMemberRequest
+    AddProjectRequest:
+      properties:
+        workspace_id:
+          type: string
+          title: Workspace Id
+        title:
+          type: string
+          title: Title
+        tagline:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Tagline
+        description:
+          type: string
+          title: Description
+        technologies:
+          items:
+            type: string
+          type: array
+          title: Technologies
+          default: []
+        metrics_summary:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Metrics Summary
+        live_url:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Live Url
+        github_url:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Github Url
+        featured:
+          type: boolean
+          title: Featured
+          default: true
+      type: object
+      required:
+        - workspace_id
+        - title
+        - description
+      title: AddProjectRequest
     AddSkillRequest:
       properties:
         skill_name:
@@ -7290,6 +8101,57 @@ components:
         - name
         - category
       title: AgentCreate
+    AgentDirectivesData:
+      properties:
+        autonomy_mode:
+          type: string
+          title: Autonomy Mode
+          default: copilot
+        min_match_threshold:
+          type: integer
+          title: Min Match Threshold
+          default: 80
+        daily_application_quota:
+          type: integer
+          title: Daily Application Quota
+          default: 10
+        min_base_salary:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Min Base Salary
+        target_base_salary:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Target Base Salary
+        target_total_comp:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Target Total Comp
+        currency:
+          type: string
+          title: Currency
+          default: USD
+        notice_period:
+          type: string
+          title: Notice Period
+          default: 2 weeks
+        relocation_preference:
+          type: string
+          title: Relocation Preference
+          default: Remote only
+        travel_percentage:
+          type: string
+          title: Travel Percentage
+          default: 0%
+        cover_letter_policy:
+          type: string
+          title: Cover Letter Policy
+          default: when_required
+      type: object
+      title: AgentDirectivesData
     AgentExecute:
       properties:
         input:
@@ -7508,6 +8370,53 @@ components:
       required:
         - status
       title: ApplicationUpdateOutcome
+    ApplicationVaultData:
+      properties:
+        demographics_policy:
+          type: string
+          title: Demographics Policy
+          default: decline
+        gender:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Gender
+        ethnicity:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Ethnicity
+        veteran_status:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Veteran Status
+        disability_status:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Disability Status
+        authorized_countries:
+          items:
+            type: string
+          type: array
+          title: Authorized Countries
+          default:
+            - US
+        visa_status:
+          type: string
+          title: Visa Status
+          default: Citizen
+        requires_sponsorship:
+          type: boolean
+          title: Requires Sponsorship
+          default: false
+        security_clearance:
+          type: string
+          title: Security Clearance
+          default: None
+      type: object
+      title: ApplicationVaultData
     ApprovalDecision:
       properties:
         note:
@@ -7678,6 +8587,15 @@ components:
           default: 3600
         user:
           $ref: '#/components/schemas/PublicUser'
+        mfa_required:
+          type: boolean
+          title: Mfa Required
+          default: false
+        mfa_token:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Mfa Token
       type: object
       required:
         - access_token
@@ -7716,6 +8634,42 @@ components:
       required:
         - opportunities
       title: BatchMatchRequest
+    BlacklistItem:
+      properties:
+        id:
+          type: string
+          title: Id
+        company_name:
+          type: string
+          title: Company Name
+        domain:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Domain
+        reason:
+          type: string
+          title: Reason
+          default: Current Employer
+        auto_inferred:
+          type: boolean
+          title: Auto Inferred
+          default: false
+      type: object
+      required:
+        - id
+        - company_name
+      title: BlacklistItem
+    Body_import_from_resume_api_v1_profile_import_resume_post:
+      properties:
+        file:
+          type: string
+          contentMediaType: application/octet-stream
+          title: File
+      type: object
+      required:
+        - file
+      title: Body_import_from_resume_api_v1_profile_import_resume_post
     Body_upload_avatar_api_v1_profile_avatar_post:
       properties:
         file:
@@ -7736,6 +8690,16 @@ components:
       required:
         - file
       title: Body_upload_document_api_v1_documents_post
+    Body_upload_onboarding_resume_api_v1_onboarding_resume_post:
+      properties:
+        file:
+          type: string
+          contentMediaType: application/octet-stream
+          title: File
+      type: object
+      required:
+        - file
+      title: Body_upload_onboarding_resume_api_v1_onboarding_resume_post
     BroadcastRequest:
       properties:
         channel:
@@ -7787,6 +8751,28 @@ components:
       required:
         - workspaceId
       title: CancelRun
+    CapabilityTestRequest:
+      properties:
+        workspace_id:
+          type: string
+          title: Workspace Id
+        capability_name:
+          type: string
+          title: Capability Name
+        category:
+          type: string
+          title: Category
+        input_payload:
+          additionalProperties: true
+          type: object
+          title: Input Payload
+          default: {}
+      type: object
+      required:
+        - workspace_id
+        - capability_name
+        - category
+      title: CapabilityTestRequest
     CareerEntry:
       properties:
         company:
@@ -7815,6 +8801,21 @@ components:
           type: number
           title: Confidence
           default: 0.0
+        location:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Location
+        employment_type:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Employment Type
+          default: Full-time
+        is_current:
+          type: boolean
+          title: Is Current
+          default: false
       type: object
       required:
         - company
@@ -8016,6 +9017,7 @@ components:
         - data_processing
         - agent_access
         - email_marketing
+        - terms_and_privacy
       title: ConsentScope
     CouncilCertifyRequest:
       properties:
@@ -8901,6 +9903,53 @@ components:
         - properties
         - created_at
       title: EdgeResponse
+    EducationEntry:
+      properties:
+        id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Id
+        institution:
+          type: string
+          title: Institution
+        degree:
+          type: string
+          title: Degree
+        field_of_study:
+          type: string
+          title: Field Of Study
+        start_year:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Start Year
+        graduation_year:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Graduation Year
+        gpa:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Gpa
+        show_gpa_on_resume:
+          type: boolean
+          title: Show Gpa On Resume
+          default: false
+        honors:
+          items:
+            type: string
+          type: array
+          title: Honors
+          default: []
+      type: object
+      required:
+        - institution
+        - degree
+        - field_of_study
+      title: EducationEntry
     EffectiveKeyResponse:
       properties:
         provider:
@@ -9294,6 +10343,19 @@ components:
           title: Detail
       type: object
       title: HTTPValidationError
+    ImportLinkedInRequest:
+      properties:
+        workspace_id:
+          type: string
+          title: Workspace Id
+        linkedin_url:
+          type: string
+          title: Linkedin Url
+      type: object
+      required:
+        - workspace_id
+        - linkedin_url
+      title: ImportLinkedInRequest
     InlineAiRequest:
       properties:
         start_line:
@@ -9695,6 +10757,16 @@ components:
         - http
         - event
       title: JobType
+    JoinWorkspaceRequest:
+      properties:
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+      type: object
+      required:
+        - workspace_id
+      title: JoinWorkspaceRequest
     LoginRequest:
       properties:
         email:
@@ -10138,6 +11210,41 @@ components:
           title: Supersedes Id
       type: object
       title: MemoryUpdate
+    MfaSetupResponse:
+      properties:
+        secret:
+          type: string
+          title: Secret
+        otpauth_url:
+          type: string
+          title: Otpauth Url
+        recovery_codes:
+          items:
+            type: string
+          type: array
+          title: Recovery Codes
+      type: object
+      required:
+        - secret
+        - otpauth_url
+        - recovery_codes
+      title: MfaSetupResponse
+    MfaVerifyRequest:
+      properties:
+        code:
+          type: string
+          maxLength: 32
+          minLength: 1
+          title: Code
+        mfa_token:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Mfa Token
+      type: object
+      required:
+        - code
+      title: MfaVerifyRequest
     MicroLearningNudge:
       properties:
         title:
@@ -10414,6 +11521,37 @@ components:
         - title
         - company
       title: OpportunityDTO
+    OrchestratorExecuteRequest:
+      properties:
+        workspace_id:
+          type: string
+          title: Workspace Id
+          description: Target workspace UUID
+        user_id:
+          type: string
+          title: User Id
+          description: Authenticated user UUID (mandatory, non-null)
+        agent_id:
+          type: string
+          title: Agent Id
+          description: Target agent name or identifier
+        message:
+          type: string
+          maxLength: 10000
+          title: Message
+          description: Task instruction or prompt
+        session_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Session Id
+      type: object
+      required:
+        - workspace_id
+        - user_id
+        - agent_id
+        - message
+      title: OrchestratorExecuteRequest
     OvernightCycleRequest:
       properties:
         workspace_id:
@@ -10489,6 +11627,30 @@ components:
         - total_fields
         - filled_fields
       title: ProfileCompletenessResponse
+    ProfileImportSummaryResponse:
+      properties:
+        skills_imported:
+          type: integer
+          title: Skills Imported
+          default: 0
+        career_imported:
+          type: integer
+          title: Career Imported
+          default: 0
+        education_imported:
+          type: integer
+          title: Education Imported
+          default: 0
+        message:
+          type: string
+          title: Message
+        profile:
+          $ref: '#/components/schemas/ProfileResponse'
+      type: object
+      required:
+        - message
+        - profile
+      title: ProfileImportSummaryResponse
     ProfileRecommendationItem:
       properties:
         id:
@@ -10623,6 +11785,38 @@ components:
             - type: integer
             - type: 'null'
           title: Years Experience
+        education:
+          items:
+            $ref: '#/components/schemas/EducationEntry'
+          type: array
+          title: Education
+          default: []
+        projects:
+          items:
+            $ref: '#/components/schemas/ProjectEntry'
+          type: array
+          title: Projects
+          default: []
+        application_vault:
+          anyOf:
+            - $ref: '#/components/schemas/ApplicationVaultData'
+            - type: 'null'
+        agent_directives:
+          anyOf:
+            - $ref: '#/components/schemas/AgentDirectivesData'
+            - type: 'null'
+        company_blacklist:
+          items:
+            $ref: '#/components/schemas/BlacklistItem'
+          type: array
+          title: Company Blacklist
+          default: []
+        screening_questions:
+          items:
+            $ref: '#/components/schemas/ScreeningQuestionItem'
+          type: array
+          title: Screening Questions
+          default: []
       type: object
       required:
         - id
@@ -10631,6 +11825,54 @@ components:
         - created_at
         - updated_at
       title: ProfileResponse
+    ProjectEntry:
+      properties:
+        id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Id
+        title:
+          type: string
+          title: Title
+        tagline:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Tagline
+        description:
+          type: string
+          title: Description
+        technologies:
+          items:
+            type: string
+          type: array
+          title: Technologies
+          default: []
+        metrics_summary:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Metrics Summary
+        live_url:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Live Url
+        github_url:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Github Url
+        featured:
+          type: boolean
+          title: Featured
+          default: true
+      type: object
+      required:
+        - title
+        - description
+      title: ProjectEntry
     ProposalOutput:
       properties:
         id:
@@ -10900,6 +12142,10 @@ components:
         email_verified:
           type: boolean
           title: Email Verified
+          default: false
+        mfa_enabled:
+          type: boolean
+          title: Mfa Enabled
           default: false
         created_at:
           type: string
@@ -11319,6 +12565,27 @@ components:
         - category
         - description
       title: ResumeTemplateResponse
+    ResumeUploadResponse:
+      properties:
+        filename:
+          type: string
+          title: Filename
+        extracted_skills:
+          items:
+            type: string
+          type: array
+          title: Extracted Skills
+        skills_count:
+          type: integer
+          title: Skills Count
+          default: 0
+        state:
+          $ref: '#/components/schemas/OnboardingStateResponse'
+      type: object
+      required:
+        - filename
+        - state
+      title: ResumeUploadResponse
     RollupRequest:
       properties:
         target_tier:
@@ -11605,6 +12872,27 @@ components:
         - created_at
         - updated_at
       title: ScheduleResponse
+    ScreeningQuestionItem:
+      properties:
+        id:
+          type: string
+          title: Id
+        question:
+          type: string
+          title: Question
+        answer:
+          type: string
+          title: Answer
+        category:
+          type: string
+          title: Category
+          default: general
+      type: object
+      required:
+        - id
+        - question
+        - answer
+      title: ScreeningQuestionItem
     SearchRequest:
       properties:
         query:
@@ -11787,6 +13075,11 @@ components:
             - type: string
             - type: 'null'
           title: Display Name
+        terms_accepted:
+          type: boolean
+          title: Terms Accepted
+          description: Explicit agreement to Terms of Service and Privacy Policy
+          default: true
       type: object
       required:
         - email
@@ -11839,6 +13132,23 @@ components:
           type: boolean
           title: Is Matchable
           default: false
+        category:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Category
+          default: General
+        proficiency:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Proficiency
+          default: Intermediate
+        years_experience:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Years Experience
       type: object
       required:
         - name
@@ -12007,6 +13317,33 @@ components:
         - channel
         - created_at
       title: TemplateResponse
+    TenantDataExportResponse:
+      properties:
+        tenant_id:
+          type: string
+          title: Tenant Id
+        tenant_name:
+          type: string
+          title: Tenant Name
+        exported_at:
+          type: string
+          format: date-time
+          title: Exported At
+        data:
+          additionalProperties: true
+          type: object
+          title: Data
+        total_records:
+          type: integer
+          title: Total Records
+      type: object
+      required:
+        - tenant_id
+        - tenant_name
+        - exported_at
+        - data
+        - total_records
+      title: TenantDataExportResponse
     TraverseRequest:
       properties:
         start_id:
@@ -12026,6 +13363,114 @@ components:
       required:
         - start_id
       title: TraverseRequest
+    UpdateAgentDirectivesRequest:
+      properties:
+        workspace_id:
+          type: string
+          title: Workspace Id
+        autonomy_mode:
+          type: string
+          title: Autonomy Mode
+          default: copilot
+        min_match_threshold:
+          type: integer
+          title: Min Match Threshold
+          default: 80
+        daily_application_quota:
+          type: integer
+          title: Daily Application Quota
+          default: 10
+        min_base_salary:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Min Base Salary
+        target_base_salary:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Target Base Salary
+        target_total_comp:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Target Total Comp
+        currency:
+          type: string
+          title: Currency
+          default: USD
+        notice_period:
+          type: string
+          title: Notice Period
+          default: 2 weeks
+        relocation_preference:
+          type: string
+          title: Relocation Preference
+          default: Remote only
+        travel_percentage:
+          type: string
+          title: Travel Percentage
+          default: 0%
+        cover_letter_policy:
+          type: string
+          title: Cover Letter Policy
+          default: when_required
+      type: object
+      required:
+        - workspace_id
+      title: UpdateAgentDirectivesRequest
+    UpdateApplicationVaultRequest:
+      properties:
+        workspace_id:
+          type: string
+          title: Workspace Id
+        demographics_policy:
+          type: string
+          title: Demographics Policy
+          default: decline
+        gender:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Gender
+        ethnicity:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Ethnicity
+        veteran_status:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Veteran Status
+        disability_status:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Disability Status
+        authorized_countries:
+          items:
+            type: string
+          type: array
+          title: Authorized Countries
+          default:
+            - US
+        visa_status:
+          type: string
+          title: Visa Status
+          default: Citizen
+        requires_sponsorship:
+          type: boolean
+          title: Requires Sponsorship
+          default: false
+        security_clearance:
+          type: string
+          title: Security Clearance
+          default: None
+      type: object
+      required:
+        - workspace_id
+      title: UpdateApplicationVaultRequest
     UpdateCareerEntryRequest:
       properties:
         workspace_id:
@@ -12053,6 +13498,21 @@ components:
               type: array
             - type: 'null'
           title: Achievements
+        location:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Location
+        employment_type:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Employment Type
+        is_current:
+          anyOf:
+            - type: boolean
+            - type: 'null'
+          title: Is Current
       type: object
       required:
         - workspace_id
@@ -12074,6 +13534,57 @@ components:
           title: Config
       type: object
       title: UpdateConnectorRequest
+    UpdateEducationRequest:
+      properties:
+        workspace_id:
+          type: string
+          title: Workspace Id
+        institution:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Institution
+        degree:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Degree
+        field_of_study:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Field Of Study
+        start_year:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Start Year
+        graduation_year:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Graduation Year
+        gpa:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Gpa
+        show_gpa_on_resume:
+          anyOf:
+            - type: boolean
+            - type: 'null'
+          title: Show Gpa On Resume
+        honors:
+          anyOf:
+            - items:
+                type: string
+              type: array
+            - type: 'null'
+          title: Honors
+      type: object
+      required:
+        - workspace_id
+      title: UpdateEducationRequest
     UpdateJobPreferencesRequest:
       properties:
         workspace_id:
@@ -12290,6 +13801,72 @@ components:
           title: Preferences
       type: object
       title: UpdateProfileRequest
+    UpdateProjectRequest:
+      properties:
+        workspace_id:
+          type: string
+          title: Workspace Id
+        title:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Title
+        tagline:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Tagline
+        description:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Description
+        technologies:
+          anyOf:
+            - items:
+                type: string
+              type: array
+            - type: 'null'
+          title: Technologies
+        metrics_summary:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Metrics Summary
+        live_url:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Live Url
+        github_url:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Github Url
+        featured:
+          anyOf:
+            - type: boolean
+            - type: 'null'
+          title: Featured
+      type: object
+      required:
+        - workspace_id
+      title: UpdateProjectRequest
+    UpdateScreeningQuestionsRequest:
+      properties:
+        workspace_id:
+          type: string
+          title: Workspace Id
+        questions:
+          items:
+            $ref: '#/components/schemas/ScreeningQuestionItem'
+          type: array
+          title: Questions
+          default: []
+      type: object
+      required:
+        - workspace_id
+      title: UpdateScreeningQuestionsRequest
     UpdateSourceRequest:
       properties:
         content:

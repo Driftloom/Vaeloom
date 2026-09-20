@@ -704,6 +704,40 @@ class TestComposioAndBuiltinMcp:
         assert "popular_apps" in body
         app_ids = {a["id"] for a in body["popular_apps"]}
         assert {"slack", "notion", "github", "jira"} <= app_ids
+        assert body.get("total_apps", 0) >= 250
+
+    async def test_con_zt_037b_composio_apps_endpoint_catalog_and_filtering(self, client: AsyncClient):
+        """CON-ZT-037B: GET /connectors/composio/apps lists 250+ enterprise apps and supports category filtering."""
+        headers, _, _ = await _signup_and_get_workspace(client, "zt037b")
+        # 1. Fetch full catalog
+        res = await client.get("/api/v1/connectors/composio/apps", headers=headers)
+        assert res.status_code == 200
+        body = res.json()
+        assert body["total"] >= 250
+        assert len(body["apps"]) >= 250
+        assert "categories" in body
+        assert len(body["categories"]) >= 5
+
+        # 2. Filter by category
+        res_cat = await client.get("/api/v1/connectors/composio/apps?category=Sales", headers=headers)
+        assert res_cat.status_code == 200
+        cat_body = res_cat.json()
+        assert cat_body["total"] > 0
+        assert all(a["category"].lower() == "sales" for a in cat_body["apps"])
+
+        # 3. Search query
+        res_search = await client.get("/api/v1/connectors/composio/apps?search=stripe", headers=headers)
+        assert res_search.status_code == 200
+        search_body = res_search.json()
+        assert any(a["id"] == "stripe" for a in search_body["apps"])
+
+        # 4. Pagination
+        res_paginated = await client.get("/api/v1/connectors/composio/apps?limit=10&offset=0", headers=headers)
+        assert res_paginated.status_code == 200
+        pag_body = res_paginated.json()
+        assert len(pag_body["apps"]) == 10
+        assert pag_body["total"] >= 250
+
 
     async def test_con_zt_038_composio_auth_url_success(self, client: AsyncClient):
         """CON-ZT-038: POST /connectors/composio/auth-url generates OAuth connect URL."""

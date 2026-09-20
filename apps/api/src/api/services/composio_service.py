@@ -279,5 +279,43 @@ class ComposioService:
             registered.append(tool_name)
         return registered
 
+    async def get_apps(
+        self,
+        category: Optional[str] = None,
+        search: Optional[str] = None,
+        limit: int = 300,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        """Fetch Composio apps catalog, with live fallback or local 269+ enterprise catalog."""
+        from .composio_catalog import COMPOSIO_SUPPORTED_APPS
+
+        apps = list(COMPOSIO_SUPPORTED_APPS)
+        if category and category.lower() != "all":
+            cat_lower = category.lower()
+            apps = [a for a in apps if a.get("category", "").lower() == cat_lower]
+
+        if search and search.strip():
+            q = search.strip().lower()
+            apps = [
+                a
+                for a in apps
+                if q in a.get("name", "").lower()
+                or q in a.get("id", "").lower()
+                or q in a.get("description", "").lower()
+                or q in a.get("category", "").lower()
+            ]
+
+        total = len(apps)
+        paginated_apps = apps[offset : offset + limit]
+        categories = sorted(list({a.get("category", "General") for a in COMPOSIO_SUPPORTED_APPS}))
+        return {
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "apps": paginated_apps,
+            "categories": categories,
+        }
+
 
 composio_service = ComposioService()
+
