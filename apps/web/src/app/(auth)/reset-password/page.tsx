@@ -228,7 +228,7 @@ function ResetPasswordForm() {
 
           {/* Welcome text */}
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-text mb-2">
+            <h2 className="text-2xl font-display font-medium text-text mb-2">
               {token ? 'New password' : 'Forgot password'}
             </h2>
             <p className="text-text-muted">

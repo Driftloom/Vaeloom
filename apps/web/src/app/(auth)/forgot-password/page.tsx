@@ -73,7 +73,7 @@ export default function ForgotPasswordPage() {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-[400px]">
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-text">Forgot password</h2>
+            <h2 className="text-2xl font-display font-medium text-text">Forgot password</h2>
             <p className="text-text-muted">We will email you a reset link</p>
           </div>
           <div className="bg-surface-50 border border-border rounded-2xl p-8 shadow-card">

@@ -65,7 +65,7 @@ function VerifyEmailContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-text">Email verified</h1>
+            <h1 className="text-2xl font-display font-medium text-text">Email verified</h1>
             <p className="text-text-muted">{message}</p>
             <Link href="/login" className="btn-primary inline-block">
               Sign in
@@ -86,7 +86,7 @@ function VerifyEmailContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-text">Verification failed</h1>
+            <h1 className="text-2xl font-display font-medium text-text">Verification failed</h1>
             <p className="text-text-muted">{message}</p>
             <Link href="/login" className="btn-primary inline-block">
               Back to sign in
