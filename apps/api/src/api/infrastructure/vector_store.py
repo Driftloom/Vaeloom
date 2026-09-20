@@ -92,10 +92,16 @@ class PGVectorStore(VectorStore):
         conditions = []
         params: dict[str, Any] = {"vector_str": vector_str, "limit": limit}
 
+        if not filters or ("workspace_id" not in filters and "tenant_id" not in filters):
+            raise ValueError("Zero-Trust violation: vector search must specify tenant_id or workspace_id filter")
+
         if filters:
             if "workspace_id" in filters:
                 conditions.append("workspace_id = :workspace_id")
                 params["workspace_id"] = filters["workspace_id"]
+            if "tenant_id" in filters:
+                conditions.append("workspace_id = :tenant_id")
+                params["tenant_id"] = filters["tenant_id"]
             if "source_type" in filters:
                 conditions.append("source_type = :source_type")
                 params["source_type"] = filters["source_type"]
@@ -202,6 +208,8 @@ class QdrantStore(VectorStore):
         self, query_vector: list[float], limit: int = 10, filters: dict[str, Any] | None = None, **kwargs: Any
     ) -> list[VectorRecord]:
         await self._ensure_connected()
+        if not filters or ("workspace_id" not in filters and "tenant_id" not in filters):
+            raise ValueError("Zero-Trust violation: vector search must specify tenant_id or workspace_id filter")
         qfilter = None
         if filters:
             conditions = []
@@ -269,6 +277,8 @@ class FallbackVectorStore(VectorStore):
     async def search(
         self, query_vector: list[float], limit: int = 10, filters: dict[str, Any] | None = None, **kwargs: Any
     ) -> list[VectorRecord]:
+        if not filters or ("workspace_id" not in filters and "tenant_id" not in filters):
+            raise ValueError("Zero-Trust violation: vector search must specify tenant_id or workspace_id filter")
         scored: list[tuple[float, VectorRecord]] = []
         for rec in self._records.values():
             if filters:

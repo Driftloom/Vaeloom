@@ -56,16 +56,34 @@ class SCIMPatchOp(BaseModel):
 router = APIRouter()
 
 
-async def verify_scim_token(authorization: str | None = Header(None)):
-    scim_token = _get_scim_token()
-    if not scim_token:
-        raise HTTPException(status_code=500, detail="SCIM not configured: SCIM_TOKEN env var not set")
+async def verify_scim_token(
+    authorization: str | None = Header(None),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
     if not authorization:
         raise HTTPException(status_code=401, detail="Missing Authorization header")
-    token = authorization.removeprefix("Bearer ")
-    if token != scim_token:
-        raise HTTPException(status_code=401, detail="Invalid SCIM token")
-    return True
+    token = authorization.removeprefix("Bearer ").strip()
+
+    # 1. Check per-tenant SCIM tokens (SHA-256 hashed)
+    import hashlib
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    from ..models.schema import TenantScimToken
+    res = await db.execute(
+        select(TenantScimToken).where(
+            TenantScimToken.token_hash == token_hash,
+            TenantScimToken.revoked.is_(False),
+        )
+    )
+    scim_token_rec = res.scalar_one_or_none()
+    if scim_token_rec:
+        return {"tenant_id": scim_token_rec.tenant_id}
+
+    # 2. Fallback to global SCIM_TOKEN if configured
+    global_scim = _get_scim_token()
+    if global_scim and token == global_scim:
+        return {"tenant_id": None}
+
+    raise HTTPException(status_code=401, detail="Invalid SCIM token")
 
 
 def _scim_user_response(user: User) -> dict:
@@ -84,13 +102,43 @@ def _scim_user_response(user: User) -> dict:
     }
 
 
+@router.post("/tokens", status_code=201)
+async def create_tenant_scim_token(
+    tenant_id: uuid.UUID = Query(...),
+    name: str = Query("SCIM Token"),
+    db: AsyncSession = Depends(get_db),
+):
+    import secrets
+    import hashlib
+    from ..models.schema import TenantScimToken
+    raw_token = f"scim_{secrets.token_urlsafe(32)}"
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+    scim_token = TenantScimToken(
+        tenant_id=tenant_id,
+        token_hash=token_hash,
+        name=name,
+    )
+    db.add(scim_token)
+    await db.commit()
+    return {
+        "id": str(scim_token.id),
+        "tenant_id": str(tenant_id),
+        "token": raw_token,
+        "name": name,
+    }
+
+
 @router.post("/v2/Users", status_code=201)
 async def create_scim_user(
     dto: SCIMUserRequest,
     db: AsyncSession = Depends(get_db),
-    _auth=Depends(verify_scim_token),
+    auth: dict = Depends(verify_scim_token),
 ):
-    existing = await db.execute(select(User).where(User.email == dto.userName))
+    tenant_id = auth.get("tenant_id")
+    query = select(User).where(User.email == dto.userName)
+    if tenant_id:
+        query = query.where(User.tenant_id == tenant_id)
+    existing = await db.execute(query)
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail=f"User '{dto.userName}' already exists")
 
@@ -103,6 +151,7 @@ async def create_scim_user(
         display_name=display_name,
         status="ACTIVE" if dto.active else "INACTIVE",
         auth_provider="scim",
+        tenant_id=tenant_id,
     )
     db.add(user)
     await db.flush()
@@ -116,9 +165,12 @@ async def list_scim_users(
     startIndex: int = Query(1, ge=1),
     count: int = Query(100, ge=0, le=1000),
     db: AsyncSession = Depends(get_db),
-    _auth=Depends(verify_scim_token),
+    auth: dict = Depends(verify_scim_token),
 ):
+    tenant_id = auth.get("tenant_id")
     query = select(User)
+    if tenant_id:
+        query = query.where(User.tenant_id == tenant_id)
     if filter and "userName" in filter and "eq" in filter:
         email = filter.split("eq")[-1].strip().strip('"').strip("'")
         query = query.where(User.email == email)
@@ -140,9 +192,13 @@ async def list_scim_users(
 async def get_scim_user(
     user_id: str,
     db: AsyncSession = Depends(get_db),
-    _auth=Depends(verify_scim_token),
+    auth: dict = Depends(verify_scim_token),
 ):
-    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+    tenant_id = auth.get("tenant_id")
+    query = select(User).where(User.id == uuid.UUID(user_id))
+    if tenant_id:
+        query = query.where(User.tenant_id == tenant_id)
+    result = await db.execute(query)
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -154,9 +210,13 @@ async def update_scim_user(
     user_id: str,
     dto: SCIMUserRequest,
     db: AsyncSession = Depends(get_db),
-    _auth=Depends(verify_scim_token),
+    auth: dict = Depends(verify_scim_token),
 ):
-    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+    tenant_id = auth.get("tenant_id")
+    query = select(User).where(User.id == uuid.UUID(user_id))
+    if tenant_id:
+        query = query.where(User.tenant_id == tenant_id)
+    result = await db.execute(query)
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -179,9 +239,13 @@ async def patch_scim_user(
     user_id: str,
     dto: SCIMPatchOp,
     db: AsyncSession = Depends(get_db),
-    _auth=Depends(verify_scim_token),
+    auth: dict = Depends(verify_scim_token),
 ):
-    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+    tenant_id = auth.get("tenant_id")
+    query = select(User).where(User.id == uuid.UUID(user_id))
+    if tenant_id:
+        query = query.where(User.tenant_id == tenant_id)
+    result = await db.execute(query)
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -215,11 +279,16 @@ async def patch_scim_user(
 async def delete_scim_user(
     user_id: str,
     db: AsyncSession = Depends(get_db),
-    _auth=Depends(verify_scim_token),
+    auth: dict = Depends(verify_scim_token),
 ):
-    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+    tenant_id = auth.get("tenant_id")
+    query = select(User).where(User.id == uuid.UUID(user_id))
+    if tenant_id:
+        query = query.where(User.tenant_id == tenant_id)
+    result = await db.execute(query)
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     user.status = "INACTIVE"
     db.add(user)
+

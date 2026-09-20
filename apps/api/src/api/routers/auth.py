@@ -15,6 +15,8 @@ from ..schemas.auth import (
     ForgotPasswordRequest,
     LoginRequest,
     MeResponse,
+    MfaSetupResponse,
+    MfaVerifyRequest,
     RefreshRequest,
     ResendVerificationRequest,
     ResetPasswordRequest,
@@ -35,11 +37,13 @@ _sso_states: dict[str, str] = {}
 
 @router.post("/signup", response_model=AuthResponse, status_code=201)
 @rate_limit(max_requests=5, window_seconds=3600)
-async def signup(dto: SignupRequest, db: AsyncSession = Depends(get_db)):
+async def signup(dto: SignupRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    ip_address = request.client.host if request.client else None
     return await auth_service.signup(
         email=dto.email,
         password=dto.password,
         display_name=dto.display_name,
+        ip_address=ip_address,
         db=db,
     )
 
@@ -121,6 +125,23 @@ async def revoke_session(
     if not success:
         raise HTTPException(status_code=404, detail="Session not found")
     return None
+
+
+@router.post("/sessions/revoke-others")
+async def revoke_other_sessions(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user_id = current_user.get("sub")
+    current_jti = current_user.get("jti")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    count = await auth_service.revoke_other_sessions(
+        user_id=user_id,
+        current_jti=current_jti,
+        db=db,
+    )
+    return {"status": "success", "revoked_count": count}
 
 
 @router.post("/forgot-password")
@@ -573,12 +594,10 @@ async def saml_callback_post(request: Request, db: AsyncSession = Depends(get_db
         import os
         cert = saml_cfg.get('idp_certificate') or os.environ.get('SAML_IDP_CERTIFICATE') or ''
         issuer = saml_cfg.get('issuer') or saml_cfg.get('expected_issuer') or os.environ.get('SAML_ISSUER') or 'https://idp.example.com'
-        # CONT-P13: fail-closed signatures. Unsigned assertions accepted only
-        # behind explicit SAML_ALLOW_UNSIGNED=true (dev/IdP-migration windows).
-        allow_unsigned = (saml_cfg.get('allow_unsigned') or os.environ.get('SAML_ALLOW_UNSIGNED') or 'false').lower() == 'true'
-        if not cert and not allow_unsigned:
+        # Zero-Trust: fail-closed SAML signatures. Unsigned assertions are strictly rejected.
+        if not cert:
             raise HTTPException(status_code=503, detail='SAML IdP not provisioned (missing certificate)')
-        provider = SAMLProvider(expected_issuer=issuer, idp_certificate=cert, require_signature=not allow_unsigned)
+        provider = SAMLProvider(expected_issuer=issuer, idp_certificate=cert, require_signature=True)
         assertion = provider.parse_saml_response(saml_response)
         info = provider.validate_assertion(assertion)
         email = info.get('email') or info.get('name_id')
@@ -605,3 +624,47 @@ async def saml_callback_post(request: Request, db: AsyncSession = Depends(get_db
         raise HTTPException(status_code=403, detail='Account is not active')
     access_token, refresh_token = await auth_service.issue_token(str(user.id), user.email, db=db)
     return AuthResp2(access_token=access_token, refresh_token=refresh_token, user=PublicUser.model_validate(user))
+
+
+@router.post("/mfa/setup", response_model=MfaSetupResponse)
+async def setup_mfa(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user_id = current_user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return await auth_service.setup_mfa(user_id=user_id, db=db)
+
+
+@router.post("/mfa/enable")
+async def enable_mfa(
+    dto: MfaVerifyRequest,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user_id = current_user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return await auth_service.verify_mfa_and_enable(user_id=user_id, code=dto.code, db=db)
+
+
+@router.post("/mfa/verify", response_model=AuthResponse)
+@rate_limit(max_requests=10, window_seconds=60)
+async def verify_mfa_login(
+    dto: MfaVerifyRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    if not dto.mfa_token:
+        raise HTTPException(status_code=400, detail="mfa_token is required")
+    user_agent = request.headers.get("user-agent")
+    ip_address = request.client.host if request.client else None
+    return await auth_service.verify_mfa_login(
+        mfa_token=dto.mfa_token,
+        code=dto.code,
+        user_agent=user_agent,
+        ip_address=ip_address,
+        db=db,
+    )
+

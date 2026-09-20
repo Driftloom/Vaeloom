@@ -9,7 +9,7 @@ from sqlalchemy import select, update, delete
 
 from ..config import settings
 from ..models.schema import AuthSession, EmailVerificationToken, OnboardingState, User, Workspace
-from ..schemas.auth import AuthResponse, PublicUser, SessionItemResponse
+from ..schemas.auth import AuthResponse, PublicUser, SessionItemResponse, MfaSetupResponse
 from ..utils.sanitize import sanitize_text
 
 # AUTH-REV-01: shared revocation. Redis (when explicitly configured via
@@ -59,6 +59,13 @@ def _get_revocation_redis():
         return None
 
 
+def set_revocation_redis(client) -> None:
+    global _redis_client, _redis_checked
+    _redis_client = client
+    _redis_checked = True
+
+
+
 # Test/embedding hook: middleware-adjacent checks open sessions through this
 # factory. Production default is the global engine factory; the test harness
 # overrides it with the per-test session so checks stay hermetic.
@@ -79,7 +86,14 @@ def _revocation_session_factory():
 
 
 class AuthService:
-    async def signup(self, email: str, password: str, display_name: str | None = None, db=None):
+    async def signup(
+        self,
+        email: str,
+        password: str,
+        display_name: str | None = None,
+        ip_address: str | None = None,
+        db=None,
+    ):
         if not email or "@" not in email:
             from fastapi import HTTPException
             raise HTTPException(status_code=400, detail="Invalid email format")
@@ -117,9 +131,24 @@ class AuthService:
             email_verified=False,
             failed_login_attempts=0,
             locked_until=None,
+            consent_version="2026-v1",
+            consent_granted_at=datetime.now(UTC),
         )
         db.add(user)
         await db.flush()
+
+        # Audit consent in consent_records
+        try:
+            from .consent import consent_manager, ConsentScope
+            await consent_manager.record_consent(
+                user_id=str(user.id),
+                scope=ConsentScope.terms_and_privacy,
+                db=db,
+                tenant_id=str(user.tenant_id) if user.tenant_id else None,
+                ip_address=ip_address,
+            )
+        except Exception:
+            pass
 
         # OP-RLS-01: establish RLS context for the remainder of the signup
         # transaction. Under a least-privilege runtime role, the workspace
@@ -244,9 +273,118 @@ class AuthService:
         user.locked_until = None
         await db.flush()
 
+        # Zero-Trust Multi-Factor Authentication Challenge
+        mfa_required = False
+        if getattr(user, "mfa_enabled", False):
+            mfa_required = True
+        elif user.tenant_id:
+            from ..models.schema import Tenant
+            t_res = await db.execute(select(Tenant).where(Tenant.id == user.tenant_id))
+            tenant = t_res.scalar_one_or_none()
+            if tenant and isinstance(tenant.settings, dict):
+                mfa_required = tenant.settings.get("policies", {}).get("mfa_required", False)
+
+        if mfa_required:
+            from .totp_service import totp_service
+            challenge_token = totp_service.create_mfa_challenge_token(str(user.id))
+            await db.commit()
+            return AuthResponse(
+                access_token="",
+                refresh_token="",
+                mfa_required=True,
+                mfa_token=challenge_token,
+                user=PublicUser.model_validate(user),
+            )
+
         access_token, refresh_token = await self.issue_token(
             str(user.id),
             email,
+            tenant_id=str(user.tenant_id) if user.tenant_id else None,
+            user_agent=user_agent,
+            ip_address=ip_address,
+            db=db,
+        )
+
+        return AuthResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            user=PublicUser.model_validate(user),
+        )
+
+    async def setup_mfa(self, user_id: str, db=None) -> MfaSetupResponse:
+        from fastapi import HTTPException
+        from .totp_service import totp_service
+        result = await db.execute(select(User).where(User.id == uuid.UUID(str(user_id))))
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        secret = totp_service.generate_secret()
+        otpauth_url = totp_service.get_totp_uri(secret, user.email)
+        plaintext_codes, hashed_codes = totp_service.generate_recovery_codes()
+
+        user.mfa_secret = secret
+        user.mfa_recovery_codes = {"codes": hashed_codes}
+        await db.commit()
+
+        return MfaSetupResponse(
+            secret=secret,
+            otpauth_url=otpauth_url,
+            recovery_codes=plaintext_codes,
+        )
+
+    async def verify_mfa_and_enable(self, user_id: str, code: str, db=None) -> dict:
+        from fastapi import HTTPException
+        from .totp_service import totp_service
+        result = await db.execute(select(User).where(User.id == uuid.UUID(str(user_id))))
+        user = result.scalar_one_or_none()
+        if not user or not user.mfa_secret:
+            raise HTTPException(status_code=400, detail="MFA setup has not been initiated")
+
+        if not totp_service.verify_code(user.mfa_secret, code):
+            raise HTTPException(status_code=400, detail="Invalid TOTP verification code")
+
+        user.mfa_enabled = True
+        await db.commit()
+        return {"status": "success", "message": "MFA enabled successfully", "mfa_enabled": True}
+
+    async def verify_mfa_login(
+        self,
+        mfa_token: str,
+        code: str,
+        user_agent: str | None = None,
+        ip_address: str | None = None,
+        db=None,
+    ) -> AuthResponse:
+        from fastapi import HTTPException
+        from .totp_service import totp_service
+        user_id = totp_service.verify_mfa_challenge_token(mfa_token)
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid or expired MFA challenge token")
+
+        result = await db.execute(select(User).where(User.id == uuid.UUID(str(user_id))))
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+
+        is_valid = False
+        if user.mfa_secret and totp_service.verify_code(user.mfa_secret, code):
+            is_valid = True
+        elif user.mfa_recovery_codes and isinstance(user.mfa_recovery_codes, dict):
+            hashed_codes = user.mfa_recovery_codes.get("codes", [])
+            valid_recovery, remaining = totp_service.verify_recovery_code(code, hashed_codes)
+            if valid_recovery:
+                is_valid = True
+                user.mfa_recovery_codes = {"codes": remaining}
+                await db.flush()
+
+        if not is_valid:
+            raise HTTPException(status_code=401, detail="Invalid MFA code or recovery code")
+
+        # Login confirmed - issue full session tokens
+        access_token, refresh_token = await self.issue_token(
+            str(user.id),
+            user.email,
             tenant_id=str(user.tenant_id) if user.tenant_id else None,
             user_agent=user_agent,
             ip_address=ip_address,
@@ -463,6 +601,25 @@ class AuthService:
             self.revoke_token(jti=session.jti)
         await db.commit()
         return True
+
+    async def revoke_other_sessions(self, user_id: str, current_jti: str | None = None, db=None) -> int:
+        result = await db.execute(
+            select(AuthSession).where(
+                AuthSession.user_id == uuid.UUID(user_id),
+                AuthSession.status == "ACTIVE",
+            )
+        )
+        sessions = result.scalars().all()
+        revoked_count = 0
+        for s in sessions:
+            if current_jti and s.jti == current_jti:
+                continue
+            s.status = "REVOKED"
+            if s.jti:
+                self.revoke_token(jti=s.jti)
+            revoked_count += 1
+        await db.commit()
+        return revoked_count
 
     async def validate_user(self, user_id: str, db=None):
         result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))

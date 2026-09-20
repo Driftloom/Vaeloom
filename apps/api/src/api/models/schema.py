@@ -46,6 +46,9 @@ class User(Base):
     social_links: Mapped[dict] = mapped_column(JSON, default=dict)
     job_title: Mapped[str | None] = mapped_column(String(255))
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    mfa_secret: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    mfa_recovery_codes: Mapped[dict | None] = mapped_column(JSON, default=dict)
     failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -83,6 +86,20 @@ class Tenant(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     users: Mapped[list["User"]] = relationship("User", back_populates="tenant")
+    scim_tokens: Mapped[list["TenantScimToken"]] = relationship("TenantScimToken", back_populates="tenant", cascade="all, delete-orphan")
+
+
+class TenantScimToken(Base):
+    __tablename__ = "tenant_scim_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), default="SCIM Token")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    revoked: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="scim_tokens")
 
 
 class AuthSession(Base):

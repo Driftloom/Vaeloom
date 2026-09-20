@@ -126,6 +126,9 @@ def _build_test_app(db_session, enable_rate_limit=False):
     test_app.include_router(gdpr_router, prefix="/api/v1")
     from api.routers import onboarding
     test_app.include_router(onboarding.router, prefix="/api/v1/onboarding")
+    from api.services.scim import router as scim_router
+    test_app.include_router(scim_router, prefix="/scim")
+
 
     async def override_get_db():
         yield db_session

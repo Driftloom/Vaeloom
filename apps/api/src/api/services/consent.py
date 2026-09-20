@@ -15,6 +15,7 @@ CONSENT_SCOPES = {
     "data_processing": "Process my personal data for application functionality",
     "agent_access": "Allow agents to access my workspace data",
     "email_marketing": "Send marketing emails about new features",
+    "terms_and_privacy": "Explicit agreement to Terms of Service and Privacy Policy",
 }
 
 
@@ -22,6 +23,7 @@ class ConsentScope(StrEnum):
     data_processing = "data_processing"
     agent_access = "agent_access"
     email_marketing = "email_marketing"
+    terms_and_privacy = "terms_and_privacy"
 
 
 class ConsentRecord(BaseModel):

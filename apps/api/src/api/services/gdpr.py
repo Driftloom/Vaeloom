@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
@@ -112,6 +112,15 @@ class DataExportResponse(BaseModel):
     total_records: int
 
 
+class TenantDataExportResponse(BaseModel):
+    tenant_id: str
+    tenant_name: str
+    exported_at: datetime
+    data: dict
+    total_records: int
+
+
+
 class GDPRService:
     async def export_user_data(self, user_id: str, db: AsyncSession) -> DataExportResponse:
         data = {}
@@ -173,6 +182,97 @@ class GDPRService:
 
         return {"user_id": user_id, "action": "anonymized", "tables": summary}
 
+    async def export_tenant_data(self, tenant_id: str, db: AsyncSession) -> TenantDataExportResponse:
+        from ..models.schema import OnboardingState, Tenant, User, Workspace
+
+        try:
+            tid = uuid.UUID(tenant_id)
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail=f"Invalid tenant UUID: {tenant_id}")
+
+        res = await db.execute(select(Tenant).where(Tenant.id == tid))
+        tenant = res.scalar_one_or_none()
+        if not tenant:
+            raise HTTPException(status_code=404, detail=f"Tenant '{tenant_id}' not found")
+
+        data: dict = {}
+        total_records = 0
+
+        # Tenant info
+        data["tenant"] = {
+            "id": str(tenant.id),
+            "name": tenant.name,
+            "slug": tenant.slug,
+            "created_at": tenant.created_at.isoformat() if tenant.created_at else None,
+        }
+        total_records += 1
+
+        # Users belonging to this tenant
+        u_res = await db.execute(
+            select(User).where(User.tenant_id == tid)
+        )
+        users = u_res.scalars().all()
+        data["users"] = [
+            {
+                "id": str(u.id),
+                "email": u.email,
+                "display_name": u.display_name,
+                "status": u.status,
+                "auth_provider": u.auth_provider,
+                "created_at": u.created_at.isoformat() if u.created_at else None,
+            }
+            for u in users
+        ]
+        total_records += len(users)
+
+        user_ids = [u.id for u in users]
+        if user_ids:
+            # Workspaces of tenant users
+            w_res = await db.execute(
+                select(Workspace).where(Workspace.user_id.in_(user_ids))
+            )
+            workspaces = w_res.scalars().all()
+            data["workspaces"] = [
+                {
+                    "id": str(w.id),
+                    "name": w.name,
+                    "user_id": str(w.user_id),
+                    "created_at": w.created_at.isoformat() if w.created_at else None,
+                }
+                for w in workspaces
+            ]
+            total_records += len(workspaces)
+
+            # Onboarding states
+            o_res = await db.execute(
+                select(OnboardingState).where(OnboardingState.user_id.in_(user_ids))
+            )
+            onboardings = o_res.scalars().all()
+            data["onboarding_states"] = [
+                {
+                    "id": str(o.id),
+                    "user_id": str(o.user_id),
+                    "current_step": o.current_step,
+                    "completed_steps": o.completed_steps,
+                    "is_completed": o.is_completed,
+                    "step_data": o.step_data,
+                    "created_at": o.created_at.isoformat() if o.created_at else None,
+                }
+                for o in onboardings
+            ]
+            total_records += len(onboardings)
+        else:
+            data["workspaces"] = []
+            data["onboarding_states"] = []
+
+        return TenantDataExportResponse(
+            tenant_id=str(tenant.id),
+            tenant_name=tenant.name,
+            exported_at=datetime.now(UTC),
+            data=data,
+            total_records=total_records,
+        )
+
 
 gdpr_service = GDPRService()
 
@@ -221,3 +321,33 @@ async def gdpr_delete(
     )
     await db.commit()
     return result
+
+
+@router.post("/tenants/{tenant_id}/export", response_model=TenantDataExportResponse)
+async def export_tenant_gdpr(
+    tenant_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    caller_tenant_id = current_user.get("tenant_id")
+    caller_roles = current_user.get("roles", []) or current_user.get("realm_access", {}).get("roles", [])
+    # ZERO-TRUST: Strict tenant boundary enforcement
+    if "admin" not in caller_roles and (not caller_tenant_id or str(caller_tenant_id) != str(tenant_id)):
+        raise HTTPException(
+            status_code=403,
+            detail="Cross-tenant violation: You do not have permission to export this tenant's data",
+        )
+
+    result = await gdpr_service.export_tenant_data(tenant_id, db)
+    await audit_service.record_event(
+        actor_id=str(current_user.get("sub")),
+        action="tenant.export",
+        resource="tenant",
+        resource_id=tenant_id,
+        tenant_id=tenant_id,
+        metadata={"total_records": result.total_records},
+        db=db,
+    )
+    await db.commit()
+    return result
+

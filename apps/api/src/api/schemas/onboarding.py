@@ -29,3 +29,16 @@ class UpdateOnboardingStepRequest(BaseModel):
 
 class CompleteOnboardingRequest(BaseModel):
     final_data: dict[str, Any] = Field(default_factory=dict, description="Optional completion payload")
+
+
+class ResumeUploadResponse(BaseModel):
+    filename: str
+    extracted_skills: list[str] = Field(default_factory=list)
+    skills_count: int = 0
+    state: OnboardingStateResponse
+
+
+class JoinWorkspaceRequest(BaseModel):
+    workspace_id: uuid.UUID
+
+

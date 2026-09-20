@@ -19,6 +19,7 @@ PUBLIC_PATHS = frozenset({
     "/api/v1/auth/signup",
     "/api/v1/auth/login",
     "/api/v1/auth/refresh",
+    "/api/v1/auth/mfa/verify",
     "/api/v1/auth/verify-email",
     "/api/v1/auth/resend-verification",
     "/api/v1/auth/forgot-password",
@@ -32,6 +33,7 @@ PUBLIC_PATHS = frozenset({
 PUBLIC_PREFIXES = frozenset({
     "/api/v1/auth/sso/",
     "/scim/",
+    "/scim",
     "/api/v1/profile/avatar/",
     "/api/v1/profile/public/",
 })
