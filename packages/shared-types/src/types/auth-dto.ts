@@ -20,6 +20,7 @@ export interface SignupRequest {
   email: Email;
   password: string;
   displayName?: string;
+  termsAccepted?: boolean;
 }
 
 export interface LoginRequest {
