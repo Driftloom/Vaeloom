@@ -1214,7 +1214,9 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                 <div className="w-10 h-10 rounded-xl bg-white text-black flex items-center justify-center mx-auto text-sm font-bold">
                   V
                 </div>
-                <h2 className="mt-4 text-xl font-medium text-text">How can we help?</h2>
+                <h2 className="mt-4 text-xl font-display font-medium text-text">
+                  How can we help?
+                </h2>
                 <p className="mt-1 text-sm text-text-muted">
                   Ask anything, or use <span className="font-mono text-text">/</span> and{' '}
                   <span className="font-mono text-text">@</span>

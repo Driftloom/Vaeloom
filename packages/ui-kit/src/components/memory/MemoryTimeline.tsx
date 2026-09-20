@@ -41,7 +41,7 @@ export const MemoryTimeline: React.FC<MemoryTimelineProps> = ({ items, className
                 <span className="font-semibold text-[var(--color-text-primary,#f4f4f5)]">
                   {item.title}
                 </span>
-                <span className="text-[10px] uppercase font-mono px-1.5 py-0.2 rounded bg-[var(--color-bg-elevated,#18181c)] text-[var(--color-text-muted,#71717a)]">
+                <span className="text-2xs uppercase font-mono px-1.5 py-0.2 rounded bg-surface-200 text-text-muted">
                   {item.action}
                 </span>
               </div>

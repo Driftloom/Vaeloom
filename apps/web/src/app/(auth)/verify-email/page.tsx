@@ -96,7 +96,7 @@ function VerifyEmailContent() {
 
         {status === 'no-token' && (
           <>
-            <h1 className="text-2xl font-bold text-text">No verification token</h1>
+            <h1 className="text-2xl font-display font-medium text-text">No verification token</h1>
             <p className="text-text-muted">
               The verification link is missing a token. Please check your email for the correct
               link.

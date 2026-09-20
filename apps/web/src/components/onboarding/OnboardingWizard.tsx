@@ -309,7 +309,7 @@ export function OnboardingWizard() {
 
       {/* Step Content */}
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-text">{activeStep.title}</h2>
+        <h2 className="text-xl font-display font-medium text-text">{activeStep.title}</h2>
         <p className="mt-1 text-sm text-text-muted">{activeStep.description}</p>
 
         <div className="mt-6 space-y-4">

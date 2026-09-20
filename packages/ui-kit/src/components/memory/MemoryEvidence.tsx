@@ -27,9 +27,7 @@ export const MemoryEvidence: React.FC<MemoryEvidenceProps> = ({
           <FileTextIcon size={12} />
           <span>{sourceTitle}</span>
         </div>
-        <span className="text-[10px] text-[var(--color-text-muted,#71717a)] tabular-nums">
-          {extractedAt}
-        </span>
+        <span className="text-2xs text-text-muted tabular-nums">{extractedAt}</span>
       </div>
 
       <p className="text-[var(--color-text-secondary,#a1a1aa)] leading-relaxed italic border-l-2 border-[var(--color-border-strong,#3f3f46)] pl-2.5">
