@@ -105,9 +105,15 @@ importers:
         specifier: 0.170.0
         version: 0.170.0
     devDependencies:
+      '@axe-core/playwright':
+        specifier: ^4.13.0
+        version: 4.13.0(playwright-core@1.62.1)
       '@next/bundle-analyzer':
         specifier: ^15.0.0
         version: 15.5.20
+      '@playwright/test':
+        specifier: ^1.51.1
+        version: 1.62.1
       '@testing-library/jest-dom':
         specifier: ^6.9.1
         version: 6.9.1
