@@ -485,7 +485,7 @@ function LoginForm() {
                   </button>
                 </div>
                 <p className="text-xs text-text-dim text-center mt-2">
-                  SSO requires provider config (Google/Microsoft). SAML is not implemented.
+                  Enterprise Single Sign-On (Google, Microsoft & SAML 2.0).
                 </p>
               </>
             )}
