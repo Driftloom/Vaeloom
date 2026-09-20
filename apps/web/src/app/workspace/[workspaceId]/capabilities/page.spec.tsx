@@ -95,6 +95,16 @@ describe('CapabilitiesPage', () => {
     expect(screen.getAllByText('organization').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('memory').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('resume').length).toBeGreaterThanOrEqual(1);
+
+    // Verify direct Chat with Agent link
+    const chatLink = screen.getByRole('link', { name: /Chat with/i });
+    expect(chatLink).toBeInTheDocument();
+    expect(chatLink).toHaveAttribute('href', expect.stringContaining('/chat?agent='));
+
+    // Verify subtabs switching to Memory & Scopes
+    const scopesSubtab = screen.getByRole('button', { name: /Memory & Scopes/i });
+    fireEvent.click(scopesSubtab);
+    expect(screen.getByText(/Read Scopes/i)).toBeInTheDocument();
   });
 
   it('switches to Tools tab and displays tools like search_documents', () => {
@@ -110,7 +120,7 @@ describe('CapabilitiesPage', () => {
   it('filters capabilities based on search input', () => {
     render(<CapabilitiesPage />);
 
-    const searchInput = screen.getByPlaceholderText(/Try "general"/i);
+    const searchInput = screen.getByPlaceholderText(/Filter installed skills/i);
     fireEvent.change(searchInput, { target: { value: 'accessibility' } });
 
     expect(screen.getAllByText('accessibility-testing').length).toBeGreaterThanOrEqual(1);

@@ -130,20 +130,43 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
         {/* Search & Top Toolbar */}
         <div className="p-3 border-b border-[#1c1d24] bg-[#0c0d10] space-y-2 shrink-0">
           <div className="relative">
+            <svg
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#71717a] pointer-events-none"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+              />
+            </svg>
             <input
               type="text"
               placeholder="Filter installed skills..."
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
-              className="w-full bg-[#14151a] border border-[#23242c] rounded-md px-3 py-1.5 text-xs text-[#f4f4f5] placeholder-[#71717a] focus:outline-none focus:border-primary transition-all font-sans"
+              className="w-full bg-[#14151a] border border-[#23242c] rounded-md pl-8 pr-7 py-1.5 text-xs text-[#f4f4f5] placeholder-[#71717a] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/40 transition-all font-sans"
             />
             {localSearch && (
               <button
                 type="button"
                 onClick={() => setLocalSearch('')}
-                className="absolute right-2 top-1.5 text-xs text-[#71717a] hover:text-white"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[#71717a] hover:text-[#f4f4f5] p-0.5 transition-colors"
+                title="Clear search"
+                aria-label="Clear search"
               >
-                ×
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
               </button>
             )}
           </div>
@@ -252,10 +275,10 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                       </span>
                     </div>
                     <div className="flex items-center gap-1 mt-1">
-                      <span className="px-1.5 py-0.2 rounded text-[10px] font-sans font-medium bg-[#1a1b22] text-[#8b8e99] border border-[#242630]">
+                      <span className="px-1.5 py-0.2 rounded text-2xs font-sans font-medium bg-[#1a1b22] text-[#8b8e99] border border-[#242630]">
                         General
                       </span>
-                      <span className="px-1.5 py-0.2 rounded text-[10px] font-sans font-medium bg-[#171e2e] text-[#93c5fd] border border-[#202c46]">
+                      <span className="px-1.5 py-0.2 rounded text-2xs font-sans font-medium bg-[#171e2e] text-[#93c5fd] border border-[#202c46]">
                         Learned
                       </span>
                     </div>

@@ -304,7 +304,7 @@ function AgentCard({ agent, workspaceId }: { agent: CatalogAgent; workspaceId?: 
                   <p className="text-xs text-text-muted">{t.description || 'No description'}</p>
                 </div>
                 <span
-                  className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono border ${
+                  className={`shrink-0 rounded px-1.5 py-0.5 text-2xs font-mono border ${
                     t.category === 'memory_write' || t.category === 'connector_write'
                       ? 'bg-error/10 text-error border-error/30'
                       : t.category === 'memory_read' || t.category === 'connector_read'
@@ -317,7 +317,7 @@ function AgentCard({ agent, workspaceId }: { agent: CatalogAgent; workspaceId?: 
               </div>
             ))
           )}
-          <p className="text-[11px] text-text-dim pt-1 border-t border-border/50">
+          <p className="text-xs text-text-dim pt-1 border-t border-border/50">
             Scope: tools require <span className="font-mono">required_scope</span> grants. Agent
             runs in suggest-mode; consequential actions need approval.
           </p>
@@ -399,6 +399,31 @@ export default function AgentsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Consolidated into Capabilities Hub Notice */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-primary/10 border border-primary/25 text-xs">
+        <div className="flex items-center gap-3">
+          <span className="p-2 rounded-lg bg-primary/20 text-primary text-base font-bold shrink-0">
+            ✦
+          </span>
+          <div>
+            <span className="font-semibold text-white">
+              Autonomous Agents are now part of the unified Capabilities Studio
+            </span>
+            <p className="text-text-muted mt-0.5">
+              Manage Jinja2 prompts, memory scopes, function-calling tools, and run direct agent
+              chat sessions from Capabilities.
+            </p>
+          </div>
+        </div>
+        <Link
+          href={`/workspace/${workspaceId}/capabilities?category=agents`}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition-colors shrink-0 shadow-xs"
+        >
+          <span>Open in Capabilities Hub</span>
+          <span>→</span>
+        </Link>
+      </div>
+
       {/* Hero Banner with Executive Telemetry */}
       <section className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-r from-surface-100 via-surface to-surface-200 p-6 sm:p-8 shadow-sm">
         <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
@@ -607,10 +632,10 @@ export default function AgentsPage() {
                 <p className="font-mono text-xs text-text font-semibold">{name}</p>
                 <p className="text-xs text-text-muted mt-0.5">{def.description}</p>
                 <div className="mt-2 flex items-center gap-2">
-                  <span className="rounded bg-surface px-1.5 py-0.5 font-mono text-[10px] text-text-dim border border-border">
+                  <span className="rounded bg-surface px-1.5 py-0.5 font-mono text-2xs text-text-dim border border-border">
                     scope: {def.requiredScope}
                   </span>
-                  <span className="rounded bg-surface px-1.5 py-0.5 font-mono text-[10px] text-primary border border-border">
+                  <span className="rounded bg-surface px-1.5 py-0.5 font-mono text-2xs text-primary border border-border">
                     {def.category}
                   </span>
                 </div>

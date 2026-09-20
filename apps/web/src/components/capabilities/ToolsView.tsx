@@ -371,7 +371,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId }) => {
                 Alphabetical
               </option>
             </select>
-            <span className="text-[10px] font-mono text-[#71717a]">
+            <span className="text-2xs font-mono text-[#71717a]">
               {filteredSuites.length} suites
             </span>
           </div>
@@ -402,18 +402,18 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId }) => {
                     >
                       {suite.name}
                     </span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#1c1e28] text-[#93c5fd]">
+                    <span className="text-2xs font-mono px-1.5 py-0.2 rounded bg-[#1c1e28] text-[#93c5fd]">
                       {suite.count} tools
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1 mt-0.5">
                     {suite.tools.slice(0, 3).map((tool) => (
-                      <span key={tool} className="text-[10px] font-mono text-[#616472]">
+                      <span key={tool} className="text-2xs font-mono text-[#616472]">
                         {tool}
                       </span>
                     ))}
                   </div>
-                  <p className="text-[11px] text-[#8b8e99] font-sans truncate mt-0.5">
+                  <p className="text-xs text-[#8b8e99] font-sans truncate mt-0.5">
                     {suite.description}
                   </p>
                 </div>
@@ -466,7 +466,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId }) => {
 
             {/* Sub-tool Chips (All tools in suite, including search_documents & query_graph) */}
             <div>
-              <div className="text-[10px] font-mono text-[#71717a] uppercase tracking-wider mb-1.5">
+              <div className="text-2xs font-mono text-[#71717a] uppercase tracking-wider mb-1.5">
                 Included Tool Functions ({selectedSuite.tools.length})
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -488,7 +488,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId }) => {
                   <div className="text-xs font-semibold text-white">
                     Use My Real Browser Profile
                   </div>
-                  <div className="text-[11px] text-[#8b8e99] leading-relaxed">
+                  <div className="text-xs text-[#8b8e99] leading-relaxed">
                     Attaches agent sessions to your logged-in browser cookies, sessions, and
                     extension state.
                   </div>
@@ -588,12 +588,12 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId }) => {
                             {p.name}
                           </span>
                           {p.isRecommended && (
-                            <span className="px-1.5 py-0.2 rounded text-[10px] font-sans font-medium bg-[#1e251e] text-[#86efac] border border-[#2b3a2c]">
+                            <span className="px-1.5 py-0.2 rounded text-2xs font-sans font-medium bg-[#1e251e] text-[#86efac] border border-[#2b3a2c]">
                               ★ recommended • free
                             </span>
                           )}
                           {p.badge && (
-                            <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-[#181a22] text-[#93c5fd] border border-[#242735]">
+                            <span className="px-1.5 py-0.2 rounded text-2xs font-mono bg-[#181a22] text-[#93c5fd] border border-[#242735]">
                               {p.badge}
                             </span>
                           )}
@@ -738,7 +738,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId }) => {
             <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
             <span>Active provider: {selectedProviderId}</span>
           </div>
-          <span className="font-mono text-[10px]">Ready</span>
+          <span className="font-mono text-2xs">Ready</span>
         </footer>
       </div>
     </div>

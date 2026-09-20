@@ -143,9 +143,29 @@ export default function CapabilitiesPage() {
   const [capabilities, setCapabilities] = useState<CapabilityItem[]>(() =>
     getStoredCapabilities(workspaceId),
   );
-  const [selectedCategory, setSelectedCategory] = useState<CapabilityCategory>('skills');
-  const [tabView, setTabView] = useState<TabView>('installed');
+  // Check URL parameters for category or agent deep links
+  const [initialCategory] = useState<CapabilityCategory>(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const cat = urlParams.get('category') || urlParams.get('tab');
+      if (cat && ['skills', 'agents', 'tools', 'mcp', 'plugins'].includes(cat)) {
+        return cat as CapabilityCategory;
+      }
+    }
+    return 'skills';
+  });
+
+  const [initialAgentParam] = useState<string | undefined>(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get('agent') || undefined;
+    }
+    return undefined;
+  });
+
+  const [selectedCategory, setSelectedCategory] = useState<CapabilityCategory>(initialCategory);
   const [searchQuery, setSearchQuery] = useState('');
+  const [tabView, setTabView] = useState<TabView>('installed');
   const [selectedTag, setSelectedTag] = useState<string>('All');
   const [sortBy, setSortBy] = useState<SortOption>('most-used');
   const [selectedId, setSelectedId] = useState<string>('');
@@ -297,15 +317,6 @@ export default function CapabilitiesPage() {
         // Tag filter
         if (selectedTag !== 'All' && !item.tags.includes(selectedTag)) return false;
 
-        // Search query
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase();
-          const matchName = item.name.toLowerCase().includes(q);
-          const matchDesc = item.description.toLowerCase().includes(q);
-          const matchTags = item.tags.some((t) => t.toLowerCase().includes(q));
-          if (!matchName && !matchDesc && !matchTags) return false;
-        }
-
         return true;
       })
       .sort((a, b) => {
@@ -317,7 +328,7 @@ export default function CapabilitiesPage() {
         }
         return b.usageCount - a.usageCount;
       });
-  }, [capabilities, selectedCategory, tabView, selectedTag, searchQuery, sortBy]);
+  }, [capabilities, selectedCategory, tabView, selectedTag, sortBy]);
 
   // Default selected item selection
   useEffect(() => {
@@ -640,51 +651,18 @@ export default function CapabilitiesPage() {
       {/* ────────────────────────────────────────────────────────────────────────── */}
       <header className="border-b border-[#1c1d24] bg-[#0c0d10] px-4 sm:px-6 py-2.5 shrink-0">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          {/* Left: Clean Minimalist Search Input */}
-          <div className="flex items-center gap-3 sm:gap-4 flex-1">
-            <h1 className="sr-only">Capabilities</h1>
-
-            {/* Minimalist Search Input */}
-            <div className="relative flex-1 max-w-[280px] sm:max-w-sm">
-              <svg
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
-                />
-              </svg>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder='Try "general"'
-                className="w-full pl-8 pr-6 py-1 text-xs rounded-md bg-[#14151a] border border-[#23242c] text-text placeholder:text-text-muted focus:outline-none focus:border-primary/80 focus:ring-1 focus:ring-primary/40 transition-all font-sans"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-text p-0.5"
-                  title="Clear search"
-                  aria-label="Clear search"
-                >
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              )}
+          {/* Left: Clean Header Title */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-primary" aria-hidden="true" />
+              <h1 className="text-sm font-semibold tracking-tight text-[#f4f4f5] font-sans">
+                Capabilities
+              </h1>
             </div>
+            <span className="text-xs text-[#71717a] hidden sm:inline-block">|</span>
+            <span className="text-xs text-[#8b8e99] hidden sm:inline-block">
+              Skills, autonomous agents, sovereign tools &amp; MCP bridges
+            </span>
           </div>
 
           {/* Right: Category Tabs (Skills 375, Agents 12, Tools 28, MCP 6, Plugins 8) */}
@@ -716,7 +694,7 @@ export default function CapabilitiesPage() {
                 >
                   <span>{tab.label}</span>
                   <span
-                    className={`text-[10px] font-sans px-1.5 py-0.2 rounded-full ${
+                    className={`text-2xs font-sans px-1.5 py-0.2 rounded-full ${
                       isActive ? 'bg-primary/25 text-[#93c5fd] font-semibold' : 'text-[#61646d]'
                     }`}
                   >
@@ -773,7 +751,6 @@ export default function CapabilitiesPage() {
           <SkillsView
             skills={capabilities.filter((c) => c.category === 'skills')}
             workspaceId={workspaceId}
-            searchQuery={searchQuery}
             onToggleSkill={handleToggle}
             onOpenCreate={() => {
               setNewCapCategory('skills');
@@ -786,6 +763,8 @@ export default function CapabilitiesPage() {
           <AgentsView
             agents={capabilities.filter((c) => c.category === 'agents')}
             workspaceId={workspaceId}
+            searchQuery={searchQuery}
+            initialAgentName={initialAgentParam}
             onToggleAgent={handleToggle}
           />
         )}
@@ -905,7 +884,7 @@ export default function CapabilitiesPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 text-[11px]">
+              <div className="flex items-center gap-3 text-xs">
                 <span className="hidden md:inline hover:text-white cursor-pointer">
                   🌐 English ▾
                 </span>
@@ -921,7 +900,7 @@ export default function CapabilitiesPage() {
             {/* Centered Hero: VAELOOM AGENT + Capabilities & Plugin Catalog + Subtitle */}
             <div className="text-center py-6 sm:py-8 max-w-3xl mx-auto space-y-3">
               <div className="inline-block">
-                <span className="text-[11px] font-sans tracking-wider uppercase text-[#8b8e99] font-medium">
+                <span className="text-xs font-sans tracking-wider uppercase text-[#8b8e99] font-medium">
                   VAELOOM CATALOG
                 </span>
               </div>
@@ -1057,7 +1036,7 @@ export default function CapabilitiesPage() {
                   >
                     <span className="text-xs">{cat.icon}</span>
                     <span>{cat.label}</span>
-                    <span className="text-[10px] font-sans text-[#71717a] font-normal">
+                    <span className="text-2xs font-sans text-[#71717a] font-normal">
                       {cat.count}
                     </span>
                   </button>
@@ -1074,7 +1053,7 @@ export default function CapabilitiesPage() {
                     {HUB_CATEGORIES.find((c) => c.id === selectedHubCategory)?.icon}{' '}
                     {HUB_CATEGORY_META[selectedHubCategory]?.label || 'Desktop'}
                   </span>
-                  <span className="text-[11px] text-[#71717a]">
+                  <span className="text-xs text-[#71717a]">
                     {HUB_CATEGORY_META[selectedHubCategory]?.description ||
                       'Panes, tabs and views for Vaeloom'}
                   </span>
@@ -1138,7 +1117,7 @@ export default function CapabilitiesPage() {
                             </div>
 
                             <div className="flex items-center gap-1.5 shrink-0">
-                              <span className="px-2 py-0.5 text-[10px] font-sans font-medium rounded bg-[#1a1b20] text-[#8b8e99] border border-[#282a32]">
+                              <span className="px-2 py-0.5 text-2xs font-sans font-medium rounded bg-[#1a1b20] text-[#8b8e99] border border-[#282a32]">
                                 {item.isOfficial ? '✦ Official' : '✦ Community'}
                               </span>
                               <span className="text-xs font-sans text-[#a1a1aa] font-medium">
@@ -1148,24 +1127,24 @@ export default function CapabilitiesPage() {
                           </div>
 
                           {/* Description */}
-                          <p className="text-[12px] text-[#9ca3af] mt-2 line-clamp-2 leading-relaxed font-sans">
+                          <p className="text-xs text-[#9ca3af] mt-2 line-clamp-2 leading-relaxed font-sans">
                             {item.description}
                           </p>
 
                           {/* Tags: Category, Tools count, Tags */}
                           <div className="flex flex-wrap items-center gap-1.5 mt-3">
-                            <span className="px-2 py-0.5 text-[10px] font-sans rounded bg-[#16171d] text-[#d4d4d8] border border-[#262833] capitalize">
+                            <span className="px-2 py-0.5 text-2xs font-sans rounded bg-[#16171d] text-[#d4d4d8] border border-[#262833] capitalize">
                               {item.hubCategory}
                             </span>
                             {item.toolsCount && (
-                              <span className="px-2 py-0.5 text-[10px] font-sans rounded bg-[#16171d] text-[#8b8e99] border border-[#262833]">
+                              <span className="px-2 py-0.5 text-2xs font-sans rounded bg-[#16171d] text-[#8b8e99] border border-[#262833]">
                                 {item.toolsCount} tools
                               </span>
                             )}
                             {item.tags.slice(0, 2).map((tag) => (
                               <span
                                 key={tag}
-                                className="px-2 py-0.5 text-[10px] font-sans rounded bg-[#14151a] text-[#71717a] border border-[#202129]"
+                                className="px-2 py-0.5 text-2xs font-sans rounded bg-[#14151a] text-[#71717a] border border-[#202129]"
                               >
                                 {tag}
                               </span>

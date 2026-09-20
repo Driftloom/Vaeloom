@@ -211,6 +211,33 @@ All submissions and external message drafts require an explicit approval token s
 `,
   },
   {
+    id: 'agent-gmail',
+    name: 'gmail',
+    category: 'agents',
+    tags: ['Communication', 'Email', 'Recruiter'],
+    description:
+      'Monitors communication channels for interview requests, recruiter correspondence, and job offer updates with approval gating.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 1420,
+    lastUsed: '15m ago',
+    requiredScope: 'email.read,email.draft,approval.create',
+    trustClass: 'first_party',
+    autonomy: 'approval_required',
+    toolsUsed: ['search_emails', 'draft_reply', 'parse_interview_invite'],
+    version: '2.1.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Gmail & Communication Agent
+
+## Mission
+Scans connected mailboxes for recruiter outreaches, interview invitations, and status changes. Surfaces interview time slots and drafts responses for human confirmation.
+
+## Guardrails
+- Never dispatches emails autonomously.
+- Generates outbound email drafts in holding state awaiting user sign-off in the Sovereign Vault.
+`,
+  },
+  {
     id: 'agent-scheduler',
     name: 'scheduler',
     category: 'agents',

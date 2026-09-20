@@ -385,7 +385,7 @@ export default function AgentDetailPage() {
                 handleRunTest(sp);
               }}
               disabled={testRunning}
-              className="text-[11px] rounded-full border border-border bg-surface px-2.5 py-1 text-text-muted hover:text-text hover:border-primary/40 transition-colors disabled:opacity-50 text-left"
+              className="text-xs rounded-full border border-border bg-surface px-2.5 py-1 text-text-muted hover:text-text hover:border-primary/40 transition-colors disabled:opacity-50 text-left"
             >
               💡 {sp}
             </button>
@@ -437,7 +437,7 @@ export default function AgentDetailPage() {
                   Phase: {testOutput.phase}
                 </span>
               </div>
-              <span className="text-[11px] text-text-dim font-mono">
+              <span className="text-xs text-text-dim font-mono">
                 {testOutput.events.length} stream events
               </span>
             </div>
@@ -512,7 +512,7 @@ export default function AgentDetailPage() {
             Memory queries are strictly scoped to the caller&apos;s workspace through PostgreSQL
             42/42 Row-Level Security (RLS). Agent context cannot bleed across tenant lines.
           </p>
-          <div className="rounded border border-border bg-surface-hover/50 p-2.5 text-[11px] text-text-dim">
+          <div className="rounded border border-border bg-surface-hover/50 p-2.5 text-xs text-text-dim">
             Resolved LLM Keys: workspace &rarr; user &rarr; system (BYOK enabled in Settings &rarr;
             API Keys).
           </div>
@@ -561,7 +561,7 @@ export default function AgentDetailPage() {
                   </p>
                 </div>
                 <span
-                  className={`shrink-0 rounded px-2 py-0.5 text-[10px] font-mono border ${
+                  className={`shrink-0 rounded px-2 py-0.5 text-2xs font-mono border ${
                     t.category === 'memory_write' || t.category === 'connector_write'
                       ? 'bg-error/10 text-error border-error/30'
                       : t.category === 'memory_read' || t.category === 'connector_read'
@@ -575,7 +575,7 @@ export default function AgentDetailPage() {
             ))}
           </div>
         )}
-        <p className="text-[11px] text-text-dim pt-1">
+        <p className="text-xs text-text-dim pt-1">
           Scope enforcement: tools require explicit{' '}
           <span className="font-mono">required_scope</span> authorization. Consequential
           side-effects trigger approval cards.

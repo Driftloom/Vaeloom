@@ -266,12 +266,12 @@ export const McpView: React.FC<McpViewProps> = ({ onOpenCreateServer, onOpenImpo
                   <span className="text-xs font-mono font-medium text-white truncate">
                     {serverName}
                   </span>
-                  <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-[#1c1e28] text-[#93c5fd] border border-[#272b3b]">
+                  <span className="px-1.5 py-0.2 rounded text-2xs font-mono bg-[#1c1e28] text-[#93c5fd] border border-[#272b3b]">
                     stdio
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-sans text-[#71717a]">connected</span>
+                  <span className="text-2xs font-sans text-[#71717a]">connected</span>
                 </div>
               </div>
             ))}
@@ -300,7 +300,7 @@ export const McpView: React.FC<McpViewProps> = ({ onOpenCreateServer, onOpenImpo
             <span className="text-xs font-semibold text-white font-sans tracking-tight">
               Catalog
             </span>
-            <span className="text-[10px] font-sans px-1.5 py-0.2 rounded-full bg-[#181a22] text-[#8b8e99] border border-[#252734]">
+            <span className="text-2xs font-sans px-1.5 py-0.2 rounded-full bg-[#181a22] text-[#8b8e99] border border-[#252734]">
               {MCP_CATALOG_SERVERS.length} available
             </span>
           </div>
@@ -332,7 +332,7 @@ export const McpView: React.FC<McpViewProps> = ({ onOpenCreateServer, onOpenImpo
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-[#8b8e99] font-sans leading-relaxed mt-1 line-clamp-2">
+                    <p className="text-xs text-[#8b8e99] font-sans leading-relaxed mt-1 line-clamp-2">
                       {server.description}
                     </p>
                   </div>
@@ -379,7 +379,7 @@ export const McpView: React.FC<McpViewProps> = ({ onOpenCreateServer, onOpenImpo
                 />
               </svg>
               <span className="text-xs font-mono font-medium text-white">mcp.json</span>
-              <span className="text-[10px] font-mono text-[#71717a]">
+              <span className="text-2xs font-mono text-[#71717a]">
                 (~/.config/vaeloom/mcp.json)
               </span>
             </div>
@@ -406,7 +406,7 @@ export const McpView: React.FC<McpViewProps> = ({ onOpenCreateServer, onOpenImpo
           {/* Editor Area with Line Numbers */}
           <div className="flex-1 flex overflow-hidden bg-[#09090b] font-mono text-xs">
             {/* Line numbers gutter */}
-            <div className="w-10 py-3 bg-[#0a0b0e] border-r border-[#171820] text-right pr-2 text-[#4b4e5c] select-none text-[11px] leading-5 shrink-0">
+            <div className="w-10 py-3 bg-[#0a0b0e] border-r border-[#171820] text-right pr-2 text-[#4b4e5c] select-none text-xs leading-5 shrink-0">
               {mcpConfigText.split('\n').map((_, idx) => (
                 <div key={idx}>{idx + 1}</div>
               ))}
@@ -444,7 +444,7 @@ export const McpView: React.FC<McpViewProps> = ({ onOpenCreateServer, onOpenImpo
               <select
                 value={logFilter}
                 onChange={(e) => setLogFilter(e.target.value)}
-                className="bg-[#14151a] border border-[#23242e] rounded px-2 py-0.5 text-[11px] font-sans text-[#a1a1aa] focus:outline-none cursor-pointer"
+                className="bg-[#14151a] border border-[#23242e] rounded px-2 py-0.5 text-xs font-sans text-[#a1a1aa] focus:outline-none cursor-pointer"
               >
                 <option value="all">All servers (stdio, agent)</option>
                 <option value="filesystem">filesystem</option>
@@ -455,14 +455,14 @@ export const McpView: React.FC<McpViewProps> = ({ onOpenCreateServer, onOpenImpo
             <button
               type="button"
               onClick={() => setLogs([])}
-              className="text-[11px] font-sans text-[#71717a] hover:text-white transition-colors"
+              className="text-xs font-sans text-[#71717a] hover:text-white transition-colors"
             >
               Clear
             </button>
           </div>
 
           {/* Console Output Window */}
-          <div className="flex-1 p-3 overflow-y-auto font-mono text-[11px] leading-5 space-y-1">
+          <div className="flex-1 p-3 overflow-y-auto font-mono text-xs leading-5 space-y-1">
             {logs.length === 0 ? (
               <div className="text-[#52525b] italic">No output yet.</div>
             ) : (

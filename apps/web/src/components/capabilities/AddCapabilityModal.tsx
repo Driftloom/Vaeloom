@@ -916,7 +916,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                   <Badge
                     variant={readinessAudit.score >= 90 ? 'success' : 'info'}
                     size="sm"
-                    className="text-[10px] font-mono"
+                    className="text-2xs font-mono"
                   >
                     {readinessAudit.score}% Validated •{' '}
                     {readinessAudit.score >= 90
@@ -927,7 +927,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                   </Badge>
                 )}
               </div>
-              <p id="add-capability-modal-desc" className="text-[11px] text-[#a1a1aa] font-sans">
+              <p id="add-capability-modal-desc" className="text-xs text-[#a1a1aa] font-sans">
                 {capCategory === 'skills'
                   ? 'Author Claude & Codex reasoning playbooks with sovereign operating rules'
                   : capCategory === 'agents'
@@ -1081,7 +1081,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         <span className="text-xs font-semibold text-white group-hover:text-primary transition-colors">
                           {template.title}
                         </span>
-                        <Badge variant="mono" size="sm" className="capitalize text-[10px]">
+                        <Badge variant="mono" size="sm" className="capitalize text-2xs">
                           {template.category}
                         </Badge>
                       </div>
@@ -1090,18 +1090,18 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       </p>
                     </div>
 
-                    <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[#181a24] text-[11px]">
+                    <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[#181a24] text-xs">
                       <div className="flex flex-wrap gap-1">
                         {template.tags.slice(0, 3).map((t) => (
                           <span
                             key={t}
-                            className="px-1.5 py-0.2 rounded text-[10px] bg-[#161822] text-[#8b8e99] border border-[#222432]"
+                            className="px-1.5 py-0.2 rounded text-2xs bg-[#161822] text-[#8b8e99] border border-[#222432]"
                           >
                             {t}
                           </span>
                         ))}
                       </div>
-                      <span className="text-primary font-medium group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-[11px]">
+                      <span className="text-primary font-medium group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-xs">
                         Use Template →
                       </span>
                     </div>
@@ -1145,7 +1145,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         }`}
                       >
                         <span className="font-semibold text-xs text-white">{cat.label}</span>
-                        <span className="text-[10px] text-[#71717a] font-normal">{cat.desc}</span>
+                        <span className="text-2xs text-[#71717a] font-normal">{cat.desc}</span>
                       </button>
                     );
                   })}
@@ -1167,7 +1167,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         >
                           Skill Name / Identifier *
                         </label>
-                        <span className="text-[10px] font-mono text-[#71717a]">
+                        <span className="text-2xs font-mono text-[#71717a]">
                           slug: lowercase-hyphenated
                         </span>
                       </div>
@@ -1229,15 +1229,13 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         >
                           Tags &amp; Taxonomy
                         </label>
-                        <span className="text-[11px] text-[#71717a]">
-                          Click a chip to quickly add
-                        </span>
+                        <span className="text-xs text-[#71717a]">Click a chip to quickly add</span>
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-[#12141c] border border-[#232636] min-h-[38px]">
                         {capTags.map((tag) => (
                           <span
                             key={tag}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#1a1c26] text-[#e4e4e7] border border-[#292c3a]"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium bg-[#1a1c26] text-[#e4e4e7] border border-[#292c3a]"
                           >
                             <span>{tag}</span>
                             <button
@@ -1274,7 +1272,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                               key={suggest}
                               type="button"
                               onClick={() => handleAddTag(suggest)}
-                              className="text-[10px] px-1.5 py-0.2 rounded bg-[#10121a] text-[#8b8e99] hover:text-white hover:bg-[#181a24] border border-[#20222e] transition-colors"
+                              className="text-2xs px-1.5 py-0.2 rounded bg-[#10121a] text-[#8b8e99] hover:text-white hover:bg-[#181a24] border border-[#20222e] transition-colors"
                             >
                               + {suggest}
                             </button>
@@ -1288,11 +1286,11 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         <span className="text-xs font-semibold text-white">
                           Claude &amp; Codex Directives
                         </span>
-                        <Badge variant="mono" size="sm" className="text-[10px]">
+                        <Badge variant="mono" size="sm" className="text-2xs">
                           SKILL.md Spec
                         </Badge>
                       </div>
-                      <p className="text-[11px] text-[#8b8e99] leading-relaxed">
+                      <p className="text-xs text-[#8b8e99] leading-relaxed">
                         Skills inject deterministic prompts and operating rules into agent context
                         windows. They provide multi-step guidelines without requiring code execution
                         or approval gates.
@@ -1335,7 +1333,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       </div>
                     )}
 
-                    <div className="flex flex-wrap items-center gap-1 pt-1 text-[10px] text-[#71717a]">
+                    <div className="flex flex-wrap items-center gap-1 pt-1 text-2xs text-[#71717a]">
                       <span>Insert:</span>
                       <button
                         type="button"
@@ -1393,7 +1391,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         >
                           Agent Name / Identifier *
                         </label>
-                        <Badge variant="mono" size="sm" className="text-[10px]">
+                        <Badge variant="mono" size="sm" className="text-2xs">
                           AgentCard v1.0
                         </Badge>
                       </div>
@@ -1541,7 +1539,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                                 }}
                                 className="rounded border-[#2c2e3c] bg-[#151722] text-primary"
                               />
-                              <span className="font-mono text-[11px] truncate">{tool.name}</span>
+                              <span className="font-mono text-xs truncate">{tool.name}</span>
                             </label>
                           );
                         })}
@@ -1560,7 +1558,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         {capTags.map((tag) => (
                           <span
                             key={tag}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#1a1c26] text-[#e4e4e7] border border-[#292c3a]"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium bg-[#1a1c26] text-[#e4e4e7] border border-[#292c3a]"
                           >
                             <span>{tag}</span>
                             <button
@@ -1627,7 +1625,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                           onChange={(e) => setAgentPromptTemplate(e.target.value)}
                           className="w-full flex-1 p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary font-mono text-xs leading-relaxed resize-none"
                         />
-                        <div className="flex flex-wrap items-center gap-1 pt-1 text-[10px] text-[#71717a]">
+                        <div className="flex flex-wrap items-center gap-1 pt-1 text-2xs text-[#71717a]">
                           <span>Insert Context:</span>
                           <button
                             type="button"
@@ -1668,7 +1666,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                     )}
 
                     {agentRightTab === 'card' && (
-                      <div className="p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-[#93c5fd] font-mono text-[11px] overflow-x-auto max-h-[290px] whitespace-pre select-all">
+                      <div className="p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-[#93c5fd] font-mono text-xs overflow-x-auto max-h-[290px] whitespace-pre select-all">
                         {generatedSpecString}
                       </div>
                     )}
@@ -1687,7 +1685,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       <h4 className="font-semibold text-white text-xs">
                         MCP Protocol Configuration
                       </h4>
-                      <span className="text-[11px] text-[#71717a]">
+                      <span className="text-xs text-[#71717a]">
                         Model Context Protocol v2 Connector Bridge
                       </span>
                     </div>
@@ -1813,7 +1811,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             {mcpEnvList.map((env, i) => (
                               <span
                                 key={i}
-                                className="px-2 py-0.5 rounded bg-[#161822] border border-[#262938] text-[10px] font-mono text-[#93c5fd] flex items-center gap-1"
+                                className="px-2 py-0.5 rounded bg-[#161822] border border-[#262938] text-2xs font-mono text-[#93c5fd] flex items-center gap-1"
                               >
                                 <span>{env.key}=••••••</span>
                                 <button
@@ -1843,7 +1841,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                           {capTags.map((tag) => (
                             <span
                               key={tag}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#1a1c26] text-[#e4e4e7] border border-[#292c3a]"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium bg-[#1a1c26] text-[#e4e4e7] border border-[#292c3a]"
                             >
                               <span>{tag}</span>
                               <button
@@ -1915,10 +1913,10 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
 
                       {mcpRightTab === 'manifest' && (
                         <div className="flex-1 flex flex-col justify-between">
-                          <div className="p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-[#93c5fd] font-mono text-[11px] overflow-x-auto max-h-[290px] whitespace-pre leading-relaxed select-all">
+                          <div className="p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-[#93c5fd] font-mono text-xs overflow-x-auto max-h-[290px] whitespace-pre leading-relaxed select-all">
                             {generatedSpecString}
                           </div>
-                          <div className="flex items-center justify-between text-[10px] text-[#71717a] mt-2">
+                          <div className="flex items-center justify-between text-2xs text-[#71717a] mt-2">
                             <span>Standard MCP v2 Client configuration schema</span>
                             <button
                               type="button"
@@ -1935,11 +1933,11 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
 
                       {mcpRightTab === 'tools' && (
                         <div className="flex-1 space-y-2 p-1 overflow-y-auto text-xs">
-                          <p className="text-[#a1a1aa] text-[11px]">
+                          <p className="text-[#a1a1aa] text-xs">
                             Tools discovered dynamically on server startup under scope{' '}
                             <code className="text-[#93c5fd]">connector.mcp.execute</code>:
                           </p>
-                          <div className="p-2.5 rounded-lg bg-[#12141c] border border-[#222432] space-y-2 font-mono text-[11px]">
+                          <div className="p-2.5 rounded-lg bg-[#12141c] border border-[#222432] space-y-2 font-mono text-xs">
                             <div className="flex items-center justify-between text-[#e4e4e7]">
                               <span>mcp__{capName || 'server'}__query</span>
                               <Badge variant="mono" size="sm">
@@ -1962,7 +1960,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
                               ✓ Zero-Trust Subprocess Isolation Passed
                             </span>
-                            <p className="text-[11px] text-[#a1a1aa]">
+                            <p className="text-xs text-[#a1a1aa]">
                               Shell metacharacters denied; environment variables encrypted
                               per-workspace key.
                             </p>
@@ -1985,7 +1983,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       <h4 className="font-semibold text-white text-xs">
                         Plugin Sandbox &amp; Scope Architecture
                       </h4>
-                      <span className="text-[11px] text-[#71717a]">
+                      <span className="text-xs text-[#71717a]">
                         Subprocess-isolated Python lifecycle interceptor
                       </span>
                     </div>
@@ -2124,7 +2122,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                           {capTags.map((tag) => (
                             <span
                               key={tag}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#1a1c26] text-[#e4e4e7] border border-[#292c3a]"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium bg-[#1a1c26] text-[#e4e4e7] border border-[#292c3a]"
                             >
                               <span>{tag}</span>
                               <button
@@ -2202,7 +2200,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             onChange={(e) => setPluginCode(e.target.value)}
                             className="w-full flex-1 p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-[#93c5fd] focus:outline-none focus:border-primary font-mono text-xs leading-relaxed resize-none"
                           />
-                          <div className="flex flex-wrap items-center gap-1 pt-1 text-[10px] text-[#71717a]">
+                          <div className="flex flex-wrap items-center gap-1 pt-1 text-2xs text-[#71717a]">
                             <span>Templates:</span>
                             <button
                               type="button"
@@ -2271,7 +2269,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             Run Sandbox Test
                           </Button>
                           {pluginTestResult && (
-                            <pre className="p-2 rounded bg-[#12141c] border border-[#232636] text-[#34d399] font-mono text-[11px] overflow-x-auto">
+                            <pre className="p-2 rounded bg-[#12141c] border border-[#232636] text-[#34d399] font-mono text-xs overflow-x-auto">
                               {pluginTestResult}
                             </pre>
                           )}
@@ -2279,7 +2277,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       )}
 
                       {pluginRightTab === 'manifest' && (
-                        <div className="p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-[#93c5fd] font-mono text-[11px] overflow-x-auto max-h-[290px] whitespace-pre select-all">
+                        <div className="p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-[#93c5fd] font-mono text-xs overflow-x-auto max-h-[290px] whitespace-pre select-all">
                           {generatedSpecString}
                         </div>
                       )}
@@ -2399,7 +2397,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                               }}
                               className="flex-1 px-2 py-1 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
                             />
-                            <label className="flex items-center gap-1 text-[10px] text-[#a1a1aa] shrink-0">
+                            <label className="flex items-center gap-1 text-2xs text-[#a1a1aa] shrink-0">
                               <input
                                 type="checkbox"
                                 checked={p.required}
@@ -2473,7 +2471,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         {capTags.map((tag) => (
                           <span
                             key={tag}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-[#1a1c26] text-[#e4e4e7] border border-[#292c3a]"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium bg-[#1a1c26] text-[#e4e4e7] border border-[#292c3a]"
                           >
                             <span>{tag}</span>
                             <button
@@ -2514,11 +2512,11 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       </Badge>
                     </div>
 
-                    <div className="p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-[#93c5fd] font-mono text-[11px] overflow-x-auto max-h-[290px] whitespace-pre leading-relaxed select-all">
+                    <div className="p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-[#93c5fd] font-mono text-xs overflow-x-auto max-h-[290px] whitespace-pre leading-relaxed select-all">
                       {generatedSpecString}
                     </div>
 
-                    <p className="text-[10px] text-[#71717a]">
+                    <p className="text-2xs text-[#71717a]">
                       Strict schema contract enforced at tool dispatch and validation gates.
                     </p>
                   </div>
@@ -2536,7 +2534,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                 <h3 className="text-sm font-semibold text-white mb-1">
                   Drag &amp; Drop SKILL.md or Specification File
                 </h3>
-                <p className="text-[11px] text-[#a1a1aa] mb-2.5">
+                <p className="text-xs text-[#a1a1aa] mb-2.5">
                   Supports <code className="text-[#93c5fd]">SKILL.md</code> with YAML frontmatter,{' '}
                   <code className="text-[#93c5fd]">mcp.json</code>, or OpenAPI schemas.
                 </p>
@@ -2577,9 +2575,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                     </svg>
                   </div>
                   <p className="text-xs font-semibold text-white">Drop your capability file here</p>
-                  <p className="text-[10px] text-[#71717a] mt-0.5">
-                    or click to browse local files
-                  </p>
+                  <p className="text-2xs text-[#71717a] mt-0.5">or click to browse local files</p>
                   <input
                     type="file"
                     accept=".md,.markdown,.json,.yaml,.yml"
@@ -2600,7 +2596,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                 <h4 className="text-xs font-semibold text-white mb-1">
                   Import Capability from Git / URL
                 </h4>
-                <p className="text-[11px] text-[#a1a1aa] mb-2.5">
+                <p className="text-xs text-[#a1a1aa] mb-2.5">
                   Clone a public GitHub skill directory, raw SKILL.md link, or remote MCP server
                   endpoint.
                 </p>
@@ -2680,13 +2676,13 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
             <Button type="button" variant="secondary" size="sm" onClick={onClose}>
               Cancel
             </Button>
-            <span className="text-[11px] text-[#71717a] hidden sm:inline-block">
+            <span className="text-xs text-[#71717a] hidden sm:inline-block">
               Press{' '}
-              <kbd className="px-1 py-0.5 rounded bg-[#171822] text-[#93c5fd] font-mono text-[10px]">
+              <kbd className="px-1 py-0.5 rounded bg-[#171822] text-[#93c5fd] font-mono text-2xs">
                 Esc
               </kbd>{' '}
               to exit •{' '}
-              <kbd className="px-1 py-0.5 rounded bg-[#171822] text-[#93c5fd] font-mono text-[10px]">
+              <kbd className="px-1 py-0.5 rounded bg-[#171822] text-[#93c5fd] font-mono text-2xs">
                 Ctrl+Enter
               </kbd>{' '}
               to save
