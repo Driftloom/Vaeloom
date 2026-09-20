@@ -256,4 +256,63 @@ class TestProfileApi:
         del_data = del_res.json()
         assert not any(c["company"] == "Stripe" for c in del_data["career_history"])
 
+    async def test_import_from_resume_file(self, client: AsyncClient, auth_headers: dict):
+        ws_res = await client.post("/api/v1/workspaces", json={"name": "Resume Import WS"}, headers=auth_headers)
+        assert ws_res.status_code == 201
+        ws_id = ws_res.json()["id"]
+
+        resume_text = """
+        John Doe
+        Software Engineer
+        Skills: Python, TypeScript, Docker, Kubernetes, Next.js, PostgreSQL
+        
+        Experience:
+        Senior Engineer at Acme Corp (2020 - 2023)
+        Built scalable microservices and APIs.
+        
+        Education:
+        Bachelor of Science in Computer Science at Stanford University (2016 - 2020)
+        """
+        files = {
+            "file": ("sample_resume.txt", resume_text.encode("utf-8"), "text/plain")
+        }
+        res = await client.post(
+            f"/api/v1/profile/import/resume?workspace_id={ws_id}",
+            files=files,
+            headers=auth_headers,
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert "skills_imported" in data
+        assert "career_imported" in data
+        assert "education_imported" in data
+        assert data["skills_imported"] >= 1
+        assert "profile" in data
+        profile = data["profile"]
+        assert any("python" in s["name"].lower() or "typescript" in s["name"].lower() for s in profile["skills"])
+
+    async def test_import_from_linkedin(self, client: AsyncClient, auth_headers: dict):
+        ws_res = await client.post("/api/v1/workspaces", json={"name": "LinkedIn Import WS"}, headers=auth_headers)
+        assert ws_res.status_code == 201
+        ws_id = ws_res.json()["id"]
+
+        # 1. Invalid URL rejection
+        bad_res = await client.post(
+            "/api/v1/profile/import/linkedin",
+            json={"workspace_id": ws_id, "linkedin_url": "https://invalid-site.com/user"},
+            headers=auth_headers,
+        )
+        assert bad_res.status_code == 422
+
+        # 2. Valid LinkedIn URL format
+        good_res = await client.post(
+            "/api/v1/profile/import/linkedin",
+            json={"workspace_id": ws_id, "linkedin_url": "https://www.linkedin.com/in/alex-dev"},
+            headers=auth_headers,
+        )
+        assert good_res.status_code == 200
+        data = good_res.json()
+        assert "message" in data
+        assert "profile" in data
+
 

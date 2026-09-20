@@ -195,6 +195,19 @@ class AutoPopulateRequest(BaseModel):
     workspace_id: str
 
 
+class ImportLinkedInRequest(BaseModel):
+    workspace_id: str
+    linkedin_url: str
+
+
+class ProfileImportSummaryResponse(BaseModel):
+    skills_imported: int = 0
+    career_imported: int = 0
+    education_imported: int = 0
+    message: str
+    profile: ProfileResponse
+
+
 class PublicProfileResponse(BaseModel):
     id: str
     display_name: str

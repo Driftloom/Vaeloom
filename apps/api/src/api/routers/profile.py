@@ -16,8 +16,10 @@ from ..schemas.profile import (
     AutoPopulateRequest,
     AvatarUploadResponse,
     ConfirmSkillRequest,
+    ImportLinkedInRequest,
     ProfileActivityItem,
     ProfileCompletenessResponse,
+    ProfileImportSummaryResponse,
     ProfileRecommendationItem,
     ProfileResponse,
     PublicProfileResponse,
@@ -208,6 +210,54 @@ async def auto_populate(
     if not profile:
         raise HTTPException(status_code=404, detail="User not found")
     return profile
+
+
+@router.post("/import/resume", response_model=ProfileImportSummaryResponse)
+async def import_from_resume(
+    file: UploadFile = File(...),
+    workspace_id: str = Query(..., description="Workspace ID"),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Import profile data from an uploaded resume file (PDF, DOCX, TXT)."""
+    user_id = current_user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:  # 10 MB limit
+        raise HTTPException(status_code=413, detail="File too large (max 10 MB)")
+
+    try:
+        from ..ingestion.parsers import UnsupportedFormatError
+        result = await profile_service.import_from_resume_file(
+            user_id=user_id,
+            workspace_id=workspace_id,
+            filename=file.filename or "resume",
+            content=content,
+            db=db,
+        )
+        return result
+    except UnsupportedFormatError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.exception(f"Resume import failed: {e}")
+        raise HTTPException(status_code=500, detail="Resume import failed")
+
+
+@router.post("/import/linkedin", response_model=ProfileImportSummaryResponse)
+async def import_from_linkedin(
+    body: ImportLinkedInRequest,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Import profile data from a LinkedIn profile URL."""
+    user_id = current_user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    result = await profile_service.import_from_linkedin(user_id=user_id, body=body, db=db)
+    return result
 
 
 @router.get("/public/{user_id}", response_model=PublicProfileResponse)

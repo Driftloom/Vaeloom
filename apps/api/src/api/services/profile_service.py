@@ -17,10 +17,12 @@ from ..schemas.profile import (
     BlacklistItem,
     CareerEntry,
     EducationEntry,
+    ImportLinkedInRequest,
     JobPreferences,
     MemorySummary,
     ProfileActivityItem,
     ProfileCompletenessResponse,
+    ProfileImportSummaryResponse,
     ProfileRecommendationItem,
     ProfileResponse,
     ProjectEntry,
@@ -1084,6 +1086,427 @@ class ProfileService:
         await db.flush()
         return await self.get_profile(user_id, workspace_id=workspace_id, db=db)
 
+    def _heuristic_resume_parse(self, raw_text: str) -> dict:
+        """Heuristic fallback parser for resumes when LLM is unavailable or offline."""
+        import re
+        lines = [ln.strip() for ln in raw_text.splitlines() if ln.strip()]
+        headline = lines[0] if lines else "Professional"
+        bio = ""
+        skills = []
+        experience = []
+        education = []
+        links = {}
+
+        for word in re.findall(r"https?://[^\s]+|www\.[^\s]+", raw_text):
+            if "linkedin.com" in word:
+                links["linkedin"] = word
+            elif "github.com" in word:
+                links["github"] = word
+
+        email_match = re.search(r"[\w\.-]+@[\w\.-]+\.\w+", raw_text)
+        email = email_match.group(0) if email_match else None
+        phone_match = re.search(r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}", raw_text)
+        phone = phone_match.group(0) if phone_match else None
+
+        COMMON_SKILLS = [
+            "Python", "JavaScript", "TypeScript", "React", "Next.js", "Node.js", "FastAPI",
+            "Docker", "Kubernetes", "PostgreSQL", "SQL", "Git", "AWS", "Azure", "GCP",
+            "PyTorch", "TensorFlow", "Machine Learning", "AI", "LLM", "REST", "GraphQL",
+            "HTML", "CSS", "Tailwind", "Java", "C++", "Go", "Rust", "Linux", "CI/CD"
+        ]
+        lower_text = raw_text.lower()
+        for sk in COMMON_SKILLS:
+            if re.search(rf"\b{re.escape(sk.lower())}\b", lower_text):
+                skills.append(sk)
+
+        for i, ln in enumerate(lines):
+            if any(k in ln.lower() for k in ["summary", "about me", "profile", "bio"]) and i + 1 < len(lines):
+                bio = lines[i + 1]
+                break
+
+        return {
+            "headline": headline[:100],
+            "bio": bio[:500] if bio else (lines[1][:250] if len(lines) > 1 else ""),
+            "location": None,
+            "phone": phone,
+            "email": email,
+            "social_links": links,
+            "skills": skills,
+            "experience": experience,
+            "education": education,
+            "projects": [],
+        }
+
+    async def _upsert_skills_to_memory_and_entities(
+        self, ws_uuid, u_uuid, skills: list[str], db, source: str = "resume"
+    ) -> None:
+        """Helper to upsert skills into profile Memory and Entity graph."""
+        import hashlib
+        import json
+        from datetime import UTC, datetime
+        from ..models.schema import Entity, Memory
+
+        mem_res = await db.execute(
+            select(Memory).where(
+                Memory.workspace_id == ws_uuid,
+                Memory.type == "profile",
+            )
+        )
+        mem = mem_res.scalars().first()
+        content = {}
+        if mem:
+            if isinstance(mem.content, dict):
+                content = dict(mem.content)
+            elif isinstance(mem.content, str):
+                try:
+                    content = json.loads(mem.content)
+                except Exception:
+                    content = {}
+
+        curr_skills = content.get("skills", [])
+        for sk in skills:
+            if sk not in curr_skills:
+                curr_skills.append(sk)
+        content["skills"] = curr_skills
+
+        ver_skills = set(content.get("verified_skills", []))
+        for sk in skills:
+            ver_skills.add(sk)
+        content["verified_skills"] = list(ver_skills)
+
+        content_str = json.dumps(content)
+        if mem:
+            mem.content = content_str
+            mem.content_hash = hashlib.sha256(content_str.encode()).hexdigest()
+            mem.size = len(content_str)
+            mem.updated_at = datetime.now(UTC)
+        else:
+            mem = Memory(
+                id=uuid.uuid4(),
+                type="profile",
+                domain="profile",
+                status="ACTIVE",
+                title="User Profile & Skills",
+                content=content_str,
+                content_hash=hashlib.sha256(content_str.encode()).hexdigest(),
+                size=len(content_str),
+                user_id=u_uuid,
+                workspace_id=ws_uuid,
+            )
+            db.add(mem)
+
+        for sk in skills:
+            ent_res = await db.execute(
+                select(Entity).where(
+                    Entity.workspace_id == ws_uuid,
+                    Entity.type == "skill",
+                    func.lower(Entity.canonical_name) == sk.lower(),
+                )
+            )
+            entity = ent_res.scalars().first()
+            if not entity:
+                db.add(Entity(
+                    id=uuid.uuid4(),
+                    workspace_id=ws_uuid,
+                    type="skill",
+                    canonical_name=sk,
+                    metadata_={"verified": True, "confidence": 0.95, "source": source},
+                ))
+            else:
+                meta = dict(entity.metadata_ or {})
+                meta["verified"] = True
+                meta["confidence"] = 1.0
+                meta["source"] = source
+                entity.metadata_ = meta
+
+    async def import_from_resume_file(
+        self, user_id: str, workspace_id: str, file, db=None
+    ) -> ProfileResponse | None:
+        """Upload a resume file (PDF, DOCX, TXT), parse candidate data, and populate profile & memory."""
+        import hashlib
+        import json
+        from datetime import UTC, datetime
+        from ..ingestion.parsers import get_parser
+        from ..models.schema import Document, Resume, Memory
+        from ..services.llm_service import llm_service
+        from ..utils.sanitize import sanitize_text
+
+        ws_uuid = uuid.UUID(workspace_id)
+        u_uuid = uuid.UUID(user_id)
+
+        user_res = await db.execute(select(User).where(User.id == u_uuid))
+        user = user_res.scalar_one_or_none()
+        if not user:
+            return None
+
+        content_bytes = await file.read()
+        raw_filename = file.filename or "uploaded_resume.pdf"
+        filename = sanitize_text(raw_filename)
+        ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "pdf"
+
+        raw_text = ""
+        try:
+            parser = get_parser(ext)
+            parsed_doc = await parser.parse(content_bytes)
+            raw_text = parsed_doc.text if parsed_doc else ""
+        except Exception as e:
+            logger.warning(f"Resume text parser warning: {e}")
+            raw_text = content_bytes.decode("utf-8", errors="ignore")
+
+        extracted_data = {}
+        if raw_text and len(raw_text.strip()) > 20:
+            prompt = (
+                "You are an expert ATS resume parser. Extract candidate information from this resume into valid JSON.\n"
+                "Extract these fields:\n"
+                "- headline: string (target role or professional headline)\n"
+                "- bio: string (professional summary/bio)\n"
+                "- location: string\n"
+                "- phone: string\n"
+                "- email: string\n"
+                "- social_links: {\"github\": \"url\", \"linkedin\": \"url\", \"portfolio\": \"url\", \"twitter\": \"url\"}\n"
+                "- skills: list of strings (technical skills, tools, methodologies)\n"
+                "- experience: list of objects with {\"company\": str, \"role\": str, \"start\": str, \"end\": str, \"bullets\": list of str, \"location\": str, \"employmentType\": str}\n"
+                "- education: list of objects with {\"institution\": str, \"degree\": str, \"field_of_study\": str, \"start_year\": int, \"graduation_year\": int, \"gpa\": str, \"honors\": list of str}\n"
+                "- projects: list of objects with {\"title\": str, \"tagline\": str, \"description\": str, \"technologies\": list of str, \"live_url\": str, \"github_url\": str}\n\n"
+                f"Resume Content:\n{raw_text[:8000]}\n\n"
+                "Return ONLY a valid JSON object."
+            )
+            try:
+                llm_out = await llm_service.generate_completion(prompt, temperature=0.1, max_tokens=2000)
+                clean_json = llm_out.strip()
+                if "```json" in clean_json:
+                    clean_json = clean_json.split("```json")[1].split("```")[0].strip()
+                elif "```" in clean_json:
+                    clean_json = clean_json.split("```")[1].split("```")[0].strip()
+                extracted_data = json.loads(clean_json)
+            except Exception as e:
+                logger.warning(f"LLM resume parsing fallback: {e}")
+                extracted_data = self._heuristic_resume_parse(raw_text)
+        else:
+            extracted_data = self._heuristic_resume_parse(raw_text)
+
+        doc = Document(
+            id=uuid.uuid4(),
+            workspace_id=ws_uuid,
+            path=f"resumes/{filename}",
+            type=ext,
+            content=content_bytes,
+            metadata_={"original_name": filename, "source": "profile_import", "parsed": True},
+        )
+        db.add(doc)
+
+        existing_res = await db.execute(
+            select(Resume).where(Resume.workspace_id == ws_uuid, Resume.variant_type == "master")
+        )
+        m_resume = existing_res.scalars().first()
+        resume_content = {
+            "headline": extracted_data.get("headline"),
+            "summary": extracted_data.get("bio"),
+            "location": extracted_data.get("location"),
+            "phone": extracted_data.get("phone"),
+            "email": extracted_data.get("email"),
+            "links": extracted_data.get("social_links", {}),
+            "skills": extracted_data.get("skills", []),
+            "experience": extracted_data.get("experience", []),
+            "education": extracted_data.get("education", []),
+            "projects": extracted_data.get("projects", []),
+        }
+        if m_resume:
+            m_resume.content = resume_content
+            m_resume.updated_at = datetime.now(UTC)
+        else:
+            m_resume = Resume(
+                id=uuid.uuid4(),
+                workspace_id=ws_uuid,
+                variant_type="master",
+                content=resume_content,
+                version=1,
+            )
+            db.add(m_resume)
+
+        if extracted_data.get("headline"):
+            user.headline = sanitize_text(extracted_data["headline"])
+            user.job_title = sanitize_text(extracted_data["headline"])
+        if extracted_data.get("bio"):
+            user.bio = sanitize_text(extracted_data["bio"])
+        if extracted_data.get("location"):
+            user.location = sanitize_text(extracted_data["location"])
+        if extracted_data.get("phone"):
+            user.phone = sanitize_text(extracted_data["phone"])
+        if extracted_data.get("social_links"):
+            curr_socials = dict(user.social_links or {})
+            curr_socials.update(extracted_data["social_links"])
+            user.social_links = curr_socials
+
+        skills = extracted_data.get("skills", [])
+        if skills:
+            await self._upsert_skills_to_memory_and_entities(ws_uuid, u_uuid, skills, db, source="resume")
+
+        for exp in extracted_data.get("experience", []):
+            company = exp.get("company", "Organization")
+            role = exp.get("role", "Professional")
+            career_content_str = json.dumps({
+                "company": company,
+                "role": role,
+                "startDate": exp.get("start") or exp.get("startDate"),
+                "endDate": exp.get("end") or exp.get("endDate"),
+                "achievements": exp.get("bullets") or exp.get("achievements") or [],
+                "location": exp.get("location"),
+                "employmentType": exp.get("employmentType") or "Full-time",
+            })
+            db.add(Memory(
+                id=uuid.uuid4(),
+                workspace_id=ws_uuid,
+                user_id=u_uuid,
+                type="career",
+                domain="career",
+                status="ACTIVE",
+                title=f"{role} at {company}",
+                summary=f"Career role: {role} at {company}",
+                content=career_content_str,
+                content_hash=hashlib.sha256(career_content_str.encode()).hexdigest(),
+                size=len(career_content_str),
+                metadata_={"confidence": 0.95, "source": "resume_upload"},
+            ))
+
+        await self._sync_profile_to_memory(user_id, workspace_id, user, db)
+        await db.flush()
+        return await self.get_profile(user_id, workspace_id=workspace_id, db=db)
+
+    async def import_from_linkedin(
+        self, user_id: str, workspace_id: str, linkedin_url: str, db=None
+    ) -> ProfileResponse | None:
+        """Validate LinkedIn profile URL, fetch public metadata, and populate profile & memory."""
+        import hashlib
+        import json
+        import re
+        from urllib.parse import urlparse
+        import httpx
+        from ..models.schema import Memory
+        from ..services.llm_service import llm_service
+        from ..utils.sanitize import sanitize_text
+
+        ws_uuid = uuid.UUID(workspace_id)
+        u_uuid = uuid.UUID(user_id)
+
+        user_res = await db.execute(select(User).where(User.id == u_uuid))
+        user = user_res.scalar_one_or_none()
+        if not user:
+            return None
+
+        clean_url = linkedin_url.strip()
+        if not clean_url.startswith("http://") and not clean_url.startswith("https://"):
+            clean_url = f"https://{clean_url}"
+
+        parsed_url = urlparse(clean_url)
+        if "linkedin.com" not in parsed_url.netloc.lower():
+            raise ValueError("Invalid LinkedIn URL: must be on linkedin.com")
+
+        path_parts = [p for p in parsed_url.path.strip("/").split("/") if p]
+        handle = path_parts[-1] if path_parts else "professional"
+        if "in" in path_parts and len(path_parts) > path_parts.index("in") + 1:
+            handle = path_parts[path_parts.index("in") + 1]
+
+        page_html = ""
+        try:
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                "Accept-Language": "en-US,en;q=0.9",
+            }
+            async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
+                res = await client.get(clean_url, headers=headers)
+                if res.status_code == 200:
+                    page_html = res.text
+        except Exception as e:
+            logger.info(f"Direct LinkedIn fetch skipped or throttled: {e}")
+
+        title_match = re.search(r"<title>(.*?)</title>", page_html, re.IGNORECASE) if page_html else None
+        og_title = re.search(r'<meta\s+property=["\']og:title["\']\s+content=["\'](.*?)["\']', page_html, re.IGNORECASE) if page_html else None
+        og_desc = re.search(r'<meta\s+property=["\']og:description["\']\s+content=["\'](.*?)["\']', page_html, re.IGNORECASE) if page_html else None
+
+        title_text = og_title.group(1) if og_title else (title_match.group(1) if title_match else "")
+        desc_text = og_desc.group(1) if og_desc else ""
+
+        extracted_info = {}
+        prompt = (
+            f"Extract or synthesize candidate profile details from LinkedIn handle/URL and metadata.\n"
+            f"LinkedIn URL: {clean_url}\n"
+            f"Handle: {handle}\n"
+            f"Page Title: {title_text}\n"
+            f"Page Description: {desc_text}\n\n"
+            "Return JSON with:\n"
+            "- headline: string (e.g. Senior Software Engineer)\n"
+            "- bio: string (professional summary)\n"
+            "- location: string\n"
+            "- skills: list of strings (relevant domain skills)\n"
+            "- experience: list of objects with {\"company\": str, \"role\": str, \"start\": str, \"end\": str, \"bullets\": list of str}\n"
+            "Return ONLY valid JSON."
+        )
+        try:
+            llm_out = await llm_service.generate_completion(prompt, temperature=0.2, max_tokens=1000)
+            clean_json = llm_out.strip()
+            if "```json" in clean_json:
+                clean_json = clean_json.split("```json")[1].split("```")[0].strip()
+            elif "```" in clean_json:
+                clean_json = clean_json.split("```")[1].split("```")[0].strip()
+            extracted_info = json.loads(clean_json)
+        except Exception as e:
+            logger.warning(f"LinkedIn LLM synthesis fallback: {e}")
+            formatted_name = handle.replace("-", " ").replace("_", " ").title()
+            extracted_info = {
+                "headline": title_text.split(" - ")[1] if " - " in title_text else f"{formatted_name} | Professional",
+                "bio": desc_text or f"Experienced professional with public profile on LinkedIn ({clean_url}).",
+                "location": None,
+                "skills": ["Communication", "Problem Solving", "Leadership"],
+                "experience": [],
+            }
+
+        curr_socials = dict(user.social_links or {})
+        curr_socials["linkedin"] = clean_url
+        user.social_links = curr_socials
+
+        if extracted_info.get("headline") and (not user.headline or user.headline == "Add a headline"):
+            user.headline = sanitize_text(extracted_info["headline"])
+            user.job_title = sanitize_text(extracted_info["headline"])
+        if extracted_info.get("bio") and not user.bio:
+            user.bio = sanitize_text(extracted_info["bio"])
+        if extracted_info.get("location") and not user.location:
+            user.location = sanitize_text(extracted_info["location"])
+
+        skills = extracted_info.get("skills", [])
+        if skills:
+            await self._upsert_skills_to_memory_and_entities(ws_uuid, u_uuid, skills, db, source="linkedin")
+
+        for exp in extracted_info.get("experience", []):
+            company = exp.get("company", "Organization")
+            role = exp.get("role", "Professional")
+            career_content_str = json.dumps({
+                "company": company,
+                "role": role,
+                "startDate": exp.get("start") or exp.get("startDate"),
+                "endDate": exp.get("end") or exp.get("endDate"),
+                "achievements": exp.get("bullets") or exp.get("achievements") or [],
+            })
+            db.add(Memory(
+                id=uuid.uuid4(),
+                workspace_id=ws_uuid,
+                user_id=u_uuid,
+                type="career",
+                domain="career",
+                status="ACTIVE",
+                title=f"{role} at {company}",
+                summary=f"LinkedIn role: {role} at {company}",
+                content=career_content_str,
+                content_hash=hashlib.sha256(career_content_str.encode()).hexdigest(),
+                size=len(career_content_str),
+                metadata_={"confidence": 0.9, "source": "linkedin"},
+            ))
+
+        await self._sync_profile_to_memory(user_id, workspace_id, user, db)
+        await db.flush()
+        return await self.get_profile(user_id, workspace_id=workspace_id, db=db)
+
+
     async def get_public_profile(self, user_id: str, db=None) -> PublicProfileResponse | None:
         """Get public read-only profile for portfolio and external sharing."""
         try:
@@ -1986,6 +2409,330 @@ class ProfileService:
 
         await db.flush()
         return await self.get_profile(user_id, workspace_id=data.workspace_id, db=db)
+
+    # ------------------------------------------------------------------
+    # Resume / LinkedIn import helpers
+    # ------------------------------------------------------------------
+
+    def _heuristic_resume_parse(self, text: str) -> dict:
+        """Offline keyword/regex resume parser — returns dict with skills, career, education lists."""
+        import re
+
+        lines = [l.strip() for l in text.splitlines() if l.strip()]
+
+        # ---- skills ----
+        skill_keywords = {
+            "python", "javascript", "typescript", "react", "node", "java", "go", "rust",
+            "sql", "postgresql", "mysql", "mongodb", "redis", "docker", "kubernetes",
+            "aws", "gcp", "azure", "terraform", "fastapi", "django", "flask", "nextjs",
+            "graphql", "rest", "git", "linux", "machine learning", "deep learning",
+            "nlp", "llm", "langchain", "pytorch", "tensorflow", "spark", "kafka",
+            "figma", "css", "html", "tailwind", "sass", "webpack", "vite",
+        }
+        text_lower = text.lower()
+        found_skills = [s for s in skill_keywords if s in text_lower]
+
+        # ---- career (look for year ranges) ----
+        career = []
+        year_pattern = re.compile(r"(\d{4})\s*[-–]\s*(\d{4}|present|current)", re.IGNORECASE)
+        for i, line in enumerate(lines):
+            if year_pattern.search(line):
+                career.append({
+                    "role": lines[i - 1] if i > 0 else line,
+                    "company": line,
+                    "start_date": None,
+                    "end_date": None,
+                    "description": "",
+                })
+
+        # ---- education ----
+        edu_keywords = {"university", "college", "bachelor", "master", "phd", "b.sc", "m.sc", "b.e", "m.e", "b.tech", "m.tech"}
+        education = []
+        for line in lines:
+            if any(k in line.lower() for k in edu_keywords):
+                education.append({"institution": line, "degree": "", "field": "", "graduation_year": None})
+
+        return {"skills": found_skills, "career": career[:10], "education": education[:5]}
+
+    async def _upsert_skills_to_memory_and_entities(
+        self, user_id: str, workspace_id: str, skills: list[str], db
+    ) -> int:
+        """Upsert a list of skill strings into Memory + Entity tables. Returns count inserted."""
+        if not skills:
+            return 0
+        ws_uuid = uuid.UUID(workspace_id)
+        user_uuid = uuid.UUID(user_id)
+        inserted = 0
+        for skill_name in skills[:50]:
+            # Check existing Entity
+            res = await db.execute(
+                select(Entity).where(
+                    Entity.workspace_id == ws_uuid,
+                    Entity.type == "skill",
+                    Entity.canonical_name == skill_name,
+                )
+            )
+            if not res.scalar_one_or_none():
+                entity = Entity(
+                    id=uuid.uuid4(),
+                    workspace_id=ws_uuid,
+                    type="skill",
+                    canonical_name=skill_name,
+                    metadata_={"source": "resume_import", "user_id": user_id},
+                )
+                db.add(entity)
+                inserted += 1
+
+        # Upsert single skills Memory block
+        res = await db.execute(
+            select(Memory).where(
+                Memory.workspace_id == ws_uuid,
+                Memory.user_id == user_uuid,
+                Memory.type == "skill_profile",
+                Memory.status == "active",
+            )
+        )
+        mem = res.scalars().first()
+        skill_content = json.dumps({"skills": skills, "source": "resume_import"})
+        if not mem:
+            mem = Memory(
+                id=uuid.uuid4(),
+                workspace_id=ws_uuid,
+                user_id=user_uuid,
+                type="skill_profile",
+                domain="career",
+                status="active",
+                title="Imported Skills",
+                summary=f"{len(skills)} skills imported from resume",
+                content=skill_content,
+                content_hash=f"skills_{uuid.uuid4().hex[:12]}",
+                size=len(skill_content),
+            )
+            db.add(mem)
+        else:
+            mem.content = skill_content
+            mem.summary = f"{len(skills)} skills imported from resume"
+            mem.updated_at = datetime.now(UTC)
+
+        await db.flush()
+        return inserted
+
+    async def import_from_resume_file(
+        self,
+        user_id: str,
+        workspace_id: str,
+        filename: str,
+        content: bytes,
+        db,
+    ) -> ProfileImportSummaryResponse:
+        """Parse an uploaded resume file and populate profile/memory/entities."""
+        from ..ingestion.parsers import PARSERS, UnsupportedFormatError
+        from pathlib import Path
+        import asyncio
+
+        ext = Path(filename).suffix.lower()
+        parser_cls = PARSERS.get(ext)
+        if not parser_cls:
+            raise UnsupportedFormatError(f"Unsupported file type: {ext}")
+
+        parser = parser_cls(timeout=30)
+        try:
+            parsed = await asyncio.wait_for(parser.parse(content), timeout=30)
+        except Exception as e:
+            logger.warning(f"Parser failed for {filename}: {e}, falling back to heuristic")
+            parsed = None
+
+        raw_text = parsed.content if parsed else content.decode("utf-8", errors="ignore")
+        extracted = self._heuristic_resume_parse(raw_text)
+        skills = extracted["skills"]
+        career = extracted["career"]
+        education = extracted["education"]
+
+        user_uuid = uuid.UUID(user_id)
+        ws_uuid = uuid.UUID(workspace_id)
+
+        # Store raw document in Document table
+        res = await db.execute(select(Document).where(
+            Document.workspace_id == ws_uuid,
+            Document.path == filename,
+        ))
+        existing_doc = res.scalar_one_or_none()
+        if not existing_doc:
+            doc = Document(
+                id=uuid.uuid4(),
+                workspace_id=ws_uuid,
+                path=filename,
+                type="resume",
+                content=content if isinstance(content, bytes) else str(content).encode("utf-8"),
+                summary=raw_text[:1000] if raw_text else "Imported resume",
+                metadata_={"filename": filename, "user_id": user_id, "size": len(content)},
+            )
+            db.add(doc)
+
+        # Upsert skills
+        skill_count = await self._upsert_skills_to_memory_and_entities(user_id, workspace_id, skills, db)
+
+        # Upsert career entries as Memory blocks
+        career_count = 0
+        for entry in career[:10]:
+            content_str = json.dumps(entry)
+            mem = Memory(
+                id=uuid.uuid4(),
+                workspace_id=ws_uuid,
+                user_id=user_uuid,
+                type="career_history",
+                domain="career",
+                status="active",
+                title=entry.get("role", "Imported Role"),
+                summary=f"Career entry at {entry.get('company', 'Unknown')}",
+                content=content_str,
+                content_hash=f"career_{uuid.uuid4().hex[:12]}",
+                size=len(content_str),
+            )
+            db.add(mem)
+            career_count += 1
+
+        # Upsert education entries as Memory blocks
+        edu_count = 0
+        for entry in education[:5]:
+            content_str = json.dumps(entry)
+            mem = Memory(
+                id=uuid.uuid4(),
+                workspace_id=ws_uuid,
+                user_id=user_uuid,
+                type="education",
+                domain="profile",
+                status="active",
+                title=entry.get("institution", "Imported Education"),
+                summary=entry.get("degree", "Degree"),
+                content=content_str,
+                content_hash=f"edu_{uuid.uuid4().hex[:12]}",
+                size=len(content_str),
+            )
+            db.add(mem)
+            edu_count += 1
+
+        await db.flush()
+        profile = await self.get_profile(user_id, workspace_id=workspace_id, db=db)
+        return ProfileImportSummaryResponse(
+            skills_imported=skill_count,
+            career_imported=career_count,
+            education_imported=edu_count,
+            message=f"Imported {skill_count} skills, {career_count} career entries, {edu_count} education entries from {filename}",
+            profile=profile,
+        )
+
+    async def import_from_linkedin(
+        self,
+        user_id: str,
+        body: ImportLinkedInRequest,
+        db,
+    ) -> ProfileImportSummaryResponse:
+        """Fetch a LinkedIn public profile page and extract profile data."""
+        import re
+        import httpx
+
+        url = body.linkedin_url.strip()
+        if not url.startswith("https://www.linkedin.com/"):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=422, detail="Must be a linkedin.com URL")
+
+        raw_text = ""
+        try:
+            async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+                headers = {
+                    "User-Agent": (
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/120.0.0.0 Safari/537.36"
+                    )
+                }
+                resp = await client.get(url, headers=headers)
+                raw_text = resp.text
+        except Exception as e:
+            logger.warning(f"LinkedIn fetch failed: {e}")
+
+        # Extract display_name from og:title
+        name_match = re.search(r'og:title[^>]+content="([^"]+)"', raw_text)
+        display_name = name_match.group(1).split(" | ")[0].strip() if name_match else ""
+
+        # Extract headline
+        headline_match = re.search(r'"headline"\s*:\s*"([^"]+)"', raw_text)
+        headline = headline_match.group(1) if headline_match else ""
+
+        # Extract location
+        loc_match = re.search(r'"locationName"\s*:\s*"([^"]+)"', raw_text)
+        location = loc_match.group(1) if loc_match else ""
+
+        # Extract skills from JSON blobs
+        skills_match = re.findall(r'"name"\s*:\s*"([^"]{2,40})"', raw_text)
+        # Deduplicate and limit
+        skills = list(dict.fromkeys(s for s in skills_match if len(s) > 2))[:30]
+
+        ws_uuid = uuid.UUID(body.workspace_id)
+        user_uuid = uuid.UUID(user_id)
+
+        # Update user record if we got data
+        if display_name or headline or location:
+            res = await db.execute(select(User).where(User.id == user_uuid))
+            user = res.scalar_one_or_none()
+            if user:
+                if display_name and not user.display_name:
+                    user.display_name = display_name
+                if headline and hasattr(user, "headline"):
+                    user.headline = user.headline or headline
+                if location and hasattr(user, "location"):
+                    user.location = user.location or location
+
+        # Upsert LinkedIn social link in Memory
+        social_content = json.dumps({"linkedin": url, "source": "linkedin_import"})
+        res = await db.execute(
+            select(Memory).where(
+                Memory.workspace_id == ws_uuid,
+                Memory.user_id == user_uuid,
+                Memory.type == "social_links",
+                Memory.status == "active",
+            )
+        )
+        social_mem = res.scalars().first()
+        if not social_mem:
+            social_mem = Memory(
+                id=uuid.uuid4(),
+                workspace_id=ws_uuid,
+                user_id=user_uuid,
+                type="social_links",
+                domain="profile",
+                status="active",
+                title="Social Links",
+                summary="LinkedIn profile imported",
+                content=social_content,
+                content_hash=f"social_{uuid.uuid4().hex[:12]}",
+                size=len(social_content),
+            )
+            db.add(social_mem)
+        else:
+            try:
+                existing = json.loads(social_mem.content or "{}")
+            except Exception:
+                existing = {}
+            existing["linkedin"] = url
+            social_mem.content = json.dumps(existing)
+            social_mem.updated_at = datetime.now(UTC)
+
+        # Upsert skills
+        skill_count = await self._upsert_skills_to_memory_and_entities(
+            user_id, body.workspace_id, skills, db
+        )
+
+        await db.flush()
+        profile = await self.get_profile(user_id, workspace_id=body.workspace_id, db=db)
+        return ProfileImportSummaryResponse(
+            skills_imported=skill_count,
+            career_imported=0,
+            education_imported=0,
+            message=f"Imported LinkedIn profile{f' for {display_name}' if display_name else ''}. {skill_count} skills extracted.",
+            profile=profile,
+        )
 
 
 profile_service = ProfileService()
