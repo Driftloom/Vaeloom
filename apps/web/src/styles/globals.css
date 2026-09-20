@@ -160,6 +160,11 @@
   body {
     @apply bg-background text-text font-sans antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    letter-spacing: -0.011em;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply tracking-tight;
   }
 
   ::selection {
@@ -187,7 +192,7 @@
 @layer components {
   /* Canonical primary action — one family for the whole product. */
   .btn-primary {
-    @apply bg-action text-action-fg font-semibold px-6 py-3 rounded-lg
+    @apply bg-action text-action-fg font-medium text-sm px-4 py-2 rounded-lg
            hover:bg-action-hover active:bg-action-active disabled:opacity-50
            transition-all duration-150 ease-out
            focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background;
@@ -198,7 +203,7 @@
   }
 
   .btn-secondary {
-    @apply bg-surface-200 text-text-200 font-medium px-6 py-3 rounded-lg
+    @apply bg-surface-200 text-text-200 font-medium text-sm px-4 py-2 rounded-lg
            hover:bg-surface-300 hover:text-text
            active:bg-surface-400
            transition-all duration-150 ease-out
@@ -207,7 +212,7 @@
   }
 
   .btn-ghost {
-    @apply text-text-muted font-medium px-4 py-2 rounded-lg
+    @apply text-text-muted font-medium text-sm px-3 py-1.5 rounded-lg
            hover:bg-surface-200 hover:text-text
            active:bg-surface-300
            transition-all duration-150 ease-out;

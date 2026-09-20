@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Space_Grotesk, IBM_Plex_Mono } from 'next/font/google';
+import { Inter, Space_Grotesk, IBM_Plex_Mono } from 'next/font/google';
 import '../styles/globals.css';
 import { ThemeProvider } from '../hooks/useTheme';
 import {
@@ -14,6 +14,12 @@ import { ToastProvider } from '../components/shared/Toast';
 import { SkipLink } from '../components/shared/SkipLink';
 import { AuthProvider } from '../hooks/useAuth';
 import { SWRProvider } from '../components/providers/SWRProvider';
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
@@ -101,7 +107,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${spaceGrotesk.variable} ${ibmPlexMono.variable}`}
+      className={`${inter.variable} ${spaceGrotesk.variable} ${ibmPlexMono.variable}`}
       suppressHydrationWarning
     >
       <head>
