@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAuth } from '../../hooks/useAuth';
 import {
   BrainIcon,
   CpuIcon,
@@ -14,7 +13,6 @@ import {
   ShieldIcon,
   ClockIcon,
   SettingsIcon,
-  UserIcon,
   BuildingIcon,
   TerminalIcon,
   PlugIcon,
@@ -161,12 +159,9 @@ export function Sidebar({
   onOpenCommandCenter,
 }: SidebarProps) {
   const pathname = usePathname();
-  const { user } = useAuth();
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
 
   const isCol = collapsed !== undefined ? collapsed : isCollapsed;
-  const userName = user?.displayName || user?.email || 'User';
-  const userInitials = (userName[0] || 'U').toUpperCase();
   const groups = groupLinks(workspaceId);
 
   // Global Keyboard Shortcuts
@@ -233,33 +228,6 @@ export function Sidebar({
               <ChevronLeftIcon size={16} />
             </button>
           )}
-        </div>
-
-        {/* User Quick Profile */}
-        <div
-          className={`p-2 border-b border-[var(--color-border-subtle,#27272a)] ${isCol ? 'flex justify-center' : ''}`}
-        >
-          <Link
-            href={`/workspace/${workspaceId}/settings/profile`}
-            title={isCol ? `${userName} (Profile)` : undefined}
-            className={`flex items-center rounded-md hover:bg-[var(--color-bg-elevated,#18181c)] transition-colors ${
-              isCol ? 'p-1.5' : 'gap-2.5 px-2 py-1.5'
-            }`}
-          >
-            <div className="w-7 h-7 rounded-full bg-[var(--color-bg-canvas,#08080a)] border border-[var(--color-border-subtle,#27272a)] flex items-center justify-center text-[var(--color-text-primary,#f4f4f5)] font-mono text-xs font-semibold shrink-0">
-              {userInitials}
-            </div>
-            {!isCol && (
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-[var(--color-text-primary,#f4f4f5)] truncate">
-                  {userName}
-                </p>
-                <p className="text-[10px] text-[var(--color-text-muted,#71717a)] truncate">
-                  Workspace Member
-                </p>
-              </div>
-            )}
-          </Link>
         </div>
 
         {/* Nav Links */}

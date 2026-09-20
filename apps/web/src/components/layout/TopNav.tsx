@@ -15,6 +15,7 @@ import {
   SettingsIcon,
   LogOutIcon,
   StatusDot,
+  ChevronDownIcon,
 } from '@vaeloom/ui-kit';
 
 function resolveBreadcrumb(pathname: string): { section: string; title: string } {
@@ -306,13 +307,27 @@ export function TopNav({
           <button
             type="button"
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="w-8 h-8 rounded-full bg-[var(--color-bg-elevated,#18181c)] border border-[var(--color-border-subtle,#27272a)] flex items-center justify-center text-[var(--color-text-primary,#f4f4f5)] font-mono text-xs hover:border-[var(--color-action-primary,#3b82f6)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-focus-ring,#3b82f6)] transition-colors"
-            title={user?.email ?? 'User'}
+            className="flex items-center gap-2 p-1 sm:px-2 sm:py-1 rounded-lg hover:bg-[var(--color-bg-elevated,#18181c)] border border-transparent hover:border-[var(--color-border-subtle,#27272a)] transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-focus-ring,#3b82f6)] cursor-pointer"
+            title={user?.email ?? 'User account'}
             aria-label="User account menu"
             aria-expanded={dropdownOpen}
             aria-haspopup="true"
           >
-            {userInitials}
+            <div className="w-7 h-7 rounded-full bg-[var(--color-bg-canvas,#08080a)] border border-[var(--color-border-subtle,#27272a)] flex items-center justify-center text-[var(--color-text-primary,#f4f4f5)] font-mono text-xs font-semibold shrink-0 shadow-xs">
+              {userInitials}
+            </div>
+            <div className="hidden sm:flex flex-col text-left leading-none max-w-[130px] md:max-w-[180px]">
+              <span className="text-xs font-semibold text-[var(--color-text-primary,#f4f4f5)] truncate">
+                {user?.displayName || user?.email || 'User'}
+              </span>
+              <span className="text-[10px] text-[var(--color-text-muted,#71717a)] truncate mt-0.5">
+                Workspace Member
+              </span>
+            </div>
+            <ChevronDownIcon
+              size={12}
+              className="hidden sm:block text-[var(--color-text-muted,#71717a)]"
+            />
           </button>
 
           {dropdownOpen && (
@@ -323,20 +338,32 @@ export function TopNav({
                 onClick={() => setDropdownOpen(false)}
                 aria-label="Close user menu"
               />
-              <div className="absolute right-0 top-full mt-1.5 z-50 w-56 rounded-xl border border-[var(--color-border-strong,#3f3f46)] bg-[var(--color-bg-surface,#111114)] shadow-2xl py-1.5 animate-in fade-in zoom-in-95 duration-100">
-                <div className="px-3.5 py-2.5 border-b border-[var(--color-border-subtle,#27272a)]">
-                  <p className="text-sm font-medium text-[var(--color-text-primary,#f4f4f5)] truncate">
-                    {user?.displayName || 'User'}
-                  </p>
-                  <p className="text-xs text-[var(--color-text-muted,#71717a)] truncate">
-                    {user?.email}
-                  </p>
-                  {currentWorkspace && (
-                    <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[var(--color-bg-elevated,#18181c)] border border-[var(--color-border-subtle,#27272a)] text-[10px] font-mono text-[var(--color-text-secondary,#a1a1aa)]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-action-primary,#3b82f6)]" />
-                      <span className="truncate">{currentWorkspace.name}</span>
+              <div className="absolute right-0 top-full mt-1.5 z-50 w-64 rounded-xl border border-[var(--color-border-strong,#3f3f46)] bg-[var(--color-bg-surface,#111114)] shadow-2xl py-2 animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-3.5 pb-3 pt-1 border-b border-[var(--color-border-subtle,#27272a)]">
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-9 h-9 rounded-full bg-[var(--color-bg-canvas,#08080a)] border border-[var(--color-border-subtle,#27272a)] flex items-center justify-center text-[var(--color-text-primary,#f4f4f5)] font-mono text-sm font-semibold shrink-0 shadow-xs">
+                      {userInitials}
                     </div>
-                  )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-[var(--color-text-primary,#f4f4f5)] truncate">
+                        {user?.displayName || 'User'}
+                      </p>
+                      <p className="text-xs text-[var(--color-text-muted,#71717a)] truncate">
+                        {user?.email}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--color-bg-elevated,#18181c)] text-[var(--color-text-muted,#71717a)] border border-[var(--color-border-subtle,#27272a)]">
+                      Workspace Member
+                    </span>
+                    {currentWorkspace && (
+                      <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[var(--color-bg-elevated,#18181c)] border border-[var(--color-border-subtle,#27272a)] text-[10px] font-mono text-[var(--color-text-secondary,#a1a1aa)]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-action-primary,#3b82f6)]" />
+                        <span className="truncate">{currentWorkspace.name}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="py-1">
@@ -366,7 +393,7 @@ export function TopNav({
                     setDropdownOpen(false);
                     handleLogout();
                   }}
-                  className="flex items-center gap-2.5 w-full px-3.5 py-2 text-xs text-[var(--color-status-danger,#ef4444)] hover:bg-[var(--color-bg-elevated,#18181c)] transition-colors"
+                  className="flex items-center gap-2.5 w-full px-3.5 py-2 text-xs text-[var(--color-status-danger,#ef4444)] hover:bg-[var(--color-bg-elevated,#18181c)] transition-colors cursor-pointer"
                 >
                   <LogOutIcon size={14} />
                   <span>Log out</span>

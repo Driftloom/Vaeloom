@@ -21,6 +21,47 @@ jest.mock('../../../../components/shared/Toast', () => ({
   }),
 }));
 
+jest.mock('@/lib/api-client', () => ({
+  agentCatalogApi: {
+    get: jest.fn().mockResolvedValue({
+      agents: [],
+      total: 0,
+      canonicalCount: 0,
+      toolDefinitions: {},
+    }),
+  },
+  capabilitiesApi: {
+    test: jest.fn().mockResolvedValue({
+      status: 'success',
+      capability: 'test-cap',
+      category: 'tools',
+      timestamp: '2026-09-20T00:00:00Z',
+      executionDurationMs: 25,
+      validationErrors: [],
+      result: { ok: true },
+    }),
+  },
+}));
+
+jest.mock('swr', () => ({
+  __esModule: true,
+  default: jest.fn(() => ({
+    data: undefined,
+    error: undefined,
+    isLoading: false,
+    mutate: jest.fn(),
+  })),
+}));
+
+jest.mock('../../../../hooks/useWorkspace', () => ({
+  useWorkspaceConnectors: () => ({
+    connectors: [],
+    isLoading: false,
+    isError: null,
+    mutate: jest.fn(),
+  }),
+}));
+
 describe('CapabilitiesPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -114,5 +155,22 @@ describe('CapabilitiesPage', () => {
         title: expect.stringContaining('Created custom-eval-skill'),
       }),
     );
+  });
+
+  it('switches to Test Playground tab and triggers execution test', async () => {
+    render(<CapabilitiesPage />);
+
+    const testSubTab = screen.getByRole('button', { name: /Test Playground/i });
+    fireEvent.click(testSubTab);
+
+    expect(screen.getByText('Test Input Payload (JSON)')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Execute Run/i })).toBeInTheDocument();
+
+    const executeBtn = screen.getByRole('button', { name: /Execute Run/i });
+    fireEvent.click(executeBtn);
+
+    const outputHeader = await screen.findByText('Execution Output');
+    expect(outputHeader).toBeInTheDocument();
+    expect(screen.getByText('200 OK')).toBeInTheDocument();
   });
 });
