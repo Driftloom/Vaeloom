@@ -30,6 +30,15 @@ _circuit_breakers: dict[str, CircuitBreaker] = {}
 _rate_limiter = AgentRateLimiter()
 
 
+async def _broadcast_ws(workspace_id: Any, event_type: str, payload: dict[str, Any]) -> None:
+    if workspace_id:
+        try:
+            from ..infrastructure.websocket_manager import ws_manager
+            await ws_manager.broadcast_to_workspace(str(workspace_id), event_type, payload)
+        except Exception as exc:
+            logger.debug(f"Failed to broadcast websocket event {event_type}: {exc}")
+
+
 def _get_circuit_breaker(agent_name: str) -> CircuitBreaker:
     if agent_name not in _circuit_breakers:
         # Per-agent overrides via AGENT_CIRCUIT_CONFIG JSON, else global defaults
@@ -1057,6 +1066,12 @@ async def _try_react_loop(
                 await _save_react_checkpoint(state)
             except Exception as _cke:
                 logger.debug(f"ReAct terminal checkpoint skipped: {_cke}")
+        await _broadcast_ws(workspace_id, "AGENT_COMPLETE", {
+            "agent": agent_name,
+            "run_id": str(run_id),
+            "termination": termination,
+            "card": card,
+        })
         return card
 
     async def _save_react_checkpoint(_st: Any) -> None:
@@ -1229,6 +1244,12 @@ async def _try_react_loop(
                 logger.info(f"REACT_CANCELLED correlation={corr} run={run_id} round={_round}")
                 return await _terminal_card("ReAct run cancelled by user request.", "cancelled")
             _rec.rounds += 1
+            await _broadcast_ws(workspace_id, "AGENT_STEP", {
+                "agent": agent_name,
+                "round": _round,
+                "run_id": str(run_id),
+                "status": "thinking",
+            })
             # ── Wall-clock / tool-call / token budgets (deterministic stops).
             if _rt.monotonic() >= _deadline:
                 return await _terminal_card(f"ReAct run exceeded wall-clock budget ({_run_budgets.get('max_duration_s')}s).", "budget_time")
@@ -1553,12 +1574,26 @@ async def _try_react_loop(
                         if not await check_permission(agent_allowed_scopes, _td.required_scope):
                             return {"tc": tc_item, "tname": _tn, "tc_id": _tcid, "args": _a, "td": _td,
                                     "result": {"status": "error", "tool": _tn, "result": f"Permission denied: scope {_td.required_scope} not allowed for agent {agent_name}"}}
+                        await _broadcast_ws(workspace_id, "AGENT_TOOL_EXECUTION", {
+                            "agent": agent_name,
+                            "run_id": str(run_id),
+                            "tool": _tn,
+                            "args": _a,
+                            "status": "executing",
+                        })
                         try:
                             _res = await _exec_tool(_td, _a, agent_id=agent_name, agent_scopes=agent_allowed_scopes, workspace_id=workspace_id)
                         except Exception as _e:
                             from .react_policy import classify_tool_failure as _ctf
                             _cls, _why = _ctf(_e)
                             _res = {"status": "error", "tool": _tn, "result": str(_e)[:2000], "failure_class": _cls}
+                        await _broadcast_ws(workspace_id, "AGENT_TOOL_EXECUTION", {
+                            "agent": agent_name,
+                            "run_id": str(run_id),
+                            "tool": _tn,
+                            "status": _res.get("status", "error"),
+                            "result_summary": str(_res.get("result", ""))[:200],
+                        })
                         return {"tc": tc_item, "tname": _tn, "tc_id": _tcid, "args": _a, "td": _td, "result": _res}
 
                     _ro_results = await asyncio.gather(*[_exec_one_ro(_tc) for _tc in _batch])
@@ -1756,12 +1791,26 @@ async def _try_react_loop(
                                                              "function": {"name": tname, "arguments": args}})
                                 except Exception:
                                     pass
+                                await _broadcast_ws(workspace_id, "AGENT_TOOL_EXECUTION", {
+                                    "agent": agent_name,
+                                    "run_id": str(run_id),
+                                    "tool": tname,
+                                    "args": args,
+                                    "status": "executing",
+                                })
                                 try:
                                     result = await _exec_tool(td, args, agent_id=agent_name, agent_scopes=agent_allowed_scopes, workspace_id=workspace_id)
                                 except Exception as e:
                                     from .react_policy import classify_tool_failure as _ctf
                                     _cls, _why = _ctf(e)
                                     result = {"status": "error", "tool": tname, "result": str(e)[:2000], "failure_class": _cls}
+                                await _broadcast_ws(workspace_id, "AGENT_TOOL_EXECUTION", {
+                                    "agent": agent_name,
+                                    "run_id": str(run_id),
+                                    "tool": tname,
+                                    "status": result.get("status", "error"),
+                                    "result_summary": str(result.get("result", ""))[:200],
+                                })
                             elif _appr.get("approval_id"):
                                 _rec.approvals_requested += 1
                                 try:
@@ -1801,12 +1850,26 @@ async def _try_react_loop(
                                                          "function": {"name": tname, "arguments": args}})
                             except Exception:
                                 pass
+                            await _broadcast_ws(workspace_id, "AGENT_TOOL_EXECUTION", {
+                                "agent": agent_name,
+                                "run_id": str(run_id),
+                                "tool": tname,
+                                "args": args,
+                                "status": "executing",
+                            })
                             try:
                                 result = await _exec_tool(td, args, agent_id=agent_name, agent_scopes=agent_allowed_scopes, workspace_id=workspace_id)
                             except Exception as e:
                                 from .react_policy import classify_tool_failure as _ctf
                                 _cls, _why = _ctf(e)
                                 result = {"status": "error", "tool": tname, "result": str(e)[:2000], "failure_class": _cls}
+                            await _broadcast_ws(workspace_id, "AGENT_TOOL_EXECUTION", {
+                                "agent": agent_name,
+                                "run_id": str(run_id),
+                                "tool": tname,
+                                "status": result.get("status", "error"),
+                                "result_summary": str(result.get("result", ""))[:200],
+                            })
                 # Post-execution bookkeeping: fingerprints, budgets, mirror, checkpoint.
                 _status = str(result.get("status", "error"))
                 try:
@@ -3053,11 +3116,24 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
             await save_checkpoint(state)
             _eval_ok(state, request, resp)
             resp.termination_reason = state.termination_reason
+            await _broadcast_ws(request.workspace_id, "AGENT_COMPLETE", {
+                "agent": request.agent_name,
+                "status": "success",
+                "action": resp.action,
+                "summary": resp.result.get("summary") if isinstance(resp.result, dict) else str(resp.result)[:200],
+            })
             return resp
 
     state.terminate("escalated", "max_iterations")
     await save_checkpoint(state)
-    return await escalate_to_user(state)
+    escalated_resp = await escalate_to_user(state)
+    await _broadcast_ws(request.workspace_id, "AGENT_COMPLETE", {
+        "agent": request.agent_name,
+        "status": "escalated",
+        "action": escalated_resp.action,
+        "summary": escalated_resp.final_result[:200] if isinstance(escalated_resp.final_result, str) else None,
+    })
+    return escalated_resp
 
 
 def _eval_ok(state, request, resp=None) -> None:
