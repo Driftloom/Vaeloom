@@ -149,33 +149,23 @@ def upgrade() -> None:
         "WITH CHECK (user_id = auth.uid() OR user_id::text = NULLIF(current_setting('app.user_id', true), ''))"
     )
 
-    # memory_taxonomy_ledger
+    # memory_taxonomy_ledger (internal ledger, no tenant_id column)
     run("DROP POLICY IF EXISTS p_memory_taxonomy_ledger_service ON public.memory_taxonomy_ledger")
     run(
         "CREATE POLICY p_memory_taxonomy_ledger_service ON public.memory_taxonomy_ledger FOR ALL "
         "TO service_role, postgres, vaeloom_app USING (true) WITH CHECK (true)"
     )
     run("DROP POLICY IF EXISTS p_memory_taxonomy_ledger_tenant ON public.memory_taxonomy_ledger")
-    run(
-        "CREATE POLICY p_memory_taxonomy_ledger_tenant ON public.memory_taxonomy_ledger FOR ALL TO authenticated "
-        "USING (tenant_id::text = NULLIF(current_setting('app.tenant_id', true), '')) "
-        "WITH CHECK (tenant_id::text = NULLIF(current_setting('app.tenant_id', true), ''))"
-    )
 
-    # notification_device_tokens
+    # notification_device_tokens (token/payload/created_at, no user_id column)
     run("DROP POLICY IF EXISTS p_notification_device_tokens_service ON public.notification_device_tokens")
     run(
         "CREATE POLICY p_notification_device_tokens_service ON public.notification_device_tokens FOR ALL "
         "TO service_role, postgres, vaeloom_app USING (true) WITH CHECK (true)"
     )
     run("DROP POLICY IF EXISTS p_notification_device_tokens_user ON public.notification_device_tokens")
-    run(
-        "CREATE POLICY p_notification_device_tokens_user ON public.notification_device_tokens FOR ALL TO authenticated "
-        "USING (user_id = auth.uid() OR user_id::text = NULLIF(current_setting('app.user_id', true), '')) "
-        "WITH CHECK (user_id = auth.uid() OR user_id::text = NULLIF(current_setting('app.user_id', true), ''))"
-    )
 
-    # organizations
+    # organizations (tenant_id, workspace_id, no owner_id column)
     run("DROP POLICY IF EXISTS p_organizations_service ON public.organizations")
     run(
         "CREATE POLICY p_organizations_service ON public.organizations FOR ALL "
@@ -183,8 +173,8 @@ def upgrade() -> None:
     )
     run("DROP POLICY IF EXISTS p_organizations_user ON public.organizations")
     run(
-        "CREATE POLICY p_organizations_user ON public.organizations FOR SELECT TO authenticated "
-        "USING (owner_id = auth.uid() OR owner_id::text = NULLIF(current_setting('app.user_id', true), ''))"
+        "CREATE POLICY p_organizations_tenant ON public.organizations FOR SELECT TO authenticated "
+        "USING (tenant_id::text = NULLIF(current_setting('app.tenant_id', true), ''))"
     )
 
     # organization_members
