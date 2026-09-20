@@ -87,22 +87,22 @@ export function MorningBriefingCard({ workspaceId }: MorningBriefingCardProps) {
     return (
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 p-6 backdrop-blur-sm animate-pulse">
         <div className="h-6 w-48 bg-slate-200 dark:bg-slate-700 rounded mb-4" />
-        <div className="h-20 bg-slate-100 dark:bg-slate-800 rounded-xl mb-4" />
-        <div className="h-12 bg-slate-100 dark:bg-slate-800 rounded-xl" />
+        <div className="h-20 bg-surface-200 rounded-xl mb-4 animate-pulse" />
+        <div className="h-12 bg-surface-200 rounded-xl animate-pulse" />
       </div>
     );
   }
 
   if (error || !briefing) {
     return (
-      <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-6 text-center">
-        <div className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-3">
+      <div className="rounded-xl border border-dashed border-border bg-surface/50 p-6 text-center">
+        <div className="text-sm font-medium text-text-secondary mb-3">
           No Morning Briefing compiled yet for today.
         </div>
         <button
           onClick={handleRunCycle}
           disabled={isRunningCycle}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors disabled:opacity-50"
+          className="btn-primary inline-flex items-center gap-2"
         >
           {isRunningCycle ? 'Synthesizing...' : '⚡ Trigger Cognition Cycle'}
         </button>
@@ -115,35 +115,31 @@ export function MorningBriefingCard({ workspaceId }: MorningBriefingCardProps) {
   const isModerate = alignmentPct >= 50 && alignmentPct < 75;
 
   return (
-    <div className="rounded-2xl border border-indigo-100 dark:border-indigo-950/60 bg-gradient-to-br from-indigo-50/40 via-white to-sky-50/20 dark:from-slate-900 dark:via-slate-900/90 dark:to-indigo-950/30 p-6 shadow-sm backdrop-blur-sm">
+    <div className="rounded-xl border border-border bg-surface p-6 shadow-card">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200/60 dark:border-slate-800/80">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-border">
         <div>
           <div className="flex items-center gap-2">
-            <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+            <span className="flex h-2.5 w-2.5 rounded-full bg-success animate-pulse" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-primary">
               PIOS Morning Briefing
             </span>
-            <span className="text-xs text-slate-400">·</span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">
-              {briefing.briefingDate}
-            </span>
+            <span className="text-xs text-text-muted">·</span>
+            <span className="text-xs text-text-muted">{briefing.briefingDate}</span>
           </div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white mt-1">
+          <h2 className="text-lg font-display font-medium text-text mt-1">
             Focus Architecture & Cognition Digest
           </h2>
         </div>
 
         <div className="flex items-center gap-3">
           {cycleSuccessMessage && (
-            <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-              {cycleSuccessMessage}
-            </span>
+            <span className="text-xs text-success font-medium">{cycleSuccessMessage}</span>
           )}
           <button
             onClick={handleRunCycle}
             disabled={isRunningCycle}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-indigo-200 dark:border-indigo-800 bg-white/80 dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-slate-700 transition disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-border bg-surface-100 text-text hover:bg-surface-200 transition disabled:opacity-50"
             title="Runs the 02:00 AM background cognition cycle on-demand"
           >
             {isRunningCycle ? <span className="animate-spin text-xs">⟳</span> : <span>⚡</span>}
@@ -157,10 +153,10 @@ export function MorningBriefingCard({ workspaceId }: MorningBriefingCardProps) {
         <div className="lg:col-span-2 space-y-4">
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                 Top Priorities Today
               </span>
-              <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+              <span className="text-xs text-primary font-medium">
                 {Object.values(completedPriorities).filter(Boolean).length} of{' '}
                 {briefing.topPriorities.length} checked
               </span>
@@ -173,17 +169,17 @@ export function MorningBriefingCard({ workspaceId }: MorningBriefingCardProps) {
                   <label
                     key={idx}
                     onClick={() => togglePriority(idx)}
-                    className={`flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                    className={`flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
                       checked
-                        ? 'bg-slate-50/80 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-400 line-through'
-                        : 'bg-white/80 dark:bg-slate-800/90 border-slate-200/80 dark:border-slate-700/80 hover:border-indigo-300 dark:hover:border-indigo-700 text-slate-800 dark:text-slate-100 shadow-sm'
+                        ? 'bg-surface-50 border-border text-text-muted line-through'
+                        : 'bg-surface-100 border-border hover:border-border-strong text-text shadow-sm'
                     }`}
                   >
                     <input
                       type="checkbox"
                       checked={checked}
                       onChange={() => {}}
-                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-accent"
                     />
                     <span className="text-sm font-medium leading-snug">{priority}</span>
                   </label>
@@ -194,25 +190,25 @@ export function MorningBriefingCard({ workspaceId }: MorningBriefingCardProps) {
 
           {/* Micro-Learning 30-Second Nudge */}
           {briefing.microLearning && (
-            <div className="rounded-xl border border-amber-200/70 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/20 p-4">
+            <div className="rounded-xl border border-warning/30 bg-warning/10 p-4">
               <div className="flex items-center justify-between gap-2 mb-1.5">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-amber-600 dark:text-amber-400 text-sm">💡</span>
-                  <span className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                  <span className="text-warning text-sm">💡</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-warning">
                     30-Second Micro-Learning Nudge
                   </span>
                 </div>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300">
+                <span className="text-2xs font-semibold px-2 py-0.5 rounded-full bg-warning/20 text-warning">
                   {briefing.microLearning.estimatedReadSeconds}s read
                 </span>
               </div>
-              <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">
+              <h4 className="text-sm font-semibold text-text mb-1">
                 {briefing.microLearning.title}
               </h4>
-              <p className="text-xs text-slate-600 dark:text-slate-300 mb-2 leading-relaxed">
+              <p className="text-xs text-text-secondary mb-2 leading-relaxed">
                 {briefing.microLearning.concept}
               </p>
-              <div className="text-xs font-medium text-amber-900 dark:text-amber-200 bg-amber-100/60 dark:bg-amber-900/30 p-2 rounded-lg border border-amber-200/50 dark:border-amber-800/40">
+              <div className="text-xs font-medium text-warning bg-warning/15 p-2 rounded-lg border border-warning/30">
                 <span className="font-bold">Takeaway:</span>{' '}
                 {briefing.microLearning.actionableTakeaway}
               </div>
@@ -223,18 +219,18 @@ export function MorningBriefingCard({ workspaceId }: MorningBriefingCardProps) {
         {/* Right Column: Reality Gap Diagnostic & Friction */}
         <div className="space-y-4">
           {/* Reality Gap Score Meter */}
-          <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-800/90 p-4 shadow-sm">
+          <div className="rounded-xl border border-border bg-surface-100 p-4 shadow-sm">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                 Reality Gap (Intent vs Action)
               </span>
               <span
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                className={`text-2xs font-bold px-2 py-0.5 rounded-full uppercase ${
                   isHealthy
-                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                    ? 'bg-success/20 text-success'
                     : isModerate
-                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
-                      : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                      ? 'bg-warning/20 text-warning'
+                      : 'bg-error/20 text-error'
                 }`}
               >
                 {isHealthy ? 'Aligned' : isModerate ? 'Calibration Needed' : 'Drift Alert'}
@@ -242,30 +238,26 @@ export function MorningBriefingCard({ workspaceId }: MorningBriefingCardProps) {
             </div>
 
             <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-2xl font-black text-slate-900 dark:text-white">
-                {alignmentPct}%
-              </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                Execution Follow-Through
-              </span>
+              <span className="text-2xl font-display font-semibold text-text">{alignmentPct}%</span>
+              <span className="text-xs text-text-muted">Execution Follow-Through</span>
             </div>
 
             {/* Progress Bar */}
-            <div className="w-full bg-slate-100 dark:bg-slate-700 h-2 rounded-full overflow-hidden mb-3">
+            <div className="w-full bg-surface-200 h-2 rounded-full overflow-hidden mb-3">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
-                  isHealthy ? 'bg-emerald-500' : isModerate ? 'bg-amber-500' : 'bg-rose-500'
+                  isHealthy ? 'bg-success' : isModerate ? 'bg-warning' : 'bg-error'
                 }`}
                 style={{ width: `${alignmentPct}%` }}
               />
             </div>
 
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-3">
+            <p className="text-xs text-text-secondary leading-relaxed mb-3">
               {briefing.realityGap?.frictionRecommendation}
             </p>
 
             {briefing.realityGap?.totalCommitments > 0 && (
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700/60 pt-2">
+              <div className="text-xs text-text-muted border-t border-border pt-2">
                 Fulfilled {briefing.realityGap.fulfilledCount} of{' '}
                 {briefing.realityGap.totalCommitments} stated commitments
               </div>
@@ -274,25 +266,19 @@ export function MorningBriefingCard({ workspaceId }: MorningBriefingCardProps) {
 
           {/* Friction & Bottlenecks */}
           {(briefing.openFriction?.length > 0 || briefing.resolvedFriction?.length > 0) && (
-            <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-800/90 p-4 shadow-sm">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-2">
+            <div className="rounded-xl border border-border bg-surface-100 p-4 shadow-sm">
+              <span className="text-xs font-semibold uppercase tracking-wider text-text-muted block mb-2">
                 Friction Points & Conquered Blockers
               </span>
               <div className="space-y-1.5">
                 {briefing.resolvedFriction?.slice(0, 2).map((res, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300"
-                  >
+                  <div key={idx} className="flex items-center gap-1.5 text-xs text-success">
                     <span>✓</span>
                     <span className="truncate">{res}</span>
                   </div>
                 ))}
                 {briefing.openFriction?.slice(0, 2).map((fric, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300"
-                  >
+                  <div key={idx} className="flex items-center gap-1.5 text-xs text-warning">
                     <span>⚠</span>
                     <span className="truncate">{fric}</span>
                   </div>

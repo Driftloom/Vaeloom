@@ -727,7 +727,7 @@ export function Sidebar({
                               }`}
                             >
                               <div className="flex items-center gap-2 min-w-0">
-                                <div className="w-5 h-5 rounded bg-surface-300 border border-border flex items-center justify-center text-[10px] font-bold text-text-muted shrink-0">
+                                <div className="w-5 h-5 rounded bg-surface-300 border border-border flex items-center justify-center text-2xs font-bold text-text-muted shrink-0">
                                   {initial}
                                 </div>
                                 <div className="min-w-0">
@@ -735,7 +735,7 @@ export function Sidebar({
                                     {wsItem.name}
                                   </p>
                                   {wsItem.description && (
-                                    <p className="text-[10px] text-text-dim truncate leading-none">
+                                    <p className="text-2xs text-text-dim truncate leading-none">
                                       {wsItem.description}
                                     </p>
                                   )}

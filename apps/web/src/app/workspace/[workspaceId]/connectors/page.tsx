@@ -65,9 +65,9 @@ function formatDate(iso?: string): string {
 }
 
 const statusStyles: Record<string, string> = {
-  connected: 'border-green-500/50 text-green-400 bg-green-950/20',
-  syncing: 'border-yellow-500/50 text-yellow-400 bg-yellow-950/20',
-  error: 'border-red-500/50 text-red-400 bg-red-950/20',
+  connected: 'border-success/30 text-success bg-success/15',
+  syncing: 'border-warning/30 text-warning bg-warning/15',
+  error: 'border-error/30 text-error bg-error/15',
   disconnected: 'border-border text-text-muted bg-surface',
 };
 
@@ -335,13 +335,13 @@ export default function ConnectorsPage() {
                     (syncMap[conn.id] as TemporalWorkflowStatus)?.status?.toLowerCase() ===
                       'syncing') && (
                     <div className="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-surface-hover">
-                      <div className="h-full w-2/3 animate-pulse bg-yellow-500/60" />
+                      <div className="h-full w-2/3 animate-pulse bg-warning" />
                     </div>
                   )}
                   {syncMap[conn.id] && (
                     <p className="text-xs font-mono mb-2">
                       <span
-                        className={`rounded-full px-2 py-0.5 border text-xs ${((syncMap[conn.id] as TemporalWorkflowStatus)?.query?.status || (syncMap[conn.id] as TemporalWorkflowStatus)?.status || (syncMap[conn.id] as { status: string }).status || '').toLowerCase() === 'completed' ? 'border-emerald-500/30 text-emerald-400' : (syncMap[conn.id] as TemporalWorkflowStatus)?.status === 'running' || (syncMap[conn.id] as unknown as Record<string, unknown>)['status'] === 'syncing' ? 'border-amber-400/40 text-amber-300' : 'border-border text-text-muted'}`}
+                        className={`rounded-full px-2 py-0.5 border text-xs ${((syncMap[conn.id] as TemporalWorkflowStatus)?.query?.status || (syncMap[conn.id] as TemporalWorkflowStatus)?.status || (syncMap[conn.id] as { status: string }).status || '').toLowerCase() === 'completed' ? 'border-success/30 text-success' : (syncMap[conn.id] as TemporalWorkflowStatus)?.status === 'running' || (syncMap[conn.id] as unknown as Record<string, unknown>)['status'] === 'syncing' ? 'border-warning/30 text-warning' : 'border-border text-text-muted'}`}
                       >
                         durable:{' '}
                         {(syncMap[conn.id] as TemporalWorkflowStatus)?.query?.status ||
@@ -354,7 +354,7 @@ export default function ConnectorsPage() {
                     </p>
                   )}
                   {(conn as unknown as Record<string, unknown>)['errorDetail'] ? (
-                    <p className="text-xs text-red-400 mb-3" role="alert">
+                    <p className="text-xs text-error mb-3" role="alert">
                       {String((conn as unknown as Record<string, unknown>)['errorDetail'])}
                     </p>
                   ) : null}
@@ -369,7 +369,7 @@ export default function ConnectorsPage() {
                       return isRunning ? (
                         <button
                           data-testid="sync-button"
-                          className="btn-secondary flex-1 text-sm border-amber-400/40 text-amber-300"
+                          className="btn-secondary flex-1 text-sm border-warning/40 text-warning"
                           disabled={syncBusy === conn.id}
                           onClick={() => handleCancelSync(conn.id, sm!.workflow_id!)}
                         >

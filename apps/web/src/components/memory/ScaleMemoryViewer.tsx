@@ -29,31 +29,31 @@ const TIERS: Array<{ key: string; label: string; description: string; badgeColor
     key: 'ALL',
     label: 'All Wavelengths',
     description: 'Full multiscale temporal hierarchy',
-    badgeColor: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300',
+    badgeColor: 'bg-surface-200 text-text-secondary border border-border',
   },
   {
     key: 'DAILY',
     label: 'Daily Logs',
     description: 'Nightly consolidated episodic summaries',
-    badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300',
+    badgeColor: 'bg-info/15 text-info border border-info/30',
   },
   {
     key: 'WEEKLY',
     label: 'Weekly Rollups',
     description: '7-day synthesized skill & velocity trends',
-    badgeColor: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300',
+    badgeColor: 'bg-primary/15 text-primary border border-primary/30',
   },
   {
     key: 'MONTHLY',
     label: 'Monthly Milestones',
     description: '30-day strategic project & capability progress',
-    badgeColor: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300',
+    badgeColor: 'bg-accent/15 text-accent border border-accent/30',
   },
   {
     key: 'NORTH_STAR',
     label: 'North Star',
     description: 'Core personal values & non-negotiable direction',
-    badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
+    badgeColor: 'bg-warning/15 text-warning border border-warning/30',
   },
 ];
 
@@ -107,13 +107,13 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
       {/* Header & Controls */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <h3 className="text-base font-display font-medium text-text flex items-center gap-2">
             <span>PIOS SCALE Multiscale Temporal Hierarchy</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-semibold">
+            <span className="text-2xs px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/25 font-semibold">
               Pillar 2
             </span>
           </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-xs text-text-muted mt-0.5">
             Temporal wavelength consolidation: Sub-daily stream → Daily logs → Weekly rollups →
             Strategic milestones.
           </p>
@@ -121,14 +121,12 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
 
         <div className="flex items-center gap-3">
           {rollupMessage && (
-            <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-              {rollupMessage}
-            </span>
+            <span className="text-xs text-success font-medium">{rollupMessage}</span>
           )}
           <button
             onClick={handleRollupWeekly}
             disabled={isRollingUp}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition disabled:opacity-50 shadow-sm"
+            className="btn-primary text-xs flex items-center gap-1.5"
           >
             {isRollingUp ? <span className="animate-spin text-xs">⟳</span> : <span>📊</span>}
             {isRollingUp ? 'Synthesizing...' : 'Synthesize Weekly Rollup'}
@@ -137,7 +135,7 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
       </div>
 
       {/* Wavelength Tier Filter Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+      <div className="flex flex-wrap gap-2 border-b border-border pb-3">
         {TIERS.map((tier) => {
           const active = selectedTier === tier.key;
           return (
@@ -146,8 +144,8 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
               onClick={() => setSelectedTier(tier.key)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 active
-                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800/80 dark:text-slate-400 dark:hover:bg-slate-800'
+                  ? 'bg-action text-action-fg shadow-sm'
+                  : 'bg-surface-100 text-text-muted hover:bg-surface-200 hover:text-text'
               }`}
             >
               {tier.label}
@@ -160,20 +158,20 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-pulse">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-44 rounded-xl bg-slate-100 dark:bg-slate-800/60 p-5" />
+            <div key={i} className="h-44 rounded-xl bg-surface-200 p-5" />
           ))}
         </div>
       ) : error ? (
-        <div className="p-8 text-center rounded-xl border border-dashed border-slate-300 dark:border-slate-800 text-slate-500 text-sm">
+        <div className="p-8 text-center rounded-xl border border-dashed border-border text-text-muted text-sm">
           Failed to load SCALE memory nodes.
         </div>
       ) : nodes.length === 0 ? (
-        <div className="p-12 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-800">
+        <div className="p-12 text-center rounded-xl border border-dashed border-border bg-surface-100/50">
           <div className="text-2xl mb-2">⏳</div>
-          <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1">
+          <h4 className="text-sm font-semibold text-text mb-1">
             No SCALE nodes recorded in this tier yet
           </h4>
-          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-4">
+          <p className="text-xs text-text-muted max-w-md mx-auto mb-4">
             SCALE memory consolidates automatically at 02:00 AM or on demand. Trigger a weekly
             rollup above to synthesize your recent memories.
           </p>
@@ -195,34 +193,32 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
             return (
               <div
                 key={node.id}
-                className="rounded-xl border border-slate-200 dark:border-slate-800/90 bg-white/90 dark:bg-slate-900/80 p-5 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-700 transition"
+                className="rounded-xl border border-border bg-surface p-5 shadow-card hover:border-border-strong transition"
               >
                 <div className="flex items-center justify-between gap-2 mb-2.5">
                   <span
-                    className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${tierMeta?.badgeColor || 'bg-slate-100 text-slate-800'}`}
+                    className={`text-2xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${tierMeta?.badgeColor || 'bg-surface-200 text-text-muted'}`}
                   >
                     {node.tier}
                   </span>
-                  <span className="text-xs text-slate-400 font-mono">
+                  <span className="text-xs text-text-muted font-mono">
                     {startDate} → {endDate}
                   </span>
                 </div>
 
-                <p className="text-sm font-medium text-slate-800 dark:text-slate-100 leading-relaxed mb-3">
-                  {node.summary}
-                </p>
+                <p className="text-sm font-medium text-text leading-relaxed mb-3">{node.summary}</p>
 
                 {/* Key Insights Chips */}
                 {node.keyInsights?.length > 0 && (
                   <div className="mb-3">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block mb-1">
+                    <span className="text-2xs font-semibold uppercase tracking-wider text-text-muted block mb-1">
                       Key Insights
                     </span>
                     <div className="flex flex-wrap gap-1.5">
                       {node.keyInsights.slice(0, 3).map((insight, idx) => (
                         <span
                           key={idx}
-                          className="text-xs px-2 py-0.5 rounded-md bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-100/80 dark:border-indigo-900/30"
+                          className="text-2xs px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20"
                         >
                           {insight}
                         </span>
@@ -233,14 +229,14 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
 
                 {/* Action Commitments */}
                 {node.actionCommitments?.length > 0 && (
-                  <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block mb-1">
+                  <div className="pt-2.5 border-t border-border">
+                    <span className="text-2xs font-semibold uppercase tracking-wider text-text-muted block mb-1">
                       Commitments & Follow-Through
                     </span>
-                    <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-1">
+                    <ul className="text-xs text-text-secondary space-y-1">
                       {node.actionCommitments.slice(0, 2).map((commit, idx) => (
                         <li key={idx} className="flex items-start gap-1.5">
-                          <span className="text-indigo-500 mt-0.5">›</span>
+                          <span className="text-primary mt-0.5">›</span>
                           <span className="truncate">{commit}</span>
                         </li>
                       ))}

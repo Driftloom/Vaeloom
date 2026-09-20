@@ -131,7 +131,7 @@ export default function ProfileHeader({ profile, workspaceId, onUpdate }: Profil
           ) : (
             <div>
               <div className="flex items-center justify-between gap-3">
-                <h1 className="text-3xl font-display font-semibold text-text truncate">
+                <h1 className="text-3xl font-display font-medium text-text truncate">
                   {profile.displayName || 'Anonymous User'}
                 </h1>
                 <div className="flex items-center gap-2 shrink-0">

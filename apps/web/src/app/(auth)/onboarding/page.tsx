@@ -15,7 +15,7 @@ export default function OnboardingPage() {
         </div>
         <h1 className="text-3xl font-extrabold tracking-tight text-text">Set up your workspace</h1>
         <p className="mt-2 text-sm text-text-muted">
-          Let's tailor your AI agents and data integrations to your career goals.
+          Let&apos;s tailor your AI agents and data integrations to your career goals.
         </p>
       </div>
 

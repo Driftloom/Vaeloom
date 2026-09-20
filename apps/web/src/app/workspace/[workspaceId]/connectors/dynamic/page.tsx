@@ -187,40 +187,42 @@ export default function DynamicConnectorsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-gray-100 p-8">
+    <div className="min-h-screen bg-background text-text p-8">
       {/* Header */}
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between pb-6 border-b border-gray-800">
+        <div className="flex items-center justify-between pb-6 border-b border-border">
           <div>
             <div className="flex items-center gap-3">
               <Link
                 href={`/workspace/${workspaceId}/connectors`}
-                className="text-xs text-indigo-400 hover:underline flex items-center gap-1"
+                className="text-xs text-primary hover:underline flex items-center gap-1"
               >
                 ← Back to Connectors
               </Link>
-              <span className="text-xs px-2 py-0.5 rounded bg-indigo-900/60 text-indigo-300 font-mono border border-indigo-700/50">
+              <span className="text-2xs px-2 py-0.5 rounded bg-primary/15 text-primary font-mono border border-primary/30">
                 Extensibility Hub
               </span>
             </div>
-            <h1 className="text-2xl font-bold mt-2 text-white">Dynamic Connectors & Agent Tools</h1>
-            <p className="text-sm text-gray-400 mt-1">
+            <h1 className="text-3xl font-display font-medium mt-2 text-text">
+              Dynamic Connectors & Agent Tools
+            </h1>
+            <p className="text-sm text-text-muted mt-1">
               Connect Open Model Context Protocol (MCP) servers, Composio 250+ SaaS tools, and
               trigger durable background tasks.
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs font-mono text-emerald-400">Agent Router Online</span>
+            <span className="flex h-2.5 w-2.5 rounded-full bg-success animate-pulse" />
+            <span className="text-xs font-mono text-success">Agent Router Online</span>
           </div>
         </div>
 
         {statusMessage && (
-          <div className="mt-4 p-4 rounded-lg bg-indigo-950/60 border border-indigo-800/80 text-sm text-indigo-200 flex justify-between items-center">
+          <div className="mt-4 p-4 rounded-lg bg-primary/10 border border-primary/20 text-sm text-primary flex justify-between items-center">
             <span>{statusMessage}</span>
             <button
               onClick={() => setStatusMessage(null)}
-              className="text-xs text-gray-400 hover:text-white"
+              className="text-xs text-text-muted hover:text-text"
             >
               Dismiss
             </button>
@@ -228,13 +230,13 @@ export default function DynamicConnectorsPage() {
         )}
 
         {/* Navigation Tabs */}
-        <div className="flex gap-4 mt-6 border-b border-gray-800 pb-1">
+        <div className="flex gap-4 mt-6 border-b border-border pb-1">
           <button
             onClick={() => setActiveTab('mcp')}
             className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'mcp'
-                ? 'border-indigo-500 text-indigo-400'
-                : 'border-transparent text-gray-400 hover:text-gray-200'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-text-muted hover:text-text'
             }`}
           >
             🔌 Model Context Protocol (MCP)
@@ -243,8 +245,8 @@ export default function DynamicConnectorsPage() {
             onClick={() => setActiveTab('composio')}
             className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'composio'
-                ? 'border-indigo-500 text-indigo-400'
-                : 'border-transparent text-gray-400 hover:text-gray-200'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-text-muted hover:text-text'
             }`}
           >
             ⚡ Composio SaaS Gateway (250+ Apps)
@@ -253,8 +255,8 @@ export default function DynamicConnectorsPage() {
             onClick={() => setActiveTab('trigger')}
             className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'trigger'
-                ? 'border-indigo-500 text-indigo-400'
-                : 'border-transparent text-gray-400 hover:text-gray-200'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-text-muted hover:text-text'
             }`}
           >
             ⏳ Trigger.dev Background Jobs
@@ -265,14 +267,14 @@ export default function DynamicConnectorsPage() {
         {activeTab === 'mcp' && (
           <div className="mt-6 space-y-6">
             {/* Built-in MCP Servers */}
-            <div className="bg-[#121218] rounded-xl p-6 border border-gray-800">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <div className="bg-surface rounded-xl p-6 border border-border shadow-card">
+              <h2 className="text-lg font-display font-medium text-text flex items-center gap-2">
                 <span>📦 Built-in Curated MCP Servers</span>
-                <span className="text-xs px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-mono">
+                <span className="text-2xs px-2 py-0.5 rounded bg-success/15 text-success border border-success/30 font-mono">
                   Zero Config
                 </span>
               </h2>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-text-muted mt-1">
                 One-click attach official Vaeloom MCP tools right to your agent loop.
               </p>
 
@@ -280,21 +282,21 @@ export default function DynamicConnectorsPage() {
                 {builtinServers.map((srv) => (
                   <div
                     key={srv.id}
-                    className="p-4 rounded-lg bg-[#181824] border border-gray-700/60 flex flex-col justify-between"
+                    className="p-4 rounded-lg bg-surface-100 border border-border flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-center justify-between">
-                        <span className="font-medium text-white">{srv.name}</span>
-                        <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-indigo-900/40 text-indigo-300 border border-indigo-700/50">
+                        <span className="font-medium text-text">{srv.name}</span>
+                        <span className="text-2xs uppercase font-mono px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/30">
                           {srv.transport}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-400 mt-2">{srv.description}</p>
+                      <p className="text-xs text-text-muted mt-2">{srv.description}</p>
                       <div className="mt-3 flex flex-wrap gap-1.5">
                         {srv.tools.map((t) => (
                           <span
                             key={t}
-                            className="text-[10px] font-mono px-2 py-0.5 rounded bg-gray-800 text-gray-300"
+                            className="text-2xs font-mono px-2 py-0.5 rounded bg-surface-200 text-text-secondary"
                           >
                             {t}
                           </span>
@@ -305,7 +307,7 @@ export default function DynamicConnectorsPage() {
                     <button
                       onClick={() => handleAttachBuiltin(srv)}
                       disabled={isSubmitting}
-                      className="mt-4 w-full py-2 px-3 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors disabled:opacity-50"
+                      className="btn-primary mt-4 w-full text-xs"
                     >
                       {isSubmitting ? 'Attaching…' : 'Attach to Workspace'}
                     </button>
@@ -315,46 +317,46 @@ export default function DynamicConnectorsPage() {
             </div>
 
             {/* Custom MCP Server Form */}
-            <div className="bg-[#121218] rounded-xl p-6 border border-gray-800">
-              <h2 className="text-lg font-semibold text-white">Add Custom MCP Server</h2>
-              <p className="text-xs text-gray-400 mt-1">
+            <div className="bg-surface rounded-xl p-6 border border-border shadow-card">
+              <h2 className="text-lg font-display font-medium text-text">Add Custom MCP Server</h2>
+              <p className="text-xs text-text-muted mt-1">
                 Connect any stdio subprocess (Node/Python) or remote streamable HTTP / SSE MCP
                 server.
               </p>
 
               <form onSubmit={handleAddCustomMcp} className="mt-4 space-y-4 max-w-xl">
                 <div>
-                  <label className="block text-xs font-medium text-gray-300">Server Name</label>
+                  <label className="block text-xs font-medium text-text-muted">Server Name</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Postgres DB Explorer or Browser Agent"
                     value={customName}
                     onChange={(e) => setCustomName(e.target.value)}
-                    className="mt-1 w-full px-3 py-2 text-sm bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                    className="input-field mt-1"
                   />
                 </div>
 
                 <div className="flex gap-4">
-                  <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                  <label className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
                     <input
                       type="radio"
                       name="transport"
                       value="stdio"
                       checked={customTransport === 'stdio'}
                       onChange={() => setCustomTransport('stdio')}
-                      className="text-indigo-600"
+                      className="text-primary focus:ring-accent"
                     />
                     stdio (Local process / CLI)
                   </label>
-                  <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                  <label className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
                     <input
                       type="radio"
                       name="transport"
                       value="http"
                       checked={customTransport === 'http'}
                       onChange={() => setCustomTransport('http')}
-                      className="text-indigo-600"
+                      className="text-primary focus:ring-accent"
                     />
                     streamable HTTP / SSE
                   </label>
@@ -362,7 +364,7 @@ export default function DynamicConnectorsPage() {
 
                 {customTransport === 'stdio' ? (
                   <div>
-                    <label className="block text-xs font-medium text-gray-300">
+                    <label className="block text-xs font-medium text-text-muted">
                       Command & Arguments
                     </label>
                     <input
@@ -371,48 +373,46 @@ export default function DynamicConnectorsPage() {
                       placeholder="npx -y @modelcontextprotocol/server-postgres postgresql://..."
                       value={customCommand}
                       onChange={(e) => setCustomCommand(e.target.value)}
-                      className="mt-1 w-full px-3 py-2 text-sm font-mono bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                      className="input-field mt-1 font-mono"
                     />
                   </div>
                 ) : (
                   <div>
-                    <label className="block text-xs font-medium text-gray-300">Endpoint URL</label>
+                    <label className="block text-xs font-medium text-text-muted">
+                      Endpoint URL
+                    </label>
                     <input
                       type="url"
                       required
                       placeholder="https://mcp.example.com/sse"
                       value={customUrl}
                       onChange={(e) => setCustomUrl(e.target.value)}
-                      className="mt-1 w-full px-3 py-2 text-sm font-mono bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                      className="input-field mt-1 font-mono"
                     />
                   </div>
                 )}
 
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="py-2 px-4 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors disabled:opacity-50"
-                >
+                <button type="submit" disabled={isSubmitting} className="btn-primary text-xs">
                   {isSubmitting ? 'Registering...' : 'Register & Sync MCP'}
                 </button>
               </form>
             </div>
 
             {/* Attached MCP Connectors */}
-            <div className="bg-[#121218] rounded-xl p-6 border border-gray-800">
-              <h3 className="text-sm font-semibold text-white uppercase tracking-wider text-gray-400">
+            <div className="bg-surface rounded-xl p-6 border border-border shadow-card">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted">
                 Connected Workspace Connectors ({connectedConnectors.length})
               </h3>
               {connectedConnectors.length === 0 ? (
-                <p className="text-xs text-gray-500 mt-3">No active connectors attached yet.</p>
+                <p className="text-xs text-text-muted mt-3">No active connectors attached yet.</p>
               ) : (
-                <div className="mt-3 divide-y divide-gray-800">
+                <div className="mt-3 divide-y divide-border">
                   {connectedConnectors.map((c) => (
                     <div key={c.id} className="py-3 flex items-center justify-between">
                       <div>
-                        <span className="text-sm font-medium text-white">{c.name}</span>
-                        <span className="ml-2 text-xs font-mono text-gray-400">({c.type})</span>
-                        <div className="text-xs text-gray-500 mt-0.5">
+                        <span className="text-sm font-medium text-text">{c.name}</span>
+                        <span className="ml-2 text-xs font-mono text-text-muted">({c.type})</span>
+                        <div className="text-xs text-text-muted mt-0.5">
                           ID: <span className="font-mono">{c.id}</span>
                         </div>
                       </div>
@@ -427,7 +427,7 @@ export default function DynamicConnectorsPage() {
                             setStatusMessage(`Sync failed: ${err.message}`);
                           }
                         }}
-                        className="text-xs py-1 px-2.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 font-mono"
+                        className="btn-secondary text-xs px-2.5 py-1 font-mono"
                       >
                         Re-sync Tools
                       </button>
@@ -442,13 +442,13 @@ export default function DynamicConnectorsPage() {
         {/* TAB 2: COMPOSIO SAAS GATEWAY */}
         {activeTab === 'composio' && (
           <div className="mt-6 space-y-6">
-            <div className="bg-[#121218] rounded-xl p-6 border border-gray-800">
+            <div className="bg-surface rounded-xl p-6 border border-border shadow-card">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-white">
+                  <h2 className="text-lg font-display font-medium text-text">
                     Composio Universal SaaS Gateway
                   </h2>
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs text-text-muted mt-1">
                     Connect Slack, Notion, GitHub, LinkedIn, Jira, and 250+ SaaS tools without
                     writing OAuth plumbing.
                   </p>
@@ -456,21 +456,21 @@ export default function DynamicConnectorsPage() {
                 <div className="flex items-center gap-2">
                   <span
                     className={`h-2.5 w-2.5 rounded-full ${
-                      composioEnabled ? 'bg-emerald-500' : 'bg-amber-500'
+                      composioEnabled ? 'bg-success' : 'bg-warning'
                     }`}
                   />
-                  <span className="text-xs font-mono text-gray-300">
+                  <span className="text-xs font-mono text-text-secondary">
                     {composioEnabled ? 'API Key Active' : 'Key Missing in .env'}
                   </span>
                 </div>
               </div>
 
               {!composioEnabled && (
-                <div className="mt-4 p-4 rounded-lg bg-amber-950/40 border border-amber-800/60 text-xs text-amber-200">
+                <div className="mt-4 p-4 rounded-lg bg-warning/15 border border-warning/30 text-xs text-warning">
                   <p className="font-semibold">Composio Key Setup:</p>
                   <p className="mt-1">
                     Add{' '}
-                    <code className="bg-black/40 px-1 py-0.5 rounded font-mono">
+                    <code className="bg-background/40 px-1 py-0.5 rounded font-mono">
                       COMPOSIO_API_KEY=your_key
                     </code>{' '}
                     to your <code className="font-mono">.env</code> file. Grab your free key at{' '}
@@ -478,7 +478,7 @@ export default function DynamicConnectorsPage() {
                       href="https://app.composio.dev"
                       target="_blank"
                       rel="noreferrer"
-                      className="underline font-bold text-amber-100"
+                      className="underline font-bold text-warning"
                     >
                       app.composio.dev
                     </a>{' '}
@@ -488,11 +488,8 @@ export default function DynamicConnectorsPage() {
               )}
 
               <div className="mt-6 flex justify-between items-center">
-                <h3 className="text-sm font-semibold text-gray-300">Popular Integrations</h3>
-                <button
-                  onClick={handleSyncComposio}
-                  className="text-xs py-1.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium"
-                >
+                <h3 className="text-sm font-semibold text-text-secondary">Popular Integrations</h3>
+                <button onClick={handleSyncComposio} className="btn-primary text-xs">
                   🔄 Sync Connected Tools
                 </button>
               </div>
@@ -501,18 +498,18 @@ export default function DynamicConnectorsPage() {
                 {composioApps.map((app) => (
                   <div
                     key={app.id}
-                    className="p-4 rounded-lg bg-[#181824] border border-gray-800 flex flex-col justify-between"
+                    className="p-4 rounded-lg bg-surface-100 border border-border flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-center justify-between">
-                        <span className="font-medium text-white">{app.name}</span>
-                        <span className="text-xs text-indigo-400 font-mono">OAuth 2.0</span>
+                        <span className="font-medium text-text">{app.name}</span>
+                        <span className="text-xs text-primary font-mono">OAuth 2.0</span>
                       </div>
-                      <p className="text-xs text-gray-400 mt-1">{app.description}</p>
+                      <p className="text-xs text-text-muted mt-1">{app.description}</p>
                     </div>
                     <button
                       onClick={() => handleConnectComposio(app.id)}
-                      className="mt-4 w-full py-1.5 px-3 text-xs font-medium rounded bg-gray-800 hover:bg-gray-700 text-indigo-300 border border-indigo-900/50"
+                      className="btn-secondary mt-4 w-full text-xs"
                     >
                       Connect {app.name}
                     </button>
@@ -526,45 +523,45 @@ export default function DynamicConnectorsPage() {
         {/* TAB 3: TRIGGER.DEV BACKGROUND JOBS */}
         {activeTab === 'trigger' && (
           <div className="mt-6 space-y-6">
-            <div className="bg-[#121218] rounded-xl p-6 border border-gray-800">
+            <div className="bg-surface rounded-xl p-6 border border-border shadow-card">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-white">
+                  <h2 className="text-lg font-display font-medium text-text">
                     Trigger.dev (v3) Durable Engine
                   </h2>
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs text-text-muted mt-1">
                     Runs your long-running agent tasks, document ingestion, and connector sync with
                     zero timeouts.
                   </p>
                 </div>
-                <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 font-mono">
+                <span className="text-2xs px-2.5 py-1 rounded-full bg-success/15 text-success border border-success/30 font-mono">
                   Connected: proj_rroqfqpflbsmzbiuiilt
                 </span>
               </div>
 
               <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 rounded-lg bg-[#181824] border border-gray-800">
-                  <h4 className="text-sm font-semibold text-white">Registered Background Tasks</h4>
-                  <ul className="mt-2 space-y-1.5 text-xs text-gray-300 font-mono">
+                <div className="p-4 rounded-lg bg-surface-100 border border-border">
+                  <h4 className="text-sm font-semibold text-text">Registered Background Tasks</h4>
+                  <ul className="mt-2 space-y-1.5 text-xs text-text-secondary font-mono">
                     <li className="flex items-center gap-2">
-                      <span className="text-emerald-400">✓</span> example-task
+                      <span className="text-success">✓</span> example-task
                     </li>
                     <li className="flex items-center gap-2">
-                      <span className="text-emerald-400">✓</span> vaeloom.ingest-document
+                      <span className="text-success">✓</span> vaeloom.ingest-document
                     </li>
                     <li className="flex items-center gap-2">
-                      <span className="text-emerald-400">✓</span> vaeloom.run-agent
+                      <span className="text-success">✓</span> vaeloom.run-agent
                     </li>
                     <li className="flex items-center gap-2">
-                      <span className="text-emerald-400">✓</span> vaeloom.sync-connector
+                      <span className="text-success">✓</span> vaeloom.sync-connector
                     </li>
                   </ul>
                 </div>
 
-                <div className="p-4 rounded-lg bg-[#181824] border border-gray-800 flex flex-col justify-between">
+                <div className="p-4 rounded-lg bg-surface-100 border border-border flex flex-col justify-between">
                   <div>
-                    <h4 className="text-sm font-semibold text-white">Cloud Dashboard</h4>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <h4 className="text-sm font-semibold text-text">Cloud Dashboard</h4>
+                    <p className="text-xs text-text-muted mt-1">
                       Monitor live task execution traces, view run parameters, and debug outputs in
                       real-time.
                     </p>
@@ -573,7 +570,7 @@ export default function DynamicConnectorsPage() {
                     href="https://cloud.trigger.dev/orgs/vaeloom-dbed/projects/vaeloom-agents-0iIn"
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-4 inline-flex items-center justify-center py-2 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition-colors"
+                    className="btn-primary mt-4 inline-flex items-center justify-center text-xs"
                   >
                     Open Trigger.dev Cloud ↗
                   </a>

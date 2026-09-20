@@ -142,6 +142,9 @@ const config: Config = {
         ],
         mono: ['var(--font-ibm-plex-mono)', 'monospace'],
       },
+      fontSize: {
+        '2xs': ['0.625rem', { lineHeight: '0.875rem' }],
+      },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-mesh':

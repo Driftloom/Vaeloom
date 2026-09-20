@@ -209,7 +209,7 @@ export function TopNav({
 
         {/* Live Agent Status Indicator */}
         <div
-          className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-100 border border-border/60 text-[11px] text-text-dim font-medium"
+          className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-100 border border-border/60 text-xs text-text-dim font-medium"
           title="All reasoning agent systems operational"
         >
           <span className="relative flex h-2 w-2">
@@ -253,7 +253,7 @@ export function TopNav({
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-text">Notifications</span>
                     {unreadCount > 0 && (
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-primary/20 text-primary font-medium">
+                      <span className="text-2xs font-mono px-1.5 py-0.5 rounded-full bg-primary/20 text-primary font-medium">
                         {unreadCount} new
                       </span>
                     )}

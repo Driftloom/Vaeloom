@@ -234,10 +234,10 @@ export default function SovereignVaultPage() {
               </svg>
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
+              <h1 className="text-3xl font-display font-medium text-text">
                 Sovereign Trust & Verifiable Credentials
               </h1>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              <p className="text-sm text-text-muted">
                 W3C Decentralized Identifiers (DIDs), Ed25519 verifiable attestations, and
                 local-first CRDT synchronization.
               </p>
@@ -248,25 +248,23 @@ export default function SovereignVaultPage() {
 
       {/* Sovereign Identity Badge & Key Info */}
       {identity && (
-        <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="rounded-xl border border-border bg-surface p-6 shadow-card">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-950/50 dark:text-emerald-400">
+                <span className="inline-flex items-center rounded-md bg-success/15 px-2 py-1 text-xs font-medium text-success border border-success/30">
                   Self-Sovereign Identity Active
                 </span>
-                <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-950/50 dark:text-blue-400">
+                <span className="inline-flex items-center rounded-md bg-info/15 px-2 py-1 text-xs font-medium text-info border border-info/30">
                   Ed25519 · W3C DID Core
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-2 font-mono text-sm">
-                <span className="text-neutral-500 dark:text-neutral-400">DID:</span>
-                <span className="font-semibold text-neutral-900 dark:text-neutral-100">
-                  {identity.did}
-                </span>
+                <span className="text-text-muted">DID:</span>
+                <span className="font-semibold text-text">{identity.did}</span>
                 <button
                   onClick={() => copyToClipboard(identity.did, 'DID')}
-                  className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                  className="rounded p-1 text-text-muted hover:bg-surface-200 hover:text-text"
                   title="Copy DID"
                 >
                   <svg
@@ -284,12 +282,12 @@ export default function SovereignVaultPage() {
                   </svg>
                 </button>
               </div>
-              <div className="flex flex-wrap items-center gap-2 font-mono text-xs text-neutral-500 dark:text-neutral-400">
+              <div className="flex flex-wrap items-center gap-2 font-mono text-xs text-text-muted">
                 <span>Public Key:</span>
                 <span className="max-w-md truncate">{identity.publicKeyBase64}</span>
                 <button
                   onClick={() => copyToClipboard(identity.publicKeyBase64, 'Public Key')}
-                  className="rounded p-1 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                  className="rounded p-1 hover:bg-surface-200 hover:text-text"
                   title="Copy Public Key"
                 >
                   <svg
@@ -311,7 +309,7 @@ export default function SovereignVaultPage() {
             <div>
               <button
                 onClick={() => setDidModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+                className="btn-secondary text-xs flex items-center gap-2"
               >
                 <svg
                   className="h-4 w-4"
@@ -334,43 +332,43 @@ export default function SovereignVaultPage() {
       )}
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-neutral-200 dark:border-neutral-800">
+      <div className="flex border-b border-border">
         <button
           onClick={() => setActiveTab('credentials')}
-          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
+          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
             activeTab === 'credentials'
-              ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
-              : 'border-transparent text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-300'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-text-muted hover:text-text'
           }`}
         >
           Active Credentials ({credsData?.total ?? 0})
         </button>
         <button
           onClick={() => setActiveTab('issue')}
-          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
+          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
             activeTab === 'issue'
-              ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
-              : 'border-transparent text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-300'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-text-muted hover:text-text'
           }`}
         >
           Issue Capability Credential
         </button>
         <button
           onClick={() => setActiveTab('verify')}
-          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
+          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
             activeTab === 'verify'
-              ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
-              : 'border-transparent text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-300'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-text-muted hover:text-text'
           }`}
         >
           Mathematical Verifier
         </button>
         <button
           onClick={() => setActiveTab('sync')}
-          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
+          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
             activeTab === 'sync'
-              ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
-              : 'border-transparent text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-300'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-text-muted hover:text-text'
           }`}
         >
           Local-First Sync (CRDT)
@@ -401,40 +399,35 @@ export default function SovereignVaultPage() {
                 return (
                   <div
                     key={cred.id}
-                    className="flex flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm transition hover:shadow dark:border-neutral-800 dark:bg-neutral-900"
+                    className="flex flex-col justify-between rounded-xl border border-border bg-surface p-5 shadow-card transition hover:border-border-strong"
                   >
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span
                           className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold ${
                             isCap
-                              ? 'bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-600/20 dark:bg-purple-950/50 dark:text-purple-400'
-                              : 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:bg-emerald-950/50 dark:text-emerald-400'
+                              ? 'bg-accent/15 text-accent border border-accent/30'
+                              : 'bg-success/15 text-success border border-success/30'
                           }`}
                         >
                           {isCap ? 'Capability Credential' : 'Agent Audit Credential'}
                         </span>
-                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300">
+                        <span className="rounded-full bg-success/20 px-2 py-0.5 text-xs font-medium text-success">
                           {cred.status}
                         </span>
                       </div>
 
                       <div>
-                        <h3 className="font-mono text-base font-bold text-neutral-900 dark:text-neutral-100">
-                          {tag}
-                        </h3>
-                        <p className="mt-1 font-mono text-xs text-neutral-500 dark:text-neutral-400">
-                          Tier / Verdict:{' '}
-                          <span className="font-semibold text-neutral-800 dark:text-neutral-200">
-                            {tier}
-                          </span>
+                        <h3 className="font-mono text-base font-semibold text-text">{tag}</h3>
+                        <p className="mt-1 font-mono text-xs text-text-muted">
+                          Tier / Verdict: <span className="font-semibold text-text">{tier}</span>
                         </p>
                       </div>
 
                       {cred.claims?.['evidence'] && Array.isArray(cred.claims['evidence']) && (
                         <div className="space-y-1">
-                          <span className="text-xs font-medium text-neutral-400">Evidence:</span>
-                          <ul className="list-inside list-disc text-xs text-neutral-600 dark:text-neutral-300">
+                          <span className="text-xs font-medium text-text-muted">Evidence:</span>
+                          <ul className="list-inside list-disc text-xs text-text-secondary">
                             {(cred.claims['evidence'] as string[]).slice(0, 3).map((e, idx) => (
                               <li key={idx} className="truncate">
                                 {e}
@@ -445,14 +438,14 @@ export default function SovereignVaultPage() {
                       )}
                     </div>
 
-                    <div className="mt-5 flex items-center justify-between border-t border-neutral-100 pt-3 dark:border-neutral-800">
-                      <span className="text-xs text-neutral-400">
+                    <div className="mt-5 flex items-center justify-between border-t border-border pt-3">
+                      <span className="text-xs text-text-muted">
                         {new Date(cred.createdAt).toLocaleDateString()}
                       </span>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleInspect(cred.id)}
-                          className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+                          className="btn-secondary text-xs px-3 py-1.5"
                         >
                           Inspect JSON-LD
                         </button>
@@ -462,7 +455,7 @@ export default function SovereignVaultPage() {
                             setVerifyJsonInput(JSON.stringify(doc, null, 2));
                             setActiveTab('verify');
                           }}
-                          className="rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-400 dark:hover:bg-indigo-900/50"
+                          className="btn-primary text-xs px-3 py-1.5"
                         >
                           Verify Proof
                         </button>
@@ -478,18 +471,18 @@ export default function SovereignVaultPage() {
 
       {/* Tab 2: Issue Capability */}
       {activeTab === 'issue' && (
-        <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-          <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+        <div className="rounded-xl border border-border bg-surface p-6 shadow-card">
+          <h2 className="text-lg font-display font-medium text-text">
             Issue Signed W3C Capability Credential
           </h2>
-          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+          <p className="mt-1 text-sm text-text-muted">
             Cryptographically certify verified agent or human skills using your sovereign Ed25519
             identity.
           </p>
 
           <form onSubmit={handleIssueCapability} className="mt-6 space-y-4">
             <div>
-              <label className="block text-xs font-semibold uppercase text-neutral-500">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted">
                 Capability Tag
               </label>
               <input
@@ -497,19 +490,19 @@ export default function SovereignVaultPage() {
                 value={capabilityTag}
                 onChange={(e) => setCapabilityTag(e.target.value)}
                 placeholder="e.g. capability:backend.python@v3 or capability:security.zero_trust@v1"
-                className="mt-1.5 w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2.5 font-mono text-sm text-neutral-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                className="input-field mt-1.5 font-mono"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase text-neutral-500">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted">
                 Validation Tier
               </label>
               <select
                 value={validationTier}
                 onChange={(e) => setValidationTier(e.target.value)}
-                className="mt-1.5 w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm text-neutral-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                className="input-field mt-1.5"
               >
                 <option value="V0">V0 - Unverified / Self-Claimed</option>
                 <option value="V1">V1 - Syntactic / AST Checked</option>
@@ -520,7 +513,7 @@ export default function SovereignVaultPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase text-neutral-500">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted">
                 Evidence Log (One per line)
               </label>
               <textarea
@@ -528,14 +521,14 @@ export default function SovereignVaultPage() {
                 onChange={(e) => setEvidenceInput(e.target.value)}
                 rows={4}
                 placeholder="Passed 37 unit tests&#10;AST static analysis clean&#10;SSRF and RLS verified"
-                className="mt-1.5 w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2.5 font-mono text-sm text-neutral-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                className="input-field mt-1.5 font-mono"
               />
             </div>
 
             <button
               type="submit"
               disabled={issuing || !capabilityTag.trim()}
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50"
+              className="btn-primary inline-flex items-center gap-2"
             >
               {issuing ? 'Cryptographically Signing...' : 'Sign & Issue Verifiable Credential'}
             </button>
@@ -546,13 +539,13 @@ export default function SovereignVaultPage() {
       {/* Tab 3: Mathematical Verifier */}
       {activeTab === 'verify' && (
         <div className="space-y-6">
-          <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+          <div className="rounded-xl border border-border bg-surface p-6 shadow-card">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+                <h2 className="text-lg font-display font-medium text-text">
                   Zero-Knowledge Mathematical Proof Verifier
                 </h2>
-                <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+                <p className="mt-1 text-sm text-text-muted">
                   Verifies Ed25519Signature2020 proofs against canonical W3C JSON-LD payloads with
                   tamper detection.
                 </p>
@@ -560,7 +553,7 @@ export default function SovereignVaultPage() {
               <button
                 type="button"
                 onClick={loadSampleForVerification}
-                className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+                className="btn-secondary text-xs px-3 py-1.5"
               >
                 Load Sample
               </button>
@@ -572,7 +565,7 @@ export default function SovereignVaultPage() {
                 onChange={(e) => setVerifyJsonInput(e.target.value)}
                 rows={10}
                 placeholder="Paste complete W3C Verifiable Credential JSON here..."
-                className="w-full rounded-xl border border-neutral-200 bg-neutral-50 p-4 font-mono text-xs text-neutral-900 focus:border-indigo-500 focus:bg-white focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                className="input-field p-4 font-mono text-xs"
               />
             </div>
 
@@ -580,7 +573,7 @@ export default function SovereignVaultPage() {
               <button
                 onClick={handleVerify}
                 disabled={verifying || !verifyJsonInput.trim()}
-                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50"
+                className="btn-primary inline-flex items-center gap-2"
               >
                 {verifying ? 'Verifying Ed25519 Curve...' : 'Verify Cryptographic Signature'}
               </button>
@@ -590,18 +583,18 @@ export default function SovereignVaultPage() {
           {/* Live Verification Verdict */}
           {verificationResult && (
             <div
-              className={`rounded-2xl border p-6 shadow-sm ${
+              className={`rounded-xl border p-6 shadow-card ${
                 verificationResult.isValid
-                  ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/30'
-                  : 'border-rose-200 bg-rose-50 dark:border-rose-900/50 dark:bg-rose-950/30'
+                  ? 'border-success/30 bg-success/15'
+                  : 'border-error/30 bg-error/15'
               }`}
             >
               <div className="flex items-start gap-4">
                 <div
                   className={`flex h-10 w-10 items-center justify-center rounded-xl ring-1 ${
                     verificationResult.isValid
-                      ? 'bg-emerald-500/10 text-emerald-600 ring-emerald-500/20'
-                      : 'bg-rose-500/10 text-rose-600 ring-rose-500/20'
+                      ? 'bg-success/20 text-success ring-success/30'
+                      : 'bg-error/20 text-error ring-error/30'
                   }`}
                 >
                   {verificationResult.isValid ? (
@@ -632,10 +625,8 @@ export default function SovereignVaultPage() {
                 </div>
                 <div className="space-y-1">
                   <h3
-                    className={`text-base font-bold ${
-                      verificationResult.isValid
-                        ? 'text-emerald-900 dark:text-emerald-200'
-                        : 'text-rose-900 dark:text-rose-200'
+                    className={`text-base font-display font-medium ${
+                      verificationResult.isValid ? 'text-success' : 'text-error'
                     }`}
                   >
                     {verificationResult.isValid
@@ -644,23 +635,23 @@ export default function SovereignVaultPage() {
                   </h3>
                   <p
                     className={`text-xs ${
-                      verificationResult.isValid
-                        ? 'text-emerald-700 dark:text-emerald-300'
-                        : 'text-rose-700 dark:text-rose-300'
+                      verificationResult.isValid ? 'text-success' : 'text-error'
                     }`}
                   >
                     {verificationResult.reason ||
                       'Ed25519 signature mathematically verified against canonical bytes.'}
                   </p>
-                  <div className="mt-3 flex flex-wrap gap-4 font-mono text-xs text-neutral-600 dark:text-neutral-300">
+                  <div className="mt-3 flex flex-wrap gap-4 font-mono text-xs text-text-secondary">
                     <div>
-                      <span className="font-semibold">Issuer:</span> {verificationResult.issuer}
+                      <span className="font-semibold text-text">Issuer:</span>{' '}
+                      {verificationResult.issuer}
                     </div>
                     <div>
-                      <span className="font-semibold">Subject:</span> {verificationResult.subject}
+                      <span className="font-semibold text-text">Subject:</span>{' '}
+                      {verificationResult.subject}
                     </div>
                     <div>
-                      <span className="font-semibold">Type:</span>{' '}
+                      <span className="font-semibold text-text">Type:</span>{' '}
                       {verificationResult.credentialType}
                     </div>
                   </div>
@@ -674,16 +665,16 @@ export default function SovereignVaultPage() {
       {/* Tab 4: Local-First Sync (CRDT) */}
       {activeTab === 'sync' && (
         <div className="space-y-6">
-          <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+          <div className="rounded-xl border border-border bg-surface p-6 shadow-card">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
-                  <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+                  <span className="h-2.5 w-2.5 rounded-full bg-success"></span>
+                  <h2 className="text-lg font-display font-medium text-text">
                     Conflict-Free Replicated Data (CRDT) Ledger
                   </h2>
                 </div>
-                <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+                <p className="mt-1 text-sm text-text-muted">
                   Hybrid Logical Clocks (HLC) deliver deterministic Last-Write-Wins (LWW) state
                   merging for local-first operations.
                 </p>
@@ -691,73 +682,65 @@ export default function SovereignVaultPage() {
               <button
                 onClick={() => mutateSync()}
                 disabled={syncLoading}
-                className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+                className="btn-secondary text-xs"
               >
                 {syncLoading ? 'Syncing...' : 'Pull Latest Deltas'}
               </button>
             </div>
 
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-800/50">
-                <span className="text-xs text-neutral-500">Active Clock Cursor</span>
-                <p className="mt-1 font-mono text-sm font-bold text-neutral-900 dark:text-neutral-100 truncate">
+              <div className="rounded-xl border border-border bg-surface-100 p-4">
+                <span className="text-xs text-text-muted">Active Clock Cursor</span>
+                <p className="mt-1 font-mono text-sm font-bold text-text truncate">
                   {syncData?.latestHlc ?? 'Synchronized'}
                 </p>
               </div>
-              <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-800/50">
-                <span className="text-xs text-neutral-500">Total Delta Count</span>
-                <p className="mt-1 font-mono text-sm font-bold text-neutral-900 dark:text-neutral-100">
-                  {syncData?.total ?? 0}
-                </p>
+              <div className="rounded-xl border border-border bg-surface-100 p-4">
+                <span className="text-xs text-text-muted">Total Delta Count</span>
+                <p className="mt-1 font-mono text-sm font-bold text-text">{syncData?.total ?? 0}</p>
               </div>
-              <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-800/50">
-                <span className="text-xs text-neutral-500">Conflict Resolution Mode</span>
-                <p className="mt-1 font-mono text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                  Deterministic LWW
-                </p>
+              <div className="rounded-xl border border-border bg-surface-100 p-4">
+                <span className="text-xs text-text-muted">Conflict Resolution Mode</span>
+                <p className="mt-1 font-mono text-sm font-bold text-success">Deterministic LWW</p>
               </div>
             </div>
           </div>
 
           {/* Deltas table */}
           {syncData?.deltas && syncData.deltas.length > 0 ? (
-            <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-              <table className="min-w-full divide-y divide-neutral-200 dark:divide-neutral-800">
-                <thead className="bg-neutral-50 dark:bg-neutral-800/50">
+            <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
+              <table className="min-w-full divide-y divide-border">
+                <thead className="bg-surface-100">
                   <tr>
-                    <th className="px-4 py-3 text-left font-mono text-xs font-semibold text-neutral-500">
+                    <th className="px-4 py-3 text-left font-mono text-xs font-semibold text-text-muted">
                       HLC
                     </th>
-                    <th className="px-4 py-3 text-left font-mono text-xs font-semibold text-neutral-500">
+                    <th className="px-4 py-3 text-left font-mono text-xs font-semibold text-text-muted">
                       Entity Type
                     </th>
-                    <th className="px-4 py-3 text-left font-mono text-xs font-semibold text-neutral-500">
+                    <th className="px-4 py-3 text-left font-mono text-xs font-semibold text-text-muted">
                       Operation
                     </th>
-                    <th className="px-4 py-3 text-left font-mono text-xs font-semibold text-neutral-500">
+                    <th className="px-4 py-3 text-left font-mono text-xs font-semibold text-text-muted">
                       Client ID
                     </th>
-                    <th className="px-4 py-3 text-left font-mono text-xs font-semibold text-neutral-500">
+                    <th className="px-4 py-3 text-left font-mono text-xs font-semibold text-text-muted">
                       Timestamp
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                <tbody className="divide-y divide-border">
                   {syncData.deltas.map((d: any) => (
-                    <tr key={d.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/50">
-                      <td className="px-4 py-3 font-mono text-xs text-indigo-600 dark:text-indigo-400">
-                        {d.hlcTimestamp}
-                      </td>
-                      <td className="px-4 py-3 text-xs font-medium text-neutral-900 dark:text-neutral-100">
-                        {d.entityType}
-                      </td>
+                    <tr key={d.id} className="hover:bg-surface-hover transition-colors">
+                      <td className="px-4 py-3 font-mono text-xs text-primary">{d.hlcTimestamp}</td>
+                      <td className="px-4 py-3 text-xs font-medium text-text">{d.entityType}</td>
                       <td className="px-4 py-3 text-xs">
-                        <span className="rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+                        <span className="rounded bg-surface-200 px-1.5 py-0.5 font-mono text-text">
                           {d.operation}
                         </span>
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs text-neutral-500">{d.clientId}</td>
-                      <td className="px-4 py-3 text-xs text-neutral-400">
+                      <td className="px-4 py-3 font-mono text-xs text-text-muted">{d.clientId}</td>
+                      <td className="px-4 py-3 text-xs text-text-muted">
                         {new Date(d.createdAt).toLocaleTimeString()}
                       </td>
                     </tr>
@@ -766,8 +749,8 @@ export default function SovereignVaultPage() {
               </table>
             </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-neutral-300 p-8 text-center dark:border-neutral-800">
-              <p className="text-sm text-neutral-500">
+            <div className="rounded-xl border border-dashed border-border p-8 text-center bg-surface-100/50">
+              <p className="text-sm text-text-muted">
                 No recent CRDT state deltas recorded in this workspace.
               </p>
             </div>
@@ -778,14 +761,14 @@ export default function SovereignVaultPage() {
       {/* Inspect Credential Modal */}
       {inspectModalOpen && selectedCred && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
-            <div className="flex items-center justify-between border-b border-neutral-200 p-4 dark:border-neutral-800">
-              <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-100">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-xl border border-border bg-surface shadow-card">
+            <div className="flex items-center justify-between border-b border-border p-4">
+              <h3 className="text-base font-display font-medium text-text">
                 W3C JSON-LD Verifiable Credential
               </h3>
               <button
                 onClick={() => setInspectModalOpen(false)}
-                className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                className="rounded-lg p-1 text-text-muted hover:bg-surface-200 hover:text-text"
               >
                 <svg
                   className="h-5 w-5"
@@ -799,22 +782,22 @@ export default function SovereignVaultPage() {
               </button>
             </div>
             <div className="max-h-[60vh] overflow-y-auto p-4 font-mono text-xs">
-              <pre className="rounded-xl bg-neutral-900 p-4 text-emerald-400 overflow-x-auto">
+              <pre className="rounded-xl bg-background p-4 text-success overflow-x-auto">
                 {JSON.stringify(selectedCred, null, 2)}
               </pre>
             </div>
-            <div className="flex justify-end gap-2 border-t border-neutral-200 p-4 dark:border-neutral-800">
+            <div className="flex justify-end gap-2 border-t border-border p-4">
               <button
                 onClick={() =>
                   copyToClipboard(JSON.stringify(selectedCred, null, 2), 'Credential JSON')
                 }
-                className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+                className="btn-secondary text-xs px-4 py-2"
               >
                 Copy JSON-LD
               </button>
               <button
                 onClick={() => setInspectModalOpen(false)}
-                className="rounded-xl bg-neutral-900 px-4 py-2 text-xs font-semibold text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
+                className="btn-primary text-xs px-4 py-2"
               >
                 Close
               </button>
@@ -826,14 +809,14 @@ export default function SovereignVaultPage() {
       {/* Inspect DID Document Modal */}
       {didModalOpen && identity && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
-            <div className="flex items-center justify-between border-b border-neutral-200 p-4 dark:border-neutral-800">
-              <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-100">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-xl border border-border bg-surface shadow-card">
+            <div className="flex items-center justify-between border-b border-border p-4">
+              <h3 className="text-base font-display font-medium text-text">
                 W3C DID Document ({identity.did})
               </h3>
               <button
                 onClick={() => setDidModalOpen(false)}
-                className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                className="rounded-lg p-1 text-text-muted hover:bg-surface-200 hover:text-text"
               >
                 <svg
                   className="h-5 w-5"
@@ -847,22 +830,22 @@ export default function SovereignVaultPage() {
               </button>
             </div>
             <div className="max-h-[60vh] overflow-y-auto p-4 font-mono text-xs">
-              <pre className="rounded-xl bg-neutral-900 p-4 text-sky-400 overflow-x-auto">
+              <pre className="rounded-xl bg-background p-4 text-info overflow-x-auto">
                 {JSON.stringify(identity.didDocument, null, 2)}
               </pre>
             </div>
-            <div className="flex justify-end gap-2 border-t border-neutral-200 p-4 dark:border-neutral-800">
+            <div className="flex justify-end gap-2 border-t border-border p-4">
               <button
                 onClick={() =>
                   copyToClipboard(JSON.stringify(identity.didDocument, null, 2), 'DID Document')
                 }
-                className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+                className="btn-secondary text-xs px-4 py-2"
               >
                 Copy DID Document
               </button>
               <button
                 onClick={() => setDidModalOpen(false)}
-                className="rounded-xl bg-neutral-900 px-4 py-2 text-xs font-semibold text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
+                className="btn-primary text-xs px-4 py-2"
               >
                 Close
               </button>

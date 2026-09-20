@@ -24,12 +24,20 @@ export const Card: React.FC<CardProps> = ({
   };
 
   const classes = [
-    'bg-surface rounded-lg',
+    'bg-surface rounded-xl',
     bordered ? 'border border-border' : '',
-    hover ? 'hover:bg-surface-hover hover:border-primary/50 transition-all cursor-pointer' : 'shadow-sm',
+    hover
+      ? 'hover:bg-surface-hover hover:border-surface-300 transition-all cursor-pointer shadow-card hover:shadow-card-hover'
+      : 'shadow-card',
     paddings[padding],
     className,
-  ].filter(Boolean).join(' ');
+  ]
+    .filter(Boolean)
+    .join(' ');
 
-  return <div className={classes} {...props}>{children}</div>;
+  return (
+    <div className={classes} {...props}>
+      {children}
+    </div>
+  );
 };

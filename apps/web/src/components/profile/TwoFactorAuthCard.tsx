@@ -227,7 +227,7 @@ export function TwoFactorAuthCard({
 
                 <div className="rounded-lg bg-background p-3 border border-border text-left">
                   <span className="block text-[11px] font-medium text-text-muted mb-1">
-                    Can't scan? Enter key manually:
+                    Can&apos;t scan? Enter key manually:
                   </span>
                   <div className="flex items-center justify-between gap-2">
                     <code className="text-xs font-mono text-primary-400 break-all select-all">
