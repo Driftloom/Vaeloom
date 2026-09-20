@@ -2,9 +2,9 @@ import { task } from '@trigger.dev/sdk';
 
 export interface AgentRunPayload {
   workspace_id: string;
+  user_id: string; // Mandatory non-null user identity
   agent_id: string;
   message: string;
-  user_id?: string;
   session_id?: string;
 }
 
@@ -23,6 +23,7 @@ export const agentRunTask = task({
       },
       body: JSON.stringify({
         workspace_id: payload.workspace_id,
+        user_id: payload.user_id,
         agent_id: payload.agent_id,
         message: payload.message,
       }),

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import CapabilitiesPage from './page';
 
 jest.mock('next/navigation', () => ({
@@ -146,7 +146,9 @@ describe('CapabilitiesPage', () => {
     fireEvent.change(nameInput, { target: { value: 'custom-eval-skill' } });
 
     const submitBtn = screen.getByRole('button', { name: /Create Capability/i });
-    fireEvent.click(submitBtn);
+    act(() => {
+      fireEvent.click(submitBtn);
+    });
 
     expect(screen.getAllByText('custom-eval-skill').length).toBeGreaterThanOrEqual(1);
     expect(mockToast).toHaveBeenCalledWith(
@@ -221,7 +223,7 @@ describe('CapabilitiesPage', () => {
     );
   });
 
-  it('opens and submits Import Capability from Git / URL modal', () => {
+  it('opens and submits Import Capability from Git / URL modal', async () => {
     jest.useFakeTimers();
     render(<CapabilitiesPage />);
 
@@ -236,11 +238,10 @@ describe('CapabilitiesPage', () => {
     });
 
     const submitBtn = screen.getByRole('button', { name: /Import & Activate/i });
-    fireEvent.click(submitBtn);
-
-    // Fast-forward simulated compilation timer
-    act(() => {
+    await act(async () => {
+      fireEvent.click(submitBtn);
       jest.advanceTimersByTime(600);
+      await Promise.resolve();
     });
 
     expect(mockToast).toHaveBeenCalledWith(
@@ -273,5 +274,69 @@ describe('CapabilitiesPage', () => {
     expect(screen.getByText(/Scheduled cron triggers, webhook relays/i)).toBeInTheDocument();
     expect(screen.getByText('cron-workflow-scheduler')).toBeInTheDocument();
     expect(screen.queryByText('No catalog items match criteria')).not.toBeInTheDocument();
+  });
+
+  it('instantiates a capability from enterprise preset scaffolds in 1 click', () => {
+    render(<CapabilitiesPage />);
+
+    const newBtn = screen.getByRole('button', { name: /New Capability/i });
+    fireEvent.click(newBtn);
+
+    // Click Presets tab
+    const presetsTab = screen.getByRole('button', { name: /⚡ Presets/i });
+    fireEvent.click(presetsTab);
+
+    expect(screen.getByText('Enterprise Production Scaffolds')).toBeInTheDocument();
+
+    // Click "Use Template" for REST API Webhook Tool
+    const webhookTemplate = screen.getByText('REST API Webhook Tool');
+    expect(webhookTemplate).toBeInTheDocument();
+    fireEvent.click(webhookTemplate);
+
+    // Form should now be loaded with webhook details
+    expect(screen.getByDisplayValue('rest-api-webhook')).toBeInTheDocument();
+
+    // Submit the capability
+    const submitBtn = screen.getByRole('button', { name: /Create Capability/i });
+    act(() => {
+      fireEvent.click(submitBtn);
+    });
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tone: 'success',
+        title: expect.stringContaining('Created rest-api-webhook'),
+      }),
+    );
+  });
+
+  it('switches to MCP category in Studio Builder and configures protocol settings', () => {
+    render(<CapabilitiesPage />);
+
+    const newBtn = screen.getByRole('button', { name: /New Capability/i });
+    fireEvent.click(newBtn);
+
+    const dialog = screen.getByRole('dialog');
+    // Click MCP category chip inside modal dialog
+    const mcpChip = within(dialog).getByRole('button', { name: /MCP/i });
+    fireEvent.click(mcpChip);
+
+    expect(screen.getByText('MCP Protocol Configuration')).toBeInTheDocument();
+    expect(screen.getByText('MCP v2 Standard')).toBeInTheDocument();
+
+    const nameInput = screen.getByPlaceholderText(/e\.g\. code-synthesizer/i);
+    fireEvent.change(nameInput, { target: { value: 'vault-sqlite-mcp' } });
+
+    const submitBtn = within(dialog).getByRole('button', { name: /Create Capability/i });
+    act(() => {
+      fireEvent.click(submitBtn);
+    });
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tone: 'success',
+        title: expect.stringContaining('Created vault-sqlite-mcp'),
+      }),
+    );
   });
 });

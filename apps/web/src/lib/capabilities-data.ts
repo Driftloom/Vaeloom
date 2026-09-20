@@ -24,6 +24,7 @@ export interface CapabilityItem {
   toolsUsed?: string[];
   inputSchema?: Record<string, unknown>;
   outputSchema?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
   markdownDoc: string;
   version?: string;
   author?: string;

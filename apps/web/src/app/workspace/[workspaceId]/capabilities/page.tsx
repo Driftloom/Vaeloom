@@ -20,6 +20,7 @@ import {
 import { useToast } from '@/components/shared/Toast';
 import { agentCatalogApi, capabilitiesApi } from '@/lib/api-client';
 import { useWorkspaceConnectors } from '../../../../hooks/useWorkspace';
+import { AddCapabilityModal } from '@/components/capabilities/AddCapabilityModal';
 
 type TabView = 'installed' | 'browse';
 type SortOption = 'most-used' | 'alphabetical' | 'recent';
@@ -1618,211 +1619,66 @@ export default function CapabilitiesPage() {
       </section>
 
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      {/* 4. Modal: Add Custom Capability                                            */}
+      {/* 4. Enterprise Capability Authoring & Import Studio                         */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      {createModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-120">
-          <div className="w-full max-w-xl bg-[#0e1015] border border-[#22242d] rounded-2xl shadow-elevated p-6 flex flex-col max-h-[90vh] overflow-hidden">
-            <div className="flex items-center justify-between pb-3 border-b border-[#22242d] shrink-0">
-              <h3 className="text-base font-semibold text-white">Add Custom Capability</h3>
-              <button
-                onClick={() => setCreateModalOpen(false)}
-                className="text-[#71717a] hover:text-white p-1 rounded-md"
-                aria-label="Close modal"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
+      <AddCapabilityModal
+        isOpen={createModalOpen || importModalOpen}
+        onClose={() => {
+          setCreateModalOpen(false);
+          setImportModalOpen(false);
+        }}
+        defaultCategory={selectedCategory}
+        initialMode={importModalOpen ? 'import' : 'builder'}
+        onCreate={(newCap) => {
+          saveCustomCapability(workspaceId, newCap);
+          const updated = setStoredCapabilityEnabled(workspaceId, newCap.id, true);
+          setCapabilities(updated);
+          setSelectedCategory(newCap.category);
+          setSelectedId(newCap.id);
+          toast({
+            tone: 'success',
+            title: `Created ${newCap.name}`,
+            detail: `New capability added under ${newCap.category}`,
+          });
+        }}
+        onImport={async (url, category) => {
+          const urlParts = url.trim().replace(/\/$/, '').split('/');
+          const rawName =
+            urlParts[urlParts.length - 1]?.replace(/\.git$/, '') || 'remote-capability';
+          const cleanName = rawName.toLowerCase().replace(/[^a-z0-9-_]/g, '-');
 
-            <form
-              onSubmit={handleCreateSubmit}
-              className="flex-1 overflow-y-auto py-4 space-y-4 text-xs font-sans"
-            >
-              <div>
-                <label className="block text-[#a1a1aa] font-medium mb-1">Capability Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={newCapName}
-                  onChange={(e) => setNewCapName(e.target.value)}
-                  placeholder="e.g. code-synthesizer or ats-scoring"
-                  className="w-full px-3 py-2 rounded-lg bg-[#14161d] border border-[#252834] text-white focus:outline-none focus:border-primary font-mono text-xs"
-                />
-              </div>
+          const newImportedItem: CapabilityItem = {
+            id: `import-${cleanName}-${Date.now()}`,
+            name: cleanName,
+            category: category,
+            tags: ['Imported', 'Remote', category],
+            description: `Imported capability from ${url}`,
+            enabled: true,
+            source: category === 'mcp' ? 'mcp' : 'custom',
+            usageCount: 1,
+            lastUsed: 'Just now',
+            requiredScope: category === 'mcp' ? 'connector.mcp.execute' : 'system.execute',
+            trustClass: category === 'mcp' ? 'mcp.workspace.write' : 'first_party',
+            version: '1.0.0',
+            author: url.includes('github.com')
+              ? url.split('/')[3] || 'Git Author'
+              : 'Remote Registry',
+            markdownDoc: `# ${cleanName}\n\nImported from remote registry or git source: \`${url}\`\n\n## Overview\nAuto-discovered manifest with dynamic execution tools.\n`,
+          };
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[#a1a1aa] font-medium mb-1">Category</label>
-                  <select
-                    value={newCapCategory}
-                    onChange={(e) => setNewCapCategory(e.target.value as CapabilityCategory)}
-                    className="w-full px-3 py-2 rounded-lg bg-[#14161d] border border-[#252834] text-white focus:outline-none focus:border-primary text-xs"
-                  >
-                    <option value="skills">Skills</option>
-                    <option value="agents">Agents</option>
-                    <option value="tools">Tools</option>
-                    <option value="mcp">MCP</option>
-                    <option value="plugins">Plugins</option>
-                  </select>
-                </div>
+          saveCustomCapability(workspaceId, newImportedItem);
+          const updated = setStoredCapabilityEnabled(workspaceId, newImportedItem.id, true);
+          setCapabilities(updated);
+          setSelectedCategory(category);
+          setSelectedId(newImportedItem.id);
 
-                <div>
-                  <label className="block text-[#a1a1aa] font-medium mb-1">
-                    Tags (comma-separated)
-                  </label>
-                  <input
-                    type="text"
-                    value={newCapTags}
-                    onChange={(e) => setNewCapTags(e.target.value)}
-                    placeholder="e.g. Review, Career, Custom"
-                    className="w-full px-3 py-2 rounded-lg bg-[#14161d] border border-[#252834] text-white focus:outline-none focus:border-primary text-xs"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[#a1a1aa] font-medium mb-1">Summary Description</label>
-                <input
-                  type="text"
-                  value={newCapDescription}
-                  onChange={(e) => setNewCapDescription(e.target.value)}
-                  placeholder="Brief 1-line description of when to use this capability"
-                  className="w-full px-3 py-2 rounded-lg bg-[#14161d] border border-[#252834] text-white focus:outline-none focus:border-primary text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[#a1a1aa] font-medium mb-1">
-                  Markdown Documentation / Prompt
-                </label>
-                <textarea
-                  rows={6}
-                  value={newCapDoc}
-                  onChange={(e) => setNewCapDoc(e.target.value)}
-                  placeholder="# Capability Title&#10;&#10;## When to Use&#10;- Use when…&#10;&#10;## Rules&#10;1. …"
-                  className="w-full px-3 py-2 rounded-lg bg-[#14161d] border border-[#252834] text-white focus:outline-none focus:border-primary font-mono text-xs"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#22242d] shrink-0">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setCreateModalOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" variant="primary" size="sm">
-                  Create Capability
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ────────────────────────────────────────────────────────────────────────── */}
-      {/* 5. Modal: Import from Registry / Git Repo / MCP Server                     */}
-      {/* ────────────────────────────────────────────────────────────────────────── */}
-      {importModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-120">
-          <div className="w-full max-w-lg bg-[#0e1015] border border-[#22242d] rounded-2xl shadow-elevated p-6 flex flex-col overflow-hidden font-sans">
-            <div className="flex items-center justify-between pb-3 border-b border-[#22242d] shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-primary/10 text-primary flex items-center justify-center text-xs">
-                  ⚡
-                </div>
-                <h3 className="text-sm font-semibold text-white font-sans">
-                  Import Capability from Git / URL
-                </h3>
-              </div>
-              <button
-                onClick={() => setImportModalOpen(false)}
-                className="text-[#71717a] hover:text-white p-1 rounded-md"
-                aria-label="Close modal"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <form onSubmit={handleImportSubmit} className="py-4 space-y-4 text-xs">
-              <div>
-                <label className="block text-[#a1a1aa] font-medium mb-1">
-                  Source URL or Git Repository *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={importUrl}
-                  onChange={(e) => setImportUrl(e.target.value)}
-                  placeholder="https://github.com/vaeloom/skills-community/tree/main/rag-eval"
-                  className="w-full px-3 py-2 rounded-lg bg-[#14161d] border border-[#252834] text-white focus:outline-none focus:border-primary"
-                />
-                <span className="text-[10px] text-[#71717a] block mt-1 font-sans">
-                  Supports GitHub repository URLs, raw SKILL.md links, or MCP server endpoints.
-                </span>
-              </div>
-
-              <div>
-                <label className="block text-[#a1a1aa] font-medium mb-1">Target Category</label>
-                <select
-                  value={importType}
-                  onChange={(e) => setImportType(e.target.value as CapabilityCategory)}
-                  className="w-full px-3 py-2 rounded-lg bg-[#14161d] border border-[#252834] text-white focus:outline-none focus:border-primary"
-                >
-                  <option value="skills">Skills</option>
-                  <option value="plugins">Plugins</option>
-                  <option value="agents">Agents</option>
-                  <option value="mcp">MCP Connector</option>
-                  <option value="tools">Tools</option>
-                </select>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#22242d] shrink-0 font-sans">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setImportModalOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="sm"
-                  disabled={importLoading}
-                  className="inline-flex items-center gap-2"
-                >
-                  {importLoading ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Importing…</span>
-                    </>
-                  ) : (
-                    <span>Import &amp; Activate</span>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+          toast({
+            tone: 'success',
+            title: `Imported ${cleanName}`,
+            detail: `Successfully compiled and registered into workspace ${category}`,
+          });
+        }}
+      />
     </div>
   );
 }
