@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=69.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vaeloom-messages-worker"
+version = "0.1.0"
+description = "Standalone asynchronous Messages API worker runtime"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.7.0",
+    "vaeloom-agent-contracts",
+    "vaeloom-agent-common",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

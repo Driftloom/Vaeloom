@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=69.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vaeloom-agent-delegation"
+version = "0.1.0"
+description = "Policy-constrained delegation DAG, acyclic scheduler, and shared blackboard"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "Vaeloom Engineering", email = "eng@vaeloom.com"},
+]
+dependencies = [
+    "pydantic>=2.7.0",
+    "vaeloom-agent-contracts",
+    "vaeloom-agent-security",
+    "vaeloom-agent-policy",
+    "vaeloom-agent-common",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
