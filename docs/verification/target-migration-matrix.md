@@ -1,0 +1,18 @@
+# Complete Target Migration Matrix
+
+| Current Path                                        | Current Purpose               | Target Path                                    |  Action   | Reason                                      |  Risk  | Dependencies          |
+| :-------------------------------------------------- | :---------------------------- | :--------------------------------------------- | :-------: | :------------------------------------------ | :----: | :-------------------- |
+| `apps/api/src/api/orchestrator/base.py`             | BaseAgent, Tool, MemoryScopes | `packages/agent-contracts/`                    |  `SPLIT`  | Separate contracts from execution           |  Low   | None                  |
+| `apps/api/src/api/orchestrator/card_registry.py`    | AgentCard definitions         | `packages/agent-contracts/agent.py`            |  `MOVE`   | Canonical contract standard                 |  Low   | `agent-contracts`     |
+| `apps/api/src/api/orchestrator/react_policy.py`     | Iteration limits and halting  | `packages/agent-policy/`                       |  `ADAPT`  | Compile into declarative policy engine      | Medium | `agent-contracts`     |
+| `apps/api/src/api/orchestrator/loop_safety.py`      | Cycle detection               | `packages/agent-delegation/cycle_detection.py` |  `MOVE`   | Multi-agent coordination safety             |  Low   | None                  |
+| `apps/api/src/api/orchestrator/context_loader.py`   | Tier-1 context prefetch       | `packages/agent-memory/tier1_prefetch.py`      |  `ADAPT`  | Fix user fallback defect & isolate memory   |  High  | `agent-security`      |
+| `apps/api/src/api/orchestrator/supervisor.py`       | Multi-agent planner           | `packages/agent-delegation/planner.py`         | `REWRITE` | Enforce policy-constrained planning         |  High  | `agent-policy`        |
+| `apps/api/src/api/orchestrator/loop.py`             | Monolithic ReAct loop         | `runtimes/messages-api/`                       |  `SPLIT`  | Separate runtime engine from platform logic |  High  | All packages          |
+| `apps/api/src/api/tools/definitions.py`             | Tool schemas and classes      | `packages/agent-tools/definitions.py`          |  `MOVE`   | Central tool registry                       |  Low   | `agent-contracts`     |
+| `apps/api/src/api/tools/executor.py`                | Tool dispatch and execution   | `packages/agent-tools/executor.py`             |  `SPLIT`  | Decouple sandbox, browser, and connectors   |  High  | `agent-policy`        |
+| `apps/api/src/api/services/semantic_ats_service.py` | ATS embeddings calculation    | `packages/domain/ats/`                         |  `MOVE`   | Pure deterministic business service         |  Low   | None                  |
+| `apps/api/src/api/services/document_builder.py`     | PDF/DOCX compiler             | `packages/domain/resume/`                      |  `MOVE`   | Pure document compilation service           |  Low   | Playwright            |
+| `integrations/` (all 6)                             | Provider connectors           | `packages/connectors/`                         |  `MERGE`  | Unify redundant connector packages          | Medium | `packages/connectors` |
+| `connectors/` (all 3)                               | Protocol connectors           | `packages/connectors/`                         |  `MERGE`  | Unify redundant connector packages          | Medium | `packages/connectors` |
+| `apps/api/src/api/agents/*/`                        | 28 domain agent handlers      | `agents/*/`                                    | `MIGRATE` | Standardize internal anatomy and agent.yaml |  High  | All packages          |

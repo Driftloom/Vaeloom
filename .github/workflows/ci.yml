@@ -85,6 +85,8 @@ jobs:
             apps/api/pyproject.toml
             packages/python-common/pyproject.toml
       - run: pip install ruff mypy
+      - name: Architecture Verification
+        run: python scripts/verify_architecture.py
       - run: ruff check apps/api/src packages/python-common/src
       - run: mypy apps/api/src packages/python-common/src --ignore-missing-imports
 

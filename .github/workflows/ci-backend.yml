@@ -16,6 +16,12 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
       - run: pip install -e ".[dev]"
+      - name: Verify Architecture & Zero-Bypass Boundaries
+        run: python ../../scripts/verify_architecture.py
+      - name: Platform Packages & Agents Unit Tests
+        run: |
+          export PYTHONPATH="packages/agent-contracts/src:packages/agent-security/src:packages/agent-policy/src:packages/agent-common/src:packages/agent-memory/src:packages/agent-tools/src:packages/connectors/src:packages/domain/src:packages/agent-delegation/src:packages/agent-observability/src:packages/agent-evals/src:runtimes/agent-sdk/src:runtimes/messages-api-worker/src:."
+          python -m pytest ../../packages/ ../../runtimes/ -q
       - name: Temporal dry-run check
         run: python -m api.temporal.worker --dry-run
       - name: Temporal workflow tests (serial — WorkflowEnvironment time-skipping not xdist-safe)
