@@ -11,10 +11,10 @@ export interface ToastProps {
 }
 
 const typeConfig = {
-  info: { icon: InfoIcon, color: 'text-[var(--color-action-primary,#3b82f6)]' },
-  success: { icon: CheckIcon, color: 'text-[var(--color-status-success,#10b981)]' },
-  warning: { icon: AlertCircleIcon, color: 'text-[var(--color-status-warning,#f59e0b)]' },
-  error: { icon: AlertCircleIcon, color: 'text-[var(--color-status-danger,#ef4444)]' },
+  info: { icon: InfoIcon, color: 'text-info' },
+  success: { icon: CheckIcon, color: 'text-success' },
+  warning: { icon: AlertCircleIcon, color: 'text-warning' },
+  error: { icon: AlertCircleIcon, color: 'text-error' },
 };
 
 export const Toast: React.FC<ToastProps> = ({
@@ -32,26 +32,20 @@ export const Toast: React.FC<ToastProps> = ({
     <div
       role="status"
       aria-live="polite"
-      className={`flex items-start gap-3 rounded-lg border border-[var(--color-border-subtle,#27272a)] bg-[var(--color-bg-elevated,#18181c)] p-3.5 shadow-xl max-w-sm w-full ${className}`.trim()}
+      className={`flex items-start gap-3 rounded-lg border border-border-subtle bg-surface-200 p-3.5 shadow-xl max-w-sm w-full ${className}`.trim()}
     >
       <div className={`shrink-0 mt-0.5 ${config.color}`}>
         <IconComponent size={18} />
       </div>
       <div className="flex-1 min-w-0">
-        {title && (
-          <h6 className="font-medium text-xs text-[var(--color-text-primary,#f4f4f5)] mb-0.5">
-            {title}
-          </h6>
-        )}
-        <p className="text-xs text-[var(--color-text-secondary,#a1a1aa)] leading-relaxed">
-          {message}
-        </p>
+        {title && <h6 className="font-medium text-xs text-text mb-0.5">{title}</h6>}
+        <p className="text-xs text-text-secondary leading-relaxed">{message}</p>
       </div>
       <button
         type="button"
         aria-label="Dismiss notification"
         onClick={() => onDismiss(id)}
-        className="shrink-0 text-[var(--color-text-muted,#71717a)] hover:text-[var(--color-text-primary,#f4f4f5)] p-0.5 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-focus-ring,#3b82f6)]"
+        className="shrink-0 text-text-muted hover:text-text p-0.5 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
       >
         <XIcon size={14} />
       </button>
