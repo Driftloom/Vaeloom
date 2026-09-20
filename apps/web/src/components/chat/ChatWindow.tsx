@@ -12,6 +12,8 @@ import {
 import { ExecutionTimeline } from '@/components/execution/ExecutionTimeline';
 import { useToast } from '@/components/shared/Toast';
 import { useRealtime } from '@/components/providers/RealtimeProvider';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 type ProposalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'error';
 
@@ -49,7 +51,7 @@ function getSlashIcon(agent: string) {
     case 'organization':
       return (
         <svg
-          className="w-3.5 h-3.5 text-amber-500"
+          className="w-3.5 h-3.5 text-warning"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -65,7 +67,7 @@ function getSlashIcon(agent: string) {
     case 'memory':
       return (
         <svg
-          className="w-3.5 h-3.5 text-purple-500"
+          className="w-3.5 h-3.5 text-accent"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -230,23 +232,25 @@ function fmtRel(iso: string) {
 }
 function agentDot(a?: string) {
   const m: Record<string, string> = {
-    organization: 'bg-amber-500',
-    memory: 'bg-violet-500',
-    resume: 'bg-sky-500',
-    ats: 'bg-emerald-500',
-    job_search: 'bg-blue-500',
-    application: 'bg-pink-500',
-    gmail: 'bg-red-500',
-    scheduler: 'bg-amber-600',
+    organization: 'bg-warning',
+    memory: 'bg-accent',
+    resume: 'bg-info',
+    ats: 'bg-success',
+    job_search: 'bg-primary',
+    application: 'bg-primary-400',
+    gmail: 'bg-error',
+    scheduler: 'bg-warning',
   };
-  return m[a || ''] || 'bg-zinc-600';
+  return m[a || ''] || 'bg-surface-400';
 }
 
 export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   const { toast } = useToast();
-  const { latestAgentStep, latestToolExecution } = useRealtime();
+  const { latestAgentStep, latestToolExecution, status } = useRealtime();
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const isNearBottomRef = useRef(true);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -420,8 +424,16 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
     if (activeThread) setMessages(activeThread.messages);
     else setMessages([]);
   }, [activeThread]);
+  const handleScroll = useCallback(() => {
+    if (!scrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    isNearBottomRef.current = scrollHeight - scrollTop - clientHeight < 120;
+  }, []);
+
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    if (isNearBottomRef.current) {
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    }
   }, [messages, loading]);
   useEffect(() => {
     agentCatalogApi
@@ -431,7 +443,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   }, []);
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
         e.preventDefault();
         inputRef.current?.focus();
       }
@@ -439,6 +451,16 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, []);
+
+  const handleStop = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setLoading(false);
+      setMessages((prev) => prev.map((m) => (m.streaming ? { ...m, streaming: false } : m)));
+      toast({ tone: 'info', title: 'Generation stopped' });
+    }
+  }, [toast]);
 
   const startNew = useCallback((agent?: string, prompt?: string) => {
     const id = Math.random().toString(36).slice(2, 7);
@@ -883,6 +905,8 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
         let streamedAny = false;
 
         // 1. Try real Server-Sent Events (SSE) streaming
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
         try {
           await agentApi.chatStream(
             {
@@ -929,8 +953,12 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                 }
               }
             },
+            controller.signal,
           );
-        } catch (streamErr) {
+        } catch (streamErr: any) {
+          if (streamErr?.name === 'AbortError' || controller.signal.aborted) {
+            return;
+          }
           // If streaming failed without emitting any tokens, fall back to non-streaming chat
           if (!streamedAny) {
             const res: unknown = agentForCall
@@ -1028,6 +1056,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
         );
         toast({ tone: 'error', title: 'Message failed', detail: msg });
       } finally {
+        abortControllerRef.current = null;
         setLoading(false);
       }
     },
@@ -1062,7 +1091,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   };
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden bg-background">
+    <div className="flex h-full w-full overflow-hidden bg-background">
       {/* left - hermes subtle rail, keep threads */}
       <aside
         className={`${showAgents ? 'flex' : 'hidden'} md:flex w-[260px] shrink-0 flex-col border-r border-border/40 bg-background max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-30 max-md:w-[82%] max-md:bg-background max-md:shadow-xl`}
@@ -1126,13 +1155,27 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
               · {workspaceId.slice(0, 8)}
             </span>
             <span
-              className={`hidden sm:inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs ${selected === 'auto' ? 'border-border/50 text-text-dim' : 'bg-white text-black border-white'}`}
+              className={`hidden sm:inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs ${selected === 'auto' ? 'border-border/50 text-text-dim' : 'bg-action text-action-fg border-action'}`}
             >
               <span
-                className={`w-1.5 h-1.5 rounded-full ${selected === 'auto' ? 'bg-text-dim' : 'bg-black'}`}
+                className={`w-1.5 h-1.5 rounded-full ${selected === 'auto' ? 'bg-text-dim' : 'bg-action-fg'}`}
               />
               {selected === 'auto' ? 'Auto' : selected}
             </span>
+            {status && (
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-mono border border-border bg-surface-50">
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    status === 'connected'
+                      ? 'bg-success animate-pulse'
+                      : status === 'connecting'
+                        ? 'bg-warning animate-pulse'
+                        : 'bg-text-dim'
+                  }`}
+                />
+                <span className="text-text-muted capitalize">{status}</span>
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1">
             <span className="hidden lg:inline text-xs text-text-dim">8 agents · QA gate</span>
@@ -1141,7 +1184,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                 type="checkbox"
                 checked={durableMode}
                 onChange={(e) => setDurableMode(e.target.checked)}
-                className="accent-white"
+                className="accent-action"
                 aria-label="Durable mode"
               />
               Durable
@@ -1155,7 +1198,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           </div>
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto">
+        <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto">
           <div className="max-w-[768px] w-full mx-auto px-4 md:px-6 py-8">
             {durableWorkflowId && (
               <div className="mb-6">
@@ -1215,7 +1258,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                       />
                     )}
                     <div
-                      className={`${m.role === 'user' ? 'max-w-[75%] bg-white text-black rounded-2xl px-4 py-3' : 'flex-1 min-w-0'}`}
+                      className={`${m.role === 'user' ? 'max-w-[75%] bg-surface-elevated text-text border border-border-subtle rounded-2xl px-4 py-3 shadow-card' : 'flex-1 min-w-0'}`}
                     >
                       {m.role === 'agent' && (
                         <div className="flex items-center gap-2 mb-1.5">
@@ -1225,7 +1268,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                           <span className="text-xs text-text-dim">{fmtTime(m.timestamp)}</span>
                           {m.confidence !== undefined && (
                             <span
-                              className={`text-xs font-mono px-1.5 py-0.5 rounded border ${m.confidence >= 0.9 ? 'border-emerald-500/20 text-emerald-400' : m.confidence >= 0.7 ? 'border-amber-500/20 text-amber-400' : 'border-red-500/20 text-red-400'}`}
+                              className={`text-xs font-mono px-1.5 py-0.5 rounded border ${m.confidence >= 0.9 ? 'border-success/20 text-success' : m.confidence >= 0.7 ? 'border-warning/20 text-warning' : 'border-error/20 text-error'}`}
                             >
                               {Math.round(m.confidence * 100)}%
                             </span>
@@ -1235,14 +1278,98 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                           )}
                         </div>
                       )}
-                      <div
-                        className={`text-sm leading-7 whitespace-pre-wrap break-words ${m.role === 'agent' ? 'text-text' : 'text-black'} ${m.role === 'user' ? '' : 'pr-2'}`}
-                      >
-                        {m.text}
-                        {m.streaming && (
-                          <span className="inline-block w-2 h-4 ml-1 bg-text-dim animate-pulse align-middle" />
-                        )}
-                      </div>
+                      {m.role === 'agent' ? (
+                        <div className="text-sm leading-relaxed text-text pr-2 break-words space-y-2">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              p: ({ children }) => (
+                                <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
+                              ),
+                              ul: ({ children }) => (
+                                <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>
+                              ),
+                              ol: ({ children }) => (
+                                <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>
+                              ),
+                              li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                              h1: ({ children }) => (
+                                <h1 className="text-base font-semibold text-text mt-3 mb-1.5">
+                                  {children}
+                                </h1>
+                              ),
+                              h2: ({ children }) => (
+                                <h2 className="text-sm font-semibold text-text mt-2.5 mb-1">
+                                  {children}
+                                </h2>
+                              ),
+                              h3: ({ children }) => (
+                                <h3 className="text-sm font-medium text-text mt-2 mb-1">
+                                  {children}
+                                </h3>
+                              ),
+                              blockquote: ({ children }) => (
+                                <blockquote className="border-l-2 border-border pl-3 my-2 text-text-muted italic">
+                                  {children}
+                                </blockquote>
+                              ),
+                              code: ({ inline, children, ...props }: any) => {
+                                if (inline) {
+                                  return (
+                                    <code
+                                      className="px-1.5 py-0.5 rounded bg-surface-200 text-text font-mono text-xs"
+                                      {...props}
+                                    >
+                                      {children}
+                                    </code>
+                                  );
+                                }
+                                return (
+                                  <pre className="p-3 my-2 rounded-lg bg-surface border border-border overflow-x-auto text-xs font-mono text-text">
+                                    <code {...props}>{children}</code>
+                                  </pre>
+                                );
+                              },
+                              table: ({ children }) => (
+                                <div className="my-2 overflow-x-auto rounded border border-border">
+                                  <table className="min-w-full divide-y divide-border text-xs">
+                                    {children}
+                                  </table>
+                                </div>
+                              ),
+                              th: ({ children }) => (
+                                <th className="px-3 py-1.5 bg-surface-50 font-semibold text-left text-text-secondary">
+                                  {children}
+                                </th>
+                              ),
+                              td: ({ children }) => (
+                                <td className="px-3 py-1.5 border-t border-border-subtle">
+                                  {children}
+                                </td>
+                              ),
+                              a: ({ href, children }) => (
+                                <a
+                                  href={href}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-action hover:underline break-all"
+                                >
+                                  {children}
+                                </a>
+                              ),
+                            }}
+                          >
+                            {m.text}
+                          </ReactMarkdown>
+                          {m.streaming && (
+                            <span className="inline-block w-2 h-4 ml-1 bg-text-dim animate-pulse align-middle" />
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-sm leading-relaxed whitespace-pre-wrap break-words text-text">
+                          {m.text}
+                        </div>
+                      )}
                       {m.role === 'agent' && !m.error && (
                         <>
                           {m.toolCalls && m.toolCalls.length > 0 && (
@@ -1250,7 +1377,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                               {m.toolCalls.map((t, i) => (
                                 <div key={i} className="flex items-center gap-2 text-xs font-mono">
                                   <span
-                                    className={`w-1.5 h-1.5 rounded-full ${t.status === 'done' ? 'bg-emerald-500' : t.status === 'error' ? 'bg-red-500' : 'bg-amber-500'}`}
+                                    className={`w-1.5 h-1.5 rounded-full ${t.status === 'done' ? 'bg-success' : t.status === 'error' ? 'bg-error' : 'bg-warning'}`}
                                   />
                                   {t.name}
                                   <span className="text-text-dim">
@@ -1284,7 +1411,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                                 return (
                                   <div
                                     key={i}
-                                    className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3"
+                                    className="rounded-xl border border-warning/20 bg-warning-muted p-3"
                                   >
                                     <p className="text-sm font-medium text-text">{p.title}</p>
                                     {p.detail && (
@@ -1296,8 +1423,8 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                                         onClick={() => handleProposalDecision(m.id, i, 'approve')}
                                         className={`flex-1 rounded-full text-xs py-1.5 ${
                                           p.status === 'approved'
-                                            ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 cursor-default'
-                                            : 'bg-white text-black hover:opacity-90 disabled:opacity-40 disabled:cursor-default'
+                                            ? 'bg-success-muted text-success border border-success/30 cursor-default'
+                                            : 'bg-action text-action-fg hover:opacity-90 disabled:opacity-40 disabled:cursor-default'
                                         }`}
                                       >
                                         {p.status === 'approved' ? 'Approved' : 'Approve'}
@@ -1307,7 +1434,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                                         onClick={() => handleProposalDecision(m.id, i, 'reject')}
                                         className={`flex-1 rounded-full text-xs py-1.5 disabled:opacity-40 disabled:cursor-default ${
                                           p.status === 'rejected'
-                                            ? 'bg-red-500/15 text-red-300 border border-red-500/30 cursor-default'
+                                            ? 'bg-error-muted text-error border border-error/30 cursor-default'
                                             : 'border border-border'
                                         }`}
                                       >
@@ -1318,7 +1445,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                                       <p className="text-xs text-text-dim mt-2">Expired</p>
                                     )}
                                     {p.status === 'error' && (
-                                      <p className="text-xs text-red-400 mt-2">
+                                      <p className="text-xs text-error mt-2">
                                         Action failed — pending approvals live in Notifications
                                       </p>
                                     )}
@@ -1345,7 +1472,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                       <div className="mt-2 flex items-center gap-3 text-xs">
                         <button
                           onClick={() => copy(m.text)}
-                          className={`${m.role === 'user' ? 'text-black/50 hover:text-black' : 'text-text-dim hover:text-text'}`}
+                          className={`${m.role === 'user' ? 'text-text-dim hover:text-text' : 'text-text-dim hover:text-text'}`}
                         >
                           Copy
                         </button>
@@ -1367,10 +1494,10 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                 ))}
                 {loading && (
                   <div className="flex gap-3">
-                    <div className="w-7 h-7 rounded-full bg-zinc-700 shrink-0" />
+                    <div className="w-7 h-7 rounded-full bg-surface-300 shrink-0" />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 text-xs text-text-dim">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
                         {latestAgentStep ? (
                           <span>
                             Thinking · Round {latestAgentStep.round || 1}
@@ -1470,7 +1597,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
               </div>
             )}
             <div
-              className={`flex items-end gap-2 rounded-[24px] border bg-surface px-2 py-2 ${dragOver ? 'border-white' : 'border-border/50'}`}
+              className={`flex items-end gap-2 rounded-[24px] border bg-surface px-2 py-2 ${dragOver ? 'border-primary ring-2 ring-primary/20' : 'border-border/50'}`}
               onDragOver={(e) => {
                 e.preventDefault();
                 setDragOver(true);
@@ -1517,21 +1644,33 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                   t.style.height = Math.min(t.scrollHeight, 120) + 'px';
                 }}
               />
-              <button
-                aria-label="Send message"
-                onClick={() => void handleSend()}
-                disabled={loading || (!input.trim() && !attached)}
-                className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-zinc-200 transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2.5}
-                    d="M5 10l7-7m0 0l7 7m-7-7v18"
-                  />
-                </svg>
-              </button>
+              {loading ? (
+                <button
+                  type="button"
+                  aria-label="Stop generation"
+                  onClick={handleStop}
+                  className="w-8 h-8 rounded-full bg-error text-error-fg flex items-center justify-center shrink-0 hover:opacity-90 transition-opacity"
+                  title="Stop generating"
+                >
+                  <span className="w-2.5 h-2.5 rounded-xs bg-current" />
+                </button>
+              ) : (
+                <button
+                  aria-label="Send message"
+                  onClick={() => void handleSend()}
+                  disabled={!input.trim() && !attached}
+                  className="w-8 h-8 rounded-full bg-action text-action-fg flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-action-hover transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2.5}
+                      d="M5 10l7-7m0 0l7 7m-7-7v18"
+                    />
+                  </svg>
+                </button>
+              )}
             </div>
             <p className="mt-2 text-center text-xs text-text-dim">
               ⏎ send · ⇧⏎ newline · <span className="font-mono">@</span> agents ·{' '}

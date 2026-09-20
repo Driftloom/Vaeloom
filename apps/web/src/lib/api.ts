@@ -15,6 +15,20 @@ import type {
   PaginatedResponse,
 } from '@vaeloom/shared-types';
 
+export interface SessionItem {
+  id: string;
+  userAgent?: string;
+  ipAddress?: string;
+  createdAt: string;
+  expiresAt: string;
+  isCurrent: boolean;
+  status: string;
+}
+
+export interface SessionListResponse {
+  sessions: SessionItem[];
+}
+
 export const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:8000';
 export const API_PREFIX = '/api/v1';
 
@@ -143,6 +157,9 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     'X-Request-ID': requestId,
     ...(init.headers as Record<string, string> | undefined),
   };
+  if (typeof FormData !== 'undefined' && init.body instanceof FormData) {
+    delete headers['Content-Type'];
+  }
   if (token) headers['Authorization'] = `Bearer ${token}`;
   if (!headers['X-Workspace-ID']) {
     const urlParamsMatch = path.match(/[?&]workspace_?id=([a-f0-9-]+)/i);
@@ -263,7 +280,13 @@ export const api = {
 
   // Auth
   signup(body: SignupRequest): Promise<AuthResponse> {
-    return request<AuthResponse>('/auth/signup', { method: 'POST', body: JSON.stringify(body) });
+    const payload = {
+      email: body.email,
+      password: body.password,
+      display_name: body.displayName,
+      terms_accepted: body.termsAccepted ?? true,
+    };
+    return request<AuthResponse>('/auth/signup', { method: 'POST', body: JSON.stringify(payload) });
   },
   login(body: LoginRequest): Promise<AuthResponse> {
     return request<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify(body) });
@@ -278,6 +301,39 @@ export const api = {
     clearToken();
     clearRefreshToken();
     return Promise.resolve();
+  },
+  listSessions(): Promise<SessionListResponse> {
+    return request<SessionListResponse>('/auth/sessions');
+  },
+  revokeSession(sessionId: string): Promise<void> {
+    return request<void>(`/auth/sessions/${sessionId}`, { method: 'DELETE' });
+  },
+  revokeOtherSessions(): Promise<{ status: string; revokedCount: number }> {
+    return request<{ status: string; revokedCount: number }>('/auth/sessions/revoke-others', {
+      method: 'POST',
+    });
+  },
+
+  // MFA
+  mfa: {
+    setup(): Promise<{ secret: string; otpauthUrl: string; recoveryCodes?: string[] }> {
+      return request<{ secret: string; otpauthUrl: string; recoveryCodes?: string[] }>(
+        '/auth/mfa/setup',
+        { method: 'POST' },
+      );
+    },
+    enable(code: string): Promise<{ status: string; recoveryCodes: string[] }> {
+      return request<{ status: string; recoveryCodes: string[] }>('/auth/mfa/enable', {
+        method: 'POST',
+        body: JSON.stringify({ code }),
+      });
+    },
+    verify(mfaToken: string, code: string): Promise<AuthResponse> {
+      return request<AuthResponse>('/auth/mfa/verify', {
+        method: 'POST',
+        body: JSON.stringify({ mfa_token: mfaToken, code }),
+      });
+    },
   },
 
   // Workspaces

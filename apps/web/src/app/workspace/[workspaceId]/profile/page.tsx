@@ -22,6 +22,9 @@ import { RecentActivity } from '@/components/profile/RecentActivity';
 import { AchievementsCertificates } from '@/components/profile/AchievementsCertificates';
 import { ProfileExport } from '@/components/profile/ProfileExport';
 import { ThemePreferences } from '@/components/profile/ThemePreferences';
+import { ActiveSessions } from '@/components/profile/ActiveSessions';
+import { TwoFactorAuthCard } from '@/components/profile/TwoFactorAuthCard';
+import { AccountPrivacyCard } from '@/components/profile/AccountPrivacyCard';
 
 export default function ProfilePage() {
   const params = useParams();
@@ -57,6 +60,7 @@ export default function ProfilePage() {
   const tabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'memory_activity', label: 'Memory & Activity' },
+    { id: 'security', label: 'Security & Access' },
     { id: 'settings', label: 'Appearance & Export' },
   ];
 
@@ -150,6 +154,17 @@ export default function ProfilePage() {
             <AchievementsCertificates workspaceId={workspaceId} />
             <RecentActivity workspaceId={workspaceId} />
           </div>
+        </div>
+      </TabPanel>
+
+      <TabPanel id="security" activeTab={activeTab}>
+        <div className="space-y-6 pt-2">
+          <TwoFactorAuthCard
+            initialEnabled={Boolean((profile as any)?.mfaEnabled)}
+            onStatusChange={() => mutateProfile()}
+          />
+          <ActiveSessions />
+          <AccountPrivacyCard />
         </div>
       </TabPanel>
 

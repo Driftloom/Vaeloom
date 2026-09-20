@@ -96,7 +96,13 @@ const apiClient = new ApiClient();
 
 export const authApi = {
   signup(body: SignupRequest): Promise<AuthResponse> {
-    return apiClient.post<AuthResponse>('/auth/signup', body);
+    const payload = {
+      email: body.email,
+      password: body.password,
+      display_name: body.displayName,
+      terms_accepted: body.termsAccepted ?? true,
+    };
+    return apiClient.post<AuthResponse>('/auth/signup', payload);
   },
   login(body: LoginRequest): Promise<AuthResponse> {
     return apiClient.post<AuthResponse>('/auth/login', body);

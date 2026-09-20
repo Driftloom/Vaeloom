@@ -1,7 +1,17 @@
 'use client';
+
 import React, { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { Button, Card, Modal } from '@vaeloom/ui-kit';
+import {
+  Button,
+  Card,
+  Modal,
+  Tabs,
+  Select,
+  Skeleton,
+  ConfirmationDialog,
+  Input,
+} from '@vaeloom/ui-kit';
 import { SearchInput } from '@/components/shared/SearchInput';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import useSWR, { mutate } from 'swr';
@@ -149,10 +159,14 @@ export default function MarketplacePage() {
   const [catalogType, setCatalogType] = useState<CatalogType>('All Catalog');
   const [selectedListing, setSelectedListing] = useState<MarketplaceListingItem | null>(null);
   const [view, setView] = useState<'browse' | 'installed'>('browse');
+  const [sortBy, setSortBy] = useState<'popular' | 'rating' | 'name'>('popular');
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [ratingInput, setRatingInput] = useState<number>(5);
   const [reviewInput, setReviewInput] = useState<string>('');
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+
+  // Confirmation dialog for uninstallation
+  const [uninstallTarget, setUninstallTarget] = useState<MarketplaceListingItem | null>(null);
 
   // Live listings fetch
   const listingsKey = `marketplace-listings-${category}-${search}`;
@@ -212,7 +226,7 @@ export default function MarketplacePage() {
 
   const listings = listingsData?.items ?? [];
 
-  const handleToggleInstall = async (listing: MarketplaceListingItem) => {
+  const handleInstall = async (listing: MarketplaceListingItem) => {
     if (!workspaceId) {
       toast({
         tone: 'error',
@@ -222,35 +236,49 @@ export default function MarketplacePage() {
       return;
     }
 
-    const isInstalled = installedListingsMap.has(listing.id);
     setActionLoadingId(listing.id);
-
     try {
-      if (isInstalled) {
-        await marketplaceApi.uninstall(listing.id, workspaceId);
-        toast({
-          tone: 'info',
-          title: 'Plugin Uninstalled',
-          detail: `Successfully uninstalled ${listing.name}.`,
-        });
-      } else {
-        await marketplaceApi.install(listing.id, { workspace_id: workspaceId });
-        toast({
-          tone: 'success',
-          title: 'Plugin Installed',
-          detail: `Successfully installed ${listing.name} to this workspace.`,
-        });
-      }
+      await marketplaceApi.install(listing.id, { workspace_id: workspaceId });
+      toast({
+        tone: 'success',
+        title: 'Plugin Installed',
+        detail: `Successfully installed ${listing.name} to this workspace.`,
+      });
       await mutateInstalled();
       void mutate(listingsKey);
     } catch {
       toast({
         tone: 'error',
-        title: 'Action Failed',
-        detail: `Could not ${isInstalled ? 'uninstall' : 'install'} ${listing.name}.`,
+        title: 'Installation Failed',
+        detail: `Could not install ${listing.name}.`,
       });
     } finally {
       setActionLoadingId(null);
+    }
+  };
+
+  const handleExecuteUninstall = async (listing: MarketplaceListingItem) => {
+    if (!workspaceId) return;
+
+    setActionLoadingId(listing.id);
+    try {
+      await marketplaceApi.uninstall(listing.id, workspaceId);
+      toast({
+        tone: 'info',
+        title: 'Plugin Uninstalled',
+        detail: `Successfully uninstalled ${listing.name}.`,
+      });
+      await mutateInstalled();
+      void mutate(listingsKey);
+    } catch {
+      toast({
+        tone: 'error',
+        title: 'Uninstall Failed',
+        detail: `Could not uninstall ${listing.name}.`,
+      });
+    } finally {
+      setActionLoadingId(null);
+      setUninstallTarget(null);
     }
   };
 
@@ -280,99 +308,108 @@ export default function MarketplacePage() {
   };
 
   const displayedListings = useMemo(() => {
+    const filterCatalogItem = (item: Partial<MarketplaceListingItem>) => {
+      if (category !== 'All' && item.category !== category) return false;
+      if (search.trim()) {
+        const q = search.trim().toLowerCase();
+        const matchName = item.name?.toLowerCase().includes(q);
+        const matchDesc = item.description?.toLowerCase().includes(q);
+        const matchTags = item.tags?.some((t) => t.toLowerCase().includes(q));
+        if (!matchName && !matchDesc && !matchTags) return false;
+      }
+      return true;
+    };
+
+    const filteredComposio = (COMPOSIO_CATALOG as unknown as MarketplaceListingItem[]).filter(
+      filterCatalogItem,
+    );
+    const filteredNative = (NATIVE_CORE_CATALOG as unknown as MarketplaceListingItem[]).filter(
+      filterCatalogItem,
+    );
+
     let baseList: MarketplaceListingItem[] = [];
     if (catalogType === 'All Catalog') {
-      baseList = [
-        ...listings,
-        ...(COMPOSIO_CATALOG as unknown as MarketplaceListingItem[]),
-        ...(NATIVE_CORE_CATALOG as unknown as MarketplaceListingItem[]),
-      ];
+      baseList = [...listings, ...filteredComposio, ...filteredNative];
     } else if (catalogType === 'Community Plugins') {
       baseList = listings;
     } else if (catalogType === 'Composio SaaS') {
-      baseList = COMPOSIO_CATALOG as unknown as MarketplaceListingItem[];
+      baseList = filteredComposio;
     } else if (catalogType === 'Native Core') {
-      baseList = NATIVE_CORE_CATALOG as unknown as MarketplaceListingItem[];
+      baseList = filteredNative;
     }
 
     if (view === 'installed') {
-      return baseList.filter((l) => installedListingsMap.has(l.id));
+      baseList = baseList.filter((l) => installedListingsMap.has(l.id));
     }
+
+    // Sort items
+    baseList.sort((a, b) => {
+      if (sortBy === 'rating') {
+        return (b.rating ?? 0) - (a.rating ?? 0);
+      }
+      if (sortBy === 'name') {
+        return a.name.localeCompare(b.name);
+      }
+      // 'popular'
+      return (b.installCount ?? 0) - (a.installCount ?? 0);
+    });
+
     return baseList;
-  }, [view, listings, catalogType, installedListingsMap]);
+  }, [catalogType, listings, view, installedListingsMap, category, search, sortBy]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
-      <header className="flex flex-wrap justify-between items-start gap-4">
+      <header className="flex flex-wrap justify-between items-start gap-4 pb-4 border-b border-border">
         <div>
-          <h1 className="text-3xl font-display font-medium text-text mb-2">Marketplace</h1>
-          <p className="text-text-muted">
-            Extend your workspace with community plugins, integrations, and enterprise AI tools.
-          </p>
-          <p className="mt-2 text-xs font-mono text-text-dim">
-            Data source:{' '}
-            {listingsLoading ? (
-              <span>Loading listings…</span>
-            ) : listingsError ? (
-              <span className="text-error">Failed to load marketplace listings</span>
-            ) : (
-              <span className="text-success">
-                Live from GET /api/v1/marketplace/listings ({displayedListings.length} items in
-                view, {installedListingsMap.size} installed)
-              </span>
-            )}
+          <h1 className="text-2xl sm:text-3xl font-display font-medium text-text">Marketplace</h1>
+          <p className="text-sm text-text-muted mt-1">
+            Extend your workspace with community plugins, enterprise connectors, and autonomous
+            agent tools.
           </p>
         </div>
 
-        {/* View Toggle */}
-        <div className="flex bg-surface rounded-lg p-1 border border-border">
-          <button
-            type="button"
-            onClick={() => setView('browse')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-              view === 'browse'
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-text-muted hover:text-text'
-            }`}
-          >
-            Browse
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('installed')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-              view === 'installed'
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-text-muted hover:text-text'
-            }`}
-          >
-            Installed ({installedListingsMap.size})
-          </button>
-        </div>
+        {/* View Toggle Tabs */}
+        <Tabs
+          tabs={[
+            { id: 'browse', label: 'Browse Catalog' },
+            { id: 'installed', label: 'Installed', badge: installedListingsMap.size },
+          ]}
+          activeTab={view}
+          onTabChange={(id) => setView(id as 'browse' | 'installed')}
+          variant="pills"
+          size="sm"
+        />
       </header>
 
-      {/* Catalog Type Bar */}
-      <div className="flex flex-wrap gap-2 border-b border-border pb-3">
-        {CATALOG_TYPES.map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setCatalogType(t)}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              catalogType === t
-                ? 'bg-primary/10 text-primary border border-primary/30 font-semibold'
-                : 'text-text-muted hover:text-text hover:bg-surface'
-            }`}
+      {/* Error Banner */}
+      {listingsError && (
+        <div className="flex items-center justify-between p-4 rounded-lg border border-error/30 bg-error-muted text-xs text-error">
+          <span>Failed to connect to marketplace catalog.</span>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => void mutate(listingsKey)}
+            className="text-error hover:text-error"
           >
-            {t}
-          </button>
-        ))}
-      </div>
+            Retry
+          </Button>
+        </div>
+      )}
+
+      {/* Catalog Type Bar */}
+      <Tabs
+        tabs={CATALOG_TYPES.map((t) => ({ id: t, label: t }))}
+        activeTab={catalogType}
+        onTabChange={(id) => setCatalogType(id as CatalogType)}
+        variant="underline"
+        size="sm"
+      />
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-stretch sm:items-center">
-        <div className="flex flex-wrap gap-2">
+        {/* Category Pills */}
+        <div className="flex flex-wrap gap-1.5">
           {CATEGORIES.map((cat) => (
             <button
               key={cat}
@@ -380,7 +417,7 @@ export default function MarketplacePage() {
               onClick={() => setCategory(cat)}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                 category === cat
-                  ? 'bg-primary text-primary-foreground'
+                  ? 'bg-action text-action-fg shadow-sm'
                   : 'bg-surface hover:bg-surface-hover text-text-muted hover:text-text border border-border'
               }`}
             >
@@ -389,30 +426,56 @@ export default function MarketplacePage() {
           ))}
         </div>
 
-        <div className="w-full sm:w-72">
-          <SearchInput
-            placeholder="Search plugins…"
-            value={search}
-            onChange={(val) => setSearch(val)}
-          />
+        {/* Search & Sort Controls */}
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="w-36 shrink-0">
+            <Select
+              value={sortBy}
+              onChange={(v) => setSortBy(v as 'popular' | 'rating' | 'name')}
+              options={[
+                { value: 'popular', label: 'Most Popular' },
+                { value: 'rating', label: 'Highest Rated' },
+                { value: 'name', label: 'Name (A-Z)' },
+              ]}
+            />
+          </div>
+          <div className="flex-1 sm:w-64">
+            <SearchInput
+              placeholder="Search plugins & tools…"
+              value={search}
+              onChange={(val) => setSearch(val)}
+            />
+          </div>
         </div>
       </div>
 
       {/* Plugin Grid */}
       {listingsLoading || (view === 'installed' && installedLoading) ? (
-        <div className="py-16 text-center text-sm text-text-muted font-mono">
-          Loading marketplace plugins…
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} padding="lg" className="flex flex-col justify-between space-y-4">
+              <div className="space-y-3">
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-3 w-1/3" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+              <div className="flex justify-between items-center pt-4 border-t border-border-subtle">
+                <Skeleton className="h-4 w-1/4" />
+                <Skeleton className="h-8 w-20" />
+              </div>
+            </Card>
+          ))}
         </div>
       ) : displayedListings.length === 0 ? (
-        <div className="py-16 text-center space-y-3">
-          <p className="text-text-muted">
+        <div className="py-16 text-center space-y-3 rounded-xl border border-dashed border-border bg-surface/30">
+          <p className="text-sm text-text-muted">
             {view === 'installed'
               ? 'No plugins installed in this workspace yet.'
               : 'No plugins match your current filters.'}
           </p>
           {view === 'installed' && (
             <Button size="sm" onClick={() => setView('browse')}>
-              Browse Marketplace
+              Browse Catalog
             </Button>
           )}
         </div>
@@ -428,12 +491,14 @@ export default function MarketplacePage() {
               <Card
                 key={listing.id}
                 padding="lg"
-                className="flex flex-col justify-between hover:border-border-hover transition-colors"
+                className="flex flex-col justify-between hover:border-border-strong hover:shadow-card transition-all"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div>
-                      <h3 className="font-display font-medium text-lg text-text">{listing.name}</h3>
+                      <h3 className="font-display font-medium text-base text-text">
+                        {listing.name}
+                      </h3>
                       <p className="text-xs text-text-muted">by {listing.author}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1">
@@ -460,23 +525,22 @@ export default function MarketplacePage() {
                     </div>
                   </div>
 
-                  <p className="text-sm text-text-muted line-clamp-2 mb-4">{listing.description}</p>
+                  <p className="text-sm text-text-muted line-clamp-2 mb-4 leading-relaxed">
+                    {listing.description}
+                  </p>
 
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    <span className="text-xs bg-surface-active px-2 py-0.5 rounded font-mono text-text-muted">
+                  <div className="flex flex-wrap items-center gap-1.5 mb-4">
+                    <span className="text-xs bg-surface-100 border border-border/60 px-2 py-0.5 rounded font-mono text-text-muted">
                       v{listing.version}
                     </span>
-                    <span className="text-xs bg-surface-active px-2 py-0.5 rounded text-text-muted">
+                    <span className="text-xs bg-surface-100 border border-border/60 px-2 py-0.5 rounded text-text-muted">
                       {listing.category}
                     </span>
-                    {listing.tags?.slice(0, 2).map((t) => (
-                      <span
-                        key={t}
-                        className="text-xs bg-surface-active px-2 py-0.5 rounded text-text-muted"
-                      >
-                        {t}
+                    {listing.rating !== undefined && (
+                      <span className="text-xs flex items-center gap-1 text-warning font-mono ml-auto">
+                        ★ {listing.rating.toFixed(1)}
                       </span>
-                    ))}
+                    )}
                   </div>
                 </div>
 
@@ -484,17 +548,23 @@ export default function MarketplacePage() {
                   <button
                     type="button"
                     onClick={() => setSelectedListing(listing)}
-                    className="text-xs text-primary hover:underline font-medium"
+                    className="text-xs text-action hover:underline font-medium"
                   >
                     View Details
                   </button>
                   <Button
                     variant={isInstalled ? 'secondary' : 'primary'}
                     size="sm"
-                    disabled={isBusy}
-                    onClick={() => handleToggleInstall(listing)}
+                    loading={isBusy}
+                    onClick={() => {
+                      if (isInstalled) {
+                        setUninstallTarget(listing);
+                      } else {
+                        void handleInstall(listing);
+                      }
+                    }}
                   >
-                    {isBusy ? 'Processing…' : isInstalled ? 'Uninstall' : 'Install'}
+                    {isInstalled ? 'Uninstall' : 'Install'}
                   </Button>
                 </div>
               </Card>
@@ -517,76 +587,82 @@ export default function MarketplacePage() {
                 <span className="text-xs font-mono text-text-muted">
                   v{selectedListing.version}
                 </span>
+                <span className="text-xs text-text-muted">·</span>
+                <span className="text-xs text-text-muted">{selectedListing.category}</span>
               </div>
-              <p className="text-sm text-text-muted">{selectedListing.description}</p>
-            </div>
-
-            <div className="space-y-2 py-2 border-y border-border">
-              <div className="flex justify-between text-xs">
-                <span className="text-text-muted">Category</span>
-                <span className="font-medium text-text">{selectedListing.category}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-text-muted">Installs</span>
-                <span className="font-mono text-text">{selectedListing.installCount}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-text-muted">Rating</span>
-                <span className="font-mono text-text">
-                  ★ {selectedListing.rating?.toFixed(1) ?? '5.0'} / 5.0
-                </span>
+              <div className="flex items-center gap-3 text-xs text-text-muted font-mono mt-2">
+                <span>⭐ {selectedListing.rating?.toFixed(1) ?? 'N/A'}</span>
+                <span>·</span>
+                <span>{selectedListing.installCount ?? 0} installs</span>
               </div>
             </div>
 
-            {/* Permission Scopes */}
-            <div className="space-y-1.5 py-2 border-b border-border">
-              <h4 className="text-xs font-semibold text-text uppercase tracking-wider">
-                Requested Scopes
-              </h4>
-              <div className="flex flex-wrap gap-1">
-                {(selectedListing.tags && selectedListing.tags.length > 0
-                  ? selectedListing.tags
-                  : ['read:workspace', 'execute:action']
-                ).map((scope) => (
-                  <span
-                    key={scope}
-                    className="text-xs bg-surface-active px-2 py-0.5 rounded font-mono text-text-muted"
-                  >
-                    {scope}
-                  </span>
-                ))}
-              </div>
-            </div>
+            <p className="text-sm text-text leading-relaxed">{selectedListing.description}</p>
 
-            {/* Composio SaaS notice */}
+            {/* Composio Notice */}
             {selectedListing.id.startsWith('composio-') && (
-              <div className="rounded-lg bg-surface-active p-3 border border-border text-xs text-text-muted space-y-1">
-                <p className="font-medium text-text">Live Composio SaaS Gateway</p>
-                <p>
-                  Requires <code className="text-text font-mono">COMPOSIO_API_KEY</code>. Connection
-                  authentication is automatically verified upon agent tool invocation.
+              <div className="p-3 rounded-lg border border-warning/30 bg-warning-muted text-xs space-y-1">
+                <div className="flex items-center gap-1.5 font-semibold text-warning">
+                  <span>Composio SaaS Integration</span>
+                </div>
+                <p className="text-text-muted leading-relaxed">
+                  Requires active Composio workspace connection. Configured API credentials remain
+                  encrypted at rest with workspace isolation.
                 </p>
               </div>
             )}
 
+            {/* Native Notice */}
+            {selectedListing.id.startsWith('native-') && (
+              <div className="p-3 rounded-lg border border-info/30 bg-info-muted text-xs space-y-1">
+                <div className="flex items-center gap-1.5 font-semibold text-info">
+                  <span>Vaeloom Native Extension</span>
+                </div>
+                <p className="text-text-muted leading-relaxed">
+                  Direct zero-trust backend integration. Runs inside the workspace execution
+                  boundary with strict RBAC governance.
+                </p>
+              </div>
+            )}
+
+            {/* Permission Scopes */}
+            <div>
+              <h4 className="text-xs font-semibold text-text uppercase tracking-wider mb-2">
+                Declared Capabilities & Scopes
+              </h4>
+              <div className="flex flex-wrap gap-1.5">
+                {selectedListing.tags && selectedListing.tags.length > 0 ? (
+                  selectedListing.tags.map((t) => (
+                    <span
+                      key={t}
+                      className="text-xs font-mono bg-surface-100 border border-border px-2 py-0.5 rounded text-text-secondary"
+                    >
+                      scope:{t}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-text-muted font-mono">standard:workspace.read</span>
+                )}
+              </div>
+            </div>
+
             {/* Rating Section */}
             {!selectedListing.id.startsWith('composio-') &&
               !selectedListing.id.startsWith('native-') && (
-                <div className="space-y-3 pt-2 border-t border-border">
+                <div className="space-y-3 pt-3 border-t border-border">
                   <h4 className="text-xs font-semibold text-text uppercase tracking-wider">
-                    Leave a Review
+                    Rate This Plugin
                   </h4>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-text-muted">Rating:</span>
+                    <span className="text-xs text-text-muted">Your Rating:</span>
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
                         key={star}
                         type="button"
+                        aria-label={`Rate ${star} out of 5 stars`}
                         onClick={() => setRatingInput(star)}
                         className={`text-lg transition-colors ${
-                          star <= ratingInput
-                            ? 'text-amber-400'
-                            : 'text-text-dim hover:text-amber-300'
+                          star <= ratingInput ? 'text-warning' : 'text-text-dim hover:text-warning'
                         }`}
                       >
                         ★
@@ -596,42 +672,60 @@ export default function MarketplacePage() {
                       {ratingInput} / 5
                     </span>
                   </div>
-                  <input
+                  <Input
+                    placeholder="Write an optional review…"
                     value={reviewInput}
                     onChange={(e) => setReviewInput(e.target.value)}
-                    placeholder="Write an optional review…"
-                    className="w-full bg-background border border-border rounded-md px-3 py-1.5 text-xs text-text focus:outline-none focus:border-primary"
                   />
                   <div className="flex justify-end">
                     <Button
                       size="sm"
                       variant="secondary"
-                      disabled={isSubmittingRating}
+                      loading={isSubmittingRating}
                       onClick={() => handleSubmitRating(selectedListing.id)}
                     >
-                      {isSubmittingRating ? 'Submitting…' : 'Submit Review'}
+                      Submit Review
                     </Button>
                   </div>
                 </div>
               )}
 
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="secondary" onClick={() => setSelectedListing(null)}>
+            <div className="flex justify-end gap-2 pt-3 border-t border-border">
+              <Button variant="secondary" size="sm" onClick={() => setSelectedListing(null)}>
                 Close
               </Button>
               <Button
                 variant={installedListingsMap.has(selectedListing.id) ? 'secondary' : 'primary'}
+                size="sm"
+                loading={actionLoadingId === selectedListing.id}
                 onClick={() => {
-                  handleToggleInstall(selectedListing);
-                  setSelectedListing(null);
+                  if (installedListingsMap.has(selectedListing.id)) {
+                    setUninstallTarget(selectedListing);
+                  } else {
+                    void handleInstall(selectedListing);
+                  }
                 }}
               >
-                {installedListingsMap.has(selectedListing.id) ? 'Uninstall' : 'Install'}
+                {installedListingsMap.has(selectedListing.id) ? 'Uninstall' : 'Install Plugin'}
               </Button>
             </div>
           </div>
         </Modal>
       )}
+
+      {/* Confirmation Dialog for Uninstallation */}
+      <ConfirmationDialog
+        isOpen={!!uninstallTarget}
+        onClose={() => setUninstallTarget(null)}
+        onConfirm={() => {
+          if (uninstallTarget) void handleExecuteUninstall(uninstallTarget);
+        }}
+        title={`Uninstall ${uninstallTarget?.name ?? 'Plugin'}`}
+        description={`Are you sure you want to uninstall "${uninstallTarget?.name}"? Agents currently relying on its tools may fail unless alternatives are configured.`}
+        confirmLabel="Uninstall Plugin"
+        variant="destructive"
+        loading={actionLoadingId === uninstallTarget?.id}
+      />
     </div>
   );
 }

@@ -27,10 +27,12 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [errors, setErrors] = useState<{
     email?: string;
     password?: string;
     confirmPassword?: string;
+    terms?: string;
     form?: string;
   }>({});
   const [submitting, setSubmitting] = useState(false);
@@ -96,6 +98,8 @@ export default function SignupPage() {
     else if (!PASSWORD_RE.test(password))
       e.password = 'At least 8 characters with a letter and number';
     if (password !== confirmPassword) e.confirmPassword = 'Passwords do not match';
+    if (!termsAccepted)
+      e.terms = 'You must accept the Terms of Service and Privacy Policy to create an account';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -106,7 +110,7 @@ export default function SignupPage() {
     setSubmitting(true);
     setErrors({});
     try {
-      await signup(email, password, displayName || undefined);
+      await signup(email, password, displayName || undefined, termsAccepted);
       // New users get auto-created workspace in backend; navigate directly
       try {
         const { api } = await import('../../../lib/api');
@@ -319,6 +323,44 @@ export default function SignupPage() {
                   <p className="text-sm text-error">{errors.form}</p>
                 </div>
               )}
+
+              <div className="space-y-1.5">
+                <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                  <input
+                    id="termsAccepted"
+                    name="termsAccepted"
+                    type="checkbox"
+                    checked={termsAccepted}
+                    onChange={(e) => {
+                      setTermsAccepted(e.target.checked);
+                      if (e.target.checked && errors.terms) {
+                        setErrors((prev) => ({ ...prev, terms: undefined }));
+                      }
+                    }}
+                    className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary focus:ring-offset-background"
+                  />
+                  <span className="text-xs text-text-muted leading-relaxed">
+                    I agree to the{' '}
+                    <Link
+                      href="/terms"
+                      target="_blank"
+                      className="text-primary-400 hover:text-primary-300 underline underline-offset-2 transition-colors"
+                    >
+                      Terms of Service
+                    </Link>{' '}
+                    and{' '}
+                    <Link
+                      href="/privacy"
+                      target="_blank"
+                      className="text-primary-400 hover:text-primary-300 underline underline-offset-2 transition-colors"
+                    >
+                      Privacy Policy
+                    </Link>
+                    .
+                  </span>
+                </label>
+                {errors.terms && <p className="text-xs text-error pl-6">{errors.terms}</p>}
+              </div>
 
               <button
                 type="submit"

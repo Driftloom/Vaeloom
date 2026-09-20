@@ -125,7 +125,11 @@ export default function WorkspaceLayout({
                 main landmarks on every workspace route. */}
           <div
             tabIndex={-1}
-            className="flex-1 overflow-y-auto p-4 sm:p-6 focus:outline-none"
+            className={`flex-1 focus:outline-none ${
+              pathname?.endsWith('/chat') || pathname?.includes('/chat/')
+                ? 'flex flex-col min-h-0 overflow-hidden p-0'
+                : 'overflow-y-auto p-4 sm:p-6'
+            }`}
             aria-hidden={sidebarOpen ? true : undefined}
             {...(sidebarOpen ? { inert: true } : {})}
           >
