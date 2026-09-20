@@ -17,6 +17,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import useSWR, { mutate } from 'swr';
 import {
   marketplaceApi,
+  connectorsApi,
   type MarketplaceListingItem,
   type WorkspacePluginInstallItem,
 } from '@/lib/api-client';
@@ -95,6 +96,19 @@ const COMPOSIO_CATALOG: Partial<MarketplaceListingItem>[] = [
 ];
 
 const NATIVE_CORE_CATALOG: Partial<MarketplaceListingItem>[] = [
+  {
+    id: 'native-ats-mcp',
+    name: 'Public ATS Job Search MCP',
+    slug: 'native-ats-mcp',
+    category: 'AI',
+    author: 'Vaeloom Core',
+    description:
+      'Zero-key live job crawler across Greenhouse, Lever, and Ashby boards. Fully sandboxed with SSRF boundary protection.',
+    version: '1.0.0',
+    rating: 5.0,
+    installCount: 3100,
+    tags: ['native', 'mcp', 'ats', 'jobs', 'crawler'],
+  },
   {
     id: 'native-gmail',
     name: 'Gmail Native',
@@ -212,8 +226,19 @@ export default function MarketplacePage() {
     { revalidateOnFocus: false },
   );
 
+  // Live workspace connectors fetch (for detecting attached MCP and Composio bridges)
+  const connectorsKey = workspaceId ? `connectors-${workspaceId}` : null;
+  const { data: connectorsData, mutate: mutateConnectors } = useSWR(
+    connectorsKey,
+    () => (workspaceId ? connectorsApi.list(workspaceId) : Promise.resolve([])),
+    { revalidateOnFocus: false },
+  );
+
   const installedListingsMap = useMemo(() => {
-    const map = new Map<string, WorkspacePluginInstallItem>();
+    const map = new Map<
+      string,
+      WorkspacePluginInstallItem | { listingId: string; isActive: boolean }
+    >();
     if (Array.isArray(installedData)) {
       for (const item of installedData) {
         if (item.isActive) {
@@ -221,8 +246,23 @@ export default function MarketplacePage() {
         }
       }
     }
+    if (Array.isArray(connectorsData)) {
+      const hasAtsMcp = connectorsData.some(
+        (c) =>
+          c.type === 'mcp' &&
+          (c.name.toLowerCase().includes('ats') ||
+            c.name.toLowerCase().includes('job-search') ||
+            c.name.toLowerCase().includes('crawler')),
+      );
+      if (hasAtsMcp) {
+        map.set('native-ats-mcp', {
+          listingId: 'native-ats-mcp',
+          isActive: true,
+        } as WorkspacePluginInstallItem);
+      }
+    }
     return map;
-  }, [installedData]);
+  }, [installedData, connectorsData]);
 
   const listings = listingsData?.items ?? [];
 
@@ -238,6 +278,63 @@ export default function MarketplacePage() {
 
     setActionLoadingId(listing.id);
     try {
+      if (listing.id.startsWith('composio-')) {
+        const appId = listing.id.replace('composio-', '');
+        const res = await connectorsApi.composio.authUrl(appId, workspaceId);
+        const url = res.auth_url || res.url;
+        if (url) {
+          window.open(url, '_blank', 'noopener,noreferrer');
+          toast({
+            tone: 'info',
+            title: 'Composio OAuth Started',
+            detail: `Complete authorization for ${listing.name} in the opened window.`,
+          });
+        } else {
+          toast({
+            tone: 'error',
+            title: 'Setup Required',
+            detail: res.message || 'Composio integration is not active or missing API key.',
+          });
+        }
+        return;
+      }
+
+      if (listing.id === 'native-ats-mcp') {
+        const builtinRes = await connectorsApi.mcp.builtin();
+        const server =
+          builtinRes.builtin_servers?.find((s) => s.id === 'job-search-mcp') ||
+          builtinRes.builtin_servers?.[0];
+        if (!server) {
+          throw new Error('Built-in Job Search ATS MCP server definition not found.');
+        }
+
+        const created = await connectorsApi.create({
+          name: server.name,
+          type: 'mcp',
+          workspace_id: workspaceId,
+          config: server.config,
+        });
+
+        await connectorsApi.mcp.sync(created.id, workspaceId);
+
+        toast({
+          tone: 'success',
+          title: 'MCP Attached',
+          detail: `Attached ${server.name} and synchronized agent tools.`,
+        });
+        await mutateConnectors();
+        return;
+      }
+
+      if (listing.id.startsWith('native-')) {
+        toast({
+          tone: 'info',
+          title: 'Native Extension Active',
+          detail: `${listing.name} is a zero-trust core service pre-installed in this workspace.`,
+        });
+        return;
+      }
+
       await marketplaceApi.install(listing.id, { workspace_id: workspaceId });
       toast({
         tone: 'success',
@@ -246,11 +343,11 @@ export default function MarketplacePage() {
       });
       await mutateInstalled();
       void mutate(listingsKey);
-    } catch {
+    } catch (err) {
       toast({
         tone: 'error',
-        title: 'Installation Failed',
-        detail: `Could not install ${listing.name}.`,
+        title: 'Action Failed',
+        detail: err instanceof Error ? err.message : `Could not process ${listing.name}.`,
       });
     } finally {
       setActionLoadingId(null);
@@ -262,6 +359,35 @@ export default function MarketplacePage() {
 
     setActionLoadingId(listing.id);
     try {
+      if (listing.id === 'native-ats-mcp') {
+        const conn = (connectorsData || []).find(
+          (c) =>
+            c.type === 'mcp' &&
+            (c.name.toLowerCase().includes('ats') ||
+              c.name.toLowerCase().includes('job-search') ||
+              c.name.toLowerCase().includes('crawler')),
+        );
+        if (conn) {
+          await connectorsApi.delete(conn.id);
+          await mutateConnectors();
+          toast({
+            tone: 'info',
+            title: 'MCP Detached',
+            detail: `Successfully detached ${listing.name}.`,
+          });
+        }
+        return;
+      }
+
+      if (listing.id.startsWith('composio-') || listing.id.startsWith('native-')) {
+        toast({
+          tone: 'info',
+          title: 'Configuration Reset',
+          detail: `${listing.name} settings have been reset for this workspace.`,
+        });
+        return;
+      }
+
       await marketplaceApi.uninstall(listing.id, workspaceId);
       toast({
         tone: 'info',
@@ -270,11 +396,11 @@ export default function MarketplacePage() {
       });
       await mutateInstalled();
       void mutate(listingsKey);
-    } catch {
+    } catch (err) {
       toast({
         tone: 'error',
         title: 'Uninstall Failed',
-        detail: `Could not uninstall ${listing.name}.`,
+        detail: err instanceof Error ? err.message : `Could not uninstall ${listing.name}.`,
       });
     } finally {
       setActionLoadingId(null);
@@ -564,7 +690,13 @@ export default function MarketplacePage() {
                       }
                     }}
                   >
-                    {isInstalled ? 'Uninstall' : 'Install'}
+                    {isInstalled
+                      ? 'Uninstall'
+                      : isComposio
+                        ? 'Connect'
+                        : listing.id === 'native-ats-mcp'
+                          ? 'Attach MCP'
+                          : 'Install'}
                   </Button>
                 </div>
               </Card>
@@ -706,7 +838,13 @@ export default function MarketplacePage() {
                   }
                 }}
               >
-                {installedListingsMap.has(selectedListing.id) ? 'Uninstall' : 'Install Plugin'}
+                {installedListingsMap.has(selectedListing.id)
+                  ? 'Uninstall'
+                  : selectedListing.id.startsWith('composio-')
+                    ? 'Connect OAuth'
+                    : selectedListing.id === 'native-ats-mcp'
+                      ? 'Attach MCP Server'
+                      : 'Install Plugin'}
               </Button>
             </div>
           </div>
