@@ -21,6 +21,11 @@ import { useToast } from '@/components/shared/Toast';
 import { agentCatalogApi, capabilitiesApi } from '@/lib/api-client';
 import { useWorkspaceConnectors } from '../../../../hooks/useWorkspace';
 import { AddCapabilityModal } from '@/components/capabilities/AddCapabilityModal';
+import { SkillsView } from '@/components/capabilities/SkillsView';
+import { AgentsView } from '@/components/capabilities/AgentsView';
+import { ToolsView } from '@/components/capabilities/ToolsView';
+import { McpView } from '@/components/capabilities/McpView';
+import { PluginsView } from '@/components/capabilities/PluginsView';
 
 type TabView = 'installed' | 'browse';
 type SortOption = 'most-used' | 'alphabetical' | 'recent';
@@ -720,509 +725,91 @@ export default function CapabilitiesPage() {
                 </button>
               );
             })}
+
+            {/* Header Right Action: New Capability Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setNewCapCategory(selectedCategory);
+                setCreateModalOpen(true);
+              }}
+              aria-label="New Capability"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#181a22] border border-[#2c2f3d] text-xs font-sans font-medium text-white hover:bg-[#20222d] transition-colors shadow-xs shrink-0 ml-2"
+            >
+              <svg
+                className="w-3.5 h-3.5 text-[#93c5fd]"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4.5v15m7.5-7.5h-15"
+                />
+              </svg>
+              <span>New Capability</span>
+            </button>
           </div>
         </div>
       </header>
 
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      {/* 2. Split Pane: Left Capability List & Right Deep Detail Inspector         */}
+      {/* 2. Adaptive Multi-Paradigm Main Workbench View                             */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <section className="flex-1 flex min-h-[560px] max-h-[700px] border-b border-[#1c1d24] relative overflow-hidden bg-[#09090b]">
-        {/* Left Column: Capability List with 1 Most used sort */}
-        <div
-          className={`w-full lg:w-[360px] xl:w-[390px] shrink-0 border-r border-[#1c1d24] bg-[#0c0d10] flex flex-col min-h-0 ${
-            mobileDetailOpen ? 'hidden lg:flex' : 'flex'
-          }`}
-        >
-          {/* Top toolbar: 1 Most used sort + Installed/Browse + Compact New Capability button */}
-          <div className="px-3.5 py-2 border-b border-[#1c1d24] bg-[#0c0d10] flex items-center justify-between gap-2 shrink-0">
-            <div className="flex items-center gap-1.5">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="bg-transparent border-0 text-xs font-sans text-[#8b8e99] hover:text-[#e4e4e7] focus:outline-none cursor-pointer"
-              >
-                <option value="most-used" className="bg-[#14151a] text-[#f4f4f5]">
-                  1 Most used
-                </option>
-                <option value="alphabetical" className="bg-[#14151a] text-[#f4f4f5]">
-                  Alphabetical
-                </option>
-                <option value="recent" className="bg-[#14151a] text-[#f4f4f5]">
-                  Recently used
-                </option>
-              </select>
-            </div>
+      <section className="flex-1 flex min-h-[580px] max-h-[720px] border-b border-[#1c1d24] relative overflow-hidden bg-[#09090b]">
+        {selectedCategory === 'skills' && (
+          <SkillsView
+            skills={capabilities.filter((c) => c.category === 'skills')}
+            workspaceId={workspaceId}
+            searchQuery={searchQuery}
+            onToggleSkill={handleToggle}
+            onOpenCreate={() => {
+              setNewCapCategory('skills');
+              setCreateModalOpen(true);
+            }}
+          />
+        )}
 
-            <div className="flex items-center gap-2">
-              {/* Installed vs Browse Pill */}
-              <div className="flex items-center p-0.5 rounded bg-[#14151a] border border-[#23242c] text-xs font-sans">
-                <button
-                  onClick={() => setTabView('installed')}
-                  className={`px-2 py-0.5 rounded text-xs transition-colors ${
-                    tabView === 'installed'
-                      ? 'bg-[#22242e] text-[#f4f4f5] font-semibold'
-                      : 'text-[#71717a] hover:text-[#d4d4d8]'
-                  }`}
-                >
-                  Installed
-                </button>
-                <button
-                  onClick={() => setTabView('browse')}
-                  className={`px-2 py-0.5 rounded text-xs transition-colors ${
-                    tabView === 'browse'
-                      ? 'bg-[#22242e] text-[#f4f4f5] font-semibold'
-                      : 'text-[#71717a] hover:text-[#d4d4d8]'
-                  }`}
-                >
-                  Browse
-                </button>
-              </div>
+        {selectedCategory === 'agents' && (
+          <AgentsView
+            agents={capabilities.filter((c) => c.category === 'agents')}
+            workspaceId={workspaceId}
+            onToggleAgent={handleToggle}
+          />
+        )}
 
-              {/* Compact New Capability Icon Button (Does not wrap or squish!) */}
-              <button
-                type="button"
-                onClick={() => setCreateModalOpen(true)}
-                aria-label="New Capability"
-                title="New Capability"
-                className="w-6 h-6 rounded bg-[#14151a] border border-[#252732] hover:bg-[#1c1e26] hover:text-white text-[#8b8e99] flex items-center justify-center transition-colors shrink-0"
-              >
-                <svg
-                  className="w-3.5 h-3.5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-              </button>
+        {selectedCategory === 'tools' && (
+          <ToolsView
+            tools={capabilities.filter((c) => c.category === 'tools')}
+            workspaceId={workspaceId}
+          />
+        )}
 
-              <button
-                className="text-[#71717a] hover:text-[#e4e4e7] p-1 rounded hover:bg-[#191a20]"
-                title="Capability options"
-                aria-label="Capability options"
-              >
-                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                </svg>
-              </button>
-            </div>
-          </div>
+        {selectedCategory === 'mcp' && (
+          <McpView
+            onOpenCreateServer={() => {
+              setNewCapCategory('mcp');
+              setCreateModalOpen(true);
+            }}
+            onOpenImport={() => {
+              setImportType('mcp');
+              setImportModalOpen(true);
+            }}
+          />
+        )}
 
-          {/* Scrollable Capability Items */}
-          <div className="flex-1 overflow-y-auto divide-y divide-[#17181f] p-1.5 space-y-0.5">
-            {filteredItems.length === 0 ? (
-              <div className="p-8">
-                <EmptyState
-                  title="No capabilities found"
-                  description={`Try adjusting your search query or switching from "${tabView}" to "${
-                    tabView === 'installed' ? 'Browse' : 'Installed'
-                  }".`}
-                />
-              </div>
-            ) : (
-              filteredItems.map((item) => {
-                const isSelected = item.id === selectedId;
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => {
-                      setSelectedId(item.id);
-                      setMobileDetailOpen(true);
-                    }}
-                    className={`group relative flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-all duration-120 ${
-                      isSelected
-                        ? 'bg-[#181920] border border-[#2b2d39] shadow-xs'
-                        : 'hover:bg-[#121318] border border-transparent'
-                    }`}
-                  >
-                    <div className="min-w-0 flex-1">
-                      {/* Name */}
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`text-[13px] font-sans font-medium tracking-tight truncate ${
-                            isSelected
-                              ? 'text-white font-semibold'
-                              : 'text-[#d4d4d8] group-hover:text-white'
-                          }`}
-                        >
-                          {item.name}
-                        </span>
-                      </div>
-
-                      {/* Tag badges row matching reference: General, learned */}
-                      <div className="flex items-center gap-1 mt-1">
-                        <span className="px-1.5 py-0.5 text-[10px] font-sans font-medium rounded bg-[#1e2027] text-[#9ca3af] border border-[#282a34]">
-                          General
-                        </span>
-
-                        {item.source === 'learned' && (
-                          <span className="px-1.5 py-0.5 text-[10px] font-sans font-medium rounded bg-[#1c2233] text-[#93c5fd] border border-[#252f48]">
-                            learned
-                          </span>
-                        )}
-
-                        {item.source === 'mcp' && (
-                          <span className="px-1.5 py-0.5 text-[10px] font-sans font-medium rounded bg-[#201d2d] text-[#c084fc] border border-[#322a48]">
-                            mcp
-                          </span>
-                        )}
-
-                        {item.tags.slice(0, 1).map((tag) => {
-                          if (tag.toLowerCase() === 'general') return null;
-                          return (
-                            <span
-                              key={tag}
-                              className="px-1.5 py-0.5 text-[10px] font-sans font-medium rounded bg-[#17181e] text-[#71717a] border border-[#23242c]"
-                            >
-                              {tag}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Smooth Pill Switch Toggle (matches dark track + white circle from reference) */}
-                    <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={item.enabled}
-                        aria-label={`Toggle ${item.name}`}
-                        onClick={(e) => handleToggle(item.id, e)}
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-[#2b2d38] transition-colors duration-200 ease-in-out focus:outline-none focus:ring-1 focus:ring-primary ${
-                          item.enabled ? 'bg-[#22c55e]' : 'bg-[#181920]'
-                        }`}
-                      >
-                        <span
-                          aria-hidden="true"
-                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out mt-[1px] ml-[1px] ${
-                            item.enabled ? 'translate-x-4' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* Right Column: Deep Detail Inspector (pixel-aligned to reference) */}
-        <div
-          className={`flex-1 flex flex-col min-h-0 bg-[#09090b] overflow-hidden ${
-            mobileDetailOpen ? 'flex' : 'hidden lg:flex'
-          }`}
-        >
-          {selectedItem ? (
-            <div className="flex-1 flex flex-col min-h-0">
-              {/* Mobile Back Button */}
-              <div className="lg:hidden px-4 py-2 border-b border-[#1c1d24] bg-[#0c0d10] flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => setMobileDetailOpen(false)}
-                  className="inline-flex items-center gap-1.5 text-xs text-[#8b8e99] hover:text-white font-medium"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 19l-7-7 7-7"
-                    />
-                  </svg>
-                  <span>Back to {selectedCategory} list</span>
-                </button>
-              </div>
-
-              {/* Detail Header & Action Links */}
-              <div className="p-5 sm:p-6 border-b border-[#1c1d24] bg-[#0c0d10] shrink-0 font-sans">
-                <div className="flex flex-col gap-2">
-                  {/* Title and Badges */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white font-sans">
-                      {selectedItem.name}
-                    </h2>
-                    <span className="px-2 py-0.5 text-xs font-sans font-medium rounded bg-[#1e2027] text-[#9ca3af] border border-[#282a34]">
-                      General
-                    </span>
-                    <span className="px-2 py-0.5 text-xs font-sans font-medium rounded bg-[#1c2233] text-[#93c5fd] border border-[#252f48]">
-                      Learned
-                    </span>
-                  </div>
-
-                  {/* Summary Description */}
-                  <p className="text-[13px] text-[#a1a1aa] leading-relaxed max-w-2xl mt-0.5 font-sans">
-                    {selectedItem.description}
-                  </p>
-
-                  {/* Action Links Bar: Edit, Archive, Test Run, Copy */}
-                  <div className="flex items-center gap-4 mt-2 text-xs font-sans font-medium">
-                    <button
-                      onClick={() => setDetailSubTab('doc')}
-                      className="text-[#8b8e99] hover:text-white transition-colors"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleToggle(selectedItem.id)}
-                      className="text-[#ef4444] hover:text-[#f87171] transition-colors"
-                    >
-                      Archive
-                    </button>
-                    <button
-                      onClick={() => setDetailSubTab('test')}
-                      className="text-[#93c5fd] hover:text-white transition-colors inline-flex items-center gap-1"
-                    >
-                      <span>Test Run</span>
-                      <span>→</span>
-                    </button>
-                    <button
-                      onClick={handleCopyDefinition}
-                      title="Copy full definition"
-                      className="text-[#8b8e99] hover:text-white transition-colors ml-auto"
-                      aria-label="Copy full definition"
-                    >
-                      <svg
-                        className="w-3.5 h-3.5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={1.75}
-                          d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9 9 9 0 00-9 9m16.5 0a9 9 0 01-9 9"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-
-                  {/* Metadata Box */}
-                  <div className="mt-3 rounded-lg bg-[#111216] border border-[#1e2027] p-3.5 space-y-2 text-xs font-sans">
-                    <div className="grid grid-cols-1 sm:grid-cols-[100px_1fr] gap-1 sm:gap-2">
-                      <span className="text-[#71717a] font-medium">name</span>
-                      <span className="text-[#e4e4e7] font-medium">
-                        {selectedItem.name.replace(/-/g, ' ')}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-[100px_1fr] gap-1 sm:gap-2">
-                      <span className="text-[#71717a] font-medium">description</span>
-                      <span className="text-[#d4d4d8] leading-relaxed">
-                        {selectedItem.description}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Subtabs Bar (Documentation | Schema | Interactive Test) */}
-                  <div className="flex items-center gap-4 mt-3 border-b border-[#1c1d24]">
-                    <button
-                      onClick={() => setDetailSubTab('doc')}
-                      className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px ${
-                        detailSubTab === 'doc'
-                          ? 'border-primary text-white font-semibold'
-                          : 'border-transparent text-[#71717a] hover:text-[#d4d4d8]'
-                      }`}
-                    >
-                      Documentation & Rules
-                    </button>
-                    <button
-                      onClick={() => setDetailSubTab('schema')}
-                      className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px ${
-                        detailSubTab === 'schema'
-                          ? 'border-primary text-white font-semibold'
-                          : 'border-transparent text-[#71717a] hover:text-[#d4d4d8]'
-                      }`}
-                    >
-                      Schema & Parameters
-                    </button>
-                    <button
-                      onClick={() => setDetailSubTab('test')}
-                      className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px ${
-                        detailSubTab === 'test'
-                          ? 'border-primary text-white font-semibold'
-                          : 'border-transparent text-[#71717a] hover:text-[#d4d4d8]'
-                      }`}
-                    >
-                      Test Playground
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Detail Content Body: Clean font-sans prose container */}
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#09090b] min-h-0">
-                {detailSubTab === 'doc' && (
-                  <div className="bg-[#0b0c10] border border-[#1b1d24] rounded-xl p-5 shadow-xs font-sans text-sm leading-relaxed text-[#d4d4d8]">
-                    <div className="prose prose-invert prose-sm max-w-none font-sans prose-headings:font-sans prose-headings:font-semibold prose-headings:text-white prose-p:font-sans prose-p:text-[#a1a1aa] prose-p:leading-relaxed prose-li:font-sans prose-li:text-[#a1a1aa] prose-code:font-mono prose-code:text-[#93c5fd] prose-code:bg-[#161822] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-pre:font-mono prose-pre:bg-[#12131a] prose-pre:border prose-pre:border-[#222430]">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {selectedItem.markdownDoc}
-                      </ReactMarkdown>
-                    </div>
-                  </div>
-                )}
-
-                {detailSubTab === 'schema' && (
-                  <div className="space-y-4 font-sans">
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <h4 className="text-xs font-sans font-medium uppercase tracking-wider text-[#71717a]">
-                          Input Argument Schema
-                        </h4>
-                        <button
-                          onClick={() => {
-                            if (selectedItem.inputSchema) {
-                              navigator.clipboard.writeText(
-                                JSON.stringify(selectedItem.inputSchema, null, 2),
-                              );
-                              toast({ tone: 'info', title: 'Copied input schema' });
-                            }
-                          }}
-                          className="text-xs font-sans text-primary hover:underline"
-                        >
-                          Copy JSON
-                        </button>
-                      </div>
-                      <div className="bg-[#0b0c10] border border-[#1b1d24] rounded-xl p-4 overflow-x-auto font-mono text-xs text-[#a1a1aa]">
-                        <pre>
-                          {selectedItem.inputSchema
-                            ? JSON.stringify(selectedItem.inputSchema, null, 2)
-                            : '// No formal input schema required (ambient context)'}
-                        </pre>
-                      </div>
-                    </div>
-
-                    {selectedItem.outputSchema && (
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <h4 className="text-xs font-sans font-medium uppercase tracking-wider text-[#71717a]">
-                            Output Return Schema
-                          </h4>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(
-                                JSON.stringify(selectedItem.outputSchema, null, 2),
-                              );
-                              toast({ tone: 'info', title: 'Copied output schema' });
-                            }}
-                            className="text-xs font-sans text-primary hover:underline"
-                          >
-                            Copy JSON
-                          </button>
-                        </div>
-                        <div className="bg-[#0b0c10] border border-[#1b1d24] rounded-xl p-4 overflow-x-auto font-mono text-xs text-[#a1a1aa]">
-                          <pre>{JSON.stringify(selectedItem.outputSchema, null, 2)}</pre>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {detailSubTab === 'test' && (
-                  <div className="space-y-4 max-w-3xl font-sans">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-xs font-sans font-medium uppercase tracking-wider text-[#71717a]">
-                        Test Input Payload (JSON)
-                      </label>
-                      <button
-                        onClick={() =>
-                          setTestInputJson(getSamplePayloadForCapability(selectedItem))
-                        }
-                        className="text-xs font-sans text-primary hover:underline"
-                      >
-                        Reset to Sample
-                      </button>
-                    </div>
-
-                    <textarea
-                      rows={6}
-                      value={testInputJson}
-                      onChange={(e) => setTestInputJson(e.target.value)}
-                      className="w-full bg-[#0b0c10] border border-[#1b1d24] rounded-xl p-3.5 font-mono text-xs text-[#e4e4e7] focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
-                    />
-
-                    <div>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={handleRunTest}
-                        disabled={testRunning}
-                        className="shadow-xs font-medium inline-flex items-center gap-2 text-xs"
-                      >
-                        {testRunning ? (
-                          <>
-                            <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            <span>Executing run…</span>
-                          </>
-                        ) : (
-                          <>
-                            <svg
-                              className="w-3.5 h-3.5"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"
-                              />
-                            </svg>
-                            <span>Execute Run</span>
-                          </>
-                        )}
-                      </Button>
-                    </div>
-
-                    {testOutput && (
-                      <div className="mt-4">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <h4 className="text-xs font-sans font-medium uppercase tracking-wider text-[#71717a]">
-                            Execution Output
-                          </h4>
-                          <div className="flex items-center gap-2">
-                            {testLatency && (
-                              <span className="text-xs font-mono text-[#71717a]">
-                                {testLatency}ms latency
-                              </span>
-                            )}
-                            <Badge variant="success" size="sm">
-                              200 OK
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="bg-[#0b0c10] border border-[#1b1d24] rounded-xl p-4 overflow-x-auto font-mono text-xs text-[#22c55e]">
-                          <pre>{testOutput}</pre>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Bottom Sticky Status Bar: Clean notice text from reference */}
-              <footer className="px-5 py-2.5 border-t border-[#1c1d24] bg-[#0c0d10] flex items-center justify-between text-xs font-sans text-[#71717a] shrink-0">
-                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
-                  <span>Changes apply to new sessions</span>
-                </div>
-                <div>
-                  <span>v{selectedItem.version || '1.0.0'}</span>
-                </div>
-              </footer>
-            </div>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-              <EmptyState
-                title="Select a capability"
-                description="Select an agent, skill, tool, or plugin from the list to view its configuration, rules, and schema."
-              />
-            </div>
-          )}
-        </div>
+        {selectedCategory === 'plugins' && (
+          <PluginsView
+            plugins={capabilities.filter((c) => c.category === 'plugins')}
+            onTogglePlugin={handleToggle}
+            onOpenGitImport={() => {
+              setImportType('plugins');
+              setImportModalOpen(true);
+            }}
+          />
+        )}
       </section>
 
       {/* ────────────────────────────────────────────────────────────────────────── */}
