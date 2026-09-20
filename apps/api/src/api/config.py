@@ -94,6 +94,7 @@ class Settings(BaseSettings):
     sso_providers: dict[str, Any] = {}
     supabase_url: str = "https://yygakxcttyaeunvkeybx.supabase.co"
     supabase_jwt_secret: str = ""
+    supabase_anon_key: str = "sb_publishable_fCm8-aIVD0DELI_kQYtf0Q_VJ8jAVRD"
 
     @field_validator("sso_providers", mode="before")
     @classmethod
