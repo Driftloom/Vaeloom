@@ -155,6 +155,8 @@ blob-report/
 .trae/
 .supermaven/
 .augment/
+.codex/
+.system_generated/
 
 # Vaeloom local orchestrator checkpoints (home ~/.vaeloom is outside repo, but repo-local .vaeloom/ if ever created)
 .vaeloom/
