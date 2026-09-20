@@ -1,0 +1,7 @@
+{
+  "type": "text",
+  "text": "<skill name=\"data-analysis\" description=\"OpenAI Codex & GPT function-calling playbook for Python REPL tabular data analysis and salary modeling.\">\n  <guidelines>\n    # Python REPL Data Analysis Playbook (Codex Edition)\n\n## Execution Environment\n- Executes in an isolated Python subprocess sandbox with zero external network connectivity.\n- Preloaded packages: `pandas`, `numpy`, `scipy`, `pydantic`.\n\n## Operational Rules\n1. Write clean, modular Python snippets wrapped in standard ```python blocks.\n2. Store intermediate results in memory; print final summary statistics to stdout in JSON format.\n3. Validate all inputs against strict Pydantic schemas before executing calculations.\n  </guidelines>\n  <examples>\n    <example title=\"Tech Salary Percentile Curve\">\n      <input>Compute 25th, 50th, 75th, 90th percentile total comp for NYC Backend Engineers</input>\n      <expected_output>Executed in-process pandas script; returned structured JSON distribution curve.</expected_output>\n    </example>\n  </examples>\n</skill>",
+  "cache_control": {
+    "type": "ephemeral"
+  }
+}

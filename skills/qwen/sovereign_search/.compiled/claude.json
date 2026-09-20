@@ -1,0 +1,7 @@
+{
+  "type": "text",
+  "text": "<skill name=\"sovereign-search\" description=\"Air-gapped ReAct scratchpad search playbook with zero cloud egress for local vLLM / Ollama deployments.\">\n  <guidelines>\n    # Sovereign Search Playbook (Qwen / Air-Gapped ReAct Edition)\n\n## Operational Guidelines\n- **Constraint**: Strict Zero Cloud Egress. No outbound HTTP calls to third-party endpoints.\n- All embedding computations must run on local GPU/CPU hardware.\n- Use explicit ReAct scratchpads:\n  ```text\n  Thought: Searching internal candidate database for matching competencies...\n  Action: local_vector_search\n  Action Input: {\"query\": \"Kubernetes orchestration\", \"limit\": 5}\n  Observation: [5 records retrieved]\n  Final Answer: Found 5 matching candidates from the local index.\n  ```\n  </guidelines>\n  <examples>\n    <example title=\"Local Enterprise Search\">\n      <input>Search confidential compensation guidelines in local vector index</input>\n      <expected_output>Executed local embedding lookup; returned result with zero external network egress.</expected_output>\n    </example>\n  </examples>\n</skill>",
+  "cache_control": {
+    "type": "ephemeral"
+  }
+}

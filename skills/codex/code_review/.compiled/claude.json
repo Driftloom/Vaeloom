@@ -1,0 +1,7 @@
+{
+  "type": "text",
+  "text": "<skill name=\"code-review\" description=\"Strict Pydantic JSON schema code review playbook for identifying race conditions, memory leaks, and architectural boundary violations.\">\n  <guidelines>\n    # Enterprise Code Review Playbook (Codex / GPT Edition)\n\n## Rules of Engagement\n1. **Unidirectional Architecture**: Ensure no domain agent imports `sqlalchemy`, `models`, or `database`.\n2. **Deterministic Typing**: Ensure all function signatures have explicit Python 3.12 type annotations.\n3. **Fail-Closed Security**: Verify all external URLs are sanitized by `validate_outbound_url` before fetching.\n4. Output findings strictly matching the `CodeReviewVerdict` Pydantic model.\n  </guidelines>\n  <examples>\n    <example title=\"Direct DB Import Detection\">\n      <input>Review diff adding SQLAlchemy select in agent reasoning handler</input>\n      <expected_output>Flagged architectural violation (SEC-P0-01); recommended routing via MemoryService.</expected_output>\n    </example>\n  </examples>\n</skill>",
+  "cache_control": {
+    "type": "ephemeral"
+  }
+}

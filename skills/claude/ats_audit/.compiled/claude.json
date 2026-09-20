@@ -1,0 +1,7 @@
+{
+  "type": "text",
+  "text": "<skill name=\"ats-audit\" description=\"Comprehensive ATS formatting, keyword density, and parseability audit playbook for Claude Sonnet.\">\n  <guidelines>\n    # ATS Formatting & Parseability Audit Playbook\n\n## Purpose\nEnsure documents cleanly traverse enterprise Applicant Tracking Systems (Workday, Greenhouse, Lever, Taleo, iCIMS).\n\n## Invariant Guidelines\n- Enforce standard header hierarchies (`# Experience`, `## Education`).\n- Verify date formats adhere to `MM/YYYY - MM/YYYY` or `Month YYYY - Present`.\n- Flag multi-column tables, text boxes, and non-standard vector graphics.\n- Extract missing hard skills and generate semantic cosine similarity score.\n  </guidelines>\n  <examples>\n    <example title=\"Multi-column Detection\">\n      <input>Audit PDF resume with 2-column sidebar layout</input>\n      <expected_output>Detected 2-column layout warning; recommended single-column clean format for Workday ATS parsing.</expected_output>\n    </example>\n  </examples>\n</skill>",
+  "cache_control": {
+    "type": "ephemeral"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "type": "function",
+  "function": {
+    "name": "execute_local_extractor",
+    "description": "Robust regex and XML fallback extraction playbook for open-weights models running offline.",
+    "strict": true,
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "instruction": {
+          "type": "string",
+          "description": "Specific sub-goal instruction for the skill"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Arbitrary key-value parameters",
+          "additionalProperties": true
+        }
+      },
+      "required": ["instruction", "parameters"],
+      "additionalProperties": false
+    }
+  }
+}

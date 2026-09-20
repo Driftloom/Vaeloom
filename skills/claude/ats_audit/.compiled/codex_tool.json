@@ -1,0 +1,24 @@
+{
+  "type": "function",
+  "function": {
+    "name": "execute_ats_audit",
+    "description": "Comprehensive ATS formatting, keyword density, and parseability audit playbook for Claude Sonnet.",
+    "strict": true,
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "instruction": {
+          "type": "string",
+          "description": "Specific sub-goal instruction for the skill"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Arbitrary key-value parameters",
+          "additionalProperties": true
+        }
+      },
+      "required": ["instruction", "parameters"],
+      "additionalProperties": false
+    }
+  }
+}

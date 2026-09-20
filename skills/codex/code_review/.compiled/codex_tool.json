@@ -1,0 +1,24 @@
+{
+  "type": "function",
+  "function": {
+    "name": "execute_code_review",
+    "description": "Strict Pydantic JSON schema code review playbook for identifying race conditions, memory leaks, and architectural boundary violations.",
+    "strict": true,
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "instruction": {
+          "type": "string",
+          "description": "Specific sub-goal instruction for the skill"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Arbitrary key-value parameters",
+          "additionalProperties": true
+        }
+      },
+      "required": ["instruction", "parameters"],
+      "additionalProperties": false
+    }
+  }
+}

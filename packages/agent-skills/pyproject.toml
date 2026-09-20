@@ -1,0 +1,16 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vaeloom-agent-skills"
+version = "0.1.0"
+description = "Vaeloom Cross-Model Skill Compilers, Dynamic Injector, and Playbook Engine"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vaeloom_agent_skills"]

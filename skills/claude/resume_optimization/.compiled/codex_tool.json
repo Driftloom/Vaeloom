@@ -1,0 +1,24 @@
+{
+  "type": "function",
+  "function": {
+    "name": "execute_resume_optimization",
+    "description": "Claude 3.5/3.7 Sonnet playbook for precision ATS resume tailoring with prompt caching and progressive UI card streaming.",
+    "strict": true,
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "instruction": {
+          "type": "string",
+          "description": "Specific sub-goal instruction for the skill"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Arbitrary key-value parameters",
+          "additionalProperties": true
+        }
+      },
+      "required": ["instruction", "parameters"],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "type": "function",
+  "function": {
+    "name": "execute_data_analysis",
+    "description": "OpenAI Codex & GPT function-calling playbook for Python REPL tabular data analysis and salary modeling.",
+    "strict": true,
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "instruction": {
+          "type": "string",
+          "description": "Specific sub-goal instruction for the skill"
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Arbitrary key-value parameters",
+          "additionalProperties": true
+        }
+      },
+      "required": ["instruction", "parameters"],
+      "additionalProperties": false
+    }
+  }
+}

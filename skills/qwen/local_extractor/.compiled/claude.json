@@ -1,0 +1,7 @@
+{
+  "type": "text",
+  "text": "<skill name=\"local-extractor\" description=\"Robust regex and XML fallback extraction playbook for open-weights models running offline.\">\n  <guidelines>\n    # Local Entity Extraction Playbook (Qwen Edition)\n\n## Objective\nExtract structured entities (companies, job titles, dates, certifications) from arbitrary text without relying on external cloud APIs.\n\n## Fallback Parsing Rules\nWhen JSON tool calling is unreliable, wrap tool calls in XML tags:\n```xml\n<tool>extract_entities_regex</tool>\n<input>{\"pattern\": \"([A-Z][a-zA-Z]+ (Inc|LLC|Corp))\"}</input>\n```\nThe Qwen parser will automatically recover the tool name and argument payload.\n  </guidelines>\n  <examples>\n    <example title=\"Unstructured Work History Extraction\">\n      <input>Extract company names and dates from messy plain text CV</input>\n      <expected_output>Parsed 3 roles using hybrid regex-NER pattern; produced valid JSON entity array.</expected_output>\n    </example>\n  </examples>\n</skill>",
+  "cache_control": {
+    "type": "ephemeral"
+  }
+}
