@@ -1,13 +1,15 @@
+import hashlib
+import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 
 import bcrypt
 import jwt
-from sqlalchemy import select
+from sqlalchemy import select, update, delete
 
 from ..config import settings
-from ..models.schema import AuthSession, User, Workspace
-from ..schemas.auth import AuthResponse, PublicUser
+from ..models.schema import AuthSession, EmailVerificationToken, OnboardingState, User, Workspace
+from ..schemas.auth import AuthResponse, PublicUser, SessionItemResponse
 from ..utils.sanitize import sanitize_text
 
 # AUTH-REV-01: shared revocation. Redis (when explicitly configured via
@@ -81,6 +83,7 @@ class AuthService:
         if not email or "@" not in email:
             from fastapi import HTTPException
             raise HTTPException(status_code=400, detail="Invalid email format")
+        email = email.strip().lower()
         if not password or len(password) < 8:
             from fastapi import HTTPException
             raise HTTPException(status_code=400, detail="Password must be at least 8 characters long")
@@ -111,6 +114,9 @@ class AuthService:
             password_hash=password_hash,
             display_name=display_name or email.split("@")[0],
             tenant_id=tenant.id if tenant else None,
+            email_verified=False,
+            failed_login_attempts=0,
+            locked_until=None,
         )
         db.add(user)
         await db.flush()
@@ -143,9 +149,37 @@ class AuthService:
         )
         db.add(workspace)
         await db.flush()
+
+        # Generate email verification token
+        raw_verification_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_verification_token.encode()).hexdigest()
+        verification_token = EmailVerificationToken(
+            user_id=user.id,
+            token_hash=token_hash,
+            expires_at=datetime.now(UTC) + timedelta(hours=24),
+        )
+        db.add(verification_token)
+
+        # Initialize onboarding state for new user
+        onboarding_state = OnboardingState(
+            user_id=user.id,
+            tenant_id=user.tenant_id,
+            workspace_id=workspace.id,
+            current_step="PROFILE",
+            completed_steps=[],
+            is_completed=False,
+            step_data={},
+        )
+        db.add(onboarding_state)
+
         await db.refresh(user)
 
-        access_token, refresh_token = await self.issue_token(str(user.id), email, tenant_id=str(user.tenant_id) if user.tenant_id else None, db=db)
+        access_token, refresh_token = await self.issue_token(
+            str(user.id),
+            email,
+            tenant_id=str(user.tenant_id) if user.tenant_id else None,
+            db=db,
+        )
 
         # Durability before response: get_db commits in yield-teardown (after
         # the response is sent), so a fast follow-up request (e.g. immediate
@@ -162,21 +196,62 @@ class AuthService:
             user=PublicUser.model_validate(user),
         )
 
-    async def login(self, email: str, password: str, db=None):
+    async def login(
+        self,
+        email: str,
+        password: str,
+        user_agent: str | None = None,
+        ip_address: str | None = None,
+        db=None,
+    ):
         from fastapi import HTTPException
 
+        email = email.strip().lower()
         result = await db.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
         if not user or not user.password_hash:
             raise HTTPException(status_code=401, detail="Invalid email or password")
 
+        now = datetime.now(UTC)
+        # Check lockout: 10 consecutive failed attempts -> locked for 15 minutes
+        if user.locked_until and isinstance(user.locked_until, datetime):
+            locked_until = user.locked_until
+            if locked_until.tzinfo is None:
+                locked_until = locked_until.replace(tzinfo=UTC)
+            if now < locked_until:
+                raise HTTPException(
+                    status_code=423,
+                    detail="Account is locked due to too many failed login attempts. Please try again in 15 minutes.",
+                )
+            else:
+                user.locked_until = None
+                user.failed_login_attempts = 0
+
         if not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
+            attempts = user.failed_login_attempts if isinstance(user.failed_login_attempts, int) else 0
+            attempts += 1
+            user.failed_login_attempts = attempts
+            if attempts >= 10:
+                user.locked_until = now + timedelta(minutes=15)
+            await db.commit()
             raise HTTPException(status_code=401, detail="Invalid email or password")
 
         if user.status != "ACTIVE":
             raise HTTPException(status_code=403, detail="Account is not active")
 
-        access_token, refresh_token = await self.issue_token(str(user.id), email, tenant_id=str(user.tenant_id) if user.tenant_id else None, db=db)
+        # Reset failed login attempts on successful login
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        await db.flush()
+
+        access_token, refresh_token = await self.issue_token(
+            str(user.id),
+            email,
+            tenant_id=str(user.tenant_id) if user.tenant_id else None,
+            user_agent=user_agent,
+            ip_address=ip_address,
+            db=db,
+        )
 
         return AuthResponse(
             access_token=access_token,
@@ -184,18 +259,29 @@ class AuthService:
             user=PublicUser.model_validate(user),
         )
 
-    async def issue_token(self, user_id: str, email: str, tenant_id: str | None = None, db=None):
-        import secrets
-
+    async def issue_token(
+        self,
+        user_id: str,
+        email: str,
+        tenant_id: str | None = None,
+        family_id: uuid.UUID | None = None,
+        user_agent: str | None = None,
+        ip_address: str | None = None,
+        db=None,
+    ):
         now = datetime.now(UTC)
         access_token, jti = self._create_jwt(user_id, email, tenant_id)
         refresh_token = secrets.token_urlsafe(64)
+        token_family = family_id or uuid.uuid4()
 
         session = AuthSession(
             user_id=uuid.UUID(user_id),
             token=access_token,
             refresh_token=refresh_token,
             jti=jti,
+            family_id=token_family,
+            user_agent=user_agent,
+            ip_address=ip_address,
             expires_at=now + timedelta(seconds=settings.jwt_refresh_token_ttl),
         )
         db.add(session)
@@ -203,7 +289,13 @@ class AuthService:
 
         return access_token, refresh_token
 
-    async def refresh_token(self, refresh_token: str, db=None):
+    async def refresh_token(
+        self,
+        refresh_token: str,
+        user_agent: str | None = None,
+        ip_address: str | None = None,
+        db=None,
+    ):
         from fastapi import HTTPException
 
         result = await db.execute(
@@ -213,8 +305,28 @@ class AuthService:
         if not session:
             raise HTTPException(status_code=401, detail="Invalid refresh token")
 
+        # REFRESH TOKEN ROTATION & THEFT DETECTION:
+        # If a token with status 'ROTATED' is used, someone has replayed an old token!
+        # Revoke the entire family immediately to protect against token theft.
+        if session.status == "ROTATED":
+            if session.family_id:
+                await db.execute(
+                    update(AuthSession)
+                    .where(AuthSession.family_id == session.family_id)
+                    .values(status="REVOKED")
+                )
+                await db.commit()
+            raise HTTPException(
+                status_code=401,
+                detail="Suspicious activity detected: refresh token reused. All related sessions have been revoked.",
+            )
+
         now = datetime.now(UTC)
-        if session.status != "ACTIVE" or session.expires_at < now:
+        expires_at = session.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=UTC)
+
+        if session.status != "ACTIVE" or expires_at < now:
             raise HTTPException(status_code=401, detail="Refresh token expired or invalid")
 
         user_result = await db.execute(select(User).where(User.id == session.user_id))
@@ -226,7 +338,13 @@ class AuthService:
         db.add(session)
 
         access_token, new_refresh_token = await self.issue_token(
-            str(user.id), user.email, tenant_id=str(user.tenant_id) if user.tenant_id else None, db=db,
+            str(user.id),
+            user.email,
+            tenant_id=str(user.tenant_id) if user.tenant_id else None,
+            family_id=session.family_id,
+            user_agent=user_agent or session.user_agent,
+            ip_address=ip_address or session.ip_address,
+            db=db,
         )
 
         return AuthResponse(
@@ -234,6 +352,117 @@ class AuthService:
             refresh_token=new_refresh_token,
             user=PublicUser.model_validate(user),
         )
+
+    async def verify_email(self, token: str, db=None) -> bool:
+        from fastapi import HTTPException
+
+        if not token:
+            raise HTTPException(status_code=400, detail="Verification token is required")
+
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        now = datetime.now(UTC)
+
+        result = await db.execute(
+            select(EmailVerificationToken).where(
+                EmailVerificationToken.token_hash == token_hash
+            )
+        )
+        record = result.scalar_one_or_none()
+        if not record:
+            raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+
+        expires_at = record.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=UTC)
+
+        if expires_at < now:
+            await db.delete(record)
+            await db.commit()
+            raise HTTPException(status_code=400, detail="Verification token has expired")
+
+        user_result = await db.execute(select(User).where(User.id == record.user_id))
+        user = user_result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        user.email_verified = True
+        await db.delete(record)
+        await db.commit()
+        return True
+
+    async def resend_verification(self, email: str, db=None) -> bool:
+        if not email or "@" not in email:
+            return False
+        email = email.strip().lower()
+
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+        if not user or user.email_verified:
+            # Constant return to prevent user enumeration
+            return True
+
+        # Invalidate existing tokens
+        await db.execute(
+            delete(EmailVerificationToken).where(EmailVerificationToken.user_id == user.id)
+        )
+
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        new_token = EmailVerificationToken(
+            user_id=user.id,
+            token_hash=token_hash,
+            expires_at=datetime.now(UTC) + timedelta(hours=24),
+        )
+        db.add(new_token)
+        await db.commit()
+        return True
+
+    async def list_user_sessions(self, user_id: str, current_jti: str | None = None, db=None) -> list[SessionItemResponse]:
+        now = datetime.now(UTC)
+        result = await db.execute(
+            select(AuthSession)
+            .where(
+                AuthSession.user_id == uuid.UUID(user_id),
+                AuthSession.status == "ACTIVE",
+            )
+            .order_by(AuthSession.created_at.desc())
+        )
+        sessions = result.scalars().all()
+        active_sessions = []
+        for s in sessions:
+            exp = s.expires_at
+            if exp.tzinfo is None:
+                exp = exp.replace(tzinfo=UTC)
+            if exp >= now:
+                active_sessions.append(
+                    SessionItemResponse(
+                        id=s.id,
+                        user_agent=s.user_agent,
+                        ip_address=s.ip_address,
+                        created_at=s.created_at,
+                        expires_at=s.expires_at,
+                        is_current=(s.jti == current_jti) if current_jti and s.jti else False,
+                        status=s.status,
+                    )
+                )
+        return active_sessions
+
+    async def revoke_user_session(self, user_id: str, session_id: str, db=None) -> bool:
+        result = await db.execute(
+            select(AuthSession).where(
+                AuthSession.id == uuid.UUID(session_id),
+                AuthSession.user_id == uuid.UUID(user_id),
+            )
+        )
+        session = result.scalar_one_or_none()
+        if not session:
+            return False
+
+        session.status = "REVOKED"
+        if session.jti:
+            self.revoke_token(jti=session.jti)
+        await db.commit()
+        return True
 
     async def validate_user(self, user_id: str, db=None):
         result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
@@ -255,8 +484,8 @@ class AuthService:
         try:
             client = _get_revocation_redis()
             if client is not None:
-                client.setex(
-                    f"{_REVOKED_PREFIX}{jti}", int(settings.jwt_token_ttl), "1"
+                client.set(
+                    f"{_REVOKED_PREFIX}{jti}", "1", ex=int(settings.jwt_token_ttl)
                 )
         except Exception as e:
             import logging as _log
@@ -277,8 +506,8 @@ class AuthService:
         try:
             client = _get_revocation_redis()
             if client is not None:
-                client.setex(
-                    f"{_CUTOFF_PREFIX}{user_id}", int(settings.jwt_token_ttl), str(cutoff)
+                client.set(
+                    f"{_CUTOFF_PREFIX}{user_id}", str(cutoff), ex=int(settings.jwt_token_ttl)
                 )
         except Exception as e:
             import logging as _log
@@ -423,6 +652,7 @@ class AuthService:
         logger = logging.getLogger(__name__)
         if not email or "@" not in email:
             return False
+        email = email.strip().lower()
 
         if db is not None:
             result = await db.execute(select(User).where(User.email == email))

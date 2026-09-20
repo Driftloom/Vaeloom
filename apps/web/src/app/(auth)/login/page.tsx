@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../../hooks/useAuth';
 import { ApiError, api as apiClient } from '../../../lib/api';
 import { useToast } from '@/components/shared/Toast';
+import { isSupabaseConfigured } from '@/lib/supabase/client';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -23,6 +24,31 @@ function LoginForm() {
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
   async function handleSSO(provider: 'google' | 'microsoft') {
+    // 1. If Supabase Auth is configured, use standard Supabase OAuth flow
+    if (isSupabaseConfigured()) {
+      try {
+        const { createClient } = await import('@/lib/supabase/client');
+        const supabase = createClient();
+        const callbackUrl = `${window.location.origin}/auth/callback${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`;
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: provider === 'microsoft' ? 'azure' : 'google',
+          options: {
+            redirectTo: callbackUrl,
+          },
+        });
+        if (error) throw error;
+        return;
+      } catch (err: any) {
+        toast({
+          tone: 'error',
+          title: `${provider} Sign-in failed`,
+          detail: err?.message || 'Failed to initiate OAuth',
+        });
+        return;
+      }
+    }
+
+    // 2. Fallback to native custom SSO
     try {
       const redirectUri =
         provider === 'google'
@@ -34,8 +60,6 @@ function LoginForm() {
       const url =
         (res as Record<string, string>)['auth_url'] ?? (res as Record<string, string>)['authUrl'];
       if (url) {
-        // Persist context for /auth/callback: the provider never echoes back
-        // which app flow started the sign-in.
         sessionStorage.setItem('vaeloom.sso.provider', provider);
         if (redirect) sessionStorage.setItem('vaeloom.sso.redirect', redirect);
         window.location.href = url;
@@ -57,7 +81,7 @@ function LoginForm() {
         toast({
           tone: 'info',
           title: 'SSO not enabled',
-          detail: `${provider} SSO requires sso_providers config. Use email/password for now.`,
+          detail: `${provider} SSO requires configuration. Set up Supabase Auth or sso_providers.`,
         });
       } else {
         toast({ tone: 'error', title: 'SSO failed', detail: msg });

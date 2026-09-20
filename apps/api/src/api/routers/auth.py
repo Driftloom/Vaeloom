@@ -16,8 +16,11 @@ from ..schemas.auth import (
     LoginRequest,
     MeResponse,
     RefreshRequest,
+    ResendVerificationRequest,
     ResetPasswordRequest,
+    SessionListResponse,
     SignupRequest,
+    VerifyEmailRequest,
 )
 from ..services.auth_service import auth_service
 from ..services.sso import SSOConfig, get_sso_provider
@@ -43,12 +46,81 @@ async def signup(dto: SignupRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/login", response_model=AuthResponse)
 @rate_limit(max_requests=10, window_seconds=60)
-async def login(dto: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(dto: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    user_agent = request.headers.get("user-agent")
+    ip_address = request.client.host if request.client else None
     return await auth_service.login(
         email=dto.email,
         password=dto.password,
+        user_agent=user_agent,
+        ip_address=ip_address,
         db=db,
     )
+
+
+@router.post("/refresh", response_model=AuthResponse)
+@rate_limit(max_requests=20, window_seconds=60)
+async def refresh(dto: RefreshRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    user_agent = request.headers.get("user-agent")
+    ip_address = request.client.host if request.client else None
+    return await auth_service.refresh_token(
+        refresh_token=dto.refresh_token,
+        user_agent=user_agent,
+        ip_address=ip_address,
+        db=db,
+    )
+
+
+@router.post("/verify-email")
+@rate_limit(max_requests=10, window_seconds=3600)
+async def verify_email(dto: VerifyEmailRequest, db: AsyncSession = Depends(get_db)):
+    await auth_service.verify_email(token=dto.token, db=db)
+    return {"status": "success", "message": "Email verified successfully."}
+
+
+@router.post("/resend-verification")
+@rate_limit(max_requests=5, window_seconds=900)
+async def resend_verification(dto: ResendVerificationRequest, db: AsyncSession = Depends(get_db)):
+    await auth_service.resend_verification(email=dto.email, db=db)
+    return {
+        "status": "success",
+        "message": "If an account with that email exists and is unverified, a new verification link has been sent.",
+    }
+
+
+@router.get("/sessions", response_model=SessionListResponse)
+async def list_sessions(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user_id = current_user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    sessions = await auth_service.list_user_sessions(
+        user_id=user_id,
+        current_jti=current_user.get("jti"),
+        db=db,
+    )
+    return SessionListResponse(sessions=sessions)
+
+
+@router.delete("/sessions/{session_id}", status_code=204)
+async def revoke_session(
+    session_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user_id = current_user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    success = await auth_service.revoke_user_session(
+        user_id=user_id,
+        session_id=session_id,
+        db=db,
+    )
+    if not success:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return None
 
 
 @router.post("/forgot-password")
@@ -115,44 +187,52 @@ async def me(current_user: dict = Depends(get_current_user), db: AsyncSession = 
 
     user = await auth_service.validate_user(user_id=user_id, db=db)
     if not user:
-        raise HTTPException(status_code=401, detail="User not found or inactive")
+        email = current_user.get("email")
+        if email:
+            import uuid as _uuid
+            from sqlalchemy import select, delete
+            from ..models.schema import User as _User, AuthSession as _AuthSession
 
-    workspaces = await workspace_service.list_for_user(user_id=user_id, db=db)
+            res = await db.execute(select(_User).where(_User.email == email))
+            existing_user = res.scalar_one_or_none()
+            if existing_user:
+                old_id = existing_user.id
+                new_id = _uuid.UUID(user_id)
+                if old_id != new_id:
+                    await db.execute(delete(_AuthSession).where(_AuthSession.user_id == old_id))
+                    existing_user.id = new_id
+                if existing_user.auth_provider != "supabase":
+                    existing_user.auth_provider = "supabase"
+                await db.flush()
+                await db.refresh(existing_user)
+                user = existing_user
+            else:
+                metadata = current_user.get("user_metadata", {}) or {}
+                display_name = metadata.get("full_name") or metadata.get("name") or current_user.get("name") or email.split("@")[0]
+
+                user_obj = _User(
+                    id=_uuid.UUID(user_id),
+                    email=email,
+                    display_name=display_name,
+                    auth_provider="supabase",
+                    status="ACTIVE",
+                )
+                db.add(user_obj)
+                await db.flush()
+                await db.refresh(user_obj)
+                user = user_obj
+        else:
+            raise HTTPException(status_code=401, detail="User not found or inactive")
+
+    workspaces = await workspace_service.list_for_user(user_id=str(user.id), db=db)
+    if not workspaces:
+        default_ws = await workspace_service.create(user_id=str(user.id), name="Default Workspace", db=db)
+        workspaces = [default_ws]
 
     return MeResponse(
         user=user,
         workspaces=workspaces,
     )
-
-
-@router.post("/refresh", response_model=AuthResponse)
-async def refresh(dto: RefreshRequest, db: AsyncSession = Depends(get_db)):
-    return await auth_service.refresh_token(
-        refresh_token=dto.refresh_token,
-        db=db,
-    )
-
-
-@router.post("/forgot-password", status_code=200)
-@rate_limit(max_requests=5, window_seconds=300)
-async def forgot_password(dto: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
-    await auth_service.request_password_reset(email=dto.email, db=db)
-    return {"message": "If that email is registered, a password reset link has been sent"}
-
-
-@router.post("/reset-password", status_code=200)
-@rate_limit(max_requests=5, window_seconds=300)
-async def reset_password(dto: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
-    # Handles both request reset (with email) and complete reset (with token + password)
-    if dto.token and (dto.password or dto.new_password):
-        pwd = dto.new_password or dto.password or ""
-        await auth_service.reset_password_with_token(token=dto.token, new_password=pwd, db=db)
-        return {"message": "Password has been successfully reset. Please log in with your new password."}
-    elif dto.email:
-        await auth_service.request_password_reset(email=dto.email, db=db)
-        return {"message": "If that email is registered, a password reset link has been sent"}
-    else:
-        raise HTTPException(status_code=400, detail="Must provide email or token with new password")
 
 
 from pydantic import BaseModel
@@ -330,6 +410,22 @@ async def sso_callback(
         db.add(user)
         await db.flush()
 
+        # OP-RLS-01: establish RLS context for workspace creation under PostgreSQL
+        try:
+            from sqlalchemy import text as _text
+
+            if getattr(user, "tenant_id", None):
+                await db.execute(
+                    _text("SELECT set_config('app.tenant_id', :v, true)"),
+                    {"v": str(user.tenant_id)},
+                )
+            await db.execute(
+                _text("SELECT set_config('app.user_id', :v, true)"),
+                {"v": str(user.id)},
+            )
+        except Exception:
+            pass
+
         workspace = Workspace(
             user_id=user.id,
             name=f"{display_name}'s Workspace",
@@ -337,13 +433,45 @@ async def sso_callback(
         db.add(workspace)
         await db.flush()
         await db.refresh(user)
+    else:
+        # Ensure existing user has at least one workspace
+        from ..models.schema import Workspace
+        ws_check = await db.execute(
+            select(Workspace).where(Workspace.user_id == user.id).limit(1)
+        )
+        if not ws_check.scalar_one_or_none():
+            try:
+                from sqlalchemy import text as _text
+                if getattr(user, "tenant_id", None):
+                    await db.execute(
+                        _text("SELECT set_config('app.tenant_id', :v, true)"),
+                        {"v": str(user.tenant_id)},
+                    )
+                await db.execute(
+                    _text("SELECT set_config('app.user_id', :v, true)"),
+                    {"v": str(user.id)},
+                )
+                dname = user.display_name or (payload.get("name") if payload else None) or user.email.split("@")[0]
+                ws = Workspace(
+                    user_id=user.id,
+                    name=f"{dname}'s Workspace",
+                )
+                db.add(ws)
+                await db.flush()
+            except Exception as e:
+                logger.warning("Failed to create default workspace for existing user %s: %s", user.id, e)
 
     if user.status != "ACTIVE":
         raise HTTPException(status_code=403, detail="Account is not active")
 
     access_token, refresh_token = await auth_service.issue_token(
-        str(user.id), user.email, db=db,
+        str(user.id),
+        user.email,
+        tenant_id=str(user.tenant_id) if user.tenant_id else None,
+        db=db,
     )
+
+    await db.commit()
 
     return AuthResp(
         access_token=access_token,

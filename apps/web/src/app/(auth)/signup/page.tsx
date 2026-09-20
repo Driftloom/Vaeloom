@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../hooks/useAuth';
 import { ApiError, api } from '../../../lib/api';
+import { createClient, isSupabaseConfigured } from '../../../lib/supabase/client';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_RE = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/;
@@ -41,6 +42,26 @@ export default function SignupPage() {
   // the backend auto-provisions the account from the provider email on
   // callback (auth.py auto-provision), so we reuse the login SSO flow.
   async function handleSSO(provider: string) {
+    // 1. Try Supabase Auth first if configured
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = createClient();
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: provider === 'microsoft' ? 'azure' : (provider as 'google'),
+          options: {
+            redirectTo: `${window.location.origin}/auth/callback`,
+          },
+        });
+        if (error) {
+          console.warn('[Auth] Supabase OAuth failed, falling back to native SSO:', error);
+        } else {
+          return;
+        }
+      } catch (err) {
+        console.warn('[Auth] Supabase OAuth exception, falling back:', err);
+      }
+    }
+
     try {
       const redirectUri =
         provider === 'google'

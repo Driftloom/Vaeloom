@@ -128,6 +128,13 @@ class ScaleMemoryService:
             embedding=embedding_val,
             metadata_=data.metadata,
         )
+        # Ensure RLS session context is established for this transaction
+        try:
+            from ..middleware.tenant import set_rls_session_vars
+            await set_rls_session_vars(db, workspace_id=str(workspace_id), user_id=str(user_id))
+        except Exception:
+            pass
+
         db.add(node)
         await db.commit()
         await db.refresh(node)

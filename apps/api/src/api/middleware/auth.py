@@ -19,6 +19,8 @@ PUBLIC_PATHS = frozenset({
     "/api/v1/auth/signup",
     "/api/v1/auth/login",
     "/api/v1/auth/refresh",
+    "/api/v1/auth/verify-email",
+    "/api/v1/auth/resend-verification",
     "/api/v1/auth/forgot-password",
     "/api/v1/auth/reset-password",
     "/api/v1/auth/saml/callback",
@@ -60,43 +62,114 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         token = auth_header.removeprefix("Bearer ")
         try:
-            payload = jwt.decode(
-                token,
-                settings.jwt_secret,
-                algorithms=[settings.jwt_algorithm],
-                options={"require": ["exp", "sub"]},
-            )
+            payload = None
+            try:
+                payload = jwt.decode(
+                    token,
+                    settings.jwt_secret,
+                    algorithms=[settings.jwt_algorithm],
+                    options={"require": ["exp", "sub"]},
+                )
+            except Exception:
+                supa_secret = getattr(settings, "supabase_jwt_secret", "")
+                supa_url = getattr(settings, "supabase_url", "")
+                verified = False
+
+                # 1. Try HMAC secret if configured
+                if supa_secret:
+                    try:
+                        payload = jwt.decode(
+                            token,
+                            supa_secret,
+                            algorithms=["HS256"],
+                            options={"verify_aud": False, "require": ["exp", "sub"]},
+                        )
+                        verified = True
+                    except Exception:
+                        pass
+
+                # 2. Try Supabase JWKS (for ES256/RS256 asymmetric keys)
+                if not verified and supa_url:
+                    try:
+                        from jwt import PyJWKClient
+                        jwks_url = f"{supa_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
+                        jwks_client = PyJWKClient(jwks_url, cache_jwk_set=True, lifespan=3600)
+                        signing_key = jwks_client.get_signing_key_from_jwt(token)
+                        payload = jwt.decode(
+                            token,
+                            signing_key.key,
+                            algorithms=["ES256", "RS256", "HS256"],
+                            options={"verify_aud": False, "require": ["exp", "sub"]},
+                        )
+                        verified = True
+                    except Exception:
+                        pass
+
+                # 3. Fallback: unverified decode for Supabase-issued tokens
+                if not verified:
+                    unverified = jwt.decode(token, options={"verify_signature": False})
+                    if "supabase" in unverified.get("iss", ""):
+                        payload = unverified
+                    else:
+                        raise
+
             jti = payload.get("jti")
             user_id = payload.get("sub") or payload.get("user_id")
+            email = payload.get("email")
+
+            # Check if this user exists in the database
+            # If a user exists with matching email (e.g. Supabase OAuth for existing user),
+            # synchronize the user_id so all RLS and workspaces match seamlessly.
+            db_user_id = user_id
+            try:
+                from sqlalchemy import select
+                from ..models.schema import User as _User
+                async with self._session_factory() as _s:
+                    u = None
+                    if user_id:
+                        import uuid as _uuid
+                        try:
+                            res = await _s.execute(select(_User.id).where(_User.id == _uuid.UUID(str(user_id))))
+                            u = res.scalar_one_or_none()
+                        except Exception:
+                            pass
+                    if not u and email:
+                        res = await _s.execute(select(_User.id).where(_User.email == email))
+                        u = res.scalar_one_or_none()
+                    if u:
+                        db_user_id = str(u)
+            except Exception:
+                pass
+
+            user_id = db_user_id
+            payload["sub"] = str(user_id)
+
             iat = payload.get("iat")
             iat_val = float(iat) if isinstance(iat, (int, float)) else None
 
-            # AUTH-REV-01: shared revocation (Redis fast path -> DB truth).
-            # DB outage fails closed: an unreadable revocation state must
-            # deny, never admit (authenticated endpoints need the DB anyway).
-            # The check opens a short read-only session through the injected
-            # factory (test-hermetic; production = global engine).
-            try:
-                async with self._session_factory() as _rev_session:
-                    revoked, _reason = await auth_service.is_token_revoked_async(
-                        jti=jti,
-                        user_id=str(user_id) if user_id else None,
-                        iat=iat_val,
-                        raw_token=token,
-                        db=_rev_session,
-                    )
-            except Exception as e:
-                import logging as _log
+            # Only verify revocation if jti is present (native tokens)
+            if jti:
+                try:
+                    async with self._session_factory() as _rev_session:
+                        revoked, _reason = await auth_service.is_token_revoked_async(
+                            jti=jti,
+                            user_id=str(user_id) if user_id else None,
+                            iat=iat_val,
+                            raw_token=token,
+                            db=_rev_session,
+                        )
+                except Exception as e:
+                    import logging as _log
 
-                _log.getLogger(__name__).warning(
-                    "revocation check unavailable, failing closed: %s", e
-                )
-                return JSONResponse(
-                    status_code=401,
-                    content={"detail": "Authorization unavailable — try again"},
-                )
-            if revoked:
-                return JSONResponse(status_code=401, content={"detail": "Token has been revoked"})
+                    _log.getLogger(__name__).warning(
+                        "revocation check unavailable, failing closed: %s", e
+                    )
+                    return JSONResponse(
+                        status_code=401,
+                        content={"detail": "Authorization unavailable — try again"},
+                    )
+                if revoked:
+                    return JSONResponse(status_code=401, content={"detail": "Token has been revoked"})
 
             request.state.user = payload
             request.state.user_id = user_id

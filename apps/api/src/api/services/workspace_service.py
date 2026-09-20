@@ -1,8 +1,8 @@
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
-from ..models.schema import Workspace
+from ..models.schema import Workspace, WorkspaceUser
 from ..schemas.workspace import WorkspaceResponse
 from ..utils.sanitize import sanitize_text
 
@@ -19,28 +19,45 @@ class WorkspaceService:
         return WorkspaceResponse.model_validate(workspace)
 
     async def list_for_user(self, user_id: str, db=None):
+        uid = uuid.UUID(user_id)
+        member_subquery = select(WorkspaceUser.workspace_id).where(WorkspaceUser.user_id == uid)
         result = await db.execute(
-            select(Workspace).where(Workspace.user_id == uuid.UUID(user_id))
+            select(Workspace)
+            .where(or_(Workspace.user_id == uid, Workspace.id.in_(member_subquery)))
             .order_by(Workspace.created_at.desc())
+            .distinct()
         )
         workspaces = result.scalars().all()
         return [WorkspaceResponse.model_validate(w) for w in workspaces]
 
     async def find_by_id(self, workspace_id: str, user_id: str, db=None):
+        wid = uuid.UUID(workspace_id)
+        uid = uuid.UUID(user_id)
+        member_subquery = select(WorkspaceUser.workspace_id).where(
+            WorkspaceUser.workspace_id == wid,
+            WorkspaceUser.user_id == uid,
+        )
         result = await db.execute(
             select(Workspace).where(
-                Workspace.id == uuid.UUID(workspace_id),
-                Workspace.user_id == uuid.UUID(user_id),
+                Workspace.id == wid,
+                or_(Workspace.user_id == uid, Workspace.id.in_(member_subquery)),
             )
         )
         workspace = result.scalar_one_or_none()
         return WorkspaceResponse.model_validate(workspace) if workspace else None
 
     async def update(self, workspace_id: str, user_id: str, data: dict, db=None):
+        wid = uuid.UUID(workspace_id)
+        uid = uuid.UUID(user_id)
+        admin_subquery = select(WorkspaceUser.workspace_id).where(
+            WorkspaceUser.workspace_id == wid,
+            WorkspaceUser.user_id == uid,
+            WorkspaceUser.role.in_(["ADMIN", "OWNER"]),
+        )
         result = await db.execute(
             select(Workspace).where(
-                Workspace.id == uuid.UUID(workspace_id),
-                Workspace.user_id == uuid.UUID(user_id),
+                Workspace.id == wid,
+                or_(Workspace.user_id == uid, Workspace.id.in_(admin_subquery)),
             )
         )
         workspace = result.scalar_one_or_none()
@@ -73,3 +90,4 @@ class WorkspaceService:
 
 
 workspace_service = WorkspaceService()
+

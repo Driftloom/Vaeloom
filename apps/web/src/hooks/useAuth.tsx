@@ -115,6 +115,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [check]);
 
   const login = useCallback(async (email: string, password: string) => {
+    if (process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']) {
+      try {
+        const { createClient } = await import('@/lib/supabase/client');
+        const supabase = createClient();
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (!error && data?.session) {
+          setToken(data.session.access_token);
+          if (data.session.refresh_token) setRefreshToken(data.session.refresh_token);
+          const me = await api.me();
+          setState({ user: me.user, me, loading: false, error: null, isAuthenticated: true });
+          return;
+        }
+      } catch {
+        // Fallback to native backend login
+      }
+    }
     const res = await api.login({ email, password });
     setToken(res.accessToken);
     if (res.refreshToken) setRefreshToken(res.refreshToken);
@@ -122,13 +138,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signup = useCallback(async (email: string, password: string, displayName?: string) => {
+    if (process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']) {
+      try {
+        const { createClient } = await import('@/lib/supabase/client');
+        const supabase = createClient();
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: displayName } },
+        });
+        if (!error && data?.session) {
+          setToken(data.session.access_token);
+          if (data.session.refresh_token) setRefreshToken(data.session.refresh_token);
+          const me = await api.me();
+          setState({ user: me.user, me, loading: false, error: null, isAuthenticated: true });
+          return;
+        }
+      } catch {
+        // Fallback to native backend signup
+      }
+    }
     const res = await api.signup({ email, password, displayName });
     setToken(res.accessToken);
     if (res.refreshToken) setRefreshToken(res.refreshToken);
     setState({ user: res.user, me: null, loading: false, error: null, isAuthenticated: true });
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    if (process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']) {
+      try {
+        const { createClient } = await import('@/lib/supabase/client');
+        const supabase = createClient();
+        await supabase.auth.signOut();
+      } catch {
+        // ignore
+      }
+    }
     clearToken();
     clearRefreshToken();
     setState({ user: null, me: null, loading: false, error: null, isAuthenticated: false });

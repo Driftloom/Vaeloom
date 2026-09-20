@@ -1,9 +1,12 @@
+import logging
 from abc import ABC, abstractmethod
 from typing import Any
 
 import httpx
 import jwt
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class SSOConfig(BaseModel):
@@ -45,10 +48,35 @@ class GoogleSSOProvider(SSOProvider):
             )
             iss = payload.get("iss", "")
             if iss not in ("https://accounts.google.com", "accounts.google.com"):
+                logger.error("Google ID token issuer mismatch: %s", iss)
                 return None
             return payload
-        except jwt.PyJWTError:
-            return None
+        except Exception as e:
+            logger.warning("Local PyJWT validation failed (%s); trying Google tokeninfo endpoint", e)
+
+        # Resilient fallback to Google's tokeninfo verification endpoint
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(
+                    "https://oauth2.googleapis.com/tokeninfo",
+                    params={"id_token": token},
+                )
+                if resp.status_code == 200:
+                    payload = resp.json()
+                    aud = payload.get("aud")
+                    if aud != self.config.client_id:
+                        logger.error(
+                            "Google token audience mismatch: expected %s, got %s",
+                            self.config.client_id,
+                            aud,
+                        )
+                        return None
+                    return payload
+                else:
+                    logger.error("Google tokeninfo endpoint rejected token (HTTP %s): %s", resp.status_code, resp.text)
+        except Exception as e:
+            logger.exception("Google tokeninfo fallback failed: %s", e)
+        return None
 
     async def get_auth_url(self, redirect_uri: str, state: str) -> str:
         import urllib.parse
@@ -76,6 +104,7 @@ class GoogleSSOProvider(SSOProvider):
                 },
             )
             if resp.status_code != 200:
+                logger.error("Google OAuth token exchange failed (HTTP %s): %s", resp.status_code, resp.text)
                 return None
             return resp.json().get("id_token")
 
@@ -117,9 +146,11 @@ class MicrosoftSSOProvider(SSOProvider):
             )
             iss = payload.get("iss", "")
             if not (iss.startswith("https://login.microsoftonline.com/") and iss.endswith("/v2.0")):
+                logger.error("Microsoft ID token issuer mismatch: %s", iss)
                 return None
             return payload
-        except jwt.PyJWTError:
+        except Exception as e:
+            logger.exception("Microsoft ID token validation failed: %s", e)
             return None
 
     async def get_auth_url(self, redirect_uri: str, state: str) -> str:
@@ -150,6 +181,7 @@ class MicrosoftSSOProvider(SSOProvider):
                 },
             )
             if resp.status_code != 200:
+                logger.error("Microsoft OAuth token exchange failed (HTTP %s): %s", resp.status_code, resp.text)
                 return None
             return resp.json().get("id_token")
 

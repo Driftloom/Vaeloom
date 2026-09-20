@@ -28,9 +28,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Redirect authenticated users away from auth pages.
+  // Redirect authenticated users away from auth pages to their workspace.
   if (isAuthenticated && (pathname === '/login' || pathname === '/signup')) {
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(new URL('/workspace', request.url));
   }
 
   const response = NextResponse.next();
@@ -51,7 +51,7 @@ export function middleware(request: NextRequest) {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https: https://vaeloom.app",
-      `connect-src 'self' https://*.algolia.net https://*.algolianet.com${process.env.NODE_ENV === 'development' || process.env['ALLOW_LOCAL_API'] === 'true' ? ' http://localhost:8000 ws://localhost:8000' : ' https://vaeloom.app'}`,
+      `connect-src 'self' https://*.supabase.co https://accounts.google.com https://*.algolia.net https://*.algolianet.com${process.env.NODE_ENV === 'development' || process.env['ALLOW_LOCAL_API'] === 'true' ? ' http://localhost:8000 ws://localhost:8000' : ' https://vaeloom.app'}`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

@@ -111,6 +111,7 @@ def _build_test_app(db_session):
         analytics, audit, iam, knowledge_graph, recommendations,
         webhooks, gmail, provider_keys, profile, opportunities, council,
         cognition, sovereignty, anticipation, federation,
+        marketplace, organizations, realtime, onboarding,
     )
     from api.services.gdpr import router as gdpr_router
     from api.services.consent import router as consent_router
@@ -178,6 +179,11 @@ def _build_test_app(db_session):
     test_app.include_router(sovereignty.router, prefix="/api/v1/sovereignty")
     test_app.include_router(anticipation.router, prefix="/api/v1/anticipation")
     test_app.include_router(federation.router, prefix="/api/v1/federation")
+    test_app.include_router(realtime.router, prefix="/api/v1/realtime")
+    test_app.include_router(organizations.router, prefix="/api/v1/organizations")
+    test_app.include_router(marketplace.router, prefix="/api/v1/marketplace")
+    test_app.include_router(onboarding.router, prefix="/api/v1/onboarding")
+
 
     @test_app.get("/metrics")
     async def metrics():

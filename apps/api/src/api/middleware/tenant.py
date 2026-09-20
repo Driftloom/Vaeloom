@@ -35,7 +35,12 @@ class TenantContext:
         return tenant_context.get().get("user_id")
 
 
-async def set_rls_session_vars(db: AsyncSession) -> None:
+async def set_rls_session_vars(
+    db: AsyncSession,
+    tenant_id: str | None = None,
+    workspace_id: str | None = None,
+    user_id: str | None = None,
+) -> None:
     """Set PostgreSQL session variables for Row Level Security.
 
     Must be called on each DB session before queries that require RLS isolation.
@@ -45,28 +50,29 @@ async def set_rls_session_vars(db: AsyncSession) -> None:
     Critical for PgBouncer transaction pooling mode — session-scoped SET
     would leak tenant context to the next client on a reused connection.
 
-    Fail-closed: if tenant_id is missing or invalid, the function returns
+    Fail-closed: if all context variables are missing, the function returns
     without setting GUCs, causing RLS policies to match zero rows (correct
     behavior for an unset context variable).
 
     No-op on SQLite (RLS is disabled).
     """
     ctx = TenantContext.get()
-    tenant_id = ctx.get("tenant_id")
-    workspace_id = ctx.get("workspace_id")
-    user_id = ctx.get("user_id")
+    tid = tenant_id or ctx.get("tenant_id")
+    wid = workspace_id or ctx.get("workspace_id")
+    uid = user_id or ctx.get("user_id")
 
-    if not tenant_id:
+    if not tid and not wid and not uid:
         return
 
     try:
         # set_config(..., true) scopes the setting to the current transaction only (equivalent to SET LOCAL).
         # Standard PostgreSQL function call that supports safe parameter binding, safe with PgBouncer.
-        await db.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": str(tenant_id)})
-        if workspace_id:
-            await db.execute(text("SELECT set_config('app.workspace_id', :wid, true)"), {"wid": str(workspace_id)})
-        if user_id:
-            await db.execute(text("SELECT set_config('app.user_id', :uid, true)"), {"uid": str(user_id)})
+        if tid:
+            await db.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": str(tid)})
+        if wid:
+            await db.execute(text("SELECT set_config('app.workspace_id', :wid, true)"), {"wid": str(wid)})
+        if uid:
+            await db.execute(text("SELECT set_config('app.user_id', :uid, true)"), {"uid": str(uid)})
     except Exception as exc:
         # SQLite or non-PostgreSQL — RLS not applicable, ignore.
         # On PostgreSQL this should never fail; log and continue (fail-closed:
@@ -88,6 +94,15 @@ async def check_user_workspace_access(session: AsyncSession, workspace_id: str, 
         uid = str(_uuid.UUID(str(user_id)))
     except (ValueError, TypeError):
         return False
+
+    # Establish session RLS variables so RLS policies allow reading workspaces for this user/tenant
+    try:
+        from sqlalchemy import text as _text
+        if tenant_id:
+            await session.execute(_text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": str(tenant_id)})
+        await session.execute(_text("SELECT set_config('app.user_id', :uid, true)"), {"uid": uid})
+    except Exception:
+        pass
 
     stmt = (
         select(Workspace.id)
@@ -131,8 +146,22 @@ class TenantMiddleware(BaseHTTPMiddleware):
         jwt_tenant_id = getattr(request.state, "tenant_id", None)
         jwt_user_id = getattr(request.state, "user_id", None)
         jwt_workspace_id = getattr(request.state, "workspace_id", None)
-        header_workspace_id = request.headers.get("X-Workspace-ID", "") or request.headers.get("X-WORKSPACE-ID", "")
-        path_workspace_id = request.path_params.get("workspace_id") if hasattr(request, "path_params") and request.path_params else None
+        header_workspace_id = (
+            request.headers.get("X-Workspace-ID", "")
+            or request.headers.get("X-WORKSPACE-ID", "")
+            or request.headers.get("x-workspace-id", "")
+        )
+        path_workspace_id = (
+            request.path_params.get("workspace_id")
+            if hasattr(request, "path_params") and request.path_params
+            else None
+        )
+        query_workspace_id = (
+            request.query_params.get("workspace_id")
+            or request.query_params.get("workspaceId")
+            if hasattr(request, "query_params")
+            else None
+        )
 
         if jwt_tenant_id:
             tenant_id = str(jwt_tenant_id)
@@ -147,10 +176,10 @@ class TenantMiddleware(BaseHTTPMiddleware):
             tenant_id = None
 
         # Authoritative Workspace Identity (P0):
-        # Client-supplied workspace ID (header or path param) is NEVER authoritative by itself.
+        # Client-supplied workspace ID (header, path, or query param) is NEVER authoritative by itself.
         # It must be validated against database ownership or membership for the authenticated user and tenant.
         workspace_id = None
-        requested_workspace_id = header_workspace_id or path_workspace_id or jwt_workspace_id
+        requested_workspace_id = header_workspace_id or path_workspace_id or query_workspace_id or jwt_workspace_id
 
         if requested_workspace_id:
             if not jwt_user_id:
@@ -182,11 +211,15 @@ class TenantMiddleware(BaseHTTPMiddleware):
                 async with sf() as session:
                     has_access = await check_user_workspace_access(session, str(requested_workspace_id), str(jwt_user_id), tenant_id)
                     if not has_access:
-                        return JSONResponse(
-                            status_code=403,
-                            content={"detail": "Forbidden: Access to specified workspace denied"},
-                        )
-                    workspace_id = str(requested_workspace_id)
+                        if path in {"/api/v1/auth/me", "/api/v1/workspaces", "/api/v1/workspaces/"}:
+                            workspace_id = None
+                        else:
+                            return JSONResponse(
+                                status_code=403,
+                                content={"detail": "Forbidden: Access to specified workspace denied"},
+                            )
+                    else:
+                        workspace_id = str(requested_workspace_id)
 
         user_id = str(jwt_user_id) if jwt_user_id else None
 

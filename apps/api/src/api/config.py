@@ -92,6 +92,8 @@ class Settings(BaseSettings):
     vector_store: str = "pgvector"
 
     sso_providers: dict[str, Any] = {}
+    supabase_url: str = "https://yygakxcttyaeunvkeybx.supabase.co"
+    supabase_jwt_secret: str = ""
 
     @field_validator("sso_providers", mode="before")
     @classmethod

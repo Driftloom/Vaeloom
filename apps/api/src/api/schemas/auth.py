@@ -13,7 +13,7 @@ class SignupRequest(BaseModel):
     @field_validator("email")
     @classmethod
     def validate_email(cls, v: str) -> str:
-        v = v.strip()
+        v = v.strip().lower()
         if not v or "@" not in v or "." not in v.split("@")[-1]:
             raise ValueError("Invalid email format")
         return v
@@ -23,6 +23,11 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        return v.strip().lower()
+
 
 class RefreshRequest(BaseModel):
     refresh_token: str
@@ -30,6 +35,12 @@ class RefreshRequest(BaseModel):
 
 class ForgotPasswordRequest(BaseModel):
     email: str
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        return v.strip().lower()
+
 
 
 class ResetPasswordRequest(BaseModel):
@@ -45,6 +56,7 @@ class PublicUser(BaseModel):
     display_name: str
     avatar_url: str | None = None
     auth_provider: str = "email"
+    email_verified: bool = False
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -63,3 +75,36 @@ class MeResponse(BaseModel):
     workspaces: list[Any] = []
 
     model_config = {"from_attributes": True}
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str = Field(..., min_length=1, description="Email verification token")
+
+
+class ResendVerificationRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=255, description="User email address")
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not v or "@" not in v or "." not in v.split("@")[-1]:
+            raise ValueError("Invalid email format")
+        return v
+
+
+class SessionItemResponse(BaseModel):
+    id: uuid.UUID
+    user_agent: str | None = None
+    ip_address: str | None = None
+    created_at: datetime
+    expires_at: datetime
+    is_current: bool = False
+    status: str = "ACTIVE"
+
+    model_config = {"from_attributes": True}
+
+
+class SessionListResponse(BaseModel):
+    sessions: list[SessionItemResponse]
+

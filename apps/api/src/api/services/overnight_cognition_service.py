@@ -70,6 +70,13 @@ class OvernightCognitionService:
         start_of_yesterday = yesterday.replace(hour=0, minute=0, second=0, microsecond=0)
         end_of_yesterday = yesterday.replace(hour=23, minute=59, second=59, microsecond=999999)
 
+        # Ensure RLS session context is established for this transaction
+        try:
+            from ..middleware.tenant import set_rls_session_vars
+            await set_rls_session_vars(db, workspace_id=str(workspace_id), user_id=str(user_id))
+        except Exception:
+            pass
+
         # 1. Fetch raw events and flat memories recorded during the target window
         stmt_mem = (
             select(Memory)
