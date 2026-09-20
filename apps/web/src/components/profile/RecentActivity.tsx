@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { eventApi, Event, profileApi, ProfileActivityItem } from '@/lib/api-client';
+import { Panel } from '@/components/shared/Panel';
 
 interface ActivityItem {
   id: string;
@@ -83,7 +84,7 @@ export function RecentActivity({
   }, [activities, profileActs, liveEvents]);
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-6">
+    <Panel>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-lg font-semibold text-text">Recent Activity</h2>
@@ -189,6 +190,6 @@ export function RecentActivity({
           ))}
         </div>
       )}
-    </div>
+    </Panel>
   );
 }

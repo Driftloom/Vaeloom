@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Panel, SunIcon, MoonIcon, CheckIcon } from '@vaeloom/ui-kit';
 
 export function ThemePreferences() {
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
 
   useEffect(() => {
-    // Basic check for existing class on mount if applicable
     if (typeof document !== 'undefined') {
       if (document.documentElement.classList.contains('dark')) {
         setTheme('dark');
@@ -18,6 +18,9 @@ export function ThemePreferences() {
 
   const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
     setTheme(newTheme);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('theme', newTheme);
+    }
 
     if (newTheme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -27,103 +30,147 @@ export function ThemePreferences() {
       document.documentElement.classList.remove('dark');
     } else {
       document.documentElement.classList.remove('light', 'dark');
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.add('light');
+      }
     }
   };
 
-  return (
-    <div className="rounded-xl border border-border bg-surface p-6">
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold text-text">Appearance</h2>
-        <p className="text-sm text-text-dim mt-1">Customize how Vaeloom looks on your device</p>
-      </div>
+  const THEMES: Array<{
+    id: 'light' | 'dark' | 'system';
+    label: string;
+    desc: string;
+    icon: React.FC<{ size?: number | string; className?: string }>;
+  }> = [
+    {
+      id: 'light',
+      label: 'Light Mode',
+      desc: 'Clean, high-contrast daytime palette',
+      icon: SunIcon,
+    },
+    {
+      id: 'dark',
+      label: 'Dark Mode',
+      desc: 'Subtle slate tones for low-light environments',
+      icon: MoonIcon,
+    },
+    {
+      id: 'system',
+      label: 'System Sync',
+      desc: 'Matches your operating system preference',
+      icon: ({ size, className }) => (
+        <svg
+          width={size || 20}
+          height={size || 20}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+          className={className}
+        >
+          <rect width="20" height="14" x="2" y="3" rx="2" />
+          <line x1="8" x2="16" y1="21" y2="21" />
+          <line x1="12" x2="12" y1="17" y2="21" />
+        </svg>
+      ),
+    },
+  ];
 
-      <div className="space-y-4">
+  return (
+    <Panel
+      padding="lg"
+      header={
         <div>
-          <label className="block text-sm font-medium text-text mb-2">Theme</label>
-          <div className="grid grid-cols-3 gap-3">
-            <button
-              onClick={() => handleThemeChange('light')}
-              className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-colors ${
-                theme === 'light'
-                  ? 'border-primary bg-primary/5 text-primary'
-                  : 'border-border bg-surface hover:bg-surface-hover text-text-muted'
-              }`}
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"
-                />
-              </svg>
-              <span className="text-xs font-medium">Light</span>
-            </button>
-            <button
-              onClick={() => handleThemeChange('dark')}
-              className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-colors ${
-                theme === 'dark'
-                  ? 'border-primary bg-primary/5 text-primary'
-                  : 'border-border bg-surface hover:bg-surface-hover text-text-muted'
-              }`}
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"
-                />
-              </svg>
-              <span className="text-xs font-medium">Dark</span>
-            </button>
-            <button
-              onClick={() => handleThemeChange('system')}
-              className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-colors ${
-                theme === 'system'
-                  ? 'border-primary bg-primary/5 text-primary'
-                  : 'border-border bg-surface hover:bg-surface-hover text-text-muted'
-              }`}
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25"
-                />
-              </svg>
-              <span className="text-xs font-medium">System</span>
-            </button>
+          <h2 className="text-base font-semibold text-text">Appearance & Visual Theme</h2>
+          <p className="text-xs text-text-muted mt-0.5">
+            Customize the visual presentation of the Vaeloom workspace across all devices.
+          </p>
+        </div>
+      }
+    >
+      <div className="space-y-6">
+        <div>
+          <label className="block text-xs font-mono uppercase tracking-wider text-text-dim mb-3">
+            Interface Theme
+          </label>
+          <div
+            className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+            role="radiogroup"
+            aria-label="Theme selection"
+          >
+            {THEMES.map((t) => {
+              const Icon = t.icon;
+              const isSelected = theme === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={isSelected}
+                  onClick={() => handleThemeChange(t.id)}
+                  className={`p-4 rounded-xl border text-left transition-all flex flex-col justify-between gap-3 ${
+                    isSelected
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary shadow-xs'
+                      : 'border-border bg-surface hover:bg-surface-hover hover:border-border/80'
+                  }`}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <div
+                      className={`p-2 rounded-lg ${isSelected ? 'bg-primary text-white' : 'bg-surface-hover text-text-muted'}`}
+                    >
+                      <Icon size={18} />
+                    </div>
+                    {isSelected && (
+                      <span className="text-primary">
+                        <CheckIcon size={16} />
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-text">{t.label}</h3>
+                    <p className="text-xs text-text-muted mt-0.5 leading-relaxed">{t.desc}</p>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 
         <div className="pt-4 border-t border-border">
-          <label className="block text-sm font-medium text-text mb-2">Accent Color</label>
-          <div className="flex gap-3">
-            <button className="w-8 h-8 rounded-full bg-blue-500 ring-2 ring-offset-2 ring-offset-surface ring-blue-500"></button>
-            <button className="w-8 h-8 rounded-full bg-emerald-500 hover:opacity-80 transition-opacity"></button>
-            <button className="w-8 h-8 rounded-full bg-purple-500 hover:opacity-80 transition-opacity"></button>
-            <button className="w-8 h-8 rounded-full bg-rose-500 hover:opacity-80 transition-opacity"></button>
-            <button className="w-8 h-8 rounded-full bg-amber-500 hover:opacity-80 transition-opacity"></button>
+          <label className="block text-xs font-mono uppercase tracking-wider text-text-dim mb-3">
+            Brand Accent Palette
+          </label>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className="w-7 h-7 rounded-full bg-blue-500 ring-2 ring-offset-2 ring-offset-background ring-blue-500 shadow-xs"
+              title="Blue (Default)"
+            />
+            <button
+              type="button"
+              className="w-7 h-7 rounded-full bg-emerald-500 hover:opacity-85 transition-opacity"
+              title="Emerald"
+            />
+            <button
+              type="button"
+              className="w-7 h-7 rounded-full bg-indigo-500 hover:opacity-85 transition-opacity"
+              title="Indigo"
+            />
+            <button
+              type="button"
+              className="w-7 h-7 rounded-full bg-rose-500 hover:opacity-85 transition-opacity"
+              title="Rose"
+            />
+            <button
+              type="button"
+              className="w-7 h-7 rounded-full bg-amber-500 hover:opacity-85 transition-opacity"
+              title="Amber"
+            />
           </div>
         </div>
       </div>
-    </div>
+    </Panel>
   );
 }

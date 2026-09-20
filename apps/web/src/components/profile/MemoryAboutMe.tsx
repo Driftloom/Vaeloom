@@ -1,5 +1,8 @@
+'use client';
+
 import React, { useState } from 'react';
 import { ProfileData, UpdateProfileData, profileApi } from '@/lib/api-client';
+import { Panel, Badge, Button, SparklesIcon, EditIcon } from '@vaeloom/ui-kit';
 
 interface MemoryAboutMeProps {
   profile: ProfileData;
@@ -27,65 +30,62 @@ export default function MemoryAboutMe({ profile, workspaceId, onUpdate }: Memory
   };
 
   return (
-    <div className="card mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <h2 className="text-xl font-semibold text-text">About Me</h2>
-          {!isEditing && !profile.bio && (
-            <span className="px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary rounded border border-primary/20">
-              ✨ Generated from your memory graph
-            </span>
-          )}
-          {!isEditing && profile.bio && (
-            <span className="px-2 py-0.5 text-xs font-medium bg-surface-200 text-text-muted rounded border border-border">
-              Custom
-            </span>
+    <Panel
+      padding="lg"
+      className="mb-6"
+      header={
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-base font-semibold text-text">About Me & Professional Bio</h2>
+            {!isEditing && !profile.bio && (
+              <Badge variant="info" size="sm">
+                <SparklesIcon size={12} className="mr-1" />
+                Synthesized from Memory Graph
+              </Badge>
+            )}
+            {!isEditing && profile.bio && (
+              <Badge variant="default" size="sm">
+                Customized
+              </Badge>
+            )}
+          </div>
+          {!isEditing && (
+            <Button variant="secondary" size="sm" onClick={() => setIsEditing(true)}>
+              <EditIcon size={13} className="mr-1.5" />
+              Edit Bio
+            </Button>
           )}
         </div>
-        {!isEditing && (
-          <button
-            onClick={() => setIsEditing(true)}
-            className="text-sm font-medium text-text-muted hover:text-text px-2 py-1 rounded hover:bg-surface-hover"
-          >
-            Edit
-          </button>
-        )}
-      </div>
-
+      }
+    >
       {isEditing ? (
         <div className="space-y-4">
           <textarea
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             rows={5}
-            className="w-full bg-surface-active border border-border rounded-lg p-3 text-text focus:ring-1 focus:ring-primary text-sm resize-y"
-            placeholder="Write a little about yourself..."
+            className="w-full bg-background border border-border rounded-xl p-3.5 text-text focus:outline-none focus:ring-1 focus:ring-primary text-sm leading-relaxed resize-y"
+            placeholder="Write a concise overview of your background, passions, and expertise..."
           />
-          <div className="flex gap-2">
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm font-medium"
-            >
-              {isSaving ? 'Saving...' : 'Save Bio'}
-            </button>
-            <button
-              onClick={() => setIsEditing(false)}
-              className="px-4 py-2 border border-border text-text rounded-lg hover:bg-surface-hover text-sm font-medium"
-            >
+          <div className="flex items-center gap-2">
+            <Button variant="primary" size="sm" onClick={handleSave} loading={isSaving}>
+              Save Bio
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setIsEditing(false)}>
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
         <div className="text-text-muted leading-relaxed whitespace-pre-wrap text-sm">
           {profile.bio || (
             <span className="italic text-text-dim">
-              No bio available. Add a resume or write something about yourself.
+              No bio recorded yet. Auto-populate from your resume or click Edit Bio above to write
+              one.
             </span>
           )}
         </div>
       )}
-    </div>
+    </Panel>
   );
 }

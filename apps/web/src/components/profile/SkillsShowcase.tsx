@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { SkillItem, ProfileData, profileApi } from '@/lib/api-client';
+import { Panel, Badge, Button, PlusIcon, XIcon, CheckIcon } from '@vaeloom/ui-kit';
 
 interface SkillsShowcaseProps {
   skills: SkillItem[];
@@ -90,45 +91,38 @@ export default function SkillsShowcase({
   }, [skills]);
 
   return (
-    <div className="card mb-6">
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-xl font-semibold text-text flex items-center gap-2">
-          <span>Categorized Skills Matrix</span>
-          <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-surface-200 text-text-muted border border-border">
-            {skills.length} Total
-          </span>
-        </h2>
-        {workspaceId && !isAdding && (
-          <button
-            onClick={() => setIsAdding(true)}
-            className="text-xs font-medium px-2.5 py-1 rounded-md bg-surface-200 hover:bg-surface-hover text-text border border-border transition-colors flex items-center gap-1.5"
-          >
-            <svg
-              className="w-3.5 h-3.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            Add Skill
-          </button>
-        )}
-      </div>
-      <p className="text-sm text-text-muted mb-4">
-        Vaeloom organizes your skills into categorized matrix tiers. Verified skills are reinforced
-        in your permanent agent memory.
+    <Panel
+      padding="lg"
+      className="mb-6"
+      header={
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-base font-semibold text-text">Skills & Competencies Matrix</h2>
+            <Badge variant="default" size="sm">
+              {skills.length} Total
+            </Badge>
+          </div>
+          {workspaceId && !isAdding && (
+            <Button variant="secondary" size="sm" onClick={() => setIsAdding(true)}>
+              <PlusIcon size={14} className="mr-1" />+ Add Skill
+            </Button>
+          )}
+        </div>
+      }
+    >
+      <p className="text-xs text-text-muted mb-4">
+        Vaeloom organizes your capabilities into categorized matrix tiers. Verified skills are
+        reinforced in your permanent agent memory.
       </p>
 
       {error && (
-        <div className="mb-4 p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-500">
+        <div className="mb-4 p-2.5 rounded-lg bg-error/10 border border-error/20 text-xs text-error">
           {error}
         </div>
       )}
 
       {/* Category Filter Pills */}
-      <div className="flex flex-wrap gap-1.5 mb-4 pb-2 border-b border-border">
+      <div className="flex flex-wrap gap-1.5 mb-4 pb-3 border-b border-border">
         {CATEGORIES.map((cat) => {
           const count = categoryCounts[cat] || 0;
           if (cat !== 'All' && count === 0) return null;
@@ -137,15 +131,17 @@ export default function SkillsShowcase({
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
+              className={`text-xs px-3 py-1 rounded-lg font-medium transition-all flex items-center gap-1.5 ${
                 selected
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-surface-200 text-text-muted hover:text-text hover:bg-surface-hover border border-border'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'bg-surface border border-border text-text-muted hover:text-text hover:bg-surface-hover'
               }`}
             >
               <span>{cat}</span>
               <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full ${selected ? 'bg-primary-hover text-white' : 'bg-surface text-text-dim'}`}
+                className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                  selected ? 'bg-white/20 text-white' : 'bg-surface-hover text-text-dim'
+                }`}
               >
                 {count}
               </span>
@@ -155,122 +151,96 @@ export default function SkillsShowcase({
       </div>
 
       {isAdding && (
-        <form onSubmit={handleAddSkill} className="mb-4 flex items-center gap-2">
+        <form
+          onSubmit={handleAddSkill}
+          className="mb-4 flex items-center gap-2 p-3 bg-surface border border-border rounded-xl"
+        >
           <input
             type="text"
             value={newSkillName}
             onChange={(e) => setNewSkillName(e.target.value)}
             placeholder="e.g. Next.js, Rust, Kubernetes, PyTorch..."
             autoFocus
-            className="flex-1 px-3 py-1.5 text-sm bg-surface-200 border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+            className="flex-1 px-3 py-1.5 text-sm bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-1 focus:ring-primary"
           />
-          <button
+          <Button
+            variant="primary"
+            size="sm"
             type="submit"
-            disabled={loadingSkill === '__new__' || !newSkillName.trim()}
-            className="px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary-hover disabled:opacity-50 transition-colors"
+            loading={loadingSkill === '__new__'}
+            disabled={!newSkillName.trim()}
           >
-            {loadingSkill === '__new__' ? 'Adding...' : 'Save'}
-          </button>
-          <button
+            Save
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
             type="button"
             onClick={() => {
               setIsAdding(false);
               setNewSkillName('');
             }}
-            className="px-3 py-1.5 text-xs font-medium bg-surface-200 text-text-muted hover:text-text rounded-lg transition-colors"
           >
             Cancel
-          </button>
+          </Button>
         </form>
       )}
 
       {(!skills || skills.length === 0) && !isAdding ? (
-        <div className="p-8 text-center border border-dashed border-border rounded-xl">
-          <p className="text-text-muted mb-2">
+        <div className="p-8 text-center border border-dashed border-border rounded-xl bg-surface/50">
+          <p className="text-xs text-text-muted mb-3">
             Connect sources or add skills to let Vaeloom personalize your agent workflows
           </p>
           {workspaceId && (
-            <button
-              onClick={() => setIsAdding(true)}
-              className="text-xs font-medium px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary-hover transition-colors"
-            >
-              + Add First Skill
-            </button>
+            <Button variant="primary" size="sm" onClick={() => setIsAdding(true)}>
+              <PlusIcon size={14} className="mr-1" />+ Add First Skill
+            </Button>
           )}
         </div>
       ) : (
         <div className="flex flex-wrap gap-2.5">
           {filteredSkills.map((skill, i) => {
-            let dotColor = 'bg-gray-400';
-            if (skill.verified || skill.confidence >= 0.9) dotColor = 'bg-emerald-500';
-            else if (skill.confidence >= 0.7) dotColor = 'bg-amber-500';
+            let dotColor = 'bg-text-dim';
+            if (skill.verified || skill.confidence >= 0.9) dotColor = 'bg-success';
+            else if (skill.confidence >= 0.7) dotColor = 'bg-warning';
 
             const isLoading = loadingSkill === skill.name;
             const tier = skill.validationTier || (skill.verified ? 'V1' : 'V0');
-            const tierColors: Record<string, string> = {
-              V0: 'bg-zinc-700/30 text-zinc-400 border-zinc-600/40',
-              V1: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
-              V2: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30',
-              V3: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-              V4: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-            };
             const decay = skill.decayStatus || 'fresh';
-            const decayLabels: Record<string, string> = {
-              fresh: 'text-emerald-400',
-              active: 'text-amber-400',
-              stale: 'text-rose-400',
-            };
 
             return (
               <div
                 key={i}
-                className="group inline-flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full bg-surface-200 border border-border text-sm hover:border-border-hover transition-colors"
+                className="group inline-flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full bg-surface border border-border text-xs hover:border-border/80 transition-all shadow-xs"
                 title={`Category: ${skill.category || 'General'} | Tier: ${tier} | Status: ${decay} | Effective: ${Math.round((skill.effectiveConfidence ?? skill.confidence) * 100)}%`}
               >
                 <span className={`w-2 h-2 rounded-full ${dotColor} shrink-0`} />
                 <span className="font-medium text-text">{skill.name}</span>
 
-                {/* Proficiency Badge */}
                 {skill.proficiency && (
-                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface border border-border text-text-dim">
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-background border border-border text-text-dim">
                     {skill.proficiency}
                   </span>
                 )}
 
-                {/* PIOS Validation Tier Badge */}
-                <span
-                  className={`text-[10px] font-mono px-1.5 py-0.2 rounded border ${tierColors[tier] ?? tierColors['V0']}`}
-                  title={`Capability Tier ${tier}`}
-                >
+                <Badge variant="default" size="sm" className="text-[10px] font-mono py-0 px-1.5">
                   {tier}
-                </span>
+                </Badge>
 
-                {/* Recency Decay status if not fresh */}
                 {decay !== 'fresh' && (
-                  <span
-                    className={`text-[10px] font-medium ${decayLabels[decay] ?? ''}`}
-                    title={`Recency Decay: ${decay}`}
-                  >
-                    • {decay}
-                  </span>
+                  <span className="text-[10px] font-medium text-warning">• {decay}</span>
                 )}
 
                 {skill.verified ? (
-                  <span title="Verified in memory" className="text-emerald-500 flex items-center">
-                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
+                  <span title="Verified in memory" className="text-success flex items-center">
+                    <CheckIcon size={13} />
                   </span>
                 ) : (
                   workspaceId && (
                     <button
                       onClick={() => handleConfirm(skill.name)}
                       disabled={isLoading}
-                      className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 transition-colors"
+                      className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-success/10 text-success hover:bg-success/20 transition-colors"
                       title="Confirm this skill"
                     >
                       {isLoading ? '...' : 'Confirm'}
@@ -282,19 +252,11 @@ export default function SkillsShowcase({
                   <button
                     onClick={() => handleRemove(skill.name)}
                     disabled={isLoading}
-                    className="opacity-40 group-hover:opacity-100 hover:text-red-500 p-0.5 rounded transition-opacity"
+                    className="opacity-40 group-hover:opacity-100 hover:text-error p-0.5 rounded transition-opacity"
                     title="Remove skill"
                     aria-label={`Remove ${skill.name}`}
                   >
-                    <svg
-                      className="w-3 h-3"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={2.5}
-                      stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <XIcon size={12} />
                   </button>
                 )}
               </div>
@@ -302,6 +264,6 @@ export default function SkillsShowcase({
           })}
         </div>
       )}
-    </div>
+    </Panel>
   );
 }

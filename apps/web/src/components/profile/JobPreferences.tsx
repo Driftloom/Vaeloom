@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { JobPreferencesData, ProfileData, profileApi } from '@/lib/api-client';
+import { Panel } from '@/components/shared/Panel';
 
 interface JobPreferencesProps {
   preferences: JobPreferencesData | null;
@@ -58,7 +59,7 @@ export default function JobPreferences({
 
   if (!preferences && !isEditing) {
     return (
-      <div className="card mb-6">
+      <Panel className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-text">Job Preferences</h2>
           {workspaceId && (
@@ -83,12 +84,12 @@ export default function JobPreferences({
             </button>
           )}
         </div>
-      </div>
+      </Panel>
     );
   }
 
   return (
-    <div className="card mb-6">
+    <Panel className="mb-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-semibold text-text">Job Preferences</h2>
@@ -262,6 +263,6 @@ export default function JobPreferences({
           )}
         </div>
       )}
-    </div>
+    </Panel>
   );
 }

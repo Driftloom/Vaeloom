@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { gdprApi } from '@/lib/api-client';
+import { Panel } from '@/components/shared/Panel';
 
 export function ProfileExport({ workspaceId, userId }: { workspaceId: string; userId?: string }) {
   const router = useRouter();
@@ -53,7 +54,7 @@ export function ProfileExport({ workspaceId, userId }: { workspaceId: string; us
   };
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-6">
+    <Panel>
       <div className="mb-6">
         <h2 className="text-lg font-semibold text-text">Export Profile</h2>
         <p className="text-sm text-text-dim mt-1">Download your data or share your profile</p>
@@ -203,6 +204,6 @@ export function ProfileExport({ workspaceId, userId }: { workspaceId: string; us
           </svg>
         </button>
       </div>
-    </div>
+    </Panel>
   );
 }

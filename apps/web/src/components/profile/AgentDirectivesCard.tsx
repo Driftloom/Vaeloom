@@ -1,7 +1,8 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import { AgentDirectivesData, ProfileData, profileApi } from '@/lib/api-client';
+import { Panel } from '@/components/shared/Panel';
 
 interface AgentDirectivesCardProps {
   directives?: AgentDirectivesData | null;
@@ -110,7 +111,7 @@ export default function AgentDirectivesCard({
   ];
 
   return (
-    <div className="card mb-6">
+    <Panel className="mb-6">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-xl font-semibold text-text flex items-center gap-2">
@@ -380,6 +381,6 @@ export default function AgentDirectivesCard({
           </button>
         </div>
       </form>
-    </div>
+    </Panel>
   );
 }

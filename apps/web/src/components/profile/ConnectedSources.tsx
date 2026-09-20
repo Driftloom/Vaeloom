@@ -4,6 +4,8 @@ import React from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { connectorApi, ConnectorResponseExt } from '@/lib/api-client';
+import { Panel } from '@/components/shared/Panel';
+import { Badge, CheckIcon } from '@vaeloom/ui-kit';
 
 interface ConnectedSourcesProps {
   workspaceId: string;
@@ -51,7 +53,7 @@ export default function ConnectedSources({ workspaceId }: ConnectedSourcesProps)
   ];
 
   return (
-    <div className="card mb-6">
+    <Panel className="mb-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-medium text-text">Memory Sources</h3>
         <Link
@@ -67,9 +69,7 @@ export default function ConnectedSources({ workspaceId }: ConnectedSourcesProps)
           <div key={idx} className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div
-                className={`p-1.5 rounded-lg ${
-                  source.connected ? 'bg-primary/10 text-primary' : 'bg-surface-200 text-text-dim'
-                }`}
+                className={`p-1.5 rounded-lg ${source.connected ? 'bg-primary/10 text-primary' : 'bg-background text-text-dim'}`}
               >
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d={source.icon} />
@@ -78,22 +78,10 @@ export default function ConnectedSources({ workspaceId }: ConnectedSourcesProps)
               <span className="text-sm font-medium text-text-muted">{source.name}</span>
             </div>
             {source.connected ? (
-              <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
-                <svg
-                  className="w-3.5 h-3.5 text-emerald-500"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2.5}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
+              <Badge variant="success" size="sm">
+                <CheckIcon size={11} className="mr-1" />
                 Connected
-              </span>
+              </Badge>
             ) : (
               <Link
                 href={`/workspace/${workspaceId}/connectors`}
@@ -105,6 +93,6 @@ export default function ConnectedSources({ workspaceId }: ConnectedSourcesProps)
           </div>
         ))}
       </div>
-    </div>
+    </Panel>
   );
 }

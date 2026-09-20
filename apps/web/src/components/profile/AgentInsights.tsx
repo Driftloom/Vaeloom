@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { ProfileRecommendationItem, profileApi, ProfileData } from '@/lib/api-client';
+import { Panel } from '@/components/shared/Panel';
 
 interface AgentInsightsProps {
   workspaceId: string;
@@ -49,14 +50,14 @@ export default function AgentInsights({ workspaceId, onUpdate }: AgentInsightsPr
 
   if (isLoading) {
     return (
-      <div className="card p-6 space-y-4 animate-pulse">
+      <Panel className="space-y-4 animate-pulse">
         <div className="flex items-center justify-between">
           <div className="h-5 w-44 bg-surface-200 rounded" />
           <div className="h-4 w-20 bg-surface-200 rounded-full" />
         </div>
         <div className="h-20 bg-surface-200 rounded-lg" />
         <div className="h-20 bg-surface-200 rounded-lg" />
-      </div>
+      </Panel>
     );
   }
 
@@ -65,7 +66,7 @@ export default function AgentInsights({ workspaceId, onUpdate }: AgentInsightsPr
   }
 
   return (
-    <div className="card p-6 space-y-5 border border-primary/20 bg-gradient-to-br from-surface to-primary/5">
+    <Panel className="space-y-5 border border-primary/20 bg-gradient-to-br from-surface to-primary/5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-base">
@@ -184,6 +185,6 @@ export default function AgentInsights({ workspaceId, onUpdate }: AgentInsightsPr
           );
         })}
       </div>
-    </div>
+    </Panel>
   );
 }

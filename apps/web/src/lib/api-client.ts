@@ -2015,6 +2015,23 @@ export const agentCatalogApi = {
   },
 };
 
+export interface CapabilityTestRequest {
+  workspaceId: string;
+  capabilityName: string;
+  category: string;
+  inputPayload?: Record<string, unknown>;
+}
+
+export interface CapabilityTestResponse {
+  status: 'success' | 'warning' | 'error';
+  capability: string;
+  category: string;
+  timestamp: string;
+  executionDurationMs: number;
+  validationErrors: string[];
+  result: unknown;
+}
+
 // ─── Memory Feed / Lineage ────────────────────────────────────────────────
 
 export interface MemoryFeedItem {
@@ -2454,6 +2471,14 @@ export interface ProfileActivityItem {
   agentName?: string;
 }
 
+export interface ProfileImportSummaryData {
+  skillsImported: number;
+  careerImported: number;
+  educationImported: number;
+  message: string;
+  profile: ProfileData;
+}
+
 export const profileApi = {
   get(workspaceId?: string): Promise<ProfileData> {
     const params = workspaceId ? { workspace_id: workspaceId } : undefined;
@@ -2507,6 +2532,20 @@ export const profileApi = {
   autoPopulate(workspaceId: string): Promise<ProfileData> {
     return apiClient.post<ProfileData>('/profile/auto-populate', {
       workspace_id: workspaceId,
+    });
+  },
+  importResume(file: File, workspaceId: string): Promise<ProfileImportSummaryData> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.request<ProfileImportSummaryData>(
+      `/profile/import/resume?workspace_id=${encodeURIComponent(workspaceId)}`,
+      { method: 'POST', body: formData, headers: {} },
+    );
+  },
+  importLinkedIn(linkedinUrl: string, workspaceId: string): Promise<ProfileImportSummaryData> {
+    return apiClient.post<ProfileImportSummaryData>('/profile/import/linkedin', {
+      workspace_id: workspaceId,
+      linkedin_url: linkedinUrl,
     });
   },
   getPublic(userId: string): Promise<PublicProfileData> {
@@ -3085,6 +3124,14 @@ export const capabilitiesApi = {
     return apiClient.post(`/capabilities/${capabilityId}/test`, {
       input: inputPayload,
       workspace_id: workspaceId,
+    });
+  },
+  test(body: CapabilityTestRequest): Promise<CapabilityTestResponse> {
+    return apiClient.post<CapabilityTestResponse>('/agents/capabilities/test', {
+      workspace_id: body.workspaceId,
+      capability_name: body.capabilityName,
+      category: body.category,
+      input_payload: body.inputPayload ?? {},
     });
   },
 };

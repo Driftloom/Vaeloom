@@ -1,7 +1,8 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import { ScreeningQuestionItem, ProfileData, profileApi } from '@/lib/api-client';
+import { Panel } from '@/components/shared/Panel';
 
 interface ScreeningQuestionsCardProps {
   questions: ScreeningQuestionItem[];
@@ -103,7 +104,7 @@ export default function ScreeningQuestionsCard({
   };
 
   return (
-    <div className="card mb-6">
+    <Panel className="mb-6">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-xl font-semibold text-text flex items-center gap-2">
@@ -283,6 +284,6 @@ export default function ScreeningQuestionsCard({
           {saving ? 'Saving Answers...' : 'Save Question Bank'}
         </button>
       </div>
-    </div>
+    </Panel>
   );
 }

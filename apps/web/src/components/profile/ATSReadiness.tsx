@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { ATSReadinessData, profileApi } from '@/lib/api-client';
+import { Panel } from '@/components/shared/Panel';
 
 interface ATSReadinessProps {
   workspaceId: string;
@@ -39,11 +40,11 @@ export default function ATSReadiness({ workspaceId, onSkillAdded }: ATSReadiness
 
   if (isLoading) {
     return (
-      <div className="card p-6 bg-gradient-to-br from-surface to-surface-200 animate-pulse space-y-4">
+      <Panel className="bg-gradient-to-br from-surface to-surface-200 animate-pulse space-y-4">
         <div className="h-5 w-32 bg-surface-200 rounded" />
         <div className="h-16 w-16 mx-auto rounded-full bg-surface-200" />
         <div className="h-4 w-48 bg-surface-200 rounded mx-auto" />
-      </div>
+      </Panel>
     );
   }
 
@@ -71,7 +72,7 @@ export default function ATSReadiness({ workspaceId, onSkillAdded }: ATSReadiness
   const strokeDashoffset = circumference - (score / 100) * circumference;
 
   return (
-    <div className="card mb-6 bg-gradient-to-br from-surface to-surface-200 p-6 space-y-5">
+    <Panel className="mb-6 bg-gradient-to-br from-surface to-surface-200 p-6 space-y-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <svg
@@ -195,6 +196,6 @@ export default function ATSReadiness({ workspaceId, onSkillAdded }: ATSReadiness
       >
         Optimize in Resume Builder →
       </Link>
-    </div>
+    </Panel>
   );
 }

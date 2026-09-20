@@ -1,5 +1,6 @@
-import React from 'react';
+﻿import React from 'react';
 import { CareerEntry } from '@/lib/api-client';
+import { Panel } from '@/components/shared/Panel';
 
 interface CareerTimelineProps {
   careerHistory: CareerEntry[];
@@ -9,7 +10,7 @@ export default function CareerTimeline({ careerHistory }: CareerTimelineProps) {
   if (!careerHistory || careerHistory.length === 0) return null;
 
   return (
-    <div className="card mb-6">
+    <Panel className="mb-6">
       <h3 className="font-medium text-text mb-6">Experience Timeline</h3>
 
       <div className="relative">
@@ -36,6 +37,6 @@ export default function CareerTimeline({ careerHistory }: CareerTimelineProps) {
           ))}
         </div>
       </div>
-    </div>
+    </Panel>
   );
 }

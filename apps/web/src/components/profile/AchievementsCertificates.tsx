@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { documentApi, DocumentListResponse } from '@/lib/api-client';
+import { Panel } from '@/components/shared/Panel';
 
 interface Certificate {
   id: string;
@@ -58,7 +59,7 @@ export function AchievementsCertificates({
   }, [certificates, docList]);
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-6">
+    <Panel>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-lg font-semibold text-text">Achievements & Credentials</h2>
@@ -138,6 +139,6 @@ export function AchievementsCertificates({
           ))}
         </div>
       )}
-    </div>
+    </Panel>
   );
 }

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { ProfileData, UpdateProfileData, profileApi } from '@/lib/api-client';
+import { Panel } from '@/components/shared/Panel';
 
 interface ContactSocialLinksProps {
   profile: ProfileData;
@@ -40,7 +41,7 @@ export default function ContactSocialLinks({
   };
 
   return (
-    <div className="card mb-6">
+    <Panel className="mb-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-text">Contact & Links</h2>
         {!isEditing && (
@@ -179,6 +180,6 @@ export default function ContactSocialLinks({
           )}
         </div>
       )}
-    </div>
+    </Panel>
   );
 }

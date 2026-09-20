@@ -4,30 +4,66 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { providerKeysApi, type ProviderKeyResponse } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import {
+  Button,
+  Badge,
+  IconButton,
+  KeyIcon,
+  CheckIcon,
+  TrashIcon,
+  RefreshCwIcon,
+  EyeIcon,
+  EyeOffIcon,
+  LockIcon,
+  AlertCircleIcon,
+  ShieldIcon,
+  PlayIcon,
+  PauseIcon,
+} from '@vaeloom/ui-kit';
 
 const PROVIDERS = [
   {
     id: 'openai',
     label: 'OpenAI',
-    hint: 'sk-... (GPT / embeddings)',
+    hint: 'sk-... (GPT-4o, o1, embeddings)',
     placeholder: 'sk-proj-... or sk-...',
   },
-  { id: 'anthropic', label: 'Anthropic', hint: 'sk-ant-... (Claude)', placeholder: 'sk-ant-...' },
-  { id: 'google', label: 'Google', hint: 'AI Studio / Gemini', placeholder: 'AIza...' },
+  {
+    id: 'anthropic',
+    label: 'Anthropic',
+    hint: 'sk-ant-... (Claude 3.5 Sonnet / Opus)',
+    placeholder: 'sk-ant-...',
+  },
+  {
+    id: 'google',
+    label: 'Google Gemini',
+    hint: 'AI Studio / Gemini 1.5 Pro',
+    placeholder: 'AIza...',
+  },
   {
     id: 'openrouter',
     label: 'OpenRouter',
-    hint: 'sk-or-... (multi-model)',
+    hint: 'sk-or-... (unified multi-model routing)',
     placeholder: 'sk-or-v1-...',
   },
-  { id: 'groq', label: 'Groq', hint: 'gsk_... (fast Llama)', placeholder: 'gsk_...' },
-  { id: 'mistral', label: 'Mistral', hint: 'Mistral API', placeholder: '...' },
+  {
+    id: 'groq',
+    label: 'Groq',
+    hint: 'gsk_... (ultra-low latency Llama)',
+    placeholder: 'gsk_...',
+  },
+  {
+    id: 'mistral',
+    label: 'Mistral AI',
+    hint: 'Mistral Large & Codestral API',
+    placeholder: '...',
+  },
 ] as const;
 
 type ProviderId = (typeof PROVIDERS)[number]['id'];
 
 function maskHint(key: ProviderKeyResponse) {
-  return key.keyHint || `${key.keyPrefix}••••`;
+  return key.keyHint || `${key.keyPrefix}••••••••`;
 }
 
 export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
@@ -49,7 +85,6 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
       const res = await providerKeysApi.list({ workspace_id: workspaceId });
       setKeys(res.keys ?? []);
     } catch {
-      // silent - empty state
       setKeys([]);
     } finally {
       setLoading(false);
@@ -76,8 +111,8 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
       });
       toast({
         tone: 'success',
-        title: 'Key saved',
-        detail: `${PROVIDERS.find((p) => p.id === selectedProvider)?.label} key stored encrypted. Resolution: ${wsId ? 'workspace' : 'user'} → system fallback.`,
+        title: 'Key saved securely',
+        detail: `${PROVIDERS.find((p) => p.id === selectedProvider)?.label} key stored encrypted with Fernet.`,
       });
       setApiKeyInput('');
       await load();
@@ -98,7 +133,7 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
       const res = await providerKeysApi.validate(k.id);
       toast({
         tone: res.isValid ? 'success' : 'error',
-        title: res.isValid ? 'Key valid' : 'Key invalid',
+        title: res.isValid ? 'Key verified' : 'Key invalid',
         detail: res.message,
       });
       await load();
@@ -106,16 +141,14 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
       toast({
         tone: 'error',
         title: 'Validation failed',
-        detail: err instanceof Error ? err.message : 'Could not validate.',
+        detail: err instanceof Error ? err.message : 'Could not validate key.',
       });
     } finally {
       setValidating(null);
     }
   };
 
-  const handleDelete = async (k: ProviderKeyResponse) => {
-    // F-12: native confirm() replaced by the canonical ConfirmDialog; the
-    // pending key is tracked in state and the dialog drives execution.
+  const handleDelete = (k: ProviderKeyResponse) => {
     setPendingDelete(k);
   };
 
@@ -132,7 +165,7 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
       toast({
         tone: 'error',
         title: 'Delete failed',
-        detail: err instanceof Error ? err.message : 'Could not delete.',
+        detail: err instanceof Error ? err.message : 'Could not delete key.',
       });
     } finally {
       setDeleting(false);
@@ -147,7 +180,7 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
       toast({
         tone: 'error',
         title: 'Update failed',
-        detail: err instanceof Error ? err.message : 'Could not update.',
+        detail: err instanceof Error ? err.message : 'Could not update key state.',
       });
     }
   };
@@ -155,33 +188,43 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
   const providerMeta = (id: string) => PROVIDERS.find((p) => p.id === id);
 
   return (
-    <section className="space-y-4" aria-label="Bring Your Own Key">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-display font-medium text-text">Bring Your Own Key (BYOK)</h3>
-          <p className="text-sm text-text-muted mt-1 max-w-2xl">
-            Use your own LLM keys. Encrypted with Fernet (app-level) and stored per-user or
-            per-workspace. Priority:{' '}
-            <span className="font-mono text-xs bg-surface-hover px-1 py-0.5 rounded">
-              workspace
-            </span>{' '}
-            → <span className="font-mono text-xs bg-surface-hover px-1 py-0.5 rounded">user</span> →{' '}
-            <span className="font-mono text-xs bg-surface-hover px-1 py-0.5 rounded">system</span>.
-            Never logged in plaintext.
-          </p>
+    <section className="space-y-6" aria-label="Bring Your Own Key">
+      {/* Header Info */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-surface border border-border">
+        <div className="flex items-start gap-3">
+          <div className="p-2.5 rounded-lg bg-primary/10 text-primary shrink-0 mt-0.5">
+            <KeyIcon size={20} />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-text">Bring Your Own Key (BYOK)</h3>
+            <p className="text-xs text-text-muted mt-1 leading-relaxed max-w-xl">
+              Provide your own LLM credentials for unthrottled agent execution. Keys are
+              Fernet-encrypted at rest and resolved hierarchically:{' '}
+              <span className="font-mono text-text">workspace</span> →{' '}
+              <span className="font-mono text-text">user</span> →{' '}
+              <span className="font-mono text-text">system fallback</span>.
+            </p>
+          </div>
         </div>
-        <span className="hidden md:inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-xs text-text-muted">
-          <span className="h-2 w-2 rounded-full bg-success animate-pulse" /> Encrypted at rest
-        </span>
+        <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+          <Badge variant="success" size="sm">
+            <ShieldIcon size={12} className="mr-1" />
+            Encrypted at rest
+          </Badge>
+        </div>
       </div>
 
-      {/* Add key form */}
-      <div className="card border-border">
-        <div className="grid gap-4 md:grid-cols-[180px_1fr] items-end">
+      {/* Add key card */}
+      <div className="rounded-xl border border-border bg-surface p-5 shadow-xs space-y-4">
+        <h4 className="text-sm font-semibold text-text flex items-center gap-2">
+          <span>Add Provider Credential</span>
+        </h4>
+
+        <div className="grid gap-4 md:grid-cols-[200px_1fr] items-start">
           <div>
             <label
               htmlFor="provider-select"
-              className="block text-xs font-mono uppercase tracking-widest text-text-dim mb-1"
+              className="block text-xs font-mono uppercase tracking-wider text-text-dim mb-1.5"
             >
               Provider
             </label>
@@ -189,7 +232,7 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
               id="provider-select"
               value={selectedProvider}
               onChange={(e) => setSelectedProvider(e.target.value as ProviderId)}
-              className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:border-primary"
+              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary"
             >
               {PROVIDERS.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -197,209 +240,258 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
                 </option>
               ))}
             </select>
-            <p className="mt-1 text-xs text-text-muted">{providerMeta(selectedProvider)?.hint}</p>
+            <p className="mt-1 text-xs text-text-dim">{providerMeta(selectedProvider)?.hint}</p>
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase tracking-widest text-text-dim mb-1">
-              API Key
+            <div className="flex items-center justify-between mb-1.5">
+              <label
+                htmlFor="api-key-input"
+                className="block text-xs font-mono uppercase tracking-wider text-text-dim"
+              >
+                API Key
+              </label>
               <button
                 type="button"
                 onClick={() => setShowKey((v) => !v)}
-                className="ml-2 text-[10px] normal-case tracking-normal text-primary hover:underline"
+                className="text-xs text-primary hover:underline inline-flex items-center gap-1"
               >
-                {showKey ? 'hide' : 'show'}
+                {showKey ? (
+                  <>
+                    <EyeOffIcon size={12} />
+                    <span>Hide</span>
+                  </>
+                ) : (
+                  <>
+                    <EyeIcon size={12} />
+                    <span>Show</span>
+                  </>
+                )}
               </button>
-            </label>
+            </div>
             <div className="flex gap-2">
               <input
+                id="api-key-input"
                 type={showKey ? 'text' : 'password'}
                 value={apiKeyInput}
                 onChange={(e) => setApiKeyInput(e.target.value)}
                 placeholder={providerMeta(selectedProvider)?.placeholder}
-                className="flex-1 bg-background border border-border rounded-md px-3 py-2 text-sm font-mono text-text placeholder:text-text-dim focus:outline-none focus:border-primary"
+                className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm font-mono text-text placeholder:text-text-dim focus:outline-none focus:ring-1 focus:ring-primary"
                 autoComplete="off"
                 spellCheck={false}
               />
-              <button
+              <Button
+                variant="primary"
+                size="md"
                 onClick={() => void handleSave()}
-                disabled={!!saving}
-                className="btn-primary shrink-0 disabled:opacity-50"
+                loading={!!saving}
+                disabled={!apiKeyInput.trim()}
               >
-                {saving ? 'Saving...' : 'Save'}
-              </button>
+                Save Key
+              </Button>
             </div>
           </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 rounded-md border border-border bg-surface-hover px-3 py-1.5">
-            <span className="text-xs text-text-muted">Scope</span>
-            <div className="flex rounded bg-background p-0.5">
+        {/* Scope selector */}
+        <div className="pt-3 border-t border-border flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-3">
+            <span className="text-text-muted font-medium">Scope:</span>
+            <div className="inline-flex rounded-lg border border-border bg-background p-0.5">
               <button
+                type="button"
                 onClick={() => setScope('user')}
-                className={`px-3 py-1 text-xs rounded ${scope === 'user' ? 'bg-primary text-white' : 'text-text-muted hover:text-text'}`}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                  scope === 'user'
+                    ? 'bg-primary text-white shadow-xs'
+                    : 'text-text-muted hover:text-text'
+                }`}
               >
-                User (global)
+                User (Global)
               </button>
               <button
+                type="button"
                 onClick={() => setScope('workspace')}
                 disabled={!workspaceId}
                 title={
                   !workspaceId ? 'No workspace context' : 'Workspace override (highest priority)'
                 }
-                className={`px-3 py-1 text-xs rounded ${scope === 'workspace' ? 'bg-primary text-white' : 'text-text-muted hover:text-text'} disabled:opacity-40`}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                  scope === 'workspace'
+                    ? 'bg-primary text-white shadow-xs'
+                    : 'text-text-muted hover:text-text disabled:opacity-40'
+                }`}
               >
-                Workspace
+                Workspace Override
               </button>
             </div>
+            <span className="text-text-dim">
+              {scope === 'workspace'
+                ? 'Applies exclusively to this workspace.'
+                : 'Applies across all workspaces unless overridden.'}
+            </span>
           </div>
-          <p className="text-xs text-text-muted">
-            {scope === 'workspace'
-              ? 'Overrides user key for this workspace only.'
-              : 'Applies to all your workspaces unless overridden.'}
-          </p>
-          <span className="ml-auto text-xs text-text-dim hidden md:inline">
-            Keys are stored encrypted — only hint is shown.
+          <span className="text-text-dim hidden md:inline">
+            Ciphertext is never exposed in responses.
           </span>
         </div>
       </div>
 
       {/* Keys list */}
-      {loading ? (
-        <div className="space-y-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 animate-pulse rounded bg-surface-hover" />
-          ))}
-        </div>
-      ) : keys.length === 0 ? (
-        <div className="card border-dashed flex flex-col items-center justify-center py-8 text-center">
-          <p className="text-sm text-text">No BYOK keys configured</p>
-          <p className="text-xs text-text-muted mt-1 max-w-md">
-            Add your OpenAI or Anthropic key above. If none, Vaeloom falls back to the system{' '}
-            <span className="font-mono">LLM_API_KEY</span>. Embeddings require OpenAI.
-          </p>
-          <div className="mt-4 flex flex-wrap justify-center gap-1.5">
-            {PROVIDERS.slice(0, 3).map((p) => (
-              <span
-                key={p.id}
-                className="rounded-full border border-border bg-surface px-2.5 py-1 text-xs text-text-muted"
-              >
-                {p.label}
-              </span>
+      <div className="space-y-3">
+        <h4 className="text-sm font-semibold text-text">Configured Provider Keys</h4>
+
+        {loading ? (
+          <div className="space-y-2">
+            {[1, 2].map((i) => (
+              <div
+                key={i}
+                className="h-18 animate-pulse rounded-xl bg-surface border border-border"
+              />
             ))}
           </div>
-        </div>
-      ) : (
-        <div className="grid gap-3">
-          {keys.map((k) => (
-            <div
-              key={k.id}
-              className={`card flex flex-wrap items-center justify-between gap-3 ${!k.isActive ? 'opacity-60' : ''} ${k.isValid === false ? 'border-error/30 bg-error/10' : ''}`}
-            >
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="inline-flex items-center rounded-full bg-surface-hover border border-border px-2.5 py-0.5 text-xs font-mono text-text">
-                    {providerMeta(k.provider)?.label ?? k.provider}
-                  </span>
-                  <span className="font-mono text-sm text-text">{maskHint(k)}</span>
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${k.isValid === true ? 'bg-success/10 text-success border border-success/30' : k.isValid === false ? 'bg-error/10 text-error border border-error/30' : 'bg-surface-hover text-text-muted border border-border'}`}
-                  >
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${k.isValid === true ? 'bg-success' : k.isValid === false ? 'bg-error' : 'bg-text-dim'}`}
-                    />
-                    {k.isValid === true
-                      ? 'valid'
-                      : k.isValid === false
-                        ? 'invalid'
-                        : 'not validated'}
-                  </span>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs border ${k.isActive ? 'bg-primary/10 text-primary border-primary/20' : 'bg-surface-hover text-text-muted border-border'}`}
-                  >
-                    {k.isActive ? 'active' : 'paused'}
-                  </span>
-                  {k.workspaceId ? (
-                    <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-xs text-primary">
-                      workspace
-                    </span>
-                  ) : (
-                    <span className="rounded-full bg-surface-hover border border-border px-2 py-0.5 text-xs text-text-muted">
-                      user global
-                    </span>
-                  )}
-                </div>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-text-muted">
-                  <span className="font-mono">prefix {k.keyPrefix}</span>
-                  <span>•</span>
-                  <span>updated {new Date(k.updatedAt).toLocaleDateString()}</span>
-                  {k.lastValidatedAt && (
-                    <>
-                      <span>•</span>
-                      <span>checked {new Date(k.lastValidatedAt).toLocaleString()}</span>
-                    </>
-                  )}
-                  {k.validationError && (
-                    <span className="text-error truncate max-w-[260px]">• {k.validationError}</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => void handleValidate(k)}
-                  disabled={!!validating}
-                  className="btn-secondary text-xs !px-3 !py-1.5 disabled:opacity-50"
-                >
-                  {validating === k.id ? 'Checking...' : 'Validate'}
-                </button>
-                <button
-                  onClick={() => void handleToggle(k)}
-                  className="btn-secondary text-xs !px-3 !py-1.5"
-                >
-                  {k.isActive ? 'Pause' : 'Enable'}
-                </button>
-                <button
-                  onClick={() => void handleDelete(k)}
-                  className="text-xs px-3 py-1.5 rounded border border-border text-text-muted hover:text-error hover:border-error/30 hover:bg-error/10 dark:hover:bg-error/10"
-                >
-                  Delete
-                </button>
-              </div>
+        ) : keys.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border p-8 text-center bg-surface/50">
+            <div className="w-10 h-10 rounded-full bg-surface-hover flex items-center justify-center mx-auto mb-3 text-text-muted">
+              <KeyIcon size={20} />
             </div>
-          ))}
-        </div>
-      )}
+            <p className="text-sm font-medium text-text">No BYOK credentials configured</p>
+            <p className="text-xs text-text-muted mt-1 max-w-md mx-auto">
+              Add your API key above to enable high-throughput agent loops. If none are configured,
+              Vaeloom falls back to the system key.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {keys.map((k) => (
+              <div
+                key={k.id}
+                className={`rounded-xl border p-4 bg-surface transition-all flex flex-wrap items-center justify-between gap-4 ${
+                  !k.isActive ? 'opacity-65 border-border' : 'border-border hover:border-border/80'
+                } ${k.isValid === false ? 'border-error/40 bg-error/5' : ''}`}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <Badge variant="default" size="sm">
+                      {providerMeta(k.provider)?.label ?? k.provider}
+                    </Badge>
+                    <span className="font-mono text-sm font-medium text-text">{maskHint(k)}</span>
+                    <Badge
+                      variant={
+                        k.isValid === true ? 'success' : k.isValid === false ? 'error' : 'default'
+                      }
+                      size="sm"
+                    >
+                      {k.isValid === true ? (
+                        <>
+                          <CheckIcon size={12} className="mr-1" />
+                          valid
+                        </>
+                      ) : k.isValid === false ? (
+                        <>
+                          <AlertCircleIcon size={12} className="mr-1" />
+                          invalid
+                        </>
+                      ) : (
+                        'unvalidated'
+                      )}
+                    </Badge>
+                    <Badge variant={k.isActive ? 'info' : 'default'} size="sm">
+                      {k.isActive ? 'active' : 'paused'}
+                    </Badge>
+                    <span className="text-xs text-text-dim font-mono">
+                      {k.workspaceId ? 'workspace' : 'user global'}
+                    </span>
+                  </div>
 
-      <div className="rounded-md border border-border bg-surface-hover p-3 text-xs text-text-muted">
-        <p className="font-medium text-text mb-1">How resolution works</p>
-        <ul className="list-disc ml-4 space-y-0.5">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-text-muted">
+                    <span className="font-mono">prefix: {k.keyPrefix}</span>
+                    <span>•</span>
+                    <span>Updated {new Date(k.updatedAt).toLocaleDateString()}</span>
+                    {k.lastValidatedAt && (
+                      <>
+                        <span>•</span>
+                        <span>Checked {new Date(k.lastValidatedAt).toLocaleTimeString()}</span>
+                      </>
+                    )}
+                    {k.validationError && (
+                      <span className="text-error truncate max-w-[280px]">
+                        • {k.validationError}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void handleValidate(k)}
+                    loading={validating === k.id}
+                  >
+                    <RefreshCwIcon size={13} className="mr-1.5" />
+                    Validate
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => void handleToggle(k)}>
+                    {k.isActive ? (
+                      <>
+                        <PauseIcon size={13} className="mr-1.5" />
+                        Pause
+                      </>
+                    ) : (
+                      <>
+                        <PlayIcon size={13} className="mr-1.5" />
+                        Enable
+                      </>
+                    )}
+                  </Button>
+                  <IconButton
+                    aria-label="Delete key"
+                    variant="danger"
+                    size="sm"
+                    onClick={() => handleDelete(k)}
+                  >
+                    <TrashIcon size={15} />
+                  </IconButton>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Help Note */}
+      <div className="rounded-xl border border-border bg-surface-hover/60 p-4 text-xs text-text-muted space-y-2">
+        <div className="font-semibold text-text flex items-center gap-1.5">
+          <LockIcon size={14} className="text-primary" />
+          <span>Security & Provider Routing Rules</span>
+        </div>
+        <ul className="list-disc pl-5 space-y-1">
           <li>
-            Embeddings: only <span className="font-mono">OpenAI</span> is supported — add an OpenAI
-            BYOK key to enable memory vectors.
+            <strong>Embeddings:</strong> Memory vectors require OpenAI credentials (
+            <code className="font-mono text-text">text-embedding-3-small</code>).
           </li>
           <li>
-            Chat / agents: model name decides provider — <span className="font-mono">gpt-*</span> →
-            OpenAI, <span className="font-mono">claude-*</span> → Anthropic. Set the matching
-            provider key.
+            <strong>Reasoning Models:</strong> Prompts routing to{' '}
+            <code className="font-mono text-text">gpt-4o</code> or{' '}
+            <code className="font-mono text-text">claude-3-5-sonnet</code> dynamically pick the
+            configured active key.
           </li>
           <li>
-            All keys are encrypted with Fernet using{' '}
-            <span className="font-mono">ENCRYPTION_KEY</span>. Plaintext is never returned by the
-            API.
+            <strong>Zero-Trust Isolation:</strong> Keys are never passed to the client browser or
+            included in trace payloads.
           </li>
         </ul>
       </div>
 
-      {/* F-12: canonical confirmation for destructive key removal. */}
+      {/* Canonical Confirm Dialog */}
       <ConfirmDialog
         isOpen={pendingDelete !== null}
         onClose={() => (deleting ? undefined : setPendingDelete(null))}
         onConfirm={confirmDelete}
-        title={`Remove ${pendingDelete?.provider ?? ''} key?`}
-        message={`Remove ${pendingDelete?.provider ?? ''} key ${pendingDelete?.keyHint ?? ''}? Agents will fall back to the system key (if one is set). This cannot be undone.`}
-        confirmLabel="Remove key"
+        title={`Remove ${providerMeta(pendingDelete?.provider ?? '')?.label ?? pendingDelete?.provider ?? ''} Key?`}
+        message={`Are you sure you want to delete this credential (${pendingDelete?.keyHint || pendingDelete?.keyPrefix})? Agents relying on this provider will fall back to system defaults.`}
+        confirmLabel="Delete Key"
         variant="danger"
         loading={deleting}
       />

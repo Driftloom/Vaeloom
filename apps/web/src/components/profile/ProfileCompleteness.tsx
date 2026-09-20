@@ -1,5 +1,7 @@
 import React from 'react';
 import { ProfileCompletenessData } from '@/lib/api-client';
+import { Panel } from '@/components/shared/Panel';
+import { AlertCircleIcon } from '@vaeloom/ui-kit';
 
 interface ProfileCompletenessProps {
   data: ProfileCompletenessData;
@@ -11,7 +13,7 @@ export default function ProfileCompleteness({ data }: ProfileCompletenessProps) 
   const offset = circumference - (data.score / 100) * circumference;
 
   return (
-    <div className="card mb-6">
+    <Panel className="mb-6">
       <h3 className="font-medium text-text mb-6">Profile Completeness</h3>
 
       <div className="flex justify-center mb-6">
@@ -63,11 +65,11 @@ export default function ProfileCompleteness({ data }: ProfileCompletenessProps) 
           </div>
         ))}
         {data.suggestions.length === 0 && (
-          <div className="text-center text-sm text-green-500 font-medium">
-            Your profile is looking great!
+          <div className="text-center text-sm text-success font-medium">
+            Your profile is looking great! ✓
           </div>
         )}
       </div>
-    </div>
+    </Panel>
   );
 }
