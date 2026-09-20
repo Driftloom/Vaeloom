@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../../hooks/useAuth';
@@ -26,7 +26,7 @@ function isEnterpriseEnabled(): boolean {
 function groupLinks(workspaceId: string): NavGroup[] {
   const ws = (path: string) => `/workspace/${workspaceId}${path}`;
   const enableEnterprise = isEnterpriseEnabled();
-  // Build groups then filter enterprise if not enabled — honest gating for MVP (FW-017)
+
   const allGroups: NavGroup[] = [
     {
       label: 'Assist',
@@ -37,6 +37,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -56,6 +57,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -75,6 +77,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -94,6 +97,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -118,6 +122,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -137,6 +142,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -156,6 +162,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -180,6 +187,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -199,6 +207,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -218,6 +227,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -242,6 +252,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -261,6 +272,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -280,6 +292,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -299,6 +312,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -323,6 +337,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -342,6 +357,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -372,6 +388,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -391,6 +408,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -410,6 +428,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -429,6 +448,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -448,6 +468,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -467,6 +488,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
           icon: (
             <svg
               className={iconClass}
+              aria-hidden="true"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.5}
@@ -483,6 +505,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
       ],
     },
   ];
+
   return enableEnterprise ? allGroups : allGroups.filter((g) => !g.enterprise);
 }
 
@@ -501,15 +524,27 @@ function SidebarNavLink({
         href={link.path}
         aria-current={current ? 'page' : undefined}
         title={collapsed ? link.name : undefined}
-        className={`flex items-center rounded-md text-sm transition-colors ${
+        className={`group relative flex items-center rounded-lg text-sm font-medium transition-all duration-150 ${
           collapsed ? 'justify-center p-2.5 mx-auto' : 'gap-3 px-3 py-2'
         } ${
           current
-            ? 'bg-surface-200 text-text font-medium'
+            ? 'bg-surface-200 text-text font-semibold shadow-xs'
             : 'text-text-muted hover:bg-surface-hover hover:text-text'
         }`}
       >
-        <span aria-hidden="true" className="text-text-muted shrink-0">
+        {/* Subtle glowing left accent pill on active state */}
+        {current && !collapsed && (
+          <span
+            aria-hidden="true"
+            className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-primary shadow-[0_0_8px_rgba(230,126,34,0.6)]"
+          />
+        )}
+        <span
+          aria-hidden="true"
+          className={`shrink-0 transition-colors ${
+            current ? 'text-primary' : 'text-text-muted group-hover:text-text'
+          }`}
+        >
           {link.icon}
         </span>
         <span className={collapsed ? 'sr-only' : 'truncate'}>{link.name}</span>
@@ -518,26 +553,75 @@ function SidebarNavLink({
   );
 }
 
+export interface SidebarProps {
+  workspaceId: string;
+  open: boolean;
+  onClose: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
+  onOpenCommandCenter?: () => void;
+}
+
 export function Sidebar({
   workspaceId,
   open,
   onClose,
   collapsed = false,
   onToggleCollapse,
-}: {
-  workspaceId: string;
-  open: boolean;
-  onClose: () => void;
-  collapsed?: boolean;
-  onToggleCollapse?: () => void;
-}) {
+  onOpenCommandCenter,
+}: SidebarProps) {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, me } = useAuth();
+  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
+  const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+  const workspaceMenuRef = useRef<HTMLDivElement>(null);
+
   const groups = groupLinks(workspaceId);
   const ws = (path: string) => `/workspace/${workspaceId}${path}`;
 
   // On mobile drawer (open === true), show full width expanded view
   const isCollapsed = collapsed && !open;
+
+  // Multi-workspace list from authenticated session
+  const workspaces = me?.workspaces ?? [];
+  const activeWorkspace = workspaces.find((w) => w.id === workspaceId) ?? {
+    id: workspaceId,
+    name: 'Personal Workspace',
+    description: undefined,
+  };
+
+  // Close workspace dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (workspaceMenuRef.current && !workspaceMenuRef.current.contains(event.target as Node)) {
+        setWorkspaceMenuOpen(false);
+      }
+    }
+    if (workspaceMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [workspaceMenuOpen]);
+
+  // Global listener for '?' to open shortcuts modal (unless focused in text field)
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const activeTag = (document.activeElement?.tagName || '').toLowerCase();
+      if (
+        activeTag === 'input' ||
+        activeTag === 'textarea' ||
+        (document.activeElement as HTMLElement)?.isContentEditable
+      ) {
+        return;
+      }
+      if (e.key === '?' && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        setShowShortcutsModal(true);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const userInitials = user?.displayName
     ? user.displayName
@@ -551,45 +635,292 @@ export function Sidebar({
   const userName = user?.displayName ?? user?.email ?? 'User';
 
   return (
-    <aside
-      data-testid="sidebar"
-      aria-label="Workspace sidebar"
-      className={`fixed inset-y-0 left-0 z-40 bg-surface border-r border-border flex flex-col h-screen shrink-0 transition-[width,transform] duration-200 ease-in-out md:static ${
-        isCollapsed ? 'w-60 md:w-[68px]' : 'w-60'
-      } ${open ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
-    >
-      <div
-        className={`h-14 border-b border-border flex items-center shrink-0 ${
-          isCollapsed ? 'justify-center px-2' : 'justify-between px-4'
-        }`}
+    <>
+      <aside
+        data-testid="sidebar"
+        aria-label="Workspace sidebar"
+        className={`fixed inset-y-0 left-0 z-40 bg-surface border-r border-border flex flex-col h-screen shrink-0 transition-[width,transform] duration-200 ease-in-out md:static ${
+          isCollapsed ? 'w-60 md:w-[68px]' : 'w-60'
+        } ${open ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
       >
-        {isCollapsed ? (
-          <button
-            onClick={onToggleCollapse}
-            aria-label="Expand sidebar"
-            title="Expand sidebar (Ctrl+B)"
-            className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-sm hover:bg-primary/20 transition-colors"
-          >
-            V
-          </button>
-        ) : (
-          <>
-            <div className="flex items-center gap-2.5 overflow-hidden">
-              <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-sm shrink-0">
-                V
-              </div>
-              <h1 className="text-lg font-display font-semibold text-primary truncate">Vaeloom</h1>
-            </div>
-            <div className="flex items-center gap-1">
-              {onToggleCollapse && (
+        {/* Top Header & Workspace Switcher */}
+        <div
+          className={`h-14 border-b border-border flex items-center shrink-0 ${
+            isCollapsed ? 'justify-center px-2' : 'justify-between px-3'
+          }`}
+        >
+          {isCollapsed ? (
+            <button
+              onClick={onToggleCollapse}
+              aria-label="Expand sidebar"
+              title="Expand sidebar (Ctrl+B)"
+              className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-sm hover:bg-primary/20 transition-colors"
+            >
+              V
+            </button>
+          ) : (
+            <>
+              {/* Workspace Switcher Trigger */}
+              <div className="relative min-w-0 flex-1 mr-1" ref={workspaceMenuRef}>
                 <button
-                  onClick={onToggleCollapse}
-                  aria-label="Collapse sidebar"
-                  title="Collapse sidebar (Ctrl+B)"
-                  className="hidden md:flex p-1.5 rounded-md text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
+                  type="button"
+                  onClick={() => setWorkspaceMenuOpen((prev) => !prev)}
+                  aria-expanded={workspaceMenuOpen}
+                  aria-haspopup="true"
+                  title="Switch workspace"
+                  className="w-full flex items-center gap-2 p-1 rounded-lg hover:bg-surface-hover transition-colors text-left group"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center text-primary font-bold text-xs shrink-0 group-hover:bg-primary/25 transition-colors">
+                    {activeWorkspace.name ? activeWorkspace.name.charAt(0).toUpperCase() : 'V'}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm font-semibold text-text truncate leading-tight">
+                        {activeWorkspace.name || 'Vaeloom'}
+                      </span>
+                    </div>
+                    <span className="block text-[10px] font-mono text-text-dim truncate">
+                      {activeWorkspace.description || 'workspace'}
+                    </span>
+                  </div>
+                  <svg
+                    className={`w-3.5 h-3.5 text-text-muted shrink-0 transition-transform duration-200 ${
+                      workspaceMenuOpen ? 'rotate-180 text-text' : 'group-hover:text-text'
+                    }`}
+                    aria-hidden="true"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+                    />
+                  </svg>
+                </button>
+
+                {/* Workspace Switcher Menu */}
+                {workspaceMenuOpen && (
+                  <div className="absolute top-full left-0 mt-1 w-64 rounded-xl bg-surface-100 border border-border shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-2 py-1.5 text-[10px] font-mono uppercase tracking-wider text-text-dim border-b border-border/50 mb-1 flex items-center justify-between">
+                      <span>Workspaces</span>
+                      <span className="text-[9px] font-sans text-text-muted">
+                        {workspaces.length > 0 ? `${workspaces.length} active` : '1 active'}
+                      </span>
+                    </div>
+                    <div className="space-y-0.5 max-h-56 overflow-y-auto">
+                      {workspaces.length > 0 ? (
+                        workspaces.map((wsItem) => {
+                          const isActive = wsItem.id === workspaceId;
+                          const initial = wsItem.name ? wsItem.name.charAt(0).toUpperCase() : 'W';
+                          return (
+                            <Link
+                              key={wsItem.id}
+                              href={`/workspace/${wsItem.id}`}
+                              onClick={() => setWorkspaceMenuOpen(false)}
+                              className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition-colors ${
+                                isActive
+                                  ? 'bg-surface-200 text-text font-medium border border-border/50'
+                                  : 'text-text-muted hover:bg-surface-hover hover:text-text'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-5 h-5 rounded bg-surface-300 border border-border flex items-center justify-center text-[10px] font-bold text-text-muted shrink-0">
+                                  {initial}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="truncate font-medium leading-none mb-0.5">
+                                    {wsItem.name}
+                                  </p>
+                                  {wsItem.description && (
+                                    <p className="text-[10px] text-text-dim truncate leading-none">
+                                      {wsItem.description}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              {isActive && (
+                                <svg
+                                  className="w-4 h-4 text-primary shrink-0 ml-1.5"
+                                  aria-hidden="true"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  strokeWidth={2.5}
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M4.5 12.75l6 6 9-13.5"
+                                  />
+                                </svg>
+                              )}
+                            </Link>
+                          );
+                        })
+                      ) : (
+                        <div className="px-2.5 py-2 text-xs text-text-muted">
+                          {activeWorkspace.name}
+                        </div>
+                      )}
+                    </div>
+                    <div className="border-t border-border mt-1 pt-1">
+                      <Link
+                        href={ws('/settings')}
+                        onClick={() => setWorkspaceMenuOpen(false)}
+                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-text-muted hover:bg-surface-hover hover:text-text transition-colors"
+                      >
+                        <svg
+                          className="w-3.5 h-3.5 shrink-0"
+                          aria-hidden="true"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M12 4.5v15m7.5-7.5h-15"
+                          />
+                        </svg>
+                        <span>Workspace Settings</span>
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Collapse & Mobile Close Action Buttons */}
+              <div className="flex items-center gap-1 shrink-0">
+                {onToggleCollapse && (
+                  <button
+                    onClick={onToggleCollapse}
+                    aria-label="Collapse sidebar"
+                    title="Collapse sidebar (Ctrl+B)"
+                    className="hidden md:flex p-1.5 rounded-md text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      aria-hidden="true"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5"
+                      />
+                    </svg>
+                  </button>
+                )}
+                <button
+                  onClick={onClose}
+                  aria-label="Close navigation"
+                  className="md:hidden p-1.5 rounded-md text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
                 >
                   <svg
+                    className="w-5 h-5"
+                    aria-hidden="true"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* User Card */}
+        <div
+          className={`border-b border-border shrink-0 ${
+            isCollapsed ? 'p-2 flex justify-center' : 'px-3 py-2.5'
+          }`}
+        >
+          <Link
+            href={ws('/profile')}
+            title={isCollapsed ? `${userName} (Profile)` : undefined}
+            className={`flex items-center rounded-lg hover:bg-surface-hover transition-colors group ${
+              isCollapsed ? 'p-1.5 justify-center' : 'gap-3 px-2 py-1.5'
+            }`}
+          >
+            <div className="w-8 h-8 rounded-full bg-surface-active border border-border flex items-center justify-center text-text font-mono text-xs font-semibold shrink-0 group-hover:border-primary/50 transition-colors">
+              {userInitials}
+            </div>
+            {!isCollapsed && (
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-text truncate group-hover:text-primary transition-colors">
+                  {userName}
+                </p>
+                <p className="text-[11px] text-text-dim truncate">View Profile & Security</p>
+              </div>
+            )}
+          </Link>
+        </div>
+
+        {/* Navigation IA spaces */}
+        <nav
+          className={`flex-1 overflow-y-auto py-3 ${isCollapsed ? 'px-1.5' : 'px-2'}`}
+          aria-label="Workspace navigation"
+        >
+          {groups.map((group) => (
+            <div key={group.label} className={isCollapsed ? 'mb-2' : 'mb-4'}>
+              {isCollapsed ? (
+                <div className="mx-2 my-2 border-t border-border/40" title={group.label} />
+              ) : (
+                <p className="px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-text-dim">
+                  {group.label}
+                  {group.enterprise && (
+                    <span
+                      className="ml-1.5 rounded border border-border px-1 py-0.5 text-[9px] normal-case tracking-normal text-text-dim"
+                      title="Enterprise features are visible but gated out of MVP scope"
+                    >
+                      gated
+                    </span>
+                  )}
+                </p>
+              )}
+              <ul className="space-y-0.5">
+                {group.links.map((link) => (
+                  <SidebarNavLink
+                    key={link.name}
+                    link={link}
+                    current={pathname === link.path}
+                    collapsed={isCollapsed}
+                  />
+                ))}
+              </ul>
+            </div>
+          ))}
+        </nav>
+
+        {/* Bottom Utility Bar */}
+        <div
+          className={`border-t border-border bg-surface shrink-0 ${
+            isCollapsed ? 'p-2 flex flex-col items-center gap-1.5' : 'p-2.5 space-y-1.5'
+          }`}
+        >
+          {isCollapsed ? (
+            <>
+              {onOpenCommandCenter && (
+                <button
+                  type="button"
+                  onClick={onOpenCommandCenter}
+                  title="Command Center (⌘K)"
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-text-muted hover:text-text hover:bg-surface-hover border border-border transition-colors"
+                >
+                  <span className="sr-only">Command Center (⌘K)</span>
+                  <svg
                     className="w-4 h-4"
+                    aria-hidden="true"
                     fill="none"
                     viewBox="0 0 24 24"
                     strokeWidth={1.5}
@@ -598,90 +929,205 @@ export function Sidebar({
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5"
+                      d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
                     />
                   </svg>
                 </button>
               )}
               <button
-                onClick={onClose}
-                aria-label="Close navigation"
-                className="md:hidden p-1.5 rounded-md text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
+                type="button"
+                onClick={() => setShowShortcutsModal(true)}
+                title="Keyboard shortcuts (?)"
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-text-muted hover:text-text hover:bg-surface-hover border border-border transition-colors"
               >
+                <span className="sr-only">Keyboard shortcuts (?)</span>
                 <svg
-                  className="w-5 h-5"
+                  className="w-4 h-4"
+                  aria-hidden="true"
                   fill="none"
                   viewBox="0 0 24 24"
                   strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M12 18h.008v.008H12V18z"
+                  />
+                </svg>
+              </button>
+            </>
+          ) : (
+            <>
+              {onOpenCommandCenter && (
+                <button
+                  type="button"
+                  onClick={onOpenCommandCenter}
+                  title="Open Command Center (⌘K)"
+                  className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium text-text-muted hover:text-text bg-surface-100 hover:bg-surface-hover border border-border transition-colors group"
+                >
+                  <div className="flex items-center gap-2">
+                    <svg
+                      className="w-3.5 h-3.5 text-text-muted group-hover:text-primary transition-colors shrink-0"
+                      aria-hidden="true"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+                      />
+                    </svg>
+                    <span>Command Center</span>
+                  </div>
+                  <kbd className="inline-flex items-center font-mono text-[10px] text-text-dim px-1.5 py-0.5 rounded bg-surface-200 border border-border">
+                    ⌘K
+                  </kbd>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowShortcutsModal(true)}
+                className="w-full flex items-center justify-between px-2.5 py-1 rounded-lg text-xs text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <svg
+                    className="w-3.5 h-3.5 shrink-0"
+                    aria-hidden="true"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M12 18h.008v.008H12V18z"
+                    />
+                  </svg>
+                  <span>Shortcuts</span>
+                </div>
+                <kbd className="inline-flex items-center font-mono text-[10px] text-text-dim px-1.5 py-0.5 rounded bg-surface-200 border border-border">
+                  ?
+                </kbd>
+              </button>
+            </>
+          )}
+        </div>
+      </aside>
+
+      {/* Keyboard Shortcuts Cheatsheet Modal */}
+      {showShortcutsModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Keyboard Shortcuts"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setShowShortcutsModal(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-surface-100 border border-border shadow-2xl overflow-hidden p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-xs font-bold">
+                  ⌨
+                </div>
+                <h3 className="text-sm font-semibold text-text">Keyboard Shortcuts</h3>
+              </div>
+              <button
+                onClick={() => setShowShortcutsModal(false)}
+                aria-label="Close shortcuts dialog"
+                className="p-1 rounded-md text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
+              >
+                <svg
+                  className="w-4 h-4"
+                  aria-hidden="true"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
                   stroke="currentColor"
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-          </>
-        )}
-      </div>
 
-      {/* User card */}
-      <div
-        className={`border-b border-border shrink-0 ${
-          isCollapsed ? 'p-2 flex justify-center' : 'px-3 py-3'
-        }`}
-      >
-        <Link
-          href={ws('/profile')}
-          title={isCollapsed ? `${userName} (Profile)` : undefined}
-          className={`flex items-center rounded-lg hover:bg-surface-hover transition-colors group ${
-            isCollapsed ? 'p-1.5 justify-center' : 'gap-3 px-2 py-2'
-          }`}
-        >
-          <div className="w-9 h-9 rounded-full bg-surface-active border border-border flex items-center justify-center text-text-muted font-mono text-xs shrink-0">
-            {userInitials}
-          </div>
-          {!isCollapsed && (
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-text truncate">{userName}</p>
-              <p className="text-xs text-text-dim truncate">View profile</p>
+            <div className="space-y-3 text-xs">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-wider text-text-dim mb-2">
+                  Navigation & Command Center
+                </p>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between py-1 px-2 rounded-lg bg-surface-200/50">
+                    <span className="text-text">Open Command Center</span>
+                    <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-text-muted">
+                      ⌘K / Ctrl+K
+                    </kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1 px-2 rounded-lg bg-surface-200/50">
+                    <span className="text-text">Toggle Sidebar</span>
+                    <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-text-muted">
+                      Ctrl+B / ⌘B
+                    </kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1 px-2 rounded-lg bg-surface-200/50">
+                    <span className="text-text">Keyboard Shortcuts Help</span>
+                    <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-text-muted">
+                      ?
+                    </kbd>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-wider text-text-dim mb-2">
+                  Modal Navigation
+                </p>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between py-1 px-2 rounded-lg bg-surface-200/50">
+                    <span className="text-text">Move selection</span>
+                    <div className="flex items-center gap-1">
+                      <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-text-muted">
+                        ↑
+                      </kbd>
+                      <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-text-muted">
+                        ↓
+                      </kbd>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between py-1 px-2 rounded-lg bg-surface-200/50">
+                    <span className="text-text">Select / Execute action</span>
+                    <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-text-muted">
+                      Enter
+                    </kbd>
+                  </div>
+                  <div className="flex items-center justify-between py-1 px-2 rounded-lg bg-surface-200/50">
+                    <span className="text-text">Close Modal / Drawer</span>
+                    <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border text-text-muted">
+                      Esc
+                    </kbd>
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
-        </Link>
-      </div>
 
-      <nav
-        className={`flex-1 overflow-y-auto py-3 ${isCollapsed ? 'px-1.5' : 'px-2'}`}
-        aria-label="Workspace navigation"
-      >
-        {groups.map((group) => (
-          <div key={group.label} className={isCollapsed ? 'mb-2' : 'mb-4'}>
-            {isCollapsed ? (
-              <div className="mx-2 my-2 border-t border-border/40" title={group.label} />
-            ) : (
-              <p className="px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-text-dim">
-                {group.label}
-                {group.enterprise && (
-                  <span
-                    className="ml-1.5 rounded border border-border px-1 py-0.5 text-[9px] normal-case tracking-normal text-text-dim"
-                    title="Enterprise features are visible but gated out of MVP scope"
-                  >
-                    gated
-                  </span>
-                )}
-              </p>
-            )}
-            <ul className="space-y-0.5">
-              {group.links.map((link) => (
-                <SidebarNavLink
-                  key={link.name}
-                  link={link}
-                  current={pathname === link.path}
-                  collapsed={isCollapsed}
-                />
-              ))}
-            </ul>
+            <div className="pt-2 border-t border-border flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowShortcutsModal(false)}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-surface-200 hover:bg-surface-300 text-text transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
-        ))}
-      </nav>
-    </aside>
+        </div>
+      )}
+    </>
   );
 }

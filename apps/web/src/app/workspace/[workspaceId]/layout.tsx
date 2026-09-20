@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { TopNav } from '@/components/layout/TopNav';
+import { CommandCenter } from '@/components/layout/CommandCenter';
 import { useAuth } from '../../../hooks/useAuth';
 import { LoadingSpinner } from '../../../components/common/LoadingSpinner';
 import { ErrorBoundary } from '../../../components/common/ErrorBoundary';
@@ -22,6 +23,7 @@ export default function WorkspaceLayout({
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [commandCenterOpen, setCommandCenterOpen] = useState(false);
 
   useEffect(() => {
     void params.then((p) => setWorkspaceId(p.workspaceId));
@@ -71,6 +73,18 @@ export default function WorkspaceLayout({
     return () => window.removeEventListener('keydown', onKey);
   }, [toggleSidebar]);
 
+  // Global ⌘K / Ctrl+K listener for Command Center
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setCommandCenterOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   // F-13: Escape closes the mobile drawer and returns focus to the trigger.
   useEffect(() => {
     if (!sidebarOpen) return;
@@ -110,6 +124,7 @@ export default function WorkspaceLayout({
           onClose={() => setSidebarOpen(false)}
           collapsed={sidebarCollapsed}
           onToggleCollapse={toggleSidebar}
+          onOpenCommandCenter={() => setCommandCenterOpen(true)}
         />
         {sidebarOpen && (
           <div
@@ -119,7 +134,11 @@ export default function WorkspaceLayout({
           />
         )}
         <div className="flex-1 flex flex-col min-w-0">
-          <TopNav onMenuClick={toggleSidebar} sidebarCollapsed={sidebarCollapsed} />
+          <TopNav
+            onMenuClick={toggleSidebar}
+            sidebarCollapsed={sidebarCollapsed}
+            onOpenCommandCenter={() => setCommandCenterOpen(true)}
+          />
           {/* F-08: the root layout owns the single <main id="main-content">
                 landmark; this wrapper stays a plain div to avoid nested/duplicate
                 main landmarks on every workspace route. */}
@@ -136,6 +155,13 @@ export default function WorkspaceLayout({
             <ErrorBoundary>{children}</ErrorBoundary>
           </div>
         </div>
+
+        {/* Global Command Center */}
+        <CommandCenter
+          open={commandCenterOpen}
+          onClose={() => setCommandCenterOpen(false)}
+          onToggleSidebar={toggleSidebar}
+        />
       </div>
     </RealtimeProvider>
   );
