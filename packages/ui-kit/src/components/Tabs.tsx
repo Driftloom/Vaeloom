@@ -13,7 +13,8 @@ export interface TabItem {
 export interface TabsProps {
   tabs: TabItem[];
   activeTab: string;
-  onTabChange: (id: string) => void;
+  onTabChange?: (id: string) => void;
+  onChange?: (id: string) => void;
   variant?: 'default' | 'pills' | 'underline';
   size?: 'sm' | 'md';
   className?: string;
@@ -24,21 +25,23 @@ export const Tabs: React.FC<TabsProps> = ({
   tabs,
   activeTab,
   onTabChange,
+  onChange,
   variant = 'default',
   size = 'md',
   className = '',
   ariaLabel = 'Navigation Tabs',
 }) => {
   const tabListRef = useRef<HTMLDivElement>(null);
+  const handleTabChange = onTabChange || onChange || (() => {});
 
   const handleKeyDown = (e: React.KeyboardEvent, currentIndex: number) => {
     const enabledTabs = tabs.filter((t) => !t.disabled);
     const enabledCurrentIndex = enabledTabs.findIndex((t) => t.id === tabs[currentIndex]?.id);
 
     let nextIndex = -1;
-    if (e.key === 'ArrowRight') {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
       nextIndex = (enabledCurrentIndex + 1) % enabledTabs.length;
-    } else if (e.key === 'ArrowLeft') {
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
       nextIndex = (enabledCurrentIndex - 1 + enabledTabs.length) % enabledTabs.length;
     } else if (e.key === 'Home') {
       nextIndex = 0;
@@ -48,7 +51,7 @@ export const Tabs: React.FC<TabsProps> = ({
 
     if (nextIndex >= 0 && enabledTabs[nextIndex]) {
       e.preventDefault();
-      onTabChange(enabledTabs[nextIndex]!.id);
+      handleTabChange(enabledTabs[nextIndex]!.id);
       const nextButton = tabListRef.current?.querySelector<HTMLButtonElement>(
         `[data-tab-id="${enabledTabs[nextIndex]!.id}"]`,
       );
@@ -110,7 +113,7 @@ export const Tabs: React.FC<TabsProps> = ({
             aria-controls={`tabpanel-${tab.id}`}
             tabIndex={isActive ? 0 : -1}
             disabled={tab.disabled}
-            onClick={() => !tab.disabled && onTabChange(tab.id)}
+            onClick={() => !tab.disabled && handleTabChange(tab.id)}
             onKeyDown={(e) => handleKeyDown(e, idx)}
             className={`inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:ring-offset-background ${sizeClasses} ${getVariantClasses(isActive, tab.disabled)}`}
           >
@@ -128,6 +131,29 @@ export const Tabs: React.FC<TabsProps> = ({
           </button>
         );
       })}
+    </div>
+  );
+};
+
+export interface TabPanelProps {
+  id: string;
+  activeTab: string;
+  children: React.ReactNode;
+  className?: string;
+}
+
+export const TabPanel: React.FC<TabPanelProps> = ({ id, activeTab, children, className = '' }) => {
+  if (activeTab !== id) return null;
+
+  return (
+    <div
+      role="tabpanel"
+      id={`tabpanel-${id}`}
+      aria-labelledby={`tab-${id}`}
+      tabIndex={0}
+      className={`focus:outline-none ${className}`}
+    >
+      {children}
     </div>
   );
 };

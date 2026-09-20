@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "theme": "dark",
+  "name": "Vaeloom Dark (Default)",
+  "values": {
+    "--color-bg-canvas": "#08080a",
+    "--color-bg-surface": "#0e0e11",
+    "--color-bg-elevated": "#141417",
+    "--color-bg-subtle": "#1a1a20",
+    "--color-bg-sunken": "#040405",
+    "--color-bg-scrim": "rgba(0, 0, 0, 0.75)",
+
+    "--color-text-primary": "#f8fafc",
+    "--color-text-secondary": "#cbd5e1",
+    "--color-text-muted": "#94a3b8",
+    "--color-text-dim": "#64748b",
+    "--color-text-inverse": "#0f172a",
+    "--color-text-brand": "#a5b4fc",
+
+    "--color-border-default": "#222228",
+    "--color-border-subtle": "#18181c",
+    "--color-border-strong": "#363640",
+    "--color-border-focus": "#818cf8",
+
+    "--color-action-primary": "#4f46e5",
+    "--color-action-primary-hover": "#4338ca",
+    "--color-action-primary-active": "#3730a3",
+    "--color-action-primary-fg": "#ffffff",
+
+    "--color-action-secondary": "#1e293b",
+    "--color-action-secondary-hover": "#334155",
+    "--color-action-secondary-active": "#475569",
+    "--color-action-secondary-fg": "#f8fafc",
+
+    "--color-action-destructive": "#e11d48",
+    "--color-action-destructive-hover": "#be123c",
+    "--color-action-destructive-active": "#9f1239",
+    "--color-action-destructive-fg": "#ffffff",
+
+    "--color-status-success": "#34d399",
+    "--color-status-success-muted": "#065f46",
+    "--color-status-success-fg": "#6ee7b7",
+
+    "--color-status-warning": "#fbbf24",
+    "--color-status-warning-muted": "#92400e",
+    "--color-status-warning-fg": "#fde68a",
+
+    "--color-status-error": "#fb7185",
+    "--color-status-error-muted": "#9f1239",
+    "--color-status-error-fg": "#fecdd3",
+
+    "--color-status-info": "#38bdf8",
+    "--color-status-info-muted": "#075985",
+    "--color-status-info-fg": "#bae6fd",
+
+    "--color-ai-proposed": "#818cf8",
+    "--color-ai-proposed-muted": "#312e81",
+    "--color-ai-proposed-fg": "#c7d2fe",
+
+    "--color-ai-processing": "#38bdf8",
+    "--color-ai-processing-muted": "#0c4a6e",
+    "--color-ai-processing-fg": "#bae6fd",
+
+    "--color-ai-verified": "#34d399",
+    "--color-ai-verified-muted": "#064e3b",
+    "--color-ai-verified-fg": "#a7f3d0",
+
+    "--color-ai-needs-review": "#fbbf24",
+    "--color-ai-needs-review-muted": "#78350f",
+    "--color-ai-needs-review-fg": "#fde68a",
+
+    "--color-ai-blocked": "#fb7185",
+    "--color-ai-blocked-muted": "#881337",
+    "--color-ai-blocked-fg": "#fecdd3",
+
+    "--color-focus-ring": "#818cf8",
+    "--color-focus-ring-offset": "#08080a"
+  }
+}

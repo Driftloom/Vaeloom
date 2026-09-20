@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "vaeloom-semantic-tokens",
+  "version": "1.0.0",
+  "description": "Layer 2 Semantic Tokens referencing CSS variables",
+  "color": {
+    "bg": {
+      "canvas": "var(--color-bg-canvas)",
+      "surface": "var(--color-bg-surface)",
+      "elevated": "var(--color-bg-elevated)",
+      "subtle": "var(--color-bg-subtle)",
+      "sunken": "var(--color-bg-sunken)",
+      "scrim": "var(--color-bg-scrim)"
+    },
+    "text": {
+      "primary": "var(--color-text-primary)",
+      "secondary": "var(--color-text-secondary)",
+      "muted": "var(--color-text-muted)",
+      "dim": "var(--color-text-dim)",
+      "inverse": "var(--color-text-inverse)",
+      "brand": "var(--color-text-brand)"
+    },
+    "border": {
+      "default": "var(--color-border-default)",
+      "subtle": "var(--color-border-subtle)",
+      "strong": "var(--color-border-strong)",
+      "focus": "var(--color-border-focus)"
+    },
+    "action": {
+      "primary": "var(--color-action-primary)",
+      "primaryHover": "var(--color-action-primary-hover)",
+      "primaryActive": "var(--color-action-primary-active)",
+      "primaryFg": "var(--color-action-primary-fg)",
+      "secondary": "var(--color-action-secondary)",
+      "secondaryHover": "var(--color-action-secondary-hover)",
+      "secondaryActive": "var(--color-action-secondary-active)",
+      "secondaryFg": "var(--color-action-secondary-fg)",
+      "destructive": "var(--color-action-destructive)",
+      "destructiveHover": "var(--color-action-destructive-hover)",
+      "destructiveActive": "var(--color-action-destructive-active)",
+      "destructiveFg": "var(--color-action-destructive-fg)"
+    },
+    "status": {
+      "success": "var(--color-status-success)",
+      "successMuted": "var(--color-status-success-muted)",
+      "successFg": "var(--color-status-success-fg)",
+      "warning": "var(--color-status-warning)",
+      "warningMuted": "var(--color-status-warning-muted)",
+      "warningFg": "var(--color-status-warning-fg)",
+      "error": "var(--color-status-error)",
+      "errorMuted": "var(--color-status-error-muted)",
+      "errorFg": "var(--color-status-error-fg)",
+      "info": "var(--color-status-info)",
+      "infoMuted": "var(--color-status-info-muted)",
+      "infoFg": "var(--color-status-info-fg)"
+    },
+    "ai": {
+      "proposed": "var(--color-ai-proposed)",
+      "proposedMuted": "var(--color-ai-proposed-muted)",
+      "proposedFg": "var(--color-ai-proposed-fg)",
+      "processing": "var(--color-ai-processing)",
+      "processingMuted": "var(--color-ai-processing-muted)",
+      "processingFg": "var(--color-ai-processing-fg)",
+      "verified": "var(--color-ai-verified)",
+      "verifiedMuted": "var(--color-ai-verified-muted)",
+      "verifiedFg": "var(--color-ai-verified-fg)",
+      "needsReview": "var(--color-ai-needs-review)",
+      "needsReviewMuted": "var(--color-ai-needs-review-muted)",
+      "needsReviewFg": "var(--color-ai-needs-review-fg)",
+      "blocked": "var(--color-ai-blocked)",
+      "blockedMuted": "var(--color-ai-blocked-muted)",
+      "blockedFg": "var(--color-ai-blocked-fg)"
+    },
+    "focus": {
+      "ring": "var(--color-focus-ring)",
+      "ringOffset": "var(--color-focus-ring-offset)"
+    }
+  },
+  "space": {
+    "component": {
+      "xs": "var(--space-1)",
+      "sm": "var(--space-2)",
+      "md": "var(--space-4)",
+      "lg": "var(--space-6)"
+    },
+    "section": {
+      "sm": "var(--space-6)",
+      "md": "var(--space-8)",
+      "lg": "var(--space-12)"
+    },
+    "page": {
+      "inline": "var(--space-6)",
+      "block": "var(--space-8)"
+    }
+  },
+  "radius": {
+    "control": "var(--radius-md)",
+    "card": "var(--radius-lg)",
+    "container": "var(--radius-xl)",
+    "pill": "var(--radius-full)"
+  },
+  "elevation": {
+    "none": "none",
+    "card": "var(--elevation-raised)",
+    "overlay": "var(--elevation-overlay)",
+    "modal": "var(--elevation-modal)"
+  }
+}

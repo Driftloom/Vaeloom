@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "vaeloom-component-tokens",
+  "version": "1.0.0",
+  "description": "Layer 3 Component Tokens for Vaeloom UI Kit",
+  "button": {
+    "primary": {
+      "bg": "var(--color-action-primary)",
+      "bgHover": "var(--color-action-primary-hover)",
+      "bgActive": "var(--color-action-primary-active)",
+      "fg": "var(--color-action-primary-fg)",
+      "border": "transparent"
+    },
+    "secondary": {
+      "bg": "var(--color-action-secondary)",
+      "bgHover": "var(--color-action-secondary-hover)",
+      "bgActive": "var(--color-action-secondary-active)",
+      "fg": "var(--color-action-secondary-fg)",
+      "border": "var(--color-border-default)"
+    },
+    "destructive": {
+      "bg": "var(--color-action-destructive)",
+      "bgHover": "var(--color-action-destructive-hover)",
+      "bgActive": "var(--color-action-destructive-active)",
+      "fg": "var(--color-action-destructive-fg)",
+      "border": "transparent"
+    },
+    "ghost": {
+      "bg": "transparent",
+      "bgHover": "var(--color-bg-subtle)",
+      "bgActive": "var(--color-bg-sunken)",
+      "fg": "var(--color-text-secondary)",
+      "border": "transparent"
+    }
+  },
+  "input": {
+    "bg": "var(--color-bg-surface)",
+    "border": "var(--color-border-default)",
+    "borderHover": "var(--color-border-strong)",
+    "borderFocus": "var(--color-border-focus)",
+    "borderInvalid": "var(--color-status-error)",
+    "text": "var(--color-text-primary)",
+    "placeholder": "var(--color-text-dim)",
+    "radius": "var(--radius-md)"
+  },
+  "card": {
+    "bg": "var(--color-bg-surface)",
+    "border": "var(--color-border-default)",
+    "borderHover": "var(--color-border-strong)",
+    "radius": "var(--radius-lg)",
+    "shadow": "var(--elevation-raised)"
+  },
+  "table": {
+    "headerBg": "var(--color-bg-subtle)",
+    "headerText": "var(--color-text-muted)",
+    "rowBg": "var(--color-bg-surface)",
+    "rowHover": "var(--color-bg-subtle)",
+    "rowSelected": "var(--color-bg-sunken)",
+    "border": "var(--color-border-subtle)"
+  },
+  "badge": {
+    "radius": "var(--radius-pill)",
+    "paddingX": "var(--space-2)",
+    "paddingY": "0.125rem",
+    "fontSize": "var(--font-size-12)"
+  },
+  "modal": {
+    "scrim": "var(--color-bg-scrim)",
+    "bg": "var(--color-bg-elevated)",
+    "border": "var(--color-border-default)",
+    "radius": "var(--radius-xl)",
+    "shadow": "var(--elevation-modal)"
+  }
+}

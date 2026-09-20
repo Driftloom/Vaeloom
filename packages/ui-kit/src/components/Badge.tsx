@@ -1,7 +1,7 @@
 import React from 'react';
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: 'default' | 'primary' | 'success' | 'warning' | 'error' | 'mono';
+  variant?: 'default' | 'primary' | 'success' | 'warning' | 'error' | 'info' | 'mono';
   size?: 'sm' | 'md';
   children: React.ReactNode;
   className?: string;
@@ -22,6 +22,7 @@ export const Badge: React.FC<BadgeProps> = ({
     success: 'bg-success/10 text-success border-success/30',
     warning: 'bg-warning/10 text-warning border-warning/30',
     error: 'bg-error/10 text-error border-error/30',
+    info: 'bg-info/10 text-info border-info/30',
     mono: 'bg-surface-hover text-text font-mono border-border',
   };
 
