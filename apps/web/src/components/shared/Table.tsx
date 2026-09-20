@@ -1,4 +1,5 @@
 import React from 'react';
+import { DataTable, ColumnDef } from '@vaeloom/ui-kit';
 
 export interface Column<T> {
   key: string;
@@ -8,7 +9,7 @@ export interface Column<T> {
   sortable?: boolean;
 }
 
-interface TableProps<T> {
+export interface TableProps<T> {
   columns: Column<T>[];
   data: T[];
   keyExtractor: (item: T) => string;
@@ -17,56 +18,21 @@ interface TableProps<T> {
 }
 
 export function Table<T>({ columns, data, keyExtractor, onRowClick, emptyMessage }: TableProps<T>) {
-  if (data.length === 0) {
-    return (
-      <div className="text-center py-12 text-text-muted">
-        <p>{emptyMessage || 'No data available.'}</p>
-      </div>
-    );
-  }
+  const tableColumns: ColumnDef<T>[] = columns.map((col) => ({
+    key: col.key,
+    header: col.header,
+    sortable: col.sortable,
+    className: col.className,
+    render: (_val: any, row: T) => (col.render ? col.render(row) : (row as any)[col.key]),
+  }));
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left">
-        <thead>
-          <tr className="border-b border-border text-text-muted font-mono text-sm uppercase">
-            {columns.map((col) => (
-              <th key={col.key} scope="col" className={`pb-3 font-normal ${col.className || ''}`}>
-                {col.header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((item) => (
-            <tr
-              key={keyExtractor(item)}
-              className={`border-b border-border/50 hover:bg-background/50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
-              onClick={() => onRowClick?.(item)}
-              onKeyDown={
-                onRowClick
-                  ? (e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        onRowClick(item);
-                      }
-                    }
-                  : undefined
-              }
-              tabIndex={onRowClick ? 0 : undefined}
-              role={onRowClick ? 'button' : undefined}
-            >
-              {columns.map((col) => (
-                <td key={col.key} className={`py-3 text-text ${col.className || ''}`}>
-                  {col.render
-                    ? col.render(item)
-                    : ((item as Record<string, unknown>)[col.key] as React.ReactNode)}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={tableColumns}
+      data={data}
+      keyExtractor={keyExtractor}
+      onRowClick={onRowClick}
+      emptyMessage={emptyMessage}
+    />
   );
 }
