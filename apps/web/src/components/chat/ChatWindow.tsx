@@ -11,6 +11,7 @@ import {
 } from '@/lib/api-client';
 import { ExecutionTimeline } from '@/components/execution/ExecutionTimeline';
 import { useToast } from '@/components/shared/Toast';
+import { useRealtime } from '@/components/providers/RealtimeProvider';
 
 type ProposalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'error';
 
@@ -243,6 +244,7 @@ function agentDot(a?: string) {
 
 export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   const { toast } = useToast();
+  const { latestAgentStep, latestToolExecution } = useRealtime();
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [threads, setThreads] = useState<Thread[]>([]);
@@ -1369,8 +1371,25 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 text-xs text-text-dim">
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                        Thinking · routing + QA
+                        {latestAgentStep ? (
+                          <span>
+                            Thinking · Round {latestAgentStep.round || 1}
+                            {latestAgentStep.proposed_tools?.length
+                              ? ` · Proposing: ${latestAgentStep.proposed_tools.join(', ')}`
+                              : ''}
+                          </span>
+                        ) : (
+                          <span>Thinking · routing + QA</span>
+                        )}
                       </div>
+                      {latestToolExecution && (
+                        <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs bg-primary/10 border border-primary/20 text-primary font-mono">
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
+                          <span>
+                            Tool: {latestToolExecution.tool} ({latestToolExecution.status})
+                          </span>
+                        </div>
+                      )}
                       <div className="mt-2 flex gap-1">
                         <span className="w-1.5 h-1.5 bg-text-dim rounded-full animate-bounce" />
                         <span

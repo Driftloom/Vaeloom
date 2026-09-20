@@ -40,13 +40,26 @@ class WebSocketConnection:
         }
         self.connected_at = datetime.now(timezone.utc)
         self.last_ping = datetime.now(timezone.utc)
+        self._pending_sends = 0
 
     async def send_json(self, data: Dict[str, Any]) -> None:
+        if self._pending_sends > 100:
+            logger.warning(
+                "WS_SLOW_CONSUMER_DROP: user=%s workspace=%s (pending: %d)",
+                self.user_id,
+                self.workspace_id,
+                self._pending_sends,
+            )
+            return
+
+        self._pending_sends += 1
         try:
             await self.websocket.send_text(json.dumps(data, default=str))
         except Exception as exc:
             logger.debug("Failed to send WebSocket frame to user %s: %s", self.user_id, exc)
             raise
+        finally:
+            self._pending_sends = max(0, self._pending_sends - 1)
 
 
 class WebSocketConnectionManager:
@@ -122,6 +135,12 @@ class WebSocketConnectionManager:
                 "last_active": datetime.now(timezone.utc).isoformat(),
             }
 
+        if self._redis_client:
+            try:
+                await self._redis_client.set(f"vaeloom:presence:{user_id}", "online", ex=60)
+            except Exception as exc:
+                logger.debug("Redis presence set failed: %s", exc)
+
         logger.info(
             "WebSocket connected: user=%s workspace=%s (active total: %d)",
             user_id,
@@ -147,6 +166,12 @@ class WebSocketConnectionManager:
                     if not self._channel_map[channel]:
                         del self._channel_map[channel]
 
+        if self._redis_client:
+            try:
+                await self._redis_client.delete(f"vaeloom:presence:{conn.user_id}")
+            except Exception as exc:
+                logger.debug("Redis presence delete failed: %s", exc)
+
         logger.info(
             "WebSocket disconnected: user=%s workspace=%s (active total: %d)",
             conn.user_id,
@@ -169,6 +194,17 @@ class WebSocketConnectionManager:
         if user_id in self._presence:
             self._presence[user_id]["status"] = status
             self._presence[user_id]["last_active"] = datetime.now(timezone.utc).isoformat()
+
+    async def update_presence_async(self, user_id: uuid.UUID, status: str) -> None:
+        self.update_presence(user_id, status)
+        if self._redis_client:
+            try:
+                if status == "offline":
+                    await self._redis_client.delete(f"vaeloom:presence:{user_id}")
+                else:
+                    await self._redis_client.set(f"vaeloom:presence:{user_id}", status, ex=60)
+            except Exception as exc:
+                logger.debug("Redis presence update failed: %s", exc)
 
     def get_presence(self, user_id: uuid.UUID) -> Dict[str, Any]:
         return self._presence.get(

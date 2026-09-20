@@ -7,6 +7,7 @@ import { TopNav } from '@/components/layout/TopNav';
 import { useAuth } from '../../../hooks/useAuth';
 import { LoadingSpinner } from '../../../components/common/LoadingSpinner';
 import { ErrorBoundary } from '../../../components/common/ErrorBoundary';
+import { RealtimeProvider } from '@/components/providers/RealtimeProvider';
 
 export default function WorkspaceLayout({
   children,
@@ -101,35 +102,37 @@ export default function WorkspaceLayout({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar
-        workspaceId={workspaceId}
-        open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={toggleSidebar}
-      />
-      {sidebarOpen && (
-        <div
-          className="md:hidden fixed inset-0 z-30 bg-black/40"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
+    <RealtimeProvider workspaceId={workspaceId}>
+      <div className="flex h-screen overflow-hidden bg-background">
+        <Sidebar
+          workspaceId={workspaceId}
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={toggleSidebar}
         />
-      )}
-      <div className="flex-1 flex flex-col min-w-0">
-        <TopNav onMenuClick={toggleSidebar} sidebarCollapsed={sidebarCollapsed} />
-        {/* F-08: the root layout owns the single <main id="main-content">
-              landmark; this wrapper stays a plain div to avoid nested/duplicate
-              main landmarks on every workspace route. */}
-        <div
-          tabIndex={-1}
-          className="flex-1 overflow-y-auto p-4 sm:p-6 focus:outline-none"
-          aria-hidden={sidebarOpen ? true : undefined}
-          {...(sidebarOpen ? { inert: true } : {})}
-        >
-          <ErrorBoundary>{children}</ErrorBoundary>
+        {sidebarOpen && (
+          <div
+            className="md:hidden fixed inset-0 z-30 bg-black/40"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+        <div className="flex-1 flex flex-col min-w-0">
+          <TopNav onMenuClick={toggleSidebar} sidebarCollapsed={sidebarCollapsed} />
+          {/* F-08: the root layout owns the single <main id="main-content">
+                landmark; this wrapper stays a plain div to avoid nested/duplicate
+                main landmarks on every workspace route. */}
+          <div
+            tabIndex={-1}
+            className="flex-1 overflow-y-auto p-4 sm:p-6 focus:outline-none"
+            aria-hidden={sidebarOpen ? true : undefined}
+            {...(sidebarOpen ? { inert: true } : {})}
+          >
+            <ErrorBoundary>{children}</ErrorBoundary>
+          </div>
         </div>
       </div>
-    </div>
+    </RealtimeProvider>
   );
 }
