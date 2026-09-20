@@ -116,22 +116,25 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 # 3. Try Supabase Auth API verification fallback
                 if not verified and supa_url:
                     try:
+                        import time
                         import httpx
                         supa_key = getattr(settings, "supabase_anon_key", "")
                         headers = {"Authorization": f"Bearer {token}"}
                         if supa_key:
                             headers["apikey"] = supa_key
-                        async with httpx.AsyncClient(timeout=5.0) as client:
+                        async with httpx.AsyncClient(timeout=2.0) as client:
                             resp = await client.get(
                                 f"{supa_url.rstrip('/')}/auth/v1/user", headers=headers
                             )
                             if resp.status_code == 200:
                                 user_data = resp.json()
+                                now_ts = int(time.time())
                                 payload = {
                                     "sub": user_data.get("id"),
                                     "email": user_data.get("email"),
                                     "user_metadata": user_data.get("user_metadata", {}) or {},
-                                    "exp": 9999999999,
+                                    "iat": now_ts,
+                                    "exp": now_ts + 3600,
                                 }
                                 verified = True
                     except Exception:

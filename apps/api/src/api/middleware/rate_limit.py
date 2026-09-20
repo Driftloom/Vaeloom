@@ -121,6 +121,18 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             config = _resolve_rate_limit(route.endpoint)
             if config:
                 return config
+
+        # Starlette BaseHTTPMiddleware runs before route dispatching; match app.routes
+        app = getattr(request, "app", None)
+        if app and hasattr(app, "routes"):
+            for r in app.routes:
+                if hasattr(r, "matches"):
+                    match, _ = r.matches(request.scope)
+                    if match.name == "FULL" and hasattr(r, "endpoint"):
+                        config = _resolve_rate_limit(r.endpoint)
+                        if config:
+                            return config
+
         return self.default_max_requests, self.default_window_seconds
 
     async def _add_rate_limit_headers(self, request: Request, response: Response, client_key: str) -> None:
