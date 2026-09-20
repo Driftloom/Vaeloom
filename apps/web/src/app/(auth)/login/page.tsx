@@ -223,7 +223,7 @@ function LoginForm() {
 
           {/* Welcome text */}
           <div className="mb-8">
-            <h1 className="text-2xl font-bold text-text mb-2">
+            <h1 className="text-2xl font-display font-medium text-text mb-2">
               {mfaChallenge ? 'Two-Factor Verification' : 'Welcome back'}
             </h1>
             <p className="text-text-muted">

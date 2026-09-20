@@ -202,7 +202,9 @@ export default function SignupPage() {
           </div>
 
           <div className="mb-8">
-            <h1 className="text-2xl font-bold text-text mb-2">Create your account</h1>
+            <h1 className="text-2xl font-display font-medium text-text mb-2">
+              Create your account
+            </h1>
             <p className="text-text-muted">Get started in seconds</p>
           </div>
 
