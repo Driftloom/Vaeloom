@@ -124,8 +124,8 @@ function SidebarNavLink({ link, current, collapsed }: SidebarNavLinkProps) {
           collapsed ? 'p-2 justify-center' : 'gap-2.5 px-2.5 py-1.5'
         } ${
           current
-            ? 'bg-[var(--color-action-subtle,#3b82f620)] text-[var(--color-action-primary,#3b82f6)] font-semibold border-l-2 border-[var(--color-action-primary,#3b82f6)]'
-            : 'text-[var(--color-text-secondary,#a1a1aa)] hover:text-[var(--color-text-primary,#f4f4f5)] hover:bg-[var(--color-bg-elevated,#18181c)]'
+            ? 'bg-primary/10 text-primary font-semibold border-l-2 border-primary'
+            : 'text-text-secondary hover:text-text hover:bg-surface-200'
         }`}
       >
         <span className="shrink-0">{link.icon}</span>
@@ -184,18 +184,18 @@ export function Sidebar({
     <>
       <aside
         aria-label="Sidebar navigation"
-        className={`h-screen border-r border-[var(--color-border-subtle,#27272a)] bg-[var(--color-bg-surface,#111114)] flex flex-col transition-all duration-200 select-none ${
+        className={`h-screen border-r border-border-subtle bg-surface flex flex-col transition-all duration-200 select-none ${
           open ? 'fixed inset-y-0 left-0 z-40 w-64' : 'hidden md:flex'
         } ${isCol ? 'md:w-16' : 'md:w-64'}`}
       >
         {/* Brand & Workspace Header */}
-        <div className="flex items-center justify-between h-14 px-3 border-b border-[var(--color-border-subtle,#27272a)]">
+        <div className="flex items-center justify-between h-14 px-3 border-b border-border-subtle">
           {!isCol && (
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-[var(--color-action-primary,#3b82f6)] flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm">
+              <div className="w-7 h-7 rounded-lg bg-action flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm">
                 V
               </div>
-              <span className="font-semibold text-sm text-[var(--color-text-primary,#f4f4f5)] truncate tracking-tight">
+              <span className="font-semibold text-sm text-text truncate tracking-tight">
                 Vaeloom
               </span>
             </div>
@@ -207,12 +207,12 @@ export function Sidebar({
                   type="button"
                   aria-label="Expand sidebar"
                   onClick={onToggleCollapse}
-                  className="w-8 h-8 rounded-lg bg-[var(--color-action-primary,#3b82f6)] flex items-center justify-center text-white font-bold text-xs shadow-sm hover:opacity-90"
+                  className="w-8 h-8 rounded-lg bg-action flex items-center justify-center text-white font-bold text-xs shadow-sm hover:opacity-90"
                 >
                   V
                 </button>
               ) : (
-                <div className="w-8 h-8 rounded-lg bg-[var(--color-action-primary,#3b82f6)] flex items-center justify-center text-white font-bold text-xs shadow-sm">
+                <div className="w-8 h-8 rounded-lg bg-action flex items-center justify-center text-white font-bold text-xs shadow-sm">
                   V
                 </div>
               )}
@@ -223,7 +223,7 @@ export function Sidebar({
               type="button"
               aria-label="Collapse sidebar"
               onClick={onToggleCollapse}
-              className="p-1 rounded text-[var(--color-text-muted,#71717a)] hover:text-[var(--color-text-primary,#f4f4f5)] hover:bg-[var(--color-bg-elevated,#18181c)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-focus-ring,#3b82f6)]"
+              className="p-1 rounded text-text-muted hover:text-text hover:bg-surface-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
             >
               <ChevronLeftIcon size={16} />
             </button>
@@ -238,16 +238,16 @@ export function Sidebar({
           {groups.map((group) => (
             <div key={group.label}>
               {!isCol ? (
-                <p className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-[var(--color-text-muted,#71717a)]">
+                <p className="px-2 py-1 text-2xs font-semibold uppercase tracking-widest text-text-dim">
                   {group.label}
                   {group.enterprise && (
-                    <span className="ml-1.5 text-[9px] px-1 py-0.2 rounded border border-[var(--color-border-subtle,#27272a)]">
+                    <span className="ml-1.5 text-2xs px-1 py-0.2 rounded border border-border-subtle">
                       gated
                     </span>
                   )}
                 </p>
               ) : (
-                <div className="mx-2 my-1 border-t border-[var(--color-border-subtle,#27272a)]" />
+                <div className="mx-2 my-1 border-t border-border-subtle" />
               )}
               <ul className="space-y-0.5">
                 {group.links.map((link) => (
@@ -265,14 +265,14 @@ export function Sidebar({
 
         {/* Footer Utilities */}
         <div
-          className={`p-2 border-t border-[var(--color-border-subtle,#27272a)] bg-[var(--color-bg-surface,#111114)] ${isCol ? 'flex flex-col items-center gap-2' : 'space-y-1'}`}
+          className={`p-2 border-t border-border-subtle bg-surface ${isCol ? 'flex flex-col items-center gap-2' : 'space-y-1'}`}
         >
           {onOpenCommandCenter && (
             <button
               type="button"
               onClick={onOpenCommandCenter}
               title="Command Center (⌘K)"
-              className={`flex items-center rounded-md text-xs font-medium text-[var(--color-text-secondary,#a1a1aa)] hover:text-[var(--color-text-primary,#f4f4f5)] hover:bg-[var(--color-bg-elevated,#18181c)] transition-colors ${
+              className={`flex items-center rounded-md text-xs font-medium text-text-secondary hover:text-text hover:bg-surface-200 transition-colors ${
                 isCol ? 'p-2 justify-center' : 'w-full justify-between px-2 py-1.5'
               }`}
             >
@@ -281,7 +281,7 @@ export function Sidebar({
                 {!isCol && <span>Command Center</span>}
               </div>
               {!isCol && (
-                <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-bg-canvas,#08080a)] border border-[var(--color-border-subtle,#27272a)] text-[var(--color-text-muted,#71717a)]">
+                <kbd className="font-mono text-2xs px-1.5 py-0.5 rounded bg-surface-100 border border-border-subtle text-text-muted">
                   ⌘K
                 </kbd>
               )}
@@ -292,7 +292,7 @@ export function Sidebar({
             type="button"
             onClick={() => setShowShortcutsModal(true)}
             title="Shortcuts (?)"
-            className={`flex items-center rounded-md text-xs font-medium text-[var(--color-text-secondary,#a1a1aa)] hover:text-[var(--color-text-primary,#f4f4f5)] hover:bg-[var(--color-bg-elevated,#18181c)] transition-colors ${
+            className={`flex items-center rounded-md text-xs font-medium text-text-secondary hover:text-text hover:bg-surface-200 transition-colors ${
               isCol ? 'p-2 justify-center' : 'w-full justify-between px-2 py-1.5'
             }`}
           >
@@ -301,7 +301,7 @@ export function Sidebar({
               {!isCol && <span>Keyboard Shortcuts</span>}
             </div>
             {!isCol && (
-              <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-bg-canvas,#08080a)] border border-[var(--color-border-subtle,#27272a)] text-[var(--color-text-muted,#71717a)]">
+              <kbd className="font-mono text-2xs px-1.5 py-0.5 rounded bg-surface-100 border border-border-subtle text-text-muted">
                 ?
               </kbd>
             )}
@@ -319,18 +319,16 @@ export function Sidebar({
           onClick={() => setShowShortcutsModal(false)}
         >
           <div
-            className="w-full max-w-md rounded-xl bg-[var(--color-bg-surface,#111114)] border border-[var(--color-border-strong,#3f3f46)] shadow-2xl p-5 space-y-4"
+            className="w-full max-w-md rounded-xl bg-surface border border-border-strong shadow-2xl p-5 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--color-border-subtle,#27272a)]">
-              <h3 className="text-sm font-semibold text-[var(--color-text-primary,#f4f4f5)]">
-                Keyboard Shortcuts
-              </h3>
+            <div className="flex items-center justify-between pb-3 border-b border-border-subtle">
+              <h3 className="text-sm font-semibold text-text">Keyboard Shortcuts</h3>
               <button
                 type="button"
                 aria-label="Close shortcuts dialog"
                 onClick={() => setShowShortcutsModal(false)}
-                className="p-1 rounded text-[var(--color-text-muted,#71717a)] hover:text-[var(--color-text-primary,#f4f4f5)]"
+                className="p-1 rounded text-text-muted hover:text-text"
               >
                 <XIcon size={16} />
               </button>
@@ -338,36 +336,32 @@ export function Sidebar({
 
             <div className="space-y-3 text-xs">
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between py-1 px-2 rounded bg-[var(--color-bg-elevated,#18181c)]">
-                  <span className="text-[var(--color-text-primary,#f4f4f5)]">
-                    Open Command Center
-                  </span>
-                  <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-bg-canvas,#08080a)] border border-[var(--color-border-subtle,#27272a)] text-[var(--color-text-muted,#71717a)]">
+                <div className="flex items-center justify-between py-1 px-2 rounded bg-surface-200">
+                  <span className="text-text">Open Command Center</span>
+                  <kbd className="font-mono text-2xs px-1.5 py-0.5 rounded bg-surface-100 border border-border-subtle text-text-muted">
                     ⌘K / Ctrl+K
                   </kbd>
                 </div>
-                <div className="flex items-center justify-between py-1 px-2 rounded bg-[var(--color-bg-elevated,#18181c)]">
-                  <span className="text-[var(--color-text-primary,#f4f4f5)]">Toggle Sidebar</span>
-                  <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-bg-canvas,#08080a)] border border-[var(--color-border-subtle,#27272a)] text-[var(--color-text-muted,#71717a)]">
+                <div className="flex items-center justify-between py-1 px-2 rounded bg-surface-200">
+                  <span className="text-text">Toggle Sidebar</span>
+                  <kbd className="font-mono text-2xs px-1.5 py-0.5 rounded bg-surface-100 border border-border-subtle text-text-muted">
                     ⌘B / Ctrl+B
                   </kbd>
                 </div>
-                <div className="flex items-center justify-between py-1 px-2 rounded bg-[var(--color-bg-elevated,#18181c)]">
-                  <span className="text-[var(--color-text-primary,#f4f4f5)]">
-                    Shortcuts Cheatsheet
-                  </span>
-                  <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[var(--color-bg-canvas,#08080a)] border border-[var(--color-border-subtle,#27272a)] text-[var(--color-text-muted,#71717a)]">
+                <div className="flex items-center justify-between py-1 px-2 rounded bg-surface-200">
+                  <span className="text-text">Shortcuts Cheatsheet</span>
+                  <kbd className="font-mono text-2xs px-1.5 py-0.5 rounded bg-surface-100 border border-border-subtle text-text-muted">
                     ?
                   </kbd>
                 </div>
               </div>
             </div>
 
-            <div className="pt-2 border-t border-[var(--color-border-subtle,#27272a)] flex justify-end">
+            <div className="pt-2 border-t border-border-subtle flex justify-end">
               <button
                 type="button"
                 onClick={() => setShowShortcutsModal(false)}
-                className="px-3 py-1.5 rounded-md text-xs font-medium bg-[var(--color-bg-elevated,#18181c)] text-[var(--color-text-primary,#f4f4f5)] hover:bg-[var(--color-border-subtle,#27272a)] transition-colors"
+                className="px-3 py-1.5 rounded-md text-xs font-medium bg-surface-200 text-text hover:bg-border-subtle transition-colors"
               >
                 Close
               </button>

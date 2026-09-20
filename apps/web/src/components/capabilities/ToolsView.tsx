@@ -432,7 +432,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId }) => {
                       suite.enabled = !suite.enabled;
                     }}
                     className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      suite.enabled ? 'bg-[#22c55e]' : 'bg-[#27272a]'
+                      suite.enabled ? 'bg-[#22c55e]' : 'bg-surface-active'
                     }`}
                   >
                     <span
@@ -508,7 +508,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId }) => {
                     });
                   }}
                   className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    useRealProfile ? 'bg-[#22c55e]' : 'bg-[#27272a]'
+                    useRealProfile ? 'bg-[#22c55e]' : 'bg-surface-active'
                   }`}
                 >
                   <span

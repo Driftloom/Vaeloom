@@ -206,7 +206,7 @@ export default function SignupPage() {
             <p className="text-text-muted">Get started in seconds</p>
           </div>
 
-          <div className="bg-[#0a0a0a] border border-zinc-800 rounded-2xl p-8 shadow-card">
+          <div className="bg-surface-50 border border-border rounded-2xl p-8 shadow-card">
             <form onSubmit={onSubmit} className="space-y-5">
               <div className="space-y-2">
                 <label htmlFor="displayName" className="input-label">
@@ -398,7 +398,7 @@ export default function SignupPage() {
                 <div className="w-full border-t border-border" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-[#0a0a0a] text-zinc-400">or sign up with</span>
+                <span className="px-4 bg-surface-50 text-text-muted">or sign up with</span>
               </div>
             </div>
 

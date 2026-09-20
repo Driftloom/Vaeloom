@@ -56,10 +56,10 @@ export default function WorkspaceIndexPage() {
   }, [router]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+    <div className="flex min-h-screen items-center justify-center bg-background text-text">
       <div className="flex flex-col items-center gap-4 text-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent" />
-        <p className="text-sm text-slate-400">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <p className="text-sm text-text-muted">
           {error ? `${error}. Redirecting to login...` : 'Entering your workspace...'}
         </p>
       </div>

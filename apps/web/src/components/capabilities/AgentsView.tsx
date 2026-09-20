@@ -152,7 +152,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({ agents, workspaceId, onT
                     aria-label={`Toggle ${agent.name}`}
                     onClick={() => onToggleAgent(agent.id)}
                     className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      agent.enabled ? 'bg-[#22c55e]' : 'bg-[#27272a]'
+                      agent.enabled ? 'bg-[#22c55e]' : 'bg-surface-active'
                     }`}
                   >
                     <span

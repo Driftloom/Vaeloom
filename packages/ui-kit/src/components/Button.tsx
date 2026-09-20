@@ -29,7 +29,7 @@ export const Button: React.FC<ButtonProps> = ({
       'bg-surface-hover text-text hover:bg-surface-active focus:ring-border border border-border',
     ghost: 'bg-transparent text-text hover:bg-surface-hover focus:ring-border',
     // Destructive actions use the semantic error color, not the accent.
-    danger: 'bg-error text-white hover:brightness-110 active:brightness-95 focus:ring-error',
+    danger: 'bg-error text-error-fg hover:bg-error/90 active:bg-error/80 focus:ring-error',
   };
 
   const sizes: Record<string, string> = {

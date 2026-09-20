@@ -495,7 +495,7 @@ export default function JobsPage() {
                                 {piosMatch.missingSkills.map((gs, idx) => (
                                   <span
                                     key={idx}
-                                    className="px-1.5 py-0.5 rounded bg-zinc-700/30 text-zinc-400 border border-border text-[10px]"
+                                    className="px-1.5 py-0.5 rounded bg-surface-300/30 text-text-muted border border-border text-2xs"
                                   >
                                     {gs}
                                   </span>
@@ -835,7 +835,7 @@ export default function JobsPage() {
                         {matchResult.missingSkills.map((gs, idx) => (
                           <span
                             key={idx}
-                            className="px-2 py-0.5 rounded bg-zinc-800/40 text-zinc-400 border border-border text-xs"
+                            className="px-2 py-0.5 rounded bg-surface-300/40 text-text-muted border border-border text-xs"
                           >
                             {gs}
                           </span>

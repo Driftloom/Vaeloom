@@ -214,7 +214,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
       <div className="flex-1 p-4 sm:p-6">
         <div className="rounded-xl border border-[#1c1d24] bg-[#0c0d10] overflow-hidden shadow-xs">
           {/* Table Header */}
-          <div className="grid grid-cols-[1fr_120px_160px] sm:grid-cols-[1fr_140px_200px] items-center px-5 py-3 border-b border-[#1c1d24] bg-[#101116] text-xs font-sans font-medium text-[#71717a]">
+          <div className="grid grid-cols-[1fr_120px_160px] sm:grid-cols-[1fr_140px_200px] items-center px-5 py-3 border-b border-[#1c1d24] bg-[#101116] text-xs font-sans font-medium text-text-muted">
             <div>Plugin</div>
             <div className="text-center">Desktop</div>
             <div className="text-center">Agent in Hermes (default)</div>
@@ -246,13 +246,13 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
                         {p.badges.map((badge) => (
                           <span
                             key={badge}
-                            className="px-2 py-0.5 text-[10px] font-sans font-medium rounded bg-[#181a22] text-[#8b8e99] border border-[#262835]"
+                            className="px-2 py-0.5 text-2xs font-sans font-medium rounded bg-[#181a22] text-[#8b8e99] border border-[#262835]"
                           >
                             {badge}
                           </span>
                         ))}
                       </div>
-                      <p className="text-xs text-[#a1a1aa] font-sans leading-relaxed mt-1 max-w-2xl">
+                      <p className="text-xs text-text-secondary font-sans leading-relaxed mt-1 max-w-2xl">
                         {p.description}
                       </p>
                     </div>
@@ -267,7 +267,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
                       aria-label={`Toggle desktop for ${p.name}`}
                       onClick={() => toggleBuiltin(p.id, 'desktop')}
                       className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        state.desktop ? 'bg-[#22c55e]' : 'bg-[#27272a]'
+                        state.desktop ? 'bg-[#22c55e]' : 'bg-surface-active'
                       }`}
                     >
                       <span
@@ -287,7 +287,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
                       aria-label={`Toggle agent for ${p.name}`}
                       onClick={() => toggleBuiltin(p.id, 'agent')}
                       className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        state.agent ? 'bg-[#22c55e]' : 'bg-[#27272a]'
+                        state.agent ? 'bg-[#22c55e]' : 'bg-surface-active'
                       }`}
                     >
                       <span
@@ -317,16 +317,16 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
                       <span className="text-sm font-semibold text-white font-sans tracking-tight">
                         {item.name}
                       </span>
-                      <span className="px-2 py-0.5 text-[10px] font-sans font-medium rounded bg-[#181a22] text-[#8b8e99] border border-[#262835]">
+                      <span className="px-2 py-0.5 text-2xs font-sans font-medium rounded bg-[#181a22] text-[#8b8e99] border border-[#262835]">
                         {item.source === 'built-in' ? 'bundled' : 'custom'}
                       </span>
                       {item.version && (
-                        <span className="px-1.5 py-0.5 text-[10px] font-mono text-[#71717a]">
+                        <span className="px-1.5 py-0.5 text-2xs font-mono text-text-muted">
                           v{item.version}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-[#a1a1aa] font-sans leading-relaxed mt-1 max-w-2xl">
+                    <p className="text-xs text-text-secondary font-sans leading-relaxed mt-1 max-w-2xl">
                       {item.description}
                     </p>
                   </div>
@@ -341,7 +341,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
                     aria-label={`Toggle desktop for ${item.name}`}
                     onClick={() => onTogglePlugin(item.id)}
                     className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      item.enabled ? 'bg-[#22c55e]' : 'bg-[#27272a]'
+                      item.enabled ? 'bg-[#22c55e]' : 'bg-surface-active'
                     }`}
                   >
                     <span
@@ -361,7 +361,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
                     aria-label={`Toggle agent for ${item.name}`}
                     onClick={() => onTogglePlugin(item.id)}
                     className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      item.enabled ? 'bg-[#22c55e]' : 'bg-[#27272a]'
+                      item.enabled ? 'bg-[#22c55e]' : 'bg-surface-active'
                     }`}
                   >
                     <span

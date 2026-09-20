@@ -10,12 +10,12 @@ export interface HeadingProps extends React.HTMLAttributes<HTMLHeadingElement> {
 }
 
 const sizeMap = {
-  sm: 'text-base font-semibold leading-6',
-  md: 'text-lg font-semibold leading-7',
-  lg: 'text-xl font-semibold leading-7',
-  xl: 'text-2xl font-bold leading-8 tracking-tight',
-  '2xl': 'text-3xl font-bold leading-9 tracking-tight',
-  '3xl': 'text-4xl font-bold leading-10 tracking-tight',
+  sm: 'text-base font-display font-medium leading-6',
+  md: 'text-lg font-display font-medium leading-7',
+  lg: 'text-xl font-display font-medium leading-7',
+  xl: 'text-2xl font-display font-medium leading-8 tracking-tight',
+  '2xl': 'text-3xl font-display font-medium leading-9 tracking-tight',
+  '3xl': 'text-4xl font-display font-medium leading-10 tracking-tight',
 };
 
 const defaultSizeByLevel: Record<number, 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl'> = {
@@ -28,9 +28,9 @@ const defaultSizeByLevel: Record<number, 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3x
 };
 
 const colorMap = {
-  primary: 'text-[var(--color-text-primary,#f4f4f5)]',
-  secondary: 'text-[var(--color-text-secondary,#a1a1aa)]',
-  muted: 'text-[var(--color-text-muted,#71717a)]',
+  primary: 'text-text',
+  secondary: 'text-text-secondary',
+  muted: 'text-text-muted',
 };
 
 export const Heading = React.forwardRef<HTMLHeadingElement, HeadingProps>(

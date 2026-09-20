@@ -269,7 +269,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                       aria-label={`Toggle ${item.name}`}
                       onClick={() => onToggleSkill(item.id)}
                       className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        item.enabled ? 'bg-[#22c55e]' : 'bg-[#27272a]'
+                        item.enabled ? 'bg-[#22c55e]' : 'bg-surface-active'
                       }`}
                     >
                       <span

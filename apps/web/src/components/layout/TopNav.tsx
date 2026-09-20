@@ -130,7 +130,7 @@ export function TopNav({
   ).length;
 
   return (
-    <header className="h-14 border-b border-[var(--color-border-subtle,#27272a)] bg-[var(--color-bg-surface,#111114)] flex items-center justify-between px-3 sm:px-5 shrink-0 z-20">
+    <header className="h-14 border-b border-border-subtle bg-surface flex items-center justify-between px-3 sm:px-5 shrink-0 z-20">
       {/* Left section: Sidebar toggle & Dynamic Breadcrumb */}
       <div className="flex items-center gap-3 min-w-0">
         <button
@@ -138,7 +138,7 @@ export function TopNav({
           onClick={onMenuClick}
           aria-label="Toggle navigation"
           title={sidebarCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
-          className="p-1.5 -ml-1 rounded-md text-[var(--color-text-muted,#71717a)] hover:text-[var(--color-text-primary,#f4f4f5)] hover:bg-[var(--color-bg-elevated,#18181c)] transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-focus-ring,#3b82f6)] shrink-0"
+          className="p-1.5 -ml-1 rounded-md text-text-muted hover:text-text hover:bg-surface-200 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent shrink-0"
         >
           <MenuIcon size={18} />
         </button>
@@ -146,24 +146,22 @@ export function TopNav({
         {/* Dynamic Breadcrumb Hierarchy */}
         <nav
           aria-label="Breadcrumb"
-          className="hidden sm:flex items-center gap-1.5 text-xs text-[var(--color-text-secondary,#a1a1aa)] truncate"
+          className="hidden sm:flex items-center gap-1.5 text-xs text-text-secondary truncate"
         >
           <Link
             href={workspaceId ? `/workspace/${workspaceId}` : '/workspace'}
-            className="hover:text-[var(--color-text-primary,#f4f4f5)] transition-colors truncate max-w-[140px] font-medium"
+            className="hover:text-text transition-colors truncate max-w-[140px] font-medium"
           >
             {currentWorkspace?.name || 'Workspace'}
           </Link>
-          <span className="text-[var(--color-text-muted,#71717a)] opacity-60">/</span>
-          <span className="text-[var(--color-text-muted,#71717a)] text-[11px] uppercase tracking-wider font-mono">
+          <span className="text-text-muted opacity-60">/</span>
+          <span className="text-text-muted text-xs uppercase tracking-wider font-mono">
             {breadcrumb.section}
           </span>
-          <span className="text-[var(--color-text-muted,#71717a)] opacity-60">/</span>
-          <span className="text-[var(--color-text-primary,#f4f4f5)] font-semibold truncate">
-            {breadcrumb.title}
-          </span>
+          <span className="text-text-muted opacity-60">/</span>
+          <span className="text-text font-semibold truncate">{breadcrumb.title}</span>
         </nav>
-        <span className="sm:hidden text-sm font-semibold text-[var(--color-text-primary,#f4f4f5)] truncate">
+        <span className="sm:hidden text-sm font-semibold text-text truncate">
           {breadcrumb.title}
         </span>
       </div>
@@ -173,17 +171,14 @@ export function TopNav({
         <button
           type="button"
           onClick={onOpenCommandCenter}
-          className="w-full flex items-center justify-between gap-3 px-3 py-1.5 rounded-md border border-[var(--color-border-subtle,#27272a)] bg-[var(--color-bg-canvas,#08080a)] hover:border-[var(--color-border-strong,#3f3f46)] text-xs text-[var(--color-text-muted,#71717a)] hover:text-[var(--color-text-secondary,#a1a1aa)] transition-all shadow-sm group"
+          className="w-full flex items-center justify-between gap-3 px-3 py-1.5 rounded-md border border-border-subtle bg-surface-100 hover:border-border-strong text-xs text-text-muted hover:text-text-secondary transition-all shadow-sm group"
           aria-label="Open Command Center (⌘K)"
         >
           <div className="flex items-center gap-2">
-            <SearchIcon
-              size={14}
-              className="text-[var(--color-text-muted,#71717a)] group-hover:text-[var(--color-action-primary,#3b82f6)]"
-            />
+            <SearchIcon size={14} className="text-text-muted group-hover:text-primary" />
             <span className="truncate">Search files, memories, agents, commands…</span>
           </div>
-          <kbd className="font-mono text-[10px] text-[var(--color-text-muted,#71717a)] border border-[var(--color-border-subtle,#27272a)] rounded px-1.5 py-0.5 bg-[var(--color-bg-surface,#111114)] shrink-0">
+          <kbd className="font-mono text-2xs text-text-muted border border-border-subtle rounded px-1.5 py-0.5 bg-surface shrink-0">
             ⌘K
           </kbd>
         </button>
@@ -195,7 +190,7 @@ export function TopNav({
         <button
           type="button"
           onClick={onOpenCommandCenter}
-          className="md:hidden p-2 rounded-md text-[var(--color-text-muted,#71717a)] hover:text-[var(--color-text-primary,#f4f4f5)] hover:bg-[var(--color-bg-elevated,#18181c)]"
+          className="md:hidden p-2 rounded-md text-text-muted hover:text-text hover:bg-surface-200"
           aria-label="Open Command Center"
         >
           <SearchIcon size={16} />
@@ -203,7 +198,7 @@ export function TopNav({
 
         {/* Live Agent Status Indicator */}
         <div
-          className="hidden lg:flex items-center gap-2 px-2.5 py-1 rounded-full bg-[var(--color-bg-elevated,#18181c)] border border-[var(--color-border-subtle,#27272a)] text-xs text-[var(--color-text-secondary,#a1a1aa)] font-medium"
+          className="hidden lg:flex items-center gap-2 px-2.5 py-1 rounded-full bg-surface-200 border border-border-subtle text-xs text-text-secondary font-medium"
           title="All reasoning agent systems operational"
         >
           <StatusDot status="active" pulse />
@@ -217,12 +212,12 @@ export function TopNav({
             onClick={() => setNotifOpen(!notifOpen)}
             aria-label="Notifications"
             aria-expanded={notifOpen}
-            className="p-2 rounded-md text-[var(--color-text-muted,#71717a)] hover:text-[var(--color-text-primary,#f4f4f5)] hover:bg-[var(--color-bg-elevated,#18181c)] transition-colors relative"
+            className="p-2 rounded-md text-text-muted hover:text-text hover:bg-surface-200 transition-colors relative"
             title="Notifications & Approvals"
           >
             <BellIcon size={16} />
             {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--color-action-primary,#3b82f6)]" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-action" />
             )}
           </button>
 
@@ -234,14 +229,12 @@ export function TopNav({
                 onClick={() => setNotifOpen(false)}
                 aria-label="Close notifications menu"
               />
-              <div className="absolute right-0 top-full mt-1.5 z-50 w-80 rounded-xl border border-[var(--color-border-strong,#3f3f46)] bg-[var(--color-bg-surface,#111114)] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border-subtle,#27272a)] bg-[var(--color-bg-elevated,#18181c)]">
+              <div className="absolute right-0 top-full mt-1.5 z-50 w-80 rounded-xl border border-border-strong bg-surface shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle bg-surface-200">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-[var(--color-text-primary,#f4f4f5)]">
-                      Notifications
-                    </span>
+                    <span className="text-sm font-semibold text-text">Notifications</span>
                     {unreadCount > 0 && (
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-blue-950/50 text-blue-300 font-medium">
+                      <span className="text-2xs font-mono px-1.5 py-0.5 rounded-full bg-blue-950/50 text-blue-300 font-medium">
                         {unreadCount} new
                       </span>
                     )}
@@ -249,47 +242,44 @@ export function TopNav({
                   <Link
                     href={workspaceId ? `/workspace/${workspaceId}/notifications` : '/workspace'}
                     onClick={() => setNotifOpen(false)}
-                    className="text-xs text-[var(--color-action-primary,#3b82f6)] hover:underline"
+                    className="text-xs text-primary hover:underline"
                   >
                     View all
                   </Link>
                 </div>
-                <div className="max-h-72 overflow-y-auto divide-y divide-[var(--color-border-subtle,#27272a)]">
+                <div className="max-h-72 overflow-y-auto divide-y divide-border-subtle">
                   {loadingNotifs ? (
-                    <div className="p-4 text-center text-xs text-[var(--color-text-muted,#71717a)]">
+                    <div className="p-4 text-center text-xs text-text-muted">
                       Loading notifications…
                     </div>
                   ) : notifications.length === 0 ? (
-                    <div className="p-6 text-center text-xs text-[var(--color-text-muted,#71717a)]">
+                    <div className="p-6 text-center text-xs text-text-muted">
                       No notifications yet. Approvals and system alerts will appear here.
                     </div>
                   ) : (
                     notifications.slice(0, 5).map((notif) => (
-                      <div
-                        key={notif.id}
-                        className="p-3 hover:bg-[var(--color-bg-elevated,#18181c)] transition-colors"
-                      >
-                        <div className="flex items-center justify-between text-[11px] text-[var(--color-text-muted,#71717a)] mb-1">
+                      <div key={notif.id} className="p-3 hover:bg-surface-200 transition-colors">
+                        <div className="flex items-center justify-between text-xs text-text-muted mb-1">
                           <span className="uppercase font-mono tracking-wider">
                             {notif.channel}
                           </span>
                           <span>{new Date(notif.created_at).toLocaleDateString()}</span>
                         </div>
-                        <p className="text-xs font-medium text-[var(--color-text-primary,#f4f4f5)] line-clamp-1">
+                        <p className="text-xs font-medium text-text line-clamp-1">
                           {notif.subject || 'System Notification'}
                         </p>
-                        <p className="text-[11px] text-[var(--color-text-secondary,#a1a1aa)] line-clamp-2 mt-0.5">
+                        <p className="text-xs text-text-secondary line-clamp-2 mt-0.5">
                           {notif.body}
                         </p>
                       </div>
                     ))
                   )}
                 </div>
-                <div className="p-2 border-t border-[var(--color-border-subtle,#27272a)] bg-[var(--color-bg-elevated,#18181c)] text-center">
+                <div className="p-2 border-t border-border-subtle bg-surface-200 text-center">
                   <Link
                     href={workspaceId ? `/workspace/${workspaceId}/approvals` : '/workspace'}
                     onClick={() => setNotifOpen(false)}
-                    className="text-[11px] text-[var(--color-text-muted,#71717a)] hover:text-[var(--color-text-primary,#f4f4f5)]"
+                    className="text-xs text-text-muted hover:text-text"
                   >
                     Check Human-in-the-Loop Approvals →
                   </Link>
@@ -307,27 +297,22 @@ export function TopNav({
           <button
             type="button"
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center gap-2 p-1 sm:px-2 sm:py-1 rounded-lg hover:bg-[var(--color-bg-elevated,#18181c)] border border-transparent hover:border-[var(--color-border-subtle,#27272a)] transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-focus-ring,#3b82f6)] cursor-pointer"
+            className="flex items-center gap-2 p-1 sm:px-2 sm:py-1 rounded-lg hover:bg-surface-200 border border-transparent hover:border-border-subtle transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-accent cursor-pointer"
             title={user?.email ?? 'User account'}
             aria-label="User account menu"
             aria-expanded={dropdownOpen}
             aria-haspopup="true"
           >
-            <div className="w-7 h-7 rounded-full bg-[var(--color-bg-canvas,#08080a)] border border-[var(--color-border-subtle,#27272a)] flex items-center justify-center text-[var(--color-text-primary,#f4f4f5)] font-mono text-xs font-semibold shrink-0 shadow-xs">
+            <div className="w-7 h-7 rounded-full bg-surface-100 border border-border-subtle flex items-center justify-center text-text font-mono text-xs font-semibold shrink-0 shadow-xs">
               {userInitials}
             </div>
             <div className="hidden sm:flex flex-col text-left leading-none max-w-[130px] md:max-w-[180px]">
-              <span className="text-xs font-semibold text-[var(--color-text-primary,#f4f4f5)] truncate">
+              <span className="text-xs font-semibold text-text truncate">
                 {user?.displayName || user?.email || 'User'}
               </span>
-              <span className="text-[10px] text-[var(--color-text-muted,#71717a)] truncate mt-0.5">
-                Workspace Member
-              </span>
+              <span className="text-2xs text-text-muted truncate mt-0.5">Workspace Member</span>
             </div>
-            <ChevronDownIcon
-              size={12}
-              className="hidden sm:block text-[var(--color-text-muted,#71717a)]"
-            />
+            <ChevronDownIcon size={12} className="hidden sm:block text-text-muted" />
           </button>
 
           {dropdownOpen && (
@@ -338,28 +323,26 @@ export function TopNav({
                 onClick={() => setDropdownOpen(false)}
                 aria-label="Close user menu"
               />
-              <div className="absolute right-0 top-full mt-1.5 z-50 w-64 rounded-xl border border-[var(--color-border-strong,#3f3f46)] bg-[var(--color-bg-surface,#111114)] shadow-2xl py-2 animate-in fade-in zoom-in-95 duration-100">
-                <div className="px-3.5 pb-3 pt-1 border-b border-[var(--color-border-subtle,#27272a)]">
+              <div className="absolute right-0 top-full mt-1.5 z-50 w-64 rounded-xl border border-border-strong bg-surface shadow-2xl py-2 animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-3.5 pb-3 pt-1 border-b border-border-subtle">
                   <div className="flex items-center gap-2.5 mb-2">
-                    <div className="w-9 h-9 rounded-full bg-[var(--color-bg-canvas,#08080a)] border border-[var(--color-border-subtle,#27272a)] flex items-center justify-center text-[var(--color-text-primary,#f4f4f5)] font-mono text-sm font-semibold shrink-0 shadow-xs">
+                    <div className="w-9 h-9 rounded-full bg-surface-100 border border-border-subtle flex items-center justify-center text-text font-mono text-sm font-semibold shrink-0 shadow-xs">
                       {userInitials}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-[var(--color-text-primary,#f4f4f5)] truncate">
+                      <p className="text-sm font-semibold text-text truncate">
                         {user?.displayName || 'User'}
                       </p>
-                      <p className="text-xs text-[var(--color-text-muted,#71717a)] truncate">
-                        {user?.email}
-                      </p>
+                      <p className="text-xs text-text-muted truncate">{user?.email}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--color-bg-elevated,#18181c)] text-[var(--color-text-muted,#71717a)] border border-[var(--color-border-subtle,#27272a)]">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-2xs font-medium bg-surface-200 text-text-muted border border-border-subtle">
                       Workspace Member
                     </span>
                     {currentWorkspace && (
-                      <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[var(--color-bg-elevated,#18181c)] border border-[var(--color-border-subtle,#27272a)] text-[10px] font-mono text-[var(--color-text-secondary,#a1a1aa)]">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-action-primary,#3b82f6)]" />
+                      <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-200 border border-border-subtle text-2xs font-mono text-text-secondary">
+                        <span className="w-1.5 h-1.5 rounded-full bg-action" />
                         <span className="truncate">{currentWorkspace.name}</span>
                       </div>
                     )}
@@ -369,7 +352,7 @@ export function TopNav({
                 <div className="py-1">
                   <Link
                     href={workspaceId ? `/workspace/${workspaceId}/profile` : '/workspace'}
-                    className="flex items-center gap-2.5 px-3.5 py-2 text-xs text-[var(--color-text-secondary,#a1a1aa)] hover:text-[var(--color-text-primary,#f4f4f5)] hover:bg-[var(--color-bg-elevated,#18181c)] transition-colors"
+                    className="flex items-center gap-2.5 px-3.5 py-2 text-xs text-text-secondary hover:text-text hover:bg-surface-200 transition-colors"
                     onClick={() => setDropdownOpen(false)}
                   >
                     <UserIcon size={14} />
@@ -377,7 +360,7 @@ export function TopNav({
                   </Link>
                   <Link
                     href={workspaceId ? `/workspace/${workspaceId}/settings` : '/workspace'}
-                    className="flex items-center gap-2.5 px-3.5 py-2 text-xs text-[var(--color-text-secondary,#a1a1aa)] hover:text-[var(--color-text-primary,#f4f4f5)] hover:bg-[var(--color-bg-elevated,#18181c)] transition-colors"
+                    className="flex items-center gap-2.5 px-3.5 py-2 text-xs text-text-secondary hover:text-text hover:bg-surface-200 transition-colors"
                     onClick={() => setDropdownOpen(false)}
                   >
                     <SettingsIcon size={14} />
@@ -385,7 +368,7 @@ export function TopNav({
                   </Link>
                 </div>
 
-                <div className="border-t border-[var(--color-border-subtle,#27272a)] my-1" />
+                <div className="border-t border-border-subtle my-1" />
 
                 <button
                   type="button"
@@ -393,7 +376,7 @@ export function TopNav({
                     setDropdownOpen(false);
                     handleLogout();
                   }}
-                  className="flex items-center gap-2.5 w-full px-3.5 py-2 text-xs text-[var(--color-status-danger,#ef4444)] hover:bg-[var(--color-bg-elevated,#18181c)] transition-colors cursor-pointer"
+                  className="flex items-center gap-2.5 w-full px-3.5 py-2 text-xs text-error hover:bg-surface-200 transition-colors cursor-pointer"
                 >
                   <LogOutIcon size={14} />
                   <span>Log out</span>

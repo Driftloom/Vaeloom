@@ -85,8 +85,8 @@ export function MorningBriefingCard({ workspaceId }: MorningBriefingCardProps) {
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 p-6 backdrop-blur-sm animate-pulse">
-        <div className="h-6 w-48 bg-slate-200 dark:bg-slate-700 rounded mb-4" />
+      <div className="rounded-xl border border-border bg-surface/50 p-6 backdrop-blur-sm animate-pulse">
+        <div className="h-6 w-48 bg-surface-300 rounded mb-4" />
         <div className="h-20 bg-surface-200 rounded-xl mb-4 animate-pulse" />
         <div className="h-12 bg-surface-200 rounded-xl animate-pulse" />
       </div>
