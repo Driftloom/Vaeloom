@@ -29,7 +29,16 @@ export interface SessionListResponse {
   sessions: SessionItem[];
 }
 
-export const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:8000';
+export const API_BASE = (function () {
+  if (typeof window !== 'undefined') {
+    const envUrl = process.env['NEXT_PUBLIC_API_URL'];
+    if (!envUrl || envUrl.includes('localhost') || envUrl.includes('127.0.0.1')) {
+      return '';
+    }
+    return envUrl;
+  }
+  return process.env['NEXT_PUBLIC_API_URL'] ?? 'http://127.0.0.1:8000';
+})();
 export const API_PREFIX = '/api/v1';
 
 const TOKEN_KEY = 'vaeloom.accessToken';

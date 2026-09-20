@@ -250,3 +250,8 @@ seed_output/
 
 # Next.js generated declaration
 next-env.d.ts
+
+# Scratch and transient debug files
+scratch_*
+scratch/
+*.scratch.*

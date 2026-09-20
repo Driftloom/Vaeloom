@@ -61,6 +61,17 @@ const nextConfig = {
       },
     ];
   },
+  async rewrites() {
+    const apiTarget =
+      process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+    const target = apiTarget.replace('localhost', '127.0.0.1');
+    return [
+      {
+        source: '/api/v1/:path*',
+        destination: `${target}/api/v1/:path*`,
+      },
+    ];
+  },
   async redirects() {
     return [];
   },
