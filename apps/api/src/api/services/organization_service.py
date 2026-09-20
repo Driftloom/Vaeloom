@@ -333,7 +333,59 @@ class OrganizationService:
         except Exception as exc:
             logger.debug("Failed to record invitation audit event: %s", exc)
 
+        # Dispatch transactional invitation email
+        try:
+            from .email_service import email_service
+            inviter = await db.get(User, invited_by) if invited_by else None
+            inviter_name = inviter.display_name if (inviter and inviter.display_name) else "A team administrator"
+            invite_url = f"/invite/{raw_token}"
+            await email_service.send_organization_invitation(
+                to_email=clean_email,
+                organization_name=org.name,
+                inviter_name=inviter_name,
+                invite_url=invite_url,
+                role=role,
+                expires_at=expires_at.isoformat(),
+            )
+        except Exception as exc:
+            logger.debug("Failed to dispatch invitation email: %s", exc)
+
         return invitation, raw_token
+
+    @staticmethod
+    async def check_org_permission(
+        db: AsyncSession,
+        org_id: uuid.UUID,
+        user_id: uuid.UUID,
+        min_role: str = "member",
+    ) -> bool:
+        """Verify if a user has sufficient role permissions in an organizational unit."""
+        role_hierarchy = {"viewer": 10, "member": 20, "lead": 30, "admin": 40, "owner": 50}
+        required_level = role_hierarchy.get(min_role, 20)
+
+        # Check organization membership
+        stmt = select(OrganizationMember).where(
+            OrganizationMember.organization_id == org_id,
+            OrganizationMember.user_id == user_id,
+            OrganizationMember.status == "active",
+        )
+        res = await db.execute(stmt)
+        member = res.scalar_one_or_none()
+        if member:
+            user_level = role_hierarchy.get(member.role, 10)
+            return user_level >= required_level
+
+        # Fallback: check if user is tenant owner / admin
+        from ..models.schema import TenantMember
+        stmt_tm = select(TenantMember).where(
+            TenantMember.user_id == user_id,
+            TenantMember.role.in_(["owner", "admin"]),
+        )
+        res_tm = await db.execute(stmt_tm)
+        if res_tm.scalar_one_or_none():
+            return True
+
+        return False
 
     @staticmethod
     async def list_invitations(

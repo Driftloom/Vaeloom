@@ -271,3 +271,35 @@ class TestOrganizations:
         assert revoke_res.status_code == 200
         assert revoke_res.json()["ok"] is True
 
+    async def test_department_rbac_permissions(
+        self, client: AsyncClient, auth_headers: dict, db_session
+    ):
+        from api.services.organization_service import OrganizationService
+        import uuid
+
+        # Create Org Unit
+        res = await client.post(
+            "/api/v1/organizations",
+            json={"name": "Finance Dept", "type": "department"},
+            headers=auth_headers,
+        )
+        org_id = uuid.UUID(res.json()["id"])
+
+        # Sign up a viewer
+        viewer_res = await client.post(
+            "/api/v1/auth/signup",
+            json={"email": "viewer@finance.test", "password": "ViewerPass123!"},
+        )
+        viewer_id = uuid.UUID(viewer_res.json()["user"]["id"])
+
+        # Add viewer with 'viewer' role
+        await client.post(
+            f"/api/v1/organizations/{org_id}/members",
+            json={"user_id": str(viewer_id), "role": "viewer"},
+            headers=auth_headers,
+        )
+
+        # Verify check_org_permission
+        assert await OrganizationService.check_org_permission(db_session, org_id, viewer_id, "viewer") is True
+        assert await OrganizationService.check_org_permission(db_session, org_id, viewer_id, "admin") is False
+
