@@ -131,6 +131,28 @@ export function CommandCenter({
         },
       },
       {
+        id: 'nav-capabilities',
+        title: 'Capabilities',
+        subtitle: 'Manage agents, skills, tools, MCP servers & plugins',
+        category: 'navigation',
+        badge: 'Assist',
+        shortcut: 'G C',
+        icon: (
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M6.429 9.75L2.25 12l4.179 2.25m0-4.5l5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0l4.179 2.25L12 21.75 2.25 16.5l4.179-2.25m11.142 0l-5.571 3-5.571-3"
+            />
+          </svg>
+        ),
+        perform: () => {
+          router.push(ws('/capabilities'));
+          onClose();
+        },
+      },
+      {
         id: 'nav-chat',
         title: 'Chat Assistant',
         subtitle: 'Conversational agent orchestration & memory recall',

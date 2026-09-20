@@ -42,6 +42,13 @@ describe('Sidebar', () => {
     expect(active).toHaveAttribute('aria-current', 'page');
   });
 
+  it('renders Capabilities link under Assist', () => {
+    render(<Sidebar workspaceId="ws-1" open={false} onClose={jest.fn()} />);
+    const link = screen.getByRole('link', { name: 'Capabilities' });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute('href', '/workspace/ws-1/capabilities');
+  });
+
   it('keeps emoji icons hidden from assistive tech', () => {
     render(<Sidebar workspaceId="ws-1" open={false} onClose={jest.fn()} />);
     const icons = document.querySelectorAll('[aria-hidden="true"]');

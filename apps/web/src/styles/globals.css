@@ -219,21 +219,21 @@
   }
 
   .btn-accent {
-    @apply bg-accent text-white font-semibold px-6 py-3 rounded-lg
+    @apply bg-accent text-white font-medium text-sm px-4 py-2 rounded-lg
            hover:bg-accent-hover active:bg-accent-active
            transition-all duration-150 ease-out
            focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 
   .btn-danger {
-    @apply bg-error text-white font-semibold px-6 py-3 rounded-lg
+    @apply bg-error text-white font-medium text-sm px-4 py-2 rounded-lg
            hover:brightness-110 active:brightness-95
            transition-all duration-150 ease-out
            focus-visible:ring-2 focus-visible:ring-error focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 
   .card {
-    @apply bg-surface rounded-xl border border-border p-6 shadow-card;
+    @apply bg-surface rounded-xl border border-border p-4 sm:p-5 shadow-card;
   }
 
   .card-hover {
@@ -249,8 +249,8 @@
   }
 
   .input-field {
-    @apply w-full bg-surface-100 border border-border rounded-lg px-4 py-3
-           text-text placeholder-text-500
+    @apply w-full bg-surface-100 border border-border rounded-lg px-3 py-2
+           text-sm text-text placeholder-text-500
            transition-all duration-150 ease-out
            focus:border-accent/50 focus:ring-1 focus:ring-accent/20 focus:outline-none
            hover:border-surface-300;

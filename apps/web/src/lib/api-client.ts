@@ -2821,3 +2821,27 @@ export const marketplaceApi = {
     return apiClient.post(`/marketplace/installed/${installId}/execute`, body);
   },
 };
+
+// ─── Capabilities API ───────────────────────────────────────────────────────
+
+export const capabilitiesApi = {
+  getCapabilities(params?: { workspaceId?: string; category?: string }) {
+    return apiClient.get('/capabilities', params);
+  },
+  toggleCapability(capabilityId: string, enabled: boolean, workspaceId?: string) {
+    return apiClient.post(`/capabilities/${capabilityId}/toggle`, {
+      enabled,
+      workspace_id: workspaceId,
+    });
+  },
+  testCapability(
+    capabilityId: string,
+    inputPayload?: Record<string, unknown>,
+    workspaceId?: string,
+  ) {
+    return apiClient.post(`/capabilities/${capabilityId}/test`, {
+      input: inputPayload,
+      workspace_id: workspaceId,
+    });
+  },
+};
