@@ -257,11 +257,21 @@ class AuthService:
                 user.failed_login_attempts = 0
 
         if not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
-            attempts = user.failed_login_attempts if isinstance(user.failed_login_attempts, int) else 0
-            attempts += 1
-            user.failed_login_attempts = attempts
-            if attempts >= 10:
-                user.locked_until = now + timedelta(minutes=15)
+            # Atomic update to avoid concurrency race condition (GAP-AUTH-02)
+            stmt = (
+                update(User)
+                .where(User.id == user.id)
+                .values(failed_login_attempts=User.failed_login_attempts + 1)
+                .returning(User.failed_login_attempts)
+            )
+            res = await db.execute(stmt)
+            updated_attempts = res.scalar() or 1
+            if updated_attempts >= 10:
+                await db.execute(
+                    update(User)
+                    .where(User.id == user.id)
+                    .values(locked_until=now + timedelta(minutes=15))
+                )
             await db.commit()
             raise HTTPException(status_code=401, detail="Invalid email or password")
 
@@ -269,6 +279,11 @@ class AuthService:
             raise HTTPException(status_code=403, detail="Account is not active")
 
         # Reset failed login attempts on successful login
+        await db.execute(
+            update(User)
+            .where(User.id == user.id)
+            .values(failed_login_attempts=0, locked_until=None)
+        )
         user.failed_login_attempts = 0
         user.locked_until = None
         await db.flush()
@@ -444,9 +459,8 @@ class AuthService:
             raise HTTPException(status_code=401, detail="Invalid refresh token")
 
         # REFRESH TOKEN ROTATION & THEFT DETECTION:
-        # If a token with status 'ROTATED' is used, someone has replayed an old token!
-        # Revoke the entire family immediately to protect against token theft.
-        if session.status == "ROTATED":
+        # Atomic rotation transition (GAP-AUTH-05):
+        if session.status != "ACTIVE":
             if session.family_id:
                 await db.execute(
                     update(AuthSession)
@@ -459,21 +473,42 @@ class AuthService:
                 detail="Suspicious activity detected: refresh token reused. All related sessions have been revoked.",
             )
 
+        session.status = "ROTATED"
+        await db.flush()
+
         now = datetime.now(UTC)
         expires_at = session.expires_at
         if expires_at.tzinfo is None:
             expires_at = expires_at.replace(tzinfo=UTC)
 
-        if session.status != "ACTIVE" or expires_at < now:
+        if expires_at < now:
+            await db.execute(
+                update(AuthSession).where(AuthSession.id == session.id).values(status="REVOKED")
+            )
+            await db.commit()
             raise HTTPException(status_code=401, detail="Refresh token expired or invalid")
+
+        # Zero-Trust Cutoff Check (GAP-AUTH-03):
+        # Check if user had a password reset or revoke-all event after this session was created
+        from ..models.schema import RevokedUserCutoff
+        cutoff_row = await db.get(RevokedUserCutoff, session.user_id)
+        session_created = session.created_at
+        if session_created.tzinfo is None:
+            session_created = session_created.replace(tzinfo=UTC)
+        if cutoff_row and session_created.timestamp() < cutoff_row.cutoff_unix:
+            await db.execute(
+                update(AuthSession).where(AuthSession.id == session.id).values(status="REVOKED")
+            )
+            await db.commit()
+            raise HTTPException(
+                status_code=401,
+                detail="Session invalidated due to password reset or security event. Please log in again.",
+            )
 
         user_result = await db.execute(select(User).where(User.id == session.user_id))
         user = user_result.scalar_one_or_none()
         if not user or user.status != "ACTIVE":
             raise HTTPException(status_code=401, detail="User not found or inactive")
-
-        session.status = "ROTATED"
-        db.add(session)
 
         access_token, new_refresh_token = await self.issue_token(
             str(user.id),
@@ -867,6 +902,12 @@ class AuthService:
                 raise HTTPException(status_code=404, detail="User not found")
 
             user.password_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+            # Explicitly revoke all active auth_sessions in DB (GAP-AUTH-03)
+            await db.execute(
+                update(AuthSession)
+                .where(AuthSession.user_id == user.id, AuthSession.status == "ACTIVE")
+                .values(status="REVOKED")
+            )
             await db.commit()
             await self.revoke_all_user_tokens(user_id=str(user.id), db=db)
         return True

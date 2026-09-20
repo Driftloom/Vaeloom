@@ -63,23 +63,20 @@ async def test_reject_unsigned_supabase_jwt(client: AsyncClient, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_login_rate_limiting_and_ip_throttling(client: AsyncClient):
+async def test_login_rate_limiting_and_ip_throttling(rate_limited_client: AsyncClient):
     """TEST-AUTH-SEC-02: Verify brute-force attack from a single IP is throttled (HTTP 429)."""
-    # Rapidly fire requests to /api/v1/auth/login
+    # Rapidly fire requests to /api/v1/auth/login using rate_limited_client (5 reqs/min limit)
     responses = []
     for i in range(35):
-        res = await client.post(
+        res = await rate_limited_client.post(
             "/api/v1/auth/login",
             json={"email": f"brute_{i}@vaeloom.test", "password": "WrongPassword123!"},
         )
         responses.append(res.status_code)
 
-    # Either rate-limiting is triggered (429) or lockout engages (401/423)
-    # Under zero-trust rate limiting, 429 should be observed on excessive bursts
+    # Under zero-trust rate limiting with 5 reqs/min limit, 429 MUST be observed on bursts
     status_counts = {s: responses.count(s) for s in set(responses)}
-    assert (
-        429 in status_counts or 423 in status_counts or all(s == 401 for s in responses)
-    ), f"Unexpected response distribution: {status_counts}"
+    assert 429 in status_counts, f"Expected 429 in responses, got {status_counts}"
 
 
 @pytest.mark.asyncio
@@ -188,3 +185,82 @@ async def test_concurrent_session_revocation_race(client: AsyncClient):
     # Every single request MUST be rejected with HTTP 401
     for r in results:
         assert r.status_code == 401, f"Revoked session leaked access! Status: {r.status_code}"
+
+
+@pytest.mark.asyncio
+async def test_password_reset_invalidates_active_refresh_tokens(client: AsyncClient):
+    """TEST-AUTH-SEC-06: Verify password reset revokes all existing refresh tokens (GAP-AUTH-03)."""
+    import hashlib
+    import secrets
+    from api.services.auth_service import AuthService
+
+    # 1. Sign up user
+    email = f"pwd_reset_{secrets.token_hex(4)}@vaeloom.test"
+    signup_res = await client.post(
+        "/api/v1/auth/signup",
+        json={
+            "email": email,
+            "password": "InitialPassword123!",
+            "display_name": "Reset Test User",
+        },
+    )
+    assert signup_res.status_code == 201
+    user_id = signup_res.json()["user"]["id"]
+    old_refresh_token = signup_res.json()["refresh_token"]
+
+    # 2. Seed a valid reset token in AuthService
+    reset_token = f"test_reset_token_{secrets.token_urlsafe(16)}"
+    token_hash = hashlib.sha256(reset_token.encode()).hexdigest()
+    AuthService._password_resets[token_hash] = (user_id, datetime.now(UTC) + timedelta(minutes=15))
+
+    # 3. Perform password reset
+    reset_res = await client.post(
+        "/api/v1/auth/reset-password",
+        json={"token": reset_token, "new_password": "NewStrongPassword123!"},
+    )
+    assert reset_res.status_code == 200
+
+    # 4. Attempt to refresh token using old refresh token -> MUST be rejected (HTTP 401)
+    refresh_res = await client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": old_refresh_token},
+    )
+    assert refresh_res.status_code == 401, f"Expected 401 on revoked refresh token, got {refresh_res.status_code}"
+
+
+@pytest.mark.asyncio
+async def test_concurrent_refresh_token_theft_defense(client: AsyncClient):
+    """TEST-AUTH-SEC-07: Verify token rotation and replay theft defense (GAP-AUTH-05)."""
+    # 1. Sign up user
+    signup_res = await client.post(
+        "/api/v1/auth/signup",
+        json={
+            "email": "token_rotation_theft@vaeloom.test",
+            "password": "InitialPassword123!",
+            "display_name": "Rotation Theft User",
+        },
+    )
+    assert signup_res.status_code == 201
+    refresh_token = signup_res.json()["refresh_token"]
+
+    # 2. Valid refresh rotates the token
+    res1 = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh_token})
+    assert res1.status_code == 200
+    new_refresh_token = res1.json()["refresh_token"]
+    assert new_refresh_token != refresh_token
+
+    # 3. Replay attack: attacker attempts to reuse the already-rotated refresh token
+    res2 = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh_token})
+    assert res2.status_code == 401, f"Expected 401 on replayed refresh token, got {res2.status_code}"
+
+    # 4. Subsequent attempts with that old rotated token MUST fail with 401
+    subsequent_res = await client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": refresh_token},
+    )
+    assert subsequent_res.status_code == 401, f"Expected 401 on old refresh token, got {subsequent_res.status_code}"
+
+    # 5. Zero-Trust Family Revocation: because token theft/reuse was detected in step 3,
+    # the entire token family is revoked to protect the user, so even the new refresh token is invalidated (401)
+    res3 = await client.post("/api/v1/auth/refresh", json={"refresh_token": new_refresh_token})
+    assert res3.status_code == 401, f"Expected 401 due to token family theft revocation, got {res3.status_code}"

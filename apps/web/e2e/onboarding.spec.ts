@@ -13,16 +13,24 @@ test.describe('onboarding wizard', () => {
 
   test('onboarding wizard allows advancing through steps', async ({ page }) => {
     await page.goto('/onboarding');
-    // If the step form inputs are present, test filling and continuing
-    const displayNameInput = page
-      .locator('#displayName, input[name="displayName"], input[placeholder*="name" i]')
-      .first();
-    if (await displayNameInput.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await displayNameInput.fill('Zero Trust Tester');
-      const continueBtn = page.getByRole('button', { name: /continue|next/i });
-      if (await continueBtn.isVisible()) {
-        await continueBtn.click();
-      }
-    }
+    await expect(page.locator('h1')).toContainText(/Set up your workspace/i);
+
+    // Profile Step: fill inputs
+    const displayNameInput = page.getByPlaceholder(/Alex Doe/i);
+    await expect(displayNameInput).toBeVisible({ timeout: 10000 });
+    await displayNameInput.fill('Zero Trust Tester');
+
+    const jobTitleInput = page.getByPlaceholder(/Staff Software Engineer/i);
+    await expect(jobTitleInput).toBeVisible();
+    await jobTitleInput.fill('Staff Security Architect');
+
+    // Click Continue
+    const continueBtn = page.getByRole('button', { name: /continue/i });
+    await expect(continueBtn).toBeVisible();
+    await continueBtn.click();
+
+    // Verify advancement to WORKSPACE step
+    const workspaceInput = page.getByPlaceholder(/Engineering & Career/i);
+    await expect(workspaceInput).toBeVisible({ timeout: 10000 });
   });
 });

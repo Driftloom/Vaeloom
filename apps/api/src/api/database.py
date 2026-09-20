@@ -16,13 +16,18 @@ connect_args = {}
 if "postgresql" in settings.database__url:
     connect_args = {"statement_cache_size": 0, "prepared_statement_cache_size": 0}
 
+engine_kwargs = {
+    "pool_pre_ping": True,
+    "echo": settings.service_environment == "local",
+    "connect_args": connect_args,
+}
+if "sqlite" not in settings.database__url:
+    engine_kwargs["pool_size"] = getattr(settings, "db_pool_size", 20)
+    engine_kwargs["max_overflow"] = getattr(settings, "db_max_overflow", 10)
+
 engine = create_async_engine(
     settings.database__url,
-    pool_pre_ping=True,
-    pool_size=getattr(settings, "db_pool_size", 20),
-    max_overflow=getattr(settings, "db_max_overflow", 10),
-    echo=settings.service_environment == "local",
-    connect_args=connect_args,
+    **engine_kwargs,
 )
 
 class RLSGuardedAsyncSession(AsyncSession):

@@ -200,3 +200,47 @@ async def test_tenant_cascade_delete_integrity(client: AsyncClient, db_session: 
     )
     assert get_b.status_code == 200
     assert get_b.json()["name"] == "Workspace B Must Stay"
+
+
+@pytest.mark.asyncio
+async def test_viewer_cannot_invite_workspace_member(client: AsyncClient, db_session: AsyncSession):
+    """TEST-TEN-SEC-05: Verify that a Workspace Viewer cannot invite members (RBAC GAP-TEN-03)."""
+    # 1. Owner creates workspace
+    res_owner = await client.post(
+        "/api/v1/auth/signup",
+        json={"email": "owner_inviter@vaeloom.test", "password": "Password123!", "display_name": "Owner Inviter"},
+    )
+    token_owner = res_owner.json()["access_token"]
+    ws_res = await client.post(
+        "/api/v1/workspaces",
+        json={"name": "Protected Invite WS"},
+        headers={"Authorization": f"Bearer {token_owner}"},
+    )
+    ws_id = ws_res.json()["id"]
+
+    # 2. Viewer signs up
+    res_viewer = await client.post(
+        "/api/v1/auth/signup",
+        json={"email": "viewer_user@vaeloom.test", "password": "Password123!", "display_name": "Viewer User"},
+    )
+    token_viewer = res_viewer.json()["access_token"]
+    viewer_id = uuid.UUID(res_viewer.json()["user"]["id"])
+
+    # Add viewer to workspace with VIEWER role
+    wu = WorkspaceUser(
+        workspace_id=uuid.UUID(ws_id),
+        user_id=viewer_id,
+        role="VIEWER",
+    )
+    db_session.add(wu)
+    await db_session.commit()
+
+    # 3. Viewer attempts to invite a new member
+    invite_res = await client.post(
+        f"/api/v1/workspaces/{ws_id}/invites",
+        json={"email": "victim_invitee@vaeloom.test", "role": "MEMBER"},
+        headers={"Authorization": f"Bearer {token_viewer}"},
+    )
+    assert invite_res.status_code == 403
+    assert "forbidden" in invite_res.text.lower()
+

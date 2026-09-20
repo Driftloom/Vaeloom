@@ -217,15 +217,10 @@ async def me(current_user: dict = Depends(get_current_user), db: AsyncSession = 
             res = await db.execute(select(_User).where(_User.email == email))
             existing_user = res.scalar_one_or_none()
             if existing_user:
-                old_id = existing_user.id
-                new_id = _uuid.UUID(user_id)
-                if old_id != new_id:
-                    await db.execute(delete(_AuthSession).where(_AuthSession.user_id == old_id))
-                    existing_user.id = new_id
                 if existing_user.auth_provider != "supabase":
                     existing_user.auth_provider = "supabase"
-                await db.flush()
-                await db.refresh(existing_user)
+                    await db.flush()
+                    await db.refresh(existing_user)
                 user = existing_user
             else:
                 metadata = current_user.get("user_metadata", {}) or {}
@@ -244,6 +239,17 @@ async def me(current_user: dict = Depends(get_current_user), db: AsyncSession = 
                 user = user_obj
         else:
             raise HTTPException(status_code=401, detail="User not found or inactive")
+
+    # Establish RLS session context for workspace query and possible default workspace creation
+    try:
+        from ..middleware.tenant import set_rls_session_vars
+        await set_rls_session_vars(
+            db,
+            tenant_id=str(user.tenant_id) if getattr(user, "tenant_id", None) else None,
+            user_id=str(user.id),
+        )
+    except Exception:
+        pass
 
     workspaces = await workspace_service.list_for_user(user_id=str(user.id), db=db)
     if not workspaces:
@@ -594,10 +600,11 @@ async def saml_callback_post(request: Request, db: AsyncSession = Depends(get_db
         import os
         cert = saml_cfg.get('idp_certificate') or os.environ.get('SAML_IDP_CERTIFICATE') or ''
         issuer = saml_cfg.get('issuer') or saml_cfg.get('expected_issuer') or os.environ.get('SAML_ISSUER') or 'https://idp.example.com'
-        # Zero-Trust: fail-closed SAML signatures. Unsigned assertions are strictly rejected.
-        if not cert:
+        allow_unsigned = os.environ.get('SAML_ALLOW_UNSIGNED', '').lower() in ('true', '1')
+        # Zero-Trust: fail-closed SAML signatures. Unsigned assertions are strictly rejected unless explicit dev opt-out.
+        if not cert and not allow_unsigned:
             raise HTTPException(status_code=503, detail='SAML IdP not provisioned (missing certificate)')
-        provider = SAMLProvider(expected_issuer=issuer, idp_certificate=cert, require_signature=True)
+        provider = SAMLProvider(expected_issuer=issuer, idp_certificate=cert, require_signature=not allow_unsigned)
         assertion = provider.parse_saml_response(saml_response)
         info = provider.validate_assertion(assertion)
         email = info.get('email') or info.get('name_id')

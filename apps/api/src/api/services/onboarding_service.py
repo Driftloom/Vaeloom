@@ -93,6 +93,42 @@ class OnboardingService:
             select(OnboardingState).where(OnboardingState.user_id == user_id)
         )
         state = result.scalar_one_or_none()
+
+        # Zero-Trust Immutability Guard (GAP-ONB-02)
+        if state and state.is_completed:
+            raise HTTPException(
+                status_code=400,
+                detail="Onboarding has already been completed and cannot be modified. Use /reset to restart.",
+            )
+
+        # Zero-Trust Strict Step Prerequisites (GAP-ONB-01)
+        STEP_SEQUENCE = ["PROFILE", "WORKSPACE", "RESUME", "CONNECTORS", "COMPLETED"]
+        completed_set = set(state.completed_steps or []) if state else set()
+        if state and state.workspace_id:
+            completed_set.add("WORKSPACE")
+
+        target_idx = STEP_SEQUENCE.index(step)
+        current_idx = STEP_SEQUENCE.index(state.current_step) if (state and state.current_step in STEP_SEQUENCE) else 0
+
+        if target_idx > current_idx + 1:
+            # Attempting to skip ahead by more than 1 step: verify all preceding steps are completed
+            for i in range(target_idx):
+                prereq = STEP_SEQUENCE[i]
+                if prereq not in completed_set:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Cannot proceed to step '{step}': prerequisite step '{prereq}' has not been completed.",
+                    )
+        elif target_idx == current_idx + 1:
+            # Moving to the immediate next step: verify all steps up to current_idx are completed
+            for i in range(current_idx):
+                prereq = STEP_SEQUENCE[i]
+                if prereq not in completed_set:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Cannot proceed to step '{step}': prerequisite step '{prereq}' has not been completed.",
+                    )
+
         if not state:
             state = OnboardingState(
                 user_id=user_id,
@@ -201,6 +237,33 @@ class OnboardingService:
         if len(content_bytes) > max_bytes:
             raise HTTPException(status_code=413, detail="File too large — max 10MB")
 
+        # Zero-Trust Magic Byte & Content Verification (GAP-ONB-03)
+        if ext == "pdf":
+            if not content_bytes.startswith(b"%PDF-"):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid PDF file: missing %PDF- header magic bytes (spoofed or corrupted format)",
+                )
+        elif ext == "docx":
+            if not content_bytes.startswith(b"PK\x03\x04"):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid DOCX file: missing PK zip header magic bytes (spoofed or corrupted format)",
+                )
+        elif ext in ("txt", "md", "json"):
+            if content_bytes.startswith(b"MZ") or content_bytes.startswith(b"\x7fELF"):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid text file: binary executable payload rejected",
+                )
+            try:
+                content_bytes.decode("utf-8")
+            except UnicodeDecodeError:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid text file: non-UTF-8 binary content rejected",
+                )
+
         extracted_text = ""
         if ext in ("txt", "md", "json"):
             extracted_text = content_bytes.decode("utf-8", errors="ignore")
@@ -302,14 +365,14 @@ class OnboardingService:
             )
         )
         membership = mem_res.scalar_one_or_none()
-        if not membership:
-            membership = WorkspaceUser(
-                id=uuid.uuid4(),
-                workspace_id=workspace_id,
-                user_id=user_id,
-                role="member",
+        is_owner = (ws.user_id == user_id)
+        if not is_owner and not membership:
+            # Zero-Trust Authorization Guard (GAP-TEN-02):
+            # Caller must either already be invited/member or be the workspace owner.
+            raise HTTPException(
+                status_code=403,
+                detail="Forbidden: You have not been invited to join this workspace",
             )
-            db.add(membership)
 
         # Update onboarding state
         result = await db.execute(

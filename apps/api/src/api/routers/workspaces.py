@@ -215,7 +215,25 @@ async def invite_workspace_member(
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found or access denied")
 
+    # RBAC Enforcement (GAP-TEN-03): Only workspace owner or admin can invite members
     from ..models.schema import User, WorkspaceUser
+
+    caller_uid = uuid.UUID(user_id)
+    ws_uuid = uuid.UUID(workspace_id)
+    is_owner = (ws.user_id == caller_uid)
+    if not is_owner:
+        role_res = await db.execute(
+            select(WorkspaceUser.role).where(
+                WorkspaceUser.workspace_id == ws_uuid,
+                WorkspaceUser.user_id == caller_uid,
+            )
+        )
+        caller_role = role_res.scalar_one_or_none()
+        if not caller_role or caller_role.upper() not in ("ADMIN", "OWNER"):
+            raise HTTPException(
+                status_code=403,
+                detail="Forbidden: Only workspace owners and admins can invite members",
+            )
 
     u_res = await db.execute(select(User).where(User.email == dto.email))
     target_user = u_res.scalar_one_or_none()

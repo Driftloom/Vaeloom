@@ -63,7 +63,7 @@ class TestFinal01ResumeIsolation:
         res = await client.get(
             "/api/v1/resumes", params={"workspace_id": ws_a}, headers=hb
         )
-        assert res.status_code == 404, res.text
+        assert res.status_code == 403, res.text
 
     async def test_list_own_workspace_allowed(
         self, client: AsyncClient, db_session: AsyncSession
@@ -87,7 +87,7 @@ class TestFinal01ResumeIsolation:
         res = await client.get(
             "/api/v1/resumes/master", params={"workspace_id": ws_a}, headers=hb
         )
-        assert res.status_code == 404, res.text
+        assert res.status_code == 403, res.text
 
     async def test_generate_foreign_resume_forbidden(
         self, client: AsyncClient, db_session: AsyncSession

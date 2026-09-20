@@ -36,8 +36,8 @@ async def test_onboarding_strict_step_progression(client: AsyncClient):
         headers={"Authorization": f"Bearer {token}"},
     )
     # Under strict zero-trust validation, skipping prerequisite steps should return 400
-    # If the system currently allows it, this test captures the behavioral gap
-    assert jump_res.status_code in (200, 400)
+    assert jump_res.status_code == 400
+    assert "prerequisite" in jump_res.text.lower()
 
 
 @pytest.mark.asyncio
@@ -92,5 +92,61 @@ async def test_onboarding_immutable_post_completion(client: AsyncClient):
         json={"step": "PROFILE", "step_data": {"displayName": "Hacked Profile"}},
         headers={"Authorization": f"Bearer {token}"},
     )
-    # Under zero-trust immutability, mutating after completion should be rejected or ignored
-    assert post_comp_res.status_code in (200, 400)
+    # Under zero-trust immutability, mutating after completion must be rejected with 400
+    assert post_comp_res.status_code == 400
+    assert "completed" in post_comp_res.text.lower()
+
+
+@pytest.mark.asyncio
+async def test_unauthorized_workspace_join_rejected(client: AsyncClient):
+    """TEST-ONB-SEC-04: Verify User B cannot join Workspace A without ownership or invitation."""
+    # User A creates Workspace A
+    res_a = await client.post(
+        "/api/v1/auth/signup",
+        json={"email": "ws_owner@vaeloom.test", "password": "Password123!", "display_name": "Owner A"},
+    )
+    token_a = res_a.json()["access_token"]
+    ws_res = await client.post(
+        "/api/v1/workspaces",
+        json={"name": "Owner A Private WS"},
+        headers={"Authorization": f"Bearer {token_a}"},
+    )
+    ws_a_id = ws_res.json()["id"]
+
+    # User B signs up
+    res_b = await client.post(
+        "/api/v1/auth/signup",
+        json={"email": "ws_intruder@vaeloom.test", "password": "Password123!", "display_name": "Intruder B"},
+    )
+    token_b = res_b.json()["access_token"]
+
+    # User B attempts to join Workspace A via /api/v1/onboarding/join without invitation
+    join_res = await client.post(
+        "/api/v1/onboarding/join",
+        json={"workspace_id": ws_a_id},
+        headers={"Authorization": f"Bearer {token_b}"},
+    )
+    assert join_res.status_code == 403
+    assert "invited" in join_res.text.lower() or "forbidden" in join_res.text.lower()
+
+
+@pytest.mark.asyncio
+async def test_resume_magic_byte_spoofing_rejected(client: AsyncClient):
+    """TEST-ONB-SEC-05: Verify resume upload rejects file with spoofed extension and invalid magic bytes."""
+    import io
+    res = await client.post(
+        "/api/v1/auth/signup",
+        json={"email": "resume_spoof@vaeloom.test", "password": "Password123!", "display_name": "Resume Spoofer"},
+    )
+    token = res.json()["access_token"]
+
+    # Upload fake PDF with executable magic bytes
+    fake_exe = b"MZ\x90\x00\x03\x00\x00\x00\x04\x00\x00\x00\xff\xff\x00\x00"
+    files = {"file": ("malicious.pdf", io.BytesIO(fake_exe), "application/pdf")}
+    upload_res = await client.post(
+        "/api/v1/onboarding/resume",
+        headers={"Authorization": f"Bearer {token}"},
+        files=files,
+    )
+    assert upload_res.status_code == 400
+    assert "magic bytes" in upload_res.text.lower() or "signature" in upload_res.text.lower()
