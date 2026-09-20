@@ -10,10 +10,9 @@ export interface PanelProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const variantStyles = {
-  default: 'bg-[var(--color-bg-surface,#111114)] border-[var(--color-border-subtle,#27272a)]',
-  elevated:
-    'bg-[var(--color-bg-elevated,#18181c)] border-[var(--color-border-strong,#3f3f46)] shadow-lg',
-  subtle: 'bg-[var(--color-bg-canvas,#08080a)] border-[var(--color-border-subtle,#27272a)]',
+  default: 'bg-surface border-border-subtle',
+  elevated: 'bg-surface-200 border-border-strong shadow-lg',
+  subtle: 'bg-surface-100 border-border-subtle',
 };
 
 const paddingStyles = {
@@ -38,15 +37,11 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(
         {...props}
       >
         {header && (
-          <div className="border-b border-[var(--color-border-subtle,#27272a)] px-4 py-3 bg-[var(--color-bg-surface,#111114)]">
-            {header}
-          </div>
+          <div className="border-b border-border-subtle px-4 py-3 bg-surface">{header}</div>
         )}
         <div className={pStyle}>{children}</div>
         {footer && (
-          <div className="border-t border-[var(--color-border-subtle,#27272a)] px-4 py-2.5 bg-[var(--color-bg-surface,#111114)]">
-            {footer}
-          </div>
+          <div className="border-t border-border-subtle px-4 py-2.5 bg-surface">{footer}</div>
         )}
       </div>
     );

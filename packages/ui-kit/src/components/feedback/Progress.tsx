@@ -16,9 +16,9 @@ const heightMap = {
 };
 
 const variantMap = {
-  primary: 'bg-[var(--color-action-primary,#3b82f6)]',
-  success: 'bg-[var(--color-status-success,#10b981)]',
-  ai: 'bg-[var(--color-ai-accent,#6366f1)]',
+  primary: 'bg-action',
+  success: 'bg-success',
+  ai: 'bg-accent',
 };
 
 export const Progress: React.FC<ProgressProps> = ({
@@ -37,7 +37,7 @@ export const Progress: React.FC<ProgressProps> = ({
   return (
     <div className={`w-full ${className}`.trim()}>
       {(label || showValue) && (
-        <div className="flex justify-between items-center text-xs text-[var(--color-text-secondary,#a1a1aa)] mb-1">
+        <div className="flex justify-between items-center text-xs text-text-secondary mb-1">
           {label && <span>{label}</span>}
           {showValue && <span className="tabular-nums">{Math.round(percentage)}%</span>}
         </div>
@@ -48,7 +48,7 @@ export const Progress: React.FC<ProgressProps> = ({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label={label || 'Progress'}
-        className={`w-full bg-[var(--color-bg-elevated,#18181c)] rounded-full overflow-hidden border border-[var(--color-border-subtle,#27272a)] ${hClass}`}
+        className={`w-full bg-surface-200 rounded-full overflow-hidden border border-border-subtle ${hClass}`}
       >
         <div
           className={`${vClass} h-full transition-all duration-300 ease-out rounded-full`}

@@ -14,9 +14,9 @@ export interface BannerProps {
 }
 
 const variantStyles = {
-  info: 'bg-[var(--color-bg-elevated,#18181c)] border-[var(--color-action-primary,#3b82f6)] text-[var(--color-text-primary,#f4f4f5)]',
-  warning: 'bg-amber-950/40 border-amber-600/50 text-amber-200',
-  danger: 'bg-red-950/40 border-red-600/50 text-red-200',
+  info: 'bg-surface-200 border-primary text-text',
+  warning: 'bg-warning/15 border-warning/30 text-warning',
+  danger: 'bg-error/15 border-error/30 text-error',
 };
 
 export const Banner: React.FC<BannerProps> = ({
