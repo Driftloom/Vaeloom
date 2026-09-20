@@ -44,6 +44,8 @@ def get_database_url() -> str:
     return url
 
 
+
+
 def run_migrations_offline() -> None:
     url = get_database_url()
     context.configure(

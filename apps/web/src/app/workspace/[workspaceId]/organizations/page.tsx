@@ -1,29 +1,16 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
+import React, { useState } from 'react';
 import { Button, Card, Input, Modal } from '@vaeloom/ui-kit';
 import { StatusBadge, type StatusVariant } from '@/components/shared/StatusBadge';
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 import { useParams } from 'next/navigation';
-import { iamApi } from '@/lib/api-client';
+import {
+  organizationsApi,
+  type OrganizationNode,
+  type OrganizationMember,
+  type OrganizationInvitation,
+} from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
-
-interface OrgNode {
-  id: string;
-  name: string;
-  type: 'organization' | 'department' | 'team';
-  members: number;
-  children?: OrgNode[];
-}
-
-interface Member {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  status: 'active' | 'invited' | 'inactive';
-  department: string;
-}
 
 interface Role {
   id: string;
@@ -32,222 +19,373 @@ interface Role {
   permissions: string[];
 }
 
-const orgTree: OrgNode = {
-  id: 'root',
-  name: 'Acme Corp',
-  type: 'organization',
-  members: 0,
-  children: [
-    {
-      id: 'eng',
-      name: 'Engineering',
-      type: 'department',
-      members: 12,
-      children: [
-        { id: 'frontend', name: 'Frontend Team', type: 'team', members: 5 },
-        { id: 'backend', name: 'Backend Team', type: 'team', members: 4 },
-        { id: 'ml', name: 'ML Team', type: 'team', members: 3 },
-      ],
-    },
-    {
-      id: 'product',
-      name: 'Product',
-      type: 'department',
-      members: 4,
-      children: [
-        { id: 'design', name: 'Design Team', type: 'team', members: 2 },
-        { id: 'pm', name: 'PM Team', type: 'team', members: 2 },
-      ],
-    },
-    { id: 'hr', name: 'Human Resources', type: 'department', members: 3 },
-  ],
-};
-
-const mockMembers: Member[] = [
-  {
-    id: 'm1',
-    name: 'Alice Chen',
-    email: 'alice@acme.com',
-    role: 'Admin',
-    status: 'active',
-    department: 'Engineering',
-  },
-  {
-    id: 'm2',
-    name: 'Bob Martinez',
-    email: 'bob@acme.com',
-    role: 'Editor',
-    status: 'active',
-    department: 'Engineering',
-  },
-  {
-    id: 'm3',
-    name: 'Carol Smith',
-    email: 'carol@acme.com',
-    role: 'Viewer',
-    status: 'invited',
-    department: 'Product',
-  },
-  {
-    id: 'm4',
-    name: 'Dave Johnson',
-    email: 'dave@acme.com',
-    role: 'Editor',
-    status: 'active',
-    department: 'Design',
-  },
-  {
-    id: 'm5',
-    name: 'Eve Williams',
-    email: 'eve@acme.com',
-    role: 'Admin',
-    status: 'active',
-    department: 'HR',
-  },
-];
-
-const mockRoles: Role[] = [
+const ROLES: Role[] = [
   {
     id: 'r1',
     name: 'Admin',
-    description: 'Full access to all resources and settings.',
-    permissions: ['read', 'write', 'delete', 'manage_members', 'manage_billing'],
+    description: 'Full administrative access to manage tree, members, and organizational settings.',
+    permissions: ['org:manage', 'org:write', 'org:delete', 'members:invite', 'members:remove'],
   },
   {
     id: 'r2',
-    name: 'Editor',
-    description: 'Can create and edit resources.',
-    permissions: ['read', 'write'],
+    name: 'Lead',
+    description: 'Can manage department or team members and configure child units.',
+    permissions: ['org:write', 'members:invite'],
   },
   {
     id: 'r3',
+    name: 'Member',
+    description: 'Standard access to team resources, projects, and collaborative workspaces.',
+    permissions: ['org:read', 'workspace:collaborate'],
+  },
+  {
+    id: 'r4',
     name: 'Viewer',
-    description: 'Read-only access to resources.',
-    permissions: ['read'],
+    description: 'Read-only access to organizational hierarchy and member directories.',
+    permissions: ['org:read'],
   },
 ];
 
-function OrgTreeNode({ node, depth = 0 }: { node: OrgNode; depth?: number }) {
+const memberStatusColors: Record<string, StatusVariant> = {
+  active: 'success',
+  invited: 'warning',
+  suspended: 'neutral',
+};
+const mStatusColor = (s: string): StatusVariant => memberStatusColors[s] ?? 'neutral';
+
+function OrgTreeNode({
+  node,
+  depth = 0,
+  selectedId,
+  onSelect,
+}: {
+  node: OrganizationNode;
+  depth?: number;
+  selectedId: string | null;
+  onSelect: (node: OrganizationNode) => void;
+}) {
   const [expanded, setExpanded] = useState(true);
   const hasChildren = !!node.children && node.children.length > 0;
+  const isSelected = selectedId === node.id;
 
   return (
     <div>
       <div
-        className="flex items-center gap-2 py-2 px-2 rounded hover:bg-surface-hover cursor-pointer transition-colors"
+        className={`flex items-center gap-2 py-2 px-2 rounded cursor-pointer transition-colors ${
+          isSelected ? 'bg-primary/10 border border-primary/30' : 'hover:bg-surface-hover'
+        }`}
         style={{ paddingLeft: `${depth * 20 + 8}px` }}
-        onClick={() => setExpanded(!expanded)}
+        onClick={() => onSelect(node)}
       >
-        {hasChildren && (
-          <svg
-            className={`w-4 h-4 text-text-muted transition-transform ${expanded ? 'rotate-90' : ''}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+        {hasChildren ? (
+          <button
+            type="button"
+            className="p-0.5 rounded hover:bg-surface-active text-text-muted"
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpanded(!expanded);
+            }}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
+            <svg
+              className={`w-4 h-4 transition-transform ${expanded ? 'rotate-90' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        ) : (
+          <div className="w-5" />
         )}
-        {!hasChildren && <div className="w-4" />}
         <span
-          className={`text-sm ${node.type === 'organization' ? 'font-display text-primary' : node.type === 'department' ? 'font-medium text-text' : 'text-text-muted'}`}
+          className={`text-sm ${
+            node.type === 'organization'
+              ? 'font-display font-semibold text-primary'
+              : node.type === 'department'
+                ? 'font-medium text-text'
+                : 'text-text-muted'
+          }`}
         >
           {node.name}
         </span>
-        <span className="text-xs text-text-muted font-mono ml-auto">{node.members} members</span>
+        <span className="text-xs text-text-muted font-mono ml-auto">
+          {node.membersCount} {node.membersCount === 1 ? 'member' : 'members'}
+        </span>
       </div>
       {expanded &&
         hasChildren &&
-        node.children?.map((child) => (
-          <OrgTreeNode key={child.id} node={child} depth={depth + 1} />
+        node.children.map((child) => (
+          <OrgTreeNode
+            key={child.id}
+            node={child}
+            depth={depth + 1}
+            selectedId={selectedId}
+            onSelect={onSelect}
+          />
         ))}
     </div>
   );
 }
 
-const memberStatusColors: Record<string, StatusVariant> = {
-  active: 'success',
-  invited: 'warning',
-  inactive: 'neutral',
-};
-const mStatusColor = (s: string): StatusVariant => memberStatusColors[s] ?? 'neutral';
-
 export default function OrganizationsPage() {
-  // ── Hooks must be BEFORE early return guard (no conditional hooks) ─────────
   const params = useParams();
   const workspaceId = (params?.['workspaceId'] as string | undefined) ?? null;
-  void workspaceId;
   const { toast } = useToast();
 
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('Editor');
-  const [isInviting, setIsInviting] = useState(false);
+  const [selectedNode, setSelectedNode] = useState<OrganizationNode | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createName, setCreateName] = useState('');
+  const [createType, setCreateType] = useState<'organization' | 'department' | 'team'>(
+    'department',
+  );
+  const [createParentId, setCreateParentId] = useState<string | null>(null);
+  const [createAllowedDomains, setCreateAllowedDomains] = useState('');
+  const [createDefaultRole, setCreateDefaultRole] = useState('member');
+  const [isCreating, setIsCreating] = useState(false);
+
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteUserId, setInviteUserId] = useState('');
+  const [inviteRole, setInviteRole] = useState<'admin' | 'lead' | 'member' | 'viewer'>('member');
+  const [isInviting, setIsInviting] = useState(false);
+
+  const [showInviteEmailModal, setShowInviteEmailModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteEmailRole, setInviteEmailRole] = useState<'admin' | 'lead' | 'member' | 'viewer'>(
+    'member',
+  );
+  const [isSendingInvite, setIsSendingInvite] = useState(false);
+  const [createdInviteLink, setCreatedInviteLink] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
+
   const [showRoleModal, setShowRoleModal] = useState<string | null>(null);
-  const [members, setMembers] = useState<Member[]>(mockMembers);
+
+  // Live organization tree fetch via SWR
+  const {
+    data: orgTree,
+    error: treeError,
+    isLoading: treeLoading,
+  } = useSWR(
+    workspaceId ? `orgs-tree-${workspaceId}` : 'orgs-tree',
+    () => organizationsApi.getTree(workspaceId),
+    {
+      revalidateOnFocus: false,
+      onSuccess: (data) => {
+        if (!selectedNode && data && data.length > 0) {
+          setSelectedNode(data[0] ?? null);
+        }
+      },
+    },
+  );
+
+  // Live members fetch for selected organization unit
+  const {
+    data: members,
+    isLoading: membersLoading,
+    mutate: mutateMembers,
+  } = useSWR(
+    selectedNode ? `orgs-members-${selectedNode.id}` : null,
+    () => organizationsApi.getMembers(selectedNode!.id),
+    { revalidateOnFocus: false },
+  );
+
+  // Live invitations fetch for selected organization unit
+  const {
+    data: invitations,
+    isLoading: invitationsLoading,
+    mutate: mutateInvitations,
+  } = useSWR<OrganizationInvitation[]>(
+    selectedNode ? `orgs-invitations-${selectedNode.id}` : null,
+    () => organizationsApi.getInvitations(selectedNode!.id),
+    { revalidateOnFocus: false },
+  );
+
+  const handleCreateNode = async () => {
+    if (!createName.trim()) {
+      toast({
+        tone: 'error',
+        title: 'Name required',
+        detail: 'Please enter a name for the organizational unit.',
+      });
+      return;
+    }
+    setIsCreating(true);
+    try {
+      await organizationsApi.create({
+        name: createName.trim(),
+        type: createType,
+        workspace_id: workspaceId,
+        parent_id: createParentId || (selectedNode ? selectedNode.id : null),
+        allowed_domains: createAllowedDomains.trim()
+          ? createAllowedDomains
+              .split(',')
+              .map((d) => d.trim())
+              .filter(Boolean)
+          : undefined,
+        default_role: createDefaultRole,
+      });
+      toast({
+        tone: 'success',
+        title: 'Unit Created',
+        detail: `Successfully created ${createName.trim()}`,
+      });
+      setShowCreateModal(false);
+      setCreateName('');
+      setCreateAllowedDomains('');
+      void mutate(workspaceId ? `orgs-tree-${workspaceId}` : 'orgs-tree');
+    } catch {
+      toast({
+        tone: 'error',
+        title: 'Creation Failed',
+        detail: 'Could not create organizational unit. Ensure backend is running.',
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   const handleSendInvite = async () => {
-    if (!inviteEmail.trim()) {
-      toast({ tone: 'error', title: 'Email required', detail: 'Please enter an email address.' });
+    if (!selectedNode) return;
+    if (!inviteEmail.trim() || !inviteEmail.includes('@')) {
+      toast({
+        tone: 'error',
+        title: 'Invalid Email',
+        detail: 'Please provide a valid email address.',
+      });
+      return;
+    }
+    setIsSendingInvite(true);
+    try {
+      const res = await organizationsApi.createInvitation(selectedNode.id, {
+        email: inviteEmail.trim(),
+        role: inviteEmailRole,
+      });
+      const link = res.token
+        ? `${typeof window !== 'undefined' ? window.location.origin : ''}/invite/${res.token}`
+        : null;
+      setCreatedInviteLink(link);
+      toast({
+        tone: 'success',
+        title: 'Invitation Created',
+        detail: `Created secure invitation for ${inviteEmail.trim()}`,
+      });
+      void mutateInvitations();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Could not create invitation';
+      toast({
+        tone: 'error',
+        title: 'Invitation Failed',
+        detail: msg,
+      });
+    } finally {
+      setIsSendingInvite(false);
+    }
+  };
+
+  const handleRevokeInvite = async (invitationId: string) => {
+    try {
+      await organizationsApi.revokeInvitation(invitationId);
+      toast({
+        tone: 'info',
+        title: 'Invitation Revoked',
+        detail: 'The invitation has been invalidated.',
+      });
+      void mutateInvitations();
+    } catch {
+      toast({
+        tone: 'error',
+        title: 'Action Failed',
+        detail: 'Could not revoke invitation.',
+      });
+    }
+  };
+
+  const handleAddMember = async () => {
+    if (!selectedNode) {
+      toast({
+        tone: 'error',
+        title: 'No Unit Selected',
+        detail: 'Select an organization unit first.',
+      });
+      return;
+    }
+    if (!inviteUserId.trim()) {
+      toast({
+        tone: 'error',
+        title: 'User ID required',
+        detail: 'Please enter a user ID or email.',
+      });
       return;
     }
     setIsInviting(true);
     try {
-      const res = await iamApi.inviteMember({
-        email: inviteEmail.trim(),
+      await organizationsApi.addMember(selectedNode.id, {
+        user_id: inviteUserId.trim(),
         role: inviteRole,
       });
-      const newMember: Member = {
-        id: res.id,
-        name: inviteEmail.trim().split('@')[0] ?? 'New Member',
-        email: res.email,
-        role: res.role,
-        status: 'invited',
-        department: 'General',
-      };
-      setMembers((prev) => [newMember, ...prev]);
       toast({
         tone: 'success',
-        title: 'Invitation Sent',
-        detail: `Sent invitation to ${res.email} as ${res.role}`,
+        title: 'Member Added',
+        detail: `Assigned user to ${selectedNode.name} as ${inviteRole}`,
       });
       setShowInviteModal(false);
-      setInviteEmail('');
+      setInviteUserId('');
+      void mutateMembers();
+      void mutate(workspaceId ? `orgs-tree-${workspaceId}` : 'orgs-tree');
     } catch {
       toast({
         tone: 'error',
-        title: 'Invitation Failed',
-        detail: 'Could not send organization invitation. Ensure backend is running.',
+        title: 'Assignment Failed',
+        detail: 'Could not add member. User may already be assigned or not exist.',
       });
     } finally {
       setIsInviting(false);
     }
   };
 
-  const { data: iamRes, isLoading: iamLoading } = useSWR(
-    'orgs-iam-users',
-    () => iamApi.listUsers({ page: 1, page_size: 20 }).catch(() => null),
-    { revalidateOnFocus: false },
-  );
-
-  useEffect(() => {
-    if (iamRes?.items?.length) {
-      const mapped: Member[] = iamRes.items.map((u) => ({
-        id: u.id,
-        name: u.display_name,
-        email: u.email,
-        role: (u.roles[0]?.name as string) ?? 'Viewer',
-        status: u.active ? 'active' : 'inactive',
-        department: '—',
-      }));
-      setMembers(mapped);
+  const handleRemoveMember = async (userId: string) => {
+    if (!selectedNode) return;
+    try {
+      await organizationsApi.removeMember(selectedNode.id, userId);
+      toast({
+        tone: 'info',
+        title: 'Member Removed',
+        detail: 'Removed member from organizational unit.',
+      });
+      void mutateMembers();
+      void mutate(workspaceId ? `orgs-tree-${workspaceId}` : 'orgs-tree');
+    } catch {
+      toast({
+        tone: 'error',
+        title: 'Action Failed',
+        detail: 'Could not remove member.',
+      });
     }
-  }, [iamRes]);
+  };
 
-  const isLive = !!iamRes?.items?.length;
+  const handleDeleteNode = async (nodeId: string) => {
+    if (!confirm('Are you sure you want to delete this organizational unit and its sub-units?'))
+      return;
+    try {
+      await organizationsApi.delete(nodeId);
+      toast({
+        tone: 'info',
+        title: 'Unit Deleted',
+        detail: 'Deleted organizational unit and cleaned up child nodes.',
+      });
+      setSelectedNode(null);
+      void mutate(workspaceId ? `orgs-tree-${workspaceId}` : 'orgs-tree');
+    } catch {
+      toast({
+        tone: 'error',
+        title: 'Delete Failed',
+        detail: 'Could not delete organizational unit.',
+      });
+    }
+  };
 
-  // Enterprise gate — MUST stay after all hooks (no conditional hooks before)
-  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Organizations" />;
+  const roots = orgTree ?? [];
+  const isTreeEmpty = roots.length === 0 && !treeLoading;
 
   return (
     <div className="space-y-8">
@@ -255,100 +393,258 @@ export default function OrganizationsPage() {
         <div>
           <h1 className="text-3xl font-display font-medium text-text mb-2">Organizations</h1>
           <p className="text-text-muted">
-            Manage your organization structure, members, and roles.{' '}
-            <span className={isLive ? 'text-success' : 'text-text-dim'}>
-              {isLive ? 'Live from GET /iam/users (live)' : '(mock — enable enterprise)'}
-            </span>
+            Enterprise hierarchical organization structure, departments, and team membership.
           </p>
           <p className="mt-2 text-xs font-mono text-text-dim">
             Data source:{' '}
-            {isLive ? (
-              <span className="text-success">
-                GET /iam/users (live) — {iamRes?.items?.length ?? 0} user(s)
-              </span>
-            ) : iamLoading ? (
-              <span>Loading GET /iam/users…</span>
+            {treeLoading ? (
+              <span>Loading hierarchy from GET /api/v1/organizations/tree…</span>
+            ) : treeError ? (
+              <span className="text-error">Error loading organization tree</span>
             ) : (
-              <span>
-                mockMembers fallback — backend IAM not reachable. Set ENTERPRISE_ROUTES_ENABLED=true
+              <span className="text-success">
+                Live from GET /api/v1/organizations/tree ({roots.length} root node(s))
               </span>
             )}
           </p>
         </div>
-        <Button onClick={() => setShowInviteModal(true)}>Invite Member</Button>
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setCreateParentId(selectedNode ? selectedNode.id : null);
+              setShowCreateModal(true);
+            }}
+          >
+            Add Unit
+          </Button>
+          <Button onClick={() => setShowInviteModal(true)} disabled={!selectedNode}>
+            Add Member
+          </Button>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column: Organization Tree */}
         <div className="lg:col-span-1">
           <Card padding="lg">
-            <h2 className="text-lg font-display font-medium text-text mb-4">Organization Tree</h2>
-            <OrgTreeNode node={orgTree} />
-            <p className="mt-4 text-xs text-text-dim font-mono">
-              Mock tree — visual only (no backend org service)
-            </p>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-display font-medium text-text">Organization Tree</h2>
+              {selectedNode && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDeleteNode(selectedNode.id)}
+                  className="text-error hover:text-error"
+                >
+                  Delete
+                </Button>
+              )}
+            </div>
+
+            {treeLoading ? (
+              <div className="py-8 text-center text-sm text-text-muted font-mono">
+                Loading organizational hierarchy…
+              </div>
+            ) : isTreeEmpty ? (
+              <div className="py-8 text-center space-y-3">
+                <p className="text-sm text-text-muted">No organizations configured yet.</p>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setCreateParentId(null);
+                    setCreateType('organization');
+                    setShowCreateModal(true);
+                  }}
+                >
+                  Create Root Organization
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {roots.map((root) => (
+                  <OrgTreeNode
+                    key={root.id}
+                    node={root}
+                    selectedId={selectedNode?.id ?? null}
+                    onSelect={(node) => setSelectedNode(node)}
+                  />
+                ))}
+              </div>
+            )}
           </Card>
         </div>
 
+        {/* Right Column: Members & Role Management */}
         <div className="lg:col-span-2 space-y-6">
           <Card padding="lg">
-            <h2 className="text-lg font-display font-medium text-text mb-4">Members</h2>
-            <div className="hidden sm:block space-y-2 overflow-x-auto">
-              <div className="min-w-[520px]">
-                <div className="grid grid-cols-4 gap-4 text-xs font-mono text-text-muted uppercase tracking-wider pb-2 border-b border-border">
-                  <span>Name</span>
-                  <span>Email</span>
-                  <span>Role</span>
-                  <span>Status</span>
-                </div>
-                {members.map((m) => (
-                  <div
-                    key={m.id}
-                    className="grid grid-cols-4 gap-4 py-2 text-sm text-text hover:bg-background/50 rounded px-2 -mx-2 transition-colors"
-                  >
-                    <span className="font-medium truncate">{m.name}</span>
-                    <span className="text-text-muted truncate">{m.email}</span>
-                    <span className="font-mono text-xs truncate">{m.role}</span>
-                    <StatusBadge variant={mStatusColor(m.status)} label={m.status} />
-                  </div>
-                ))}
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h2 className="text-lg font-display font-medium text-text">
+                  {selectedNode ? `${selectedNode.name} Members` : 'Members'}
+                </h2>
+                <p className="text-xs text-text-muted">
+                  {selectedNode
+                    ? `Unit Type: ${selectedNode.type.toUpperCase()}`
+                    : 'Select a unit from the tree to inspect its members.'}
+                </p>
               </div>
+              {selectedNode && (
+                <Button size="sm" onClick={() => setShowInviteModal(true)}>
+                  Assign Member
+                </Button>
+              )}
             </div>
-            {/* Mobile cards fallback — visible only < sm */}
-            <div className="sm:hidden space-y-2">
-              {members.map((m) => (
-                <div key={`mob-${m.id}`} className="card p-3 flex flex-col gap-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-sm">{m.name}</span>
-                    <StatusBadge variant={mStatusColor(m.status)} label={m.status} />
+
+            {membersLoading ? (
+              <div className="py-8 text-center text-sm text-text-muted font-mono">
+                Loading members…
+              </div>
+            ) : !selectedNode ? (
+              <div className="py-8 text-center text-sm text-text-muted">
+                Select an organizational unit from the tree to view members.
+              </div>
+            ) : (members?.length ?? 0) === 0 ? (
+              <div className="py-8 text-center text-sm text-text-muted">
+                No members assigned to this unit yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <div className="min-w-[500px]">
+                  <div className="grid grid-cols-4 gap-4 text-xs font-mono text-text-muted uppercase tracking-wider pb-2 border-b border-border">
+                    <span>User ID</span>
+                    <span>Role</span>
+                    <span>Status</span>
+                    <span className="text-right">Action</span>
                   </div>
-                  <span className="text-xs text-text-muted truncate">{m.email}</span>
-                  <span className="font-mono text-xs text-text-muted">{m.role}</span>
+                  {members?.map((m) => (
+                    <div
+                      key={m.id}
+                      className="grid grid-cols-4 gap-4 py-2.5 text-sm text-text hover:bg-background/50 rounded px-2 -mx-2 transition-colors items-center"
+                    >
+                      <span className="font-mono text-xs truncate">{m.userId}</span>
+                      <span className="font-medium capitalize">{m.role}</span>
+                      <StatusBadge variant={mStatusColor(m.status)} label={m.status} />
+                      <div className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveMember(m.userId)}
+                          className="text-xs text-error hover:text-error"
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+            )}
+          </Card>
+
+          {/* Invitations Card */}
+          <Card padding="lg">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h2 className="text-lg font-display font-medium text-text">
+                  {selectedNode ? `${selectedNode.name} Invitations` : 'Invitations'}
+                </h2>
+                <p className="text-xs text-text-muted">
+                  Pending and historical invitations with 7-day token expiry.
+                </p>
+              </div>
+              {selectedNode && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setCreatedInviteLink(null);
+                    setShowInviteEmailModal(true);
+                  }}
+                >
+                  Invite by Email
+                </Button>
+              )}
             </div>
-            <p className="mt-3 text-xs text-text-dim font-mono">
-              {isLive
-                ? 'Members derived from live IAM users (display_name, email, role, status)'
-                : 'Showing mockMembers (5) — live IAM will override when available'}
-            </p>
+
+            {invitationsLoading ? (
+              <div className="py-6 text-center text-sm text-text-muted font-mono">
+                Loading invitations…
+              </div>
+            ) : !selectedNode ? (
+              <div className="py-6 text-center text-sm text-text-muted">
+                Select an organizational unit from the tree to view invitations.
+              </div>
+            ) : (invitations?.length ?? 0) === 0 ? (
+              <div className="py-6 text-center text-sm text-text-muted">
+                No invitations found for this unit.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <div className="min-w-[550px]">
+                  <div className="grid grid-cols-5 gap-4 text-xs font-mono text-text-muted uppercase tracking-wider pb-2 border-b border-border">
+                    <span>Email</span>
+                    <span>Role</span>
+                    <span>Status</span>
+                    <span>Expires</span>
+                    <span className="text-right">Action</span>
+                  </div>
+                  {invitations?.map((inv) => (
+                    <div
+                      key={inv.id}
+                      className="grid grid-cols-5 gap-4 py-2.5 text-sm text-text hover:bg-background/50 rounded px-2 -mx-2 transition-colors items-center"
+                    >
+                      <span className="font-mono text-xs truncate">{inv.email}</span>
+                      <span className="font-medium capitalize">{inv.role}</span>
+                      <StatusBadge
+                        variant={
+                          inv.status === 'accepted'
+                            ? 'success'
+                            : inv.status === 'pending'
+                              ? 'warning'
+                              : 'neutral'
+                        }
+                        label={inv.status}
+                      />
+                      <span className="text-xs text-text-muted">
+                        {inv.expiresAt ? new Date(inv.expiresAt).toLocaleDateString() : 'N/A'}
+                      </span>
+                      <div className="text-right">
+                        {inv.status === 'pending' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRevokeInvite(inv.id)}
+                            className="text-xs text-error hover:text-error"
+                          >
+                            Revoke
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </Card>
 
           <Card padding="lg">
-            <h2 className="text-lg font-display font-medium text-text mb-4">Role Management</h2>
-            <div className="space-y-4">
-              {mockRoles.map((role) => (
-                <div key={role.id} className="p-4 bg-background rounded-lg border border-border">
+            <h2 className="text-lg font-display font-medium text-text mb-4">
+              Enterprise Roles & Permissions
+            </h2>
+            <div className="space-y-3">
+              {ROLES.map((role) => (
+                <div key={role.id} className="p-3.5 bg-background rounded-lg border border-border">
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="font-medium text-text">{role.name}</h3>
-                      <p className="text-sm text-text-muted mt-1">{role.description}</p>
+                      <p className="text-xs text-text-muted mt-1">{role.description}</p>
                     </div>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowRoleModal(role.id === showRoleModal ? null : role.id)}
                     >
-                      {showRoleModal === role.id ? 'Hide' : 'View Permissions'}
+                      {showRoleModal === role.id ? 'Hide' : 'Permissions'}
                     </Button>
                   </div>
                   {showRoleModal === role.id && (
@@ -366,48 +662,194 @@ export default function OrganizationsPage() {
                 </div>
               ))}
             </div>
-            <p className="mt-3 text-xs text-text-dim font-mono">
-              Roles are mock — derived from static definitions (no /iam/roles live mapping yet)
-            </p>
           </Card>
         </div>
       </div>
 
+      {/* Modal: Create Organizational Unit */}
       <Modal
-        isOpen={showInviteModal}
-        onClose={() => setShowInviteModal(false)}
-        title="Invite Member"
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Create Organizational Unit"
       >
         <div className="space-y-4">
           <Input
-            label="Email Address"
-            value={inviteEmail}
-            onChange={(e) => setInviteEmail(e.target.value)}
-            placeholder="colleague@company.com"
+            label="Unit Name"
+            value={createName}
+            onChange={(e) => setCreateName(e.target.value)}
+            placeholder="e.g. Engineering, Design, Core Team"
+          />
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-text">Type</label>
+            <select
+              className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:border-primary"
+              value={createType}
+              onChange={(e) =>
+                setCreateType(e.target.value as 'organization' | 'department' | 'team')
+              }
+            >
+              <option value="organization">Root Organization</option>
+              <option value="department">Department</option>
+              <option value="team">Team</option>
+            </select>
+          </div>
+          <Input
+            label="Allowed Email Domains (comma-separated, optional)"
+            value={createAllowedDomains}
+            onChange={(e) => setCreateAllowedDomains(e.target.value)}
+            placeholder="e.g. acme.com, vaeloom.test"
+          />
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-text">Default Role</label>
+            <select
+              className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:border-primary"
+              value={createDefaultRole}
+              onChange={(e) => setCreateDefaultRole(e.target.value)}
+            >
+              <option value="admin">Admin</option>
+              <option value="lead">Lead</option>
+              <option value="member">Member</option>
+              <option value="viewer">Viewer</option>
+            </select>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateNode} disabled={isCreating}>
+              {isCreating ? 'Creating…' : 'Create Unit'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal: Add Member to Unit */}
+      <Modal
+        isOpen={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        title={`Add Member to ${selectedNode?.name ?? 'Unit'}`}
+      >
+        <div className="space-y-4">
+          <Input
+            label="User ID or Email"
+            value={inviteUserId}
+            onChange={(e) => setInviteUserId(e.target.value)}
+            placeholder="user_id or user@organization.com"
           />
           <div className="space-y-1">
             <label className="block text-sm font-medium text-text">Role</label>
             <select
               className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:border-primary"
               value={inviteRole}
-              onChange={(e) => setInviteRole(e.target.value)}
+              onChange={(e) =>
+                setInviteRole(e.target.value as 'admin' | 'lead' | 'member' | 'viewer')
+              }
             >
-              <option value="Admin">Admin</option>
-              <option value="Editor">Editor</option>
-              <option value="Viewer">Viewer</option>
+              <option value="admin">Admin</option>
+              <option value="lead">Lead</option>
+              <option value="member">Member</option>
+              <option value="viewer">Viewer</option>
             </select>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setShowInviteModal(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSendInvite} disabled={isInviting}>
-              {isInviting ? 'Sending…' : 'Send Invite'}
+            <Button onClick={handleAddMember} disabled={isInviting}>
+              {isInviting ? 'Adding…' : 'Add Member'}
             </Button>
           </div>
-          <p className="text-xs text-text-dim font-mono">
-            Sends genuine invitation via POST /iam/organizations/invites
-          </p>
+        </div>
+      </Modal>
+
+      {/* Modal: Invite Member by Email */}
+      <Modal
+        isOpen={showInviteEmailModal}
+        onClose={() => {
+          setShowInviteEmailModal(false);
+          setCreatedInviteLink(null);
+        }}
+        title={`Invite Member to ${selectedNode?.name ?? 'Unit'}`}
+      >
+        <div className="space-y-4">
+          {createdInviteLink ? (
+            <div className="space-y-3 bg-surface p-4 rounded-lg border border-border">
+              <p className="text-sm font-medium text-success">
+                Invitation token generated successfully!
+              </p>
+              <p className="text-xs text-text-muted">Share this link with the invitee:</p>
+              <div className="flex gap-2">
+                <input
+                  readOnly
+                  value={createdInviteLink}
+                  className="w-full bg-background border border-border rounded-md px-3 py-1.5 text-xs font-mono text-text select-all"
+                />
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    if (typeof navigator !== 'undefined') {
+                      navigator.clipboard.writeText(createdInviteLink);
+                      setCopiedLink(true);
+                      setTimeout(() => setCopiedLink(false), 2000);
+                    }
+                  }}
+                >
+                  {copiedLink ? 'Copied!' : 'Copy'}
+                </Button>
+              </div>
+              <div className="flex justify-end pt-2">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setShowInviteEmailModal(false);
+                    setCreatedInviteLink(null);
+                    setInviteEmail('');
+                  }}
+                >
+                  Done
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <Input
+                label="Email Address"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="colleague@company.com"
+              />
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-text">Role</label>
+                <select
+                  className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:border-primary"
+                  value={inviteEmailRole}
+                  onChange={(e) =>
+                    setInviteEmailRole(e.target.value as 'admin' | 'lead' | 'member' | 'viewer')
+                  }
+                >
+                  <option value="admin">Admin</option>
+                  <option value="lead">Lead</option>
+                  <option value="member">Member</option>
+                  <option value="viewer">Viewer</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowInviteEmailModal(false);
+                    setCreatedInviteLink(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleSendInvite} disabled={isSendingInvite}>
+                  {isSendingInvite ? 'Creating…' : 'Generate Invite Link'}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
     </div>

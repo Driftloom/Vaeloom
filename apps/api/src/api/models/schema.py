@@ -45,6 +45,9 @@ class User(Base):
     phone: Mapped[str | None] = mapped_column(String(50))
     social_links: Mapped[dict] = mapped_column(JSON, default=dict)
     job_title: Mapped[str | None] = mapped_column(String(255))
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -52,6 +55,8 @@ class User(Base):
     sessions: Mapped[list["AuthSession"]] = relationship("AuthSession", back_populates="user", cascade="all, delete-orphan")
     workspaces: Mapped[list["Workspace"]] = relationship("Workspace", back_populates="owner", cascade="all, delete-orphan")
     workspace_users: Mapped[list["WorkspaceUser"]] = relationship("WorkspaceUser", back_populates="user", cascade="all, delete-orphan")
+    email_verification_tokens: Mapped[list["EmailVerificationToken"]] = relationship("EmailVerificationToken", back_populates="user", cascade="all, delete-orphan")
+    onboarding_state: Mapped["OnboardingState | None"] = relationship("OnboardingState", back_populates="user", uselist=False, cascade="all, delete-orphan")
     memories: Mapped[list["Memory"]] = relationship("Memory", back_populates="user", cascade="all, delete-orphan")
     scale_memories: Mapped[list["ScaleMemoryNode"]] = relationship("ScaleMemoryNode", back_populates="user", cascade="all, delete-orphan")
     sovereign_identity: Mapped["SovereignIdentity | None"] = relationship("SovereignIdentity", back_populates="user", uselist=False, cascade="all, delete-orphan")
@@ -95,9 +100,40 @@ class AuthSession(Base):
     last_activity: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     device_info: Mapped[dict | None] = mapped_column(JSON)
     ip_address: Mapped[str | None] = mapped_column(String(45))
+    user_agent: Mapped[str | None] = mapped_column(String(500))
+    family_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), default=uuid.uuid4, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     user: Mapped["User"] = relationship("User", back_populates="sessions")
+
+
+class EmailVerificationToken(Base):
+    __tablename__ = "email_verification_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    user: Mapped["User"] = relationship("User", back_populates="email_verification_tokens")
+
+
+class OnboardingState(Base):
+    __tablename__ = "onboarding_states"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True)
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="SET NULL"), nullable=True)
+    current_step: Mapped[str] = mapped_column(String(50), default="PROFILE")
+    completed_steps: Mapped[list] = mapped_column(JSON, default=list)
+    is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    step_data: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    user: Mapped["User"] = relationship("User", back_populates="onboarding_state")
 
 
 class RevokedUserCutoff(Base):
@@ -1301,3 +1337,161 @@ class RetentionRun(Base):
         Index("idx_retention_runs_tenant", "tenant_id"),
         Index("idx_retention_runs_created", "created_at"),
     )
+
+
+class Organization(Base):
+    """Hierarchical organizational units (organizations, departments, teams)."""
+
+    __tablename__ = "organizations"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=True)
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    type: Mapped[str] = mapped_column(String(50), default="organization")  # organization | department | team
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    allowed_domains: Mapped[list | None] = mapped_column(JSON, default=list, nullable=True)
+    default_role: Mapped[str] = mapped_column(String(50), default="member")
+    metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    children: Mapped[list["Organization"]] = relationship("Organization", back_populates="parent", cascade="all, delete-orphan")
+    parent: Mapped["Organization | None"] = relationship("Organization", back_populates="children", remote_side=[id])
+    members: Mapped[list["OrganizationMember"]] = relationship("OrganizationMember", back_populates="organization", cascade="all, delete-orphan")
+    invitations: Mapped[list["OrganizationInvitation"]] = relationship("OrganizationInvitation", back_populates="organization", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("idx_organizations_tenant", "tenant_id"),
+        Index("idx_organizations_workspace", "workspace_id"),
+        Index("idx_organizations_parent", "parent_id"),
+    )
+
+
+class OrganizationMember(Base):
+    """Membership of users in organizational units with specific roles."""
+
+    __tablename__ = "organization_members"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    role: Mapped[str] = mapped_column(String(50), default="member")  # admin | lead | member | viewer
+    status: Mapped[str] = mapped_column(String(20), default="active")  # active | invited | suspended
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    organization: Mapped["Organization"] = relationship("Organization", back_populates="members")
+    user: Mapped["User"] = relationship("User")
+
+    __table_args__ = (
+        UniqueConstraint("organization_id", "user_id", name="uq_org_member"),
+        Index("idx_org_members_org", "organization_id"),
+        Index("idx_org_members_user", "user_id"),
+    )
+
+
+class OrganizationInvitation(Base):
+    """Pending email invitations with token verification and expiry."""
+
+    __tablename__ = "organization_invitations"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(50), default="member")
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    invited_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | accepted | revoked
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    organization: Mapped["Organization"] = relationship("Organization", back_populates="invitations")
+
+    __table_args__ = (
+        Index("idx_org_invitations_org", "organization_id"),
+        Index("idx_org_invitations_tenant", "tenant_id"),
+        Index("idx_org_invitations_email", "email"),
+        Index("idx_org_invitations_token", "token_hash"),
+    )
+
+
+class MarketplaceListing(Base):
+    """Curated enterprise marketplace listings for plugins and extensions."""
+
+    __tablename__ = "marketplace_listings"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    plugin_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("plugins.id", ondelete="SET NULL"), nullable=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    slug: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    category: Mapped[str] = mapped_column(String(50), nullable=False)  # Integration | Analytics | AI | Productivity | Data | Security
+    author: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    version: Mapped[str] = mapped_column(String(50), nullable=False, default="1.0.0")
+    icon_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=True)
+    rating: Mapped[float] = mapped_column(Float, default=5.0)
+    install_count: Mapped[int] = mapped_column(Integer, default=0)
+    tags: Mapped[list] = mapped_column(JSON, default=list)
+    config_schema: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    reviews: Mapped[list["MarketplaceReview"]] = relationship("MarketplaceReview", back_populates="listing", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("idx_marketplace_listings_category", "category"),
+        Index("idx_marketplace_listings_slug", "slug"),
+    )
+
+
+class MarketplaceReview(Base):
+    """User ratings and reviews for marketplace plugins."""
+
+    __tablename__ = "marketplace_reviews"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    listing_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("marketplace_listings.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)  # 1 to 5
+    review: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    listing: Mapped["MarketplaceListing"] = relationship("MarketplaceListing", back_populates="reviews")
+    user: Mapped["User"] = relationship("User")
+
+    __table_args__ = (
+        UniqueConstraint("listing_id", "user_id", name="uq_listing_user_review"),
+        Index("idx_marketplace_reviews_listing", "listing_id"),
+        Index("idx_marketplace_reviews_user", "user_id"),
+    )
+
+
+class WorkspacePluginInstall(Base):
+    """Server-persisted plugin installation state per workspace."""
+
+    __tablename__ = "workspace_plugin_installs"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    listing_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("marketplace_listings.id", ondelete="CASCADE"), nullable=False)
+    installed_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    config: Mapped[dict] = mapped_column(JSON, default=dict)
+    installed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    listing: Mapped["MarketplaceListing"] = relationship("MarketplaceListing")
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "listing_id", name="uq_ws_plugin_install"),
+        Index("idx_ws_plugin_installs_ws", "workspace_id"),
+        Index("idx_ws_plugin_installs_listing", "listing_id"),
+    )
+
+

@@ -3257,14 +3257,35 @@ async def execute_tool(
         try:
             handler = TOOL_DISPATCH.get(tool.name) or DYNAMIC_HANDLERS.get(tool.name)
             if handler is None:
-                try:
-                    result = await _execute_mock(params, workspace_id, tool_name=tool.name)
-                except TypeError:
-                    result = await _execute_mock(params, workspace_id)
+                if tool.name.startswith("plugin__"):
+                    result = {
+                        "status": "error",
+                        "tool": tool.name,
+                        "result": f"Plugin tool '{tool.name}' is not installed or active in this workspace. Please install it from the Marketplace.",
+                        "error_code": "PLUGIN_NOT_INSTALLED",
+                    }
+                else:
+                    try:
+                        result = await _execute_mock(params, workspace_id, tool_name=tool.name)
+                    except TypeError:
+                        result = await _execute_mock(params, workspace_id)
             else:
-                result = await asyncio.wait_for(
-                    handler(params, workspace_id), timeout=timeout
-                )
+                try:
+                    result = await asyncio.wait_for(
+                        handler(params, workspace_id), timeout=timeout
+                    )
+                except Exception as exc:
+                    exc_str = str(exc).lower()
+                    if tool.name.startswith("composio__") and any(w in exc_str for w in ("auth", "token", "unauthorized", "expired", "401")):
+                        result = {
+                            "status": "error",
+                            "tool": tool.name,
+                            "result": f"Composio integration authentication required for '{tool.name}'. Please reconnect your account via Connectors.",
+                            "error_code": "COMPOSIO_AUTH_REQUIRED",
+                            "action_required": "reconnect_composio",
+                        }
+                    else:
+                        raise
             # ── 0b. Tool result schema validation (P1 — output_schema best-effort + hardening)
             # Ensures handler returns dict with status/tool/result; malformed → error shape.
             # If output_schema declares type array/object, validate top-level result type.
