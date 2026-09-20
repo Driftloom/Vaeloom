@@ -177,3 +177,25 @@ class TestMarketplace:
         assert exec_data["action"] == "sync_notifications"
         assert exec_data["result"]["configured"] is True
 
+    async def test_composio_service_diagnostics(self, auth_headers: dict, monkeypatch):
+        from api.services.composio_service import composio_service
+        import uuid
+
+        monkeypatch.delenv("COMPOSIO_API_KEY", raising=False)
+        ws_id = uuid.uuid4()
+        user_id = uuid.uuid4()
+
+        # When COMPOSIO_API_KEY is not set:
+        init_res = await composio_service.initiate_connection(ws_id, user_id, "github")
+        assert init_res["status"] == "error"
+        assert init_res["error_code"] == "COMPOSIO_API_KEY_REQUIRED"
+
+        status_res = await composio_service.get_connection_status(ws_id, "slack")
+        assert status_res["connected"] is False
+        assert status_res["error_code"] == "COMPOSIO_API_KEY_REQUIRED"
+
+        exec_res = await composio_service.execute_composio_action(ws_id, "github", "create_issue", {})
+        assert exec_res["status"] == "error"
+        assert exec_res["error_code"] == "COMPOSIO_API_KEY_REQUIRED"
+
+

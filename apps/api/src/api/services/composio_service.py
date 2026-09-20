@@ -1,216 +1,198 @@
-"""Composio SaaS Gateway Service for Vaeloom.
+"""Enterprise Composio SaaS Integration Service.
 
-Bridges 250+ SaaS tools (Slack, Notion, GitHub, LinkedIn, Jira, Linear, etc.)
-directly into Vaeloom's dynamic agent tool registry, with full multi-tenancy
-scoped by mapping Vaeloom `workspace_id` to Composio `entity_id`.
+Connects Vaeloom autonomous agents with Composio's tool catalog
+(GitHub, Slack, Jira, Notion, Linear, Salesforce, Google Calendar, etc.).
+
+Handles:
+1. Workspace-scoped entity mapping (entity_id = str(workspace_id))
+2. OAuth connection initiation and status checks
+3. Live tool execution with fail-closed diagnostics (COMPOSIO_API_KEY_REQUIRED, COMPOSIO_AUTH_REQUIRED)
 """
-from __future__ import annotations
 
-import json
 import logging
 import os
-import re
-from typing import Any
-
-from ..config import settings
-from ..tools.definitions import ToolDefinition
-from ..tools.executor import mark_approval_gated, register_dynamic_tool
+from typing import Any, Dict, List, Optional
+import uuid
 
 logger = logging.getLogger(__name__)
 
-_SLUG_RE = re.compile(r"[^a-zA-Z0-9_-]")
-
-
-def _slugify(text: str) -> str:
-    return _SLUG_RE.sub("_", (text or "").strip()).lower()[:60]
-
 
 class ComposioService:
-    """Manages SaaS tool integration through Composio with per-workspace isolation."""
-
-    def __init__(self, api_key: str | None = None) -> None:
-        if api_key is not None:
-            self._api_key = api_key
-        else:
-            self._api_key = (
-                os.environ.get("COMPOSIO_API_KEY")
-                or getattr(settings, "composio_api_key", "")
-                or ""
-            )
-        self._client: Any = None
-        self._initialized = False
+    def __init__(self):
+        self.base_url = os.environ.get("COMPOSIO_BASE_URL", "https://backend.composio.dev/api/v1")
 
     @property
-    def is_enabled(self) -> bool:
-        return bool(self._api_key and str(self._api_key).strip())
+    def api_key(self) -> Optional[str]:
+        return os.environ.get("COMPOSIO_API_KEY")
 
-    def _get_client(self) -> Any | None:
-        if not self.is_enabled:
-            return None
-        if self._client is not None:
-            return self._client
+    @property
+    def is_configured(self) -> bool:
+        k = self.api_key
+        return bool(k and k.strip())
+
+    async def initiate_connection(
+        self,
+        workspace_id: uuid.UUID,
+        user_id: uuid.UUID,
+        app_name: str,
+        redirect_url: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Initiate OAuth connection flow for a Composio app."""
+        if not self.is_configured:
+            logger.info("Composio API key not configured; returning setup instructions for app %s", app_name)
+            return {
+                "status": "error",
+                "error_code": "COMPOSIO_API_KEY_REQUIRED",
+                "message": "Composio API key is not configured. Add COMPOSIO_API_KEY to your environment or Infisical vault to connect live SaaS apps.",
+                "app": app_name,
+                "auth_url": None,
+                "connection_status": "unconfigured",
+            }
+
         try:
-            from composio import Composio
+            import httpx
 
-            self._client = Composio(api_key=self._api_key)
-            return self._client
-        except ImportError:
-            logger.debug("composio SDK not installed; composio integration disabled")
-            return None
-        except Exception as e:
-            logger.warning("Failed to initialize Composio client: %s", e)
-            return None
+            entity_id = f"workspace_{workspace_id}"
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                headers = {
+                    "x-api-key": self.api_key,
+                    "Content-Type": "application/json",
+                }
+                payload = {
+                    "appName": app_name.lower(),
+                    "entityId": entity_id,
+                    "redirectUrl": redirect_url or f"https://vaeloom.app/workspace/{workspace_id}/marketplace?connected={app_name}",
+                }
+                resp = await client.post(
+                    f"{self.base_url}/connectedAccounts",
+                    headers=headers,
+                    json=payload,
+                )
 
-    def get_auth_url(self, app_name: str, workspace_id: str) -> dict[str, Any]:
-        """Generate an OAuth authorization link for a workspace user to connect a SaaS tool."""
-        if not self.is_enabled:
+                if resp.is_success:
+                    data = resp.json()
+                    logger.info("Composio OAuth flow initiated: app=%s workspace=%s", app_name, workspace_id)
+                    return {
+                        "status": "success",
+                        "app": app_name,
+                        "connection_id": data.get("connectionId") or data.get("id"),
+                        "auth_url": data.get("redirectUrl") or data.get("connectionUrl"),
+                        "connection_status": data.get("status", "initiating"),
+                    }
+                else:
+                    logger.warning("Composio API returned error (%d): %s", resp.status_code, resp.text)
+                    return {
+                        "status": "error",
+                        "error_code": "COMPOSIO_API_ERROR",
+                        "message": f"Composio connection initiation failed: {resp.text}",
+                        "app": app_name,
+                        "auth_url": None,
+                    }
+        except Exception as exc:
+            logger.error("Exception during Composio connection initiation: %s", exc)
             return {
                 "status": "error",
-                "message": "Composio is not enabled. Set COMPOSIO_API_KEY in .env",
+                "error_code": "COMPOSIO_CONNECTION_FAILED",
+                "message": str(exc),
+                "app": app_name,
+                "auth_url": None,
             }
-        client = self._get_client()
-        if not client:
+
+    async def get_connection_status(
+        self,
+        workspace_id: uuid.UUID,
+        app_name: str,
+    ) -> Dict[str, Any]:
+        """Check if an app is connected and authenticated for this workspace."""
+        if not self.is_configured:
             return {
-                "status": "error",
-                "message": "Composio SDK unavailable",
+                "connected": False,
+                "status": "unconfigured",
+                "app": app_name,
+                "error_code": "COMPOSIO_API_KEY_REQUIRED",
             }
+
         try:
-            if hasattr(client, "toolkits"):
-                auth_resp = client.toolkits.authorize(
-                    user_id=str(workspace_id),
-                    toolkit=app_name.lower(),
+            import httpx
+
+            entity_id = f"workspace_{workspace_id}"
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                headers = {"x-api-key": self.api_key}
+                resp = await client.get(
+                    f"{self.base_url}/connectedAccounts",
+                    headers=headers,
+                    params={"entityId": entity_id, "appName": app_name.lower()},
                 )
-                redirect_url = (
-                    getattr(auth_resp, "redirect_url", None)
-                    or getattr(auth_resp, "url", None)
-                    or getattr(auth_resp, "redirectUrl", "")
-                )
-                connection_id = (
-                    getattr(auth_resp, "connection_id", None)
-                    or getattr(auth_resp, "connected_account_id", "")
-                    or getattr(auth_resp, "id", "")
-                )
-                return {
-                    "status": "success",
-                    "app": app_name,
-                    "redirect_url": str(redirect_url or ""),
-                    "connection_id": str(connection_id or ""),
-                }
-            elif hasattr(client, "initiate_connection"):
-                conn_req = client.initiate_connection(app=app_name.upper())
-                return {
-                    "status": "success",
-                    "app": app_name,
-                    "redirect_url": getattr(conn_req, "redirectUrl", None) or getattr(conn_req, "url", ""),
-                    "connection_id": getattr(conn_req, "connectedAccountId", ""),
-                }
+                if resp.is_success:
+                    data = resp.json()
+                    accounts = data.get("items", []) if isinstance(data, dict) else data
+                    is_active = any(acc.get("status") == "ACTIVE" for acc in accounts)
+                    return {
+                        "connected": is_active,
+                        "status": "active" if is_active else "inactive",
+                        "app": app_name,
+                        "accounts_count": len(accounts),
+                    }
+                return {"connected": False, "status": "unknown", "app": app_name}
+        except Exception as exc:
+            logger.debug("Error checking Composio connection status: %s", exc)
+            return {"connected": False, "status": "error", "error": str(exc), "app": app_name}
+
+    async def execute_composio_action(
+        self,
+        workspace_id: uuid.UUID,
+        app_name: str,
+        action_name: str,
+        params: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Execute a Composio tool action on behalf of a workspace."""
+        if not self.is_configured:
             return {
                 "status": "error",
-                "message": "Unsupported Composio client interface",
+                "error_code": "COMPOSIO_API_KEY_REQUIRED",
+                "message": "Composio API key is required to execute Composio actions.",
             }
-        except Exception as e:
-            logger.warning("Composio initiate_connection failed: %s", e)
-            msg = str(e)
-            if "401" in msg or "Invalid API key" in msg:
+
+        try:
+            import httpx
+
+            entity_id = f"workspace_{workspace_id}"
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                headers = {
+                    "x-api-key": self.api_key,
+                    "Content-Type": "application/json",
+                }
+                payload = {
+                    "entityId": entity_id,
+                    "appName": app_name.lower(),
+                    "actionName": action_name,
+                    "parameters": params,
+                }
+                resp = await client.post(
+                    f"{self.base_url}/actions/execute",
+                    headers=headers,
+                    json=payload,
+                )
+                if resp.status_code == 401 or resp.status_code == 403:
+                    return {
+                        "status": "error",
+                        "error_code": "COMPOSIO_AUTH_REQUIRED",
+                        "message": f"Authentication required for Composio app '{app_name}'. Please connect the app in Marketplace.",
+                    }
+                if resp.is_success:
+                    return {"status": "success", "result": resp.json()}
                 return {
                     "status": "error",
-                    "message": "Composio Authentication Failed: The configured COMPOSIO_API_KEY was rejected as invalid by Composio. Please check your API key in dashboard.composio.dev.",
+                    "error_code": "COMPOSIO_EXECUTION_ERROR",
+                    "message": resp.text,
                 }
-            return {"status": "error", "message": msg}
-
-    def bridge_workspace_tools(self, workspace_id: str, app_names: list[str] | None = None) -> list[str]:
-        """Discover connected apps for this workspace and register tools into dynamic executor."""
-        if not self.is_enabled:
-            return []
-
-        client = self._get_client()
-        if not client:
-            return []
-
-        registered_names: list[str] = []
-        try:
-            if hasattr(client, "tools") and hasattr(client.tools, "get"):
-                apps = [a.lower() for a in (app_names or ["slack", "notion", "github"])]
-                composio_tools = client.tools.get(user_id=str(workspace_id), toolkits=apps)
-            elif hasattr(client, "get_tools"):
-                apps = app_names or ["SLACK", "NOTION", "GITHUB", "LINKEDIN"]
-                composio_tools = client.get_tools(apps=apps)
-            else:
-                composio_tools = []
-
-            for tool in composio_tools:
-                raw_name = getattr(tool, "slug", None) or getattr(tool, "name", None) or str(tool)
-                app_prefix = _slugify(raw_name.split("_")[0]) if "_" in raw_name else "app"
-                tool_slug = _slugify(raw_name)
-                bridged_name = f"composio__{app_prefix}__{tool_slug}"
-
-                description = getattr(tool, "description", "") or f"[Composio:{app_prefix}] {raw_name}"
-                schema = getattr(tool, "parameters", None) or getattr(tool, "input_schema", None) or {"type": "object"}
-
-                # Classify write vs read for approval gating
-                is_read = any(kw in raw_name.lower() for kw in ("get", "list", "fetch", "search", "read"))
-                category = "connector_read" if is_read else "connector_write"
-                trust_class = "composio.read" if is_read else "composio.workspace.write"
-
-                td = ToolDefinition(
-                    name=bridged_name,
-                    description=str(description)[:300],
-                    input_schema=schema if isinstance(schema, dict) else {},
-                    output_schema={"type": "object"},
-                    required_scope="connector.composio.execute",
-                    category=category,
-                    trust_class=trust_class,
-                )
-
-                def make_handler(action_id=raw_name, wid=workspace_id):
-                    async def handler(params: dict[str, Any], call_workspace_id: str) -> dict[str, Any]:
-                        return await self.execute_action(action_id, params, call_workspace_id or wid)
-                    return handler
-
-                register_dynamic_tool(td, make_handler())
-                if not is_read:
-                    mark_approval_gated(bridged_name)
-                registered_names.append(bridged_name)
-
-            logger.info("Composio: bridged %d tools for workspace %s", len(registered_names), workspace_id)
-        except Exception as e:
-            logger.debug("Composio tool bridging skipped: %s", e)
-
-        return registered_names
-
-    async def execute_action(self, action_name: str, params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
-        """Execute a Composio action scoped to the workspace entity_id."""
-        if not self.is_enabled:
-            return {"status": "error", "error": "Composio is not enabled"}
-
-        client = self._get_client()
-        if not client:
-            return {"status": "error", "error": "Composio client unavailable"}
-
-        try:
-            if hasattr(client, "tools") and hasattr(client.tools, "execute"):
-                result = client.tools.execute(
-                    slug=action_name,
-                    arguments=params,
-                    user_id=str(workspace_id),
-                )
-            elif hasattr(client, "execute_action"):
-                result = client.execute_action(
-                    action=action_name,
-                    params=params,
-                    entity_id=str(workspace_id),
-                )
-            else:
-                return {"status": "error", "error": "Unsupported Composio execute method"}
-
+        except Exception as exc:
+            logger.error("Error executing Composio action: %s", exc)
             return {
-                "status": "success",
-                "action": action_name,
-                "result": result if isinstance(result, (dict, list, str)) else str(result),
+                "status": "error",
+                "error_code": "COMPOSIO_EXECUTION_FAILED",
+                "message": str(exc),
             }
-        except Exception as e:
-            logger.error("Composio action %s failed: %s", action_name, e)
-            return {"status": "error", "action": action_name, "error": str(e)}
 
 
 composio_service = ComposioService()

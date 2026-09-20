@@ -538,6 +538,37 @@ export default function MarketplacePage() {
               </div>
             </div>
 
+            {/* Permission Scopes */}
+            <div className="space-y-1.5 py-2 border-b border-border">
+              <h4 className="text-xs font-semibold text-text uppercase tracking-wider">
+                Requested Scopes
+              </h4>
+              <div className="flex flex-wrap gap-1">
+                {(selectedListing.tags && selectedListing.tags.length > 0
+                  ? selectedListing.tags
+                  : ['read:workspace', 'execute:action']
+                ).map((scope) => (
+                  <span
+                    key={scope}
+                    className="text-xs bg-surface-active px-2 py-0.5 rounded font-mono text-text-muted"
+                  >
+                    {scope}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Composio SaaS notice */}
+            {selectedListing.id.startsWith('composio-') && (
+              <div className="rounded-lg bg-surface-active p-3 border border-border text-xs text-text-muted space-y-1">
+                <p className="font-medium text-text">Live Composio SaaS Gateway</p>
+                <p>
+                  Requires <code className="text-text font-mono">COMPOSIO_API_KEY</code>. Connection
+                  authentication is automatically verified upon agent tool invocation.
+                </p>
+              </div>
+            )}
+
             {/* Rating Section */}
             {!selectedListing.id.startsWith('composio-') &&
               !selectedListing.id.startsWith('native-') && (

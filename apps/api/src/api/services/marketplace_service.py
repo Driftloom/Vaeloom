@@ -423,6 +423,42 @@ class MarketplaceService:
             else:
                 decrypted_config[k] = v
 
+        # 1. Check if plugin has a webhook URL configured
+        webhook_url = decrypted_config.get("webhook_url")
+        if webhook_url:
+            import httpx
+            import hmac
+            import hashlib
+            secret = decrypted_config.get("secret", "")
+            payload_body = json.dumps({"action": action, "params": params, "workspace_id": str(workspace_id)})
+            headers = {"Content-Type": "application/json"}
+            if secret:
+                sig = hmac.new(secret.encode(), payload_body.encode(), hashlib.sha256).hexdigest()
+                headers["X-Vaeloom-Signature"] = f"sha256={sig}"
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    resp = await client.post(webhook_url, content=payload_body, headers=headers)
+                    return {
+                        "status": "success" if resp.is_success else "error",
+                        "plugin": install.listing.slug if install.listing else str(install_id),
+                        "action": action,
+                        "result": resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {"text": resp.text},
+                        "status_code": resp.status_code,
+                    }
+            except Exception as exc:
+                return {
+                    "status": "error",
+                    "plugin": install.listing.slug if install.listing else str(install_id),
+                    "action": action,
+                    "error": f"Webhook dispatch failed: {str(exc)}",
+                }
+
+        # 2. Check if it is a Composio SaaS plugin
+        if install.listing and (install.listing.slug.startswith("composio-") or "composio" in (install.listing.tags or [])):
+            from .composio_service import composio_service
+            app_name = install.listing.slug.replace("composio-", "")
+            return await composio_service.execute_composio_action(workspace_id, app_name, action, params)
+
         logger.info(
             "Executing plugin action: plugin=%s action=%s workspace=%s",
             install.listing.slug if install.listing else "unknown",
