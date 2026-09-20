@@ -17,6 +17,12 @@ import JobPreferences from '@/components/profile/JobPreferences';
 import CareerTimeline from '@/components/profile/CareerTimeline';
 import ATSReadiness from '@/components/profile/ATSReadiness';
 import AgentInsights from '@/components/profile/AgentInsights';
+import EducationSection from '@/components/profile/EducationSection';
+import PortfolioShowcase from '@/components/profile/PortfolioShowcase';
+import AgentDirectivesCard from '@/components/profile/AgentDirectivesCard';
+import CompanyBlacklistCard from '@/components/profile/CompanyBlacklistCard';
+import ApplicationVaultCard from '@/components/profile/ApplicationVaultCard';
+import ScreeningQuestionsCard from '@/components/profile/ScreeningQuestionsCard';
 import { WhatVaeloomKnows } from '@/components/profile/WhatVaeloomKnows';
 import { RecentActivity } from '@/components/profile/RecentActivity';
 import { AchievementsCertificates } from '@/components/profile/AchievementsCertificates';
@@ -29,7 +35,7 @@ import { AccountPrivacyCard } from '@/components/profile/AccountPrivacyCard';
 export default function ProfilePage() {
   const params = useParams();
   const workspaceId = (params?.['workspaceId'] as string) || '';
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('identity');
 
   const {
     data: profile,
@@ -58,10 +64,12 @@ export default function ProfilePage() {
   }, [profile?.memorySummary]);
 
   const tabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'memory_activity', label: 'Memory & Activity' },
-    { id: 'security', label: 'Security & Access' },
-    { id: 'settings', label: 'Appearance & Export' },
+    { id: 'identity', label: 'Identity & Portfolio' },
+    { id: 'career_skills', label: 'Skills & Experience' },
+    { id: 'agent_directives', label: 'Agent Directives' },
+    { id: 'vault', label: 'Application & EEO Vault' },
+    { id: 'memory_activity', label: 'Memory & Context' },
+    { id: 'security_settings', label: 'Security & Settings' },
   ];
 
   if (profileError) {
@@ -103,15 +111,44 @@ export default function ProfilePage() {
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
-      <TabPanel id="overview" activeTab={activeTab}>
+      {/* Tab 1: Identity & Portfolio */}
+      <TabPanel id="identity" activeTab={activeTab}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
           <div className="lg:col-span-2 space-y-6">
-            <AgentInsights
+            <MemoryAboutMe
+              profile={profile}
               workspaceId={workspaceId}
               onUpdate={(updated) => mutateProfile(updated, false)}
             />
-            <MemoryAboutMe
+            <PortfolioShowcase
+              projects={profile.projects}
+              workspaceId={workspaceId}
+              onUpdate={(updated) => mutateProfile(updated, false)}
+            />
+            <EducationSection
+              education={profile.education}
+              workspaceId={workspaceId}
+              onUpdate={(updated) => mutateProfile(updated, false)}
+            />
+          </div>
+
+          <div className="space-y-6">
+            {completeness && <ProfileCompleteness data={completeness} />}
+            <ContactSocialLinks
               profile={profile}
+              workspaceId={workspaceId}
+              onUpdate={(updated) => mutateProfile(updated, false)}
+            />
+            <ConnectedSources workspaceId={workspaceId} />
+          </div>
+        </div>
+      </TabPanel>
+
+      {/* Tab 2: Skills & Experience */}
+      <TabPanel id="career_skills" activeTab={activeTab}>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
+          <div className="lg:col-span-2 space-y-6">
+            <AgentInsights
               workspaceId={workspaceId}
               onUpdate={(updated) => mutateProfile(updated, false)}
             />
@@ -126,27 +163,53 @@ export default function ProfilePage() {
               workspaceId={workspaceId}
               onUpdate={(updated) => mutateProfile(updated, false)}
             />
-            <JobPreferences
-              preferences={profile.jobPreferences}
-              workspaceId={workspaceId}
-              onUpdate={(updated) => mutateProfile(updated, false)}
-            />
           </div>
 
           <div className="space-y-6">
-            {completeness && <ProfileCompleteness data={completeness} />}
-            <ContactSocialLinks
-              profile={profile}
-              workspaceId={workspaceId}
-              onUpdate={(updated) => mutateProfile(updated, false)}
-            />
             <ATSReadiness workspaceId={workspaceId} onSkillAdded={() => mutateProfile()} />
             <CareerTimeline careerHistory={profile.careerHistory} />
-            <ConnectedSources workspaceId={workspaceId} />
           </div>
         </div>
       </TabPanel>
 
+      {/* Tab 3: Agent Directives */}
+      <TabPanel id="agent_directives" activeTab={activeTab}>
+        <div className="space-y-6 pt-2">
+          <AgentDirectivesCard
+            directives={profile.agentDirectives}
+            workspaceId={workspaceId}
+            onUpdate={(updated) => mutateProfile(updated, false)}
+          />
+          <CompanyBlacklistCard
+            blacklist={profile.companyBlacklist}
+            workspaceId={workspaceId}
+            onUpdate={(updated) => mutateProfile(updated, false)}
+          />
+          <JobPreferences
+            preferences={profile.jobPreferences}
+            workspaceId={workspaceId}
+            onUpdate={(updated) => mutateProfile(updated, false)}
+          />
+        </div>
+      </TabPanel>
+
+      {/* Tab 4: Application & EEO Vault */}
+      <TabPanel id="vault" activeTab={activeTab}>
+        <div className="space-y-6 pt-2">
+          <ApplicationVaultCard
+            vault={profile.applicationVault}
+            workspaceId={workspaceId}
+            onUpdate={(updated) => mutateProfile(updated, false)}
+          />
+          <ScreeningQuestionsCard
+            questions={profile.screeningQuestions}
+            workspaceId={workspaceId}
+            onUpdate={(updated) => mutateProfile(updated, false)}
+          />
+        </div>
+      </TabPanel>
+
+      {/* Tab 5: Memory & Context Graph */}
       <TabPanel id="memory_activity" activeTab={activeTab}>
         <div className="space-y-6 pt-2">
           <WhatVaeloomKnows summary={memoryCounts} />
@@ -157,21 +220,19 @@ export default function ProfilePage() {
         </div>
       </TabPanel>
 
-      <TabPanel id="security" activeTab={activeTab}>
+      {/* Tab 6: Security & Settings */}
+      <TabPanel id="security_settings" activeTab={activeTab}>
         <div className="space-y-6 pt-2">
           <TwoFactorAuthCard
-            initialEnabled={Boolean((profile as any)?.mfaEnabled)}
+            initialEnabled={Boolean((profile as unknown as { mfaEnabled?: boolean })?.mfaEnabled)}
             onStatusChange={() => mutateProfile()}
           />
           <ActiveSessions />
           <AccountPrivacyCard />
-        </div>
-      </TabPanel>
-
-      <TabPanel id="settings" activeTab={activeTab}>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
-          <ThemePreferences />
-          <ProfileExport workspaceId={workspaceId} userId={profile.id} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+            <ThemePreferences />
+            <ProfileExport workspaceId={workspaceId} userId={profile.id} />
+          </div>
         </div>
       </TabPanel>
     </div>

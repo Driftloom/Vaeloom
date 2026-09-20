@@ -2263,6 +2263,9 @@ export interface SkillItem {
   decayFactor?: number;
   effectiveConfidence?: number;
   isMatchable?: boolean;
+  category?: string;
+  proficiency?: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert' | string;
+  yearsExperience?: number;
 }
 
 export interface CareerEntry {
@@ -2272,6 +2275,9 @@ export interface CareerEntry {
   endDate: string | null;
   achievements: string[];
   confidence: number;
+  location?: string | null;
+  employmentType?: string;
+  isCurrent?: boolean;
 }
 
 export interface JobPreferencesData {
@@ -2280,6 +2286,71 @@ export interface JobPreferencesData {
   preferredIndustries: string[];
   dealbreakers: string[];
   remotePreference: string | null;
+}
+
+export interface EducationEntry {
+  id?: string;
+  institution: string;
+  degree: string;
+  fieldOfStudy: string;
+  startYear?: number | null;
+  graduationYear?: number | null;
+  gpa?: string | null;
+  showGpaOnResume?: boolean;
+  honors?: string[];
+}
+
+export interface ProjectEntry {
+  id?: string;
+  title: string;
+  tagline?: string | null;
+  description: string;
+  technologies: string[];
+  metricsSummary?: string | null;
+  liveUrl?: string | null;
+  githubUrl?: string | null;
+  featured: boolean;
+}
+
+export interface ApplicationVaultData {
+  demographicsPolicy: 'autofill' | 'decline' | 'blank' | string;
+  gender?: string | null;
+  ethnicity?: string | null;
+  veteranStatus?: string | null;
+  disabilityStatus?: string | null;
+  authorizedCountries: string[];
+  visaStatus: string;
+  requiresSponsorship: boolean;
+  securityClearance: string;
+}
+
+export interface AgentDirectivesData {
+  autonomyMode: 'copilot' | 'semi_autonomous' | 'full_autopilot' | string;
+  minMatchThreshold: number;
+  dailyApplicationQuota: number;
+  minBaseSalary?: number | null;
+  targetBaseSalary?: number | null;
+  targetTotalComp?: number | null;
+  currency: string;
+  noticePeriod: string;
+  relocationPreference: string;
+  travelPercentage: string;
+  coverLetterPolicy: string;
+}
+
+export interface BlacklistItem {
+  id: string;
+  companyName: string;
+  domain?: string | null;
+  reason: string;
+  autoInferred?: boolean;
+}
+
+export interface ScreeningQuestionItem {
+  id: string;
+  question: string;
+  answer: string;
+  category: string;
 }
 
 export interface MemorySummaryItem {
@@ -2308,6 +2379,12 @@ export interface ProfileData {
   jobPreferences: JobPreferencesData | null;
   memorySummary: MemorySummaryItem[];
   yearsExperience: number | null;
+  education: EducationEntry[];
+  projects: ProjectEntry[];
+  applicationVault?: ApplicationVaultData | null;
+  agentDirectives?: AgentDirectivesData | null;
+  companyBlacklist: BlacklistItem[];
+  screeningQuestions: ScreeningQuestionItem[];
 }
 
 export interface UpdateProfileData {
@@ -2452,6 +2529,9 @@ export const profileApi = {
       startDate?: string;
       endDate?: string;
       achievements?: string[];
+      location?: string;
+      employmentType?: string;
+      isCurrent?: boolean;
     },
     workspaceId: string,
   ): Promise<ProfileData> {
@@ -2462,11 +2542,22 @@ export const profileApi = {
       start_date: data.startDate,
       end_date: data.endDate,
       achievements: data.achievements ?? [],
+      location: data.location,
+      employment_type: data.employmentType,
+      is_current: data.isCurrent,
     });
   },
   updateCareer(
     company: string,
-    data: { role?: string; startDate?: string; endDate?: string; achievements?: string[] },
+    data: {
+      role?: string;
+      startDate?: string;
+      endDate?: string;
+      achievements?: string[];
+      location?: string;
+      employmentType?: string;
+      isCurrent?: boolean;
+    },
     workspaceId: string,
   ): Promise<ProfileData> {
     return apiClient.put<ProfileData>(`/profile/career/${encodeURIComponent(company)}`, {
@@ -2475,6 +2566,9 @@ export const profileApi = {
       start_date: data.startDate,
       end_date: data.endDate,
       achievements: data.achievements,
+      location: data.location,
+      employment_type: data.employmentType,
+      is_current: data.isCurrent,
     });
   },
   deleteCareer(company: string, workspaceId: string): Promise<ProfileData> {
@@ -2485,6 +2579,155 @@ export const profileApi = {
   activity(workspaceId: string): Promise<ProfileActivityItem[]> {
     return apiClient.get<ProfileActivityItem[]>('/profile/activity', {
       workspace_id: workspaceId,
+    });
+  },
+  addEducation(
+    data: {
+      institution: string;
+      degree: string;
+      fieldOfStudy: string;
+      startYear?: number | null;
+      graduationYear?: number | null;
+      gpa?: string | null;
+      showGpaOnResume?: boolean;
+      honors?: string[];
+    },
+    workspaceId: string,
+  ): Promise<ProfileData> {
+    return apiClient.post<ProfileData>('/profile/education', {
+      workspace_id: workspaceId,
+      institution: data.institution,
+      degree: data.degree,
+      field_of_study: data.fieldOfStudy,
+      start_year: data.startYear,
+      graduation_year: data.graduationYear,
+      gpa: data.gpa,
+      show_gpa_on_resume: data.showGpaOnResume ?? false,
+      honors: data.honors ?? [],
+    });
+  },
+  updateEducation(
+    educationId: string,
+    data: Partial<EducationEntry>,
+    workspaceId: string,
+  ): Promise<ProfileData> {
+    return apiClient.put<ProfileData>(`/profile/education/${encodeURIComponent(educationId)}`, {
+      workspace_id: workspaceId,
+      institution: data.institution,
+      degree: data.degree,
+      field_of_study: data.fieldOfStudy,
+      start_year: data.startYear,
+      graduation_year: data.graduationYear,
+      gpa: data.gpa,
+      show_gpa_on_resume: data.showGpaOnResume,
+      honors: data.honors,
+    });
+  },
+  deleteEducation(educationId: string, workspaceId: string): Promise<ProfileData> {
+    return apiClient.delete<ProfileData>(
+      `/profile/education/${encodeURIComponent(educationId)}?workspace_id=${encodeURIComponent(workspaceId)}`,
+    );
+  },
+  addProject(
+    data: {
+      title: string;
+      tagline?: string | null;
+      description: string;
+      technologies?: string[];
+      metricsSummary?: string | null;
+      liveUrl?: string | null;
+      githubUrl?: string | null;
+      featured?: boolean;
+    },
+    workspaceId: string,
+  ): Promise<ProfileData> {
+    return apiClient.post<ProfileData>('/profile/projects', {
+      workspace_id: workspaceId,
+      title: data.title,
+      tagline: data.tagline,
+      description: data.description,
+      technologies: data.technologies ?? [],
+      metrics_summary: data.metricsSummary,
+      live_url: data.liveUrl,
+      github_url: data.githubUrl,
+      featured: data.featured ?? true,
+    });
+  },
+  updateProject(
+    projectId: string,
+    data: Partial<ProjectEntry>,
+    workspaceId: string,
+  ): Promise<ProfileData> {
+    return apiClient.put<ProfileData>(`/profile/projects/${encodeURIComponent(projectId)}`, {
+      workspace_id: workspaceId,
+      title: data.title,
+      tagline: data.tagline,
+      description: data.description,
+      technologies: data.technologies,
+      metrics_summary: data.metricsSummary,
+      live_url: data.liveUrl,
+      github_url: data.githubUrl,
+      featured: data.featured,
+    });
+  },
+  deleteProject(projectId: string, workspaceId: string): Promise<ProfileData> {
+    return apiClient.delete<ProfileData>(
+      `/profile/projects/${encodeURIComponent(projectId)}?workspace_id=${encodeURIComponent(workspaceId)}`,
+    );
+  },
+  updateVault(data: Partial<ApplicationVaultData>, workspaceId: string): Promise<ProfileData> {
+    return apiClient.put<ProfileData>('/profile/vault', {
+      workspace_id: workspaceId,
+      demographics_policy: data.demographicsPolicy ?? 'decline',
+      gender: data.gender,
+      ethnicity: data.ethnicity,
+      veteran_status: data.veteranStatus,
+      disability_status: data.disabilityStatus,
+      authorized_countries: data.authorizedCountries ?? ['US'],
+      visa_status: data.visaStatus ?? 'Citizen',
+      requires_sponsorship: data.requiresSponsorship ?? false,
+      security_clearance: data.securityClearance ?? 'None',
+    });
+  },
+  updateDirectives(data: Partial<AgentDirectivesData>, workspaceId: string): Promise<ProfileData> {
+    return apiClient.put<ProfileData>('/profile/directives', {
+      workspace_id: workspaceId,
+      autonomy_mode: data.autonomyMode ?? 'copilot',
+      min_match_threshold: data.minMatchThreshold ?? 80,
+      daily_application_quota: data.dailyApplicationQuota ?? 10,
+      min_base_salary: data.minBaseSalary,
+      target_base_salary: data.targetBaseSalary,
+      target_total_comp: data.targetTotalComp,
+      currency: data.currency ?? 'USD',
+      notice_period: data.noticePeriod ?? '2 weeks',
+      relocation_preference: data.relocationPreference ?? 'Remote only',
+      travel_percentage: data.travelPercentage ?? '0%',
+      cover_letter_policy: data.coverLetterPolicy ?? 'when_required',
+    });
+  },
+  addBlacklist(
+    data: { companyName: string; domain?: string; reason?: string },
+    workspaceId: string,
+  ): Promise<ProfileData> {
+    return apiClient.post<ProfileData>('/profile/blacklist', {
+      workspace_id: workspaceId,
+      company_name: data.companyName,
+      domain: data.domain,
+      reason: data.reason ?? 'Company Blacklist',
+    });
+  },
+  removeBlacklist(companyName: string, workspaceId: string): Promise<ProfileData> {
+    return apiClient.delete<ProfileData>(
+      `/profile/blacklist/${encodeURIComponent(companyName)}?workspace_id=${encodeURIComponent(workspaceId)}`,
+    );
+  },
+  updateScreeningQuestions(
+    questions: ScreeningQuestionItem[],
+    workspaceId: string,
+  ): Promise<ProfileData> {
+    return apiClient.put<ProfileData>('/profile/screening-questions', {
+      workspace_id: workspaceId,
+      questions,
     });
   },
 };

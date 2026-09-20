@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { SkillItem, ProfileData, profileApi } from '@/lib/api-client';
 
 interface SkillsShowcaseProps {
@@ -9,11 +9,22 @@ interface SkillsShowcaseProps {
   onUpdate?: (updated: ProfileData) => void;
 }
 
+const CATEGORIES = [
+  'All',
+  'Languages',
+  'Frameworks',
+  'Cloud & DevOps',
+  'Databases',
+  'AI & Machine Learning',
+  'Tools & Core',
+];
+
 export default function SkillsShowcase({
   skills = [],
   workspaceId,
   onUpdate,
 }: SkillsShowcaseProps) {
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const [isAdding, setIsAdding] = useState(false);
   const [newSkillName, setNewSkillName] = useState('');
   const [loadingSkill, setLoadingSkill] = useState<string | null>(null);
@@ -64,10 +75,29 @@ export default function SkillsShowcase({
     }
   };
 
+  const filteredSkills = useMemo(() => {
+    if (selectedCategory === 'All') return skills;
+    return skills.filter((s) => (s.category || 'Tools & Core') === selectedCategory);
+  }, [skills, selectedCategory]);
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { All: skills.length };
+    skills.forEach((s) => {
+      const cat = s.category || 'Tools & Core';
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
+    return counts;
+  }, [skills]);
+
   return (
     <div className="card mb-6">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-xl font-semibold text-text">Skills & Expertise</h2>
+        <h2 className="text-xl font-semibold text-text flex items-center gap-2">
+          <span>Categorized Skills Matrix</span>
+          <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-surface-200 text-text-muted border border-border">
+            {skills.length} Total
+          </span>
+        </h2>
         {workspaceId && !isAdding && (
           <button
             onClick={() => setIsAdding(true)}
@@ -87,15 +117,42 @@ export default function SkillsShowcase({
         )}
       </div>
       <p className="text-sm text-text-muted mb-4">
-        Vaeloom learns these from your connected sources and interactions. Confirm skills to make
-        them part of your permanent agent memory.
+        Vaeloom organizes your skills into categorized matrix tiers. Verified skills are reinforced
+        in your permanent agent memory.
       </p>
 
       {error && (
-        <div className="mb-4 p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-600">
+        <div className="mb-4 p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-500">
           {error}
         </div>
       )}
+
+      {/* Category Filter Pills */}
+      <div className="flex flex-wrap gap-1.5 mb-4 pb-2 border-b border-border">
+        {CATEGORIES.map((cat) => {
+          const count = categoryCounts[cat] || 0;
+          if (cat !== 'All' && count === 0) return null;
+          const selected = selectedCategory === cat;
+          return (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
+                selected
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-surface-200 text-text-muted hover:text-text hover:bg-surface-hover border border-border'
+              }`}
+            >
+              <span>{cat}</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full ${selected ? 'bg-primary-hover text-white' : 'bg-surface text-text-dim'}`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
       {isAdding && (
         <form onSubmit={handleAddSkill} className="mb-4 flex items-center gap-2">
@@ -103,7 +160,7 @@ export default function SkillsShowcase({
             type="text"
             value={newSkillName}
             onChange={(e) => setNewSkillName(e.target.value)}
-            placeholder="e.g. Next.js, Distributed Systems..."
+            placeholder="e.g. Next.js, Rust, Kubernetes, PyTorch..."
             autoFocus
             className="flex-1 px-3 py-1.5 text-sm bg-surface-200 border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
           />
@@ -143,7 +200,7 @@ export default function SkillsShowcase({
         </div>
       ) : (
         <div className="flex flex-wrap gap-2.5">
-          {skills.map((skill, i) => {
+          {filteredSkills.map((skill, i) => {
             let dotColor = 'bg-gray-400';
             if (skill.verified || skill.confidence >= 0.9) dotColor = 'bg-emerald-500';
             else if (skill.confidence >= 0.7) dotColor = 'bg-amber-500';
@@ -168,10 +225,17 @@ export default function SkillsShowcase({
               <div
                 key={i}
                 className="group inline-flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full bg-surface-200 border border-border text-sm hover:border-border-hover transition-colors"
-                title={`Tag: ${skill.tag || skill.name} | Tier: ${tier} | Status: ${decay} | Effective: ${Math.round((skill.effectiveConfidence ?? skill.confidence) * 100)}%`}
+                title={`Category: ${skill.category || 'General'} | Tier: ${tier} | Status: ${decay} | Effective: ${Math.round((skill.effectiveConfidence ?? skill.confidence) * 100)}%`}
               >
                 <span className={`w-2 h-2 rounded-full ${dotColor} shrink-0`} />
                 <span className="font-medium text-text">{skill.name}</span>
+
+                {/* Proficiency Badge */}
+                {skill.proficiency && (
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface border border-border text-text-dim">
+                    {skill.proficiency}
+                  </span>
+                )}
 
                 {/* PIOS Validation Tier Badge */}
                 <span
@@ -181,7 +245,7 @@ export default function SkillsShowcase({
                   {tier}
                 </span>
 
-                {/* PIOS Decay status if not fresh */}
+                {/* Recency Decay status if not fresh */}
                 {decay !== 'fresh' && (
                   <span
                     className={`text-[10px] font-medium ${decayLabels[decay] ?? ''}`}
