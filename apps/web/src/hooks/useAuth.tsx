@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             user: null,
             me: null,
             loading: false,
-            error: 'Session expired',
+            error: null,
             isAuthenticated: false,
           });
           return;
@@ -105,11 +105,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (attempt < 3) {
           setTimeout(() => check(attempt + 1), 1000 * attempt);
         } else {
+          clearToken();
+          clearRefreshToken();
           setState({
             user: null,
             me: null,
             loading: false,
-            error: 'Session expired',
+            error: null,
             isAuthenticated: false,
           });
         }
@@ -119,27 +121,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     check(1);
     const onAuthSet = () => check(1);
+    const onAuthCleared = () => {
+      setState({ user: null, me: null, loading: false, error: null, isAuthenticated: false });
+    };
     window.addEventListener('vaeloom.auth_token_set', onAuthSet);
-    return () => window.removeEventListener('vaeloom.auth_token_set', onAuthSet);
+    window.addEventListener('vaeloom.auth_token_cleared', onAuthCleared);
+    return () => {
+      window.removeEventListener('vaeloom.auth_token_set', onAuthSet);
+      window.removeEventListener('vaeloom.auth_token_cleared', onAuthCleared);
+    };
   }, [check]);
 
   const login = useCallback(async (email: string, password: string) => {
-    if (process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']) {
-      try {
-        const { createClient } = await import('@/lib/supabase/client');
-        const supabase = createClient();
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (!error && data?.session) {
-          setToken(data.session.access_token);
-          if (data.session.refresh_token) setRefreshToken(data.session.refresh_token);
-          const me = await api.me();
-          setState({ user: me.user, me, loading: false, error: null, isAuthenticated: true });
-          return;
-        }
-      } catch {
-        // Fallback to native backend login
-      }
-    }
     const res = await api.login({ email, password });
     if ((res as any).mfaRequired && (res as any).mfaToken) {
       return { mfaRequired: true, mfaToken: (res as any).mfaToken };
@@ -158,26 +151,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signup = useCallback(
     async (email: string, password: string, displayName?: string, termsAccepted?: boolean) => {
-      if (process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']) {
-        try {
-          const { createClient } = await import('@/lib/supabase/client');
-          const supabase = createClient();
-          const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: { data: { full_name: displayName } },
-          });
-          if (!error && data?.session) {
-            setToken(data.session.access_token);
-            if (data.session.refresh_token) setRefreshToken(data.session.refresh_token);
-            const me = await api.me();
-            setState({ user: me.user, me, loading: false, error: null, isAuthenticated: true });
-            return;
-          }
-        } catch {
-          // Fallback to native backend signup
-        }
-      }
       const res = await api.signup({
         email,
         password,

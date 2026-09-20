@@ -85,7 +85,9 @@ export function setToken(token: string): void {
 export function clearToken(): void {
   if (typeof window !== 'undefined') {
     window.localStorage.removeItem(TOKEN_KEY);
-    document.cookie = 'vaeloom.accessToken=; path=/; max-age=0';
+    document.cookie =
+      'vaeloom.accessToken=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+    window.dispatchEvent(new Event('vaeloom.auth_token_cleared'));
   }
 }
 
@@ -129,6 +131,8 @@ export function getRefreshToken(): string | null {
 export function clearRefreshToken(): void {
   if (typeof window !== 'undefined') {
     window.localStorage.removeItem(REFRESH_KEY);
+    document.cookie =
+      'vaeloom.refreshToken=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
   }
 }
 
@@ -154,6 +158,11 @@ async function refreshToken(): Promise<string> {
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
   const mutating = isMutatingMethod(init.method);
+  const isAuthEndpoint =
+    path.startsWith('/auth/login') ||
+    path.startsWith('/auth/signup') ||
+    path.startsWith('/auth/refresh');
+
   // W-13: every request carries a correlation ID; the backend echoes it back
   // (CorrelationIDMiddleware) and we expose it for support/debug context.
   const requestId =
@@ -169,7 +178,8 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   if (typeof FormData !== 'undefined' && init.body instanceof FormData) {
     delete headers['Content-Type'];
   }
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  // Only attach Bearer token if not calling public auth endpoints (login/signup)
+  if (token && !isAuthEndpoint) headers['Authorization'] = `Bearer ${token}`;
   if (!headers['X-Workspace-ID']) {
     const urlParamsMatch = path.match(/[?&]workspace_?id=([a-f0-9-]+)/i);
     if (urlParamsMatch && urlParamsMatch[1]) {
@@ -205,7 +215,8 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     }
   }
 
-  if (res.status === 401 && token) {
+  // Token refresh logic: ONLY for non-auth endpoints when token is present
+  if (res.status === 401 && token && !isAuthEndpoint) {
     if (!isRefreshing) {
       isRefreshing = true;
       try {
@@ -223,9 +234,19 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
         clearToken();
         clearRefreshToken();
         if (typeof window !== 'undefined') {
-          // W-13: route to the purpose-built expired-session page instead of
-          // dropping the user on /login with no explanation.
-          window.location.href = '/session-expired';
+          const currentPath = window.location.pathname;
+          const isAuthPage =
+            currentPath === '/login' ||
+            currentPath === '/signup' ||
+            currentPath === '/session-expired' ||
+            currentPath === '/' ||
+            currentPath.startsWith('/terms') ||
+            currentPath.startsWith('/privacy');
+
+          // ONLY redirect to /session-expired if the user was inside an active protected workspace route
+          if (!isAuthPage && currentPath.startsWith('/workspace')) {
+            window.location.href = '/session-expired';
+          }
         }
         throw err;
       }

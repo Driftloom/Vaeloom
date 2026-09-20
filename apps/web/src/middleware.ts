@@ -14,21 +14,57 @@ const PUBLIC_PATHS = [
   '/favicon.ico',
 ];
 
+function isTokenValid(token: string | undefined): boolean {
+  if (!token) return false;
+  try {
+    const parts = token.split('.');
+    const payloadPart = parts[1];
+    if (parts.length !== 3 || !payloadPart) return false;
+    const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(''),
+    );
+    const parsed = JSON.parse(jsonPayload);
+    if (parsed.exp && Date.now() >= parsed.exp * 1000) {
+      return false; // Token is expired
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get('vaeloom.accessToken')?.value;
 
-  const isAuthenticated = !!token;
+  const isAuthenticated = isTokenValid(token);
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
   const isPublicExact = PUBLIC_PATHS.some((p) => pathname === p);
+
+  // If user arrives on /session-expired, clear session cookies cleanly and do not redirect
+  if (pathname === '/session-expired') {
+    const response = NextResponse.next();
+    response.cookies.delete('vaeloom.accessToken');
+    response.cookies.delete('vaeloom.refreshToken');
+    return response;
+  }
 
   if (isProtected && !isAuthenticated) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
+    const redirectResponse = NextResponse.redirect(loginUrl);
+    if (token) {
+      redirectResponse.cookies.delete('vaeloom.accessToken');
+      redirectResponse.cookies.delete('vaeloom.refreshToken');
+    }
+    return redirectResponse;
   }
 
-  // Redirect authenticated users away from auth pages to their workspace.
+  // Redirect authenticated users away from auth pages only if token is actually valid
   if (isAuthenticated && (pathname === '/login' || pathname === '/signup')) {
     return NextResponse.redirect(new URL('/workspace', request.url));
   }
