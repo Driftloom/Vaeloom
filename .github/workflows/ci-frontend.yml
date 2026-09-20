@@ -54,7 +54,7 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Prepare API database (fresh)
         working-directory: apps/api
-        run: uv sync --frozen || uv sync
+        run: uv sync --frozen --extra dev || uv sync --extra dev
       # webServer entries in playwright.config.ts start both the real API
       # (SQLite + mock LLM key, e2e user auto-seeded by api-launcher.py) and
       # the Next.js dev server.
