@@ -111,6 +111,7 @@ from .routers import (
     notifications,
     onboarding,
     opportunities,
+    orchestrator,
     organizations,
     plugins,
     profile,
@@ -439,6 +440,7 @@ _safe_include(realtime.router, "/api/v1/realtime", ["realtime"])
 _safe_include(organizations.router, "/api/v1/organizations", ["organizations"])
 _safe_include(marketplace.router, "/api/v1/marketplace", ["marketplace"])
 _safe_include(onboarding.router, "/api/v1/onboarding", ["onboarding"])
+_safe_include(orchestrator.router, "/api/v1/orchestrator", ["orchestrator"])
 
 
 # ── Enterprise routes (CF-06 / R6) ──────────────────────────────────

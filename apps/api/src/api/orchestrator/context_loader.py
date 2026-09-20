@@ -84,16 +84,8 @@ class AgentContextLoader:
         user_id: str | None,
         session: Any,
     ) -> None:
-                # 1. Load User Profile & Workspace Memory via profile_service
+                # 1. Load User Profile & Workspace Memory via profile_service (SEC-P0-02 zero-trust remediation)
                 resolved_user_id = user_id
-                if not resolved_user_id:
-                    try:
-                        from ..models.schema import WorkspaceUser
-                        wu_stmt = select(WorkspaceUser.user_id).where(WorkspaceUser.workspace_id == uuid.UUID(str(workspace_id))).limit(1)
-                        wu_res = await session.execute(wu_stmt)
-                        resolved_user_id = wu_res.scalar_one_or_none()
-                    except Exception:
-                        resolved_user_id = None
 
                 profile_loaded = False
                 if resolved_user_id:

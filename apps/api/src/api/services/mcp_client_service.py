@@ -99,6 +99,24 @@ def validate_mcp_config(config: dict) -> dict:
             raise McpConfigError("http:// URLs require allow_insecure=true (dev only)")
         if parsed.scheme not in ("http", "https") or not parsed.hostname:
             raise McpConfigError("http transport requires a valid 'url'")
+        host = (parsed.hostname or "").lower().strip(".")
+        cloud_metadata_hosts = {"169.254.169.254", "metadata.google.internal"}
+        if host in cloud_metadata_hosts:
+            raise McpConfigError(f"URL targets cloud metadata service: {host}")
+        if not insecure:
+            blocked_hosts = {
+                "localhost", "localhost.localdomain", "127.0.0.1", "0.0.0.0",
+                "::1", "[::1]",
+            }
+            if host in blocked_hosts or host.endswith(".local") or host.endswith(".internal"):
+                raise McpConfigError(f"URL targets a blocked host or internal domain: {host}")
+            import ipaddress
+            try:
+                ip = ipaddress.ip_address(host)
+                if not ip.is_global or ip.is_loopback or ip.is_private or ip.is_link_local:
+                    raise McpConfigError(f"URL targets private or non-routable IP: {host}")
+            except ValueError:
+                pass
         headers = cfg.get("headers")
         if headers is not None:
             if not isinstance(headers, dict) or not all(
@@ -208,6 +226,15 @@ class _McpClientService:
                     await session.initialize()
                     return await operation(session)
         else:
+            if not cfg.get("allow_insecure"):
+                from ..utils.url_guard import DnsResolutionError, UrlBlockedError, assert_public_http_url
+                try:
+                    await assert_public_http_url(cfg["url"])
+                except DnsResolutionError:
+                    pass
+                except UrlBlockedError as e:
+                    raise McpConfigError(f"SSRF policy blocked URL: {e}")
+
             from mcp.client.streamable_http import streamable_http_client
 
             headers = cfg.get("headers")

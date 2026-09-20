@@ -15,6 +15,8 @@ from typing import Any
 import httpx
 from mcp.server import MCPServer
 
+from api.utils.url_guard import UrlBlockedError, assert_public_http_url
+
 logger = logging.getLogger("mcp.job_search")
 
 server = MCPServer("vaeloom-job-search-mcp")
@@ -137,6 +139,11 @@ async def fetch_job_details(url: str) -> str:
     url = url.strip()
     if not url:
         return json.dumps({"error": "URL is required"})
+
+    try:
+        url = await assert_public_http_url(url)
+    except UrlBlockedError as e:
+        return json.dumps({"error": f"SSRF policy blocked URL: {e}"})
 
     try:
         async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
