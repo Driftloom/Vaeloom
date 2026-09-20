@@ -49,7 +49,7 @@ export const AgentRun: React.FC<AgentRunProps> = ({
             {totalDuration}
           </span>
           <span
-            className={`px-1.5 py-0.5 rounded text-[10px] uppercase font-semibold ${
+            className={`px-1.5 py-0.5 rounded text-2xs uppercase font-semibold ${
               status === 'success'
                 ? 'bg-emerald-950/40 text-emerald-300'
                 : status === 'failed'
@@ -71,7 +71,7 @@ export const AgentRun: React.FC<AgentRunProps> = ({
         {steps.map((step) => (
           <div
             key={step.id}
-            className="flex items-center justify-between py-1 px-2 rounded bg-[var(--color-bg-elevated,#18181c)] font-mono text-[11px]"
+            className="flex items-center justify-between py-1 px-2 rounded bg-surface-200 font-mono text-xs"
           >
             <div className="flex items-center gap-2">
               {step.status === 'completed' ? (
@@ -82,9 +82,7 @@ export const AgentRun: React.FC<AgentRunProps> = ({
                 <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
               )}
               <span className="text-[var(--color-text-primary,#f4f4f5)]">{step.name}</span>
-              <span className="text-[var(--color-text-muted,#71717a)] text-[10px]">
-                ({step.type})
-              </span>
+              <span className="text-text-muted text-2xs">({step.type})</span>
             </div>
             <span className="text-[var(--color-text-muted,#71717a)] tabular-nums">
               {step.durationMs}ms

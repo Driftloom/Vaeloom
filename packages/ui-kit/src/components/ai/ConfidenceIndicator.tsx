@@ -35,9 +35,7 @@ export const ConfidenceIndicator: React.FC<ConfidenceIndicatorProps> = ({
       <span className="tabular-nums text-[var(--color-text-primary,#f4f4f5)] font-mono">
         {normalized}%
       </span>
-      {showLabel && (
-        <span className="text-[11px] text-[var(--color-text-muted,#71717a)]">{statusText}</span>
-      )}
+      {showLabel && <span className="text-xs text-text-muted">{statusText}</span>}
     </div>
   );
 };

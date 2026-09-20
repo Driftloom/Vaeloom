@@ -17,9 +17,9 @@ export interface AgentProposalProps {
 }
 
 const impactStyles = {
-  low: 'text-[var(--color-status-success,#10b981)] bg-emerald-950/20 border-emerald-800/30',
-  medium: 'text-[var(--color-status-warning,#f59e0b)] bg-amber-950/20 border-amber-800/30',
-  high: 'text-[var(--color-status-danger,#ef4444)] bg-red-950/20 border-red-800/30',
+  low: 'text-success bg-success/15 border-success/30',
+  medium: 'text-warning bg-warning/15 border-warning/30',
+  high: 'text-error bg-error/15 border-error/30',
 };
 
 export const AgentProposal: React.FC<AgentProposalProps> = ({
@@ -39,53 +39,45 @@ export const AgentProposal: React.FC<AgentProposalProps> = ({
 
   return (
     <div
-      className={`rounded-lg border border-[var(--color-border-subtle,#27272a)] bg-[var(--color-bg-surface,#111114)] p-4 shadow-sm ${className}`.trim()}
+      className={`rounded-lg border border-border-subtle bg-surface p-4 shadow-sm ${className}`.trim()}
     >
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex items-center gap-2">
-          <span className="p-1 rounded bg-[var(--color-bg-elevated,#18181c)] text-[var(--color-ai-accent,#6366f1)]">
+          <span className="p-1 rounded bg-surface-200 text-accent">
             <ShieldIcon size={16} />
           </span>
           <div>
-            <h4 className="text-sm font-semibold text-[var(--color-text-primary,#f4f4f5)]">
-              {title}
-            </h4>
-            <p className="text-xs text-[var(--color-text-muted,#71717a)]">
-              Proposed by {agentName}
-            </p>
+            <h4 className="text-sm font-semibold text-text">{title}</h4>
+            <p className="text-xs text-text-muted">Proposed by {agentName}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span
-            className={`text-[10px] uppercase font-semibold px-2 py-0.5 rounded border ${iStyle}`}
-          >
+          <span className={`text-2xs uppercase font-semibold px-2 py-0.5 rounded border ${iStyle}`}>
             {impactLevel} impact
           </span>
           {!isReversible && (
-            <span className="text-[10px] px-2 py-0.5 rounded bg-red-950/30 text-red-400 border border-red-800/30 flex items-center gap-1">
+            <span className="text-2xs px-2 py-0.5 rounded bg-error/15 text-error border border-error/30 flex items-center gap-1">
               <AlertTriangleIcon size={10} /> Irreversible
             </span>
           )}
         </div>
       </div>
 
-      <p className="text-xs text-[var(--color-text-secondary,#a1a1aa)] leading-relaxed mb-3">
-        {description}
-      </p>
+      <p className="text-xs text-text-secondary leading-relaxed mb-3">{description}</p>
 
       {payloadPreview && (
-        <pre className="text-xs font-mono p-2.5 rounded bg-[var(--color-bg-canvas,#08080a)] border border-[var(--color-border-subtle,#27272a)] text-[var(--color-text-muted,#71717a)] overflow-x-auto mb-3 max-h-32">
+        <pre className="text-xs font-mono p-2.5 rounded bg-surface-100 border border-border-subtle text-text-muted overflow-x-auto mb-3 max-h-32">
           {payloadPreview}
         </pre>
       )}
 
-      <div className="flex items-center justify-between gap-3 pt-2 border-t border-[var(--color-border-subtle,#27272a)]">
+      <div className="flex items-center justify-between gap-3 pt-2 border-t border-border-subtle">
         <div>
           {onInspect && (
             <button
               type="button"
               onClick={() => onInspect(id)}
-              className="text-xs text-[var(--color-text-muted,#71717a)] hover:text-[var(--color-text-primary,#f4f4f5)] underline"
+              className="text-xs text-text-muted hover:text-text underline"
             >
               Inspect Telemetry
             </button>

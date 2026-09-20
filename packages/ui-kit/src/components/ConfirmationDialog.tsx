@@ -36,7 +36,7 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={loading ? () => {} : onClose} title={title} size="sm">
       <div className="space-y-4">
-        <p className="text-sm text-[var(--color-text-secondary,#a1a1aa)] leading-relaxed">{text}</p>
+        <p className="text-sm text-text-secondary leading-relaxed">{text}</p>
         <div className="flex items-center justify-end gap-3 pt-2">
           <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={loading}>
             {cancelLabel}

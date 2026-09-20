@@ -11,14 +11,12 @@ export interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonEl
 }
 
 const variantStyles = {
-  primary:
-    'bg-[var(--color-action-primary,#3b82f6)] text-white hover:opacity-90 active:opacity-100',
+  primary: 'bg-action text-white hover:opacity-90 active:opacity-100',
   secondary:
-    'bg-[var(--color-bg-surface,#111114)] text-[var(--color-text-primary,#f4f4f5)] border border-[var(--color-border-subtle,#27272a)] hover:border-[var(--color-border-strong,#3f3f46)] hover:bg-[var(--color-bg-elevated,#18181c)]',
-  ghost:
-    'bg-transparent text-[var(--color-text-secondary,#a1a1aa)] hover:text-[var(--color-text-primary,#f4f4f5)] hover:bg-[var(--color-bg-elevated,#18181c)]',
-  danger: 'bg-[var(--color-status-danger,#ef4444)] text-white hover:opacity-90',
-  ai: 'bg-[var(--color-ai-accent,#6366f1)] text-white hover:opacity-90',
+    'bg-surface text-text border border-border-subtle hover:border-border-strong hover:bg-surface-200',
+  ghost: 'bg-transparent text-text-secondary hover:text-text hover:bg-surface-200',
+  danger: 'bg-error text-white hover:opacity-90',
+  ai: 'bg-accent text-white hover:opacity-90',
 };
 
 const sizeStyles = {
@@ -49,7 +47,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
         ref={ref}
         aria-label={ariaLabel}
         disabled={disabled || loading}
-        className={`inline-flex items-center justify-center font-medium transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring,#3b82f6)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg-canvas,#08080a)] disabled:opacity-50 disabled:cursor-not-allowed ${vStyle} ${sStyle} ${className}`.trim()}
+        className={`inline-flex items-center justify-center font-medium transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-100 disabled:opacity-50 disabled:cursor-not-allowed ${vStyle} ${sStyle} ${className}`.trim()}
         {...props}
       >
         {loading ? <Spinner size={size === 'lg' ? 'md' : 'sm'} /> : children}

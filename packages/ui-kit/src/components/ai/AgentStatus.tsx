@@ -29,23 +29,19 @@ export const AgentStatus: React.FC<AgentStatusProps> = ({
 }) => {
   return (
     <div
-      className={`inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-[var(--color-border-subtle,#27272a)] bg-[var(--color-bg-surface,#111114)] text-xs text-[var(--color-text-primary,#f4f4f5)] ${className}`.trim()}
+      className={`inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-border-subtle bg-surface text-xs text-text ${className}`.trim()}
     >
       <StatusDot status={statusColorMap[status]} pulse={status === 'running'} />
       <span className="font-medium">{name}</span>
-      <span className="text-[var(--color-text-muted,#71717a)] capitalize">
-        ({status.replace('_', ' ')})
-      </span>
+      <span className="text-text-muted capitalize">({status.replace('_', ' ')})</span>
       {duration && (
-        <span className="text-[var(--color-text-secondary,#a1a1aa)] tabular-nums border-l border-[var(--color-border-subtle,#27272a)] pl-2">
+        <span className="text-text-secondary tabular-nums border-l border-border-subtle pl-2">
           {duration}
         </span>
       )}
-      {cost && (
-        <span className="text-[var(--color-text-secondary,#a1a1aa)] tabular-nums">{cost}</span>
-      )}
+      {cost && <span className="text-text-secondary tabular-nums">{cost}</span>}
       {model && (
-        <span className="text-[10px] bg-[var(--color-bg-elevated,#18181c)] px-1.5 py-0.5 rounded text-[var(--color-text-muted,#71717a)] font-mono">
+        <span className="text-2xs bg-surface-200 px-1.5 py-0.5 rounded text-text-muted font-mono">
           {model}
         </span>
       )}

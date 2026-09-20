@@ -25,7 +25,7 @@ export const SourceCitation: React.FC<SourceCitationProps> = ({
       <button
         type="button"
         onClick={onClick || (() => url && window.open(url, '_blank'))}
-        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-mono bg-[var(--color-bg-elevated,#18181c)] text-[var(--color-text-secondary,#a1a1aa)] border border-[var(--color-border-subtle,#27272a)] hover:border-[var(--color-action-primary,#3b82f6)] hover:text-[var(--color-text-primary,#f4f4f5)] transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-focus-ring,#3b82f6)]"
+        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono bg-surface-200 text-text-secondary border border-border-subtle hover:border-primary hover:text-text transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
       >
         <FileTextIcon size={10} className="text-[var(--color-text-muted,#71717a)]" />
         <span>{index !== undefined ? `[${index}]` : sourceTitle}</span>
@@ -34,7 +34,7 @@ export const SourceCitation: React.FC<SourceCitationProps> = ({
 
       {/* Tooltip on hover */}
       {snippet && (
-        <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:flex flex-col w-64 p-2 rounded-md bg-[var(--color-bg-elevated,#18181c)] border border-[var(--color-border-strong,#3f3f46)] shadow-xl z-30 text-[11px] text-[var(--color-text-secondary,#a1a1aa)] font-sans">
+        <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:flex flex-col w-64 p-2 rounded-md bg-surface-200 border border-border-strong shadow-xl z-30 text-xs text-text-secondary font-sans">
           <strong className="text-[var(--color-text-primary,#f4f4f5)] font-semibold truncate mb-1">
             {sourceTitle}
           </strong>
