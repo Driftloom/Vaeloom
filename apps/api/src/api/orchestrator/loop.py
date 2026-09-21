@@ -456,7 +456,12 @@ class ReflectResult:
         self.reason = reason
 
 
-def _runtime_contract(agent_name: str, agent: BaseAgent | None = None):
+def _runtime_contract(
+    agent_name: str,
+    agent: BaseAgent | None = None,
+    workspace_id: str | None = None,
+    allowed_tools: list[str] | None = None,
+):
     """Resolve the enforceable runtime contract for an agent (Phase B §8).
 
     The contract is synthesized from the AgentCard + agent-declared tools
@@ -477,6 +482,15 @@ def _runtime_contract(agent_name: str, agent: BaseAgent | None = None):
             card_tools.update(t.name for t in (getattr(agent, "tools", []) or []))
         except Exception:
             pass
+        if allowed_tools:
+            card_tools.update(allowed_tools)
+        if workspace_id:
+            try:
+                from ..tools.executor import dynamic_tool_definitions
+                # Allow dynamically bridged tools for this workspace
+                card_tools.update(dynamic_tool_definitions(workspace_id=str(workspace_id)).keys())
+            except Exception:
+                pass
         if not card_tools:
             return None
         from ..services.agent_contracts import AgentContract, LoopPolicy
@@ -1149,7 +1163,7 @@ async def _try_react_loop(
         try:
             from ..tools.executor import dynamic_tool_definitions
 
-            for name, mcp_td in dynamic_tool_definitions().items():
+            for name, mcp_td in dynamic_tool_definitions(workspace_id=str(workspace_id) if workspace_id else None).items():
                 if name not in declared:
                     ordered.append(mcp_td)
         except Exception:  # noqa: BLE001 - bridging must never break the loop
@@ -1785,7 +1799,7 @@ async def _try_react_loop(
                     # agent-declared tools (real tool names), never the doc seeds.
                     _contract_denied: str | None = None
                     try:
-                        _contract = _runtime_contract(agent_name, agent)
+                        _contract = _runtime_contract(agent_name, agent, workspace_id=str(workspace_id) if workspace_id else None)
                         if _contract is not None:
                             _contract.check_tool(tname)
                     except Exception as _ce:
@@ -2210,7 +2224,11 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
     # runtime contract adds tool-identity observability. Missing tool identity
     # does not fail closed here — dynamic tool calls are gated separately in
     # the ReAct path and at the executor boundary (Phase A).
-    _contract = _runtime_contract(request.agent_name or card_name, agent)
+    _contract = _runtime_contract(
+        request.agent_name or card_name,
+        agent,
+        workspace_id=str(getattr(request, "workspace_id", None)) if getattr(request, "workspace_id", None) else None,
+    )
     if _contract is None:
         logger.debug(f"No runtime contract tools for '{card_name}' — scope checks only")
 

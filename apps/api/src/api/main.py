@@ -93,6 +93,7 @@ from .routers import (
     audit,
     auth,
     billing,
+    capabilities,
     chat,
     cognition,
     connectors,
@@ -419,6 +420,7 @@ _safe_include(resumes.router, "/api/v1/resumes", ["resumes"])
 _safe_include(applications.router, "/api/v1/workspaces/{workspace_id}/applications", ["applications"])
 _safe_include(notifications.router, "/api/v1/notifications", ["notifications"])
 _safe_include(connectors.router, "/api/v1/connectors", ["connectors"])
+_safe_include(capabilities.router, "/api/v1/capabilities", ["capabilities"])
 _safe_include(scheduler.router, "/api/v1/scheduler", ["scheduler"])
 _safe_include(chat.router, "/api/v1/chat", ["chat"])
 _safe_include(knowledge_graph.router, "/api/v1/knowledge-graph", ["knowledge-graph"])

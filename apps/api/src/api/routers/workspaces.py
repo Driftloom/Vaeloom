@@ -122,7 +122,7 @@ async def list_workspace_connectors(
         raise HTTPException(status_code=404, detail="Workspace not found or access denied")
     from ..models.schema import Connector
     from ..schemas.connector import ConnectorResponse
-    from ..services.connector_ext_service import mask_sensitive_config
+    from ..services.connector_ext_service import connector_ext_service
     result = await db.execute(
         select(Connector).where(Connector.workspace_id == uuid.UUID(workspace_id))
     )
@@ -131,7 +131,7 @@ async def list_workspace_connectors(
     for c in connectors:
         resp = ConnectorResponse.model_validate(c)
         if resp.config:
-            resp.config = mask_sensitive_config(resp.config)
+            resp.config = connector_ext_service.mask_sensitive_config(resp.config, c.type)
         res.append(resp)
     return res
 

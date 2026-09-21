@@ -168,6 +168,23 @@ async def parse_document(inp: ParseDocumentInput) -> dict[str, Any]:
             content = r.content
             raw = content if isinstance(content, (bytes, bytearray)) else (str(content).encode() if content else b"")
             h = hashlib.sha256(raw).hexdigest()[:16] if raw else hashlib.sha256(str(r.id).encode()).hexdigest()[:12]
+
+            # Ingest Document Parsing with PyMuPDF / docx / image OCR
+            parsed_text = ""
+            if raw:
+                try:
+                    from ..ingestion.parsers import parse_document as _parse_doc
+
+                    parsed_res = await _parse_doc(r.path or "document.txt", raw)
+                    parsed_text = parsed_res.text or ""
+                    if parsed_text and not r.summary:
+                        r.summary = parsed_text[:1000].strip()
+                        await db.commit()
+                except Exception as parse_err:
+                    _activity_log("parse_document fallback text extraction", error=str(parse_err))
+                    if not isinstance(content, (bytes, bytearray)):
+                        parsed_text = str(content)
+
             return {"parsed_ref": f"parse:{doc_id_in}:{h}", "content_hash": h}
     except Exception as e:
         try:
@@ -182,7 +199,7 @@ async def parse_document(inp: ParseDocumentInput) -> dict[str, Any]:
 @_activity.defn
 async def extract_entities(inp: ExtractEntitiesInput) -> dict[str, Any]:
     """Entity extraction — delegates to MemoryAgent extraction when LLM available.
-    Real path: fetch document parsed_ref/content → LLM extract → fallback mock.
+    Real path: fetch document parsed_ref/content → parse clean text → LLM extract → fallback mock.
     Must remain idempotent and bounded; never secrets in output.
     """
     doc_id_in = inp.get("document_id") if isinstance(inp, dict) else getattr(inp, "document_id", "")
@@ -214,8 +231,16 @@ async def extract_entities(inp: ExtractEntitiesInput) -> dict[str, Any]:
                 r = (await db.execute(_select(Document).where(Document.id == doc_uuid, Document.workspace_id == ws_uuid))).scalar_one_or_none()
                 if r:
                     content = r.content
-                    raw = content if isinstance(content, (bytes, bytearray)) else (str(content or r.summary or r.path or ""))
-                    doc_text = str(raw)[:8000]
+                    if isinstance(content, (bytes, bytearray)):
+                        try:
+                            from ..ingestion.parsers import parse_document as _parse_doc
+
+                            parsed_res = await _parse_doc(r.path or "document.txt", content)
+                            doc_text = (parsed_res.text or "")[:8000]
+                        except Exception:
+                            doc_text = str(r.summary or r.path or "")[:8000]
+                    else:
+                        doc_text = str(content or r.summary or r.path or "")[:8000]
     except Exception:
         pass
     # If still empty, try parsed_ref fallback

@@ -279,19 +279,34 @@ _BASE_APPROVAL_GATED = frozenset({
 })
 
 
-def register_dynamic_tool(td: ToolDefinition, handler) -> None:
+WORKSPACE_DYNAMIC_TOOL_DEFS: dict[str, dict[str, ToolDefinition]] = {}
+WORKSPACE_DYNAMIC_HANDLERS: dict[str, dict[str, Any]] = {}
+
+
+def register_dynamic_tool(td: ToolDefinition, handler, workspace_id: str | None = None) -> None:
     """Register an externally-discovered tool (namespaced mcp__server__tool)."""
     DYNAMIC_TOOL_DEFS[td.name] = td
     DYNAMIC_HANDLERS[td.name] = handler
+    if workspace_id:
+        ws_str = str(workspace_id)
+        WORKSPACE_DYNAMIC_TOOL_DEFS.setdefault(ws_str, {})[td.name] = td
+        WORKSPACE_DYNAMIC_HANDLERS.setdefault(ws_str, {})[td.name] = handler
     TOOL_TIMEOUT_OVERRIDES.setdefault(td.name, 30)
 
 
-def unregister_dynamic_tools(prefix: str) -> int:
+def unregister_dynamic_tools(prefix: str, workspace_id: str | None = None) -> int:
     removed = [n for n in DYNAMIC_TOOL_DEFS if n.startswith(prefix)]
     for n in removed:
         DYNAMIC_TOOL_DEFS.pop(n, None)
         DYNAMIC_HANDLERS.pop(n, None)
         _DYNAMIC_APPROVAL_GATED.discard(n)
+    if workspace_id:
+        ws_str = str(workspace_id)
+        if ws_str in WORKSPACE_DYNAMIC_TOOL_DEFS:
+            ws_removed = [n for n in WORKSPACE_DYNAMIC_TOOL_DEFS[ws_str] if n.startswith(prefix)]
+            for n in ws_removed:
+                WORKSPACE_DYNAMIC_TOOL_DEFS[ws_str].pop(n, None)
+                WORKSPACE_DYNAMIC_HANDLERS[ws_str].pop(n, None)
     return len(removed)
 
 
@@ -304,7 +319,11 @@ def approval_gated_tools() -> frozenset[str]:
     return frozenset(_BASE_APPROVAL_GATED | _DYNAMIC_APPROVAL_GATED)
 
 
-def dynamic_tool_definitions() -> dict[str, ToolDefinition]:
+def dynamic_tool_definitions(workspace_id: str | None = None) -> dict[str, ToolDefinition]:
+    if workspace_id:
+        ws_str = str(workspace_id)
+        if ws_str in WORKSPACE_DYNAMIC_TOOL_DEFS:
+            return dict(WORKSPACE_DYNAMIC_TOOL_DEFS[ws_str])
     return dict(DYNAMIC_TOOL_DEFS)
 
 
