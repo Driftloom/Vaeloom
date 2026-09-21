@@ -535,3 +535,49 @@ class JudgeEvaluator:
 
 
 judge_evaluator = JudgeEvaluator()
+
+
+# ── Trajectory-Level Scoring (supplements services/trajectory_metrics) ──
+# Pure helpers over tool trajectories: F1 vs an expected tool set plus
+# hallucination/error rates. Canonical math lives in
+# services/trajectory_metrics.compute_tool_f1 (imported lazily to keep this
+# module import-light); these wrappers add pass/fail thresholds for evals.
+
+DEFAULT_TRAJECTORY_F1_THRESHOLD = 0.5
+DEFAULT_TRAJECTORY_ERROR_THRESHOLD = 0.5
+
+
+def tool_f1(predicted_tools: list[str] | None, expected_tools: list[str] | None) -> float | None:
+    """Tool-selection F1 vs the expected set; None when no expectation given."""
+    from ..services.trajectory_metrics import compute_tool_f1
+
+    return compute_tool_f1(predicted_tools, expected_tools)["f1"]
+
+
+def score_tool_trajectory(
+    predicted_tools: list[str] | None,
+    expected_tools: list[str] | None = None,
+    *,
+    hallucinations: int = 0,
+    tool_errors: int = 0,
+    tool_calls: int = 0,
+    min_f1: float = DEFAULT_TRAJECTORY_F1_THRESHOLD,
+    max_error_rate: float = DEFAULT_TRAJECTORY_ERROR_THRESHOLD,
+) -> dict:
+    """Score one run's tool trajectory. Returns f1, rates, and pass verdict."""
+    from ..services.trajectory_metrics import compute_tool_f1
+
+    f1_block = compute_tool_f1(predicted_tools, expected_tools)
+    calls = max(0, int(tool_calls))
+    error_rate = (tool_errors / calls) if calls else 0.0
+    hallucination_rate = (hallucinations / calls) if calls else 0.0
+    f1_ok = True if f1_block["f1"] is None else f1_block["f1"] >= min_f1
+    passed = bool(f1_ok and error_rate <= max_error_rate)
+    return {
+        "tool_precision": f1_block["precision"],
+        "tool_recall": f1_block["recall"],
+        "tool_f1": f1_block["f1"],
+        "error_rate": round(error_rate, 4),
+        "hallucination_rate": round(hallucination_rate, 4),
+        "passed": passed,
+    }

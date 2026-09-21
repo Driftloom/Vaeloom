@@ -62,6 +62,12 @@ asyncio_mode = "auto"
 # are function-scoped, so "function" is safe and matches the prior default.
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
+markers = [
+    "integration: Integration tests with real DB and services",
+    "adversarial: Red-team security adversarial tests",
+    "unit: Unit tests with mocks allowed",
+    "live_provider: Real LLM or cloud provider integration",
+]
 # Memory-friendly: 4 workers (each ~300MB, total ~1.2GB). -n auto (16) ≈ 4-5GB and can OOM on 16GB laptops.
 # Use --dist loadfile only for large suites if you want file-level grouping; for 2-file small runs it can be slower.
 pythonpath = [
