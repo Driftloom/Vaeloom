@@ -276,9 +276,12 @@ class TestStdioHardening:
 
         import api.services.mcp_client_service as m
 
-        # Simulate a Windows machine where npx resolves to npx.cmd
+        # Simulate a Windows machine where npx resolves to npx.cmd.
+        # Zero-trust: batch wrapping requires explicit allow_windows_batch opt-in.
         monkeypatch.setattr(shutil, "which", lambda name: "C:\\npm\\npx.cmd" if name == "npx" else None)
-        assert m._McpClientService._resolve_command("npx") == "cmd.exe"
+        assert m._McpClientService._resolve_command("npx", {"allow_windows_batch": True}) == "cmd.exe"
+        with pytest.raises(m.McpConfigError):
+            m._McpClientService._resolve_command("npx", {})
 
     def test_resolve_command_passthrough_absolute_unix_style(self, monkeypatch):
         import shutil

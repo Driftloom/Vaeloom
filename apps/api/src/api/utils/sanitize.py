@@ -1,10 +1,40 @@
+import html
 import re
+import urllib.parse
 
 _TAG_RE = re.compile(r"<[^>]*>", re.IGNORECASE)
 _SCRIPT_BLOCK_RE = re.compile(r"<\s*script[^>]*>.*?<\s*/\s*script\s*>", re.IGNORECASE | re.DOTALL)
+_STYLE_BLOCK_RE = re.compile(r"<\s*style[^>]*>.*?<\s*/\s*style\s*>", re.IGNORECASE | re.DOTALL)
 _EVENT_HANDLER_RE = re.compile(r"\son\w+\s*=\s*(\"[^\"]*\"|'[^']*'|[^\s>]+)", re.IGNORECASE)
-_JAVASCRIPT_URI_RE = re.compile(r"\bjavascript\s*:", re.IGNORECASE)
+_JAVASCRIPT_URI_RE = re.compile(r"\b(javascript|vbscript|data\s*:\s*text/html)\s*:", re.IGNORECASE)
 _WHITESPACE_RE = re.compile(r"\s{2,}")
+
+
+def _decode_evasions(value: str) -> str:
+    """Unwrap one layer of encoding evasions before stripping.
+
+    Attackers hide `<script>` as %3Cscript%3E, &lt;script&gt;, \\u003cscript\\u003e,
+    or `&#x3C;script&#x3E;`. Decode repeatedly (max 3 rounds) so the strip regexes
+    below see the real payload. Runs before — never after — tag removal.
+    """
+    decoded = value
+    for _ in range(3):
+        prev = decoded
+        try:
+            decoded = urllib.parse.unquote(decoded)
+        except Exception:
+            pass
+        try:
+            decoded = html.unescape(decoded)
+        except Exception:
+            pass
+        try:
+            decoded = decoded.encode("utf-8").decode("unicode_escape", errors="ignore")
+        except Exception:
+            pass
+        if decoded == prev:
+            break
+    return decoded
 
 
 def sanitize_text(value: str | None) -> str:
@@ -17,7 +47,12 @@ def sanitize_text(value: str | None) -> str:
     if not value:
         return value or ""
 
-    cleaned = _SCRIPT_BLOCK_RE.sub("", value)
+    cleaned = _decode_evasions(value)
+    cleaned = _SCRIPT_BLOCK_RE.sub("", cleaned)
+    cleaned = _STYLE_BLOCK_RE.sub("", cleaned)
+    cleaned = _TAG_RE.sub("", cleaned)
+    # Second pass: tag removal can expose nested payloads (<<script>script>).
+    cleaned = _SCRIPT_BLOCK_RE.sub("", cleaned)
     cleaned = _TAG_RE.sub("", cleaned)
     cleaned = _EVENT_HANDLER_RE.sub("", cleaned)
     cleaned = _JAVASCRIPT_URI_RE.sub("", cleaned)

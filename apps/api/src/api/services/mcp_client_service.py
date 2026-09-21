@@ -80,6 +80,14 @@ def validate_mcp_config(config: dict) -> dict:
         base = command.strip().strip('"').lower().replace("\\", "/").split("/")[-1]
         if base in _DENIED_COMMANDS:
             raise McpConfigError(f"Shell interpreter '{base}' is not allowed as MCP command")
+        # Zero-trust: .cmd/.bat shims (npx, uvx on Windows) execute via cmd.exe,
+        # which re-enables batch expansion (^ % !). Refuse by default; allow only
+        # with explicit opt-in so the workspace owner audits the risk.
+        if base.endswith((".cmd", ".bat")) and not cfg.get("allow_windows_batch"):
+            raise McpConfigError(
+                f"Windows batch wrapper '{base}' requires explicit opt-in: set allow_windows_batch=true "
+                "on this connector (runs via cmd.exe /c with validated argv, no shell metacharacters)"
+            )
         args = cfg.get("args", [])
         if not isinstance(args, list) or not all(isinstance(a, str) for a in args):
             raise McpConfigError("'args' must be a list of strings")
@@ -174,7 +182,7 @@ class _McpClientService:
 
         from mcp import StdioServerParameters
 
-        command = cls._resolve_command(cfg["command"])
+        command = cls._resolve_command(cfg["command"], cfg)
         merged_env = {k: os.environ[k] for k in cls._ALLOWED_PARENT_ENV if k in os.environ}
         merged_env.update(cfg.get("env") or {})
         return StdioServerParameters(
@@ -182,12 +190,14 @@ class _McpClientService:
         )
 
     @staticmethod
-    def _resolve_command(command: str) -> str:
+    def _resolve_command(command: str, cfg: dict | None = None) -> str:
         """Resolve bare executable names on PATH; wrap .cmd/.bat in cmd.exe.
 
         Windows CreateProcess will not execute .cmd/.bat directly (npx!,
         uvx!), so they need `cmd.exe /c`. argv stays validated (no shell
-        metacharacters) before this wrapping.
+        metacharacters) before this wrapping. The wrapping itself requires
+        allow_windows_batch=true (enforced in validate_mcp_config); this is
+        defense-in-depth for sessions built without prior validation.
         """
         resolved = command
         has_sep = ("/" in command) or ("\\" in command)
@@ -197,6 +207,10 @@ class _McpClientService:
             resolved = _shutil.which(command) or command
         lower = resolved.lower()
         if lower.endswith((".cmd", ".bat")):
+            if not (cfg or {}).get("allow_windows_batch"):
+                raise McpConfigError(
+                    "Windows batch wrapper requires allow_windows_batch=true on this connector"
+                )
             return "cmd.exe"
         if lower in ("python", "python.exe", "python3", "python3.exe"):
             import sys as _sys
@@ -215,16 +229,20 @@ class _McpClientService:
         return list(cfg.get("args") or [])
 
     @staticmethod
-    def _validate_command(command: str) -> None:
+    def _validate_command(command: str, cfg: dict | None = None) -> None:
         base = command.strip().lower().replace("\\", "/").split("/")[-1]
         if base in _DENIED_COMMANDS:
             raise McpConfigError(f"Shell interpreter '{base}' is not allowed")
+        if base.endswith((".cmd", ".bat")) and not (cfg or {}).get("allow_windows_batch"):
+            raise McpConfigError(
+                "Windows batch wrapper requires allow_windows_batch=true on this connector"
+            )
 
     async def _run_with_session(self, cfg: dict, operation):
         from mcp import ClientSession, StdioServerParameters
 
         if cfg.get("transport") == "stdio":
-            self._validate_command(cfg["command"])
+            self._validate_command(cfg["command"], cfg)
             import os
 
             from mcp.client.stdio import stdio_client
@@ -236,7 +254,7 @@ class _McpClientService:
                 env["PYTHONPATH"] = str(root_src)
 
             params = StdioServerParameters(
-                command=self._resolve_command(cfg["command"]),
+                command=self._resolve_command(cfg["command"], cfg),
                 args=self._stdio_argv(cfg),
                 env=env,
             )

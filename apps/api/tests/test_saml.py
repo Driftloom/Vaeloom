@@ -119,6 +119,10 @@ class TestParseSamlResponse:
 
 class TestValidateAssertion:
     def test_valid_assertion(self):
+        # Zero-trust: unsigned assertions fail closed even when issuer,
+        # conditions, and audience are all valid. A "valid" assertion MUST
+        # carry a verifiable ds:Signature (covered by test_saml_failclosed +
+        # signed IdP fixtures, not by unsigned unit fixtures).
         provider = SAMLProvider(
             expected_issuer="https://idp.example.com",
             allowed_audiences=["https://sp.example.com"],
@@ -126,10 +130,8 @@ class TestValidateAssertion:
         )
         encoded = _build_saml_response()
         assertion = provider.parse_saml_response(encoded)
-        info = provider.validate_assertion(assertion)
-        assert info["email"] == "user@example.com"
-        assert info["name"] == "Test User"
-        assert "Admins" in info["groups"]
+        with pytest.raises(SAMLValidationError, match="no ds:Signature"):
+            provider.validate_assertion(assertion)
 
     def test_rejects_issuer_mismatch(self):
         provider = SAMLProvider(expected_issuer="https://wrong-issuer.com", require_signature=False)

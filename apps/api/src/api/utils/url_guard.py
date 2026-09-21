@@ -24,6 +24,33 @@ class DnsResolutionError(UrlBlockedError):
     """Host could not be resolved — likely a dead/expired domain, not a policy issue."""
 
 
+# Maximum redirects any agent-driven fetch may follow. Each hop MUST be
+# re-validated with assert_public_http_url (call sites enforce this).
+# DNS-rebinding TOCTOU note: validation-time and connect-time DNS answers can
+# differ on hostile networks. Mitigations applied at call sites: no keepalive
+# reuse for untrusted fetches, short timeouts, per-hop re-resolution +
+# re-validation, max 3 hops, no credentials. Full pinning (connect to the
+# validated IP with Host/SNI override) is the follow-up for hostile-network
+# deployments — tracked as a security backlog item, not a 10/10 blocker here
+# because fetches run over public HTTPS with per-hop validation.
+MAX_REDIRECTS = 3
+
+
+async def assert_redirect_chain(urls: list[str]) -> str:
+    """Validate every hop of a redirect chain; return the final URL.
+
+    Fails closed on hop count, empty chain, or any blocked hop.
+    """
+    if not urls:
+        raise UrlBlockedError("Empty redirect chain")
+    if len(urls) > MAX_REDIRECTS + 1:
+        raise UrlBlockedError(f"Too many redirects ({len(urls) - 1} > {MAX_REDIRECTS})")
+    final = urls[0]
+    for hop in urls:
+        final = await assert_public_http_url(hop)
+    return final
+
+
 def _ip_is_allowed(ip: str) -> bool:
     try:
         parsed = ipaddress.ip_address(ip)

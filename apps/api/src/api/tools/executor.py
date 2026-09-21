@@ -2754,7 +2754,8 @@ async def _execute_browse_job_page(params: dict[str, Any], workspace_id: str) ->
     if not getattr(_settings, "browser_tools_enabled", True):
         return {"status": "error", "tool": "browse_job_page",
                 "result": "Browser tools are disabled by configuration"}
-    limit = getattr(_settings, "scrape_quota_per_hour", 20)
+    limit = min(int(getattr(_settings, "scrape_quota_per_hour", 20) or 20), 20)
+    # zero-trust: quota ceiling is 20/hour regardless of env override (.env had 50)
     if not await _check_scrape_quota(workspace_id, limit=limit):
         return {
             "status": "error", "tool": "browse_job_page",
@@ -2807,7 +2808,8 @@ async def _execute_scrape_company_insights(params: dict[str, Any], workspace_id:
     if not getattr(_settings, "browser_tools_enabled", True):
         return {"status": "error", "tool": "scrape_company_insights",
                 "result": "Browser tools are disabled by configuration"}
-    limit = getattr(_settings, "scrape_quota_per_hour", 20)
+    limit = min(int(getattr(_settings, "scrape_quota_per_hour", 20) or 20), 20)
+    # zero-trust: quota ceiling is 20/hour regardless of env override (.env had 50)
     if not await _check_scrape_quota(workspace_id, limit=limit):
         return {
             "status": "error", "tool": "scrape_company_insights",

@@ -270,7 +270,8 @@ async def _lookup_approval_internal(
                 # Rows without HMAC (legacy) pass on equality alone.
                 try:
                     import os as _os
-                    _secret = _os.getenv("ENCRYPTION_KEY", "") or _os.getenv("JWT_SECRET", "")
+                    _secret = _os.getenv("APPROVAL_HMAC_KEY", "") or _os.getenv("ENCRYPTION_KEY", "")
+                    # zero-trust: never fall back to JWT_SECRET (signing key ≠ HMAC key separation)
                     if _secret:
                         from ..services.approval import _payload_hmac as _phmac
                         _m = _re.search(r"\[hmac:([0-9a-f]{32})\]", row[6] or "")

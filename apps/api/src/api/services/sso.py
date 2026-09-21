@@ -44,7 +44,8 @@ class GoogleSSOProvider(SSOProvider):
                 signing_key.key,
                 algorithms=["RS256"],
                 audience=self.config.client_id,
-                options={"verify_iss": False},
+                issuer="https://accounts.google.com",
+                options={"verify_iss": True},
             )
             iss = payload.get("iss", "")
             if iss not in ("https://accounts.google.com", "accounts.google.com"):
@@ -148,6 +149,14 @@ class MicrosoftSSOProvider(SSOProvider):
             if not (iss.startswith("https://login.microsoftonline.com/") and iss.endswith("/v2.0")):
                 logger.error("Microsoft ID token issuer mismatch: %s", iss)
                 return None
+            tid = payload.get("tid", "")
+            if not tid:
+                logger.error("Microsoft ID token missing tid claim — refusing multi-tenant token without tenant binding")
+                return None
+            iss_tenant = iss.rsplit("/", 2)[-2] if iss.count("/") >= 3 else ""
+            if iss_tenant and iss_tenant != tid:
+                logger.error("Microsoft ID token iss/tid mismatch: %s vs %s", iss, tid)
+                return None
             return payload
         except Exception as e:
             logger.exception("Microsoft ID token validation failed: %s", e)
@@ -194,11 +203,14 @@ class SAMLSSOProvider(SSOProvider):
         # saml.py provider needs expected_issuer etc. Map SSOConfig fields
         from .saml import SAMLProvider as RealSAML  # type: ignore
 
+        idp_cert = getattr(config, "client_secret", None)
+        if not idp_cert:
+            raise ValueError("SAML IdP certificate is required (set SAML_IDP_CERT / SSO client_secret) — refusing unsigned SAML")
         self._real = RealSAML(
             expected_issuer=getattr(config, "issuer", "") or "",
             allowed_audiences=[self.config.client_id] if self.config.client_id else [],
-            idp_certificate=getattr(config, "client_secret", None),  # reuse client_secret as cert for demo
-            require_signature=False,  # allow structural fallback in dev
+            idp_certificate=idp_cert,
+            require_signature=True,  # zero-trust: unsigned assertions are forged-assertion takeover
         )
 
     async def validate_token(self, token: str) -> dict[str, Any] | None:

@@ -1413,8 +1413,14 @@ class ProfileService:
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
                 "Accept-Language": "en-US,en;q=0.9",
             }
-            async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
+            async with httpx.AsyncClient(timeout=8.0, follow_redirects=False) as client:
                 res = await client.get(clean_url, headers=headers)
+                # Zero-trust: manual redirect with host re-check (SSRF guard).
+                # follow_redirects=True would follow to any host without re-validation.
+                if res.status_code in (301, 302, 303, 307, 308):
+                    loc = res.headers.get("location", "")
+                    if loc and "linkedin.com" in urlparse(loc if "://" in loc else f"https://{loc}").netloc.lower():
+                        res = await client.get(loc, headers=headers)
                 if res.status_code == 200:
                     page_html = res.text
         except Exception as e:
@@ -2639,7 +2645,7 @@ class ProfileService:
 
         raw_text = ""
         try:
-            async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+            async with httpx.AsyncClient(timeout=15, follow_redirects=False) as client:
                 headers = {
                     "User-Agent": (
                         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -2648,7 +2654,14 @@ class ProfileService:
                     )
                 }
                 resp = await client.get(url, headers=headers)
-                raw_text = resp.text
+                # Zero-trust: manual redirect with host re-check (SSRF guard).
+                if resp.status_code in (301, 302, 303, 307, 308):
+                    from urllib.parse import urlparse as _urlparse
+
+                    loc = resp.headers.get("location", "")
+                    if loc and "linkedin.com" in _urlparse(loc if "://" in loc else f"https://{loc}").netloc.lower():
+                        resp = await client.get(loc, headers=headers)
+                raw_text = resp.text if resp.status_code == 200 else ""
         except Exception as e:
             logger.warning(f"LinkedIn fetch failed: {e}")
 

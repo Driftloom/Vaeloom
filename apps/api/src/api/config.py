@@ -114,9 +114,9 @@ class Settings(BaseSettings):
     log_format: str = ""
 
     rate_limit_redis_url: str = ""
-    rate_limit_requests: int = 100
+    rate_limit_requests: int = 60
     rate_limit_window: int = 60
-    api_key_rate_limit: int = 1000
+    api_key_rate_limit: int = 500
 
     profile_avatar_max_bytes: int = 5 * 1024 * 1024  # 5MB
 
@@ -125,10 +125,10 @@ class Settings(BaseSettings):
     # instead of passing through (fail-closed). Store failures AFTER the side
     # effect already ran cannot be un-executed; those always pass the original
     # response through but tag it `Idempotency-Stored: false` so callers know
-    # replay protection is not durable. Default False preserves local/dev
-    # behavior; production HIPAA/GDPR paths should set
-    # IDEMPOTENCY_FAIL_CLOSED=true.
-    idempotency_fail_closed: bool = False
+    # replay protection is not durable. Default True (fail-closed) — zero-trust:
+    # replayed consequential writes must never double-execute. Set
+    # IDEMPOTENCY_FAIL_CLOSED=false only for local debugging.
+    idempotency_fail_closed: bool = True
 
     storage_endpoint: str = "http://localhost:9000"
     storage_access_key: str = ""
@@ -144,7 +144,11 @@ class Settings(BaseSettings):
 
     ip_allowlist: str = ""
     trusted_proxies: str = ""
-    retention_policies: str = ""
+    # Data retention (services/retention.py): JSON list of {max_age_days, action,
+    # resource_type}. Default purges ephemeral operational data so workspaces are
+    # never retain-forever by accident; audit_events are intentionally NOT in the
+    # default (compliance retention is set explicitly per deployment).
+    retention_policies: str = '[{"max_age_days": 90, "action": "delete", "resource_type": "events"}, {"max_age_days": 180, "action": "delete", "resource_type": "agent_executions"}, {"max_age_days": 365, "action": "delete", "resource_type": "usage_records"}, {"max_age_days": 30, "action": "delete", "resource_type": "sessions"}]'
 
     db_pool_size: int = 20
     db_max_overflow: int = 10
@@ -251,6 +255,17 @@ class Settings(BaseSettings):
 
     def __init__(self, **kwargs):
         secret_manager = kwargs.pop("secret_manager", None)
+        # Convenience alias: DATABASE_URL (single underscore) → database__url.
+        # Pydantic-settings reads DATABASE__URL (double); accept the common
+        # single-underscore form so `cp .env.example .env` works as documented.
+        if "database__url" not in kwargs and not os.environ.get("DATABASE__URL"):
+            single = os.environ.get("DATABASE_URL", "")
+            if single:
+                kwargs["database__url"] = single
+        if "redis__url" not in kwargs and not os.environ.get("REDIS__URL"):
+            single_redis = os.environ.get("REDIS_URL", "")
+            if single_redis:
+                kwargs["redis__url"] = single_redis
         super().__init__(**kwargs)
         # Alias: MICROSOFT_* → MS_GRAPH_* (both accepted)
         if not self.ms_graph_client_id:
@@ -304,12 +319,9 @@ def validate_settings() -> dict[str, list[str]]:
     if not settings.jwt_secret:
         errors.append("JWT_SECRET must be set — refusing to start with empty/missing secret")
     elif len(settings.jwt_secret) < 32:
-        msg = "JWT_SECRET must be at least 32 characters (got %d) — weak secret" % len(settings.jwt_secret)
-        if settings.service_environment != "local":
-            errors.append(msg + " — refusing to start in non-local")
-        else:
-            warnings.append(msg + " — allowed in local, but set a stronger secret for prod")
-    elif settings.jwt_secret.lower() in {"secret", "changeme", "dev-only", "super-secret"}:
+        msg = "JWT_SECRET must be at least 32 characters (got %d) — refusing to start in all environments" % len(settings.jwt_secret)
+        errors.append(msg)
+    elif settings.jwt_secret.lower().strip() in {"secret", "changeme", "change-me", "change-me-in-production", "dev-only", "super-secret", "password", "test", "123456", "mock-key", "test-secret", "test-jwt-secret", "dev-service-auth-secret-not-for-prod-32chars"} or "changeme" in settings.jwt_secret.lower() or "change-me" in settings.jwt_secret.lower() or "mock-key" in settings.jwt_secret.lower():
         errors.append("JWT_SECRET is a known weak/default value — refusing to start")
 
     if not settings.storage_secret_key and settings.service_environment != "local":

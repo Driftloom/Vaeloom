@@ -62,7 +62,8 @@ class ApprovalManager:
         try:
             import os
 
-            secret = os.getenv("ENCRYPTION_KEY", "") or os.getenv("JWT_SECRET", "")
+            secret = os.getenv("APPROVAL_HMAC_KEY", "") or os.getenv("ENCRYPTION_KEY", "")
+            # zero-trust: never fall back to JWT_SECRET (signing key ≠ HMAC key separation)
             if secret and payload:
                 payload_sig = _payload_hmac(payload, secret)
         except Exception:
@@ -221,7 +222,8 @@ class ApprovalManager:
             import os
             import re
 
-            secret = os.getenv("ENCRYPTION_KEY", "") or os.getenv("JWT_SECRET", "")
+            secret = os.getenv("APPROVAL_HMAC_KEY", "") or os.getenv("ENCRYPTION_KEY", "")
+            # zero-trust: never fall back to JWT_SECRET (signing key ≠ HMAC key separation)
             if secret and current.payload:
                 m = re.search(r"\[hmac:([0-9a-f]{32})\]", current.reason or "")
                 if m:

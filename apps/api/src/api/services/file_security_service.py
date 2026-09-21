@@ -21,9 +21,10 @@ ALLOWED_EXTENSIONS = {
     "jpg",
     "jpeg",
     "webp",
-    "html",
-    "svg",
 }
+
+# Blocked because they can execute JavaScript (XSS prevention)
+ACTIVE_CONTENT_EXTENSIONS = {"html", "htm", "svg", "xhtml", "xml"}
 
 # Dangerous executable / script magic byte signatures
 EXECUTABLE_SIGNATURES = [

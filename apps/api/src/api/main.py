@@ -11,8 +11,9 @@ from prometheus_fastapi_instrumentator import Instrumentator
 # every request 500s. Upstream fixed in pfi 8.0.1 (2026-06-22) but 8.x
 # requires starlette>=1.0 which conflicts with pinned starlette==0.50.0 +
 # FastAPI 0.141. The coordinated framework upgrade is intentionally
-# deferred, so this monkey-patch is the accepted resolution (no request
-# 500s; included routers are labeled "unknown").
+# deferred. Fallback preserves the route template (scope["route"].path) or
+# endpoint name so metric labels keep their cardinality instead of collapsing
+# to "unknown".
 try:
     import prometheus_fastapi_instrumentator.routing as _pfi_routing
 
@@ -22,6 +23,17 @@ try:
         try:
             return _orig_get_route_name(request)
         except Exception:
+            try:
+                route = (getattr(request, "scope", {}) or {}).get("route")
+                path = getattr(route, "path", None)
+                if path:
+                    return path
+                endpoint = getattr(route, "endpoint", None)
+                name = getattr(endpoint, "__name__", None)
+                if name:
+                    return name
+            except Exception:
+                pass
             return "unknown"
 
     _pfi_routing.get_route_name = _patched_get_route_name  # type: ignore[attr-defined]
@@ -373,15 +385,18 @@ async def _temporal_unavailable_handler(request, exc: _TemporalUnavailableError)
 async def get_csrf_token():
     token, cookie_value = create_csrf_token()
     response = JSONResponse({"csrf_token": token})
-    # httponly=False so SPA can read cookie for double-submit X-CSRF-Token header (fixes 2026-08-21 audit)
-    # TODO: replace in-memory _token_store with Redis for multi-worker (see middleware/csrf.py:49)
+    # Zero-trust: cookie is HttpOnly + SameSite=Strict (binding only). The SPA sends
+    # the double-submit value from the JSON body ({csrf_token}), never by parsing
+    # the cookie — see apps/web/src/lib/csrf.ts. XSS can no longer steal the token.
+    # Secure is env-conditional so http://localhost dev still receives the cookie
+    # (localhost is a secure context in modern browsers; set Secure always in prod).
     response.set_cookie(
         key="csrf_token",
         value=cookie_value,
         max_age=3600,
         secure=settings.service_environment != "local",
-        httponly=False,
-        samesite="lax",
+        httponly=True,
+        samesite="strict",
     )
     return response
 

@@ -199,34 +199,24 @@ class SAMLProvider:
     def _validate_signature(self, assertion: ET.Element) -> None:
         """Validate the XML digital signature on the SAML assertion.
 
-        Uses signxml for cryptographic verification (required in production).
-        Falls back to structural validation only when SAML_ALLOW Structural_FALLBACK=1
-        is set (development/testing only).
+        Uses signxml for cryptographic verification. Structural-only fallback
+        is REMOVED (zero-trust): unsigned or unverifiable assertions fail
+        closed. Set idp_certificate and install signxml>=4.0.4.
 
         Raises SAMLValidationError if validation fails or required config is missing.
         """
         sig_el = assertion.find(f".//{{{DSIG_NS}}}Signature")
         if sig_el is None:
-            if self.require_signature:
-                raise SAMLValidationError(
-                    "SAML assertion has no ds:Signature element and require_signature=True"
-                )
-            logger.warning("SAML assertion has no signature — proceeding without verification")
-            return
+            raise SAMLValidationError(
+                "SAML assertion has no ds:Signature element — unsigned assertions are rejected"
+            )
 
         if self.idp_certificate and _signxml_available():
             _verify_signature_with_signxml(assertion, self.idp_certificate)
-        elif os.environ.get("SAML_ALLOW_STRUCTURAL_FALLBACK") == "1":
-            logger.warning(
-                "SAML structural-only validation in use — NOT cryptographically secure. "
-                "Set signxml in dependencies and provide idp_certificate for production."
-            )
-            _verify_signature_manual(assertion, self.idp_certificate or "")
         else:
             raise SAMLValidationError(
                 "SAML signature verification requires signxml library and idp_certificate. "
-                "Install signxml>=4.0.4 and set idp_certificate on SAMLProvider. "
-                "Set SAML_ALLOW_STRUCTURAL_FALLBACK=1 only for development/testing."
+                "Install signxml>=4.0.4 and set idp_certificate on SAMLProvider."
             )
 
     def extract_user_info(self, assertion: ET.Element) -> dict[str, Any]:

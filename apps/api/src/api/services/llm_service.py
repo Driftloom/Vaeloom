@@ -406,16 +406,17 @@ class LLMService:
         if settings.llm_provider == prov and settings.llm_api_key:
             return prov, settings.llm_api_key
 
-        # In test environments with synthetic/mock keys (e.g. test-key-..., mock-key), allow cross-provider fallback in tests
-        is_test_key = (
-            settings.llm_api_key.startswith("test-")
-            or settings.llm_api_key.startswith("mock-")
-            or getattr(self, "api_key", "").startswith("test-")
-            or getattr(self, "api_key", "").startswith("mock-")
-            or settings.service_environment in ("test", "testing")
-        )
-        if is_test_key:
+        # In test environments ONLY (service_environment test/testing), allow synthetic
+        # keys to pass through so the mock harness works offline. In any other env,
+        # test-/mock- keys fail closed — they must never reach a provider.
+        if settings.service_environment in ("test", "testing"):
             return prov, settings.llm_api_key or self.api_key
+        test_key_in_non_test_env = (
+            (settings.llm_api_key or "").startswith(("test-", "mock-"))
+            or (getattr(self, "api_key", "") or "").startswith(("test-", "mock-"))
+        )
+        if test_key_in_non_test_env:
+            raise ValueError("LLM_API_KEY looks like a test/mock key in non-test environment — refusing to call provider")
 
         # If no key was found for requested prov, fall back to system default provider
         sys_prov = settings.llm_provider
