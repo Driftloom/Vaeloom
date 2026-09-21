@@ -32,11 +32,14 @@ class JevService:
         timeout: float = 1.2,
     ) -> None:
         self.api_key = api_key or getattr(settings, "jev_api_key", "") or os.environ.get("JEV_API_KEY", "")
-        self.gateway_url = (
-            gateway_url
-            or getattr(settings, "jev_gateway_url", "")
-            or os.environ.get("JEV_GATEWAY_URL", "https://ai-gateway.vercel.sh/v1")
-        )
+        if self.api_key.startswith("apikey_") and (not gateway_url or "vercel.sh" in (getattr(settings, "jev_gateway_url", "") or "")):
+            self.gateway_url = "https://api.typesafe.ai/v1/systemone"
+        else:
+            self.gateway_url = (
+                gateway_url
+                or getattr(settings, "jev_gateway_url", "")
+                or os.environ.get("JEV_GATEWAY_URL", "https://ai-gateway.vercel.sh/v1")
+            )
         self.model = model or getattr(settings, "jev_model", "typesafe-ai/jev-latest")
         self.timeout = timeout
 
@@ -54,42 +57,67 @@ class JevService:
 
         start_time = time.monotonic()
 
-        # If live API key is configured, call Vercel AI Gateway / OpenRouter
+        # If live API key is configured, call native TypeSafe AI or Vercel AI Gateway
         if self.api_key:
             try:
                 headers = {
                     "Authorization": f"Bearer {self.api_key}",
                     "Content-Type": "application/json",
                 }
-                payload = {
-                    "model": self.model,
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": (
-                                "You are Jev, a high-speed sub-50ms deterministic classifier. "
-                                "Return ONLY the exact option name chosen from the list."
-                            ),
+                if self.api_key.startswith("apikey_") or "typesafe.ai" in self.gateway_url:
+                    # Native TypeSafe AI System One Endpoint
+                    endpoint = "https://api.typesafe.ai/v1/systemone"
+                    payload = {
+                        "state": f"Task: {prompt}\nContext: {context or {}}",
+                        "model": "jev-latest",
+                        "questions": {
+                            "choice": {
+                                "type": "choice",
+                                "instructions": "Which option best matches the user's intent?",
+                                "criteria": {opt: opt for opt in options},
+                            }
                         },
-                        {
-                            "role": "user",
-                            "content": f"Task: {prompt}\nContext: {context or {}}\nOptions:\n" + "\n".join(f"- {opt}" for opt in options),
-                        },
-                    ],
-                    "temperature": 0.0,
-                    "max_tokens": 40,
-                }
-                endpoint = f"{self.gateway_url.rstrip('/')}/chat/completions"
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    resp = await client.post(endpoint, json=payload, headers=headers)
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        chosen = data["choices"][0]["message"]["content"].strip()
-                        for opt in options:
-                            if opt.lower() == chosen.lower() or opt.lower() in chosen.lower():
+                    }
+                    async with httpx.AsyncClient(timeout=self.timeout) as client:
+                        resp = await client.post(endpoint, json=payload, headers=headers)
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            chosen = data.get("answers", {}).get("choice", {}).get("choice", "")
+                            if chosen in options:
                                 duration_ms = int((time.monotonic() - start_time) * 1000)
-                                logger.debug("Jev choice live resolved in %dms: %s", duration_ms, opt)
-                                return opt
+                                logger.debug("TypeSafe Jev native choice resolved in %dms: %s", duration_ms, chosen)
+                                return chosen
+                else:
+                    # Vercel AI Gateway / OpenRouter
+                    payload = {
+                        "model": self.model,
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": (
+                                    "You are Jev, a high-speed sub-50ms deterministic classifier. "
+                                    "Return ONLY the exact option name chosen from the list."
+                                ),
+                            },
+                            {
+                                "role": "user",
+                                "content": f"Task: {prompt}\nContext: {context or {}}\nOptions:\n" + "\n".join(f"- {opt}" for opt in options),
+                            },
+                        ],
+                        "temperature": 0.0,
+                        "max_tokens": 40,
+                    }
+                    endpoint = f"{self.gateway_url.rstrip('/')}/chat/completions"
+                    async with httpx.AsyncClient(timeout=self.timeout) as client:
+                        resp = await client.post(endpoint, json=payload, headers=headers)
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            chosen = data["choices"][0]["message"]["content"].strip()
+                            for opt in options:
+                                if opt.lower() == chosen.lower() or opt.lower() in chosen.lower():
+                                    duration_ms = int((time.monotonic() - start_time) * 1000)
+                                    logger.debug("Jev choice live resolved in %dms: %s", duration_ms, opt)
+                                    return opt
             except Exception as e:
                 logger.debug("Jev live choice error (falling back to fast heuristic): %s", e)
 
@@ -115,28 +143,48 @@ class JevService:
                     "Authorization": f"Bearer {self.api_key}",
                     "Content-Type": "application/json",
                 }
-                payload = {
-                    "model": self.model,
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "You are Jev, a binary safety classifier. Reply ONLY with 'true' or 'false'.",
+                if self.api_key.startswith("apikey_") or "typesafe.ai" in self.gateway_url:
+                    # Native TypeSafe AI System One Endpoint
+                    endpoint = "https://api.typesafe.ai/v1/systemone"
+                    payload = {
+                        "state": f"Query: {prompt}\nContext: {context or {}}",
+                        "model": "jev-latest",
+                        "questions": {
+                            "is_dangerous": {
+                                "type": "noul",
+                                "instructions": "Is this action dangerous, destructive, or requiring human approval?",
+                            }
                         },
-                        {
-                            "role": "user",
-                            "content": f"Query: {prompt}\nContext: {context or {}}",
-                        },
-                    ],
-                    "temperature": 0.0,
-                    "max_tokens": 10,
-                }
-                endpoint = f"{self.gateway_url.rstrip('/')}/chat/completions"
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    resp = await client.post(endpoint, json=payload, headers=headers)
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        val = data["choices"][0]["message"]["content"].strip().lower()
-                        return "true" in val or "yes" in val
+                    }
+                    async with httpx.AsyncClient(timeout=self.timeout) as client:
+                        resp = await client.post(endpoint, json=payload, headers=headers)
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            prob = data.get("answers", {}).get("is_dangerous", {}).get("noul", 0.0)
+                            return prob > 0.5
+                else:
+                    payload = {
+                        "model": self.model,
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": "You are Jev, a binary safety classifier. Reply ONLY with 'true' or 'false'.",
+                            },
+                            {
+                                "role": "user",
+                                "content": f"Query: {prompt}\nContext: {context or {}}",
+                            },
+                        ],
+                        "temperature": 0.0,
+                        "max_tokens": 10,
+                    }
+                    endpoint = f"{self.gateway_url.rstrip('/')}/chat/completions"
+                    async with httpx.AsyncClient(timeout=self.timeout) as client:
+                        resp = await client.post(endpoint, json=payload, headers=headers)
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            val = data["choices"][0]["message"]["content"].strip().lower()
+                            return "true" in val or "yes" in val
             except Exception as e:
                 logger.debug("Jev live noul error (falling back to heuristic): %s", e)
 
@@ -164,33 +212,53 @@ class JevService:
                     "Authorization": f"Bearer {self.api_key}",
                     "Content-Type": "application/json",
                 }
-                payload = {
-                    "model": self.model,
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": (
-                                "You are Jev, a scoring evaluator. Evaluate match/similarity/progress "
-                                "between Text A and Text B on a scale of 0.0 to 1.0. Reply ONLY with a float number."
-                            ),
+                if self.api_key.startswith("apikey_") or "typesafe.ai" in self.gateway_url:
+                    endpoint = "https://api.typesafe.ai/v1/systemone"
+                    payload = {
+                        "state": f"Text A: {text_a[:1000]}\nText B: {text_b[:1000]}",
+                        "model": "jev-latest",
+                        "questions": {
+                            "score": {
+                                "type": "score",
+                                "instructions": f"Evaluate match according to rubric: {rubric or 'similarity'}",
+                                "criteria": ["No match", "Weak match", "Moderate match", "Strong match", "Exact match"],
+                            }
                         },
-                        {
-                            "role": "user",
-                            "content": f"Rubric: {rubric or 'similarity'}\nText A: {text_a[:1000]}\nText B: {text_b[:1000]}",
-                        },
-                    ],
-                    "temperature": 0.0,
-                    "max_tokens": 15,
-                }
-                endpoint = f"{self.gateway_url.rstrip('/')}/chat/completions"
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    resp = await client.post(endpoint, json=payload, headers=headers)
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        val = data["choices"][0]["message"]["content"].strip()
-                        match = re.search(r"\b([0-1](?:\.\d+)?)\b", val)
-                        if match:
-                            return float(match.group(1))
+                    }
+                    async with httpx.AsyncClient(timeout=self.timeout) as client:
+                        resp = await client.post(endpoint, json=payload, headers=headers)
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            raw_score = data.get("answers", {}).get("score", {}).get("score", 0.0)
+                            return round(raw_score / 4.0, 4)
+                else:
+                    payload = {
+                        "model": self.model,
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": (
+                                    "You are Jev, a scoring evaluator. Evaluate match/similarity/progress "
+                                    "between Text A and Text B on a scale of 0.0 to 1.0. Reply ONLY with a float number."
+                                ),
+                            },
+                            {
+                                "role": "user",
+                                "content": f"Rubric: {rubric or 'similarity'}\nText A: {text_a[:1000]}\nText B: {text_b[:1000]}",
+                            },
+                        ],
+                        "temperature": 0.0,
+                        "max_tokens": 15,
+                    }
+                    endpoint = f"{self.gateway_url.rstrip('/')}/chat/completions"
+                    async with httpx.AsyncClient(timeout=self.timeout) as client:
+                        resp = await client.post(endpoint, json=payload, headers=headers)
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            val = data["choices"][0]["message"]["content"].strip()
+                            match = re.search(r"\b([0-1](?:\.\d+)?)\b", val)
+                            if match:
+                                return float(match.group(1))
             except Exception as e:
                 logger.debug("Jev live score error (falling back to heuristic): %s", e)
 

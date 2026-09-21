@@ -64,7 +64,8 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     openai_api_key: str = ""
     anthropic_api_key: str = ""
-    ollama_base_url: str = "http://localhost:11434"
+    ollama_base_url: str = "https://ollama.com"
+    ollama_api_key: str = ""
     embedding_model: str = "gemini-embedding-2"
 
     # System 1: TypeSafe AI Jev Fast Decision Engine (Vercel AI Gateway / OpenRouter)

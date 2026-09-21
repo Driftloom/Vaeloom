@@ -857,9 +857,12 @@ class LLMService:
             url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
             pname = "Gemini"
         elif provider == "ollama":
-            base_url = getattr(settings, "ollama_base_url", "http://localhost:11434") or "http://localhost:11434"
+            base_url = getattr(settings, "ollama_base_url", "https://ollama.com") or "https://ollama.com"
             url = f"{base_url.rstrip('/')}/v1/chat/completions"
             pname = "Ollama"
+            ollama_key = getattr(settings, "ollama_api_key", "") or os.environ.get("OLLAMA_API_KEY", "")
+            if ollama_key and (not key or key == "ollama"):
+                key = ollama_key
         else:
             url = "https://api.openai.com/v1/chat/completions"
             pname = "OpenAI"
@@ -867,7 +870,7 @@ class LLMService:
         if not key and provider != "ollama":
             raise LLMProviderError(f"Missing {pname} API key — configure in Settings > API Keys (BYOK)")
         if provider == "ollama" and not key:
-            key = "ollama"
+            key = getattr(settings, "ollama_api_key", "") or os.environ.get("OLLAMA_API_KEY", "") or "ollama"
         _check_failure_injection(provider)
         body: dict[str, Any] = {"model": model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens}
         if json_mode:
