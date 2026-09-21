@@ -132,6 +132,8 @@ blob-report/
 .playwright/
 **/test-results/
 **/playwright-report/
+# E2E runner artifact (regenerated every run — never commit)
+testing/e2e/test-results.json
 
 # Husky internal auto-managed hooks
 .husky/_
