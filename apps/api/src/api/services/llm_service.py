@@ -148,6 +148,149 @@ def _classify_exc(exc: BaseException) -> dict[str, Any]:
     return _classify(status_code=code, error_text=str(exc), exception_type=type(exc).__name__)
 
 
+def _normalize_anthropic_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Normalize tool schemas to Anthropic Messages API format:
+    {"name": ..., "description": ..., "input_schema": {...}}
+    Translates OpenAI {"type": "function", "function": ...} schemas seamlessly.
+    """
+    normalized = []
+    for t in tools:
+        if not isinstance(t, dict):
+            continue
+        if "input_schema" in t and "name" in t:
+            normalized.append(t)
+        elif t.get("type") == "function" and isinstance(t.get("function"), dict):
+            fn = t["function"]
+            normalized.append({
+                "name": fn.get("name", ""),
+                "description": fn.get("description", ""),
+                "input_schema": fn.get("parameters") or {"type": "object", "properties": {}},
+            })
+        elif "parameters" in t and "name" in t:
+            normalized.append({
+                "name": t.get("name", ""),
+                "description": t.get("description", ""),
+                "input_schema": t.get("parameters") or {"type": "object", "properties": {}},
+            })
+        else:
+            normalized.append(t)
+    return normalized
+
+
+def _convert_to_anthropic_messages(messages: list[dict[str, Any]]) -> tuple[str | None, list[dict[str, Any]]]:
+    """Convert OpenAI/generic chat message history to Anthropic Messages API format.
+    - Extracts system messages into a top-level system string.
+    - Translates 'tool' role results into 'user' role with 'tool_result' content blocks.
+    - Translates assistant tool_calls into 'tool_use' content blocks.
+    - Merges consecutive same-role messages to satisfy Anthropic turn-alternation constraint.
+    - Ensures the message history starts with a user turn if non-empty.
+    """
+    import json as _json
+
+    system_parts: list[str] = []
+    converted: list[dict[str, Any]] = []
+
+    for msg in messages:
+        role = msg.get("role", "user")
+        raw_content = msg.get("content", "")
+
+        if role == "system":
+            if raw_content:
+                system_parts.append(str(raw_content))
+            continue
+
+        if role == "tool":
+            tool_use_id = msg.get("tool_call_id") or msg.get("id") or ""
+            tool_content = raw_content if isinstance(raw_content, str) else _json.dumps(raw_content)
+            result_block: dict[str, Any] = {
+                "type": "tool_result",
+                "tool_use_id": tool_use_id,
+                "content": tool_content,
+            }
+            if msg.get("is_error"):
+                result_block["is_error"] = True
+
+            if converted and converted[-1]["role"] == "user":
+                prev_content = converted[-1]["content"]
+                if isinstance(prev_content, list):
+                    prev_content.append(result_block)
+                else:
+                    converted[-1]["content"] = [{"type": "text", "text": str(prev_content)}, result_block]
+            else:
+                converted.append({
+                    "role": "user",
+                    "content": [result_block],
+                })
+            continue
+
+        if role == "assistant":
+            tool_calls = msg.get("tool_calls") or []
+            if tool_calls:
+                blocks: list[dict[str, Any]] = []
+                if raw_content:
+                    blocks.append({"type": "text", "text": str(raw_content)})
+                for tc in tool_calls:
+                    tc_id = tc.get("id", "")
+                    fn = tc.get("function", {})
+                    fn_name = fn.get("name", "")
+                    fn_args = fn.get("arguments", {})
+                    if isinstance(fn_args, str):
+                        try:
+                            fn_args = _json.loads(fn_args)
+                        except Exception:
+                            fn_args = {"raw": fn_args}
+                    blocks.append({
+                        "type": "tool_use",
+                        "id": tc_id,
+                        "name": fn_name,
+                        "input": fn_args if isinstance(fn_args, dict) else {"value": fn_args},
+                    })
+
+                if converted and converted[-1]["role"] == "assistant":
+                    prev_content = converted[-1]["content"]
+                    if isinstance(prev_content, list):
+                        prev_content.extend(blocks)
+                    else:
+                        converted[-1]["content"] = [{"type": "text", "text": str(prev_content)}] + blocks
+                else:
+                    converted.append({
+                        "role": "assistant",
+                        "content": blocks,
+                    })
+            else:
+                if converted and converted[-1]["role"] == "assistant":
+                    prev_content = converted[-1]["content"]
+                    if isinstance(prev_content, str):
+                        converted[-1]["content"] = f"{prev_content}\n\n{raw_content}"
+                    elif isinstance(prev_content, list):
+                        prev_content.append({"type": "text", "text": str(raw_content)})
+                else:
+                    converted.append({
+                        "role": "assistant",
+                        "content": raw_content,
+                    })
+            continue
+
+        if role == "user":
+            if converted and converted[-1]["role"] == "user":
+                prev_content = converted[-1]["content"]
+                if isinstance(prev_content, str):
+                    converted[-1]["content"] = f"{prev_content}\n\n{raw_content}"
+                elif isinstance(prev_content, list):
+                    prev_content.append({"type": "text", "text": str(raw_content)})
+            else:
+                converted.append({
+                    "role": "user",
+                    "content": raw_content,
+                })
+
+    if converted and converted[0]["role"] != "user":
+        converted.insert(0, {"role": "user", "content": "Hello"})
+
+    system_prompt = "\n\n".join(system_parts) if system_parts else None
+    return system_prompt, converted
+
+
 class LLMService:
     def __init__(self) -> None:
         self.provider = settings.llm_provider
@@ -760,13 +903,7 @@ class LLMService:
     async def _anthropic_completion(
         self, messages: list[dict[str, Any]], model: str, temperature: float, max_tokens: int, api_key: str | None = None, json_mode: bool = False
     ) -> dict[str, Any]:
-        system = None
-        anthropic_messages = []
-        for msg in messages:
-            if msg["role"] == "system":
-                system = msg["content"]
-            else:
-                anthropic_messages.append({"role": msg["role"], "content": msg["content"]})
+        system, anthropic_messages = _convert_to_anthropic_messages(messages)
         if json_mode:
             # No native response_format: constrain via explicit instruction (validated downstream).
             _instr = "Respond with a single valid JSON object only. No prose, no fences."
@@ -1064,45 +1201,10 @@ class LLMService:
             "usage": data.get("usage", {}),
         }
 
-def _normalize_anthropic_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Normalize tool schemas to Anthropic Messages API format:
-    {"name": ..., "description": ..., "input_schema": {...}}
-    Translates OpenAI {"type": "function", "function": ...} schemas seamlessly.
-    """
-    normalized = []
-    for t in tools:
-        if not isinstance(t, dict):
-            continue
-        if "input_schema" in t and "name" in t:
-            normalized.append(t)
-        elif t.get("type") == "function" and isinstance(t.get("function"), dict):
-            fn = t["function"]
-            normalized.append({
-                "name": fn.get("name", ""),
-                "description": fn.get("description", ""),
-                "input_schema": fn.get("parameters") or {"type": "object", "properties": {}},
-            })
-        elif "parameters" in t and "name" in t:
-            normalized.append({
-                "name": t.get("name", ""),
-                "description": t.get("description", ""),
-                "input_schema": t.get("parameters") or {"type": "object", "properties": {}},
-            })
-        else:
-            normalized.append(t)
-    return normalized
-
-
     async def _anthropic_tool_completion(
         self, messages: list[dict[str, Any]], tools: list[dict[str, Any]], model: str, temperature: float, api_key: str | None = None
     ) -> dict[str, Any]:
-        system = None
-        anthropic_messages = []
-        for msg in messages:
-            if msg["role"] == "system":
-                system = msg["content"]
-            else:
-                anthropic_messages.append({"role": msg["role"], "content": msg["content"]})
+        system, anthropic_messages = _convert_to_anthropic_messages(messages)
 
         normalized_tools = _normalize_anthropic_tools(tools)
         body: dict[str, Any] = {
@@ -1299,13 +1401,7 @@ def _normalize_anthropic_tools(tools: list[dict[str, Any]]) -> list[dict[str, An
     ) -> AsyncGenerator[dict[str, Any], None]:
         import json as _json
 
-        system = None
-        anthropic_messages = []
-        for msg in messages:
-            if msg["role"] == "system":
-                system = msg["content"]
-            else:
-                anthropic_messages.append({"role": msg["role"], "content": msg["content"]})
+        system, anthropic_messages = _convert_to_anthropic_messages(messages)
 
         normalized_tools = _normalize_anthropic_tools(tools)
         body: dict[str, Any] = {

@@ -333,7 +333,7 @@ async def mock_llm(monkeypatch):
     monkeypatch.setattr(LLMService, "generate_embedding", fake_generate_embedding)
     monkeypatch.setattr(LLMService, "generate_completion", fake_generate_completion)
     monkeypatch.setattr(LLMService, "generate_completion_with_tools", fake_generate_completion_with_tools)
-    monkeypatch.setattr(LLMService, "generate_completion_stream", fake_generate_completion_stream)
+    monkeypatch.setattr(LLMService, "generate_completion_stream", fake_generate_completion_stream, raising=False)
 
 
 @pytest_asyncio.fixture(autouse=True)
