@@ -60,6 +60,32 @@ def _get_circuit_breaker(agent_name: str) -> CircuitBreaker:
     return _circuit_breakers[agent_name]
 
 
+def _deadline_remaining_s(deadline: float | None) -> float:
+    """Seconds left until a monotonic deadline (inf when deadline is None)."""
+    if deadline is None:
+        return float("inf")
+    import time as _t
+    return max(0.0, deadline - _t.monotonic())
+
+
+async def _deadline_aware_sleep(delay_s: float, deadline: float | None) -> bool:
+    """Sleep capped at the run deadline: min(delay, remaining).
+
+    Returns True when the deadline has been reached (caller must re-check
+    the deadline after wake instead of assuming the full delay elapsed).
+    A None deadline means intentionally unbounded (post-terminal UX paths).
+    """
+    import time as _t
+    if deadline is None:
+        await asyncio.sleep(delay_s)
+        return False
+    remaining = deadline - _t.monotonic()
+    if remaining <= 0:
+        return True
+    await asyncio.sleep(min(max(0.0, delay_s), remaining))
+    return _t.monotonic() >= deadline
+
+
 # ── Spend & Quota Gate (Wave 1, 2026-09-06) ──────────────────────────
 
 async def _check_spend_and_quota(workspace_id: str, agent_name: str) -> tuple[str | None, str]:
@@ -1411,6 +1437,14 @@ async def _try_react_loop(
             except Exception:
                 pass
 
+            # Deadline re-check after wake: the streaming LLM call above
+            # contains its own retry/backoff sleeps (429 backoff + tenacity
+            # retries in llm_service) that can push the run past the
+            # wall-clock budget. Never execute new tool side effects after
+            # the deadline — stop with the truthful timeout reason.
+            if _rt.monotonic() >= _deadline:
+                return await _terminal_card("ReAct run exceeded wall-clock budget.", "budget_time")
+
             # No tool calls → LLM produced direct answer
             if not tool_calls:
                 if content_str.strip():
@@ -1777,6 +1811,15 @@ async def _try_react_loop(
                         await _snapshot_running()
                     except Exception:
                         pass
+                    # Hallucination-rate early stop: repeated unknown-tool
+                    # proposals mean the model is inventing tools — stop as
+                    # policy_stop (truthful ceiling, never silent fallthrough).
+                    _tracker.record_tool_outcome(success=False, unknown_tool=True)
+                    if _tracker.check_error_stops() == "policy_stop":
+                        return await _terminal_card(
+                            f"ReAct run stopped: repeated unknown-tool requests "
+                            f"({_tracker.unknown_tool_count} unknown, e.g. '{tname}').",
+                            "policy_stop")
                     continue
                 # ── Argument validation (§8): schema/types/required/binding/size.
                 _ok_args, _clean_args, _arg_errs = _validate_args(
@@ -1970,6 +2013,17 @@ async def _try_react_loop(
                     except Exception:
                         pass
                     return await _terminal_card(f"ReAct run stopped: tool '{tname}' repeatedly denied by policy.", "policy_denied")
+                # Consecutive-error early stop: a streak of tool failures
+                # (hallucinated args, broken tools, mixed denials) ends the
+                # run as policy_stop instead of burning all remaining rounds.
+                # Placed after the denial check so the specific denial card
+                # keeps priority for pure-denial streaks.
+                _tracker.record_tool_outcome(success=(_status == "success"))
+                if _tracker.check_error_stops() == "policy_stop":
+                    return await _terminal_card(
+                        f"ReAct run stopped: {_tracker.consecutive_tool_errors} "
+                        f"consecutive tool errors (last: '{tname}').",
+                        "policy_stop")
                 # Feed tool result back to LLM — TOOL-002: sanitize tool output, never treat as instructions
                 # OpenAI expects assistant with tool_calls + tool role; Anthropic uses tool_result blocks — we add both forms for compat
                 try:
@@ -2886,7 +2940,10 @@ async def run_agent_loop_stream(request: AgentRequest) -> AsyncGenerator[dict[st
                 chunk_size = 40
                 for i in range(0, len(final_text), chunk_size):
                     yield {"event": "token", "data": {"text": final_text[i:i+chunk_size]}}
-                    await asyncio.sleep(0)  # allow event loop to flush
+                    # Post-terminal UX emission (run already succeeded): no run
+                    # deadline applies, but every sleep goes through the
+                    # deadline-aware helper so future budgets cover this path.
+                    await _deadline_aware_sleep(0, None)  # allow event loop to flush
             yield {"event": "done", "data": {"status": improve_resp.status, "result": improve_resp.final_result}}
             return
 
