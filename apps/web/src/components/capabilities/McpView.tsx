@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useToast } from '@/components/shared/Toast';
 
 interface McpViewProps {
+  searchQuery?: string;
   onOpenCreateServer: () => void;
   onOpenImport: () => void;
 }
@@ -149,7 +150,11 @@ const INITIAL_MCP_JSON = `{
   }
 }`;
 
-export const McpView: React.FC<McpViewProps> = ({ onOpenCreateServer, onOpenImport }) => {
+export const McpView: React.FC<McpViewProps> = ({
+  searchQuery = '',
+  onOpenCreateServer,
+  onOpenImport,
+}) => {
   const { toast } = useToast();
   const [mcpConfigText, setMcpConfigText] = useState(INITIAL_MCP_JSON);
   const [installedServers, setInstalledServers] = useState<string[]>(['filesystem', 'github']);
@@ -160,6 +165,23 @@ export const McpView: React.FC<McpViewProps> = ({ onOpenCreateServer, onOpenImpo
     '[github] stdio transport spawned (PID 4893) -> authenticated via token -> registered 12 tools',
     '[ready] Sovereign IPC pipe active. 16 tools exposed to Agent Orchestrator.',
   ]);
+
+  const effectiveQuery = searchQuery.trim().toLowerCase();
+
+  const filteredCatalog = React.useMemo(() => {
+    if (!effectiveQuery) return MCP_CATALOG_SERVERS;
+    return MCP_CATALOG_SERVERS.filter(
+      (s) =>
+        s.name.toLowerCase().includes(effectiveQuery) ||
+        s.description.toLowerCase().includes(effectiveQuery) ||
+        s.transports.some((t) => t.toLowerCase().includes(effectiveQuery)),
+    );
+  }, [effectiveQuery]);
+
+  const filteredInstalled = React.useMemo(() => {
+    if (!effectiveQuery) return installedServers;
+    return installedServers.filter((s) => s.toLowerCase().includes(effectiveQuery));
+  }, [installedServers, effectiveQuery]);
 
   const handleInstallCatalogServer = (server: McpCatalogServer) => {
     if (installedServers.includes(server.id)) {
@@ -256,25 +278,31 @@ export const McpView: React.FC<McpViewProps> = ({ onOpenCreateServer, onOpenImpo
 
           {/* Active Configured Servers or Empty State */}
           <div className="p-3 space-y-2">
-            {installedServers.map((serverName) => (
-              <div
-                key={serverName}
-                className="flex items-center justify-between p-2.5 rounded-lg bg-[#14151a] border border-[#22242e] hover:border-[#2f3240] transition-colors"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="w-2 h-2 rounded-full bg-[#22c55e] shrink-0" />
-                  <span className="text-xs font-mono font-medium text-white truncate">
-                    {serverName}
-                  </span>
-                  <span className="px-1.5 py-0.2 rounded text-2xs font-mono bg-[#1c1e28] text-[#93c5fd] border border-[#272b3b]">
-                    stdio
-                  </span>
+            {filteredInstalled.length === 0 && effectiveQuery ? (
+              <p className="text-2xs text-[#71717a] font-sans py-1">
+                No installed servers match filter.
+              </p>
+            ) : (
+              filteredInstalled.map((serverName) => (
+                <div
+                  key={serverName}
+                  className="flex items-center justify-between p-2.5 rounded-lg bg-[#14151a] border border-[#22242e] hover:border-[#2f3240] transition-colors"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="w-2 h-2 rounded-full bg-[#22c55e] shrink-0" />
+                    <span className="text-xs font-mono font-medium text-white truncate">
+                      {serverName}
+                    </span>
+                    <span className="px-1.5 py-0.2 rounded text-2xs font-mono bg-[#1c1e28] text-[#93c5fd] border border-[#272b3b]">
+                      stdio
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-2xs font-sans text-[#71717a]">connected</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-2xs font-sans text-[#71717a]">connected</span>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
 
             <button
               type="button"
@@ -301,57 +329,63 @@ export const McpView: React.FC<McpViewProps> = ({ onOpenCreateServer, onOpenImpo
               Catalog
             </span>
             <span className="text-2xs font-sans px-1.5 py-0.2 rounded-full bg-[#181a22] text-[#8b8e99] border border-[#252734]">
-              {MCP_CATALOG_SERVERS.length} available
+              {filteredCatalog.length} available
             </span>
           </div>
 
           <div className="flex-1 overflow-y-auto divide-y divide-[#17181f] p-2 space-y-1">
-            {MCP_CATALOG_SERVERS.map((server) => {
-              const isInstalled = installedServers.includes(server.id);
-              return (
-                <div
-                  key={server.id}
-                  className="p-3 rounded-lg hover:bg-[#121319] transition-colors flex items-start justify-between gap-3 group"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-xs font-semibold text-white font-sans">
-                        {server.name}
-                      </span>
-                      {server.transports.map((t) => (
-                        <span
-                          key={t}
-                          className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-[#181a22] text-[#8b8e99] border border-[#242633]"
-                        >
-                          {t}
-                        </span>
-                      ))}
-                      {server.authType && (
-                        <span className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-[#1b2233] text-[#93c5fd] border border-[#25324c]">
-                          {server.authType}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-[#8b8e99] font-sans leading-relaxed mt-1 line-clamp-2">
-                      {server.description}
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    disabled={isInstalled}
-                    onClick={() => handleInstallCatalogServer(server)}
-                    className={`px-2.5 py-1 rounded text-xs font-sans font-medium transition-colors shrink-0 ${
-                      isInstalled
-                        ? 'bg-[#181a22] text-[#52525b] border border-[#232530] cursor-default'
-                        : 'bg-[#1a1c25] hover:bg-[#232634] text-white border border-[#2d3040] shadow-xs'
-                    }`}
+            {filteredCatalog.length === 0 ? (
+              <p className="text-2xs text-[#71717a] font-sans p-4 text-center">
+                No catalog servers match filter.
+              </p>
+            ) : (
+              filteredCatalog.map((server) => {
+                const isInstalled = installedServers.includes(server.id);
+                return (
+                  <div
+                    key={server.id}
+                    className="p-3 rounded-lg hover:bg-[#121319] transition-colors flex items-start justify-between gap-3 group"
                   >
-                    {isInstalled ? 'Installed' : 'Install'}
-                  </button>
-                </div>
-              );
-            })}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs font-semibold text-white font-sans">
+                          {server.name}
+                        </span>
+                        {server.transports.map((t) => (
+                          <span
+                            key={t}
+                            className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-[#181a22] text-[#8b8e99] border border-[#242633]"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                        {server.authType && (
+                          <span className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-[#1b2233] text-[#93c5fd] border border-[#25324c]">
+                            {server.authType}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-[#8b8e99] font-sans leading-relaxed mt-1 line-clamp-2">
+                        {server.description}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={isInstalled}
+                      onClick={() => handleInstallCatalogServer(server)}
+                      className={`px-2.5 py-1 rounded text-xs font-sans font-medium transition-colors shrink-0 ${
+                        isInstalled
+                          ? 'bg-[#181a22] text-[#52525b] border border-[#232530] cursor-default'
+                          : 'bg-[#1a1c25] hover:bg-[#232634] text-white border border-[#2d3040] shadow-xs'
+                      }`}
+                    >
+                      {isInstalled ? 'Installed' : 'Install'}
+                    </button>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>

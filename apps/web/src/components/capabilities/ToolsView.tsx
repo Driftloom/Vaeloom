@@ -9,6 +9,7 @@ import { capabilitiesApi } from '@/lib/api-client';
 interface ToolsViewProps {
   tools: CapabilityItem[];
   workspaceId: string;
+  searchQuery?: string;
 }
 
 interface ToolSuite {
@@ -256,9 +257,8 @@ const TOOL_SUITES: ToolSuite[] = [
   },
 ];
 
-export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId }) => {
+export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, searchQuery = '' }) => {
   const { toast } = useToast();
-  const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'most-used' | 'alphabetical'>('most-used');
   const [selectedSuiteId, setSelectedSuiteId] = useState<string>('memory-suite');
   const [useRealProfile, setUseRealProfile] = useState<boolean>(false);
@@ -277,7 +277,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId }) => {
 
   const filteredSuites = TOOL_SUITES.filter((s) => {
     if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
+    const q = searchQuery.trim().toLowerCase();
     return (
       s.name.toLowerCase().includes(q) ||
       s.description.toLowerCase().includes(q) ||
@@ -337,27 +337,8 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId }) => {
       {/* Left Column: Grouped Tool Suites (Pixel-Matched to Screenshot)            */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
       <div className="w-full lg:w-[380px] xl:w-[410px] shrink-0 border-r border-[#1c1d24] bg-[#0c0d10] flex flex-col min-h-0">
-        {/* Search & Sort Bar */}
-        <div className="p-3 border-b border-[#1c1d24] bg-[#0c0d10] space-y-2 shrink-0">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder='Try "web_extract"'
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#14151a] border border-[#23242c] rounded-md px-3 py-1.5 text-xs text-[#f4f4f5] placeholder-[#71717a] focus:outline-none focus:border-primary transition-all font-sans"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1.5 text-xs text-[#71717a] hover:text-white"
-              >
-                ×
-              </button>
-            )}
-          </div>
-
+        {/* Sort & Counter Toolbar */}
+        <div className="p-3 border-b border-[#1c1d24] bg-[#0c0d10] shrink-0">
           <div className="flex items-center justify-between">
             <select
               value={sortBy}
@@ -365,7 +346,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId }) => {
               className="bg-transparent border-0 text-xs font-sans text-[#8b8e99] hover:text-[#e4e4e7] focus:outline-none cursor-pointer"
             >
               <option value="most-used" className="bg-[#14151a] text-[#f4f4f5]">
-                1 Most used
+                Most used
               </option>
               <option value="alphabetical" className="bg-[#14151a] text-[#f4f4f5]">
                 Alphabetical

@@ -294,7 +294,6 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
   }, [agents, initialAgentName]);
 
   const [selectedAgentId, setSelectedAgentId] = useState<string>(defaultAgentId);
-  const [localSearch, setLocalSearch] = useState('');
   const [activeTypeFilter, setActiveTypeFilter] = useState<'all' | 'canonical' | 'specialist'>(
     'all',
   );
@@ -314,7 +313,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
   const [testLatency, setTestLatency] = useState<number | null>(null);
 
   const selectedAgent = useMemo(() => {
-    return agents.find((a) => a.id === selectedAgentId) || agents[0];
+    return agents.find((a) => a.id === selectedAgentId) || agents[0] || null;
   }, [agents, selectedAgentId]);
 
   const visual = useMemo(() => {
@@ -326,7 +325,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
     selectedAgent?.autonomy || 'autonomous',
   );
 
-  // Sync autonomy mode when selected agent changes
+  // Sync state with selected agent
   React.useEffect(() => {
     if (selectedAgent?.autonomy) {
       setAutonomyMode(selectedAgent.autonomy);
@@ -335,7 +334,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
 
   // Filter Agents
   const filteredAgents = useMemo(() => {
-    const q = (searchQuery || localSearch).trim().toLowerCase();
+    const q = searchQuery.trim().toLowerCase();
     return agents.filter((agent) => {
       const meta = getAgentVisualMeta(agent.name);
       if (activeTypeFilter === 'canonical' && !meta.isCanonical) return false;
@@ -349,7 +348,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
         agent.tags.some((t) => t.toLowerCase().includes(q))
       );
     });
-  }, [agents, searchQuery, localSearch, activeTypeFilter]);
+  }, [agents, searchQuery, activeTypeFilter]);
 
   // Copy AgentCard JSON helper
   const handleCopyAgentCard = useCallback(() => {
@@ -474,27 +473,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
       {/* Left Column: Autonomous Agents Directory                                    */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
       <div className="w-full lg:w-[380px] xl:w-[410px] shrink-0 border-r border-[#1c1d24] bg-[#0c0d10] flex flex-col min-h-0">
-        <div className="p-3 border-b border-[#1c1d24] bg-[#0c0d10] space-y-2.5 shrink-0">
-          {/* Search Input */}
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search autonomous agents..."
-              value={localSearch}
-              onChange={(e) => setLocalSearch(e.target.value)}
-              className="w-full bg-[#14151a] border border-[#23242c] rounded-md px-3 py-1.5 text-xs text-[#f4f4f5] placeholder-[#71717a] focus:outline-none focus:border-primary transition-all font-sans"
-            />
-            {localSearch && (
-              <button
-                onClick={() => setLocalSearch('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#71717a] hover:text-white"
-                title="Clear"
-              >
-                ×
-              </button>
-            )}
-          </div>
-
+        <div className="p-3 border-b border-[#1c1d24] bg-[#0c0d10] shrink-0">
           {/* Type Filter Pills + Counter */}
           <div className="flex items-center justify-between gap-1 text-xs">
             <div className="flex items-center gap-1">

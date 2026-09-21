@@ -1,189 +1,31 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import ConnectorsPage from './page';
-import { useWorkspaceConnectors } from '../../../../hooks/useWorkspace';
-import { api } from '../../../../lib/api';
 
-const mockToast = jest.fn();
-jest.mock('../../../../components/shared/Toast', () => ({
-  useToast: () => ({ toast: mockToast }),
-}));
-
-// Mock dependencies
+const mockReplace = jest.fn();
 jest.mock('next/navigation', () => ({
   useParams: () => ({ workspaceId: 'ws-1' }),
+  useRouter: () => ({ replace: mockReplace }),
 }));
 
-jest.mock('../../../../hooks/useWorkspace', () => ({
-  useWorkspaceConnectors: jest.fn(),
-}));
-
-jest.mock('../../../../lib/api', () => ({
-  api: {
-    integrations: {
-      create: jest.fn(),
-      sync: jest.fn(),
-    },
-  },
-}));
-
-jest.mock('@/lib/api-client', () => ({
-  connectorsApi: {
-    list: jest.fn().mockResolvedValue([]),
-    composio: {
-      status: jest.fn().mockResolvedValue({ popular_apps: [], total_apps: 0 }),
-      apps: jest.fn().mockResolvedValue({ apps: [], total: 0 }),
-    },
-    mcp: {
-      builtin: jest.fn().mockResolvedValue({ builtin_servers: [] }),
-    },
-  },
-  temporalApi: {
-    startConnectorSync: jest.fn().mockRejectedValue({ status: 503 }),
-    getStatus: jest.fn(),
-    cancel: jest.fn(),
-  },
-}));
-
-describe('ConnectorsPage', () => {
+describe('ConnectorsPage redirect', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('renders loading state correctly', () => {
-    (useWorkspaceConnectors as jest.Mock).mockReturnValue({
-      connectors: [],
-      isLoading: true,
-      mutate: jest.fn(),
-    });
-
+  it('redirects to capabilities page with connectors category', async () => {
     render(<ConnectorsPage />);
-    expect(screen.getByText('Loading connectors...')).toBeInTheDocument();
-  });
-
-  it('renders available connectors', () => {
-    (useWorkspaceConnectors as jest.Mock).mockReturnValue({
-      connectors: [],
-      isLoading: false,
-      mutate: jest.fn(),
-    });
-
-    render(<ConnectorsPage />);
-    expect(screen.getByText('Google Drive')).toBeInTheDocument();
-    expect(screen.getByText('GitHub')).toBeInTheDocument();
-  });
-
-  it('displays connected status for synced connectors', () => {
-    (useWorkspaceConnectors as jest.Mock).mockReturnValue({
-      connectors: [
-        { id: 'c1', provider: 'drive', status: 'connected', lastSyncAt: new Date().toISOString() },
-      ],
-      isLoading: false,
-      mutate: jest.fn(),
-    });
-
-    render(<ConnectorsPage />);
-
-    // Drive should have a "Sync Now" button
-    const syncButtons = screen.getAllByText('Sync Now');
-    expect(syncButtons.length).toBeGreaterThan(0);
-
-    // Unconnected like GitHub should have "Connect"
-    const connectButtons = screen.getAllByText('Connect');
-    expect(connectButtons.length).toBeGreaterThan(0);
-  });
-
-  it('calls connect API when clicking Connect', async () => {
-    const mutateMock = jest.fn();
-    (useWorkspaceConnectors as jest.Mock).mockReturnValue({
-      connectors: [],
-      isLoading: false,
-      mutate: mutateMock,
-    });
-
-    (api.integrations.create as jest.Mock).mockResolvedValue({});
-
-    render(<ConnectorsPage />);
-
-    const connectButtons = screen.getAllByText('Connect');
-    // Click connect for the first one (Drive) — opens OAuth modal
-    fireEvent.click(connectButtons[0]);
-    const oauthButton = await screen.findByText('Continue to OAuth');
-    fireEvent.click(oauthButton);
-
     await waitFor(() => {
-      expect(api.integrations.create).toHaveBeenCalledWith({
-        name: 'Google Drive',
-        provider: 'drive',
-      });
-      expect(mutateMock).toHaveBeenCalled();
+      expect(mockReplace).toHaveBeenCalledWith('/workspace/ws-1/capabilities?category=connectors');
     });
   });
 
-  it('calls sync API when clicking Sync Now', async () => {
-    const mutateMock = jest.fn();
-    (useWorkspaceConnectors as jest.Mock).mockReturnValue({
-      connectors: [
-        { id: 'c1', provider: 'drive', status: 'connected', lastSyncAt: new Date().toISOString() },
-      ],
-      isLoading: false,
-      mutate: mutateMock,
-    });
-
-    (api.integrations.sync as jest.Mock).mockResolvedValue({});
-
+  it('renders redirection message and fallback link', () => {
     render(<ConnectorsPage />);
-
-    const syncButtons = screen.getAllByText('Sync Now');
-    fireEvent.click(syncButtons[0]);
-
-    await waitFor(() => {
-      expect(api.integrations.sync).toHaveBeenCalledWith('c1');
-      expect(mutateMock).toHaveBeenCalled();
-    });
-  });
-
-  it('handles connect API errors gracefully', async () => {
-    (useWorkspaceConnectors as jest.Mock).mockReturnValue({
-      connectors: [],
-      isLoading: false,
-      mutate: jest.fn(),
-    });
-
-    (api.integrations.create as jest.Mock).mockRejectedValue(new Error('Network error'));
-
-    render(<ConnectorsPage />);
-    const connectButtons = screen.getAllByText('Connect');
-    fireEvent.click(connectButtons[0]);
-    const oauthButton = await screen.findByText('Continue to OAuth');
-    fireEvent.click(oauthButton);
-
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith(
-        expect.objectContaining({ tone: 'error', title: 'Connect failed' }),
-      );
-    });
-  });
-
-  it('handles sync API errors gracefully', async () => {
-    (useWorkspaceConnectors as jest.Mock).mockReturnValue({
-      connectors: [
-        { id: 'c1', provider: 'drive', status: 'connected', lastSyncAt: new Date().toISOString() },
-      ],
-      isLoading: false,
-      mutate: jest.fn(),
-    });
-
-    (api.integrations.sync as jest.Mock).mockRejectedValue(new Error('Network error'));
-
-    render(<ConnectorsPage />);
-    const syncButtons = screen.getAllByText('Sync Now');
-    fireEvent.click(syncButtons[0]);
-
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith(
-        expect.objectContaining({ tone: 'error', title: 'Sync failed' }),
-      );
-    });
+    expect(screen.getByText(/Connectors are now unified under Capabilities/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Click here/i })).toHaveAttribute(
+      'href',
+      '/workspace/ws-1/capabilities?category=connectors',
+    );
   });
 });

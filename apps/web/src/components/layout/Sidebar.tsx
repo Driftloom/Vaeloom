@@ -55,7 +55,6 @@ function groupLinks(workspaceId: string): NavGroup[] {
       label: 'Memory',
       links: [
         { name: 'Memory Graph', path: ws('/memory'), icon: <BrainIcon size={16} /> },
-        { name: 'Knowledge Graph', path: ws('/graph'), icon: <BrainIcon size={16} /> },
         { name: 'Search', path: ws('/search'), icon: <SearchIcon size={16} /> },
         { name: 'Documents', path: ws('/documents'), icon: <FileTextIcon size={16} /> },
       ],
@@ -74,7 +73,6 @@ function groupLinks(workspaceId: string): NavGroup[] {
       links: [
         { name: 'Activity Log', path: ws('/history'), icon: <ClockIcon size={16} /> },
         { name: 'Schedule', path: ws('/schedule'), icon: <CalendarIcon size={16} /> },
-        { name: 'Connectors', path: ws('/connectors'), icon: <PlugIcon size={16} /> },
         { name: 'Approvals', path: ws('/approvals'), icon: <ShieldIcon size={16} /> },
       ],
     },

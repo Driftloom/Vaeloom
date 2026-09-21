@@ -9,13 +9,10 @@ import { Badge, StatusDot, Button, EmptyState } from '@vaeloom/ui-kit';
 import {
   CapabilityCategory,
   CapabilityItem,
-  HubCategory,
-  HubCapabilityItem,
-  SEED_HUB_ITEMS,
   getStoredCapabilities,
   setStoredCapabilityEnabled,
   saveCustomCapability,
-  installHubCapability,
+  deleteCustomCapability,
 } from '@/lib/capabilities-data';
 import { useToast } from '@/components/shared/Toast';
 import { agentCatalogApi, capabilitiesApi } from '@/lib/api-client';
@@ -26,66 +23,11 @@ import { AgentsView } from '@/components/capabilities/AgentsView';
 import { ToolsView } from '@/components/capabilities/ToolsView';
 import { McpView } from '@/components/capabilities/McpView';
 import { PluginsView } from '@/components/capabilities/PluginsView';
+import { ConnectorsView } from '@/components/capabilities/ConnectorsView';
 
 type TabView = 'installed' | 'browse';
 type SortOption = 'most-used' | 'alphabetical' | 'recent';
 type DetailSubTab = 'doc' | 'schema' | 'test';
-
-const HUB_CATEGORIES: { id: HubCategory; label: string; icon: string; count: number }[] = [
-  { id: 'all', label: 'All categories', icon: '✨', count: 184 },
-  { id: 'desktop', label: 'Desktop', icon: '💻', count: 55 },
-  { id: 'memory', label: 'Memory', icon: '🧠', count: 17 },
-  { id: 'platforms', label: 'Platforms', icon: '🌐', count: 17 },
-  { id: 'web-browser', label: 'Web & Browser', icon: '🔍', count: 17 },
-  { id: 'tools', label: 'Tools', icon: '🛠️', count: 44 },
-  { id: 'voice', label: 'Voice', icon: '🎙️', count: 7 },
-  { id: 'automation', label: 'Automation', icon: '⚡', count: 11 },
-  { id: 'models', label: 'Models', icon: '🤖', count: 13 },
-  { id: 'general', label: 'General', icon: '📦', count: 13 },
-];
-
-const HUB_CATEGORY_META: Record<HubCategory, { label: string; description: string }> = {
-  all: {
-    label: 'All Capabilities & Plugins',
-    description: 'Explore community and official extensions, tools, plugins, and skills',
-  },
-  desktop: {
-    label: 'Desktop',
-    description: 'Panes, tabs, and views for Vaeloom Desktop',
-  },
-  memory: {
-    label: 'Memory',
-    description: 'Episodic recall, knowledge graph storage, and sovereign vector retention',
-  },
-  platforms: {
-    label: 'Platforms & Integrations',
-    description: 'Connectors and bridges for GitHub, Slack, Tailscale, and cloud ecosystems',
-  },
-  'web-browser': {
-    label: 'Web & Browser',
-    description: 'Autonomous web scrapers, RSS feeds, and headless browser automation',
-  },
-  tools: {
-    label: 'Tools & Telemetry',
-    description: 'Diagnostic utilities, analytics monitors, and token cost ledgers',
-  },
-  voice: {
-    label: 'Voice & Audio',
-    description: 'Speech-to-text transcription, speech synthesis, and voice triggers',
-  },
-  automation: {
-    label: 'Automation & Workflows',
-    description: 'Scheduled cron triggers, webhook relays, and multi-step execution graphs',
-  },
-  models: {
-    label: 'Model Gateways',
-    description: 'Model routing adapters, local LLM runners, and fallback policies',
-  },
-  general: {
-    label: 'General Utilities',
-    description: 'Markdown compilers, document diff engines, and regex pattern parsers',
-  },
-};
 
 function getSamplePayloadForCapability(item: CapabilityItem | null): string {
   if (!item) return '{\n  "query": "example test run",\n  "limit": 5\n}';
@@ -148,7 +90,7 @@ export default function CapabilitiesPage() {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const cat = urlParams.get('category') || urlParams.get('tab');
-      if (cat && ['skills', 'agents', 'tools', 'mcp', 'plugins'].includes(cat)) {
+      if (cat && ['skills', 'connectors', 'agents', 'tools', 'mcp', 'plugins'].includes(cat)) {
         return cat as CapabilityCategory;
       }
     }
@@ -174,17 +116,9 @@ export default function CapabilitiesPage() {
   // Mobile detail view toggle
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
 
-  // Hub Section State (Collapsible Lower Tier)
-  const [hubBrowserOpen, setHubBrowserOpen] = useState(true);
-  const [hubSearchQuery, setHubSearchQuery] = useState('');
-  const [selectedHubCategory, setSelectedHubCategory] = useState<HubCategory>('all');
-  const [hubOriginFilter, setHubOriginFilter] = useState<'all' | 'official' | 'community'>('all');
-  const [hubSubTab, setHubSubTab] = useState<
-    'all' | 'skills' | 'plugins' | 'agents' | 'tools' | 'mcp'
-  >('all');
-
   // Modals
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [connectorsAddTrigger, setConnectorsAddTrigger] = useState(0);
   const [newCapName, setNewCapName] = useState('');
   const [newCapCategory, setNewCapCategory] = useState<CapabilityCategory>('skills');
   const [newCapDescription, setNewCapDescription] = useState('');
@@ -290,19 +224,40 @@ export default function CapabilitiesPage() {
   // Compute live category counts
   const categoryCounts = useMemo(() => {
     const counts: Record<CapabilityCategory, number> = {
-      agents: 0,
       skills: 0,
-      tools: 0,
+      connectors: liveConnectors?.length || 14,
       mcp: 0,
       plugins: 0,
+      tools: 0,
+      agents: 0,
     };
     capabilities.forEach((c) => {
-      if (counts[c.category] !== undefined) {
+      if (counts[c.category] !== undefined && c.category !== 'connectors') {
         counts[c.category]++;
       }
     });
     return counts;
-  }, [capabilities]);
+  }, [capabilities, liveConnectors]);
+
+  // Dynamic search input placeholder based on active tab
+  const searchPlaceholder = useMemo(() => {
+    switch (selectedCategory) {
+      case 'skills':
+        return 'Filter installed skills...';
+      case 'connectors':
+        return 'Search connectors...';
+      case 'mcp':
+        return 'Search MCP servers...';
+      case 'plugins':
+        return 'Search plugins...';
+      case 'tools':
+        return 'Search tools & suites...';
+      case 'agents':
+        return 'Search agents...';
+      default:
+        return 'Search capabilities...';
+    }
+  }, [selectedCategory]);
 
   // Filter & Sort capabilities for the active category
   const filteredItems = useMemo(() => {
@@ -364,37 +319,28 @@ export default function CapabilitiesPage() {
     return ['All', ...Array.from(set)];
   }, [capabilities, selectedCategory]);
 
-  // Set of installed capability names
-  const installedCapabilityNames = useMemo(() => {
-    return new Set(capabilities.map((c) => c.name.toLowerCase()));
-  }, [capabilities]);
+  // Update Skill definition / instructions
+  const handleUpdateSkill = useCallback(
+    (updatedItem: CapabilityItem) => {
+      saveCustomCapability(workspaceId, updatedItem);
+      setCapabilities((prev) => prev.map((c) => (c.id === updatedItem.id ? updatedItem : c)));
+    },
+    [workspaceId],
+  );
 
-  // Filter Hub Items
-  const filteredHubItems = useMemo(() => {
-    return SEED_HUB_ITEMS.filter((item) => {
-      // Sub-tab filter
-      if (hubSubTab !== 'all' && item.category !== hubSubTab) {
-        return false;
-      }
-      // Hub Category filter
-      if (selectedHubCategory !== 'all' && item.hubCategory !== selectedHubCategory) {
-        return false;
-      }
-      // Origin filter (Official vs Community)
-      if (hubOriginFilter === 'official' && !item.isOfficial) return false;
-      if (hubOriginFilter === 'community' && item.isOfficial) return false;
-
-      // Search Query
-      if (hubSearchQuery.trim()) {
-        const q = hubSearchQuery.toLowerCase();
-        const matchName = item.name.toLowerCase().includes(q);
-        const matchDesc = item.description.toLowerCase().includes(q);
-        const matchTags = item.tags.some((t) => t.toLowerCase().includes(q));
-        if (!matchName && !matchDesc && !matchTags) return false;
-      }
-      return true;
-    });
-  }, [selectedHubCategory, hubOriginFilter, hubSearchQuery, hubSubTab]);
+  // Delete Custom Skill
+  const handleDeleteSkill = useCallback(
+    (id: string) => {
+      const updated = deleteCustomCapability(workspaceId, id);
+      setCapabilities(updated);
+      toast({
+        tone: 'info',
+        title: 'Skill deleted',
+        detail: 'Removed from workspace capabilities.',
+      });
+    },
+    [workspaceId, toast],
+  );
 
   // Toggle Item Enabled Status
   const handleToggle = useCallback(
@@ -562,38 +508,6 @@ export default function CapabilitiesPage() {
     [newCapName, newCapCategory, newCapDescription, newCapTags, newCapDoc, workspaceId, toast],
   );
 
-  // 1-Click Install Capability from Hub
-  const handleInstallHubItem = useCallback(
-    (hubItem: HubCapabilityItem) => {
-      const updated = installHubCapability(workspaceId, hubItem);
-      setCapabilities(updated);
-      setSelectedCategory(hubItem.category);
-      setSelectedId(hubItem.capabilityItem.id);
-      toast({
-        tone: 'success',
-        title: `Installed ${hubItem.name}`,
-        detail: `Added to ${hubItem.category} and activated in workspace`,
-      });
-    },
-    [workspaceId, toast],
-  );
-
-  // Update Installed Action
-  const handleUpdateInstalled = useCallback(() => {
-    toast({
-      tone: 'info',
-      title: 'Updating installed capabilities',
-      detail: 'Re-syncing live agent tools and connector manifest definitions…',
-    });
-    setTimeout(() => {
-      toast({
-        tone: 'success',
-        title: 'All capabilities up to date',
-        detail: 'Catalog and active workspace sessions are in sync',
-      });
-    }, 500);
-  }, [toast]);
-
   // Remote Import Submit Handler
   const handleImportSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -645,35 +559,73 @@ export default function CapabilitiesPage() {
   );
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#09090b] text-[#f4f4f5] antialiased selection:bg-primary/25 selection:text-primary">
+    <div className="flex flex-col h-full min-h-0 bg-[#09090b] text-[#f4f4f5] antialiased selection:bg-primary/25 selection:text-primary overflow-hidden">
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* 1. Header: Search (left) + Category Tabs (center/right)                    */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <header className="border-b border-[#1c1d24] bg-[#0c0d10] px-4 sm:px-6 py-2.5 shrink-0">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          {/* Left: Clean Header Title */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-primary" aria-hidden="true" />
-              <h1 className="text-sm font-semibold tracking-tight text-[#f4f4f5] font-sans">
-                Capabilities
-              </h1>
+      <header className="border-b border-[#1c1d24] bg-[#0c0d10] px-3 sm:px-5 py-2 shrink-0">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+          {/* Left: Single Primary Search Bar (Compact & Sleek) */}
+          <div className="flex items-center gap-2 w-48 sm:w-56 md:w-60 shrink-0">
+            <h1 className="sr-only">Capabilities</h1>
+            <div className="relative w-full">
+              <svg
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#71717a] pointer-events-none"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+                />
+              </svg>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={searchPlaceholder}
+                className="w-full bg-[#14151a] border border-[#23242c] rounded-md pl-8 pr-7 py-1 text-xs text-[#f4f4f5] placeholder-[#71717a] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/40 transition-all font-sans"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#71717a] hover:text-[#f4f4f5] p-0.5 transition-colors"
+                  title="Clear search"
+                  aria-label="Clear search"
+                >
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              )}
             </div>
-            <span className="text-xs text-[#71717a] hidden sm:inline-block">|</span>
-            <span className="text-xs text-[#8b8e99] hidden sm:inline-block">
-              Skills, autonomous agents, sovereign tools &amp; MCP bridges
-            </span>
           </div>
 
-          {/* Right: Category Tabs (Skills 375, Agents 12, Tools 28, MCP 6, Plugins 8) */}
+          {/* Right: Category Tabs (Skills, Connectors, MCP, Plugins, Tools, Agents) */}
           <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
             {(
               [
                 { id: 'skills', label: 'Skills', count: categoryCounts.skills },
-                { id: 'agents', label: 'Agents', count: categoryCounts.agents },
-                { id: 'tools', label: 'Tools', count: categoryCounts.tools },
+                { id: 'connectors', label: 'Connectors', count: categoryCounts.connectors },
                 { id: 'mcp', label: 'MCP', count: categoryCounts.mcp },
                 { id: 'plugins', label: 'Plugins', count: categoryCounts.plugins },
+                { id: 'tools', label: 'Tools', count: categoryCounts.tools },
+                { id: 'agents', label: 'Agents', count: categoryCounts.agents },
               ] as const
             ).map((tab) => {
               const isActive = selectedCategory === tab.id;
@@ -686,7 +638,7 @@ export default function CapabilitiesPage() {
                     setSelectedCategory(tab.id);
                     setSelectedTag('All');
                   }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-sans font-medium transition-all ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-sans font-medium transition-all ${
                     isActive
                       ? 'bg-[#181a22] text-white font-semibold shadow-xs border border-[#2c2f3d]'
                       : 'text-[#8b8e99] hover:text-[#e4e4e7] hover:bg-[#14151a]'
@@ -708,14 +660,18 @@ export default function CapabilitiesPage() {
             <button
               type="button"
               onClick={() => {
+                if (selectedCategory === 'connectors') {
+                  setConnectorsAddTrigger((prev) => prev + 1);
+                  return;
+                }
                 setNewCapCategory(selectedCategory);
                 setCreateModalOpen(true);
               }}
               aria-label="New Capability"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#181a22] border border-[#2c2f3d] text-xs font-sans font-medium text-white hover:bg-[#20222d] transition-colors shadow-xs shrink-0 ml-2"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#181a22] border border-[#2c2f3d] text-xs font-sans font-medium text-white hover:bg-[#20222d] transition-colors shadow-xs shrink-0 ml-1.5"
             >
               <svg
-                className="w-3.5 h-3.5 text-[#93c5fd]"
+                className="w-3 h-3 text-[#93c5fd]"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -729,14 +685,16 @@ export default function CapabilitiesPage() {
               </svg>
               <span>
                 {selectedCategory === 'skills'
-                  ? '+ New Skill'
-                  : selectedCategory === 'agents'
-                    ? '+ New Agent'
-                    : selectedCategory === 'tools'
-                      ? '+ New Tool'
-                      : selectedCategory === 'mcp'
-                        ? '+ New MCP Server'
-                        : '+ New Plugin'}
+                  ? 'New Skill'
+                  : selectedCategory === 'connectors'
+                    ? 'Add Connector'
+                    : selectedCategory === 'agents'
+                      ? 'New Agent'
+                      : selectedCategory === 'tools'
+                        ? 'New Tool'
+                        : selectedCategory === 'mcp'
+                          ? 'New MCP Server'
+                          : 'New Plugin'}
               </span>
             </button>
           </div>
@@ -746,16 +704,27 @@ export default function CapabilitiesPage() {
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* 2. Adaptive Multi-Paradigm Main Workbench View                             */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <section className="flex-1 flex min-h-[580px] max-h-[720px] border-b border-[#1c1d24] relative overflow-hidden bg-[#09090b]">
+      <section className="flex-1 flex min-h-0 relative overflow-hidden bg-[#09090b]">
         {selectedCategory === 'skills' && (
           <SkillsView
             skills={capabilities.filter((c) => c.category === 'skills')}
             workspaceId={workspaceId}
+            searchQuery={searchQuery}
             onToggleSkill={handleToggle}
+            onUpdateSkill={handleUpdateSkill}
+            onDeleteSkill={handleDeleteSkill}
             onOpenCreate={() => {
               setNewCapCategory('skills');
               setCreateModalOpen(true);
             }}
+          />
+        )}
+
+        {selectedCategory === 'connectors' && (
+          <ConnectorsView
+            workspaceId={workspaceId}
+            searchQuery={searchQuery}
+            openAddTrigger={connectorsAddTrigger}
           />
         )}
 
@@ -773,11 +742,13 @@ export default function CapabilitiesPage() {
           <ToolsView
             tools={capabilities.filter((c) => c.category === 'tools')}
             workspaceId={workspaceId}
+            searchQuery={searchQuery}
           />
         )}
 
         {selectedCategory === 'mcp' && (
           <McpView
+            searchQuery={searchQuery}
             onOpenCreateServer={() => {
               setNewCapCategory('mcp');
               setCreateModalOpen(true);
@@ -792,6 +763,7 @@ export default function CapabilitiesPage() {
         {selectedCategory === 'plugins' && (
           <PluginsView
             plugins={capabilities.filter((c) => c.category === 'plugins')}
+            searchQuery={searchQuery}
             onTogglePlugin={handleToggle}
             onOpenGitImport={() => {
               setImportType('plugins');
@@ -802,400 +774,7 @@ export default function CapabilitiesPage() {
       </section>
 
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      {/* 3. Collapsible Lower Tier: Skills Hub (Pixel-Perfect to References)        */}
-      {/* ────────────────────────────────────────────────────────────────────────── */}
-      <section className="bg-[#09090b] border-b border-[#1c1d24]">
-        {/* Divider Header Bar: Skills Hub + Update installed + Hide/Show browser */}
-        <div className="px-4 sm:px-6 py-2.5 border-b border-[#1c1d24] bg-[#0c0d10] flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-white tracking-tight font-sans">
-              Skills Hub
-            </span>
-            <span className="hidden sm:inline-block text-xs font-sans font-medium px-2 py-0.5 rounded-full bg-[#1c1d24] text-[#8b8e99] border border-[#2b2d38]">
-              Capabilities Hub
-            </span>
-          </div>
-
-          <div className="flex items-center gap-4 text-xs font-sans font-medium">
-            <button
-              onClick={handleUpdateInstalled}
-              className="inline-flex items-center gap-1.5 text-[#8b8e99] hover:text-white transition-colors"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              <span>Update installed</span>
-            </button>
-
-            <button
-              onClick={() => setHubBrowserOpen(!hubBrowserOpen)}
-              className="inline-flex items-center gap-1.5 text-[#8b8e99] hover:text-white transition-colors border border-[#23242c] px-2.5 py-1 rounded bg-[#14151a]"
-            >
-              <span>{hubBrowserOpen ? 'Hide the hub browser' : 'Show the hub browser'}</span>
-              <svg
-                className={`w-3.5 h-3.5 transform transition-transform ${hubBrowserOpen ? 'rotate-180' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Collapsible Hub Content */}
-        {hubBrowserOpen && (
-          <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-            {/* Hub Sub-nav: Brand + Nav links */}
-            <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#1c1d24] text-xs font-sans text-[#8b8e99]">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2 text-white font-semibold">
-                  <div className="w-5 h-5 rounded bg-[#1e2028] text-white flex items-center justify-center text-xs">
-                    ✦
-                  </div>
-                  <span>Vaeloom Agent</span>
-                </div>
-                <div className="hidden sm:flex items-center gap-3">
-                  <span className="hover:text-white cursor-pointer">Docs</span>
-                  <span
-                    onClick={() => setHubSubTab('skills')}
-                    className={`cursor-pointer transition-colors ${hubSubTab === 'skills' ? 'text-white font-semibold' : 'hover:text-white'}`}
-                  >
-                    Skills
-                  </span>
-                  <span
-                    onClick={() => setHubSubTab('plugins')}
-                    className={`cursor-pointer transition-colors ${hubSubTab === 'plugins' ? 'text-white font-semibold' : 'hover:text-white'}`}
-                  >
-                    Plugins
-                  </span>
-                  <span className="hover:text-white cursor-pointer">Download ↗</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 text-xs">
-                <span className="hidden md:inline hover:text-white cursor-pointer">
-                  🌐 English ▾
-                </span>
-                <span className="hidden md:inline hover:text-white cursor-pointer">Home ↗</span>
-                <span className="hidden md:inline hover:text-white cursor-pointer">GitHub ↗</span>
-                <span className="hidden md:inline hover:text-white cursor-pointer">Discord ↗</span>
-                <span className="px-2 py-0.5 rounded bg-[#14151a] border border-[#23242c] text-[#71717a]">
-                  Search Ctrl K
-                </span>
-              </div>
-            </div>
-
-            {/* Centered Hero: VAELOOM AGENT + Capabilities & Plugin Catalog + Subtitle */}
-            <div className="text-center py-6 sm:py-8 max-w-3xl mx-auto space-y-3">
-              <div className="inline-block">
-                <span className="text-xs font-sans tracking-wider uppercase text-[#8b8e99] font-medium">
-                  VAELOOM CATALOG
-                </span>
-              </div>
-              <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-white font-sans">
-                Capabilities &amp; Plugin Catalog
-              </h3>
-
-              {/* Sub-tab Pill Switcher: [All] [Plugins] [Skills] [Tools] [MCP] */}
-              <div className="inline-flex items-center p-0.5 rounded-full bg-[#14151a] border border-[#23242c] text-xs font-sans mt-1">
-                {(
-                  [
-                    { id: 'all', label: 'All' },
-                    { id: 'plugins', label: 'Plugins' },
-                    { id: 'skills', label: 'Skills' },
-                    { id: 'tools', label: 'Tools' },
-                    { id: 'mcp', label: 'MCP' },
-                  ] as const
-                ).map((tab) => {
-                  const isActive = hubSubTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setHubSubTab(tab.id)}
-                      className={`px-3 py-1 rounded-full transition-all text-xs ${
-                        isActive
-                          ? 'bg-[#22242e] text-white font-medium shadow-xs'
-                          : 'text-[#8b8e99] hover:text-white'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <p className="text-xs sm:text-sm text-[#a1a1aa] max-w-xl mx-auto leading-relaxed pt-1 font-sans">
-                Give Vaeloom new powers. Memory, voice, messaging, browsing, Desktop panes and more,
-                built by the community.
-              </p>
-
-              <div className="pt-1 flex items-center justify-center gap-2 font-sans">
-                <button
-                  onClick={() => setImportModalOpen(true)}
-                  className="text-xs text-[#a1a1aa] hover:text-white hover:underline font-medium inline-flex items-center gap-1 transition-colors"
-                >
-                  <span>Import URL / Git</span>
-                  <span>→</span>
-                </button>
-                <span className="text-[#52525b]">•</span>
-                <span className="text-xs text-[#71717a]">
-                  Built a plugin? Submit it to the catalog
-                </span>
-              </div>
-
-              <p className="text-xs font-sans text-[#71717a] pt-0.5">
-                {SEED_HUB_ITEMS.length}+ capabilities across 9 categories • updated recently
-              </p>
-            </div>
-
-            {/* Search Bar & Origin Filter Chips (Centered) */}
-            <div className="max-w-xl mx-auto space-y-3">
-              <div className="relative">
-                <svg
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
-                  />
-                </svg>
-                <input
-                  type="text"
-                  value={hubSearchQuery}
-                  onChange={(e) => setHubSearchQuery(e.target.value)}
-                  placeholder="Search plugins by name or by what you want Vaeloom to do"
-                  className="w-full pl-10 pr-4 py-2.5 text-xs rounded-full bg-[#121318] border border-[#23252d] text-text placeholder:text-text-muted focus:outline-none focus:border-[#3b3e4e] shadow-xs transition-all font-sans"
-                />
-              </div>
-
-              {/* Origin Filter Chips: [All], [Official], [Community] */}
-              <div className="flex items-center justify-center gap-2 text-xs font-sans">
-                <button
-                  onClick={() => setHubOriginFilter('all')}
-                  className={`px-3 py-0.5 rounded-full transition-colors border ${
-                    hubOriginFilter === 'all'
-                      ? 'bg-[#22242e] text-white font-medium border-[#3f414e] shadow-xs'
-                      : 'bg-[#14151a] text-[#8b8e99] border-[#23242c] hover:text-white hover:bg-[#1a1b22]'
-                  }`}
-                >
-                  All {SEED_HUB_ITEMS.length}
-                </button>
-                <button
-                  onClick={() => setHubOriginFilter('official')}
-                  className={`px-3 py-0.5 rounded-full transition-colors border ${
-                    hubOriginFilter === 'official'
-                      ? 'bg-[#22242e] text-white font-medium border-[#3f414e] shadow-xs'
-                      : 'bg-[#14151a] text-[#8b8e99] border-[#23242c] hover:text-white hover:bg-[#1a1b22]'
-                  }`}
-                >
-                  Official {SEED_HUB_ITEMS.filter((i) => i.isOfficial).length}
-                </button>
-                <button
-                  onClick={() => setHubOriginFilter('community')}
-                  className={`px-3 py-0.5 rounded-full transition-colors border ${
-                    hubOriginFilter === 'community'
-                      ? 'bg-[#22242e] text-white font-medium border-[#3f414e] shadow-xs'
-                      : 'bg-[#14151a] text-[#8b8e99] border-[#23242c] hover:text-white hover:bg-[#1a1b22]'
-                  }`}
-                >
-                  Community {SEED_HUB_ITEMS.filter((i) => !i.isOfficial).length}
-                </button>
-              </div>
-            </div>
-
-            {/* Category Pills Bar */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-2 no-scrollbar pt-2">
-              {HUB_CATEGORIES.map((cat) => {
-                const isSelected = selectedHubCategory === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setSelectedHubCategory(cat.id)}
-                    className={`shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-sans transition-all border ${
-                      isSelected
-                        ? 'bg-[#22242e] text-white border-white/30 shadow-xs font-medium'
-                        : 'bg-[#121318] border-[#22242d] text-[#8b8e99] hover:text-white hover:border-[#2d303b]'
-                    }`}
-                  >
-                    <span className="text-xs">{cat.icon}</span>
-                    <span>{cat.label}</span>
-                    <span className="text-2xs font-sans text-[#71717a] font-normal">
-                      {cat.count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Bento Grid: 3-column Catalog Cards */}
-            <div className="space-y-3 pt-2">
-              {/* Category subheader */}
-              <div className="flex items-center justify-between text-xs font-sans">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-white">
-                    {HUB_CATEGORIES.find((c) => c.id === selectedHubCategory)?.icon}{' '}
-                    {HUB_CATEGORY_META[selectedHubCategory]?.label || 'Desktop'}
-                  </span>
-                  <span className="text-xs text-[#71717a]">
-                    {HUB_CATEGORY_META[selectedHubCategory]?.description ||
-                      'Panes, tabs and views for Vaeloom'}
-                  </span>
-                </div>
-                {selectedHubCategory !== 'all' ? (
-                  <button
-                    onClick={() => setSelectedHubCategory('all')}
-                    className="text-[#93c5fd] hover:underline text-xs"
-                  >
-                    View all categories →
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setSelectedHubCategory('desktop')}
-                    className="text-[#93c5fd] hover:underline text-xs"
-                  >
-                    View only Desktop →
-                  </button>
-                )}
-              </div>
-
-              {/* Cards Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                {filteredHubItems.length === 0 ? (
-                  <div className="col-span-full py-12 text-center">
-                    <EmptyState
-                      title="No catalog items match criteria"
-                      description="Try selecting a different category or clearing your search term."
-                    />
-                  </div>
-                ) : (
-                  filteredHubItems.map((item) => {
-                    const isInstalled =
-                      installedCapabilityNames.has(item.name.toLowerCase()) ||
-                      installedCapabilityNames.has(item.capabilityItem.id.toLowerCase());
-
-                    return (
-                      <div
-                        key={item.id}
-                        className="group flex flex-col justify-between rounded-xl border border-[#1e2027] bg-[#111216] p-4 hover:border-[#2d303b] hover:bg-[#14161b] transition-all duration-120 shadow-xs"
-                      >
-                        <div>
-                          {/* Top: Icon + Title + Community Badge + Stars */}
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded bg-[#1a1b22] border border-[#272934] flex items-center justify-center text-xs">
-                                {item.hubCategory === 'desktop' && '💻'}
-                                {item.hubCategory === 'memory' && '🧠'}
-                                {item.hubCategory === 'platforms' && '🌐'}
-                                {item.hubCategory === 'web-browser' && '🔍'}
-                                {item.hubCategory === 'tools' && '🛠️'}
-                                {item.hubCategory === 'voice' && '🎙️'}
-                                {item.hubCategory === 'automation' && '⚡'}
-                                {item.hubCategory === 'models' && '🤖'}
-                                {item.hubCategory === 'general' && '📦'}
-                                {item.hubCategory === 'all' && '✨'}
-                              </div>
-                              <span className="font-sans text-sm font-semibold text-[#f4f4f5] group-hover:text-white">
-                                {item.name}
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <span className="px-2 py-0.5 text-2xs font-sans font-medium rounded bg-[#1a1b20] text-[#8b8e99] border border-[#282a32]">
-                                {item.isOfficial ? '✦ Official' : '✦ Community'}
-                              </span>
-                              <span className="text-xs font-sans text-[#a1a1aa] font-medium">
-                                ★ {item.stars}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Description */}
-                          <p className="text-xs text-[#9ca3af] mt-2 line-clamp-2 leading-relaxed font-sans">
-                            {item.description}
-                          </p>
-
-                          {/* Tags: Category, Tools count, Tags */}
-                          <div className="flex flex-wrap items-center gap-1.5 mt-3">
-                            <span className="px-2 py-0.5 text-2xs font-sans rounded bg-[#16171d] text-[#d4d4d8] border border-[#262833] capitalize">
-                              {item.hubCategory}
-                            </span>
-                            {item.toolsCount && (
-                              <span className="px-2 py-0.5 text-2xs font-sans rounded bg-[#16171d] text-[#8b8e99] border border-[#262833]">
-                                {item.toolsCount} tools
-                              </span>
-                            )}
-                            {item.tags.slice(0, 2).map((tag) => (
-                              <span
-                                key={tag}
-                                className="px-2 py-0.5 text-2xs font-sans rounded bg-[#14151a] text-[#71717a] border border-[#202129]"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Footer: Add to workspace / Installed */}
-                        <div className="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-[#1c1e26] text-xs font-sans">
-                          <span className="text-xs font-mono text-[#71717a]">v{item.version}</span>
-
-                          {isInstalled ? (
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              disabled
-                              className="text-xs font-sans font-medium opacity-80 cursor-default bg-[#181a22] text-[#8b8e99] border-[#252733]"
-                            >
-                              ✓ Installed
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              onClick={() => handleInstallHubItem(item)}
-                              className="text-xs font-sans font-medium shadow-xs"
-                            >
-                              + Add to workspace
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            {/* Bottom Status Hint from reference */}
-            <div className="pt-2 text-center">
-              <p className="text-xs font-sans text-[#71717a]">
-                Hit &quot;+ Add to workspace&quot; on any skill — it installs and appears in the
-                list above.
-              </p>
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* ────────────────────────────────────────────────────────────────────────── */}
-      {/* 4. Enterprise Capability Authoring & Import Studio                         */}
+      {/* Enterprise Capability Authoring & Import Studio                            */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
       <AddCapabilityModal
         isOpen={createModalOpen || importModalOpen}

@@ -1,12 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { Badge, Button, EmptyState } from '@vaeloom/ui-kit';
-import { CapabilityItem } from '@/lib/capabilities-data';
+import React, { useState, useEffect } from 'react';
+import { Button, EmptyState } from '@vaeloom/ui-kit';
+import { CapabilityItem, saveCustomCapability } from '@/lib/capabilities-data';
 import { useToast } from '@/components/shared/Toast';
-import { capabilitiesApi } from '@/lib/api-client';
 
 interface SkillsViewProps {
   skills: CapabilityItem[];
@@ -14,6 +11,8 @@ interface SkillsViewProps {
   searchQuery?: string;
   onToggleSkill: (id: string) => void;
   onOpenCreate: () => void;
+  onUpdateSkill?: (item: CapabilityItem) => void;
+  onDeleteSkill?: (id: string) => void;
 }
 
 export const SkillsView: React.FC<SkillsViewProps> = ({
@@ -22,26 +21,25 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
   searchQuery = '',
   onToggleSkill,
   onOpenCreate,
+  onUpdateSkill,
+  onDeleteSkill,
 }) => {
   const { toast } = useToast();
   const [selectedSkillId, setSelectedSkillId] = useState<string>(
     skills[0]?.id || 'skill-acceptance-criteria-review',
   );
-  const [localSearch, setLocalSearch] = useState('');
   const [sortBy, setSortBy] = useState<'most-used' | 'alphabetical' | 'recent'>('most-used');
   const [tabView, setTabView] = useState<'installed' | 'browse'>('installed');
-  const [detailSubTab, setDetailSubTab] = useState<'doc' | 'schema' | 'test'>('doc');
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
 
-  // Test playground state
-  const [testInputJson, setTestInputJson] = useState(
-    '{\n  "query": "acceptance criteria review test",\n  "limit": 5\n}',
-  );
-  const [testRunning, setTestRunning] = useState(false);
-  const [testOutput, setTestOutput] = useState<string | null>(null);
-  const [testLatency, setTestLatency] = useState<number | null>(null);
+  // Editable instruction state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedDoc, setEditedDoc] = useState('');
 
-  const effectiveQuery = (searchQuery || localSearch).trim().toLowerCase();
+  const installedCount = skills.filter((s) => s.enabled).length;
+  const browseCount = skills.filter((s) => !s.enabled).length;
+
+  const effectiveQuery = searchQuery.trim().toLowerCase();
   const filteredSkills = skills.filter((item) => {
     if (tabView === 'installed' && !item.enabled) return false;
     if (tabView === 'browse' && item.enabled) return false;
@@ -53,124 +51,80 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
     );
   });
 
-  const selectedItem =
-    filteredSkills.find((s) => s.id === selectedSkillId) || filteredSkills[0] || null;
+  // Dynamic sorting based on sortBy selection
+  const sortedSkills = [...filteredSkills].sort((a, b) => {
+    if (sortBy === 'alphabetical') {
+      return a.name.localeCompare(b.name);
+    }
+    if (sortBy === 'recent') {
+      return (b.lastUsed || '').localeCompare(a.lastUsed || '');
+    }
+    return (b.usageCount || 0) - (a.usageCount || 0);
+  });
 
-  React.useEffect(() => {
-    if (filteredSkills.length > 0) {
-      if (!selectedSkillId || !filteredSkills.some((i) => i.id === selectedSkillId)) {
-        setSelectedSkillId(filteredSkills[0]?.id || '');
+  const selectedItem =
+    sortedSkills.find((s) => s.id === selectedSkillId) || sortedSkills[0] || null;
+
+  useEffect(() => {
+    if (sortedSkills.length > 0) {
+      if (!selectedSkillId || !sortedSkills.some((i) => i.id === selectedSkillId)) {
+        setSelectedSkillId(sortedSkills[0]?.id || '');
       }
     } else {
       setSelectedSkillId('');
     }
-  }, [filteredSkills, selectedSkillId]);
+  }, [sortedSkills, selectedSkillId]);
 
-  const handleCopyDefinition = () => {
+  // Sync instruction doc when selected item changes
+  useEffect(() => {
+    if (selectedItem) {
+      setEditedDoc(selectedItem.markdownDoc || '');
+      setIsEditing(false);
+    }
+  }, [selectedItem?.id]);
+
+  const handleCopyInstructions = () => {
     if (!selectedItem) return;
-    navigator.clipboard.writeText(selectedItem.markdownDoc);
-    toast({ tone: 'info', title: `Copied ${selectedItem.name} definition to clipboard` });
+    const textToCopy = isEditing ? editedDoc : selectedItem.markdownDoc;
+    navigator.clipboard.writeText(textToCopy);
+    toast({ tone: 'info', title: `Copied instructions for ${selectedItem.name}` });
   };
 
-  const handleRunTest = async () => {
+  const handleSave = () => {
     if (!selectedItem) return;
-    setTestRunning(true);
-    setTestOutput(null);
-    try {
-      let parsedInput = {};
-      try {
-        parsedInput = JSON.parse(testInputJson);
-      } catch {
-        toast({ tone: 'error', title: 'Invalid JSON in test payload' });
-        setTestRunning(false);
-        return;
-      }
-
-      const res = await capabilitiesApi.test({
-        workspaceId,
-        capabilityName: selectedItem.name,
-        category: 'skills',
-        inputPayload: parsedInput,
-      });
-      setTestOutput(JSON.stringify(res.result || { ok: true, status: 'verified' }, null, 2));
-      setTestLatency(res.executionDurationMs || 34);
-      toast({
-        tone: 'success',
-        title: `Test run succeeded for ${selectedItem.name}`,
-        detail: `Executed in ${res.executionDurationMs || 34}ms.`,
-      });
-    } catch {
-      setTestOutput(
-        JSON.stringify(
-          {
-            ok: true,
-            status: 'skill_evaluated',
-            skill: selectedItem.name,
-            timestamp: new Date().toISOString(),
-          },
-          null,
-          2,
-        ),
-      );
-      setTestLatency(25);
-      toast({ tone: 'success', title: 'Test run completed (simulated)' });
-    } finally {
-      setTestRunning(false);
+    const updated: CapabilityItem = {
+      ...selectedItem,
+      markdownDoc: editedDoc,
+    };
+    saveCustomCapability(workspaceId, updated);
+    if (onUpdateSkill) {
+      onUpdateSkill(updated);
     }
+    setIsEditing(false);
+    toast({
+      tone: 'success',
+      title: `Saved instructions for ${selectedItem.name}`,
+      detail: 'Changes persisted to workspace configuration.',
+    });
+  };
+
+  const handleCancel = () => {
+    if (selectedItem) {
+      setEditedDoc(selectedItem.markdownDoc || '');
+    }
+    setIsEditing(false);
   };
 
   return (
     <div className="flex-1 flex min-h-0 bg-[#09090b] overflow-hidden">
       {/* Left Column: Capability List with 1 Most used sort */}
       <div
-        className={`w-full lg:w-[360px] xl:w-[390px] shrink-0 border-r border-[#1c1d24] bg-[#0c0d10] flex flex-col min-h-0 ${
+        className={`w-full lg:w-[320px] xl:w-[350px] shrink-0 border-r border-[#1c1d24] bg-[#0c0d10] flex flex-col min-h-0 ${
           mobileDetailOpen ? 'hidden lg:flex' : 'flex'
         }`}
       >
-        {/* Search & Top Toolbar */}
-        <div className="p-3 border-b border-[#1c1d24] bg-[#0c0d10] space-y-2 shrink-0">
-          <div className="relative">
-            <svg
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#71717a] pointer-events-none"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
-              />
-            </svg>
-            <input
-              type="text"
-              placeholder="Filter installed skills..."
-              value={localSearch}
-              onChange={(e) => setLocalSearch(e.target.value)}
-              className="w-full bg-[#14151a] border border-[#23242c] rounded-md pl-8 pr-7 py-1.5 text-xs text-[#f4f4f5] placeholder-[#71717a] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/40 transition-all font-sans"
-            />
-            {localSearch && (
-              <button
-                type="button"
-                onClick={() => setLocalSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-[#71717a] hover:text-[#f4f4f5] p-0.5 transition-colors"
-                title="Clear search"
-                aria-label="Clear search"
-              >
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            )}
-          </div>
-
+        {/* Top Toolbar */}
+        <div className="p-3 border-b border-[#1c1d24] bg-[#0c0d10] shrink-0">
           <div className="flex items-center justify-between gap-2">
             <select
               value={sortBy}
@@ -178,7 +132,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
               className="bg-transparent border-0 text-xs font-sans text-[#8b8e99] hover:text-[#e4e4e7] focus:outline-none cursor-pointer"
             >
               <option value="most-used" className="bg-[#14151a] text-[#f4f4f5]">
-                1 Most used
+                Most used
               </option>
               <option value="alphabetical" className="bg-[#14151a] text-[#f4f4f5]">
                 Alphabetical
@@ -199,7 +153,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                       : 'text-[#71717a] hover:text-[#d4d4d8]'
                   }`}
                 >
-                  Installed
+                  Installed ({installedCount})
                 </button>
                 <button
                   type="button"
@@ -210,7 +164,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                       : 'text-[#71717a] hover:text-[#d4d4d8]'
                   }`}
                 >
-                  Browse
+                  Browse ({browseCount})
                 </button>
               </div>
 
@@ -237,7 +191,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
 
         {/* Scrollable Capability Items */}
         <div className="flex-1 overflow-y-auto divide-y divide-[#17181f] p-1.5 space-y-0.5">
-          {filteredSkills.length === 0 ? (
+          {sortedSkills.length === 0 ? (
             <div className="p-8">
               <EmptyState
                 title="No skills found"
@@ -247,7 +201,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
               />
             </div>
           ) : (
-            filteredSkills.map((item) => {
+            sortedSkills.map((item) => {
               const isSelected = item.id === selectedSkillId;
               return (
                 <div
@@ -265,7 +219,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <span
-                        className={`text-sm font-sans font-medium tracking-tight truncate ${
+                        className={`text-xs font-sans font-medium tracking-tight truncate ${
                           isSelected
                             ? 'text-white font-semibold'
                             : 'text-[#d4d4d8] group-hover:text-white'
@@ -274,13 +228,37 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                         {item.name}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1 mt-1">
-                      <span className="px-1.5 py-0.2 rounded text-2xs font-sans font-medium bg-[#1a1b22] text-[#8b8e99] border border-[#242630]">
-                        General
-                      </span>
-                      <span className="px-1.5 py-0.2 rounded text-2xs font-sans font-medium bg-[#171e2e] text-[#93c5fd] border border-[#202c46]">
-                        Learned
-                      </span>
+                    <div className="flex items-center gap-1 mt-1 flex-wrap">
+                      {item.source && (
+                        <span
+                          className={`px-1.5 py-0.2 rounded text-2xs font-sans font-medium capitalize ${
+                            item.source === 'custom'
+                              ? 'bg-[#1c2233] text-[#93c5fd] border border-[#252f48]'
+                              : item.source === 'learned'
+                                ? 'bg-[#221c33] text-[#c4b5fd] border border-[#312548]'
+                                : 'bg-[#181920] text-[#9ca3af] border border-[#272934]'
+                          }`}
+                        >
+                          {item.source}
+                        </span>
+                      )}
+                      {item.tags
+                        ?.filter(
+                          (t) =>
+                            t.toLowerCase() !== item.source.toLowerCase() &&
+                            t.toLowerCase() !== 'general' &&
+                            t.toLowerCase() !== 'learned' &&
+                            t.toLowerCase() !== 'built-in',
+                        )
+                        .slice(0, 2)
+                        .map((tag) => (
+                          <span
+                            key={tag}
+                            className="px-1.5 py-0.2 rounded text-2xs font-sans font-medium bg-[#14151a] text-[#8b8e99] border border-[#23242c]"
+                          >
+                            {tag}
+                          </span>
+                        ))}
                     </div>
                   </div>
 
@@ -309,7 +287,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
         </div>
       </div>
 
-      {/* Right Column: Deep Detail Inspector (Pixel-Matched to Screenshot) */}
+      {/* Right Column: Deep Detail Inspector */}
       <div
         className={`flex-1 flex flex-col min-h-0 bg-[#09090b] overflow-hidden ${
           mobileDetailOpen ? 'flex' : 'hidden lg:flex'
@@ -318,255 +296,194 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
         {selectedItem ? (
           <div className="flex-1 flex flex-col min-h-0">
             {/* Detail Header & Action Links */}
-            <div className="p-5 sm:p-6 border-b border-[#1c1d24] bg-[#0c0d10] shrink-0 font-sans">
+            <div className="p-4 sm:p-5 border-b border-[#1c1d24] bg-[#0c0d10] shrink-0 font-sans">
               <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white font-sans">
-                    {selectedItem.name}
-                  </h2>
-                  <span className="px-2 py-0.5 text-xs font-sans font-medium rounded bg-[#1e2027] text-[#9ca3af] border border-[#282a34]">
-                    General
-                  </span>
-                  <span className="px-2 py-0.5 text-xs font-sans font-medium rounded bg-[#1c2233] text-[#93c5fd] border border-[#252f48]">
-                    Learned
-                  </span>
+                {/* Back button on mobile */}
+                <div className="lg:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setMobileDetailOpen(false)}
+                    className="text-xs text-[#8b8e99] hover:text-white inline-flex items-center gap-1 mb-1"
+                  >
+                    <span>← Back to list</span>
+                  </button>
                 </div>
 
-                <p className="text-sm text-text-muted leading-relaxed max-w-2xl mt-0.5 font-sans">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-base sm:text-lg font-semibold tracking-tight text-white font-sans truncate">
+                    {selectedItem.name}
+                  </h2>
+                  {selectedItem.source && (
+                    <span
+                      className={`px-1.5 py-0.5 text-2xs font-sans font-medium rounded capitalize ${
+                        selectedItem.source === 'custom'
+                          ? 'bg-[#1c2233] text-[#93c5fd] border border-[#252f48]'
+                          : selectedItem.source === 'learned'
+                            ? 'bg-[#221c33] text-[#c4b5fd] border border-[#312548]'
+                            : 'bg-[#181920] text-[#9ca3af] border border-[#272934]'
+                      }`}
+                    >
+                      {selectedItem.source}
+                    </span>
+                  )}
+                  {selectedItem.tags
+                    ?.filter(
+                      (t) =>
+                        t.toLowerCase() !== selectedItem.source.toLowerCase() &&
+                        t.toLowerCase() !== 'general' &&
+                        t.toLowerCase() !== 'learned' &&
+                        t.toLowerCase() !== 'built-in',
+                    )
+                    .slice(0, 3)
+                    .map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-1.5 py-0.5 text-2xs font-sans font-medium rounded bg-[#14151a] text-[#8b8e99] border border-[#23242c]"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                </div>
+
+                <p className="text-xs text-[#8b8e99] leading-relaxed max-w-2xl mt-0.5 font-sans">
                   {selectedItem.description}
                 </p>
 
                 {/* Action Links Bar */}
                 <div className="flex items-center gap-4 mt-2 text-xs font-sans font-medium">
+                  {isEditing ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleSave}
+                        className="text-primary hover:text-primary-hover font-semibold transition-colors flex items-center gap-1"
+                      >
+                        <span>Save Changes</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancel}
+                        className="text-[#8b8e99] hover:text-white transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditing(true)}
+                        className="text-[#8b8e99] hover:text-white transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onToggleSkill(selectedItem.id)}
+                        className="text-[#ef4444] hover:text-[#f87171] transition-colors"
+                      >
+                        {selectedItem.enabled ? 'Archive' : 'Restore'}
+                      </button>
+                      {onDeleteSkill &&
+                        (selectedItem.source === 'custom' ||
+                          selectedItem.id.startsWith('custom-')) && (
+                          <button
+                            type="button"
+                            onClick={() => onDeleteSkill(selectedItem.id)}
+                            className="text-[#71717a] hover:text-[#ef4444] transition-colors text-xs"
+                          >
+                            Delete
+                          </button>
+                        )}
+                    </>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setDetailSubTab('doc')}
-                    className="text-[#8b8e99] hover:text-white transition-colors"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onToggleSkill(selectedItem.id)}
-                    className="text-[#ef4444] hover:text-[#f87171] transition-colors"
-                  >
-                    Archive
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDetailSubTab('test')}
-                    className="text-[#93c5fd] hover:text-white transition-colors inline-flex items-center gap-1"
-                  >
-                    <span>Test Run</span>
-                    <span>→</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCopyDefinition}
-                    title="Copy full definition"
-                    className="text-[#8b8e99] hover:text-white transition-colors ml-auto"
-                    aria-label="Copy full definition"
+                    onClick={handleCopyInstructions}
+                    title="Copy full instructions to clipboard"
+                    className="text-[#8b8e99] hover:text-white transition-colors ml-auto text-2xs flex items-center gap-1"
+                    aria-label="Copy full instructions"
                   >
                     <svg
                       className="w-3.5 h-3.5"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
+                      strokeWidth={1.75}
                     >
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        strokeWidth={1.75}
-                        d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9 9 9 0 00-9 9m16.5 0a9 9 0 01-9 9"
+                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
                       />
                     </svg>
-                  </button>
-                </div>
-
-                {/* Metadata Box */}
-                <div className="mt-3 rounded-lg bg-[#111216] border border-[#1e2027] p-3.5 space-y-2 text-xs font-sans">
-                  <div className="grid grid-cols-1 sm:grid-cols-[100px_1fr] gap-1 sm:gap-2">
-                    <span className="text-[#71717a] font-medium">name</span>
-                    <span className="text-[#e4e4e7] font-medium">
-                      {selectedItem.name.replace(/-/g, ' ')}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-[100px_1fr] gap-1 sm:gap-2">
-                    <span className="text-[#71717a] font-medium">description</span>
-                    <span className="text-[#d4d4d8] leading-relaxed">
-                      {selectedItem.description}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Subtabs Bar */}
-                <div className="flex items-center gap-4 mt-3 border-b border-[#1c1d24]">
-                  <button
-                    type="button"
-                    onClick={() => setDetailSubTab('doc')}
-                    className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px ${
-                      detailSubTab === 'doc'
-                        ? 'border-primary text-white font-semibold'
-                        : 'border-transparent text-[#71717a] hover:text-[#d4d4d8]'
-                    }`}
-                  >
-                    Documentation & Rules
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDetailSubTab('schema')}
-                    className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px ${
-                      detailSubTab === 'schema'
-                        ? 'border-primary text-white font-semibold'
-                        : 'border-transparent text-[#71717a] hover:text-[#d4d4d8]'
-                    }`}
-                  >
-                    Schema & Parameters
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDetailSubTab('test')}
-                    className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px ${
-                      detailSubTab === 'test'
-                        ? 'border-primary text-white font-semibold'
-                        : 'border-transparent text-[#71717a] hover:text-[#d4d4d8]'
-                    }`}
-                  >
-                    Test Playground
+                    <span>Copy Spec</span>
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Detail Content Body */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#09090b] min-h-0">
-              {detailSubTab === 'doc' && (
-                <div className="bg-[#0b0c10] border border-[#1b1d24] rounded-xl p-5 shadow-xs font-sans text-sm leading-relaxed text-[#d4d4d8]">
-                  <div className="prose prose-invert prose-sm max-w-none font-sans prose-headings:font-sans prose-headings:font-semibold prose-headings:text-white prose-p:font-sans prose-p:text-[#a1a1aa] prose-p:leading-relaxed prose-li:font-sans prose-li:text-[#a1a1aa] prose-code:font-mono prose-code:text-[#93c5fd] prose-code:bg-[#161822] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-pre:font-mono prose-pre:bg-[#12131a] prose-pre:border prose-pre:border-[#222430]">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {selectedItem.markdownDoc}
-                    </ReactMarkdown>
+            {/* Detail Content Body: Clean Monospace Instructions */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-[#09090b] min-h-0 space-y-3.5">
+              {isEditing ? (
+                <div className="rounded-xl border border-[#2c2f3d] bg-[#0c0d12] p-4 shadow-md space-y-3">
+                  <div className="flex items-center justify-between text-2xs font-sans text-[#8b8e99] pb-2 border-b border-[#1c1d24]">
+                    <span className="flex items-center gap-1.5 text-amber-400 font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                      Editing Instructions (Markdown)
+                    </span>
+                    <span className="font-mono text-[#71717a]">
+                      Ctrl+Enter to save • Esc to cancel
+                    </span>
                   </div>
-                </div>
-              )}
-
-              {detailSubTab === 'schema' && (
-                <div className="space-y-4 font-sans">
-                  <div>
-                    <h4 className="text-xs font-sans font-medium uppercase tracking-wider text-[#71717a] mb-1.5">
-                      Input Argument Schema
-                    </h4>
-                    <div className="bg-[#0b0c10] border border-[#1b1d24] rounded-xl p-4 overflow-x-auto font-mono text-xs text-[#a1a1aa]">
-                      <pre>
-                        {selectedItem.inputSchema
-                          ? JSON.stringify(selectedItem.inputSchema, null, 2)
-                          : '// Ambient context - no formal input schema required'}
-                      </pre>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {detailSubTab === 'test' && (
-                <div className="space-y-4 max-w-3xl font-sans">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-sans font-medium uppercase tracking-wider text-[#71717a]">
-                      Test Input Payload (JSON)
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setTestInputJson(
-                          JSON.stringify(
-                            { query: 'master resume skills graph', limit: 5 },
-                            null,
-                            2,
-                          ),
-                        )
-                      }
-                      className="text-xs font-sans text-primary hover:underline"
-                    >
-                      Reset to Sample
-                    </button>
-                  </div>
-
                   <textarea
-                    rows={6}
-                    value={testInputJson}
-                    onChange={(e) => setTestInputJson(e.target.value)}
-                    className="w-full bg-[#0b0c10] border border-[#1b1d24] rounded-xl p-3.5 font-mono text-xs text-[#e4e4e7] focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
+                    value={editedDoc}
+                    onChange={(e) => setEditedDoc(e.target.value)}
+                    onKeyDown={(e) => {
+                      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                        e.preventDefault();
+                        handleSave();
+                      } else if (e.key === 'Escape') {
+                        handleCancel();
+                      }
+                    }}
+                    aria-label="Skill Instructions"
+                    rows={20}
+                    className="w-full font-mono text-xs text-[#f4f4f5] bg-[#08090c] border border-[#1f212a] focus:border-primary focus:ring-1 focus:ring-primary/30 rounded-lg p-3.5 leading-relaxed outline-none resize-y"
+                    placeholder="# Enter skill rules, triggers and instructions in markdown..."
                   />
-
-                  <div>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={handleRunTest}
-                      disabled={testRunning}
-                      className="shadow-xs font-medium inline-flex items-center gap-2 text-xs"
-                    >
-                      {testRunning ? (
-                        <>
-                          <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span>Executing run…</span>
-                        </>
-                      ) : (
-                        <>
-                          <svg
-                            className="w-3.5 h-3.5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"
-                            />
-                          </svg>
-                          <span>Execute Run</span>
-                        </>
-                      )}
-                    </Button>
-                  </div>
-
-                  {testOutput && (
-                    <div className="mt-4">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <h4 className="text-xs font-sans font-medium uppercase tracking-wider text-[#71717a]">
-                          Execution Output
-                        </h4>
-                        <div className="flex items-center gap-2">
-                          {testLatency && (
-                            <span className="text-xs font-mono text-[#71717a]">
-                              {testLatency}ms latency
-                            </span>
-                          )}
-                          <Badge variant="success" size="sm">
-                            200 OK
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className="bg-[#0b0c10] border border-[#1b1d24] rounded-xl p-4 overflow-x-auto font-mono text-xs text-[#22c55e]">
-                        <pre>{testOutput}</pre>
-                      </div>
+                  <div className="flex items-center justify-between pt-1 text-2xs font-sans">
+                    <span className="text-[#71717a] font-mono">
+                      {editedDoc.split('\n').length} lines • {editedDoc.length} characters
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleCancel}
+                        className="text-xs font-sans"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handleSave}
+                        className="text-xs font-sans font-medium shadow-xs"
+                      >
+                        Save Changes
+                      </Button>
                     </div>
-                  )}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-[#1e2028] bg-[#0c0d12] p-4 sm:p-5 shadow-xs">
+                  <pre className="font-mono text-xs text-[#d4d4d8] leading-relaxed whitespace-pre-wrap select-text font-normal">
+                    {selectedItem.markdownDoc}
+                  </pre>
                 </div>
               )}
             </div>
-
-            {/* Bottom Status Bar */}
-            <footer className="px-5 py-2.5 border-t border-[#1c1d24] bg-[#0c0d10] flex items-center justify-between text-xs font-sans text-[#71717a] shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
-                <span>Changes apply to new sessions</span>
-              </div>
-              <div>
-                <span>v{selectedItem.version || '1.0.0'}</span>
-              </div>
-            </footer>
           </div>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">

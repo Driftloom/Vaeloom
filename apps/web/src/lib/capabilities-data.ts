@@ -1,4 +1,4 @@
-export type CapabilityCategory = 'agents' | 'skills' | 'tools' | 'mcp' | 'plugins';
+export type CapabilityCategory = 'agents' | 'skills' | 'tools' | 'mcp' | 'plugins' | 'connectors';
 
 export interface CapabilityItem {
   id: string;
@@ -291,7 +291,7 @@ Implements automated critique and RLAIF reflection loops over completed agent se
     id: 'skill-acceptance-criteria-review',
     name: 'acceptance-criteria-review',
     category: 'skills',
-    tags: ['General', 'Learned', 'QA'],
+    tags: ['QA', 'Testing'],
     description:
       'Use this skill when you need to review acceptance criteria for ambiguity, missing rules, and verifiability; triggers include acceptance criteria review.',
     enabled: true,
@@ -324,7 +324,7 @@ Implements automated critique and RLAIF reflection loops over completed agent se
     id: 'skill-accessibility-testing',
     name: 'accessibility-testing',
     category: 'skills',
-    tags: ['General', 'Learned', 'A11y'],
+    tags: ['A11y', 'WCAG'],
     description:
       'Conduct WCAG 2.1 AA audits across web UI surfaces, inspecting contrast ratios, screen reader semantics, and focus traps.',
     enabled: true,
@@ -347,7 +347,7 @@ Implements automated critique and RLAIF reflection loops over completed agent se
     id: 'skill-agent-building',
     name: 'agent-building',
     category: 'skills',
-    tags: ['Agent', 'Built-in', 'Architecture'],
+    tags: ['Agent', 'Architecture'],
     description:
       'Comprehensive blueprint for designing, implementing, testing, and hardening autonomous AI agents from scratch.',
     enabled: true,
@@ -370,7 +370,7 @@ Implements automated critique and RLAIF reflection loops over completed agent se
     id: 'skill-agentic-workflows',
     name: 'agentic-workflows',
     category: 'skills',
-    tags: ['Agent', 'Built-in', 'Workflows'],
+    tags: ['Agent', 'Workflows'],
     description:
       'Architecture, design patterns, and operational standards for autonomous agentic workflows, sub-goal decomposition, and memory tiers.',
     enabled: true,
@@ -392,7 +392,7 @@ Implements automated critique and RLAIF reflection loops over completed agent se
     id: 'skill-autoplan',
     name: 'autoplan',
     category: 'skills',
-    tags: ['Review', 'Learned', 'GStack'],
+    tags: ['Review', 'GStack'],
     description:
       'Auto-review pipeline running CEO, design, eng, and DX reviews sequentially with auto-decisions using 6 principles.',
     enabled: true,
@@ -417,7 +417,7 @@ Implements automated critique and RLAIF reflection loops over completed agent se
     id: 'skill-ats-resume-builder',
     name: 'ats-resume-builder',
     category: 'skills',
-    tags: ['Career', 'Built-in', 'Templates'],
+    tags: ['Career', 'Templates'],
     description:
       'Parses job descriptions, matches skill gaps, tailors achievement bullets, and compiles clean single-page PDF resumes.',
     enabled: true,
@@ -440,7 +440,7 @@ Implements automated critique and RLAIF reflection loops over completed agent se
     id: 'skill-check-work',
     name: 'check-work',
     category: 'skills',
-    tags: ['QA', 'Learned', 'Verification'],
+    tags: ['QA', 'Verification'],
     description:
       'Verification subagent that reviews git diffs, executes test suites, checks linting, and validates functional correctness.',
     enabled: true,
@@ -463,7 +463,7 @@ Implements automated critique and RLAIF reflection loops over completed agent se
     id: 'skill-deep-learning-rag-evals',
     name: 'deep-learning-rag-evals',
     category: 'skills',
-    tags: ['AI', 'Built-in', 'RAG'],
+    tags: ['AI', 'RAG'],
     description:
       'Evaluates vector embeddings, hybrid dense-sparse retrieval, cross-encoder rerankers, and context recall metrics.',
     enabled: true,
@@ -485,7 +485,7 @@ Implements automated critique and RLAIF reflection loops over completed agent se
     id: 'skill-frontend-design',
     name: 'frontend-design',
     category: 'skills',
-    tags: ['Design', 'Built-in', 'UI-UX'],
+    tags: ['Design', 'UI-UX'],
     description:
       'Guidance for distinctive, intentional visual design, typography, spacing hierarchies, and theme token alignment.',
     enabled: true,
@@ -508,7 +508,7 @@ Implements automated critique and RLAIF reflection loops over completed agent se
     id: 'skill-llm-engineering',
     name: 'llm-engineering',
     category: 'skills',
-    tags: ['AI', 'Built-in', 'Prompts'],
+    tags: ['AI', 'Prompts'],
     description:
       'Production-grade LLM engineering, structured output enforcement (Pydantic/JSON schema), prompt caching, and token budgeting.',
     enabled: true,
@@ -530,7 +530,7 @@ Implements automated critique and RLAIF reflection loops over completed agent se
     id: 'skill-system-design',
     name: 'system-design',
     category: 'skills',
-    tags: ['Engineering', 'Built-in', 'Distributed'],
+    tags: ['Infra', 'Distributed'],
     description:
       'Enterprise distributed systems engineering: high-availability, sharding, caching topologies, and disaster recovery.',
     enabled: true,
@@ -552,7 +552,7 @@ Implements automated critique and RLAIF reflection loops over completed agent se
     id: 'skill-ui-ux-pro-max',
     name: 'ui-ux-pro-max',
     category: 'skills',
-    tags: ['Design', 'Learned', 'Intelligence'],
+    tags: ['Design', 'Intelligence'],
     description:
       'UI/UX design intelligence containing 99 guidelines, WCAG AA standards, interaction rules, and responsive patterns.',
     enabled: true,
@@ -952,7 +952,10 @@ export function getStoredCapabilities(workspaceId: string): CapabilityItem[] {
       customItems = JSON.parse(customRaw) as CapabilityItem[];
     }
 
-    const allBase = [...customItems, ...SEED_CAPABILITIES];
+    const seedRemaining = SEED_CAPABILITIES.filter(
+      (seed) => !customItems.some((c) => c.id === seed.id),
+    );
+    const allBase = [...customItems, ...seedRemaining];
     if (raw) {
       const storedMap = JSON.parse(raw) as Record<string, boolean>;
       return allBase.map((item) => ({
@@ -999,6 +1002,30 @@ export function setStoredCapabilityEnabled(
     }
   }
   return updated;
+}
+
+export function deleteCustomCapability(
+  workspaceId: string,
+  capabilityId: string,
+): CapabilityItem[] {
+  if (typeof window === 'undefined') return SEED_CAPABILITIES;
+  try {
+    const customRaw = localStorage.getItem(`${CUSTOM_STORAGE_KEY_PREFIX}${workspaceId}`);
+    if (customRaw) {
+      const customItems: CapabilityItem[] = JSON.parse(customRaw);
+      const filtered = customItems.filter((c) => c.id !== capabilityId);
+      localStorage.setItem(`${CUSTOM_STORAGE_KEY_PREFIX}${workspaceId}`, JSON.stringify(filtered));
+    }
+    const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${workspaceId}`);
+    if (raw) {
+      const stateMap: Record<string, boolean> = JSON.parse(raw);
+      delete stateMap[capabilityId];
+      localStorage.setItem(`${STORAGE_KEY_PREFIX}${workspaceId}`, JSON.stringify(stateMap));
+    }
+  } catch {
+    // ignore
+  }
+  return getStoredCapabilities(workspaceId);
 }
 
 // ─── Hub Discovery Catalog (Marketplace & Community Browser) ───────────────
@@ -1845,13 +1872,13 @@ export const SEED_HUB_ITEMS: HubCapabilityItem[] = [
     isOfficial: true,
     stars: 175,
     version: '2.1.0',
-    tags: ['General', 'PDF', 'Markdown'],
+    tags: ['Doc', 'PDF', 'Markdown'],
     author: 'Vaeloom Official',
     capabilityItem: {
       id: 'plugin-markdown-pdf-compiler',
       name: 'markdown-pdf-compiler',
       category: 'plugins',
-      tags: ['General', 'PDF', 'Markdown'],
+      tags: ['Doc', 'PDF', 'Markdown'],
       description: 'Headless document compiler generating publication-ready PDFs from Markdown.',
       enabled: true,
       source: 'built-in',
@@ -1873,13 +1900,13 @@ export const SEED_HUB_ITEMS: HubCapabilityItem[] = [
     isOfficial: false,
     stars: 84,
     version: '1.2.0',
-    tags: ['General', 'Diff', 'Patch'],
+    tags: ['Git', 'Diff', 'Patch'],
     author: 'Community',
     capabilityItem: {
       id: 'tool-document-diff-engine',
       name: 'document-diff-engine',
       category: 'tools',
-      tags: ['General', 'Diff', 'Patch'],
+      tags: ['Git', 'Diff', 'Patch'],
       description: 'Myers diffing and semantic patch generator for comparing document revisions.',
       enabled: true,
       source: 'community',
@@ -1901,13 +1928,13 @@ export const SEED_HUB_ITEMS: HubCapabilityItem[] = [
     isOfficial: false,
     stars: 62,
     version: '1.0.1',
-    tags: ['General', 'Regex', 'Parser'],
+    tags: ['Text', 'Regex', 'Parser'],
     author: 'Community',
     capabilityItem: {
       id: 'skill-regex-pattern-extractor',
       name: 'regex-pattern-extractor',
       category: 'skills',
-      tags: ['General', 'Regex', 'Parser'],
+      tags: ['Text', 'Regex', 'Parser'],
       description: 'Synthesizes and audits regex patterns for unstructured text parsing.',
       enabled: true,
       source: 'community',

@@ -6,6 +6,7 @@ import { useToast } from '@/components/shared/Toast';
 
 interface PluginsViewProps {
   plugins: CapabilityItem[];
+  searchQuery?: string;
   onTogglePlugin: (id: string) => void;
   onOpenGitImport: () => void;
 }
@@ -55,6 +56,7 @@ const DEFAULT_BUILTIN_PLUGINS: BuiltinPluginConfig[] = [
 
 export const PluginsView: React.FC<PluginsViewProps> = ({
   plugins,
+  searchQuery = '',
   onTogglePlugin,
   onOpenGitImport,
 }) => {
@@ -66,6 +68,28 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
     'builtin-kanban': { desktop: true, agent: true },
     'builtin-radio': { desktop: false, agent: true },
   });
+
+  const effectiveQuery = searchQuery.trim().toLowerCase();
+
+  const filteredBuiltins = React.useMemo(() => {
+    if (!effectiveQuery) return DEFAULT_BUILTIN_PLUGINS;
+    return DEFAULT_BUILTIN_PLUGINS.filter(
+      (p) =>
+        p.name.toLowerCase().includes(effectiveQuery) ||
+        p.description.toLowerCase().includes(effectiveQuery) ||
+        p.badges.some((b) => b.toLowerCase().includes(effectiveQuery)),
+    );
+  }, [effectiveQuery]);
+
+  const filteredCustom = React.useMemo(() => {
+    if (!effectiveQuery) return plugins;
+    return plugins.filter(
+      (p) =>
+        p.name.toLowerCase().includes(effectiveQuery) ||
+        p.description.toLowerCase().includes(effectiveQuery) ||
+        p.tags.some((t) => t.toLowerCase().includes(effectiveQuery)),
+    );
+  }, [plugins, effectiveQuery]);
 
   const toggleBuiltin = (pluginId: string, target: 'desktop' | 'agent') => {
     setBuiltinStates((prev) => {
@@ -222,8 +246,14 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
 
           {/* Table Body */}
           <div className="divide-y divide-[#17181f]">
+            {filteredBuiltins.length === 0 && filteredCustom.length === 0 && effectiveQuery ? (
+              <div className="p-8 text-center text-xs text-[#71717a] font-sans">
+                No plugins match your filter.
+              </div>
+            ) : null}
+
             {/* 1. Bundled Plugins (Bots, Kanban, Radio) */}
-            {DEFAULT_BUILTIN_PLUGINS.map((p) => {
+            {filteredBuiltins.map((p) => {
               const state = builtinStates[p.id] || {
                 desktop: p.desktopEnabled,
                 agent: p.agentEnabled,
@@ -302,7 +332,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
             })}
 
             {/* 2. Workspace Plugins from Data */}
-            {plugins.map((item) => (
+            {filteredCustom.map((item) => (
               <div
                 key={item.id}
                 className="grid grid-cols-[1fr_120px_160px] sm:grid-cols-[1fr_140px_200px] items-center px-5 py-4 hover:bg-[#121319] transition-colors"

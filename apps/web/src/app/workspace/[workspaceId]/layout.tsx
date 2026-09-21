@@ -145,7 +145,9 @@ export default function WorkspaceLayout({
           <div
             tabIndex={-1}
             className={`flex-1 focus:outline-none ${
-              pathname?.endsWith('/chat') || pathname?.includes('/chat/')
+              pathname?.endsWith('/chat') ||
+              pathname?.includes('/chat/') ||
+              pathname?.includes('/capabilities')
                 ? 'flex flex-col min-h-0 overflow-hidden p-0'
                 : 'overflow-y-auto p-4 sm:p-6'
             }`}
