@@ -83,6 +83,12 @@ def validate_mcp_config(config: dict) -> dict:
         args = cfg.get("args", [])
         if not isinstance(args, list) or not all(isinstance(a, str) for a in args):
             raise McpConfigError("'args' must be a list of strings")
+        # Block arbitrary inline code evaluation flags on language runtimes
+        _DISALLOWED_INLINE_FLAGS = {"-c", "-e", "--eval", "-r"}
+        if base.split(".")[0] in {"python", "python3", "node", "deno", "bun", "ruby", "perl", "php"}:
+            for a in args:
+                if a.strip().lower() in _DISALLOWED_INLINE_FLAGS:
+                    raise McpConfigError(f"Inline code execution flag '{a}' is not allowed for MCP command '{base}'")
         for part in [command] + args:
             if _SHELL_METACHARS.search(part):
                 raise McpConfigError("Shell metacharacters are not allowed in command/args")
@@ -95,6 +101,10 @@ def validate_mcp_config(config: dict) -> dict:
         url = cfg.get("url") or ""
         parsed = urlparse(url)
         insecure = bool(cfg.get("allow_insecure"))
+        if insecure:
+            from ..core.config import settings
+            if getattr(settings, "environment", "").lower() in ("production", "prod"):
+                raise McpConfigError("allow_insecure=True is forbidden in production environments")
         if parsed.scheme == "http" and not insecure:
             raise McpConfigError("http:// URLs require allow_insecure=true (dev only)")
         if parsed.scheme not in ("http", "https") or not parsed.hostname:
@@ -197,7 +207,7 @@ class _McpClientService:
         command = cfg["command"]
         resolved = command if ("/" in command or "\\" in command) else (shutil.which(command) or command)
         if resolved.lower().endswith((".cmd", ".bat")):
-            return [resolved, *list(cfg.get("args") or [])]
+            return ["/c", resolved, *list(cfg.get("args") or [])]
         return list(cfg.get("args") or [])
 
     @staticmethod
@@ -230,25 +240,24 @@ class _McpClientService:
                 from ..utils.url_guard import DnsResolutionError, UrlBlockedError, assert_public_http_url
                 try:
                     await assert_public_http_url(cfg["url"])
-                except DnsResolutionError:
-                    pass
-                except UrlBlockedError as e:
+                except (DnsResolutionError, UrlBlockedError) as e:
                     raise McpConfigError(f"SSRF policy blocked URL: {e}")
 
             from mcp.client.streamable_http import streamable_http_client
+            from mcp.shared._httpx_utils import create_mcp_http_client
+            import httpx
+
+            async def _safe_redirect_hook(response: httpx.Response):
+                if response.is_redirect and "location" in response.headers:
+                    loc = response.headers["location"]
+                    abs_url = str(response.url.join(loc))
+                    from ..utils.url_guard import assert_public_http_url
+                    await assert_public_http_url(abs_url)
 
             headers = cfg.get("headers")
-            if headers:
-                from mcp.shared._httpx_utils import create_mcp_http_client
-
-                async with create_mcp_http_client(headers=headers) as http_client:
-                    async with streamable_http_client(cfg["url"], http_client=http_client) as streams:
-                        read, write = streams[0], streams[1]
-                        async with ClientSession(read, write) as session:
-                            await session.initialize()
-                            return await operation(session)
-            else:
-                async with streamable_http_client(cfg["url"]) as streams:
+            async with create_mcp_http_client(headers=headers) as http_client:
+                http_client.event_hooks.setdefault("response", []).append(_safe_redirect_hook)
+                async with streamable_http_client(cfg["url"], http_client=http_client) as streams:
                     read, write = streams[0], streams[1]
                     async with ClientSession(read, write) as session:
                         await session.initialize()
@@ -407,7 +416,7 @@ class _McpClientService:
                     return await self._execute_bridged(cid, orig, params, workspace_id, tenant_id)
                 return handler
 
-            register_dynamic_tool(td, make_handler())
+            register_dynamic_tool(td, make_handler(), workspace_id=str(connector_row.workspace_id))
             if not t["read_only_hint"]:
                 mark_approval_gated(bridged_name)
             registered.append(bridged_name)
@@ -429,6 +438,21 @@ class _McpClientService:
                 }
             try:
                 out = await self.call_tool(connector_id, tool_name, params, tenant_id, session)
+                # Record compliance audit log for agent tool execution
+                try:
+                    from ..services.audit import AuditLogger
+                    audit_logger = AuditLogger(session)
+                    await audit_logger.log(
+                        action="agent.mcp.execute",
+                        resource_type="mcp_tool",
+                        resource_id=f"{connector_id}:{tool_name}",
+                        details={"tool": tool_name, "status": "error" if out.get("is_error") else "success"},
+                        tenant_id=tenant_id,
+                        workspace_id=str(workspace_id),
+                        user_id="agent:autonomous",
+                    )
+                except Exception:
+                    pass
             except McpTransportError as e:
                 return {"status": "error", "tool": tool_name, "result": str(e)}
         return {

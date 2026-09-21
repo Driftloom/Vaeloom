@@ -145,8 +145,18 @@ async def fetch_job_details(url: str) -> str:
     except UrlBlockedError as e:
         return json.dumps({"error": f"SSRF policy blocked URL: {e}"})
 
+    async def _safe_redirect_hook(response: httpx.Response):
+        if response.is_redirect and "location" in response.headers:
+            loc = response.headers["location"]
+            abs_url = str(response.url.join(loc))
+            await assert_public_http_url(abs_url)
+
     try:
-        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+        async with httpx.AsyncClient(
+            timeout=15.0,
+            follow_redirects=True,
+            event_hooks={"response": [_safe_redirect_hook]},
+        ) as client:
             resp = await client.get(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
             if resp.status_code != 200:
                 return json.dumps({"error": f"HTTP {resp.status_code}"})

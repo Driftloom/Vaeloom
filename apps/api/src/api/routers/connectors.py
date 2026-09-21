@@ -290,6 +290,18 @@ async def get_builtin_mcp_servers(
                 },
                 "tools": ["search_public_ats_jobs", "fetch_job_details"],
             },
+            {
+                "id": "sqlite-memory-mcp",
+                "name": "SQLite Memory MCP",
+                "description": "Sovereign relational database engine with sandboxed read-only SQL inspection",
+                "transport": "stdio",
+                "config": {
+                    "transport": "stdio",
+                    "command": py_exe,
+                    "args": ["-m", "api.mcp_servers.sqlite_mcp", "--db-path", "./data/memory.db"],
+                },
+                "tools": ["list_tables", "describe_table", "query_sql"],
+            },
         ]
     }
 
