@@ -1,0 +1,49 @@
+# docker-compose.test.yml — Integration test infrastructure for Module 05
+# Provides MinIO (S3-compatible) for genuine object storage integration testing.
+#
+# Usage:
+#   docker-compose -f docker-compose.test.yml up -d
+#   $env:STORAGE_ENDPOINT="http://localhost:9000"
+#   $env:STORAGE_ACCESS_KEY="minioadmin"
+#   $env:STORAGE_SECRET_KEY="minioadmin"
+#   $env:STORAGE_BUCKET="vaeloom-test-bucket"
+#   $env:STORAGE_MIRROR_ENABLED="true"
+#   cd apps/api && uv run python -m pytest tests/integration/module05/ -v -o addopts=""
+
+services:
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: vaeloom-test-minio
+    command: server /data --console-address ':9001'
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio-test-data:/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  minio-init:
+    image: quay.io/minio/mc:latest
+    container_name: vaeloom-test-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: |
+      /bin/sh -c "
+        mc alias set local http://minio:9000 minioadmin minioadmin;
+        mc mb local/vaeloom-test-bucket --ignore-existing;
+        echo 'MinIO bucket vaeloom-test-bucket ready';
+      "
+    restart: 'no'
+
+volumes:
+  minio-test-data:
+    driver: local
