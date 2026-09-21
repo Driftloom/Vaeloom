@@ -834,6 +834,7 @@ export default function CapabilitiesPage() {
         }}
         defaultCategory={selectedCategory}
         initialMode={importModalOpen ? 'import' : 'builder'}
+        workspaceId={workspaceId}
         onCreate={async (newCap) => {
           try {
             const catMap: Record<string, string> = {

@@ -66,9 +66,13 @@ class ApiClient {
   async postQuery<T>(
     path: string,
     params?: Record<string, string | number | boolean | undefined | null>,
+    body?: unknown,
   ): Promise<T> {
     const qs = params ? '?' + encodeParams(params) : '';
-    return this.request<T>(`${path}${qs}`, { method: 'POST' });
+    return this.request<T>(`${path}${qs}`, {
+      method: 'POST',
+      body: body != null ? JSON.stringify(body) : undefined,
+    });
   }
 
   async put<T>(path: string, body?: unknown): Promise<T> {
@@ -544,10 +548,16 @@ export const knowledgeGraphApi = {
 export interface DocumentResponse {
   id: string;
   workspace_id: string;
+  folder_id?: string | null;
   path: string;
   type: string;
   summary?: string;
   metadata?: Record<string, unknown>;
+  status?: string;
+  detected_mime_type?: string | null;
+  scan_status?: 'CLEAN' | 'PENDING' | 'MALICIOUS' | 'REJECTED';
+  scan_result?: string | null;
+  expires_at?: string | null;
   deleted_at?: string | null;
   created_at: string;
   updated_at: string;
@@ -576,6 +586,54 @@ export interface DocumentAction {
 export interface DocumentActionListResponse {
   actions: DocumentAction[];
   total: number;
+}
+
+export interface FolderResponse {
+  id: string;
+  workspace_id: string;
+  parent_id?: string | null;
+  name: string;
+  created_by?: string | null;
+  created_at: string;
+}
+
+export interface FolderTreeItem {
+  id: string;
+  workspace_id: string;
+  parent_id?: string | null;
+  name: string;
+  created_at?: string | null;
+  children: FolderTreeItem[];
+}
+
+export interface DocumentVersionResponse {
+  id: string;
+  document_id: string;
+  version_number: number;
+  storage_key: string;
+  checksum?: string | null;
+  size_bytes?: number | null;
+  created_at: string;
+}
+
+export interface DocumentShareResponse {
+  id: string;
+  document_id: string;
+  source_workspace_id: string;
+  target_workspace_id: string;
+  permission: string;
+  granted_by?: string | null;
+  expires_at?: string | null;
+  created_at: string;
+}
+
+export interface BulkUploadResponse {
+  total_attempted: number;
+  processed: number;
+  failed: number;
+  succeeded: Array<{ id: string; filename: string; path: string; scan_status: string }>;
+  items: Array<{ id: string; filename: string; path: string; scan_status: string }>;
+  errors: Array<{ filename: string; error: string }>;
 }
 
 function contentUrl(documentId: string, workspaceId: string): string {
@@ -742,6 +800,160 @@ export const documentApi = {
     return apiClient.get<AgentActionHistory[]>(
       `/workspaces/${encodeURIComponent(workspaceId)}/agent-actions`,
     );
+  },
+  search(workspaceId: string, query: string, folderId?: string): Promise<DocumentResponse[]> {
+    const params: Record<string, string> = { workspace_id: workspaceId, q: query };
+    if (folderId) params['folder_id'] = folderId;
+    return apiClient.get<DocumentResponse[]>('/documents/search', params);
+  },
+  listFolders(workspaceId: string, parentId?: string): Promise<FolderResponse[]> {
+    const params: Record<string, string> = { workspace_id: workspaceId };
+    if (parentId) params['parent_id'] = parentId;
+    return apiClient.get<FolderResponse[]>('/documents/folders', params);
+  },
+  getFolderTree(workspaceId: string): Promise<FolderTreeItem[]> {
+    return apiClient.get<FolderTreeItem[]>('/documents/folders/tree', {
+      workspace_id: workspaceId,
+    });
+  },
+  createFolder(
+    workspaceId: string,
+    name: string,
+    parentId?: string | null,
+  ): Promise<FolderResponse> {
+    return apiClient.postQuery<FolderResponse>(
+      '/documents/folders',
+      { workspace_id: workspaceId },
+      { name, parent_id: parentId },
+    );
+  },
+  updateFolder(
+    folderId: string,
+    workspaceId: string,
+    name?: string,
+    parentId?: string | null,
+  ): Promise<FolderResponse> {
+    return apiClient.patch<FolderResponse>(
+      `/documents/folders/${encodeURIComponent(folderId)}?workspace_id=${encodeURIComponent(workspaceId)}`,
+      { name, parent_id: parentId },
+    );
+  },
+  deleteFolder(folderId: string, workspaceId: string): Promise<void> {
+    return apiClient.delete(
+      `/documents/folders/${encodeURIComponent(folderId)}?workspace_id=${encodeURIComponent(workspaceId)}`,
+    );
+  },
+  listVersions(documentId: string, workspaceId: string): Promise<DocumentVersionResponse[]> {
+    return apiClient.get<DocumentVersionResponse[]>(
+      `/documents/${encodeURIComponent(documentId)}/versions`,
+      { workspace_id: workspaceId },
+    );
+  },
+  async createVersion(
+    documentId: string,
+    workspaceId: string,
+    file: File,
+  ): Promise<DocumentVersionResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const token = getToken();
+    const csrf = await getCsrfToken();
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+    if (csrf) headers[CSRF_HEADER] = csrf;
+    const res = await fetch(
+      `${API_BASE}${API_PREFIX}/documents/${encodeURIComponent(documentId)}/versions?workspace_id=${encodeURIComponent(workspaceId)}`,
+      {
+        method: 'POST',
+        headers,
+        body: formData,
+        credentials: 'include',
+      },
+    );
+    if (!res.ok) throw new ApiClientError(res.status, 'Failed to upload new version');
+    return (res.json() as Promise<Record<string, unknown>>).then(
+      (j) => transformKeys(j) as DocumentVersionResponse,
+    );
+  },
+  restoreVersion(
+    documentId: string,
+    versionNumber: number,
+    workspaceId: string,
+  ): Promise<DocumentResponse> {
+    return apiClient.postQuery<DocumentResponse>(
+      `/documents/${encodeURIComponent(documentId)}/versions/${versionNumber}/restore`,
+      { workspace_id: workspaceId },
+    );
+  },
+  listShares(documentId: string, workspaceId: string): Promise<DocumentShareResponse[]> {
+    return apiClient.get<DocumentShareResponse[]>(
+      `/documents/${encodeURIComponent(documentId)}/shares`,
+      { workspace_id: workspaceId },
+    );
+  },
+  createShare(
+    documentId: string,
+    workspaceId: string,
+    targetWorkspaceId: string,
+    permission = 'READ',
+    expiresAt?: string | null,
+  ): Promise<DocumentShareResponse> {
+    return apiClient.postQuery<DocumentShareResponse>(
+      `/documents/${encodeURIComponent(documentId)}/shares`,
+      { workspace_id: workspaceId },
+      { target_workspace_id: targetWorkspaceId, permission, expires_at: expiresAt },
+    );
+  },
+  revokeShare(shareId: string, workspaceId: string, documentId?: string): Promise<void> {
+    const path = documentId
+      ? `/documents/${encodeURIComponent(documentId)}/shares/${encodeURIComponent(shareId)}`
+      : `/documents/shares/${encodeURIComponent(shareId)}`;
+    return apiClient.delete(`${path}?workspace_id=${encodeURIComponent(workspaceId)}`);
+  },
+  async bulkUpload(
+    workspaceId: string,
+    files: File[],
+    folderId?: string,
+  ): Promise<BulkUploadResponse> {
+    const formData = new FormData();
+    for (const f of files) {
+      formData.append('files', f);
+    }
+    const token = getToken();
+    const csrf = await getCsrfToken();
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+    if (csrf) headers[CSRF_HEADER] = csrf;
+    let url = `${API_BASE}${API_PREFIX}/documents/bulk/upload?workspace_id=${encodeURIComponent(workspaceId)}`;
+    if (folderId) url += `&folder_id=${encodeURIComponent(folderId)}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: formData,
+      credentials: 'include',
+    });
+    if (!res.ok) throw new ApiClientError(res.status, 'Bulk upload failed');
+    return (res.json() as Promise<Record<string, unknown>>).then(
+      (j) => transformKeys(j) as BulkUploadResponse,
+    );
+  },
+  async bulkDownload(workspaceId: string, documentIds: string[]): Promise<Blob> {
+    const token = getToken();
+    const csrf = await getCsrfToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(csrf ? { [CSRF_HEADER]: csrf } : {}),
+    };
+    const res = await fetch(
+      `${API_BASE}${API_PREFIX}/documents/bulk/download?workspace_id=${encodeURIComponent(workspaceId)}`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ document_ids: documentIds }),
+        credentials: 'include',
+      },
+    );
+    if (!res.ok) throw new ApiClientError(res.status, 'Bulk download failed');
+    return res.blob();
   },
 };
 

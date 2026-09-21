@@ -43,8 +43,8 @@ const MCP_CATALOG_TEMPLATES: McpCatalogTemplate[] = [
       'Sovereign relational database engine with zero external dependencies. Ingests tables, profiles, and relational memory.',
     defaultConfig: {
       transport: 'stdio',
-      command: 'uv',
-      args: ['run', '-m', 'api.mcp_servers.sqlite_mcp', '--db-path', './data/memory.db'],
+      command: 'python',
+      args: ['-m', 'api.mcp_servers.sqlite_mcp', '--db-path', './data/memory.db'],
     },
   },
   {

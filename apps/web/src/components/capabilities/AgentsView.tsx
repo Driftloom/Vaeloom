@@ -394,8 +394,6 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
     const startTime = Date.now();
 
     try {
-      // Step 1: Simulate planning & tool execution event stream
-      await new Promise((r) => setTimeout(r, 220));
       const firstTool = selectedAgent.toolsUsed?.[0] || 'query_graph';
       setTestEvents((prev) => [...prev, `🛠️ Tool execution: ${firstTool}(...)`]);
 
@@ -425,7 +423,6 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
             status: 'completed',
             agent: selectedAgent.name,
             autonomy: autonomyMode,
-            answer: `Successfully processed execution request for ${selectedAgent.name}. All assigned tools responded within latency bounds.`,
           },
           null,
           2,
@@ -437,23 +434,21 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
         title: `Test run succeeded for ${selectedAgent.name}`,
         detail: `Completed in ${res.executionDurationMs || latency}ms.`,
       });
-    } catch {
+    } catch (err: unknown) {
       const latency = Date.now() - startTime;
+      const errMsg = err instanceof Error ? err.message : 'Execution failed';
       setTestEvents((prev) => [
         ...prev,
-        `✅ Tool returned structured result`,
-        `🧠 Reflect phase: episodic memory updated`,
-        `🏁 Execution completed (simulated) in ${latency}ms`,
+        `❌ Execution error: ${errMsg}`,
+        `🏁 Run terminated with failure in ${latency}ms`,
       ]);
 
       setTestOutput(
         JSON.stringify(
           {
-            ok: true,
-            status: 'agent_executed',
+            status: 'error',
             agent: selectedAgent.name,
-            autonomy: autonomyMode,
-            answer: `Diagnostic execution verified for ${selectedAgent.name}. Memory graph and tool permissions confirmed active.`,
+            error: errMsg,
             timestamp: new Date().toISOString(),
           },
           null,
@@ -461,7 +456,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
         ),
       );
       setTestLatency(latency);
-      toast({ tone: 'success', title: `Test run completed (simulated)` });
+      toast({ tone: 'error', title: `Test run failed: ${selectedAgent.name}`, detail: errMsg });
     } finally {
       setTestRunning(false);
     }

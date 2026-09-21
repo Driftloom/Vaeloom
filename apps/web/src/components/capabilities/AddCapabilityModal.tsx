@@ -4,6 +4,7 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button, Badge } from '@vaeloom/ui-kit';
+import { capabilitiesApi } from '@/lib/api-client';
 import type { CapabilityCategory, CapabilityItem } from '@/lib/capabilities-data';
 
 export interface AddCapabilityModalProps {
@@ -14,6 +15,7 @@ export interface AddCapabilityModalProps {
   onCreate: (capability: CapabilityItem) => void;
   onImport: (url: string, category: CapabilityCategory) => Promise<void>;
   installedNames?: Set<string>;
+  workspaceId?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -264,6 +266,7 @@ export function AddCapabilityModal({
   initialMode = 'builder',
   onCreate,
   onImport,
+  workspaceId,
 }: AddCapabilityModalProps) {
   // Navigation Mode: 'templates' | 'builder' | 'import'
   const [activeTab, setActiveTab] = useState<'templates' | 'builder' | 'import'>(initialMode);
@@ -2296,19 +2299,61 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             type="button"
                             variant="secondary"
                             size="sm"
-                            onClick={() => {
+                            onClick={async () => {
                               try {
                                 const parsed = JSON.parse(pluginTestPayload);
-                                setPluginTestResult(
-                                  JSON.stringify(
-                                    {
-                                      status: 'EXECUTED_200_OK',
-                                      output: { simulated: true, ...parsed },
-                                    },
-                                    null,
-                                    2,
-                                  ),
-                                );
+                                if (workspaceId) {
+                                  setPluginTestResult('Executing sandbox verification...');
+                                  try {
+                                    const res = await capabilitiesApi.test({
+                                      workspaceId,
+                                      capabilityName: capName || 'plugin-sandbox-runner',
+                                      category: 'plugins',
+                                      inputPayload: {
+                                        code: pluginCode,
+                                        hook: pluginHook,
+                                        payload: parsed,
+                                      },
+                                    });
+                                    setPluginTestResult(
+                                      JSON.stringify(
+                                        {
+                                          status: 'SANDBOX_SUCCESS',
+                                          executionDurationMs: res.executionDurationMs,
+                                          result: res.result,
+                                        },
+                                        null,
+                                        2,
+                                      ),
+                                    );
+                                  } catch (backendErr: unknown) {
+                                    setPluginTestResult(
+                                      JSON.stringify(
+                                        {
+                                          status: 'SANDBOX_EXECUTION_ERROR',
+                                          error:
+                                            backendErr instanceof Error
+                                              ? backendErr.message
+                                              : 'Backend execution failed',
+                                        },
+                                        null,
+                                        2,
+                                      ),
+                                    );
+                                  }
+                                } else {
+                                  setPluginTestResult(
+                                    JSON.stringify(
+                                      {
+                                        status: 'VALIDATED_LOCAL_SYNTAX',
+                                        validJson: true,
+                                        codeLength: pluginCode.length,
+                                      },
+                                      null,
+                                      2,
+                                    ),
+                                  );
+                                }
                               } catch {
                                 setPluginTestResult('Invalid JSON payload');
                               }

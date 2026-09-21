@@ -209,7 +209,8 @@ export function ConnectorsView({
   const isItemConnected = useCallback(
     (item: ConnectorDefinition): boolean => {
       if (item.provider !== 'composio' && item.provider !== 'mcp' && item.provider !== 'native') {
-        return byProvider.has(item.provider);
+        const conn = byProvider.get(item.provider);
+        return Boolean(conn && conn.status === 'connected');
       }
       if (item.id === 'native-ats-mcp') {
         return dynamicConnectors.some(
@@ -409,12 +410,29 @@ export function ConnectorsView({
     const meta = PROVIDER_META[provider];
     setBusyAction(`connect-${provider}`);
     try {
+      const composioEquivalents: Record<string, string> = {
+        github: 'github',
+        drive: 'googledrive',
+        gmail: 'gmail',
+        slack: 'slack',
+        notion: 'notion',
+        calendar: 'googlecalendar',
+      };
+      const composioApp = composioEquivalents[provider];
+      if (
+        composioApp &&
+        composioCatalogApps.some((a) => (a.id || a.name || '').toLowerCase() === composioApp)
+      ) {
+        await handleComposioOAuth(composioApp, meta?.name ?? provider);
+        setPendingProvider(null);
+        return;
+      }
       await api.integrations.create({ name: meta?.name ?? provider, provider });
       await mutate();
       toast({
-        tone: 'success',
-        title: 'Connector linked',
-        detail: `${meta?.name ?? provider} successfully authorized for this workspace.`,
+        tone: 'info',
+        title: 'Connector registered',
+        detail: `${meta?.name ?? provider} registered. Connect credentials or OAuth tokens to activate.`,
       });
       setPendingProvider(null);
       loadDynamicData();
