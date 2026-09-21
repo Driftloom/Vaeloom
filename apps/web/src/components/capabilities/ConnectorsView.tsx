@@ -90,8 +90,8 @@ export function ConnectorsView({
   const { toast } = useToast();
   const { connectors, isLoading: workspaceLoading, mutate } = useWorkspaceConnectors(workspaceId);
 
-  // Sub-Navigation: 'discover' (directory) vs 'yours' (configured workspace connectors)
-  const [activeSubTab, setActiveSubTab] = useState<'discover' | 'yours'>('discover');
+  // Sub-Navigation: 'discover' (directory) vs 'yours' (configured workspace connectors) vs 'studio' (custom MCP/REST/GraphQL)
+  const [activeSubTab, setActiveSubTab] = useState<'discover' | 'yours' | 'studio'>('discover');
 
   // Internal Filter & Search State
   const [internalSearch, setInternalSearch] = useState('');
@@ -158,10 +158,10 @@ export function ConnectorsView({
               total_apps: 269,
             }),
         connectorsApi?.composio?.apps
-          ? connectorsApi.composio.apps({ limit: 300 })
+          ? connectorsApi.composio.apps({ limit: 1600 })
           : Promise.resolve<ComposioAppsResponse>({
               total: 0,
-              limit: 300,
+              limit: 1600,
               offset: 0,
               apps: [],
               categories: [],
@@ -802,10 +802,26 @@ export function ConnectorsView({
               }`}
             >
               Discover
+              {composioTotalCount > 0 && (
+                <span className="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] bg-[#1c1d24] text-[#a1a1aa]">
+                  {composioTotalCount.toLocaleString()}
+                </span>
+              )}
             </button>
-            <span className="text-xs text-[#8b8e99] font-medium hidden md:inline">
-              Full Connectors Studio
-            </span>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('studio')}
+              className={`pb-1 text-sm font-medium transition-colors relative flex items-center gap-1.5 ${
+                activeSubTab === 'studio'
+                  ? 'text-white border-b-2 border-[#3b82f6]'
+                  : 'text-[#8b8e99] hover:text-[#d4d4d8]'
+              }`}
+            >
+              <span>Full Connectors Studio</span>
+              <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-[#3b82f6]/15 text-[#60a5fa] border border-[#3b82f6]/30">
+                MCP • REST • GraphQL
+              </span>
+            </button>
           </div>
 
           {/* Right Action Buttons */}
@@ -901,15 +917,23 @@ export function ConnectorsView({
                     onChange={(e) => setSelectedFilter(e.target.value as ConnectorCategory)}
                     className="appearance-none bg-[#121319] border border-[#27272a] rounded-md pl-3 pr-8 py-1.5 text-xs text-[#d4d4d8] focus:outline-none focus:border-[#3b82f6] cursor-pointer"
                   >
-                    <option value="All">Filter: All</option>
+                    <option value="All">Filter: All Purposes</option>
+                    <option value="Education">🎓 Education & Learning</option>
+                    <option value="Sales">💼 Sales & CRM</option>
+                    <option value="Productivity">🚀 Productivity & Tasks</option>
+                    <option value="Engineering">💻 Engineering & DevOps</option>
+                    <option value="Financial">💰 Finance & Accounting</option>
+                    <option value="Legal">⚖️ Legal & Contracts</option>
+                    <option value="HR">👥 HR, Recruiting & Talent</option>
+                    <option value="AI & ML">🤖 AI, Agents & ML</option>
+                    <option value="Data & Analytics">📊 Data, Analytics & BI</option>
+                    <option value="Communication">💬 Communication & Messaging</option>
+                    <option value="Marketing">📣 Marketing & Social</option>
+                    <option value="Support">🎧 Customer Support</option>
+                    <option value="E-Commerce">🛒 E-Commerce & Retail</option>
                     <option value="Google">Google Workspace</option>
-                    <option value="Productivity">Productivity</option>
-                    <option value="Engineering">Engineering & DevOps</option>
-                    <option value="Sales">Sales & CRM</option>
-                    <option value="Financial">Financial & Wealth</option>
-                    <option value="Legal">Legal & Compliance</option>
                     <option value="Native">Native Sovereign</option>
-                    <option value="MCP">Model Context Protocol (MCP)</option>
+                    <option value="MCP">⚡ Model Context Protocol (MCP)</option>
                   </select>
                   <svg
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[#71717a] pointer-events-none"
@@ -922,6 +946,41 @@ export function ConnectorsView({
                   </svg>
                 </div>
               </div>
+            </div>
+
+            {/* Quick Purpose Filter Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+              {(
+                [
+                  { id: 'All', label: 'All', icon: '🌐' },
+                  { id: 'Education', label: 'Education', icon: '🎓' },
+                  { id: 'Sales', label: 'Sales & CRM', icon: '💼' },
+                  { id: 'Productivity', label: 'Productivity', icon: '🚀' },
+                  { id: 'Engineering', label: 'Engineering', icon: '💻' },
+                  { id: 'Financial', label: 'Finance', icon: '💰' },
+                  { id: 'HR', label: 'HR & Talent', icon: '👥' },
+                  { id: 'AI & ML', label: 'AI & ML', icon: '🤖' },
+                  { id: 'Data & Analytics', label: 'Analytics', icon: '📊' },
+                  { id: 'Communication', label: 'Messaging', icon: '💬' },
+                  { id: 'Legal', label: 'Legal', icon: '⚖️' },
+                  { id: 'Support', label: 'Support', icon: '🎧' },
+                  { id: 'MCP', label: 'MCP', icon: '⚡' },
+                ] as const
+              ).map((pill) => (
+                <button
+                  key={pill.id}
+                  type="button"
+                  onClick={() => setSelectedFilter(pill.id as ConnectorCategory)}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all whitespace-nowrap ${
+                    selectedFilter === pill.id
+                      ? 'bg-[#3b82f6] text-white shadow-xs font-semibold'
+                      : 'bg-[#121319] hover:bg-[#181a22] text-[#8b8e99] hover:text-white border border-[#27272a]'
+                  }`}
+                >
+                  <span>{pill.icon}</span>
+                  <span>{pill.label}</span>
+                </button>
+              ))}
             </div>
 
             {/* If Search is Active or Non-All Filter or ShowAll is toggled: Show Full Catalog Grid */}
@@ -1181,6 +1240,293 @@ export function ConnectorsView({
                 )}
               </div>
             )}
+          </div>
+        ) : activeSubTab === 'studio' ? (
+          /* ────────────────────────────────────────────────────────────────────────── */
+          /* Full Connectors Studio View: MCP, REST, and GraphQL Custom Connectors     */
+          /* ────────────────────────────────────────────────────────────────────────── */
+          <div className="max-w-6xl mx-auto space-y-6">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#1c1d24] pb-4">
+              <div>
+                <div className="flex items-center gap-2 text-sm text-[#71717a] mb-1">
+                  <span>Connectors</span>
+                  <span>/</span>
+                  <span className="text-[#f4f4f5] font-medium">Full Connectors Studio</span>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#3b82f6]/15 text-[#60a5fa] border border-[#3b82f6]/30">
+                    Enterprise Protocol Builder
+                  </span>
+                </div>
+                <h1 className="text-lg font-semibold text-white">
+                  Connectors Studio & Protocol Orchestrator
+                </h1>
+                <p className="text-xs text-[#8b8e99] max-w-2xl mt-0.5">
+                  Build, test, and register custom Model Context Protocol (stdio/HTTP) servers,
+                  enterprise REST APIs, and GraphQL endpoints with sandboxed execution and live
+                  health monitoring.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-[#3b82f6] hover:bg-[#2563eb] text-white shadow-xs transition-colors"
+                >
+                  <PlusIcon />
+                  <span>Add Custom Connector</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Protocol Architecture Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded-lg bg-[#0e0f14] border border-[#1c1d24] hover:border-[#3b82f6]/40 transition-all flex flex-col justify-between space-y-3">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="w-8 h-8 rounded-lg bg-[#3b82f6]/15 border border-[#3b82f6]/30 flex items-center justify-center text-sm font-bold text-[#60a5fa]">
+                      ⚡
+                    </div>
+                    <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-[#10b981]/15 text-[#34d399] border border-[#10b981]/30">
+                      Standard v1.0
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-semibold text-white">Model Context Protocol (MCP)</h3>
+                  <p className="text-xs text-[#8b8e99] leading-relaxed">
+                    Connect local subprocesses (stdio) or remote streamable-HTTP endpoints.
+                    Auto-discovers dynamic tools, enforces typed JSON schema parameters, and routes
+                    via approval gates.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomType('mcp');
+                    setIsAddModalOpen(true);
+                  }}
+                  className="w-full py-1.5 px-3 text-xs font-medium rounded bg-[#181a22] hover:bg-[#222430] border border-[#27272a] text-[#d4d4d8] hover:text-white transition-colors text-center"
+                >
+                  + Add MCP Server
+                </button>
+              </div>
+
+              <div className="p-4 rounded-lg bg-[#0e0f14] border border-[#1c1d24] hover:border-[#10b981]/40 transition-all flex flex-col justify-between space-y-3">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="w-8 h-8 rounded-lg bg-[#10b981]/15 border border-[#10b981]/30 flex items-center justify-center text-sm font-bold text-[#34d399]">
+                      🌐
+                    </div>
+                    <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-[#3b82f6]/15 text-[#60a5fa] border border-[#3b82f6]/30">
+                      REST / Webhooks
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-semibold text-white">Enterprise REST API</h3>
+                  <p className="text-xs text-[#8b8e99] leading-relaxed">
+                    Integrate proprietary corporate microservices, webhooks, and REST endpoints.
+                    Supports Bearer token, custom API keys, and Infisical encrypted environment
+                    variables.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomType('rest');
+                    setIsAddModalOpen(true);
+                  }}
+                  className="w-full py-1.5 px-3 text-xs font-medium rounded bg-[#181a22] hover:bg-[#222430] border border-[#27272a] text-[#d4d4d8] hover:text-white transition-colors text-center"
+                >
+                  + Add REST Connector
+                </button>
+              </div>
+
+              <div className="p-4 rounded-lg bg-[#0e0f14] border border-[#1c1d24] hover:border-[#8b5cf6]/40 transition-all flex flex-col justify-between space-y-3">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="w-8 h-8 rounded-lg bg-[#8b5cf6]/15 border border-[#8b5cf6]/30 flex items-center justify-center text-sm font-bold text-[#a78bfa]">
+                      ⬡
+                    </div>
+                    <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-[#8b5cf6]/15 text-[#a78bfa] border border-[#8b5cf6]/30">
+                      GraphQL 2021
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-semibold text-white">GraphQL Explorer</h3>
+                  <p className="text-xs text-[#8b8e99] leading-relaxed">
+                    Point Vaeloom agents to GraphQL endpoints with automated schema introspection,
+                    custom queries, document mutations, and JWT header propagation.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomType('graphql');
+                    setIsAddModalOpen(true);
+                  }}
+                  className="w-full py-1.5 px-3 text-xs font-medium rounded bg-[#181a22] hover:bg-[#222430] border border-[#27272a] text-[#d4d4d8] hover:text-white transition-colors text-center"
+                >
+                  + Add GraphQL Endpoint
+                </button>
+              </div>
+            </div>
+
+            {/* Built-in Sovereign MCP Servers Grid */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold text-white">
+                    Built-in Sovereign MCP Servers
+                  </h2>
+                  <p className="text-xs text-[#71717a]">
+                    Pre-configured, sandboxed protocols maintained by Vaeloom
+                  </p>
+                </div>
+                <span className="text-xs text-[#10b981] font-mono font-medium">
+                  ● 5 active & sandboxed
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {[
+                  {
+                    name: 'SQLite Memory MCP',
+                    desc: 'Local structured relational database engine with zero network dependencies. Ingests candidate profiles and memory graphs.',
+                    protocol: 'MCP (stdio)',
+                    tag: 'Local Sandbox',
+                  },
+                  {
+                    name: 'Sovereign ATS Crawler',
+                    desc: 'Native Playwright chromium crawler for corporate job portals, greenhouse boards, and enterprise career tracking.',
+                    protocol: 'Native Playwright',
+                    tag: 'Anti-Bot Guard',
+                  },
+                  {
+                    name: 'Headless Web Scraper',
+                    desc: 'SSRF-guarded browser scraper with screenshot extraction, DOM text analysis, and quota governance.',
+                    protocol: 'Native Playwright',
+                    tag: 'SSRF Guarded',
+                  },
+                  {
+                    name: 'Local Filesystem MCP',
+                    desc: 'Workspace document indexing, sandboxed file reading, and enterprise knowledge ingestion.',
+                    protocol: 'MCP (stdio)',
+                    tag: 'Local Sandbox',
+                  },
+                  {
+                    name: 'Atlassian MCP Suite',
+                    desc: 'Bidirectional Jira issue tracking, Confluence workspace searching, and Loom transcript ingestion.',
+                    protocol: 'MCP (Streamable-HTTP)',
+                    tag: 'Atlassian Certified',
+                  },
+                ].map((mcpItem, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3.5 rounded-lg bg-[#0e0f14] border border-[#1c1d24] flex flex-col justify-between space-y-3"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-white">{mcpItem.name}</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          {mcpItem.tag}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#8b8e99] line-clamp-2">{mcpItem.desc}</p>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-[#181a22] text-[11px]">
+                      <span className="font-mono text-[#71717a]">{mcpItem.protocol}</span>
+                      <span className="text-emerald-400 font-medium">Ready</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Configured Custom Connectors List */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold text-white">Configured Custom Connectors</h2>
+                  <p className="text-xs text-[#71717a]">
+                    Custom endpoints and private MCP instances active in this workspace
+                  </p>
+                </div>
+                <span className="text-xs text-[#8b8e99]">
+                  {
+                    dynamicConnectors.filter((c) =>
+                      ['mcp', 'rest', 'graphql'].includes(c.type?.toLowerCase()),
+                    ).length
+                  }{' '}
+                  active
+                </span>
+              </div>
+
+              {dynamicConnectors.filter((c) =>
+                ['mcp', 'rest', 'graphql'].includes(c.type?.toLowerCase()),
+              ).length === 0 ? (
+                <div className="text-center py-8 border border-dashed border-[#27272a] rounded-lg bg-[#0c0d12]/50">
+                  <p className="text-xs text-[#8b8e99]">
+                    No custom MCP, REST, or GraphQL connectors created in this workspace yet.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="mt-2.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-[#3b82f6] text-white hover:bg-[#2563eb] transition-colors"
+                  >
+                    + Add First Custom Connector
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {dynamicConnectors
+                    .filter((c) => ['mcp', 'rest', 'graphql'].includes(c.type?.toLowerCase()))
+                    .map((conn) => (
+                      <div
+                        key={conn.id}
+                        className="p-4 rounded-lg bg-[#0e0f14] border border-[#1c1d24] space-y-3"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-[#3b82f6]/10 border border-[#3b82f6]/30 flex items-center justify-center font-mono font-bold text-xs text-[#60a5fa]">
+                              {conn.type.toUpperCase()}
+                            </div>
+                            <div>
+                              <h3 className="text-xs font-semibold text-white">{conn.name}</h3>
+                              <p className="text-[10px] font-mono text-[#71717a]">ID: {conn.id}</p>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 capitalize">
+                            {conn.status || 'Active'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-[#181a22] text-xs">
+                          <button
+                            type="button"
+                            onClick={() => void handleTestConnection(conn.id)}
+                            className="px-2.5 py-1 rounded bg-[#181a22] hover:bg-[#222430] border border-[#27272a] text-[#d4d4d8] hover:text-white transition-colors"
+                          >
+                            Ping Health
+                          </button>
+                          {conn.type?.toLowerCase() === 'mcp' && (
+                            <button
+                              type="button"
+                              onClick={() => handleInspectTools(conn.id, conn.name)}
+                              className="px-2.5 py-1 rounded bg-[#3b82f6]/15 hover:bg-[#3b82f6]/25 border border-[#3b82f6]/30 text-[#93c5fd] transition-colors"
+                            >
+                              Inspect Tools
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDisconnect(conn.id, conn.name, false)}
+                            className="text-rose-400 hover:text-rose-300 font-medium transition-colors"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           /* ────────────────────────────────────────────────────────────────────────── */

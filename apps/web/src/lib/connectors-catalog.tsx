@@ -350,7 +350,15 @@ export function PlusIcon() {
   );
 }
 
-export function AppBrandIcon({ name, id }: { name: string; id: string; category?: string }) {
+export function AppBrandIcon({
+  name,
+  id,
+  category,
+}: {
+  name: string;
+  id: string;
+  category?: string;
+}) {
   const colorMap: Record<string, { bg: string; text: string; border: string }> = {
     stripe: { bg: 'bg-[#635bff]/20', text: 'text-[#817af8]', border: 'border-[#635bff]/40' },
     salesforce: { bg: 'bg-[#00a1e0]/20', text: 'text-[#30b5ea]', border: 'border-[#00a1e0]/40' },
@@ -390,9 +398,7 @@ export function AppBrandIcon({ name, id }: { name: string; id: string; category?
       border: 'border-[#16a34a]/40',
     },
     duolingo: { bg: 'bg-[#58cc02]/20', text: 'text-[#86efac]', border: 'border-[#58cc02]/40' },
-    greenhouse: { bg: 'bg-[#00b259]/20', text: 'text-[#34d399]', border: 'border-[#00b259]/40' },
     lever: { bg: 'bg-[#206095]/20', text: 'text-[#60a5fa]', border: 'border-[#206095]/40' },
-    workday: { bg: 'bg-[#0875e1]/20', text: 'text-[#38bdf8]', border: 'border-[#0875e1]/40' },
     docusign: { bg: 'bg-[#ffec00]/20', text: 'text-[#fde047]', border: 'border-[#ffec00]/40' },
     intercom: { bg: 'bg-[#0057ff]/20', text: 'text-[#4c84ff]', border: 'border-[#0057ff]/40' },
     apollo: { bg: 'bg-[#ffc107]/20', text: 'text-[#ffd54f]', border: 'border-[#ffc107]/40' },
