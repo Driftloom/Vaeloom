@@ -1134,6 +1134,42 @@ class DeadLetterEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class OutboxEvent(Base):
+    """Transactional outbox ledger — fixes the DB+Redis dual-write hazard.
+
+    Writers MUST insert via ``services.outbox.record_outbox_event`` inside the
+    same DB transaction as the domain write, then commit once. A relay
+    (``publish_due_events``) later claims due rows and publishes them to the
+    broker. If the transaction rolls back, the outbox row vanishes with it —
+    no ghost jobs in Redis. If the relay crashes after publish but before
+    marking, at-least-once delivery applies: consumers must be idempotent.
+
+    Statuses: pending → claimed → published | (pending retry) → failed.
+    Loop 2 wires real broker publish + existing publishers; this slice is the
+    table + writer + atomic claim + stub relay (ADR-045).
+    """
+
+    __tablename__ = "outbox_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=True)
+    event_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        Index("idx_outbox_status_due", "status", "next_attempt_at"),
+        Index("idx_outbox_workspace_id", "workspace_id"),
+        Index("idx_outbox_created_at", "created_at"),
+    )
+
+
 class Subscription(Base):
     __tablename__ = "subscriptions"
 

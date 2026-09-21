@@ -170,7 +170,8 @@ class DocumentService:
                 await storage_service.upload(storage_key, content)
                 doc.raw_storage_key = storage_key
         except Exception as e:
-            logger.warning("Object-storage upload failed (non-blocking): %s", e)
+            logger.warning("Object-storage upload failed: %s", e)
+            doc.status = "STORAGE_DEGRADED"
 
         await db.flush()
         await db.refresh(doc)
@@ -213,7 +214,13 @@ class DocumentService:
         )
         return list(result.scalars().all()), total
 
-    async def get_document(self, document_id: str, workspace_id: str, db=None) -> Document:
+    async def get_document(
+        self,
+        document_id: str,
+        workspace_id: str,
+        db=None,
+        required_permission: str = "read",
+    ) -> Document:
         try:
             doc_id = uuid.UUID(str(document_id))
             w_id = uuid.UUID(str(workspace_id))
@@ -232,6 +239,13 @@ class DocumentService:
             )
             share = (await db.execute(share_stmt)).scalar_one_or_none()
             if share:
+                # P0-03: Share privilege escalation check
+                if required_permission in ("write", "admin"):
+                    if (share.permission or "").lower() not in ("write", "admin"):
+                        raise HTTPException(
+                            status_code=403,
+                            detail="Forbidden: Document share has read-only permission",
+                        )
                 # Return document from source workspace if active share
                 shared_doc_res = await db.execute(select(Document).where(Document.id == doc_id))
                 shared_doc = shared_doc_res.scalar_one_or_none()
@@ -241,7 +255,7 @@ class DocumentService:
         return doc
 
     async def get_content(self, document_id: str, workspace_id: str, db=None):
-        doc = await self.get_document(document_id, workspace_id, db)
+        doc = await self.get_document(document_id, workspace_id, db, required_permission="read")
         return doc.content, doc.type, doc.path
 
     async def rename(
@@ -253,7 +267,7 @@ class DocumentService:
         tenant_id: str | None = None,
         db=None,
     ) -> Document:
-        doc = await self.get_document(document_id, workspace_id, db)
+        doc = await self.get_document(document_id, workspace_id, db, required_permission="write")
         old_path = doc.path
         clean_path = file_security_service.sanitize_filename(new_path)
         if not clean_path or old_path == clean_path:
@@ -280,7 +294,7 @@ class DocumentService:
         tenant_id: str | None = None,
         db=None,
     ) -> Document:
-        doc = await self.get_document(document_id, workspace_id, db)
+        doc = await self.get_document(document_id, workspace_id, db, required_permission="write")
         if doc.deleted_at is None:
             old_deleted = doc.deleted_at
             doc.deleted_at = datetime.now(UTC)
@@ -308,7 +322,7 @@ class DocumentService:
         tenant_id: str | None = None,
         db=None,
     ) -> Document:
-        doc = await self.get_document(document_id, workspace_id, db)
+        doc = await self.get_document(document_id, workspace_id, db, required_permission="write")
         if doc.deleted_at is not None:
             old_deleted = doc.deleted_at
             doc.deleted_at = None
@@ -329,7 +343,7 @@ class DocumentService:
         return doc
 
     async def list_versions(self, document_id: str, workspace_id: str, db=None) -> list[DocumentVersion]:
-        doc = await self.get_document(document_id, workspace_id, db)
+        doc = await self.get_document(document_id, workspace_id, db, required_permission="read")
         stmt = (
             select(DocumentVersion)
             .where(DocumentVersion.document_id == doc.id)
@@ -350,7 +364,7 @@ class DocumentService:
         import hashlib
         import tempfile
 
-        doc = await self.get_document(document_id, workspace_id, db)
+        doc = await self.get_document(document_id, workspace_id, db, required_permission="write")
 
         # Stream & hash
         hasher = hashlib.sha256()
@@ -430,7 +444,7 @@ class DocumentService:
         tenant_id: str | None = None,
         db=None,
     ) -> Document:
-        doc = await self.get_document(document_id, workspace_id, db)
+        doc = await self.get_document(document_id, workspace_id, db, required_permission="write")
         v_stmt = select(DocumentVersion).where(
             DocumentVersion.document_id == doc.id,
             DocumentVersion.version_number == version_number,

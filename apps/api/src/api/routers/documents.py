@@ -109,6 +109,20 @@ def _user_id(current_user: dict) -> str:
     return current_user.get("sub") or current_user.get("user_id")
 
 
+# ---------------------------------------------------------------------------
+# P0-02: Role permission tiers — passed to _verify_workspace_access
+# WRITE: upload, share (any workspace member may contribute)
+# MUTATE: rename, archive, restore (editor-level and above)
+# ADMIN: delete, bulk-delete (owner/admin only)
+# ---------------------------------------------------------------------------
+_ROLES_WRITE = ("owner", "admin", "editor", "member")
+_ROLES_MUTATE = ("owner", "admin", "editor")
+_ROLES_ADMIN = ("owner", "admin")
+
+# P0-05: Maximum upload size enforced at router level before service streaming begins
+_MAX_UPLOAD_BYTES = 25 * 1024 * 1024  # 25 MB
+
+
 # ============================================================================
 # Core Document Endpoints
 # ============================================================================
@@ -126,7 +140,12 @@ async def upload_document(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    # P0-05: Router-level size guard — prevents memory exhaustion before service streaming
+    if file.size is not None and file.size > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File too large — max 25MB")
+
+    # P0-02: Require member-level role or above to upload
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_WRITE)
 
     doc = await document_service.upload(
         file=file,
@@ -245,7 +264,8 @@ async def bulk_upload_documents(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    # P0-02: member-level role required to upload
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_WRITE)
     res = await document_service.bulk_upload(
         files=files,
         workspace_id=workspace_id,
@@ -268,6 +288,7 @@ async def bulk_download_documents(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
+    # Download is read-level (any member)
     await _verify_workspace_access(workspace_id, _user_id(current_user), db)
     doc_ids = payload.document_ids if hasattr(payload, "document_ids") else payload.get("document_ids", [])
     zip_bytes = await document_service.bulk_download_zip(
@@ -328,7 +349,8 @@ async def rename_document(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    # P0-02: rename requires editor-level role or above
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_MUTATE)
     try:
         doc = await document_service.rename(
             document_id=document_id,
@@ -356,7 +378,8 @@ async def archive_document(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    # P0-02: archive requires editor-level role or above
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_MUTATE)
     try:
         doc = await document_service.archive(
             document_id=document_id,
@@ -383,7 +406,8 @@ async def restore_document(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    # P0-02: restore requires editor-level role or above
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_MUTATE)
     try:
         doc = await document_service.restore(
             document_id=document_id,
@@ -432,7 +456,8 @@ async def undo_document_action(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    # P0-02: undo is a mutating operation
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_MUTATE)
     try:
         _action, doc = await document_service.undo_action(action_id, workspace_id, db)
     except DocumentActionNotFound:
@@ -445,6 +470,7 @@ async def undo_document_action(
     await db.commit()
     await db.refresh(doc)
     return DocumentResponse.model_validate(doc)
+
 
 
 # ============================================================================

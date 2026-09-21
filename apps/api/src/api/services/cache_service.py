@@ -65,5 +65,36 @@ class CacheService:
                 if not fnmatch.fnmatch(k, pattern)
             }
 
+    @staticmethod
+    def make_key(
+        tenant_id: str | None,
+        workspace_id: str | None,
+        resource: str,
+        *params: str,
+    ) -> str:
+        """Build a zero-trust namespaced cache key.
+
+        Prevents cross-workspace and cross-tenant cache poisoning (P0-06).
+        All document/search/agent cache lookups MUST use this method.
+
+        Format: cache:{tenant_id}:{workspace_id}:{resource}:{params_hash}
+
+        Args:
+            tenant_id:    Tenant identifier (None → "global")
+            workspace_id: Workspace identifier (None → "global")
+            resource:     Resource category (e.g. "documents", "search", "chunks")
+            *params:      Arbitrary discriminators (page, query, filters, etc.)
+
+        Returns:
+            Deterministic, collision-resistant cache key string.
+        """
+        import hashlib
+
+        parts = "|".join(str(p) for p in params)
+        params_hash = hashlib.sha256(parts.encode()).hexdigest()[:16]
+        tid = (tenant_id or "global").replace(":", "_")
+        wid = (workspace_id or "global").replace(":", "_")
+        return f"cache:{tid}:{wid}:{resource}:{params_hash}"
+
 
 cache_service = CacheService()

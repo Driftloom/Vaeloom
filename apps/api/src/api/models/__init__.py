@@ -21,6 +21,7 @@ from .schema import (
     Memory,
     MemoryRecord,
     Notification,
+    OutboxEvent,
     Permission,
     Plugin,
     PluginExecution,
@@ -46,7 +47,7 @@ __all__ = [
     "Application", "AuthSession", "Connector", "CrdtSyncDelta", "DeadLetterEvent",
     "Document", "DocumentVersion", "Embedding", "Entity", "Event",
     "EventSubscription", "GmailWatch", "Integration", "LearningEvent", "Memory", "MemoryRecord",
-    "Notification", "Permission", "Plugin", "PluginExecution", "ProactiveProposal",
+    "Notification", "OutboxEvent", "Permission", "Plugin", "PluginExecution", "ProactiveProposal",
     "Relationship", "Resume", "ScaleMemoryNode", "ScheduleEvent", "SovereignIdentity", "Subscription", "Tenant",
     "UsageRecord", "User", "VerifiableCredential", "Webhook", "WebhookDelivery", "Workspace", "WorkspaceUser",
 ]

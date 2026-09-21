@@ -122,6 +122,22 @@ class FileSecurityService:
 
         # 3. Extension inspection
         ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+
+        # P0-01: Active content types (HTML, SVG, XML) are permanently blocked — they can
+        # execute JavaScript and cause Stored XSS regardless of declared MIME type.
+        if ext in ACTIVE_CONTENT_EXTENSIONS:
+            logger.warning(f"Active content extension blocked: .{ext} for {filename}")
+            return FileSecurityVerdict(
+                is_safe=False,
+                detected_mime="application/octet-stream",
+                scan_status="REJECTED",
+                rejection_reason=(
+                    f"File type '.{ext}' is blocked for security reasons "
+                    f"(active content types can execute JavaScript and cause XSS). "
+                    f"Upload the content as PDF or plain text instead."
+                ),
+            )
+
         if ext not in ALLOWED_EXTENSIONS:
             return FileSecurityVerdict(
                 is_safe=False,
@@ -156,6 +172,14 @@ class FileSecurityService:
                     detected_mime="application/octet-stream",
                     scan_status="REJECTED",
                     rejection_reason="Invalid PNG: Missing PNG signature",
+                )
+            # P0-01 polyglot: check for embedded active content even in images
+            if FileSecurityService._contains_active_content(content):
+                return FileSecurityVerdict(
+                    is_safe=False,
+                    detected_mime="application/octet-stream",
+                    scan_status="REJECTED",
+                    rejection_reason="PNG file contains embedded active content (polyglot attack)",
                 )
             detected_mime = "image/png"
 
@@ -207,10 +231,6 @@ class FileSecurityService:
                 "json": "application/json",
             }[ext]
 
-        elif ext in ("html", "svg"):
-            # HTML/SVG are permitted but classified explicitly for isolated attachment delivery
-            detected_mime = "text/html" if ext == "html" else "image/svg+xml"
-
         else:
             detected_mime = declared_mime or "application/octet-stream"
 
@@ -220,6 +240,27 @@ class FileSecurityService:
             scan_status="CLEAN",
             rejection_reason=None,
         )
+
+    @staticmethod
+    def _contains_active_content(content: bytes) -> bool:
+        """Detect active/executable content patterns in first 64KB (polyglot detection).
+
+        Used for image types that might embed script payloads.
+        """
+        sample = content[:65536].lower()
+        patterns = [
+            b"<script",
+            b"javascript:",
+            b"onerror=",
+            b"onload=",
+            b"data:text/html",
+            b"<iframe",
+            b"<object",
+            b"<embed",
+            b"vbscript:",
+            b"expression(",
+        ]
+        return any(p in sample for p in patterns)
 
 
 file_security_service = FileSecurityService()
