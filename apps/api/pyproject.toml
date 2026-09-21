@@ -64,6 +64,14 @@ asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 # Memory-friendly: 4 workers (each ~300MB, total ~1.2GB). -n auto (16) ≈ 4-5GB and can OOM on 16GB laptops.
 # Use --dist loadfile only for large suites if you want file-level grouping; for 2-file small runs it can be slower.
+pythonpath = [
+    "src",
+    "../../packages/agent-common/src",
+    "../../packages/agent-policy/src",
+    "../../packages/agent-security/src",
+    "../../packages/agent-contracts/src",
+    "../../agents/career-agent/src",
+]
 addopts = "-n 4 --dist loadfile --timeout=120 --timeout-method=thread"
 
 [tool.ruff]

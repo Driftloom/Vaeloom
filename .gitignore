@@ -285,3 +285,16 @@ scratch/
 *.scratch.*
 *composio_toolkits*.json
 all_composio_*.json
+
+# Test runner caches, benchmarks, and editor backups
+pytestdebug.log
+.benchmarks/
+.vitest/
+.wireit/
+.playwright-artifacts*/
+allure-results/
+allure-report/
+.ropeproject/
+*~
+.#*
+

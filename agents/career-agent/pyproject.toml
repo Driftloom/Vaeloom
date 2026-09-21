@@ -16,3 +16,14 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = [
+    "src",
+    "../../packages/agent-common/src",
+    "../../packages/agent-policy/src",
+    "../../packages/agent-security/src",
+    "../../packages/agent-contracts/src",
+]
+
