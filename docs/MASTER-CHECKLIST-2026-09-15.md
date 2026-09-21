@@ -176,7 +176,7 @@ Verify command | Evidence required
   PDF+DOCX download, AI-tailor modal; document_builder.py Playwright chromium,
   503 hint if missing).
 - profile (12) → profile page. Backend: routers/profile.py + profile_service +
-  ATS tools (28 semantic tools).
+  ATS tools (4 ATS tools: 1 classic + 3 semantic, of 61 total registered tools).
 - cognition (6) + anticipation (4) + opportunities (2) + search (1) +
   recommendations/council/federation/sovereignty/temporal/admin/analytics/audit/billing/feature_flags/iam/plugins/provider-keys
   → chat/agents/jobs/admin/developer/marketplace/billing pages.

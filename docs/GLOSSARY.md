@@ -50,7 +50,7 @@
 | ReAct                | Opt-in LLM-driven tool-calling loop (`AGENT_REACT_ENABLED=1`); default off for safe local/test runs.                                                                          |
 | Semantic ATS score   | Embeddings-cosine (+ keyword gazetteer fallback) resume-vs-job match score (`calculate_semantic_ats_score`).                                                                  |
 | Supervisor / Loop    | Orchestrator pattern — router picks agents, supervisor DAGs them, loop iterates to completion.                                                                                |
-| Tool calling         | Agents invoking typed tools (28 total incl. semantic ATS, browser, MCP-bridged).                                                                                              |
+| Tool calling         | Agents invoking typed tools (61 total registered: 4 ATS-adjacent incl. 3 semantic ATS, browser, MCP-bridged).                                                                 |
 
 ## Documents & Resume Pipeline
 

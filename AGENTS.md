@@ -28,9 +28,9 @@
 
 ## CRITICAL: Never use `pnpm dev`
 
-`pnpm dev` runs `nx run-many --target=dev --parallel` which spawns Nx across
-**all 25 packages**. Most packages have no `dev` script, so it hangs forever.
-**Always** use:
+`pnpm dev` is disabled at the root (fail-fast redirect to `dev:web`/`dev:be`; it
+formerly ran `nx run-many --target=dev --parallel` across all 25 packages and
+hung because most packages have no `dev` script). **Always** use:
 
 - **`pnpm dev:web`** — runs only the web app via Nx (2-5s startup)
 - **`make dev-web`** — runs `cd apps/web && pnpm next dev` directly (fastest)
@@ -53,10 +53,10 @@
   middleware/test_csrf duplicates security/test_csrf per zero-trust audit
   2026-08-22 F-02; F-20/F-22 fixes 2026-08-22 do not change count); coverage
   **94% total** — see
-  `evidence/phases/mvp-p00/03-maturity-and-evidence-matrix.md`; OpenAPI **162
-  paths / 203 ops** (`specs/api/openapi.yaml` v0.2.0, regen 2026-09-15 via
-  `scripts/gen_openapi.py` — was 110 on 2026-08-29, 106 on 2026-08-23, 99
-  before)
+  `evidence/phases/mvp-p00/03-maturity-and-evidence-matrix.md`; OpenAPI **241
+  paths / 294 ops** (`specs/api/openapi.yaml` v0.2.0, regen 2026-09-21 via
+  `scripts/gen_openapi.py` — was 162/203 on 2026-09-15, 110 on 2026-08-29, 106
+  on 2026-08-23, 99 before)
 - Python 3.12.13 (per `apps/api/.python-version` pinned via
   `uv python pin 3.12`; `.venv` managed by `uv`)
 - Tests use SQLite with mock backend (`tmp_path` per-test DB via `NullPool`);
@@ -75,6 +75,28 @@
   `list` was non-deterministic)
 - `.venv` is 3.12.13 (managed by `uv`); old `3.14` venv removed 2026-08-21
 
+## Module 05 Testing & Live Providers (updated 2026-09-22)
+
+- **Test Suites:**
+  - `tests/integration/module05/` (19 tests): Real SQLite DB + authentic JWT
+    tokens + MinIO live S3 + real LLM.
+  - `tests/adversarial/module05/` (9 tests): Red-team injection payloads &
+    privilege escalation.
+  - `tests/test_module05_*.py` (9 tests): Core regression smoke tests.
+- **Live Provider Testing (`@pytest.mark.live_provider`):**
+  - Both root `tests/conftest.py` and `tests/integration/conftest.py`
+    automatically bypass `mock_llm` when `@pytest.mark.live_provider` is
+    present.
+  - **Live S3 (MinIO):** Start container via
+    `docker-compose -f docker-compose.test.yml up -d`. Runs on port 9000 with
+    bucket `vaeloom-test-bucket`.
+  - **Live LLM (Gemini):** Set `GEMINI_API_KEY` in environment; uses
+    `gemini-3.6-flash`.
+  - **Local Ollama:** Set `LLM_PROVIDER=ollama`,
+    `OLLAMA_BASE_URL=http://localhost:11434`, model `gemma3:latest`.
+  - Command:
+    `uv run --project apps/api python -m pytest tests/integration/module05/ -v -o addopts=""`
+
 ## Resume Document Pipeline (added 2026-08-23)
 
 - **Templates**: 5 industry templates in `services/resume_templates.py` (+
@@ -90,7 +112,8 @@
   `POST /resumes/{id}/tailor|compile|cover-letter|cheatsheet`,
   `GET /resumes/{id}/artifacts`, `GET /resumes/artifacts/{aid}/download`.
   Compile endpoints rate-limited (chromium renders are expensive).
-- **Semantic ATS tools** (28 total tools now): `calculate_semantic_ats_score`,
+- **Semantic ATS tools** (3 semantic + 1 classic ATS of 61 total registered
+  tools in `tools/definitions.py`): `calculate_semantic_ats_score`,
   `extract_missing_hard_skills`, `audit_ats_formatting` — embeddings cosine +
   keyword gazetteer fallback; all mock-safe offline.
 - **Browser tools** (2026-08-23, ADR-035): `browse_job_page`,
@@ -136,7 +159,7 @@
 | 8.x Performance           | DONE   | IMPLEMENTED             | SWR caching, route prefetching, image optimization, bundle analysis                                                                                                                                                                                                                                                                                                                                      |
 | 9.x Security & Compliance | DONE   | PARTIAL                 | GDPR, API key rotation, data retention implemented; IP Allowlist middleware ALWAYS MOUNTED (main.py:188 no-op when empty); input sanitization designed (ADR-031); **First Live DR Drill EXECUTED & LOGGED** 2026-09-17 (`evidence/dr-drills/DR-Drill-Log.md`, 48.99s RTO / 0.0s RPO, 67 tables verified).                                                                                                |
 | 10.x Testing/QA           | DONE   | IMPLEMENTED             | 3640 pytest (security 233/233 170 unique; full suite serial passes), 41 jest across 8 suites, 6 active Playwright E2E spec files in apps/web/e2e (73 tests total: 33 gating functional/a11y/responsive + 40 visual baselines; 3 legacy flow specs in testing/e2e); live PG RLS suite `test_rls_live_pg.py` 5/5 passes; coverage 94% + WCAG + perf tracked (EXC-P14-01..03, P15 owns)                     |
-| 11.x Documentation        | DONE   | IMPLEMENTED             | 44 ADRs (ADR-001 through ADR-044), OpenAPI **162 paths / 203 ops** (`docs/backend/openapi.yaml`), onboarding guide, deployment/DR runbooks, API reference                                                                                                                                                                                                                                                |
+| 11.x Documentation        | DONE   | IMPLEMENTED             | 44 ADRs (ADR-001 through ADR-044), OpenAPI **241 paths / 294 ops** (`docs/backend/openapi.yaml`, regen 2026-09-21), onboarding guide, deployment/DR runbooks, API reference                                                                                                                                                                                                                              |
 | 12.x Enterprise Polish    | DONE   | IMPLEMENTED             | Light/dark mode, keyboard shortcuts, API versioning, webhooks, batch operations                                                                                                                                                                                                                                                                                                                          |
 
 ## Critical Config for Agent Sessions
