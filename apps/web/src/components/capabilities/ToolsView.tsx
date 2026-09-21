@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Badge, Button } from '@vaeloom/ui-kit';
 import { CapabilityItem } from '@/lib/capabilities-data';
 import { useToast } from '@/components/shared/Toast';
@@ -273,9 +273,39 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, search
   const [testOutput, setTestOutput] = useState<string | null>(null);
   const [testLatency, setTestLatency] = useState<number | null>(null);
 
-  const selectedSuite = TOOL_SUITES.find((s) => s.id === selectedSuiteId) ?? TOOL_SUITES[0]!;
+  const allSuites = useMemo(() => {
+    const custom = tools.filter(
+      (t) =>
+        t.category === 'tools' &&
+        (t.source === 'custom' || !TOOL_SUITES.some((s) => s.tools.includes(t.name))),
+    );
+    if (custom.length === 0) return TOOL_SUITES;
+    const customSuite: ToolSuite = {
+      id: 'custom-workspace-tools',
+      name: 'Custom Workspace Tools',
+      count: custom.length,
+      description:
+        'Sovereign custom tools authored in this workspace with typed schemas and dynamic handlers.',
+      enabled: true,
+      tools: custom.map((c) => c.name),
+      providers: [
+        {
+          id: 'workspace-executor',
+          name: 'Workspace Dynamic Executor',
+          status: 'Active',
+          badge: 'Sovereign',
+          isRecommended: true,
+          description:
+            'Sandboxed Python & JSON-RPC runtime executing tools scoped to this workspace.',
+        },
+      ],
+    };
+    return [customSuite, ...TOOL_SUITES];
+  }, [tools]);
 
-  const filteredSuites = TOOL_SUITES.filter((s) => {
+  const selectedSuite = allSuites.find((s) => s.id === selectedSuiteId) ?? allSuites[0]!;
+
+  const filteredSuites = allSuites.filter((s) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.trim().toLowerCase();
     return (
@@ -312,20 +342,22 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, search
         title: `Test run succeeded for ${selectedSuite.name}`,
         detail: `Executed in ${res.executionDurationMs || 32}ms.`,
       });
-    } catch {
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Execution failed';
       setTestOutput(
         JSON.stringify(
           {
-            ok: true,
-            sample: `Simulated output for ${selectedSuite.tools[0]}`,
+            status: 'error',
+            tool: selectedSuite.tools[0],
+            suite: selectedSuite.name,
             timestamp: new Date().toISOString(),
+            error: errMsg,
           },
           null,
           2,
         ),
       );
-      setTestLatency(28);
-      toast({ tone: 'success', title: `Test run completed (simulated)` });
+      toast({ tone: 'error', title: `Test run failed: ${selectedSuite.name}`, detail: errMsg });
     } finally {
       setTestRunning(false);
     }
