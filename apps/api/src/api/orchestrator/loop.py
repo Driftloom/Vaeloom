@@ -1168,7 +1168,7 @@ async def _try_react_loop(
                     ordered.append(mcp_td)
         except Exception:  # noqa: BLE001 - bridging must never break the loop
             pass
-        ordered = ordered[:12]
+        ordered = ordered[:32]
         if not ordered:
             return None
         agent_allowed_scopes = [td.required_scope for td in ordered]
@@ -1198,7 +1198,7 @@ async def _try_react_loop(
         _compiled_messages = None
         try:
             from ..services.prompt_compiler import PromptCompiler, PromptLayers
-            _tool_desc = "\n".join(f"- {td.name}: {td.description}" for td in ordered[:12])
+            _tool_desc = "\n".join(f"- {td.name}: {td.description}" for td in ordered[:32])
             _layers = PromptLayers(
                 platform_policy="Vaeloom agent runtime: least-privilege tools, approval gates, workspace isolation.",
                 safety_policy="\n".join(getattr(card, "safety_guidelines", []) or []) if card else "",

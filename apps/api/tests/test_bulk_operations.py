@@ -36,7 +36,8 @@ class TestBulkOperations:
         data = upload_res.json()
         assert data["total_attempted"] == 3
         assert len(data["succeeded"]) == 3
-        assert len(data["failed"]) == 0
+        assert data["failed"] == 0
+        assert len(data["errors"]) == 0
 
         doc_ids = [d["id"] for d in data["succeeded"]]
 

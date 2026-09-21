@@ -119,6 +119,163 @@ CATEGORIZE_DOCUMENT = ToolDefinition(
     category="memory_write",
 )
 
+GET_DOCUMENT_CONTENT = ToolDefinition(
+    name="get_document_content",
+    description="Retrieve safe plain text content of a workspace document by ID with token/character bounding",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "document_id": {"type": "string"},
+            "max_chars": {"type": "integer", "default": 10000},
+        },
+        "required": ["document_id"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "document_id": {"type": "string"},
+            "title": {"type": "string"},
+            "content": {"type": "string"},
+            "chars_returned": {"type": "integer"},
+        },
+    },
+    required_scope="memory.read",
+    category="memory_read",
+)
+
+LIST_WORKSPACE_FOLDERS = ToolDefinition(
+    name="list_workspace_folders",
+    description="List all folders and directories in the workspace",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "parent_id": {"type": "string", "description": "Optional parent folder ID"},
+        },
+        "required": [],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "folders": {"type": "array"},
+            "count": {"type": "integer"},
+        },
+    },
+    required_scope="memory.read",
+    category="memory_read",
+)
+
+CREATE_WORKSPACE_FOLDER = ToolDefinition(
+    name="create_workspace_folder",
+    description="Create a new directory folder in the workspace",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "parent_id": {"type": "string"},
+        },
+        "required": ["name"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "id": {"type": "string"},
+            "name": {"type": "string"},
+            "path": {"type": "string"},
+        },
+    },
+    required_scope="workspace.write",
+    category="system",
+)
+
+GET_DOCUMENT_VERSION = ToolDefinition(
+    name="get_document_version",
+    description="Retrieve revision history snapshots and checksums for a document",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "document_id": {"type": "string"},
+        },
+        "required": ["document_id"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "document_id": {"type": "string"},
+            "versions": {"type": "array"},
+        },
+    },
+    required_scope="memory.read",
+    category="memory_read",
+)
+
+RESTORE_DOCUMENT_VERSION = ToolDefinition(
+    name="restore_document_version",
+    description="Restore an older revision snapshot as the active document version",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "document_id": {"type": "string"},
+            "version_id": {"type": "string"},
+        },
+        "required": ["document_id", "version_id"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "status": {"type": "string"},
+            "document_id": {"type": "string"},
+            "restored_version": {"type": "integer"},
+        },
+    },
+    required_scope="workspace.write",
+    category="system",
+)
+
+SHARE_WORKSPACE_DOCUMENT = ToolDefinition(
+    name="share_workspace_document",
+    description="Grant explicit view or edit access on a document to another workspace",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "document_id": {"type": "string"},
+            "target_workspace_id": {"type": "string"},
+            "permission": {"type": "string", "enum": ["view", "edit"], "default": "view"},
+        },
+        "required": ["document_id", "target_workspace_id"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "share_id": {"type": "string"},
+            "document_id": {"type": "string"},
+            "target_workspace_id": {"type": "string"},
+        },
+    },
+    required_scope="workspace.write",
+    category="system",
+)
+
+GET_DOCUMENT_AUDIT_HISTORY = ToolDefinition(
+    name="get_document_audit_history",
+    description="Retrieve immutable audit action log (renames, archives, restores) for a document",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "document_id": {"type": "string"},
+        },
+        "required": ["document_id"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "actions": {"type": "array"},
+            "count": {"type": "integer"},
+        },
+    },
+    required_scope="memory.read",
+    category="memory_read",
+)
+
 
 # ── Connector Read Tools ───────────────────────────────────────────
 
@@ -1030,6 +1187,9 @@ ALL_TOOLS: dict[str, ToolDefinition] = {
     for t in [
         SEARCH_DOCUMENTS, QUERY_GRAPH, GET_ENTITY,
         CREATE_ENTITY, MERGE_ENTITIES, CATEGORIZE_DOCUMENT,
+        GET_DOCUMENT_CONTENT, LIST_WORKSPACE_FOLDERS, CREATE_WORKSPACE_FOLDER,
+        GET_DOCUMENT_VERSION, RESTORE_DOCUMENT_VERSION, SHARE_WORKSPACE_DOCUMENT,
+        GET_DOCUMENT_AUDIT_HISTORY,
         SEARCH_GMAIL, SEARCH_JOBS, LIST_CALENDAR_EVENTS,
         LIST_DRIVE_FILES, SEARCH_DRIVE, DOWNLOAD_DRIVE_FILE,
         CREATE_GOOGLE_DOC, READ_GOOGLE_DOC, APPEND_GOOGLE_DOC, REPLACE_GOOGLE_DOC_TEXT,

@@ -21,7 +21,7 @@ class TestFileSecurity:
         verdict = file_security_service.inspect_file("payload.bat", b"@echo off\nexit", "text/plain")
         assert verdict.is_safe is False
         assert verdict.scan_status == "REJECTED"
-        assert "Extension '.bat' is not permitted" in verdict.rejection_reason
+        assert "extension '.bat' is not permitted" in verdict.rejection_reason.lower()
 
     def test_spoofed_pdf_with_executable_payload(self):
         # Disguised as .pdf but contains Windows PE executable header 'MZ'

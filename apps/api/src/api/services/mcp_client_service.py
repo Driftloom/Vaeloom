@@ -165,6 +165,7 @@ class _McpClientService:
         "PATH", "PATHEXT", "SYSTEMROOT", "SYSTEMDRIVE", "COMSPEC", "TEMP",
         "TMP", "HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA",
         "PROGRAMFILES", "PROGRAMFILES(X86)", "LANG", "TZ", "TERM",
+        "PYTHONPATH", "VIRTUAL_ENV",
     )
 
     @classmethod
@@ -177,7 +178,7 @@ class _McpClientService:
         merged_env = {k: os.environ[k] for k in cls._ALLOWED_PARENT_ENV if k in os.environ}
         merged_env.update(cfg.get("env") or {})
         return StdioServerParameters(
-            command=command, args=list(cfg.get("args") or []), env=merged_env,
+            command=command, args=cls._stdio_argv(cfg), env=merged_env,
         )
 
     @staticmethod
@@ -197,6 +198,9 @@ class _McpClientService:
         lower = resolved.lower()
         if lower.endswith((".cmd", ".bat")):
             return "cmd.exe"
+        if lower in ("python", "python.exe", "python3", "python3.exe"):
+            import sys as _sys
+            return _sys.executable
         return resolved
 
     @staticmethod
@@ -225,11 +229,16 @@ class _McpClientService:
 
             from mcp.client.stdio import stdio_client
 
+            env = {k: os.environ[k] for k in self._ALLOWED_PARENT_ENV if k in os.environ} | dict(cfg.get("env") or {})
+            if "PYTHONPATH" not in env:
+                from pathlib import Path
+                root_src = Path(__file__).resolve().parent.parent.parent
+                env["PYTHONPATH"] = str(root_src)
+
             params = StdioServerParameters(
                 command=self._resolve_command(cfg["command"]),
                 args=self._stdio_argv(cfg),
-                env={k: os.environ[k] for k in self._ALLOWED_PARENT_ENV if k in os.environ}
-                | dict(cfg.get("env") or {}),
+                env=env,
             )
             async with stdio_client(params) as (read, write):
                 async with ClientSession(read, write) as session:
@@ -295,10 +304,15 @@ class _McpClientService:
             for t in result.tools:
                 hints = getattr(t, "annotations", None)
                 ro = bool(getattr(hints, "readOnlyHint", False)) if hints else False
+                schema = (
+                    getattr(t, "input_schema", None)
+                    or getattr(t, "inputSchema", None)
+                    or {"type": "object"}
+                )
                 tools.append(McpToolInfo(
                     name=t.name,
                     description=t.description or "",
-                    input_schema=t.inputSchema or {"type": "object"},
+                    input_schema=schema,
                     read_only_hint=ro,
                 ))
             return tools
@@ -312,7 +326,10 @@ class _McpClientService:
         except TimeoutError as e:
             raise McpTransportError(f"MCP server timed out during discovery ({CONNECT_TIMEOUT_S}s)") from e
         except Exception as e:
-            raise McpTransportError(f"MCP discovery failed: {e}") from e
+            detail = str(e)
+            if hasattr(e, "exceptions") and e.exceptions:
+                detail = "; ".join(str(sub) for sub in e.exceptions)
+            raise McpTransportError(f"MCP discovery failed: {detail}") from e
 
         self._discovery_cache[key] = (time.monotonic(), tools)
         return [

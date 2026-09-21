@@ -26,10 +26,10 @@ class DocumentCitation(BaseModel):
 class DocumentAgent(BaseAgent):
     mission = "General-purpose document Q&A, cross-document synthesis, and grounded citation extraction"
     tools = [
-        Tool(name="search_documents_deep", description="Full-text and semantic retrieval across document corpus"),
-        Tool(name="synthesize_document_corpus", description="Generate high-level synthesized briefing across multiple files"),
-        Tool(name="extract_document_citations", description="Trace facts and claims directly to source paragraphs"),
-        Tool(name="compare_documents", description="Identify differences, revisions, or contradictions across versions"),
+        Tool(name="search_documents", description="Full-text and semantic retrieval across document corpus"),
+        Tool(name="get_document_content", description="Retrieve safe plain text content of a document"),
+        Tool(name="query_graph", description="Query knowledge graph entities and relations"),
+        Tool(name="get_document_version", description="Inspect revision history of a document"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["document", "knowledge", "reference"],
@@ -74,6 +74,27 @@ class DocumentAgent(BaseAgent):
         if docs:
             titles = ", ".join(d["title"] for d in docs[:3])
             synthesis = f"Based on {len(docs)} document(s) consulted ({titles}): Retrieved grounded analysis for query '{query}'."
+
+            # Call LLM service if API key or mock LLM is available
+            if getattr(settings, "llm_api_key", None):
+                prompt = (
+                    f"You are a helpful document assistant. Answer the user inquiry: '{query}' "
+                    f"using strictly the following consulted document excerpts:\n"
+                )
+                for d in docs[:5]:
+                    prompt += f"- Document ID: {d['id']}, Title: {d['title']}\n  Excerpt: {d['excerpt']}\n"
+                prompt += "\nSynthesize a clear, direct, grounded summary with factual fidelity."
+
+                try:
+                    resp = await llm_service.generate_completion(
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.0,
+                    )
+                    llm_text = resp.get("content") if isinstance(resp, dict) else getattr(resp, "content", None)
+                    if llm_text and len(str(llm_text).strip()) > 10:
+                        synthesis = str(llm_text).strip()
+                except Exception as ex:
+                    logger.debug("DocumentAgent LLM synthesis fallback to excerpt summary: %s", ex)
         else:
             synthesis = "No active documents found in the workspace matching your inquiry."
 

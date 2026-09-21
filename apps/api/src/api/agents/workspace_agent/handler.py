@@ -26,10 +26,11 @@ class WorkspaceCleanupProposal(BaseModel):
 class WorkspaceAgent(BaseAgent):
     mission = "Maintain workspace structure, detect sprawl, and propose organizational hygiene cleanups"
     tools = [
-        Tool(name="analyze_workspace_structure", description="Analyze folder hierarchy and file distribution"),
-        Tool(name="detect_workspace_sprawl", description="Identify orphaned, redundant, or stale files"),
-        Tool(name="propose_workspace_cleanup", description="Generate actionable reorganization proposals"),
-        Tool(name="audit_workspace_permissions", description="Review workspace membership and role hygiene"),
+        Tool(name="list_workspace_folders", description="List all directory folders in the workspace"),
+        Tool(name="create_workspace_folder", description="Create a new folder in the workspace"),
+        Tool(name="search_documents", description="Search across workspace documents"),
+        Tool(name="rename_file", description="Rename a document in the workspace"),
+        Tool(name="move_file", description="Move a document to another folder"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["document", "project", "organization"],

@@ -107,7 +107,7 @@ def _build_test_app(db_session):
     from api.routers import (
         health, auth, workspaces, memory, agents, events, search,
         integrations, billing, documents, resumes, applications,
-        plugins, chat, notifications, connectors, scheduler,
+        plugins, chat, notifications, connectors, capabilities, scheduler,
         analytics, audit, iam, knowledge_graph, recommendations,
         webhooks, gmail, provider_keys, profile, opportunities, council,
         cognition, sovereignty, anticipation, federation,
@@ -158,6 +158,7 @@ def _build_test_app(db_session):
     test_app.include_router(applications.router, prefix="/api/v1/workspaces/{workspace_id}/applications")
     test_app.include_router(notifications.router, prefix="/api/v1/notifications")
     test_app.include_router(connectors.router, prefix="/api/v1/connectors")
+    test_app.include_router(capabilities.router, prefix="/api/v1/capabilities")
     test_app.include_router(scheduler.router, prefix="/api/v1/scheduler")
     test_app.include_router(analytics.router, prefix="/api/v1/analytics")
     test_app.include_router(audit.router, prefix="/api/v1/audit")

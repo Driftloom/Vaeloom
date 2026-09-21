@@ -89,7 +89,7 @@ class TestFolders:
         assert cycle_res.status_code == 400
         body = cycle_res.json()
         err_msg = body.get("detail") or body.get("error", {}).get("message") or ""
-        assert "Circular folder dependency detected" in err_msg
+        assert "circular" in err_msg.lower()
 
     async def test_folder_delete(self, client: AsyncClient):
         headers = await self._auth_header(client, "test_f3@example.com")

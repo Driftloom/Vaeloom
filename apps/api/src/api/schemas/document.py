@@ -126,10 +126,12 @@ class DocumentShareResponse(BaseModel):
 
 # Bulk Schemas
 class BulkUploadResponse(BaseModel):
-    processed: int
-    failed: int
-    items: list[dict[str, Any]]
-    errors: list[dict[str, Any]]
+    total_attempted: int = 0
+    processed: int = 0
+    failed: int = 0
+    succeeded: list[dict[str, Any]] = []
+    items: list[dict[str, Any]] = []
+    errors: list[dict[str, Any]] = []
 
 
 class BulkDownloadRequest(BaseModel):

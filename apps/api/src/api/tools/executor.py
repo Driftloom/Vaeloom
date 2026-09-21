@@ -324,6 +324,9 @@ def dynamic_tool_definitions(workspace_id: str | None = None) -> dict[str, ToolD
         ws_str = str(workspace_id)
         if ws_str in WORKSPACE_DYNAMIC_TOOL_DEFS:
             return dict(WORKSPACE_DYNAMIC_TOOL_DEFS[ws_str])
+        # If workspace-partitioned defs exist, prevent leaking tools across tenants
+        if WORKSPACE_DYNAMIC_TOOL_DEFS:
+            return {}
     return dict(DYNAMIC_TOOL_DEFS)
 
 
@@ -405,19 +408,24 @@ async def _execute_search_documents(params: dict[str, Any], workspace_id: str) -
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
 
     try:
+        import uuid as _uuid
+        ws_uuid = _uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, _uuid.UUID) else workspace_id
         async with _ws_session(workspace_id) as session:
             stmt = (
                 select(Document)
-                .where(Document.workspace_id == workspace_id)
-                .where(
+                .where(Document.workspace_id == ws_uuid)
+                .where(Document.deleted_at.is_(None))
+                .where(Document.scan_status != "quarantined")
+            )
+            if query:
+                stmt = stmt.where(
                     or_(
                         Document.path.ilike(f"%{query}%"),
                         Document.type.ilike(f"%{query}%"),
                         Document.summary.ilike(f"%{query}%"),
                     )
                 )
-                .limit(limit)
-            )
+            stmt = stmt.order_by(Document.created_at.desc()).limit(limit)
             result = await session.execute(stmt)
             documents = result.scalars().all()
             return {
@@ -439,6 +447,253 @@ async def _execute_search_documents(params: dict[str, Any], workspace_id: str) -
     except Exception as e:
         logger.error(f"search_documents failed: {e}")
         return {"status": "error", "tool": "search_documents", "result": str(e)}
+
+
+async def _execute_get_document_content(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    document_id = params.get("document_id", "")
+    max_chars = int(params.get("max_chars", 10000))
+    if not document_id:
+        return {"status": "error", "tool": "get_document_content", "result": "document_id is required"}
+
+    try:
+        import uuid as _uuid
+        from api.models.schema import Document
+
+        doc_uuid = _uuid.UUID(str(document_id))
+        ws_uuid = _uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, _uuid.UUID) else workspace_id
+        async with _ws_session(workspace_id) as session:
+            doc = await session.get(Document, doc_uuid)
+            if not doc or doc.workspace_id != ws_uuid or doc.deleted_at is not None:
+                return {"status": "error", "tool": "get_document_content", "result": f"Document {document_id} not found in workspace"}
+
+            if getattr(doc, "scan_status", "clean") == "quarantined":
+                return {"status": "error", "tool": "get_document_content", "result": f"Document {document_id} is quarantined due to security policy"}
+
+            text_content = ""
+            if doc.content:
+                try:
+                    text_content = doc.content.decode("utf-8", errors="replace")
+                except Exception:
+                    text_content = str(doc.content)
+            elif doc.summary:
+                text_content = doc.summary
+
+            truncated = text_content[:max_chars]
+            return {
+                "status": "success",
+                "tool": "get_document_content",
+                "result": {
+                    "document_id": str(doc.id),
+                    "title": doc.path.rsplit("/", 1)[-1] if doc.path else "Untitled",
+                    "path": doc.path,
+                    "content": truncated,
+                    "chars_returned": len(truncated),
+                    "total_chars": len(text_content),
+                },
+            }
+    except Exception as e:
+        logger.error(f"get_document_content failed: {e}")
+        return {"status": "error", "tool": "get_document_content", "result": str(e)}
+
+
+async def _execute_list_workspace_folders(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    parent_id = params.get("parent_id")
+    try:
+        import uuid as _uuid
+        from sqlalchemy import select
+        from api.models.schema import Folder
+
+        ws_uuid = _uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, _uuid.UUID) else workspace_id
+        async with _ws_session(workspace_id) as session:
+            stmt = select(Folder).where(Folder.workspace_id == ws_uuid)
+            if parent_id:
+                p_uuid = _uuid.UUID(str(parent_id))
+                stmt = stmt.where(Folder.parent_id == p_uuid)
+            rows = (await session.execute(stmt)).scalars().all()
+            return {
+                "status": "success",
+                "tool": "list_workspace_folders",
+                "result": [
+                    {
+                        "id": str(f.id),
+                        "name": f.name,
+                        "path": f.path,
+                        "parent_id": str(f.parent_id) if f.parent_id else None,
+                    }
+                    for f in rows
+                ],
+                "count": len(rows),
+            }
+    except Exception as e:
+        logger.error(f"list_workspace_folders failed: {e}")
+        return {"status": "error", "tool": "list_workspace_folders", "result": str(e)}
+
+
+async def _execute_create_workspace_folder(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    name = params.get("name", "").strip()
+    parent_id = params.get("parent_id")
+    if not name:
+        return {"status": "error", "tool": "create_workspace_folder", "result": "Folder name is required"}
+
+    try:
+        import uuid as _uuid
+        from api.services.folder_service import folder_service
+
+        ws_uuid = _uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, _uuid.UUID) else workspace_id
+        async with _ws_session(workspace_id) as session:
+            folder = await folder_service.create_folder(
+                db=session,
+                workspace_id=ws_uuid,
+                name=name,
+                parent_id=_uuid.UUID(str(parent_id)) if parent_id else None,
+            )
+            return {
+                "status": "success",
+                "tool": "create_workspace_folder",
+                "result": {
+                    "id": str(folder.id),
+                    "name": folder.name,
+                    "path": folder.path,
+                },
+            }
+    except Exception as e:
+        logger.error(f"create_workspace_folder failed: {e}")
+        return {"status": "error", "tool": "create_workspace_folder", "result": str(e)}
+
+
+async def _execute_get_document_version(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    document_id = params.get("document_id", "")
+    if not document_id:
+        return {"status": "error", "tool": "get_document_version", "result": "document_id is required"}
+    try:
+        import uuid as _uuid
+        from sqlalchemy import select
+        from api.models.schema import Document, DocumentVersion
+
+        doc_uuid = _uuid.UUID(str(document_id))
+        ws_uuid = _uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, _uuid.UUID) else workspace_id
+        async with _ws_session(workspace_id) as session:
+            doc = await session.get(Document, doc_uuid)
+            if not doc or doc.workspace_id != ws_uuid:
+                return {"status": "error", "tool": "get_document_version", "result": f"Document {document_id} not found in workspace"}
+
+            stmt = select(DocumentVersion).where(DocumentVersion.document_id == doc_uuid).order_by(DocumentVersion.version_number.desc())
+            versions = (await session.execute(stmt)).scalars().all()
+            return {
+                "status": "success",
+                "tool": "get_document_version",
+                "result": {
+                    "document_id": str(doc.id),
+                    "versions": [
+                        {
+                            "id": str(v.id),
+                            "version_number": v.version_number,
+                            "size_bytes": v.size_bytes,
+                            "checksum": v.checksum,
+                            "created_at": v.created_at.isoformat() if v.created_at else None,
+                        }
+                        for v in versions
+                    ],
+                    "count": len(versions),
+                },
+            }
+    except Exception as e:
+        logger.error(f"get_document_version failed: {e}")
+        return {"status": "error", "tool": "get_document_version", "result": str(e)}
+
+
+async def _execute_restore_document_version(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    document_id = params.get("document_id", "")
+    version_id = params.get("version_id", "")
+    if not document_id or not version_id:
+        return {"status": "error", "tool": "restore_document_version", "result": "document_id and version_id are required"}
+    try:
+        import uuid as _uuid
+        from api.services.document_service import document_service
+
+        doc_uuid = _uuid.UUID(str(document_id))
+        ver_uuid = _uuid.UUID(str(version_id))
+        ws_uuid = _uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, _uuid.UUID) else workspace_id
+        async with _ws_session(workspace_id) as session:
+            doc = await document_service.restore_version(session, doc_uuid, ver_uuid, ws_uuid)
+            return {
+                "status": "success",
+                "tool": "restore_document_version",
+                "result": {
+                    "document_id": str(doc.id),
+                    "path": doc.path,
+                    "status": "restored",
+                },
+            }
+    except Exception as e:
+        logger.error(f"restore_document_version failed: {e}")
+        return {"status": "error", "tool": "restore_document_version", "result": str(e)}
+
+
+async def _execute_share_workspace_document(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    document_id = params.get("document_id", "")
+    target_workspace_id = params.get("target_workspace_id", "")
+    permission = params.get("permission", "view")
+    if not document_id or not target_workspace_id:
+        return {"status": "error", "tool": "share_workspace_document", "result": "document_id and target_workspace_id are required"}
+    try:
+        import uuid as _uuid
+        from api.services.document_service import document_service
+
+        doc_uuid = _uuid.UUID(str(document_id))
+        tgt_uuid = _uuid.UUID(str(target_workspace_id))
+        ws_uuid = _uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, _uuid.UUID) else workspace_id
+        async with _ws_session(workspace_id) as session:
+            share = await document_service.share_document(session, doc_uuid, ws_uuid, tgt_uuid, permission=permission)
+            return {
+                "status": "success",
+                "tool": "share_workspace_document",
+                "result": {
+                    "share_id": str(share.id),
+                    "document_id": str(share.document_id),
+                    "target_workspace_id": str(share.target_workspace_id),
+                    "permission": share.permission,
+                },
+            }
+    except Exception as e:
+        logger.error(f"share_workspace_document failed: {e}")
+        return {"status": "error", "tool": "share_workspace_document", "result": str(e)}
+
+
+async def _execute_get_document_audit_history(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    document_id = params.get("document_id", "")
+    if not document_id:
+        return {"status": "error", "tool": "get_document_audit_history", "result": "document_id is required"}
+    try:
+        import uuid as _uuid
+        from sqlalchemy import select
+        from api.models.schema import DocumentAction
+
+        doc_uuid = _uuid.UUID(str(document_id))
+        ws_uuid = _uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, _uuid.UUID) else workspace_id
+        async with _ws_session(workspace_id) as session:
+            stmt = select(DocumentAction).where(DocumentAction.document_id == doc_uuid, DocumentAction.workspace_id == ws_uuid).order_by(DocumentAction.created_at.desc())
+            actions = (await session.execute(stmt)).scalars().all()
+            return {
+                "status": "success",
+                "tool": "get_document_audit_history",
+                "result": [
+                    {
+                        "id": str(a.id),
+                        "action_type": a.action_type,
+                        "old_path": a.old_path,
+                        "new_path": a.new_path,
+                        "actor_id": str(a.actor_id) if a.actor_id else None,
+                        "undone_at": a.undone_at.isoformat() if a.undone_at else None,
+                        "created_at": a.created_at.isoformat() if a.created_at else None,
+                    }
+                    for a in actions
+                ],
+                "count": len(actions),
+            }
+    except Exception as e:
+        logger.error(f"get_document_audit_history failed: {e}")
+        return {"status": "error", "tool": "get_document_audit_history", "result": str(e)}
 
 
 async def _execute_query_graph(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
@@ -1496,10 +1751,12 @@ async def _execute_rename_file(params: dict[str, Any], workspace_id: str) -> dic
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
 
     try:
+        doc_uuid = uuid.UUID(str(document_id))
+        ws_uuid = uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, uuid.UUID) else workspace_id
         async with _ws_session(workspace_id) as session:
-            doc = await session.get(Document, uuid.UUID(document_id))
-            if not doc:
-                return {"status": "error", "tool": "rename_file", "result": f"Document {document_id} not found"}
+            doc = await session.get(Document, doc_uuid)
+            if not doc or doc.workspace_id != ws_uuid or doc.deleted_at is not None:
+                return {"status": "error", "tool": "rename_file", "result": f"Document {document_id} not found in workspace"}
 
             parts = doc.path.rsplit("/", 1)
             new_path = f"{parts[0]}/{new_name}" if len(parts) > 1 else new_name
@@ -1538,10 +1795,12 @@ async def _execute_move_file(params: dict[str, Any], workspace_id: str) -> dict[
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
 
     try:
+        doc_uuid = uuid.UUID(str(document_id))
+        ws_uuid = uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, uuid.UUID) else workspace_id
         async with _ws_session(workspace_id) as session:
-            doc = await session.get(Document, uuid.UUID(document_id))
-            if not doc:
-                return {"status": "error", "tool": "move_file", "result": f"Document {document_id} not found"}
+            doc = await session.get(Document, doc_uuid)
+            if not doc or doc.workspace_id != ws_uuid or doc.deleted_at is not None:
+                return {"status": "error", "tool": "move_file", "result": f"Document {document_id} not found in workspace"}
 
             old_path = doc.path
             filename = doc.path.rsplit("/", 1)[-1]
@@ -2781,6 +3040,13 @@ _execute_mock = _handle_unrecognized_tool
 
 TOOL_DISPATCH: dict[str, Any] = {
     "search_documents": _execute_search_documents,
+    "get_document_content": _execute_get_document_content,
+    "list_workspace_folders": _execute_list_workspace_folders,
+    "create_workspace_folder": _execute_create_workspace_folder,
+    "get_document_version": _execute_get_document_version,
+    "restore_document_version": _execute_restore_document_version,
+    "share_workspace_document": _execute_share_workspace_document,
+    "get_document_audit_history": _execute_get_document_audit_history,
     "query_graph": _execute_query_graph,
     "get_entity": _execute_get_entity,
     "create_entity": _execute_create_entity,
@@ -3274,7 +3540,8 @@ async def execute_tool(
 
     for attempt in range(1, max_retries + 1):
         try:
-            handler = TOOL_DISPATCH.get(tool.name) or DYNAMIC_HANDLERS.get(tool.name)
+            ws_handlers = WORKSPACE_DYNAMIC_HANDLERS.get(str(workspace_id), {}) if workspace_id else {}
+            handler = TOOL_DISPATCH.get(tool.name) or ws_handlers.get(tool.name) or DYNAMIC_HANDLERS.get(tool.name)
             if handler is None:
                 if tool.name.startswith("plugin__"):
                     result = {
@@ -3290,9 +3557,14 @@ async def execute_tool(
                         result = await _execute_mock(params, workspace_id)
             else:
                 try:
-                    result = await asyncio.wait_for(
-                        handler(params, workspace_id), timeout=timeout
-                    )
+                    try:
+                        result = await asyncio.wait_for(
+                            handler(params, workspace_id), timeout=timeout
+                        )
+                    except TypeError:
+                        result = await asyncio.wait_for(
+                            handler(params), timeout=timeout
+                        )
                 except Exception as exc:
                     exc_str = str(exc).lower()
                     if tool.name.startswith("composio__") and any(w in exc_str for w in ("auth", "token", "unauthorized", "expired", "401")):

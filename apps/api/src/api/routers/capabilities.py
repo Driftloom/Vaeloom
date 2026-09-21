@@ -15,6 +15,7 @@ from ..models.schema import Workspace, WorkspaceCapability, WorkspaceUser
 from ..tools.definitions import ALL_TOOLS, ToolDefinition
 from ..tools.executor import (
     execute_tool,
+    get_tool_definition,
     register_dynamic_tool,
     unregister_dynamic_tools,
 )
@@ -82,19 +83,6 @@ def _get_user_id(current_user: dict | None) -> str | None:
 async def _verify_workspace_access(
     db: AsyncSession, user_id: str | None, workspace_id: str | uuid.UUID | None
 ) -> uuid.UUID:
-    if not workspace_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Workspace ID is required (X-Workspace-Id header or parameter)",
-        )
-    try:
-        wid = uuid.UUID(str(workspace_id))
-    except (ValueError, TypeError):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid workspace ID format",
-        )
-
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -107,6 +95,27 @@ async def _verify_workspace_access(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid user identity",
+        )
+
+    if not workspace_id:
+        # Fallback to user's first workspace
+        res = await db.execute(
+            select(Workspace.id).where(Workspace.user_id == uid).order_by(Workspace.created_at.asc()).limit(1)
+        )
+        first_wid = res.scalar_one_or_none()
+        if first_wid is not None:
+            return first_wid
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Workspace ID is required (X-Workspace-Id header or parameter)",
+        )
+
+    try:
+        wid = uuid.UUID(str(workspace_id))
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid workspace ID format",
         )
 
     # Check ownership or membership
@@ -241,15 +250,20 @@ async def create_capability(
                 "type": "object",
                 "properties": {},
             }
+            output_schema = payload.config.get("returns") or {
+                "type": "object",
+                "properties": {},
+            }
             td = ToolDefinition(
                 name=name,
                 description=payload.description or f"Custom workspace tool: {name}",
                 category="custom",
                 required_scope=f"tool.{name}",
                 input_schema=input_schema,
+                output_schema=output_schema,
             )
 
-            async def _custom_tool_handler(args: dict[str, Any]) -> dict[str, Any]:
+            async def _custom_tool_handler(args: dict[str, Any], workspace_id: str | None = None) -> dict[str, Any]:
                 return {"status": "ok", "tool": name, "echo": args}
 
             register_dynamic_tool(td, _custom_tool_handler, workspace_id=str(wid))
@@ -324,15 +338,20 @@ async def update_capability(
                 "type": "object",
                 "properties": {},
             }
+            output_schema = (cap.config or {}).get("returns") or {
+                "type": "object",
+                "properties": {},
+            }
             td = ToolDefinition(
                 name=cap.name,
                 description=cap.description or f"Custom workspace tool: {cap.name}",
                 category="custom",
                 required_scope=f"tool.{cap.name}",
                 input_schema=input_schema,
+                output_schema=output_schema,
             )
 
-            async def _custom_tool_handler(args: dict[str, Any]) -> dict[str, Any]:
+            async def _custom_tool_handler(args: dict[str, Any], workspace_id: str | None = None) -> dict[str, Any]:
                 return {"status": "ok", "tool": cap.name, "echo": args}
 
             register_dynamic_tool(td, _custom_tool_handler, workspace_id=str(wid))
@@ -412,16 +431,40 @@ async def test_capability(
     try:
         # Check by category
         if cap.category == "tool":
+            td = get_tool_definition(cap.name)
+            if not td:
+                input_schema = (cap.config or {}).get("parameters") or {
+                    "type": "object",
+                    "properties": {},
+                }
+                output_schema = (cap.config or {}).get("returns") or {
+                    "type": "object",
+                    "properties": {},
+                }
+                td = ToolDefinition(
+                    name=cap.name,
+                    description=cap.description or f"Custom workspace tool: {cap.name}",
+                    category="custom",
+                    required_scope=f"tool.{cap.name}",
+                    input_schema=input_schema,
+                    output_schema=output_schema,
+                )
             # Real tool execution
             out = await execute_tool(
-                tool_name=cap.name,
-                arguments=payload.input,
-                agent_scopes=[f"tool.{cap.name}", "*"],
-                workspace_id=wid,
-                user_id=uuid.UUID(str(user_id)),
-                db=db,
+                tool=td,
+                params=payload.input,
+                agent_id="test_runner",
+                agent_scopes=[td.required_scope, "*"],
+                workspace_id=str(wid),
             )
             elapsed_ms = (time.monotonic() - start_time) * 1000.0
+            if isinstance(out, dict) and out.get("status") == "error":
+                return TestCapabilityResponse(
+                    status="error",
+                    latency_ms=round(elapsed_ms, 2),
+                    error=out.get("error") or str(out.get("result", "Execution failed")),
+                    output=out,
+                )
             return TestCapabilityResponse(
                 status="success",
                 latency_ms=round(elapsed_ms, 2),
