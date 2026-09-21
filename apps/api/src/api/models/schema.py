@@ -217,6 +217,8 @@ class Workspace(Base):
     crdt_deltas: Mapped[list["CrdtSyncDelta"]] = relationship("CrdtSyncDelta", back_populates="workspace", cascade="all, delete-orphan")
     proactive_proposals: Mapped[list["ProactiveProposal"]] = relationship("ProactiveProposal", back_populates="workspace", cascade="all, delete-orphan")
     agents: Mapped[list["Agent"]] = relationship("Agent", back_populates="workspace", cascade="all, delete-orphan")
+    folders: Mapped[list["Folder"]] = relationship("Folder", back_populates="workspace", cascade="all, delete-orphan")
+    capabilities: Mapped[list["WorkspaceCapability"]] = relationship("WorkspaceCapability", back_populates="workspace", cascade="all, delete-orphan")
 
     __table_args__ = (Index("idx_workspaces_user_id", "user_id"),)
 
@@ -259,7 +261,57 @@ class Connector(Base):
 
     __table_args__ = (
         Index("idx_connectors_workspace_id", "workspace_id"),
-        UniqueConstraint("workspace_id", "type"),
+        UniqueConstraint("workspace_id", "name", name="uq_connectors_workspace_name"),
+    )
+
+
+class WorkspaceCapability(Base):
+    __tablename__ = "workspace_capabilities"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    category: Mapped[str] = mapped_column(String(50), nullable=False)  # skill, connector, mcp, plugin, tool, agent
+    description: Mapped[str] = mapped_column(Text, default="")
+    version: Mapped[str] = mapped_column(String(50), default="1.0.0")
+    status: Mapped[str] = mapped_column(String(50), default="ACTIVE")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    author: Mapped[str] = mapped_column(String(255), default="Workspace Member")
+    type: Mapped[str] = mapped_column(String(50), default="custom")
+    runtime: Mapped[str] = mapped_column(String(50), default="system")
+    config: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="capabilities")
+
+    __table_args__ = (
+        Index("idx_capabilities_workspace_id", "workspace_id"),
+        UniqueConstraint("workspace_id", "name", "category", name="uq_capabilities_workspace_name_category"),
+    )
+
+
+
+class Folder(Base):
+    __tablename__ = "folders"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("folders.id", ondelete="CASCADE"), nullable=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="folders")
+    parent: Mapped["Folder | None"] = relationship("Folder", remote_side=[id], back_populates="children")
+    children: Mapped[list["Folder"]] = relationship("Folder", back_populates="parent", cascade="all, delete-orphan")
+    documents: Mapped[list["Document"]] = relationship("Document", back_populates="folder")
+
+    __table_args__ = (
+        Index("idx_folders_workspace_id", "workspace_id"),
+        Index("idx_folders_workspace_parent", "workspace_id", "parent_id"),
     )
 
 
@@ -268,6 +320,7 @@ class Document(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    folder_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("folders.id", ondelete="SET NULL"), nullable=True)
     source_connector_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("connectors.id"))
     path: Mapped[str] = mapped_column(String(1000), nullable=False)
     type: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -275,20 +328,29 @@ class Document(Base):
     content: Mapped[bytes | None] = mapped_column(LargeBinary)
     summary: Mapped[str | None] = mapped_column(Text)
     retention_policy: Mapped[str] = mapped_column(String(50), default="user_driven")
+    status: Mapped[str] = mapped_column(String(50), default="ACTIVE", server_default="ACTIVE")
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    detected_mime_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    scan_status: Mapped[str] = mapped_column(String(50), default="CLEAN", server_default="CLEAN")
+    scan_result: Mapped[str | None] = mapped_column(String(255), nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     metadata_: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="documents")
+    folder: Mapped["Folder | None"] = relationship("Folder", back_populates="documents")
     connector: Mapped["Connector | None"] = relationship("Connector", back_populates="documents")
     versions: Mapped[list["DocumentVersion"]] = relationship("DocumentVersion", back_populates="document", cascade="all, delete-orphan")
     actions: Mapped[list["DocumentAction"]] = relationship("DocumentAction", back_populates="document", cascade="all, delete-orphan")
+    shares: Mapped[list["DocumentShare"]] = relationship("DocumentShare", back_populates="document", cascade="all, delete-orphan")
     memory_records: Mapped[list["MemoryRecord"]] = relationship("MemoryRecord", back_populates="source_document")
 
     __table_args__ = (
         Index("idx_documents_workspace_id", "workspace_id"),
         Index("idx_documents_source_connector_id", "source_connector_id"),
+        Index("idx_documents_folder_id", "folder_id"),
+        Index("idx_documents_workspace_status", "workspace_id", "status"),
     )
 
 
@@ -302,6 +364,7 @@ class DocumentVersion(Base):
     superseded_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     checksum: Mapped[str | None] = mapped_column(String(256))
     size_bytes: Mapped[int | None] = mapped_column(Integer)
+    content: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     document: Mapped["Document"] = relationship("Document", back_populates="versions")
@@ -315,6 +378,8 @@ class DocumentAction(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     document_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
     workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     action_type: Mapped[str] = mapped_column(String(50), nullable=False)
     old_path: Mapped[str | None] = mapped_column(String(1000))
     new_path: Mapped[str | None] = mapped_column(String(1000))
@@ -328,7 +393,29 @@ class DocumentAction(Base):
     __table_args__ = (
         Index("idx_document_actions_document", "document_id", "created_at"),
         Index("idx_document_actions_workspace", "workspace_id", "created_at"),
+        Index("idx_document_actions_actor", "actor_id"),
     )
+
+
+class DocumentShare(Base):
+    __tablename__ = "document_shares"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    document_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
+    source_workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    target_workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    permission: Mapped[str] = mapped_column(String(50), default="read", server_default="read")
+    granted_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    document: Mapped["Document"] = relationship("Document", back_populates="shares")
+
+    __table_args__ = (
+        Index("idx_document_shares_doc", "document_id"),
+        Index("idx_document_shares_target", "target_workspace_id", "document_id"),
+    )
+
 
 
 class Memory(Base):

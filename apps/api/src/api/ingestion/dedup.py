@@ -41,6 +41,8 @@ async def check_dedup(workspace_id: str, content_hash: str, filename: str) -> st
         async with scoped_session(workspace_id=workspace_id, require=False) as session:
             version_stmt = (
                 select(DocumentVersion)
+                .join(Document, Document.id == DocumentVersion.document_id)
+                .where(Document.workspace_id == workspace_id)
                 .where(DocumentVersion.checksum == content_hash)
                 .limit(1)
             )
@@ -48,7 +50,13 @@ async def check_dedup(workspace_id: str, content_hash: str, filename: str) -> st
             existing_version = version_result.scalar_one_or_none()
 
             if existing_version:
-                doc_stmt = select(Document).where(Document.id == existing_version.document_id)
+                doc_stmt = (
+                    select(Document)
+                    .where(
+                        Document.id == existing_version.document_id,
+                        Document.workspace_id == workspace_id,
+                    )
+                )
                 doc_result = await session.execute(doc_stmt)
                 existing_doc = doc_result.scalar_one_or_none()
                 if existing_doc:

@@ -1064,6 +1064,35 @@ class LLMService:
             "usage": data.get("usage", {}),
         }
 
+def _normalize_anthropic_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Normalize tool schemas to Anthropic Messages API format:
+    {"name": ..., "description": ..., "input_schema": {...}}
+    Translates OpenAI {"type": "function", "function": ...} schemas seamlessly.
+    """
+    normalized = []
+    for t in tools:
+        if not isinstance(t, dict):
+            continue
+        if "input_schema" in t and "name" in t:
+            normalized.append(t)
+        elif t.get("type") == "function" and isinstance(t.get("function"), dict):
+            fn = t["function"]
+            normalized.append({
+                "name": fn.get("name", ""),
+                "description": fn.get("description", ""),
+                "input_schema": fn.get("parameters") or {"type": "object", "properties": {}},
+            })
+        elif "parameters" in t and "name" in t:
+            normalized.append({
+                "name": t.get("name", ""),
+                "description": t.get("description", ""),
+                "input_schema": t.get("parameters") or {"type": "object", "properties": {}},
+            })
+        else:
+            normalized.append(t)
+    return normalized
+
+
     async def _anthropic_tool_completion(
         self, messages: list[dict[str, Any]], tools: list[dict[str, Any]], model: str, temperature: float, api_key: str | None = None
     ) -> dict[str, Any]:
@@ -1075,12 +1104,13 @@ class LLMService:
             else:
                 anthropic_messages.append({"role": msg["role"], "content": msg["content"]})
 
+        normalized_tools = _normalize_anthropic_tools(tools)
         body: dict[str, Any] = {
             "model": model,
             "max_tokens": 4096,
             "temperature": temperature,
             "messages": anthropic_messages,
-            "tools": tools,
+            "tools": normalized_tools,
         }
         if system:
             body["system"] = system
@@ -1277,13 +1307,14 @@ class LLMService:
             else:
                 anthropic_messages.append({"role": msg["role"], "content": msg["content"]})
 
+        normalized_tools = _normalize_anthropic_tools(tools)
         body: dict[str, Any] = {
             "model": model,
             "max_tokens": 4096,
             "temperature": temperature,
             "stream": True,
             "messages": anthropic_messages,
-            "tools": tools,
+            "tools": normalized_tools,
         }
         if system:
             body["system"] = system

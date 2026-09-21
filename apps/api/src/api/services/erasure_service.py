@@ -18,9 +18,11 @@ from ..models.schema import (
     Document,
     DocumentAction,
     DocumentChunk,
+    DocumentShare,
     DocumentVersion,
     Embedding,
     Entity,
+    Folder,
     Memory,
     MemoryRecord,
     MemoryVersion,
@@ -137,6 +139,8 @@ class ErasureService:
             ("crdt_sync_deltas", CrdtSyncDelta, CrdtSyncDelta.workspace_id == workspace_id),
             ("provider_keys", ProviderKey, ProviderKey.workspace_id == workspace_id),
             ("connectors", Connector, Connector.workspace_id == workspace_id),
+            ("document_shares", DocumentShare, (DocumentShare.source_workspace_id == workspace_id) | (DocumentShare.target_workspace_id == workspace_id)),
+            ("folders", Folder, Folder.workspace_id == workspace_id),
         ]
 
         for table_name, model, condition in tables_to_delete:

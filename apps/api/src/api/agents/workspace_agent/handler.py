@@ -110,19 +110,51 @@ class WorkspaceAgent(BaseAgent):
 
         return sprawl_items
 
-    async def process(self, request: Any) -> dict[str, Any]:
+    async def process(self, request: Any, context: Any = None) -> dict[str, Any]:
         msg = getattr(request, "message", "") if hasattr(request, "message") else (request.get("message", "") if isinstance(request, dict) else "")
-        msg_lower = (msg or "").lower()
 
-        sample_files = [
-            {"id": "f1", "filename": "resume_2026.pdf", "path": "career/resume_2026.pdf"},
-            {"id": "f2", "filename": "resume_2026 copy.pdf", "path": "root/resume_2026 copy.pdf"},
-            {"id": "f3", "filename": "notes.txt", "path": "notes.txt"},
-            {"id": "f4", "filename": "project_spec.md", "path": "projects/vaeloom/project_spec.md"},
-        ]
+        ws_id = getattr(request, "workspace_id", None) if hasattr(request, "workspace_id") else (
+            request.get("workspace_id") if isinstance(request, dict) else None
+        )
+        if not ws_id and context:
+            ws_id = getattr(context, "workspace_id", None) or (context.get("workspace_id") if isinstance(context, dict) else None)
 
-        structure = await self.analyze_workspace_structure(sample_files)
-        sprawl = await self.detect_workspace_sprawl(sample_files)
+        workspace_files: list[dict[str, Any]] = []
+        if ws_id:
+            try:
+                import uuid as _uuid
+                from sqlalchemy import select
+                from api.database import async_session_factory
+                from api.models.schema import Document
+
+                w_uuid = _uuid.UUID(str(ws_id))
+                async with async_session_factory() as db:
+                    stmt = select(Document).where(Document.workspace_id == w_uuid, Document.deleted_at.is_(None))
+                    rows = (await db.execute(stmt)).scalars().all()
+                    for r in rows:
+                        workspace_files.append({
+                            "id": str(r.id),
+                            "filename": r.path.rsplit("/", 1)[-1] if r.path else "untitled",
+                            "path": r.path,
+                        })
+            except Exception as ex:
+                logger.warning("Failed to retrieve workspace files for WorkspaceAgent: %s", ex)
+
+        if not workspace_files:
+            return {
+                "agent_name": "workspace",
+                "action": "suggest",
+                "confidence": 0.95,
+                "result": {
+                    "summary": "Workspace is clean and empty. No active documents or files found.",
+                    "details": "Folder distribution: {'root': 0}",
+                    "proposals": [],
+                    "questions": ["Would you like to upload your initial project documents or create folders?"],
+                },
+            }
+
+        structure = await self.analyze_workspace_structure(workspace_files)
+        sprawl = await self.detect_workspace_sprawl(workspace_files)
 
         proposals = []
         for s in sprawl:
@@ -154,4 +186,4 @@ class WorkspaceAgent(BaseAgent):
         }
 
     async def execute(self, request: Any, context: Any = None) -> Any:
-        return await self.process(request)
+        return await self.process(request, context)

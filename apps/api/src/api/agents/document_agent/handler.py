@@ -58,50 +58,71 @@ class DocumentAgent(BaseAgent):
         query: str,
         documents: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
-        """Synthesize answer with grounded citations."""
-        docs = documents or [
-            {
-                "id": "doc_arch_01",
-                "title": "System Architecture Specification",
-                "excerpt": "Vaeloom employs PostgreSQL row-level security with fail-closed tenant isolation GUCs.",
-            },
-            {
-                "id": "doc_dr_01",
-                "title": "Disaster Recovery Runbook",
-                "excerpt": "Live DR drill achieved RTO of 48.99 seconds and zero data loss (RPO 0.0s).",
-            },
-        ]
+        """Synthesize answer with grounded citations from real documents."""
+        docs = documents or []
 
         citations = [
             DocumentCitation(
                 document_id=d["id"],
                 document_title=d["title"],
-                page_or_section="Overview",
+                page_or_section=d.get("page_or_section", "Overview"),
                 excerpt=d["excerpt"],
             ).model_dump()
             for d in docs
         ]
 
+        if docs:
+            titles = ", ".join(d["title"] for d in docs[:3])
+            synthesis = f"Based on {len(docs)} document(s) consulted ({titles}): Retrieved grounded analysis for query '{query}'."
+        else:
+            synthesis = "No active documents found in the workspace matching your inquiry."
+
         return {
             "query": query,
-            "synthesis": (
-                "Based on the analyzed documents: Vaeloom enforces zero-trust fail-closed multi-tenancy "
-                "via PostgreSQL RLS session GUCs, backed by automated disaster recovery recovery with 48.99s RTO."
-            ),
+            "synthesis": synthesis,
             "citations": citations,
             "documents_consulted": len(docs),
         }
 
-    async def process(self, request: Any) -> dict[str, Any]:
+    async def process(self, request: Any, context: Any = None) -> dict[str, Any]:
         msg = getattr(request, "message", "") if hasattr(request, "message") else (request.get("message", "") if isinstance(request, dict) else "")
-        query = msg or "Explain the system architecture and disaster recovery guarantees"
+        query = msg or "Summarize workspace documents"
 
-        synth = await self.synthesize_documents(query=query)
+        ws_id = getattr(request, "workspace_id", None) if hasattr(request, "workspace_id") else (
+            request.get("workspace_id") if isinstance(request, dict) else None
+        )
+        if not ws_id and context:
+            ws_id = getattr(context, "workspace_id", None) or (context.get("workspace_id") if isinstance(context, dict) else None)
+
+        real_docs: list[dict[str, Any]] = []
+        if ws_id:
+            try:
+                import uuid as _uuid
+                from sqlalchemy import select
+                from api.database import async_session_factory
+                from api.models.schema import Document
+
+                w_uuid = _uuid.UUID(str(ws_id))
+                async with async_session_factory() as db:
+                    stmt = select(Document).where(Document.workspace_id == w_uuid, Document.deleted_at.is_(None)).limit(10)
+                    rows = (await db.execute(stmt)).scalars().all()
+                    for r in rows:
+                        excerpt = (r.summary or r.path or "Document content")[:300]
+                        fname = r.path.rsplit("/", 1)[-1] if r.path else "Untitled Document"
+                        real_docs.append({
+                            "id": str(r.id),
+                            "title": fname,
+                            "excerpt": excerpt,
+                        })
+            except Exception as ex:
+                logger.warning("Failed to retrieve workspace documents for DocumentAgent: %s", ex)
+
+        synth = await self.synthesize_documents(query=query, documents=real_docs)
 
         return {
             "agent_name": "document",
             "action": "suggest",
-            "confidence": 0.94,
+            "confidence": 0.94 if real_docs else 0.50,
             "result": {
                 "summary": synth["synthesis"],
                 "details": f"Consulted {synth['documents_consulted']} document(s) with grounded provenance.",
@@ -114,9 +135,11 @@ class DocumentAgent(BaseAgent):
                     }
                     for c in synth["citations"]
                 ],
-                "questions": [],
+                "questions": [] if real_docs else [
+                    "Would you like to upload documents to this workspace first?",
+                ],
             },
         }
 
     async def execute(self, request: Any, context: Any = None) -> Any:
-        return await self.process(request)
+        return await self.process(request, context)
