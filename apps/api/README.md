@@ -31,13 +31,14 @@ are ignored. Nested delimiter = **double underscore**.
 | `TEMPORAL_ENABLED`        | `false`                            | Durable workflows off by default              |
 | `AGENT_REACT_ENABLED`     | `0`                                | `1` enables ReAct tool-calling + streaming    |
 
-Wrong names that will silently not bind: `AUTH_JWT_SECRET`, `DATABASE_URL`.
+Wrong names that will silently not bind: `AUTH_JWT_SECRET`. `DATABASE_URL`
+(single underscore) is accepted as a convenience alias for `DATABASE__URL`.
 
 ## Run
 
 ```powershell
 $env:JWT_SECRET="test-jwt-secret-for-ci-only-32-chars-long!!"
-$env:ENCRYPTION_KEY="MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="
+$env:ENCRYPTION_KEY="$(openssl rand -base64 32)"  # fresh per machine; test vector MDEy... is test-only
 $env:DATABASE__URL="sqlite+aiosqlite:///./dev.db"
 $env:LLM_API_KEY="mock-key"
 $env:OTEL_SDK_DISABLED="true"

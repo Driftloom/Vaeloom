@@ -82,7 +82,7 @@ vars with the **double-underscore** `DATABASE__URL` name:
 
 ```powershell
 $env:JWT_SECRET="test-jwt-secret-for-ci-only-32-chars-long!!"  # 32+ chars required
-$env:ENCRYPTION_KEY="MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="
+$env:ENCRYPTION_KEY="$(openssl rand -base64 32)"  # fresh per machine; test vector MDEy... is test-only
 $env:DATABASE__URL="sqlite+aiosqlite:///./dev.db"
 $env:LLM_API_KEY="mock-key"
 $env:OTEL_SDK_DISABLED="true"

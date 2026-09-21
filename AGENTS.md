@@ -52,10 +52,11 @@
   standalone)** — security suite 233/233 (170 unique de-duplicated;
   middleware/test_csrf duplicates security/test_csrf per zero-trust audit
   2026-08-22 F-02; F-20/F-22 fixes 2026-08-22 do not change count); coverage
-  **94% total** — see `evidence/phases/mvp-p00/03-maturity-and-evidence-matrix.md`;
-  OpenAPI **162 paths / 203 ops** (`specs/api/openapi.yaml` v0.2.0, regen
-  2026-09-15 via `scripts/gen_openapi.py` — was 110 on 2026-08-29, 106 on
-  2026-08-23, 99 before)
+  **94% total** — see
+  `evidence/phases/mvp-p00/03-maturity-and-evidence-matrix.md`; OpenAPI **162
+  paths / 203 ops** (`specs/api/openapi.yaml` v0.2.0, regen 2026-09-15 via
+  `scripts/gen_openapi.py` — was 110 on 2026-08-29, 106 on 2026-08-23, 99
+  before)
 - Python 3.12.13 (per `apps/api/.python-version` pinned via
   `uv python pin 3.12`; `.venv` managed by `uv`)
 - Tests use SQLite with mock backend (`tmp_path` per-test DB via `NullPool`);
@@ -69,8 +70,9 @@
   `uv run --project apps/api python -m pytest -q -o addopts="-n auto --dist loadfile"`
   (~2-3min, needs 32GB). Serial:
   `uv run --project apps/api python -m pytest -q -o addopts=""` (~8-10min).
-  Determinism fix: `test_noauth_private.py:90` now `sorted(PUBLIC_PATHS)` to
-  avoid xdist collection mismatch (`frozenset` → `list` was non-deterministic)
+  Determinism fix: `tests/security/test_noauth_private.py:90` now
+  `sorted(PUBLIC_PATHS)` to avoid xdist collection mismatch (`frozenset` →
+  `list` was non-deterministic)
 - `.venv` is 3.12.13 (managed by `uv`); old `3.14` venv removed 2026-08-21
 
 ## Resume Document Pipeline (added 2026-08-23)
@@ -132,7 +134,7 @@
 | 6.x Multi-tenancy         | DONE   | **42/42 RLS**           | TenantMiddleware now also sets `app.workspace_id` (from path/header) + `app.user_id` + `app.tenant_id` via `TenantContext` + `set_rls_session_vars` (`database.py:30`); RLS **42/42** (34 via 0010 +3 via 0019 +5 via 0020 2026-08-22 per user choice); GUCs all SET fail-closed; **Live PostgreSQL RLS PROVEN** via `tests/test_rls_live_pg.py` (5/5 mechanism tests pass on real Supabase PostgreSQL). |
 | 7.x Agent hardening       | DONE   | IMPLEMENTED             | Circuit breaker, fallback policies, per-agent rate limits; approval gate now wired in orchestrator loop                                                                                                                                                                                                                                                                                                  |
 | 8.x Performance           | DONE   | IMPLEMENTED             | SWR caching, route prefetching, image optimization, bundle analysis                                                                                                                                                                                                                                                                                                                                      |
-| 9.x Security & Compliance | DONE   | PARTIAL                 | GDPR, API key rotation, data retention implemented; IP Allowlist middleware ALWAYS MOUNTED (main.py:188 no-op when empty); input sanitization designed (ADR-031); **First Live DR Drill EXECUTED & LOGGED** 2026-09-17 (`docs/operations/DR-Drill-Log.md`, 48.99s RTO / 0.0s RPO, 67 tables verified).                                                                                                   |
+| 9.x Security & Compliance | DONE   | PARTIAL                 | GDPR, API key rotation, data retention implemented; IP Allowlist middleware ALWAYS MOUNTED (main.py:188 no-op when empty); input sanitization designed (ADR-031); **First Live DR Drill EXECUTED & LOGGED** 2026-09-17 (`evidence/dr-drills/DR-Drill-Log.md`, 48.99s RTO / 0.0s RPO, 67 tables verified).                                                                                                |
 | 10.x Testing/QA           | DONE   | IMPLEMENTED             | 3640 pytest (security 233/233 170 unique; full suite serial passes), 41 jest across 8 suites, 6 active Playwright E2E spec files in apps/web/e2e (73 tests total: 33 gating functional/a11y/responsive + 40 visual baselines; 3 legacy flow specs in testing/e2e); live PG RLS suite `test_rls_live_pg.py` 5/5 passes; coverage 94% + WCAG + perf tracked (EXC-P14-01..03, P15 owns)                     |
 | 11.x Documentation        | DONE   | IMPLEMENTED             | 44 ADRs (ADR-001 through ADR-044), OpenAPI **162 paths / 203 ops** (`docs/backend/openapi.yaml`), onboarding guide, deployment/DR runbooks, API reference                                                                                                                                                                                                                                                |
 | 12.x Enterprise Polish    | DONE   | IMPLEMENTED             | Light/dark mode, keyboard shortcuts, API versioning, webhooks, batch operations                                                                                                                                                                                                                                                                                                                          |
@@ -159,7 +161,9 @@ When starting fresh, **these 4 things WILL break** if not handled:
 ```
 # Terminal 1: API (set vars BEFORE python; use uv so correct venv + Python 3.12 is used)
 # Use a strong JWT secret for local dev: openssl rand -hex 32 (32+ chars required; F-07 fix)
-$env:JWT_SECRET="test-jwt-secret-for-ci-only-32-chars-long!!"; $env:ENCRYPTION_KEY="MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE="; $env:DATABASE__URL="sqlite+aiosqlite:///./dev.db"; $env:LLM_API_KEY="mock-key"; $env:OTEL_SDK_DISABLED="true"
+# Generate fresh dev secrets (never reuse across machines; test vector MDEy... is test-only):
+# $env:JWT_SECRET="$(openssl rand -hex 32)"; $env:ENCRYPTION_KEY="$(openssl rand -base64 32)"
+$env:JWT_SECRET="test-jwt-secret-for-ci-only-32-chars-long!!"; $env:ENCRYPTION_KEY="$(openssl rand -base64 32)"; $env:DATABASE__URL="sqlite+aiosqlite:///./dev.db"; $env:LLM_API_KEY="mock-key"; $env:OTEL_SDK_DISABLED="true"
 uv run --project apps/api python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
 
 # Terminal 2: Frontend

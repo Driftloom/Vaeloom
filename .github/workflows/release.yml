@@ -1,0 +1,79 @@
+name: release
+
+# Zero-trust supply-chain: tagged releases only, with SBOM + SLSA provenance.
+# Closes the "no release workflow" gap from the zero-trust audit.
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+  attestations: write
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Generate SBOM (SPDX)
+        uses: anchore/sbom-action@v0
+        with:
+          path: ./
+          format: spdx-json
+          output-file: sbom.spdx.json
+      - name: Attest SBOM
+        uses: actions/attest-sbom@v2
+        with:
+          subject-path: sbom.spdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.spdx.json
+
+  image:
+    runs-on: ubuntu-latest
+    needs: [sbom]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        id: build
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+          provenance: true
+          sbom: true
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+  github-release:
+    runs-on: ubuntu-latest
+    needs: [image]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: sbom
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: sbom.spdx.json
