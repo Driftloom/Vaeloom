@@ -463,11 +463,11 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col lg:flex-row min-h-0 bg-[#09090b] overflow-hidden">
+    <div className="flex-1 flex flex-col lg:flex-row min-h-0 min-w-0 bg-[#09090b] overflow-hidden">
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Left Column: Autonomous Agents Directory                                    */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="w-full lg:w-[380px] xl:w-[410px] shrink-0 border-r border-[#1c1d24] bg-[#0c0d10] flex flex-col min-h-0">
+      <div className="w-full lg:w-[320px] xl:w-[360px] 2xl:w-[410px] shrink-0 border-r border-[#1c1d24] bg-[#0c0d10] flex flex-col min-h-0">
         <div className="p-3 border-b border-[#1c1d24] bg-[#0c0d10] shrink-0">
           {/* Type Filter Pills + Counter */}
           <div className="flex items-center justify-between gap-1 text-xs">
@@ -585,7 +585,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Right Column: AgentCard Studio & Orchestration Inspector                   */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-h-0 bg-[#09090b] overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-[#09090b] overflow-hidden">
         {selectedAgent && (
           <>
             <div className="p-5 border-b border-[#1c1d24] bg-[#0c0d10] shrink-0 font-sans">

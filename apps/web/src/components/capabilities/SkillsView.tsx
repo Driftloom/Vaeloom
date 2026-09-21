@@ -116,7 +116,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
   };
 
   return (
-    <div className="flex-1 flex min-h-0 bg-[#09090b] overflow-hidden">
+    <div className="flex-1 flex min-h-0 min-w-0 bg-[#09090b] overflow-hidden">
       {/* Left Column: Capability List with 1 Most used sort */}
       <div
         className={`w-full lg:w-[320px] xl:w-[350px] shrink-0 border-r border-[#1c1d24] bg-[#0c0d10] flex flex-col min-h-0 ${
@@ -289,12 +289,12 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
 
       {/* Right Column: Deep Detail Inspector */}
       <div
-        className={`flex-1 flex flex-col min-h-0 bg-[#09090b] overflow-hidden ${
+        className={`flex-1 flex flex-col min-h-0 min-w-0 bg-[#09090b] overflow-hidden ${
           mobileDetailOpen ? 'flex' : 'hidden lg:flex'
         }`}
       >
         {selectedItem ? (
-          <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 flex flex-col min-h-0 min-w-0">
             {/* Detail Header & Action Links */}
             <div className="p-4 sm:p-5 border-b border-[#1c1d24] bg-[#0c0d10] shrink-0 font-sans">
               <div className="flex flex-col gap-2">

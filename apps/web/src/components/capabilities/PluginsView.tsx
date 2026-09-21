@@ -168,7 +168,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-[#090b10] text-[#f4f4f5] overflow-y-auto antialiased">
+    <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-[#090b10] text-[#f4f4f5] overflow-y-auto antialiased">
       {/* Top Banner Toolbar: Subtitle + Action buttons */}
       <div className="px-5 py-3 border-b border-[#1c2030] bg-[#0c0e15] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 shadow-xs">
         <div>
@@ -235,10 +235,10 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
       </div>
 
       {/* Dual Switch Table Container */}
-      <div className="flex-1 p-4 sm:p-6">
-        <div className="rounded-xl border border-[#1e2335] bg-[#0e111a] overflow-hidden shadow-xs">
+      <div className="flex-1 p-4 sm:p-6 min-w-0">
+        <div className="rounded-xl border border-[#1e2335] bg-[#0e111a] overflow-x-auto shadow-xs">
           {/* Table Header */}
-          <div className="grid grid-cols-[1fr_120px_160px] sm:grid-cols-[1fr_140px_200px] items-center px-5 py-3 border-b border-[#1c2030] bg-[#11141e] text-xs font-sans font-medium text-zinc-400">
+          <div className="min-w-[540px] grid grid-cols-[1fr_120px_160px] sm:grid-cols-[1fr_140px_200px] items-center px-5 py-3 border-b border-[#1c2030] bg-[#11141e] text-xs font-sans font-medium text-zinc-400">
             <div>Plugin</div>
             <div className="text-center font-medium">Desktop UI</div>
             <div className="text-center font-medium">Agent Runtime</div>
@@ -261,7 +261,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
               return (
                 <div
                   key={p.id}
-                  className="grid grid-cols-[1fr_120px_160px] sm:grid-cols-[1fr_140px_200px] items-center px-5 py-4 hover:bg-[#121624] transition-colors"
+                  className="min-w-[540px] grid grid-cols-[1fr_120px_160px] sm:grid-cols-[1fr_140px_200px] items-center px-5 py-4 hover:bg-[#121624] transition-colors"
                 >
                   {/* Plugin Info */}
                   <div className="flex items-start gap-3.5 pr-4">
@@ -335,7 +335,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
             {filteredCustom.map((item) => (
               <div
                 key={item.id}
-                className="grid grid-cols-[1fr_120px_160px] sm:grid-cols-[1fr_140px_200px] items-center px-5 py-4 hover:bg-[#121624] transition-colors"
+                className="min-w-[540px] grid grid-cols-[1fr_120px_160px] sm:grid-cols-[1fr_140px_200px] items-center px-5 py-4 hover:bg-[#121624] transition-colors"
               >
                 {/* Plugin Info */}
                 <div className="flex items-start gap-3.5 pr-4">

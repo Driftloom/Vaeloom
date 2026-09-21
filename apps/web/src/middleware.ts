@@ -71,6 +71,15 @@ export function middleware(request: NextRequest) {
 
   const response = NextResponse.next();
 
+  // DevEx footgun note: `connect-src` below only includes the local API
+  // (http://localhost:8000 + ws://, plus 127.0.0.1) when this dev allowlist
+  // matches: NODE_ENV === 'development', ALLOW_LOCAL_API === 'true', or the
+  // request hostname is localhost/127.0.0.1. Production builds omit local
+  // origins entirely — if browser fetches to localhost:8000 are SILENTLY
+  // blocked (CSP console error, no response), check how the frontend was
+  // started (dev server vs production build) and set ALLOW_LOCAL_API=true if
+  // needed. Do not confuse with backend CSRF 403s, which hint at
+  // `GET /csrf-token` in the response body.
   // Security headers
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-Content-Type-Options', 'nosniff');

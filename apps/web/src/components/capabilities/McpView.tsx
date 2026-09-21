@@ -619,11 +619,11 @@ export const McpView: React.FC<McpViewProps> = ({
   }, [logs, logFilter]);
 
   return (
-    <div className="flex-1 flex flex-col lg:flex-row min-h-0 bg-[#09090b] overflow-hidden">
+    <div className="flex-1 flex flex-col lg:flex-row min-h-0 min-w-0 bg-[#09090b] overflow-hidden">
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Left Column: Servers + Catalog (Pixel-Matched to Design System)          */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="w-full lg:w-[380px] xl:w-[420px] shrink-0 border-r border-[#1c1d24] bg-[#0c0d10] flex flex-col min-h-0">
+      <div className="w-full lg:w-[320px] xl:w-[360px] 2xl:w-[400px] shrink-0 border-r border-[#1c1d24] bg-[#0c0d10] flex flex-col min-h-0">
         {/* Section 1: Installed Servers Header */}
         <div className="border-b border-[#1c1d24] flex flex-col shrink-0">
           <div className="px-4 py-2.5 border-b border-[#1c1d24] bg-[#101116] flex items-center justify-between">
@@ -836,7 +836,7 @@ export const McpView: React.FC<McpViewProps> = ({
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Right Column: Server Inspector & Tools OR mcp.json Manifest Editor         */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-h-0 bg-[#09090b]">
+      <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-[#09090b] overflow-hidden">
         {/* Sub-navigation Tabs */}
         <div className="border-b border-[#1c1d24] bg-[#0c0d10] px-4 py-2 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-4">

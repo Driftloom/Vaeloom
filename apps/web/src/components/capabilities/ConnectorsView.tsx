@@ -846,18 +846,18 @@ export function ConnectorsView({
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-[#090b10] text-[#f4f4f5] antialiased">
+    <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-[#090b10] text-[#f4f4f5] antialiased overflow-hidden">
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Subheader Bar: Segmented Modes + SaaS Sync Action Buttons                  */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
       <div className="border-b border-[#1c2030] bg-[#0c0e15] px-4 sm:px-6 py-2.5 shrink-0 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 min-w-0">
           {/* Sub-nav Segmented Switcher */}
-          <div className="flex items-center gap-1 p-0.5 rounded-lg bg-[#11141e] border border-[#202636]">
+          <div className="flex items-center gap-1 p-0.5 rounded-lg bg-[#11141e] border border-[#202636] overflow-x-auto no-scrollbar shrink-0">
             <button
               type="button"
               onClick={() => setActiveSubTab('discover')}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer ${
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer whitespace-nowrap ${
                 activeSubTab === 'discover'
                   ? 'bg-[#1e2436] text-white font-semibold shadow-xs border border-[#353f5c]'
                   : 'text-zinc-400 hover:text-zinc-200'
@@ -873,7 +873,7 @@ export function ConnectorsView({
             <button
               type="button"
               onClick={() => setActiveSubTab('yours')}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer ${
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer whitespace-nowrap ${
                 activeSubTab === 'yours'
                   ? 'bg-[#1e2436] text-white font-semibold shadow-xs border border-[#353f5c]'
                   : 'text-zinc-400 hover:text-zinc-200'
@@ -889,7 +889,7 @@ export function ConnectorsView({
             <button
               type="button"
               onClick={() => setActiveSubTab('studio')}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 activeSubTab === 'studio'
                   ? 'bg-[#1e2436] text-white font-semibold shadow-xs border border-[#353f5c]'
                   : 'text-zinc-400 hover:text-zinc-200'
@@ -903,12 +903,12 @@ export function ConnectorsView({
           </div>
 
           {/* Right Action Buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
             <button
               type="button"
               onClick={() => handleSyncAllComposio()}
               disabled={composioSyncing}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-[#141724] border border-[#242b3d] text-zinc-300 hover:text-white hover:bg-[#1a1f30] transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-[#141724] border border-[#242b3d] text-zinc-300 hover:text-white hover:bg-[#1a1f30] transition-colors cursor-pointer whitespace-nowrap"
               title="Sync dynamic SaaS tools from Composio"
             >
               <svg
@@ -935,7 +935,7 @@ export function ConnectorsView({
                   setIsAddModalOpen(true);
                 }
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-500 text-white shadow-sm transition-all cursor-pointer active:scale-[0.98]"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-500 text-white shadow-sm transition-all cursor-pointer active:scale-[0.98] whitespace-nowrap"
             >
               <PlusIcon />
               <span>Add Custom Connector</span>
@@ -947,11 +947,11 @@ export function ConnectorsView({
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Main Content Area                                                          */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-5 min-h-0">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-5 min-h-0 min-w-0">
         {activeSubTab === 'discover' ? (
-          <div className="max-w-7xl mx-auto space-y-6">
+          <div className="max-w-7xl mx-auto space-y-6 min-w-0">
             {/* Filter Toolbar: Purpose Selector + Filter Chips */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#1c2030] pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#1c2030] pb-3 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono uppercase tracking-wider text-zinc-500">
                   Filter By Sector
@@ -1000,7 +1000,7 @@ export function ConnectorsView({
             </div>
 
             {/* Quick Purpose Vector Filter Chips (Clean Lucide SVGs, NO Emojis per ui-ux-pro-max) */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs min-w-0 w-full">
               {(
                 [
                   {
@@ -1262,7 +1262,7 @@ export function ConnectorsView({
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+                <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3.5">
                   {filteredCatalog.map((item) => {
                     const connected = isItemConnected(item);
                     return (
@@ -1367,7 +1367,7 @@ export function ConnectorsView({
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3.5">
                     {topConnectors.map((item) => {
                       const connected = isItemConnected(item);
                       return (
@@ -1799,7 +1799,7 @@ export function ConnectorsView({
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3.5">
                   {dynamicConnectors
                     .filter((c) => ['mcp', 'rest', 'graphql'].includes(c.type?.toLowerCase()))
                     .map((conn) => (
@@ -1913,7 +1913,7 @@ export function ConnectorsView({
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+              <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3.5">
                 {configuredItems.map((item) => {
                   const isSyncing = syncBusyId === item.id || busyAction === `sync-${item.id}`;
                   const displayName =

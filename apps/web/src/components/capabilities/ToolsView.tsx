@@ -364,11 +364,11 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, search
   };
 
   return (
-    <div className="flex-1 flex flex-col lg:flex-row min-h-0 bg-[#09090b] overflow-hidden">
+    <div className="flex-1 flex flex-col lg:flex-row min-h-0 min-w-0 bg-[#09090b] overflow-hidden">
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Left Column: Grouped Tool Suites (Pixel-Matched to Screenshot)            */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="w-full lg:w-[380px] xl:w-[410px] shrink-0 border-r border-[#1c1d24] bg-[#0c0d10] flex flex-col min-h-0">
+      <div className="w-full lg:w-[320px] xl:w-[360px] 2xl:w-[410px] shrink-0 border-r border-[#1c1d24] bg-[#0c0d10] flex flex-col min-h-0">
         {/* Sort & Counter Toolbar */}
         <div className="p-3 border-b border-[#1c1d24] bg-[#0c0d10] shrink-0">
           <div className="flex items-center justify-between">
@@ -464,7 +464,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, search
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Right Column: Suite Details, Tool Chips, Provider Cards & Playground      */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-h-0 bg-[#09090b] overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-[#09090b] overflow-hidden">
         {/* Top Header */}
         <div className="p-5 border-b border-[#1c1d24] bg-[#0c0d10] shrink-0 font-sans">
           <div className="flex flex-col gap-3">
