@@ -1212,6 +1212,7 @@ export interface ApplicationCreateRequest {
 
 export interface ApplicationUpdateOutcomeRequest {
   status: string;
+  outcome?: string;
 }
 
 export interface ApplicationResponse {
@@ -3111,6 +3112,25 @@ export const councilApi = {
       },
     );
   },
+  certify(data: {
+    workspaceId: string;
+    agentName: string;
+    executionId: string;
+    artifact: string;
+    artifactType?: string;
+    toolsInvoked?: string[];
+    mode?: string;
+  }): Promise<Record<string, unknown>> {
+    return apiClient.post('/council/evaluate-and-certify', {
+      workspace_id: data.workspaceId,
+      agent_name: data.agentName,
+      execution_id: data.executionId,
+      artifact: data.artifact,
+      artifact_type: data.artifactType ?? 'text',
+      tools_invoked: data.toolsInvoked ?? [],
+      mode: data.mode ?? 'collaborative',
+    });
+  },
 };
 
 // ─── Organizations ──────────────────────────────────────────────────────────
@@ -3588,5 +3608,95 @@ export const connectorsApi = {
     ): Promise<{ workspace_id: string; registered: string[]; count: number }> {
       return apiClient.post(`/connectors/composio/sync`, { workspace_id: workspaceId });
     },
+  },
+};
+
+export interface ScaleMemoryNode {
+  id: string;
+  workspaceId: string;
+  userId: string;
+  tier: string;
+  title: string;
+  summary: string;
+  content: string;
+  periodStart?: string;
+  periodEnd?: string;
+  createdAt: string;
+}
+
+export interface MorningBriefing {
+  id?: string;
+  workspaceId: string;
+  date: string;
+  headlines: string[];
+  keyAccomplishments: string[];
+  blockersAndRisks: string[];
+  recommendedPriorities: string[];
+  rawSummary?: string;
+}
+
+export interface RealityGapItem {
+  commitment: string;
+  evidence: string;
+  gapSeverity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  observation: string;
+}
+
+export interface RealityGapAnalysis {
+  workspaceId: string;
+  overallScore: number;
+  gaps: RealityGapItem[];
+  recommendations: string[];
+  analyzedAt: string;
+}
+
+export const cognitionApi = {
+  listScaleNodes(
+    workspaceId: string,
+    params?: { tier?: string; limit?: number; offset?: number },
+  ): Promise<{ nodes: ScaleMemoryNode[]; total: number }> {
+    return apiClient.get('/cognition/scale/nodes', { workspace_id: workspaceId, ...params });
+  },
+  createScaleNode(
+    workspaceId: string,
+    data: { tier: string; title: string; summary: string; content?: string },
+  ): Promise<ScaleMemoryNode> {
+    return apiClient.post(
+      `/cognition/scale/nodes?workspace_id=${encodeURIComponent(workspaceId)}`,
+      data,
+    );
+  },
+  deleteScaleNode(workspaceId: string, nodeId: string): Promise<{ deleted: boolean }> {
+    return apiClient.delete(
+      `/cognition/scale/nodes/${nodeId}?workspace_id=${encodeURIComponent(workspaceId)}`,
+    );
+  },
+  rollup(data: {
+    target_tier: string;
+    period_start: string;
+    period_end: string;
+    workspace_id: string;
+  }): Promise<ScaleMemoryNode> {
+    return apiClient.post('/cognition/scale/rollup', data);
+  },
+  triggerOvernight(workspaceId: string, targetDate?: string): Promise<MorningBriefing> {
+    return apiClient.post('/cognition/overnight/run', {
+      workspace_id: workspaceId,
+      target_date: targetDate,
+    });
+  },
+  getTodayBriefing(workspaceId: string): Promise<MorningBriefing> {
+    return apiClient.get('/cognition/briefing/today', { workspace_id: workspaceId });
+  },
+  getRealityGap(
+    workspaceId: string,
+    periodStart?: string,
+    periodEnd?: string,
+  ): Promise<RealityGapAnalysis> {
+    return apiClient.get('/cognition/reality-gap', {
+      workspace_id: workspaceId,
+      period_start: periodStart,
+      period_end: periodEnd,
+    });
   },
 };

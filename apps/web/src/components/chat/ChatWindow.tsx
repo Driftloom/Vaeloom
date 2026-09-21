@@ -403,6 +403,8 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
     return fallback;
   }, [catalog]);
 
+  const isThreadsLoadedRef = useRef(false);
+
   useEffect(() => {
     try {
       const r = localStorage.getItem(`vaeloom.threads.${workspaceId}`);
@@ -415,10 +417,17 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           setMessages(f.messages || []);
         }
       }
-    } catch {}
+    } catch {
+    } finally {
+      isThreadsLoadedRef.current = true;
+    }
   }, [workspaceId]);
+
   useEffect(() => {
-    localStorage.setItem(`vaeloom.threads.${workspaceId}`, JSON.stringify(threads.slice(0, 20)));
+    if (!isThreadsLoadedRef.current || !workspaceId) return;
+    try {
+      localStorage.setItem(`vaeloom.threads.${workspaceId}`, JSON.stringify(threads.slice(0, 20)));
+    } catch {}
   }, [threads, workspaceId]);
   useEffect(() => {
     if (activeThread) setMessages(activeThread.messages);

@@ -100,7 +100,10 @@ export default function ApplicationsPage() {
     if (!workspaceId || !selected) return;
     setSaving(true);
     try {
-      const body: ApplicationUpdateOutcomeRequest = { status: editStatus };
+      const body: ApplicationUpdateOutcomeRequest = {
+        status: editStatus,
+        outcome: editOutcome.trim() || undefined,
+      };
       const updated = await applicationApi.updateOutcome(workspaceId, selected.id, body);
       setApplications((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
       setSelected(null);
@@ -114,7 +117,7 @@ export default function ApplicationsPage() {
     } finally {
       setSaving(false);
     }
-  }, [workspaceId, selected, editStatus, toast]);
+  }, [workspaceId, selected, editStatus, editOutcome, toast]);
 
   if (loading) {
     return (

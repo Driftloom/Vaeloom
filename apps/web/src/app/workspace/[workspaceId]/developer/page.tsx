@@ -32,9 +32,33 @@ interface WebhookDelivery {
 }
 
 const initialApiKeys: ApiKey[] = [
-  { id: 'ak1', name: 'Production', key: 'vlm_prod_8a7d...3f2b', createdAt: '2026-06-01', lastUsed: '2 min ago', status: 'active', permissions: 'Full Access' },
-  { id: 'ak2', name: 'Development', key: 'vlm_dev_c4e1...9a8d', createdAt: '2026-07-10', lastUsed: '1 hour ago', status: 'active', permissions: 'Read Only' },
-  { id: 'ak3', name: 'CI/CD Pipeline', key: 'vlm_ci_5b2f...1e4c', createdAt: '2026-05-15', lastUsed: '3 days ago', status: 'revoked', permissions: 'Limited' },
+  {
+    id: 'ak1',
+    name: 'Production',
+    key: 'vlm_prod_8a7d...3f2b',
+    createdAt: '2026-06-01',
+    lastUsed: '2 min ago',
+    status: 'active',
+    permissions: 'Full Access',
+  },
+  {
+    id: 'ak2',
+    name: 'Development',
+    key: 'vlm_dev_c4e1...9a8d',
+    createdAt: '2026-07-10',
+    lastUsed: '1 hour ago',
+    status: 'active',
+    permissions: 'Read Only',
+  },
+  {
+    id: 'ak3',
+    name: 'CI/CD Pipeline',
+    key: 'vlm_ci_5b2f...1e4c',
+    createdAt: '2026-05-15',
+    lastUsed: '3 days ago',
+    status: 'revoked',
+    permissions: 'Limited',
+  },
 ];
 
 const rateLimits = [
@@ -52,13 +76,23 @@ const sdkItems = [
 ];
 
 const apiDocLinks = [
-  { name: 'Authentication', url: '#' },
-  { name: 'Agents API', url: '#' },
-  { name: 'Memories API', url: '#' },
-  { name: 'Files API', url: '#' },
-  { name: 'Webhook API', url: '#' },
-  { name: 'Rate Limits', url: '#' },
+  { name: 'Authentication API', url: 'http://localhost:8000/docs#/Auth' },
+  { name: 'Agents & ReAct API', url: 'http://localhost:8000/docs#/Agents' },
+  { name: 'SCALE Cognition API', url: 'http://localhost:8000/docs#/Cognition' },
+  { name: 'Council Adjudication API', url: 'http://localhost:8000/docs#/Council' },
+  { name: 'Webhook Subscriptions API', url: 'http://localhost:8000/docs#/Webhooks' },
+  { name: 'Connectors & MCP API', url: 'http://localhost:8000/docs#/Connectors' },
 ];
+
+function generateSecureApiKey(prefix = 'vlm_live_'): string {
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const bytes = new Uint8Array(20);
+    crypto.getRandomValues(bytes);
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+    return `${prefix}${hex}`;
+  }
+  return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+}
 
 const keyStatusColors: Record<string, StatusVariant> = { active: 'success', revoked: 'error' };
 const keyColor = (s: string): StatusVariant => keyStatusColors[s] ?? 'neutral';
@@ -84,11 +118,15 @@ export default function DeveloperPage() {
   const { data: providerKeysData, isLoading: keysLoading } = useSWR(
     workspaceId ? `dev-provider-keys:${workspaceId}` : 'dev-provider-keys',
     async () => {
-      const viaProvider = await providerKeysApi.list({ workspace_id: workspaceId }).catch(() => null);
+      const viaProvider = await providerKeysApi
+        .list({ workspace_id: workspaceId })
+        .catch(() => null);
       if (viaProvider) return viaProvider;
       // secondary probe — generic api keys endpoint (may not exist)
       try {
-        const alt = await api.request<{ keys?: unknown[]; apiKeys?: unknown[] }>('/auth/api-keys').catch(() => null);
+        const alt = await api
+          .request<{ keys?: unknown[]; apiKeys?: unknown[] }>('/auth/api-keys')
+          .catch(() => null);
         if (alt) return alt as unknown as { keys: unknown[] };
       } catch {}
       return null;
@@ -127,7 +165,22 @@ export default function DeveloperPage() {
   // Map live provider-keys -> ApiKey shape when available
   useEffect(() => {
     if (!providerKeysData) return;
-    const bag = providerKeysData as { keys?: Array<{ id: string; provider?: string; keyHint?: string; keyPrefix?: string; isActive?: boolean; is_valid?: boolean; createdAt?: string; created_at?: string; lastUsedAt?: string; last_used_at?: string; workspaceId?: string | null; workspace_id?: string | null }> };
+    const bag = providerKeysData as {
+      keys?: Array<{
+        id: string;
+        provider?: string;
+        keyHint?: string;
+        keyPrefix?: string;
+        isActive?: boolean;
+        is_valid?: boolean;
+        createdAt?: string;
+        created_at?: string;
+        lastUsedAt?: string;
+        last_used_at?: string;
+        workspaceId?: string | null;
+        workspace_id?: string | null;
+      }>;
+    };
     const keysArr = bag.keys;
     if (Array.isArray(keysArr) && keysArr.length > 0) {
       const mapped: ApiKey[] = keysArr.map((k) => ({
@@ -146,8 +199,14 @@ export default function DeveloperPage() {
   const revokeKey = useCallback(
     async (id: string) => {
       // optimistic local revoke
-      setApiKeys((prev) => prev.map((k) => (k.id === id ? { ...k, status: 'revoked' as const } : k)));
-      toast({ tone: 'info', title: 'Key revoked locally', detail: `Key ${id} marked revoked. Syncing with backend…` });
+      setApiKeys((prev) =>
+        prev.map((k) => (k.id === id ? { ...k, status: 'revoked' as const } : k)),
+      );
+      toast({
+        tone: 'info',
+        title: 'Key revoked locally',
+        detail: `Key ${id} marked revoked. Syncing with backend…`,
+      });
       try {
         // primary: provider-keys delete, fallback: generic delete
         try {
@@ -157,24 +216,38 @@ export default function DeveloperPage() {
           await api.request(`/provider-keys/${id}`, { method: 'DELETE' }).catch(() => null);
           await api.request(`/auth/api-keys/${id}`, { method: 'DELETE' }).catch(() => null);
           if (isLive) {
-            toast({ tone: 'success', title: 'Backend synced', detail: `Key ${id} revoked (provider-keys fallback).` });
+            toast({
+              tone: 'success',
+              title: 'Backend synced',
+              detail: `Key ${id} revoked (provider-keys fallback).`,
+            });
           } else {
-            toast({ tone: 'info', title: 'Persisted locally', detail: 'Backend unavailable — revocation persisted to localStorage.' });
+            toast({
+              tone: 'info',
+              title: 'Persisted locally',
+              detail: 'Backend unavailable — revocation persisted to localStorage.',
+            });
           }
         }
       } catch {
         // local already persisted via effect
-        toast({ tone: 'error', title: 'Backend sync failed', detail: 'Local state persisted; backend unavailable.' });
+        toast({
+          tone: 'error',
+          title: 'Backend sync failed',
+          detail: 'Local state persisted; backend unavailable.',
+        });
       }
     },
     [toast, isLive],
   );
 
   const handleCreateKey = useCallback(async () => {
+    const rawSecret = generateSecureApiKey();
+    const maskedHint = `${rawSecret.slice(0, 12)}...${rawSecret.slice(-4)}`;
     const newKey: ApiKey = {
-      id: 'ak' + Date.now(),
+      id: 'ak_' + Date.now(),
       name: newKeyName || 'New Key',
-      key: 'vlm_' + Math.random().toString(36).slice(2, 10) + '...' + Math.random().toString(36).slice(2, 6),
+      key: maskedHint,
       createdAt: new Date().toISOString().slice(0, 10),
       lastUsed: 'Never',
       status: 'active',
@@ -183,16 +256,37 @@ export default function DeveloperPage() {
     setApiKeys((prev) => [...prev, newKey]);
     setShowCreateKey(false);
     setNewKeyName('');
-    toast({ tone: 'success', title: 'API key created', detail: `${newKey.name} created locally${isLive ? ' — syncing…' : ' (mock — backend unavailable)'}.` });
+    toast({
+      tone: 'success',
+      title: 'API key created',
+      detail: `${newKey.name} created locally${isLive ? ' — syncing…' : ' (mock — backend unavailable)'}.`,
+    });
     // Attempt backend create (provider-keys) — best effort
     try {
       try {
-        await providerKeysApi.create({ provider: newKey.name.toLowerCase().replace(/\s+/g, '-'), api_key: newKey.key, workspace_id: workspaceId || null });
-        toast({ tone: 'success', title: 'Backend synced', detail: `${newKey.name} registered on server.` });
+        await providerKeysApi.create({
+          provider: newKey.name.toLowerCase().replace(/\s+/g, '-'),
+          api_key: newKey.key,
+          workspace_id: workspaceId || null,
+        });
+        toast({
+          tone: 'success',
+          title: 'Backend synced',
+          detail: `${newKey.name} registered on server.`,
+        });
       } catch {
-        await api.request('/auth/api-keys', { method: 'POST', body: JSON.stringify({ name: newKey.name, permissions: newKeyPerms }) }).catch(() => null);
+        await api
+          .request('/auth/api-keys', {
+            method: 'POST',
+            body: JSON.stringify({ name: newKey.name, permissions: newKeyPerms }),
+          })
+          .catch(() => null);
         if (isLive) {
-          toast({ tone: 'error', title: 'Backend sync failed', detail: 'Local key persisted; backend create failed.' });
+          toast({
+            tone: 'error',
+            title: 'Backend sync failed',
+            detail: 'Local key persisted; backend create failed.',
+          });
         }
       }
     } catch {
@@ -225,11 +319,22 @@ export default function DeveloperPage() {
         id: delivery?.id ?? 'wh_' + Date.now(),
         event: webhookEvent,
         url: webhookUrl,
-        status: delivery?.status === 'delivered' ? 'success' : delivery?.status === 'failed' ? 'failed' : 'success',
+        status:
+          delivery?.status === 'delivered'
+            ? 'success'
+            : delivery?.status === 'failed'
+              ? 'failed'
+              : 'success',
         timestamp: delivery?.created_at ?? new Date().toISOString(),
-        duration: delivery ? `${delivery.status_code ?? 200}ms` : `${testResult.delivery_count} delivery`,
+        duration: delivery
+          ? `${delivery.status_code ?? 200}ms`
+          : `${testResult.delivery_count} delivery`,
       });
-      toast({ tone: 'success', title: 'Test webhook fired', detail: `${testResult.delivery_count} delivery(ies) sent.` });
+      toast({
+        tone: 'success',
+        title: 'Test webhook fired',
+        detail: `${testResult.delivery_count} delivery(ies) sent.`,
+      });
     } catch {
       setWebhookResult({
         id: 'wh_' + Date.now(),
@@ -239,21 +344,42 @@ export default function DeveloperPage() {
         timestamp: new Date().toISOString(),
         duration: 'error',
       });
-      toast({ tone: 'error', title: 'Test failed', detail: 'Backend unavailable or webhook URL unreachable.' });
+      toast({
+        tone: 'error',
+        title: 'Test failed',
+        detail: 'Backend unavailable or webhook URL unreachable.',
+      });
     }
   }, [webhookEvent, webhookUrl, toast]);
 
   const keyColumns: Column<ApiKey>[] = [
     { key: 'name', header: 'Name', render: (k) => <span className="font-medium">{k.name}</span> },
-    { key: 'key', header: 'Key', render: (k) => <code className="text-xs font-mono bg-background px-2 py-1 rounded text-text-muted">{k.key}</code> },
+    {
+      key: 'key',
+      header: 'Key',
+      render: (k) => (
+        <code className="text-xs font-mono bg-background px-2 py-1 rounded text-text-muted">
+          {k.key}
+        </code>
+      ),
+    },
     { key: 'createdAt', header: 'Created', className: 'text-text-muted text-sm' },
     { key: 'lastUsed', header: 'Last Used', className: 'text-text-muted text-sm' },
-    { key: 'status', header: 'Status', render: (k) => <StatusBadge variant={keyColor(k.status)} label={k.status} /> },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (k) => <StatusBadge variant={keyColor(k.status)} label={k.status} />,
+    },
     { key: 'permissions', header: 'Permissions', className: 'text-text-muted text-sm' },
     {
       key: 'id',
       header: '',
-      render: (k) => (k.status === 'active' ? <Button variant="ghost" size="sm" onClick={() => revokeKey(k.id)}>Revoke</Button> : null),
+      render: (k) =>
+        k.status === 'active' ? (
+          <Button variant="ghost" size="sm" onClick={() => revokeKey(k.id)}>
+            Revoke
+          </Button>
+        ) : null,
       className: 'text-right',
     },
   ];
@@ -268,19 +394,36 @@ export default function DeveloperPage() {
         <p className="text-text-muted">
           API keys, webhooks, SDKs, and developer resources.{' '}
           <span className={isLive ? 'text-success' : 'text-text-dim'}>
-            {keysLoading ? 'Syncing…' : isLive ? 'Live data from backend' : '(mock data — backend unavailable)'}
+            {keysLoading
+              ? 'Syncing…'
+              : isLive
+                ? 'Live data from backend'
+                : '(mock data — backend unavailable)'}
           </span>
         </p>
         {!isLive && !keysLoading ? (
           <p className="mt-2 text-xs font-mono text-text-dim">
-            Data source: mock fallback of {initialApiKeys.length} keys — backend <code className="rounded bg-surface px-1 py-0.5 border border-border">GET /provider-keys</code> not reachable. Keys persisted to{' '}
-            <code className="rounded bg-surface px-1 py-0.5 border border-border">{storageKey}</code>. Configure provider keys to enable live sync.
+            Data source: mock fallback of {initialApiKeys.length} keys — backend{' '}
+            <code className="rounded bg-surface px-1 py-0.5 border border-border">
+              GET /provider-keys
+            </code>{' '}
+            not reachable. Keys persisted to{' '}
+            <code className="rounded bg-surface px-1 py-0.5 border border-border">
+              {storageKey}
+            </code>
+            . Configure provider keys to enable live sync.
           </p>
         ) : (
           isLive && (
             <p className="mt-2 text-xs font-mono text-text-dim">
-              Data source: <span className="text-success">GET /provider-keys (live) + GET /auth/api-keys probe</span> · keys persisted to{' '}
-              <code className="rounded bg-surface px-1 py-0.5 border border-border">{storageKey}</code>
+              Data source:{' '}
+              <span className="text-success">
+                GET /provider-keys (live) + GET /auth/api-keys probe
+              </span>{' '}
+              · keys persisted to{' '}
+              <code className="rounded bg-surface px-1 py-0.5 border border-border">
+                {storageKey}
+              </code>
               {keysLoading ? ' (refreshing…)' : ''}
             </p>
           )
@@ -288,13 +431,23 @@ export default function DeveloperPage() {
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Link href={`/workspace/${workspaceId}/developer/webhooks`} className="card p-6 block hover:border-primary/50 transition-colors">
+        <Link
+          href={`/workspace/${workspaceId}/developer/webhooks`}
+          className="card p-6 block hover:border-primary/50 transition-colors"
+        >
           <h2 className="font-display font-medium text-text mb-1">Webhooks</h2>
-          <p className="text-sm text-text-muted">Create, test, and monitor webhook endpoints. Fully functional.</p>
+          <p className="text-sm text-text-muted">
+            Create, test, and monitor webhook endpoints. Fully functional.
+          </p>
         </Link>
-        <Link href={`/workspace/${workspaceId}/settings`} className="card p-6 block hover:border-primary/50 transition-colors">
+        <Link
+          href={`/workspace/${workspaceId}/settings`}
+          className="card p-6 block hover:border-primary/50 transition-colors"
+        >
           <h2 className="font-display font-medium text-text mb-1">Provider Keys (BYOK)</h2>
-          <p className="text-sm text-text-muted">Manage your own LLM provider credentials. Available in Settings.</p>
+          <p className="text-sm text-text-muted">
+            Manage your own LLM provider credentials. Available in Settings.
+          </p>
         </Link>
       </div>
 
@@ -304,10 +457,15 @@ export default function DeveloperPage() {
           <Button onClick={() => setShowCreateKey(true)}>Create Key</Button>
         </div>
         <p className="text-xs font-mono text-text-dim mb-3">
-          {isLive ? 'Live keys from provider-keys + fallback mock merged.' : `Mock keys — persisted to ${storageKey} (localStorage). Revoke persists locally and attempts backend delete.`}
+          {isLive
+            ? 'Live keys from provider-keys + fallback mock merged.'
+            : `Mock keys — persisted to ${storageKey} (localStorage). Revoke persists locally and attempts backend delete.`}
         </p>
         {apiKeys.length === 0 ? (
-          <EmptyState title="No API keys" description="Create an API key to start building with Vaeloom." />
+          <EmptyState
+            title="No API keys"
+            description="Create an API key to start building with Vaeloom."
+          />
         ) : (
           <Table columns={keyColumns} data={apiKeys} keyExtractor={(k) => k.id} />
         )}
@@ -324,13 +482,17 @@ export default function DeveloperPage() {
               <div className="mt-2 h-1.5 bg-surface-active rounded-full overflow-hidden">
                 <div
                   className="h-full bg-primary rounded-full"
-                  style={{ width: `${Math.min((rl.current / parseInt(rl.limit.replace(/,/g, '').split(' ')[0] ?? '1')) * 100, 100)}%` }}
+                  style={{
+                    width: `${Math.min((rl.current / parseInt(rl.limit.replace(/,/g, '').split(' ')[0] ?? '1')) * 100, 100)}%`,
+                  }}
                 />
               </div>
             </div>
           ))}
         </div>
-        <p className="mt-3 text-xs text-text-dim font-mono">Source: static rateLimits — no backend rate-limit reporting endpoint yet.</p>
+        <p className="mt-3 text-xs text-text-dim font-mono">
+          Source: static rateLimits — no backend rate-limit reporting endpoint yet.
+        </p>
       </Card>
 
       <Card padding="lg">
@@ -343,7 +505,11 @@ export default function DeveloperPage() {
         {showTestConsole && (
           <div className="space-y-4 p-4 bg-background rounded-lg border border-border">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input label="Webhook URL" value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} />
+              <Input
+                label="Webhook URL"
+                value={webhookUrl}
+                onChange={(e) => setWebhookUrl(e.target.value)}
+              />
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-text">Event Type</label>
                 <select
@@ -361,13 +527,18 @@ export default function DeveloperPage() {
             </div>
             <div className="flex gap-2">
               <Button onClick={sendTestWebhook}>Send Test Event</Button>
-              <Button variant="secondary" onClick={() => setWebhookResult(null)}>Clear</Button>
+              <Button variant="secondary" onClick={() => setWebhookResult(null)}>
+                Clear
+              </Button>
             </div>
             {webhookResult && (
               <div className="p-4 bg-surface rounded-lg border border-border">
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <span className="text-text-muted">Status</span>
-                  <StatusBadge variant={webhookResult.status === 'success' ? 'success' : 'error'} label={webhookResult.status} />
+                  <StatusBadge
+                    variant={webhookResult.status === 'success' ? 'success' : 'error'}
+                    label={webhookResult.status}
+                  />
                   <span className="text-text-muted">Event</span>
                   <span className="font-mono text-text">{webhookResult.event}</span>
                   <span className="text-text-muted">Duration</span>
@@ -386,12 +557,17 @@ export default function DeveloperPage() {
           <h2 className="text-lg font-display font-medium text-text mb-4">SDK Downloads</h2>
           <div className="space-y-4">
             {sdkItems.map((sdk) => (
-              <div key={sdk.name} className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
+              <div
+                key={sdk.name}
+                className="flex items-center justify-between p-3 bg-background rounded-lg border border-border"
+              >
                 <div>
                   <p className="font-medium text-text">{sdk.name}</p>
                   <p className="text-xs text-text-muted font-mono">v{sdk.version}</p>
                 </div>
-                <code className="text-xs font-mono text-primary bg-surface px-2 py-1 rounded">{sdk.npm || sdk.pip || sdk.go || sdk.doc}</code>
+                <code className="text-xs font-mono text-primary bg-surface px-2 py-1 rounded">
+                  {sdk.npm || sdk.pip || sdk.go || sdk.doc}
+                </code>
               </div>
             ))}
           </div>
@@ -406,8 +582,18 @@ export default function DeveloperPage() {
                 href={link.url}
                 className="flex items-center gap-2 p-3 bg-background rounded-lg border border-border hover:border-primary/50 transition-colors text-text hover:text-primary"
               >
-                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <svg
+                  className="w-4 h-4 shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
                 </svg>
                 <span className="text-sm font-medium">{link.name}</span>
               </a>
@@ -418,7 +604,12 @@ export default function DeveloperPage() {
 
       <Modal isOpen={showCreateKey} onClose={() => setShowCreateKey(false)} title="Create API Key">
         <div className="space-y-4">
-          <Input label="Key Name" value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)} placeholder="e.g. Production CI" />
+          <Input
+            label="Key Name"
+            value={newKeyName}
+            onChange={(e) => setNewKeyName(e.target.value)}
+            placeholder="e.g. Production CI"
+          />
           <div className="space-y-1">
             <label className="block text-sm font-medium text-text">Permissions</label>
             <select
@@ -432,11 +623,16 @@ export default function DeveloperPage() {
             </select>
           </div>
           <p className="text-xs font-mono text-text-dim">
-            Key will be persisted to <code className="bg-surface px-1 border border-border rounded">{storageKey}</code>
-            {isLive ? ' and an attempt will be made to create it via provider-keys.' : ' (mock — backend unavailable).'}
+            Key will be persisted to{' '}
+            <code className="bg-surface px-1 border border-border rounded">{storageKey}</code>
+            {isLive
+              ? ' and an attempt will be made to create it via provider-keys.'
+              : ' (mock — backend unavailable).'}
           </p>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setShowCreateKey(false)}>Cancel</Button>
+            <Button variant="secondary" onClick={() => setShowCreateKey(false)}>
+              Cancel
+            </Button>
             <Button onClick={handleCreateKey}>Generate Key</Button>
           </div>
         </div>
@@ -446,9 +642,20 @@ export default function DeveloperPage() {
       {showWebhookModal && (
         <Modal isOpen={showWebhookModal} onClose={() => setShowWebhookModal(false)} title="Webhook">
           <div className="space-y-4">
-            <p className="text-text-muted text-sm">Use the dedicated webhooks console at <Link className="text-primary underline" href={`/workspace/${workspaceId}/developer/webhooks`}>/developer/webhooks</Link>.</p>
+            <p className="text-text-muted text-sm">
+              Use the dedicated webhooks console at{' '}
+              <Link
+                className="text-primary underline"
+                href={`/workspace/${workspaceId}/developer/webhooks`}
+              >
+                /developer/webhooks
+              </Link>
+              .
+            </p>
             <div className="flex justify-end">
-              <Button variant="secondary" onClick={() => setShowWebhookModal(false)}>Close</Button>
+              <Button variant="secondary" onClick={() => setShowWebhookModal(false)}>
+                Close
+              </Button>
             </div>
           </div>
         </Modal>
