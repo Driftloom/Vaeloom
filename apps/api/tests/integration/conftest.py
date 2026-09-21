@@ -212,7 +212,9 @@ async def secondary_auth_headers(client: AsyncClient) -> dict:
 
 
 @pytest_asyncio.fixture(autouse=True)
-async def mock_llm(monkeypatch):
+async def mock_llm(monkeypatch, request):
+    if request.node.get_closest_marker("live_provider"):
+        return
     from api.services.llm_service import LLMService
 
     fake_embedding = [0.1] * 1536

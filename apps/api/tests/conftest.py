@@ -215,6 +215,7 @@ async def db_session(db_path):
     @event.listens_for(engine.sync_engine, "connect")
     def _register_sqlite_functions(dbapi_connection, _connection_record):
         dbapi_connection.create_function("cosine_distance", 2, lambda a, b: 0.0)
+        dbapi_connection.create_function("set_config", 3, lambda a, b, c: b)
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -275,8 +276,10 @@ async def auth_headers(client: AsyncClient) -> dict:
 
 
 @pytest_asyncio.fixture(autouse=True)
-async def mock_llm(monkeypatch):
-    """Return fake LLM responses — no real API calls."""
+async def mock_llm(monkeypatch, request):
+    """Return fake LLM responses — no real API calls, unless marked live_provider."""
+    if request.node.get_closest_marker("live_provider"):
+        return
     from api.services.llm_service import LLMService
 
     # Deterministic env: agents must see no LLM key unless a test sets one

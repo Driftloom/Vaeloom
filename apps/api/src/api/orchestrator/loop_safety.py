@@ -10,6 +10,8 @@ state.TERMINATION_REASONS. Detection is deterministic (hashes, no LLM):
 - no-progress loops (observation unchanged AND no new completed tool call)
 - retrieval churn (same retrieval fingerprint across iterations)
 - tool-call amplification / nested-loop amplification (budgets)
+- error-rate stops (>=4 consecutive tool errors or >=4 unknown-tool
+  rounds terminate as policy_stop — hallucination-rate early stop)
 - budget exhaustion (iterations / tools / tokens / cost / duration)
 """
 from __future__ import annotations
@@ -42,6 +44,10 @@ class LoopSafetyTracker:
     max_tokens: int = 12000
     max_cost_usd: float = 0.50
     max_duration_s: float = 120.0
+    # Hallucination / error-rate early stops (policy_stop, already in
+    # state.TERMINATION_REASONS so no vocab change is needed).
+    max_consecutive_tool_errors: int = 4
+    max_unknown_tools: int = 4
     started_at: float = field(default_factory=time.monotonic)
     tool_fingerprints: list[str] = field(default_factory=list)
     plan_fingerprints: list[str] = field(default_factory=list)
@@ -51,6 +57,9 @@ class LoopSafetyTracker:
     tokens_used: int = 0
     cost_usd: float = 0.0
     completed_tool_call_count: int = 0
+    consecutive_tool_errors: int = 0
+    unknown_tool_count: int = 0
+    error_stop_detail: str | None = None
 
     # -- recording ------------------------------------------------------
     def record_plan(self, plan: Any) -> str:
@@ -73,6 +82,40 @@ class LoopSafetyTracker:
         fp = fingerprint(sorted(retrieval_ids or []))
         self.retrieval_fingerprints.append(fp)
         return fp
+
+    # -- error-rate / hallucination stops ---------------------------------
+    def record_tool_outcome(self, *, success: bool, unknown_tool: bool = False) -> None:
+        """Feed one tool-round outcome into the error-rate stops.
+
+        Unknown-tool proposals always count as errors (the model hallucinated
+        a tool name) AND increment the unknown-tool counter. Any clean
+        success resets the consecutive-error streak.
+        """
+        if unknown_tool:
+            self.unknown_tool_count += 1
+            self.consecutive_tool_errors += 1
+        elif success:
+            self.consecutive_tool_errors = 0
+        else:
+            self.consecutive_tool_errors += 1
+
+    def check_error_stops(self) -> str | None:
+        """Return "policy_stop" when an error-rate trip fires, else None.
+
+        "policy_stop" is already a member of state.TERMINATION_REASONS, so
+        callers can terminate directly. The fine-grained cause is left in
+        error_stop_detail for observability ("unknown_tool_rate" takes
+        priority over "consecutive_tool_errors": an unknown-tool streak is
+        the more specific diagnosis when both counters trip together).
+        """
+        if self.max_unknown_tools > 0 and self.unknown_tool_count >= self.max_unknown_tools:
+            self.error_stop_detail = "unknown_tool_rate"
+            return "policy_stop"
+        if self.max_consecutive_tool_errors > 0 and \
+                self.consecutive_tool_errors >= self.max_consecutive_tool_errors:
+            self.error_stop_detail = "consecutive_tool_errors"
+            return "policy_stop"
+        return None
 
     # -- checks ----------------------------------------------------------
     def check_budgets(self) -> str | None:
@@ -128,4 +171,7 @@ class LoopSafetyTracker:
             "elapsed_s": round(time.monotonic() - self.started_at, 3),
             "plans": len(self.plan_fingerprints),
             "observations": len(self.observation_fingerprints),
+            "consecutive_tool_errors": self.consecutive_tool_errors,
+            "unknown_tool_count": self.unknown_tool_count,
+            "error_stop_detail": self.error_stop_detail,
         }

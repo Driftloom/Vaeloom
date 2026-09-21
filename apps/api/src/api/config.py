@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     openai_api_key: str = ""
     anthropic_api_key: str = ""
+    ollama_base_url: str = "http://localhost:11434"
     embedding_model: str = "gemini-embedding-2"
 
     # System 1: TypeSafe AI Jev Fast Decision Engine (Vercel AI Gateway / OpenRouter)
@@ -250,6 +251,11 @@ class Settings(BaseSettings):
     eval_shadow_enabled: bool = False
     model_lineage_enabled: bool = True  # WS-12.3 cost/lineage
     ai_bill_of_materials_enabled: bool = True
+
+    # ── Transactional outbox relay (ADR-045, slice 1) ──────────────────
+    # Default OFF: publish_due_events() no-ops unless enabled. Real broker
+    # publish + publisher rewiring + background loop = Loop 2.
+    outbox_relay_enabled: bool = False
 
     model_config = {"env_prefix": "", "case_sensitive": False}
 

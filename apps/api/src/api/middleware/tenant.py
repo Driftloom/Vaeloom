@@ -100,10 +100,12 @@ async def check_user_workspace_access(session: AsyncSession, workspace_id: str, 
     # policies never see a NULL workspace and fail open.
     try:
         from sqlalchemy import text as _text
-        if tenant_id:
-            await session.execute(_text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": str(tenant_id)})
-        await session.execute(_text("SELECT set_config('app.user_id', :uid, true)"), {"uid": uid})
-        await session.execute(_text("SELECT set_config('app.workspace_id', :wid, true)"), {"wid": ws_uuid})
+        bind = session.get_bind()
+        if getattr(getattr(bind, "dialect", None), "name", "") != "sqlite":
+            if tenant_id:
+                await session.execute(_text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": str(tenant_id)})
+            await session.execute(_text("SELECT set_config('app.user_id', :uid, true)"), {"uid": uid})
+            await session.execute(_text("SELECT set_config('app.workspace_id', :wid, true)"), {"wid": ws_uuid})
     except Exception as exc:
         import logging as _log
         _log.getLogger(__name__).warning("check_user_workspace_access GUC setup failed (fail-closed): %s", exc)

@@ -50,3 +50,61 @@ class TestOpenApiSpec:
         from api.config import settings
         committed = yaml.safe_load(SPEC_PATH.read_text(encoding="utf-8"))
         assert committed["info"]["version"] == settings.service_version
+
+    # ── Contract hardening (spec-only; mirrors middleware/rate_limit.py) ──
+    # RateLimitMiddleware returns 429 + Retry-After for every rate-limited
+    # request; only SKIP_PATHS (/health, /health/ready, /docs, /openapi.json,
+    # /redoc) are exempt. Auth is custom middleware (Bearer JWT), so the
+    # generator declares components/securitySchemes/BearerAuth explicitly.
+    _RATE_LIMIT_SKIP_PATHS = frozenset(
+        {"/health", "/health/ready", "/docs", "/openapi.json", "/redoc"}
+    )
+    _HTTP_METHODS = {"get", "post", "put", "patch", "delete", "options", "head", "trace"}
+
+    def _operations(self, committed: dict):
+        for path, path_item in committed["paths"].items():
+            if not isinstance(path_item, dict):
+                continue
+            for method, operation in path_item.items():
+                if method.lower() in self._HTTP_METHODS and isinstance(operation, dict):
+                    yield path, method, operation
+
+    def test_bearer_security_scheme_declared(self):
+        committed = yaml.safe_load(SPEC_PATH.read_text(encoding="utf-8"))
+        schemes = committed.get("components", {}).get("securitySchemes", {})
+        assert "BearerAuth" in schemes, "components/securitySchemes/BearerAuth missing"
+        assert schemes["BearerAuth"]["type"] == "http"
+        assert schemes["BearerAuth"]["scheme"] == "bearer"
+
+    def test_rate_limited_operations_document_429(self):
+        committed = yaml.safe_load(SPEC_PATH.read_text(encoding="utf-8"))
+        missing = [
+            f"{method.upper()} {path}"
+            for path, method, op in self._operations(committed)
+            if path not in self._RATE_LIMIT_SKIP_PATHS
+            and "429" not in (op.get("responses") or {})
+        ]
+        assert not missing, f"Operations missing 429 response: {missing[:10]}"
+
+    def test_429_responses_carry_retry_after(self):
+        committed = yaml.safe_load(SPEC_PATH.read_text(encoding="utf-8"))
+        bad = [
+            f"{method.upper()} {path}"
+            for path, method, op in self._operations(committed)
+            if "429" in (op.get("responses") or {})
+            and "Retry-After"
+            not in ((op["responses"]["429"].get("headers") or {}))
+        ]
+        assert not bad, f"429 responses missing Retry-After header: {bad[:10]}"
+
+    def test_rate_limit_skip_paths_have_no_429(self):
+        # Guards parity with RateLimitMiddleware.SKIP_PATHS: exempt probes
+        # must not advertise a 429 they can never emit.
+        committed = yaml.safe_load(SPEC_PATH.read_text(encoding="utf-8"))
+        unexpected = [
+            f"{method.upper()} {path}"
+            for path, method, op in self._operations(committed)
+            if path in self._RATE_LIMIT_SKIP_PATHS
+            and "429" in (op.get("responses") or {})
+        ]
+        assert not unexpected, f"Exempt paths must not document 429: {unexpected}"

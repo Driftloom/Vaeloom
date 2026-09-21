@@ -8,8 +8,7 @@ help: ## Show this help
 	  awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 # Development
-dev: ## Start all apps in dev mode
-	pnpm dev
+dev: dev-web ## Start dev server (alias for dev-web; bare `pnpm dev` is disabled, see package.json)
 
 dev-web: ## Start frontend only (fast, no Nx orchestration)
 	cd apps/web && pnpm next dev -p 3000

@@ -45,6 +45,8 @@ def _infer_provider_from_model(model: str | None) -> str:
         return "mistral"
     if m.startswith("cohere") or m.startswith("command"):
         return "cohere"
+    if m.startswith("ollama") or m.startswith("gemma") or "ollama" in m:
+        return "ollama"
     # fallback to catalog
     cfg = MODEL_CATALOG.get(model)
     if cfg:
@@ -556,7 +558,7 @@ class LLMService:
         effective_key: str | None,
         json_mode: bool = False,
     ) -> dict[str, Any]:
-        if inferred_provider in ("openai", "groq", "google", "gemini"):
+        if inferred_provider in ("openai", "groq", "google", "gemini", "ollama"):
             return await self._openai_completion(messages, effective_model, temperature, max_tokens, api_key=effective_key, provider=inferred_provider, json_mode=json_mode)
         else:
             return await self._anthropic_completion(messages, effective_model, temperature, max_tokens, api_key=effective_key, json_mode=json_mode)
@@ -854,12 +856,18 @@ class LLMService:
         elif provider in ("google", "gemini"):
             url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
             pname = "Gemini"
+        elif provider == "ollama":
+            base_url = getattr(settings, "ollama_base_url", "http://localhost:11434") or "http://localhost:11434"
+            url = f"{base_url.rstrip('/')}/v1/chat/completions"
+            pname = "Ollama"
         else:
             url = "https://api.openai.com/v1/chat/completions"
             pname = "OpenAI"
 
-        if not key:
+        if not key and provider != "ollama":
             raise LLMProviderError(f"Missing {pname} API key — configure in Settings > API Keys (BYOK)")
+        if provider == "ollama" and not key:
+            key = "ollama"
         _check_failure_injection(provider)
         body: dict[str, Any] = {"model": model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens}
         if json_mode:
