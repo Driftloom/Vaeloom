@@ -30,6 +30,17 @@ PUBLIC_PREFIXES = frozenset({
     "/api/v1/auth/sso/",
 })
 
+# External webhook senders (GitHub/Stripe-style) authenticate with per-connector
+# HMAC signatures, not user JWTs. The inbound-webhook route performs full HMAC
+# verification itself, so the middleware lets signature-bearing requests through
+# and still 401s unsigned anonymous calls. Unsigned calls WITH a user JWT keep
+# working as operator-initiated deliveries.
+_WEBHOOK_HMAC_HEADERS = ("x-hub-signature-256", "x-webhook-signature")
+
+
+def _carries_webhook_signature(request: Request) -> bool:
+    return any(request.headers.get(header) for header in _WEBHOOK_HMAC_HEADERS)
+
 
 class AuthMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, session_factory=None):
@@ -45,6 +56,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
         for prefix in PUBLIC_PREFIXES:
             if path.startswith(prefix):
                 return await call_next(request)
+
+        if (
+            path.startswith("/api/v1/connectors/")
+            and path.endswith("/inbound-webhook")
+            and _carries_webhook_signature(request)
+        ):
+            return await call_next(request)
 
         # Pass OPTIONS preflight through so CORSMiddleware can handle it
         if request.method == "OPTIONS":

@@ -39,7 +39,7 @@ class TestConnectorWebhookAttribution:
         assert conn_res.status_code == 201
         cid = conn_res.json()["id"]
 
-        # 2. Dispatch inbound webhook payload
+        # 2. Dispatch inbound webhook payload as operator (JWT, unsigned delivery)
         wh_payload = {
             "event": "document.updated",
             "payload": {"doc_id": "doc-123", "action": "reindex"},
@@ -47,7 +47,7 @@ class TestConnectorWebhookAttribution:
         res = await client.post(
             f"/api/v1/connectors/{cid}/inbound-webhook",
             json=wh_payload,
-            headers={"X-Workspace-Id": wid},
+            headers={"Authorization": headers["Authorization"]},
         )
         assert res.status_code == 200, res.text
         body = res.json()
@@ -65,10 +65,19 @@ class TestConnectorWebhookAttribution:
 
     async def test_inbound_webhook_nonexistent_connector_404(self, client: AsyncClient):
         """Verify 404 when inbound webhook targets non-existent connector."""
+        headers, _, _ = await _signup_and_get_workspace(client, "missing-wh")
         fake_id = str(uuid.uuid4())
+        # Anonymous without HMAC signature -> 401 at auth middleware
         res = await client.post(
             f"/api/v1/connectors/{fake_id}/inbound-webhook",
             json={"event": "ping", "payload": {}},
+        )
+        assert res.status_code == 401
+        # Authenticated operator -> 404 for unknown connector
+        res = await client.post(
+            f"/api/v1/connectors/{fake_id}/inbound-webhook",
+            json={"event": "ping", "payload": {}},
+            headers={"Authorization": headers["Authorization"]},
         )
         assert res.status_code == 404
 
@@ -119,3 +128,48 @@ class TestConnectorWebhookAttribution:
         )
         assert res_good.status_code == 200
         assert res_good.json()["status"] == "received"
+
+    async def test_inbound_webhook_anonymous_hmac_matrix(self, client: AsyncClient):
+        """External senders authenticate with HMAC alone (no user JWT)."""
+        headers, _, _ = await _signup_and_get_workspace(client, "anon-wh")
+        secret = "external-sender-key"
+
+        conn_res = await client.post(
+            "/api/v1/connectors",
+            json={
+                "name": "Anon-HMAC-Conn",
+                "type": "rest",
+                "token_ref": secret,
+                "config": {"url": "https://example.com/api"},
+            },
+            headers=headers,
+        )
+        assert conn_res.status_code == 201
+        cid = conn_res.json()["id"]
+        payload_bytes = b'{"event": "ping", "payload": {}}'
+
+        # Anonymous + valid HMAC -> delivered (external sender flow)
+        valid_sig = "sha256=" + hmac.new(secret.encode(), payload_bytes, hashlib.sha256).hexdigest()
+        res = await client.post(
+            f"/api/v1/connectors/{cid}/inbound-webhook",
+            content=payload_bytes,
+            headers={"Content-Type": "application/json", "X-Hub-Signature-256": valid_sig},
+        )
+        assert res.status_code == 200, res.text
+        assert res.json()["status"] == "received"
+
+        # Anonymous + forged HMAC -> 401
+        res = await client.post(
+            f"/api/v1/connectors/{cid}/inbound-webhook",
+            content=payload_bytes,
+            headers={"Content-Type": "application/json", "X-Hub-Signature-256": "sha256=forged"},
+        )
+        assert res.status_code == 401
+
+        # Anonymous + no HMAC at all -> 401 at auth middleware
+        res = await client.post(
+            f"/api/v1/connectors/{cid}/inbound-webhook",
+            content=payload_bytes,
+            headers={"Content-Type": "application/json"},
+        )
+        assert res.status_code == 401
