@@ -59,8 +59,9 @@ graph TD
 > **Pydantic gotcha:** `apps/api/src/api/config.py` sets
 > `model_config = {"env_prefix": "", "case_sensitive": False}` with **no
 > `env_file`** — `.env` files are NOT auto-read. Export variables in your shell
-> (or via your process manager). Nested settings use **double underscores**:
-> `DATABASE__URL`, not `DATABASE_URL`.
+> (or via your process manager). Prefer **double underscores**: `DATABASE__URL`
+> (single-underscore `DATABASE_URL` is accepted as a convenience alias in
+> `config.py`, but double-underscore is canonical).
 
 ```bash
 # Core
@@ -157,7 +158,7 @@ settings = Settings()
 | Practice                                                       | Why                                                                                                                                                            |
 | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Remember `.env` is NOT auto-read (no `env_file`)               | Pydantic only sees exported shell vars — `cp .env.example .env` alone does nothing until you export                                                            |
-| Always use `DATABASE__URL` (double underscore)                 | Single-underscore `DATABASE_URL` does not bind to the nested setting and the backend will fail validation                                                      |
+| Always use `DATABASE__URL` (double underscore)                 | Single-underscore `DATABASE_URL` is only a convenience alias (mapped in `config.py`) — double-underscore is canonical and always binds                         |
 | Keep `.env` in `.gitignore` and never commit it                | The `.env` file is in `.gitignore` by default — verify with `git status` before committing. Use `.env.example` as the template                                 |
 | Use separate API keys for development, staging, and production | Dev keys should have rate limits and no access to production data — API key scoping prevents cross-environment accidents                                       |
 | Use a secrets manager for sharing credentials                  | For team environments, use a vault or secrets manager (1Password CLI, Doppler, AWS Secrets Manager) — never share `.env` files directly                        |

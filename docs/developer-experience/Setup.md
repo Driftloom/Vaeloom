@@ -64,9 +64,8 @@ FastAPI backend, backed by PostgreSQL and Redis.
 > **uv** (`uv run --project apps/api ...`) — there is no `requirements.txt`
 > workflow. Pin Node with `nvm use` (`.nvmrc` = `v20.14.0`).
 
-> **CRITICAL — never run `pnpm dev`:** the root `dev` script runs
-> `nx run-many --target=dev --parallel` across all 25 workspace packages (most
-> have no `dev` script) and hangs forever. Always use **`pnpm dev:web`** (Nx,
+> **CRITICAL — never run `pnpm dev`:** the root `dev` script is disabled
+> (fail-fast redirect to `dev:web`/`dev:be`). Always use **`pnpm dev:web`** (Nx,
 > runs only `@vaeloom/web`, 2-5s) or the fastest path **`make dev-web`**
 > (`cd apps/web && pnpm next dev` directly). Backend only: **`pnpm dev:be`**.
 
@@ -271,19 +270,19 @@ docker stats
 | Keep `.env` out of version control                           | Secrets in git = security incident                                     |
 | Run migrations in a separate terminal                        | See migration output clearly                                           |
 | Use `uv run --project apps/api ... --reload` for backend dev | Dev mode has hot reload; uv picks the pinned 3.12 venv                 |
-| Use `pnpm dev:web` (never `pnpm dev`) for frontend           | `pnpm dev` spawns Nx across 25 packages and hangs                      |
+| Use `pnpm dev:web` (never `pnpm dev`) for frontend           | `pnpm dev` is disabled at the root (fail-fast redirect)                |
 | Check `docker compose logs` first                            | Most issues visible in logs                                            |
 | Format code before committing                                | `ruff format` (Python) / `pnpm format` (frontend) avoids lint failures |
 
 ## Common Mistakes
 
-| Mistake                                                      | Fix                                                             |
-| ------------------------------------------------------------ | --------------------------------------------------------------- |
-| Using bare `python`/`pip`/`requirements.txt` for the backend | Always `uv run --project apps/api` (`.venv` is uv-managed)      |
-| Running `pnpm dev`                                           | Hangs (Nx × 25 packages) — use `pnpm dev:web` or `make dev-web` |
-| Running `npm install` / `npm run dev`                        | This repo is pnpm-only — use `pnpm install` / `pnpm dev:web`    |
-| Editing `docker-compose.yml` for local changes               | Use `docker-compose.override.yml` instead                       |
-| Skipping database migrations                                 | Always run `alembic upgrade head` after pulling new code        |
+| Mistake                                                      | Fix                                                                          |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| Using bare `python`/`pip`/`requirements.txt` for the backend | Always `uv run --project apps/api` (`.venv` is uv-managed)                   |
+| Running `pnpm dev`                                           | Disabled at root (fail-fast redirect) — use `pnpm dev:web` or `make dev-web` |
+| Running `npm install` / `npm run dev`                        | This repo is pnpm-only — use `pnpm install` / `pnpm dev:web`                 |
+| Editing `docker-compose.yml` for local changes               | Use `docker-compose.override.yml` instead                                    |
+| Skipping database migrations                                 | Always run `alembic upgrade head` after pulling new code                     |
 
 ## Security Considerations
 

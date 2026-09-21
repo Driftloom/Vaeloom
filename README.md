@@ -63,8 +63,8 @@ ADRs: 44 (`docs/adr/ADR-001..ADR-044`).
 pnpm install
 ```
 
-> NEVER run bare `pnpm dev` — it spawns Nx across all 25 packages (most have no
-> `dev` script) and hangs forever. Use `pnpm dev:web` only.
+> NEVER run bare `pnpm dev` — it is disabled at the root (fail-fast redirect).
+> Use `pnpm dev:web` only.
 
 ### 2. Frontend
 
@@ -91,10 +91,12 @@ uv run --project apps/api python -m uvicorn api.main:app --host 0.0.0.0 --port 8
 
 API: `http://localhost:8000` — spec at `docs/backend/openapi.yaml`.
 
-Backend tests:
+Backend tests (full suite hangs/crashes under default xdist — use serial; fast
+parallel variant needs 32GB):
 
 ```bash
-cd apps/api && uv run --project apps/api python -m pytest -q
+cd apps/api && uv run --project apps/api python -m pytest -q -o addopts=""  # serial, ~8-10min, reliable
+# or: python -m pytest -q -o addopts="-n auto --dist loadfile"  # fast, ~2-3min, needs 32GB
 ```
 
 ## Test Accounts

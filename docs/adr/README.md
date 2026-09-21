@@ -1,6 +1,6 @@
 # Vaeloom Architecture Decision Records (ADR Index)
 
-> **Status:** 44 ADRs, all `Accepted` unless noted. Generated 2026-09-15
+> **Status:** 45 ADRs, all `Accepted` unless noted. Generated 2026-09-15
 > (CONT-P18 DEL-03). Titles sourced from file H1s — this index is a map, not a
 > substitute; read the ADR for context, consequences, and supersession.
 
@@ -62,6 +62,7 @@
 | [ADR-042](ADR-042-data-classes-residency.md)                    | Data Classes & Residency                                                         |
 | [ADR-043](ADR-043-strangler-adapter.md)                         | Strangler Adapter (MVP Monolith → Cell)                                          |
 | [ADR-044](ADR-044-zero-trust-p1-hardening.md)                   | Zero-Trust P1 Hardening (Hybrid RAG, Model Routing, Observability, Concurrency)  |
+| [ADR-045](ADR-045-transactional-outbox.md)                      | Transactional Outbox for DB+Broker Dual-Write Safety (slice 1)                   |
 
 ## Ownership & Cadence
 

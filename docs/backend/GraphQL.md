@@ -378,5 +378,5 @@ curl -X POST "https://api.Vaeloom.ai/graphql" \
 - [API Architecture.md](./API-Architecture.md)
 - [Backend Architecture.md](./Backend-Architecture.md)
 
-> _Last verified: 2026-09-15 — REST remains the API surface (162 paths / 203
+> _Last verified: 2026-09-21 — REST remains the API surface (241 paths / 294
 > ops, openapi.yaml); GraphQL still future._

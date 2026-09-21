@@ -55,7 +55,8 @@ from everyone. By participating in this project, you agree to abide by our
    > WARNING: Pydantic does **not** read `.env` (`model_config` lacks
    > `env_file`). For local API runs and tests, export vars in your shell using
    > the **double-underscore** name `DATABASE__URL` (single-underscore
-   > `DATABASE_URL` is ignored by the app config):
+   > `DATABASE_URL` is accepted as a convenience alias in `config.py`, but
+   > prefer `DATABASE__URL`):
    >
    > ```powershell
    > $env:DATABASE__URL="sqlite+aiosqlite:///./dev.db"
@@ -83,9 +84,9 @@ from everyone. By participating in this project, you agree to abide by our
    pnpm dev:web
    ```
 
-   > WARNING: NEVER run bare `pnpm dev` — it spawns `nx run-many` across all 25
-   > packages (most have no `dev` script) and hangs forever. Frontend only via
-   > `pnpm dev:web` (or `make dev-web`, fastest); API only via `pnpm dev:be`.
+   > WARNING: NEVER run bare `pnpm dev` — it is disabled at the root (fail-fast
+   > redirect). Frontend only via `pnpm dev:web` (or `make dev-web`, fastest);
+   > API only via `pnpm dev:be`.
 
 7. **Verify the setup**
 
@@ -279,8 +280,10 @@ fix(auth): handle token refresh race condition
 Run tests:
 
 ```bash
-# Backend tests (uv-managed venv + Python 3.12 — never bare pip/venv/python)
-cd apps/api && uv run --project apps/api python -m pytest -q
+# Backend tests (uv-managed venv + Python 3.12 — never bare pip/venv/python).
+# Full suite hangs/crashes under default xdist, so use serial (-o addopts="",
+# ~8-10min, reliable). Fast parallel (-n auto --dist loadfile, ~2-3min) needs 32GB.
+cd apps/api && uv run --project apps/api python -m pytest -q -o addopts=""
 
 # Frontend tests
 cd apps/web && pnpm test

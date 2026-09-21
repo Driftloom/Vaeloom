@@ -72,7 +72,7 @@ graph TD
 ./scripts/ci-local.sh
 ```
 
-### Frontend (repo root — pnpm ONLY; never `pnpm dev`, it hangs via Nx × 25 pkgs)
+### Frontend (repo root — pnpm ONLY; never bare `pnpm dev`, it is disabled with a fail-fast redirect)
 
 ```bash
 pnpm dev:web       # Start dev server (port 3000) — or fastest: make dev-web

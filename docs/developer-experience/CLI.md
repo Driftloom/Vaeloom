@@ -48,8 +48,8 @@ graph TD
 > Vaeloom CLI** (auth, workspace, documents, agents, dev, deploy, logs) ?
 > **scripts directory** (setup, reset, seed, smoke-test).
 >
-> **Never run `pnpm dev`** — it fans out via Nx across all 25 workspace packages
-> and hangs. Frontend: **`pnpm dev:web`** (or `make dev-web`, fastest). Backend:
+> **Never run `pnpm dev`** — the root `dev` script is disabled (fail-fast
+> redirect). Frontend: **`pnpm dev:web`** (or `make dev-web`, fastest). Backend:
 > **`pnpm dev:be`**.
 
 ---
@@ -107,7 +107,7 @@ Vaeloom logs <service>     # View logs
 
 | Mistake                                                      | Consequence                                                                                                                                                            |
 | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Running `pnpm dev` instead of `pnpm dev:web`                 | `pnpm dev` runs Nx across 25 packages and hangs forever — always `pnpm dev:web` (or `make dev-web`)                                                                    |
+| Running `pnpm dev` instead of `pnpm dev:web`                 | `pnpm dev` is disabled at the root (fail-fast redirect) — always `pnpm dev:web` (or `make dev-web`)                                                                    |
 | Running `npm start` / `npm run dev` in development           | This repo is pnpm-only; `npm` bypasses the workspace lockfile. Use `pnpm dev:web` (dev) — `pnpm start` semantics are production builds                                 |
 | Forgetting to use `uv run` before running backend commands   | Running bare `pytest` or `uvicorn` uses the system Python — missing dependencies cause import errors that look like setup failures. Always `uv run --project apps/api` |
 | Using production environment variables in local CLI commands | A `--env production` flag or production `DATABASE__URL` in a local terminal can accidentally modify production data — always verify the active environment             |
@@ -115,12 +115,12 @@ Vaeloom logs <service>     # View logs
 
 ## Best Practices
 
-| Practice                                                | Why                                                                                                                                                             |
-| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Use `pnpm dev:web` for all local frontend development   | Dev mode includes hot reload, debug logging, and double rate limits — it's the only mode suitable for active development. Never `pnpm dev` (Nx × 25 pkgs hangs) |
-| Always use `uv run --project apps/api` for backend work | uv selects the pinned Python 3.12 venv — bare `python`/`pip`/`requirements.txt` are not supported in this repo                                                  |
-| Prefix environment-specific commands with the target    | `STAGING=1 ./scripts/reset-db.sh` or `NODE_ENV=production pnpm build:web` — explicit environment markers prevent cross-environment accidents                    |
-| Add a confirmation prompt to destructive scripts        | Scripts that drop databases or delete resources should require `--confirm` or `--force` flags — never run destructive operations without explicit confirmation  |
+| Practice                                                | Why                                                                                                                                                                    |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Use `pnpm dev:web` for all local frontend development   | Dev mode includes hot reload, debug logging, and double rate limits — it's the only mode suitable for active development. Never bare `pnpm dev` (disabled at the root) |
+| Always use `uv run --project apps/api` for backend work | uv selects the pinned Python 3.12 venv — bare `python`/`pip`/`requirements.txt` are not supported in this repo                                                         |
+| Prefix environment-specific commands with the target    | `STAGING=1 ./scripts/reset-db.sh` or `NODE_ENV=production pnpm build:web` — explicit environment markers prevent cross-environment accidents                           |
+| Add a confirmation prompt to destructive scripts        | Scripts that drop databases or delete resources should require `--confirm` or `--force` flags — never run destructive operations without explicit confirmation         |
 
 ## Security Considerations
 

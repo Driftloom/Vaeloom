@@ -66,9 +66,8 @@ graph TD
 | Install all deps       | `pnpm install`                                  | ~2.2s; `.npmrc` sets auto-install-peers           |
 | Backend tests          | `uv run --project apps/api python -m pytest -q` | Never bare `python`/`pip` — no `requirements.txt` |
 
-> **NEVER run `pnpm dev`.** The root `dev` script runs
-> `nx run-many --target=dev --parallel` across all 25 workspace packages (most
-> have no `dev` script) and hangs forever.
+> **NEVER run `pnpm dev`.** The root `dev` script is disabled (fail-fast
+> redirect to `dev:web`/`dev:be`).
 >
 > **Port 3000 busy?** `Get-Process -Name "node" | Stop-Process -Force`, then
 > retry. **Node version:** `.nvmrc` = `v20.14.0` (`nvm use`).

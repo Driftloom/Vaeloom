@@ -15,6 +15,39 @@ paths:
           content:
             application/json:
               schema: {}
+        '429': &id001
+          description: Too Many Requests — rate limit exceeded (sliding window). See
+            docs/backend/Rate-Limiting.md. Retry after the seconds given in the `Retry-After`
+            header.
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying.
+              schema:
+                type: integer
+                minimum: 1
+            X-RateLimit-Limit:
+              description: Configured request quota for the window.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Requests remaining in the current window.
+              schema:
+                type: integer
+            X-RateLimit-Reset:
+              description: Unix timestamp when the window resets.
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                required:
+                  - detail
+              example:
+                detail: Rate limit exceeded
   /metrics:
     get:
       summary: Metrics
@@ -26,6 +59,7 @@ paths:
           content:
             application/json:
               schema: {}
+        '429': *id001
   /api/v1/security/encryption-status:
     get:
       tags:
@@ -38,6 +72,7 @@ paths:
           content:
             application/json:
               schema: {}
+        '429': *id001
   /health:
     get:
       tags:
@@ -74,6 +109,7 @@ paths:
           content:
             application/json:
               schema: {}
+        '429': *id001
   /api/v1/auth/signup:
     post:
       tags:
@@ -99,6 +135,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/auth/login:
     post:
       tags:
@@ -124,6 +161,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/auth/refresh:
     post:
       tags:
@@ -149,6 +187,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/auth/verify-email:
     post:
       tags:
@@ -173,6 +212,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/auth/resend-verification:
     post:
       tags:
@@ -197,6 +237,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/auth/sessions:
     get:
       tags:
@@ -210,6 +251,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionListResponse'
+        '429': *id001
   /api/v1/auth/sessions/{session_id}:
     delete:
       tags:
@@ -232,6 +274,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/auth/sessions/revoke-others:
     post:
       tags:
@@ -244,6 +287,7 @@ paths:
           content:
             application/json:
               schema: {}
+        '429': *id001
   /api/v1/auth/forgot-password:
     post:
       tags:
@@ -268,6 +312,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/auth/reset-password:
     post:
       tags:
@@ -292,6 +337,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/auth/logout:
     post:
       tags:
@@ -301,6 +347,7 @@ paths:
       responses:
         '204':
           description: Successful Response
+        '429': *id001
   /api/v1/auth/me:
     get:
       tags:
@@ -314,6 +361,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MeResponse'
+        '429': *id001
   /api/v1/auth/sso/{provider}:
     post:
       tags:
@@ -346,6 +394,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     get:
       tags:
         - auth
@@ -376,6 +425,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/auth/sso/{provider}/callback:
     get:
       tags:
@@ -413,6 +463,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/auth/saml/metadata:
     get:
       tags:
@@ -430,6 +481,7 @@ paths:
           content:
             application/json:
               schema: {}
+        '429': *id001
   /api/v1/auth/saml/login:
     get:
       tags:
@@ -462,6 +514,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/auth/saml/callback:
     post:
       tags:
@@ -475,6 +528,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
+        '429': *id001
   /api/v1/auth/mfa/setup:
     post:
       tags:
@@ -488,6 +542,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MfaSetupResponse'
+        '429': *id001
   /api/v1/auth/mfa/enable:
     post:
       tags:
@@ -512,6 +567,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/auth/mfa/verify:
     post:
       tags:
@@ -537,6 +593,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/workspaces:
     get:
       tags:
@@ -553,6 +610,7 @@ paths:
                   $ref: '#/components/schemas/WorkspaceResponse'
                 type: array
                 title: Response List Workspaces Api V1 Workspaces Get
+        '429': *id001
     post:
       tags:
         - workspaces
@@ -577,6 +635,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/workspaces/{workspace_id}:
     get:
       tags:
@@ -603,6 +662,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     patch:
       tags:
         - workspaces
@@ -634,6 +694,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     delete:
       tags:
         - workspaces
@@ -655,6 +716,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/workspaces/{workspace_id}/agents:
     get:
       tags:
@@ -680,6 +742,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/workspaces/{workspace_id}/memories:
     get:
       tags:
@@ -705,6 +768,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/workspaces/{workspace_id}/connectors:
     get:
       tags:
@@ -730,6 +794,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/workspaces/{workspace_id}/document-actions:
     get:
       tags:
@@ -755,6 +820,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/workspaces/{workspace_id}/agent-actions:
     get:
       tags:
@@ -780,6 +846,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/workspaces/{workspace_id}/invites:
     post:
       tags:
@@ -811,6 +878,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/memories:
     get:
       tags:
@@ -900,6 +968,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     post:
       tags:
         - memory
@@ -924,6 +993,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/memories/feed:
     get:
       tags:
@@ -979,6 +1049,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/memories/{memory_id}/lineage:
     get:
       tags:
@@ -1011,6 +1082,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/memories/{memory_id}:
     get:
       tags:
@@ -1038,6 +1110,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     put:
       tags:
         - memory
@@ -1070,6 +1143,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     delete:
       tags:
         - memory
@@ -1092,6 +1166,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/memories/{memory_id}/history:
     get:
       tags:
@@ -1123,6 +1198,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/memories/{memory_id}/chunks:
     get:
       tags:
@@ -1155,6 +1231,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/memories/search:
     post:
       tags:
@@ -1183,6 +1260,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/agents/catalog:
     get:
       tags:
@@ -1206,6 +1284,7 @@ paths:
                 additionalProperties: true
                 type: object
                 title: Response Get Agent Catalog Api V1 Agents Catalog Get
+        '429': *id001
   /api/v1/agents:
     post:
       tags:
@@ -1231,6 +1310,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     get:
       tags:
         - agents
@@ -1285,6 +1365,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/agents/capabilities/test:
     post:
       tags:
@@ -1310,6 +1391,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/agents/runs/{request_id}/cancel:
     post:
       tags:
@@ -1353,6 +1435,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/agents/chat:
     post:
       tags:
@@ -1383,6 +1466,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/agents/chat/stream:
     post:
       tags:
@@ -1411,6 +1495,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/agents/{agent_id}:
     get:
       tags:
@@ -1438,6 +1523,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     put:
       tags:
         - agents
@@ -1470,6 +1556,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     delete:
       tags:
         - agents
@@ -1492,6 +1579,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/agents/{agent_id}/execute:
     post:
       tags:
@@ -1524,6 +1612,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/agents/{agent_id}/executions:
     get:
       tags:
@@ -1579,6 +1668,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/agents/{agent_id}/run:
     post:
       tags:
@@ -1612,6 +1702,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/agents/{agent_id}/schedule:
     post:
       tags:
@@ -1645,6 +1736,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/events:
     post:
       tags:
@@ -1670,6 +1762,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     get:
       tags:
         - events
@@ -1702,6 +1795,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/events/subscriptions:
     get:
       tags:
@@ -1718,6 +1812,7 @@ paths:
                   $ref: '#/components/schemas/SubscriptionResponse'
                 type: array
                 title: Response List Subscriptions Api V1 Events Subscriptions Get
+        '429': *id001
     post:
       tags:
         - events
@@ -1742,6 +1837,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/search:
     post:
       tags:
@@ -1767,6 +1863,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/integrations:
     get:
       tags:
@@ -1783,6 +1880,7 @@ paths:
                   $ref: '#/components/schemas/IntegrationResponse'
                 type: array
                 title: Response List Integrations Api V1 Integrations Get
+        '429': *id001
     post:
       tags:
         - integrations
@@ -1807,6 +1905,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/integrations/{integration_id}:
     put:
       tags:
@@ -1839,6 +1938,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     delete:
       tags:
         - integrations
@@ -1860,6 +1960,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/integrations/{integration_id}/sync:
     post:
       tags:
@@ -1885,6 +1986,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/documents:
     post:
       tags:
@@ -1900,6 +2002,14 @@ paths:
               - type: string
               - type: 'null'
             title: Workspace Id
+        - name: folder_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Folder Id
       requestBody:
         required: true
         content:
@@ -1919,6 +2029,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     get:
       tags:
         - documents
@@ -1933,6 +2044,14 @@ paths:
               - type: string
               - type: 'null'
             title: Workspace Id
+        - name: folder_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Folder Id
         - name: page
           in: query
           required: false
@@ -1957,6 +2076,14 @@ paths:
             type: boolean
             default: false
             title: Include Archived
+        - name: status
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Status
       responses:
         '200':
           description: Successful Response
@@ -1970,6 +2097,223 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/search:
+    get:
+      tags:
+        - documents
+      summary: Search Documents
+      operationId: search_documents_api_v1_documents_search_get
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            title: Q
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+        - name: folder_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Folder Id
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            minimum: 1
+            default: 50
+            title: Limit
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+            title: Offset
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentResponse'
+                title: Response Search Documents Api V1 Documents Search Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/bulk:
+    post:
+      tags:
+        - documents
+      summary: Bulk Upload Documents
+      operationId: bulk_upload_documents_api_v1_documents_bulk_post
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+        - name: folder_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Folder Id
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_bulk_upload_documents_api_v1_documents_bulk_post'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkUploadResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/bulk/upload:
+    post:
+      tags:
+        - documents
+      summary: Bulk Upload Documents
+      operationId: bulk_upload_documents_api_v1_documents_bulk_upload_post
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+        - name: folder_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Folder Id
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_bulk_upload_documents_api_v1_documents_bulk_upload_post'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkUploadResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/bulk-download:
+    post:
+      tags:
+        - documents
+      summary: Bulk Download Documents
+      operationId: bulk_download_documents_api_v1_documents_bulk_download_post
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - $ref: '#/components/schemas/BulkDownloadRequest'
+                - type: object
+                  additionalProperties: true
+              title: Payload
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/bulk/download:
+    post:
+      tags:
+        - documents
+      summary: Bulk Download Documents
+      operationId: bulk_download_documents_api_v1_documents_bulk_download_post
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - $ref: '#/components/schemas/BulkDownloadRequest'
+                - type: object
+                  additionalProperties: true
+              title: Payload
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/documents/{document_id}/content:
     get:
       tags:
@@ -2001,6 +2345,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/documents/{document_id}:
     patch:
       tags:
@@ -2039,6 +2384,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/documents/{document_id}/archive:
     post:
       tags:
@@ -2071,6 +2417,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/documents/{document_id}/restore:
     post:
       tags:
@@ -2103,6 +2450,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/documents/{document_id}/actions:
     get:
       tags:
@@ -2135,6 +2483,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/documents/actions/{action_id}/undo:
     post:
       tags:
@@ -2167,6 +2516,476 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/folders:
+    post:
+      tags:
+        - documents
+      summary: Create Folder
+      operationId: create_folder_api_v1_documents_folders_post
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FolderCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FolderResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+    get:
+      tags:
+        - documents
+      summary: List Folders
+      operationId: list_folders_api_v1_documents_folders_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+        - name: parent_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Parent Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FolderResponse'
+                title: Response List Folders Api V1 Documents Folders Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/folders/tree:
+    get:
+      tags:
+        - documents
+      summary: Get Folder Tree
+      operationId: get_folder_tree_api_v1_documents_folders_tree_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FolderTreeItem'
+                title: Response Get Folder Tree Api V1 Documents Folders Tree Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/folders/{folder_id}:
+    patch:
+      tags:
+        - documents
+      summary: Update Folder
+      operationId: update_folder_api_v1_documents_folders__folder_id__patch
+      parameters:
+        - name: folder_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Folder Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FolderUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FolderResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+    delete:
+      tags:
+        - documents
+      summary: Delete Folder
+      operationId: delete_folder_api_v1_documents_folders__folder_id__delete
+      parameters:
+        - name: folder_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Folder Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/{document_id}/versions:
+    get:
+      tags:
+        - documents
+      summary: List Document Versions
+      operationId: list_document_versions_api_v1_documents__document_id__versions_get
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentVersionResponse'
+                title: Response List Document Versions Api V1 Documents  Document
+                  Id  Versions Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+    post:
+      tags:
+        - documents
+      summary: Create Document Version
+      operationId: create_document_version_api_v1_documents__document_id__versions_post
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_create_document_version_api_v1_documents__document_id__versions_post'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentVersionResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/{document_id}/versions/{version_number}/restore:
+    post:
+      tags:
+        - documents
+      summary: Restore Document Version
+      operationId: restore_document_version_api_v1_documents__document_id__versions__version_number__restore_post
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: version_number
+          in: path
+          required: true
+          schema:
+            type: integer
+            title: Version Number
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/{document_id}/share:
+    post:
+      tags:
+        - documents
+      summary: Share Document
+      operationId: share_document_api_v1_documents__document_id__share_post
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentShareCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentShareResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/{document_id}/shares:
+    post:
+      tags:
+        - documents
+      summary: Share Document
+      operationId: share_document_api_v1_documents__document_id__shares_post
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentShareCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentShareResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+    get:
+      tags:
+        - documents
+      summary: List Document Shares
+      operationId: list_document_shares_api_v1_documents__document_id__shares_get
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentShareResponse'
+                title: Response List Document Shares Api V1 Documents  Document Id  Shares
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/shares/{share_id}:
+    delete:
+      tags:
+        - documents
+      summary: Revoke Document Share
+      operationId: revoke_document_share_api_v1_documents_shares__share_id__delete
+      parameters:
+        - name: share_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Share Id
+        - name: document_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/{document_id}/shares/{share_id}:
+    delete:
+      tags:
+        - documents
+      summary: Revoke Document Share
+      operationId: revoke_document_share_api_v1_documents__document_id__shares__share_id__delete
+      parameters:
+        - name: share_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Share Id
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/resumes:
     get:
       tags:
@@ -2198,6 +3017,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/resumes/master:
     get:
       tags:
@@ -2224,6 +3044,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/resumes/{resume_id}/generate:
     post:
       tags:
@@ -2256,6 +3077,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/resumes/templates:
     get:
       tags:
@@ -2272,6 +3094,7 @@ paths:
                   $ref: '#/components/schemas/ResumeTemplateResponse'
                 type: array
                 title: Response List Templates Api V1 Resumes Templates Get
+        '429': *id001
   /api/v1/resumes/{resume_id}/tailor:
     post:
       tags:
@@ -2310,6 +3133,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/resumes/{resume_id}/compile:
     post:
       tags:
@@ -2348,6 +3172,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/resumes/{resume_id}/cover-letter:
     post:
       tags:
@@ -2386,6 +3211,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/resumes/{resume_id}/artifacts:
     get:
       tags:
@@ -2422,6 +3248,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/resumes/artifacts/{artifact_id}/download:
     get:
       tags:
@@ -2453,6 +3280,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/resumes/{resume_id}/cheatsheet:
     post:
       tags:
@@ -2486,6 +3314,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/resumes/{resume_id}/source:
     get:
       tags:
@@ -2518,6 +3347,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     put:
       tags:
         - resumes
@@ -2555,6 +3385,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/resumes/{resume_id}/compile-typst:
     post:
       tags:
@@ -2595,6 +3426,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/resumes/{resume_id}/ai/inline:
     post:
       tags:
@@ -2635,6 +3467,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/workspaces/{workspace_id}/applications:
     get:
       tags:
@@ -2682,6 +3515,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     post:
       tags:
         - applications
@@ -2713,6 +3547,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/workspaces/{workspace_id}/applications/{application_id}:
     get:
       tags:
@@ -2745,6 +3580,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/workspaces/{workspace_id}/applications/{application_id}/outcome:
     patch:
       tags:
@@ -2783,6 +3619,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/notifications/send:
     post:
       tags:
@@ -2808,6 +3645,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/notifications:
     get:
       tags:
@@ -2856,6 +3694,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/notifications/templates:
     get:
       tags:
@@ -2872,6 +3711,7 @@ paths:
                   $ref: '#/components/schemas/TemplateResponse'
                 type: array
                 title: Response List Templates Api V1 Notifications Templates Get
+        '429': *id001
     post:
       tags:
         - notifications
@@ -2896,6 +3736,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/notifications/{notification_id}:
     get:
       tags:
@@ -2923,6 +3764,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/notifications/subscribe:
     post:
       tags:
@@ -2947,6 +3789,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/notifications/webhooks/{notification_id}:
     post:
       tags:
@@ -2979,6 +3822,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/connectors:
     post:
       tags:
@@ -3004,6 +3848,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     get:
       tags:
         - connectors
@@ -3051,6 +3896,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/connectors/composio/status:
     get:
       tags:
@@ -3065,6 +3911,7 @@ paths:
           content:
             application/json:
               schema: {}
+        '429': *id001
   /api/v1/connectors/composio/apps:
     get:
       tags:
@@ -3116,6 +3963,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/connectors/composio/auth-url:
     post:
       tags:
@@ -3143,6 +3991,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/connectors/composio/sync:
     post:
       tags:
@@ -3172,6 +4021,63 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/connectors/composio/disconnect:
+    post:
+      tags:
+        - connectors
+      summary: Disconnect Composio App
+      description: Revoke Composio OAuth connections for a SaaS app in this workspace.
+      operationId: disconnect_composio_app_api_v1_connectors_composio_disconnect_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: true
+              type: object
+              title: Payload
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/connectors/composio/refresh:
+    post:
+      tags:
+        - connectors
+      summary: Refresh Composio Connection
+      description: Re-verify a Composio connection; re-issue an OAuth link when expired.
+      operationId: refresh_composio_connection_api_v1_connectors_composio_refresh_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: true
+              type: object
+              title: Payload
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/connectors/mcp/builtin:
     get:
       tags:
@@ -3186,6 +4092,7 @@ paths:
           content:
             application/json:
               schema: {}
+        '429': *id001
   /api/v1/connectors/{connector_id}:
     get:
       tags:
@@ -3213,6 +4120,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     put:
       tags:
         - connectors
@@ -3245,6 +4153,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     delete:
       tags:
         - connectors
@@ -3267,6 +4176,71 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/connectors/{connector_id}/rollback:
+    post:
+      tags:
+        - connectors
+      summary: Rollback Connector
+      description: Restore a previous config snapshot. Unknown versions 404; the rollback
+        is versioned.
+      operationId: rollback_connector_api_v1_connectors__connector_id__rollback_post
+      parameters:
+        - name: connector_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Connector Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RollbackConnectorRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/connectors/{connector_id}/usage:
+    get:
+      tags:
+        - connectors
+      summary: Get Connector Usage
+      description: Tenant-scoped lifecycle activity rollup for one connector.
+      operationId: get_connector_usage_api_v1_connectors__connector_id__usage_get
+      parameters:
+        - name: connector_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Connector Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/connectors/{connector_id}/health:
     get:
       tags:
@@ -3294,6 +4268,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/connectors/{connector_id}/sync:
     post:
       tags:
@@ -3321,6 +4296,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/connectors/{connector_id}/sync/status:
     get:
       tags:
@@ -3348,6 +4324,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/connectors/{connector_id}/test:
     post:
       tags:
@@ -3374,6 +4351,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/connectors/{connector_id}/mcp/tools:
     get:
       tags:
@@ -3412,6 +4390,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/connectors/{connector_id}/mcp/tools/refresh:
     post:
       tags:
@@ -3443,6 +4422,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/connectors/{connector_id}/mcp/call:
     post:
       tags:
@@ -3479,6 +4459,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/connectors/{connector_id}/mcp/sync:
     post:
       tags:
@@ -3506,6 +4487,224 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/connectors/{connector_id}/inbound-webhook:
+    post:
+      tags:
+        - connectors
+      summary: Receive Inbound Webhook
+      description: Receive and attribute an inbound webhook to a specific connector
+        instance.
+      operationId: receive_inbound_webhook_api_v1_connectors__connector_id__inbound_webhook_post
+      parameters:
+        - name: connector_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Connector Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InboundWebhookPayload'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/capabilities:
+    get:
+      tags:
+        - capabilities
+      summary: List Capabilities
+      description: List all sovereign workspace capabilities.
+      operationId: list_capabilities_api_v1_capabilities_get
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Category
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CapabilityResponse'
+                title: Response List Capabilities Api V1 Capabilities Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+    post:
+      tags:
+        - capabilities
+      summary: Create Capability
+      description: Register a new persistent sovereign workspace capability.
+      operationId: create_capability_api_v1_capabilities_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCapabilityRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilityResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/capabilities/{cap_id}:
+    get:
+      tags:
+        - capabilities
+      summary: Get Capability
+      description: Retrieve details for a single capability.
+      operationId: get_capability_api_v1_capabilities__cap_id__get
+      parameters:
+        - name: cap_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Cap Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilityResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+    patch:
+      tags:
+        - capabilities
+      summary: Update Capability
+      description: Update or toggle a capability's enabled state or configuration.
+      operationId: update_capability_api_v1_capabilities__cap_id__patch
+      parameters:
+        - name: cap_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Cap Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCapabilityRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilityResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+    delete:
+      tags:
+        - capabilities
+      summary: Delete Capability
+      description: Delete a custom workspace capability.
+      operationId: delete_capability_api_v1_capabilities__cap_id__delete
+      parameters:
+        - name: cap_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Cap Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/capabilities/{cap_id}/test:
+    post:
+      tags:
+        - capabilities
+      summary: Test Capability
+      description: Execute a real diagnostic test against a capability (no fake synthetic
+        mocks).
+      operationId: test_capability_api_v1_capabilities__cap_id__test_post
+      parameters:
+        - name: cap_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Cap Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestCapabilityRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestCapabilityResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/scheduler/jobs:
     post:
       tags:
@@ -3531,6 +4730,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     get:
       tags:
         - scheduler
@@ -3594,6 +4794,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/scheduler/jobs/{job_id}:
     get:
       tags:
@@ -3621,6 +4822,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     patch:
       tags:
         - scheduler
@@ -3653,6 +4855,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     delete:
       tags:
         - scheduler
@@ -3675,6 +4878,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/scheduler/jobs/{job_id}/pause:
     post:
       tags:
@@ -3702,6 +4906,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/scheduler/jobs/{job_id}/resume:
     post:
       tags:
@@ -3729,6 +4934,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/scheduler/jobs/{job_id}/trigger:
     post:
       tags:
@@ -3755,6 +4961,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/scheduler/jobs/{job_id}/executions:
     get:
       tags:
@@ -3786,6 +4993,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/scheduler/events:
     post:
       tags:
@@ -3811,6 +5019,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     get:
       tags:
         - scheduler
@@ -3840,6 +5049,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/chat/workspaces/{workspace_id}/chat:
     post:
       tags:
@@ -3871,6 +5081,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/knowledge-graph/nodes:
     post:
       tags:
@@ -3896,6 +5107,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     get:
       tags:
         - knowledge-graph
@@ -3988,6 +5200,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/knowledge-graph/nodes/{node_id}:
     get:
       tags:
@@ -4015,6 +5228,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     put:
       tags:
         - knowledge-graph
@@ -4047,6 +5261,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     delete:
       tags:
         - knowledge-graph
@@ -4069,6 +5284,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/knowledge-graph/nodes/{node_id}/edges:
     post:
       tags:
@@ -4102,6 +5318,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     get:
       tags:
         - knowledge-graph
@@ -4148,6 +5365,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/knowledge-graph/edges:
     get:
       tags:
@@ -4195,6 +5413,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/knowledge-graph/edges/{edge_id}:
     delete:
       tags:
@@ -4218,6 +5437,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/knowledge-graph/traverse:
     post:
       tags:
@@ -4246,6 +5466,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/knowledge-graph/path:
     get:
       tags:
@@ -4289,6 +5510,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/gdpr/export:
     get:
       tags:
@@ -4301,6 +5523,7 @@ paths:
           content:
             application/json:
               schema: {}
+        '429': *id001
   /api/v1/gdpr/delete:
     post:
       tags:
@@ -4328,6 +5551,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/tenants/{tenant_id}/export:
     post:
       tags:
@@ -4354,6 +5578,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/consent/scopes:
     get:
       tags:
@@ -4366,6 +5591,7 @@ paths:
           content:
             application/json:
               schema: {}
+        '429': *id001
   /api/v1/consent/grant:
     post:
       tags:
@@ -4390,6 +5616,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/consent/revoke/{scope}:
     post:
       tags:
@@ -4414,6 +5641,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/consent/me:
     get:
       tags:
@@ -4426,6 +5654,7 @@ paths:
           content:
             application/json:
               schema: {}
+        '429': *id001
   /api/v1/approvals:
     post:
       tags:
@@ -4451,6 +5680,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     get:
       tags:
         - approvals
@@ -4504,6 +5734,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/approvals/{approval_id}:
     get:
       tags:
@@ -4530,6 +5761,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/approvals/{approval_id}/approve:
     post:
       tags:
@@ -4564,6 +5796,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/approvals/{approval_id}/reject:
     post:
       tags:
@@ -4598,6 +5831,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/admin/agents/usage:
     get:
       tags:
@@ -4647,6 +5881,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/admin/agents/usage/costs:
     get:
       tags:
@@ -4674,6 +5909,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/admin/agents/usage/budgets:
     put:
       tags:
@@ -4698,6 +5934,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     get:
       tags:
         - agents
@@ -4724,6 +5961,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     delete:
       tags:
         - agents
@@ -4750,6 +5988,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/gmail/watch:
     get:
       tags:
@@ -4763,6 +6002,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WatchStatusResponse'
+        '429': *id001
     post:
       tags:
         - gmail
@@ -4787,6 +6027,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     delete:
       tags:
         - gmail
@@ -4799,6 +6040,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WatchStatusResponse'
+        '429': *id001
   /api/v1/gmail/drafts:
     post:
       tags:
@@ -4824,6 +6066,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     get:
       tags:
         - gmail
@@ -4852,6 +6095,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/gmail/webhook:
     post:
       tags:
@@ -4901,6 +6145,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/provider-keys:
     get:
       tags:
@@ -4929,6 +6174,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     post:
       tags:
         - provider-keys
@@ -4953,6 +6199,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/provider-keys/effective:
     get:
       tags:
@@ -4988,6 +6235,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/provider-keys/{key_id}:
     delete:
       tags:
@@ -5011,6 +6259,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     patch:
       tags:
         - provider-keys
@@ -5043,6 +6292,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/provider-keys/{key_id}/validate:
     post:
       tags:
@@ -5070,6 +6320,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/temporal/workflows/{workflow_id}:
     get:
       tags:
@@ -5095,6 +6346,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/temporal/workflows/{workflow_id}/cancel:
     post:
       tags:
@@ -5120,6 +6372,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/temporal/workflows/{workflow_id}/signal/{signal_name}:
     post:
       tags:
@@ -5160,6 +6413,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/temporal/workflows/ingest:
     post:
       tags:
@@ -5186,6 +6440,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/temporal/workflows/connector-sync:
     post:
       tags:
@@ -5212,6 +6467,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/temporal/workflows/durable-agent:
     post:
       tags:
@@ -5247,6 +6503,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile:
     get:
       tags:
@@ -5278,6 +6535,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     put:
       tags:
         - profile
@@ -5312,6 +6570,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/avatar:
     post:
       tags:
@@ -5338,6 +6597,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/avatar/{user_id}:
     get:
       tags:
@@ -5364,6 +6624,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/completeness:
     get:
       tags:
@@ -5393,6 +6654,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/skills/confirm:
     post:
       tags:
@@ -5419,6 +6681,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/skills:
     post:
       tags:
@@ -5445,6 +6708,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/skills/{skill_name}:
     delete:
       tags:
@@ -5480,6 +6744,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/preferences:
     put:
       tags:
@@ -5506,6 +6771,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/auto-populate:
     post:
       tags:
@@ -5533,6 +6799,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/import/resume:
     post:
       tags:
@@ -5568,6 +6835,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/import/linkedin:
     post:
       tags:
@@ -5594,6 +6862,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/public/{user_id}:
     get:
       tags:
@@ -5621,6 +6890,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/ats-readiness:
     get:
       tags:
@@ -5650,6 +6920,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/recommendations:
     get:
       tags:
@@ -5683,6 +6954,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/career:
     post:
       tags:
@@ -5709,6 +6981,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/career/{company}:
     put:
       tags:
@@ -5743,6 +7016,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     delete:
       tags:
         - profile
@@ -5777,6 +7051,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/activity:
     get:
       tags:
@@ -5809,6 +7084,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/education:
     post:
       tags:
@@ -5835,6 +7111,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/education/{education_id}:
     put:
       tags:
@@ -5868,6 +7145,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     delete:
       tags:
         - profile
@@ -5902,6 +7180,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/projects:
     post:
       tags:
@@ -5928,6 +7207,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/projects/{project_id}:
     put:
       tags:
@@ -5961,6 +7241,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     delete:
       tags:
         - profile
@@ -5995,6 +7276,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/vault:
     put:
       tags:
@@ -6021,6 +7303,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/directives:
     put:
       tags:
@@ -6047,6 +7330,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/blacklist:
     post:
       tags:
@@ -6073,6 +7357,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/blacklist/{company_name}:
     delete:
       tags:
@@ -6108,6 +7393,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/profile/screening-questions:
     put:
       tags:
@@ -6134,6 +7420,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/opportunities/match:
     post:
       tags:
@@ -6164,6 +7451,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/opportunities/rank:
     post:
       tags:
@@ -6194,6 +7482,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/council/review:
     post:
       tags:
@@ -6223,6 +7512,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/council/triage:
     post:
       tags:
@@ -6252,6 +7542,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/council/evaluate-and-certify:
     post:
       tags:
@@ -6282,6 +7573,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/cognition/scale/nodes:
     get:
       tags:
@@ -6359,6 +7651,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     post:
       tags:
         - cognition
@@ -6394,6 +7687,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/cognition/scale/nodes/{node_id}:
     get:
       tags:
@@ -6431,6 +7725,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     delete:
       tags:
         - cognition
@@ -6471,6 +7766,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/cognition/scale/rollup:
     post:
       tags:
@@ -6497,6 +7793,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/cognition/overnight/run:
     post:
       tags:
@@ -6523,6 +7820,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/cognition/briefing/today:
     get:
       tags:
@@ -6553,6 +7851,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/cognition/reality-gap:
     get:
       tags:
@@ -6602,6 +7901,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/sovereignty/identity:
     get:
       tags:
@@ -6619,6 +7919,7 @@ paths:
                 type: object
                 title: Response Get Sovereign Identity Api V1 Sovereignty Identity
                   Get
+        '429': *id001
   /api/v1/sovereignty/credentials/issue/capability:
     post:
       tags:
@@ -6649,6 +7950,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/sovereignty/credentials/issue/audit:
     post:
       tags:
@@ -6679,6 +7981,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/sovereignty/credentials:
     get:
       tags:
@@ -6721,6 +8024,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/sovereignty/credentials/{credential_id}:
     get:
       tags:
@@ -6761,6 +8065,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/sovereignty/credentials/verify:
     post:
       tags:
@@ -6788,6 +8093,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/sovereignty/sync/push:
     post:
       tags:
@@ -6815,6 +8121,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/sovereignty/sync/pull:
     get:
       tags:
@@ -6864,6 +8171,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/anticipation/proposals:
     get:
       tags:
@@ -6906,6 +8214,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/anticipation/scan:
     post:
       tags:
@@ -6935,6 +8244,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/anticipation/proposals/{proposal_id}/accept:
     post:
       tags:
@@ -6969,6 +8279,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/anticipation/proposals/{proposal_id}/dismiss:
     post:
       tags:
@@ -7003,6 +8314,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/federation/dispatch:
     post:
       tags:
@@ -7030,6 +8342,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/realtime/broadcast:
     post:
       tags:
@@ -7056,6 +8369,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/realtime/status:
     get:
       tags:
@@ -7070,6 +8384,7 @@ paths:
           content:
             application/json:
               schema: {}
+        '429': *id001
   /api/v1/organizations/tree:
     get:
       tags:
@@ -7100,6 +8415,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/organizations:
     post:
       tags:
@@ -7126,6 +8442,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/organizations/{org_id}:
     patch:
       tags:
@@ -7160,6 +8477,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     delete:
       tags:
         - organizations
@@ -7187,6 +8505,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/organizations/{org_id}/members:
     get:
       tags:
@@ -7215,6 +8534,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     post:
       tags:
         - organizations
@@ -7248,6 +8568,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/organizations/{org_id}/members/{user_id}:
     delete:
       tags:
@@ -7283,6 +8604,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/organizations/{org_id}/invitations:
     post:
       tags:
@@ -7318,6 +8640,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
     get:
       tags:
         - organizations
@@ -7345,6 +8668,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/organizations/invitations/{invitation_id}:
     delete:
       tags:
@@ -7373,6 +8697,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/organizations/invitations/{token}/accept:
     post:
       tags:
@@ -7400,6 +8725,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/marketplace/listings:
     get:
       tags:
@@ -7458,6 +8784,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/marketplace/listings/{listing_id_or_slug}:
     get:
       tags:
@@ -7485,6 +8812,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/marketplace/listings/{listing_id}/install:
     post:
       tags:
@@ -7519,6 +8847,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/marketplace/listings/{listing_id}/uninstall:
     delete:
       tags:
@@ -7554,6 +8883,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/marketplace/installed:
     get:
       tags:
@@ -7582,6 +8912,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/marketplace/seed:
     post:
       tags:
@@ -7596,6 +8927,7 @@ paths:
           content:
             application/json:
               schema: {}
+        '429': *id001
   /api/v1/marketplace/listings/{listing_id}/rate:
     post:
       tags:
@@ -7630,6 +8962,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/marketplace/installed/{install_id}/execute:
     post:
       tags:
@@ -7664,6 +8997,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/onboarding:
     get:
       tags:
@@ -7677,6 +9011,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OnboardingStateResponse'
+        '429': *id001
   /api/v1/onboarding/step:
     post:
       tags:
@@ -7702,6 +9037,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/onboarding/complete:
     post:
       tags:
@@ -7727,6 +9063,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/onboarding/reset:
     post:
       tags:
@@ -7740,6 +9077,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OnboardingStateResponse'
+        '429': *id001
   /api/v1/onboarding/resume:
     post:
       tags:
@@ -7765,6 +9103,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/onboarding/join:
     post:
       tags:
@@ -7790,6 +9129,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/orchestrator/execute:
     post:
       tags:
@@ -7819,6 +9159,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
 components:
   schemas:
     ATSReadinessResponse:
@@ -8366,6 +9707,11 @@ components:
           type: string
           minLength: 1
           title: Status
+        outcome:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Outcome
       type: object
       required:
         - status
@@ -8660,6 +10006,40 @@ components:
         - id
         - company_name
       title: BlacklistItem
+    Body_bulk_upload_documents_api_v1_documents_bulk_post:
+      properties:
+        files:
+          items:
+            type: string
+            contentMediaType: application/octet-stream
+          type: array
+          title: Files
+      type: object
+      required:
+        - files
+      title: Body_bulk_upload_documents_api_v1_documents_bulk_post
+    Body_bulk_upload_documents_api_v1_documents_bulk_upload_post:
+      properties:
+        files:
+          items:
+            type: string
+            contentMediaType: application/octet-stream
+          type: array
+          title: Files
+      type: object
+      required:
+        - files
+      title: Body_bulk_upload_documents_api_v1_documents_bulk_upload_post
+    Body_create_document_version_api_v1_documents__document_id__versions_post:
+      properties:
+        file:
+          type: string
+          contentMediaType: application/octet-stream
+          title: File
+      type: object
+      required:
+        - file
+      title: Body_create_document_version_api_v1_documents__document_id__versions_post
     Body_import_from_resume_api_v1_profile_import_resume_post:
       properties:
         file:
@@ -8742,6 +10122,55 @@ components:
         - workspace_id
         - limit_usd
       title: BudgetSetRequest
+    BulkDownloadRequest:
+      properties:
+        document_ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          title: Document Ids
+      type: object
+      required:
+        - document_ids
+      title: BulkDownloadRequest
+    BulkUploadResponse:
+      properties:
+        total_attempted:
+          type: integer
+          title: Total Attempted
+          default: 0
+        processed:
+          type: integer
+          title: Processed
+          default: 0
+        failed:
+          type: integer
+          title: Failed
+          default: 0
+        succeeded:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Succeeded
+          default: []
+        items:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Items
+          default: []
+        errors:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Errors
+          default: []
+      type: object
+      title: BulkUploadResponse
     CancelRun:
       properties:
         workspaceId:
@@ -8751,6 +10180,72 @@ components:
       required:
         - workspaceId
       title: CancelRun
+    CapabilityResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+        workspace_id:
+          type: string
+          title: Workspace Id
+        name:
+          type: string
+          title: Name
+        category:
+          type: string
+          title: Category
+        description:
+          type: string
+          title: Description
+        version:
+          type: string
+          title: Version
+        status:
+          type: string
+          title: Status
+        enabled:
+          type: boolean
+          title: Enabled
+        author:
+          type: string
+          title: Author
+        type:
+          type: string
+          title: Type
+        runtime:
+          type: string
+          title: Runtime
+        config:
+          additionalProperties: true
+          type: object
+          title: Config
+        created_at:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Created At
+        updated_at:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Updated At
+      type: object
+      required:
+        - id
+        - workspace_id
+        - name
+        - category
+        - description
+        - version
+        - status
+        - enabled
+        - author
+        - type
+        - runtime
+        - config
+        - created_at
+        - updated_at
+      title: CapabilityResponse
     CapabilityTestRequest:
       properties:
         workspace_id:
@@ -8970,6 +10465,10 @@ components:
           additionalProperties: true
           type: object
           title: Config
+        config_version:
+          type: integer
+          title: Config Version
+          default: 1
         scopes:
           anyOf:
             - items:
@@ -9286,6 +10785,52 @@ components:
         - encrypted_payload
         - created_at
       title: CrdtDeltaOutput
+    CreateCapabilityRequest:
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          minLength: 1
+          title: Name
+        category:
+          type: string
+          maxLength: 50
+          minLength: 1
+          title: Category
+        description:
+          type: string
+          maxLength: 2000
+          title: Description
+          default: ''
+        version:
+          type: string
+          maxLength: 50
+          title: Version
+          default: 1.0.0
+        author:
+          type: string
+          maxLength: 255
+          title: Author
+          default: Workspace Member
+        type:
+          type: string
+          maxLength: 50
+          title: Type
+          default: custom
+        runtime:
+          type: string
+          maxLength: 50
+          title: Runtime
+          default: system
+        config:
+          additionalProperties: true
+          type: object
+          title: Config
+      type: object
+      required:
+        - name
+        - category
+      title: CreateCapabilityRequest
     CreateConnectorRequest:
       properties:
         name:
@@ -9304,6 +10849,11 @@ components:
             - type: string
             - type: 'null'
           title: Tenant Id
+        token_ref:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Token Ref
       type: object
       required:
         - name
@@ -9668,6 +11218,18 @@ components:
           type: string
           format: uuid
           title: Workspace Id
+        actor_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Actor Id
+        tenant_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Tenant Id
         action_type:
           type: string
           title: Action Type
@@ -9755,12 +11317,36 @@ components:
           type: string
           format: uuid
           title: Workspace Id
+        folder_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Folder Id
         path:
           type: string
           title: Path
         type:
           type: string
           title: Type
+        status:
+          type: string
+          title: Status
+          default: ACTIVE
+        detected_mime_type:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Detected Mime Type
+        scan_status:
+          type: string
+          title: Scan Status
+          default: CLEAN
+        scan_result:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Scan Result
         summary:
           anyOf:
             - type: string
@@ -9777,6 +11363,12 @@ components:
               type: object
             - type: 'null'
           title: Metadata
+        expires_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Expires At
         deleted_at:
           anyOf:
             - type: string
@@ -9800,6 +11392,111 @@ components:
         - created_at
         - updated_at
       title: DocumentResponse
+    DocumentShareCreate:
+      properties:
+        target_workspace_id:
+          type: string
+          format: uuid
+          title: Target Workspace Id
+        permission:
+          type: string
+          title: Permission
+          description: 'Permission level: read, edit'
+          default: read
+        expires_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Expires At
+      type: object
+      required:
+        - target_workspace_id
+      title: DocumentShareCreate
+    DocumentShareResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        document_id:
+          type: string
+          format: uuid
+          title: Document Id
+        source_workspace_id:
+          type: string
+          format: uuid
+          title: Source Workspace Id
+        target_workspace_id:
+          type: string
+          format: uuid
+          title: Target Workspace Id
+        permission:
+          type: string
+          title: Permission
+        granted_by:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Granted By
+        expires_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Expires At
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+        - id
+        - document_id
+        - source_workspace_id
+        - target_workspace_id
+        - permission
+        - created_at
+      title: DocumentShareResponse
+    DocumentVersionResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        document_id:
+          type: string
+          format: uuid
+          title: Document Id
+        version_number:
+          type: integer
+          title: Version Number
+        storage_key:
+          type: string
+          title: Storage Key
+        checksum:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Checksum
+        size_bytes:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Size Bytes
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+        - id
+        - document_id
+        - version_number
+        - storage_key
+        - created_at
+      title: DocumentVersionResponse
     DraftCreateRequest:
       properties:
         to:
@@ -10293,6 +11990,114 @@ components:
         - task_name
         - verification
       title: FederationDispatchResponse
+    FolderCreate:
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          minLength: 1
+          title: Name
+        parent_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Parent Id
+      type: object
+      required:
+        - name
+      title: FolderCreate
+    FolderResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        parent_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Parent Id
+        name:
+          type: string
+          title: Name
+        created_by:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Created By
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+        - id
+        - workspace_id
+        - name
+        - created_at
+        - updated_at
+      title: FolderResponse
+    FolderTreeItem:
+      properties:
+        id:
+          type: string
+          title: Id
+        workspace_id:
+          type: string
+          title: Workspace Id
+        parent_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Parent Id
+        name:
+          type: string
+          title: Name
+        created_at:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Created At
+        children:
+          items:
+            $ref: '#/components/schemas/FolderTreeItem'
+          type: array
+          title: Children
+          default: []
+      type: object
+      required:
+        - id
+        - workspace_id
+        - name
+      title: FolderTreeItem
+    FolderUpdate:
+      properties:
+        name:
+          anyOf:
+            - type: string
+              maxLength: 255
+              minLength: 1
+            - type: 'null'
+          title: Name
+        parent_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Parent Id
+      type: object
+      title: FolderUpdate
     ForgotPasswordRequest:
       properties:
         email:
@@ -10356,6 +12161,23 @@ components:
         - workspace_id
         - linkedin_url
       title: ImportLinkedInRequest
+    InboundWebhookPayload:
+      properties:
+        event:
+          type: string
+          title: Event
+          default: webhook.event
+        payload:
+          additionalProperties: true
+          type: object
+          title: Payload
+        timestamp:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Timestamp
+      type: object
+      title: InboundWebhookPayload
     InlineAiRequest:
       properties:
         start_line:
@@ -12586,6 +14408,16 @@ components:
         - filename
         - state
       title: ResumeUploadResponse
+    RollbackConnectorRequest:
+      properties:
+        version:
+          type: integer
+          minimum: 1.0
+          title: Version
+      type: object
+      required:
+        - version
+      title: RollbackConnectorRequest
     RollupRequest:
       properties:
         target_tier:
@@ -13344,6 +15176,34 @@ components:
         - data
         - total_records
       title: TenantDataExportResponse
+    TestCapabilityRequest:
+      properties:
+        input:
+          additionalProperties: true
+          type: object
+          title: Input
+      type: object
+      title: TestCapabilityRequest
+    TestCapabilityResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+        latency_ms:
+          type: number
+          title: Latency Ms
+        output:
+          title: Output
+        error:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Error
+      type: object
+      required:
+        - status
+        - latency_ms
+      title: TestCapabilityResponse
     TraverseRequest:
       properties:
         start_id:
@@ -13471,6 +15331,32 @@ components:
       required:
         - workspace_id
       title: UpdateApplicationVaultRequest
+    UpdateCapabilityRequest:
+      properties:
+        enabled:
+          anyOf:
+            - type: boolean
+            - type: 'null'
+          title: Enabled
+        status:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Status
+        description:
+          anyOf:
+            - type: string
+              maxLength: 2000
+            - type: 'null'
+          title: Description
+        config:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Config
+      type: object
+      title: UpdateCapabilityRequest
     UpdateCareerEntryRequest:
       properties:
         workspace_id:
@@ -13532,6 +15418,11 @@ components:
               type: object
             - type: 'null'
           title: Config
+        token_ref:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Token Ref
       type: object
       title: UpdateConnectorRequest
     UpdateEducationRequest:
@@ -14113,3 +16004,10 @@ components:
         - created_at
         - updated_at
       title: WorkspaceResponse
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'JWT access token from POST /api/v1/auth/login. Send as `Authorization:
+        Bearer <token>`.'

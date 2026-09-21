@@ -3,7 +3,7 @@
   "private": true,
   "description": "Vaeloom — Memory-first personal intelligence platform",
   "scripts": {
-    "dev": "nx run-many --target=dev --parallel",
+    "dev": "echo \"Use pnpm dev:web (frontend) or pnpm dev:be (API) - bare pnpm dev is disabled\" && exit 1",
     "dev:web": "nx run @vaeloom/web:dev",
     "dev:be": "cd apps/api && uvicorn api.main:app --reload --port 8000",
     "build": "nx run-many --target=build --parallel",

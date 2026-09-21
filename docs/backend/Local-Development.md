@@ -101,9 +101,9 @@ stays on `DATABASE__URL`. See
 
 ## 7. OpenAPI Sync
 
-After any router change: `python scripts/gen_openapi.py` → verify 162 paths →
+After any router change: `python scripts/gen_openapi.py` → verify 241 paths →
 update [API-Reference](./API-Reference.md). Full table in
 [API-Overview](./API-Overview.md).
 
-> _Last verified: 2026-09-15 — `openapi.yaml` 162 paths / 203 ops, service
+> _Last verified: 2026-09-21 — `openapi.yaml` 241 paths / 294 ops, service
 > version 0.2.0._

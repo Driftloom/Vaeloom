@@ -1,16 +1,22 @@
 # Non-Functional Requirements
 
-> **Purpose:** Define the quality attributes Vaeloom must satisfy — performance, scalability, availability, security, usability, accessibility, and compliance targets
-> **Status:** New
-> **Owner:** Architecture Team
-> **Version:** 1.0
-> **Last Updated:** 2026-07-16
-> **Dependencies:** [`Functional-Requirements.md`](./Functional-Requirements.md), [`../Architecture/Performance.md`](../Architecture/Performance.md), [`../Architecture/Scalability.md`](../Architecture/Scalability.md), [`../Security/Security-Architecture.md`](../Security/Security-Architecture.md)
+> **Purpose:** Define the quality attributes Vaeloom must satisfy — performance,
+> scalability, availability, security, usability, accessibility, and compliance
+> targets **Status:** New **Owner:** Architecture Team **Version:** 1.0 **Last
+> Updated:** 2026-07-16 **Dependencies:**
+> [`Functional-Requirements.md`](./Functional-Requirements.md),
+> [`../../docs/architecture/Performance.md`](../../docs/architecture/Performance.md),
+> [`../../docs/architecture/Scalability.md`](../../docs/architecture/Scalability.md),
+> [`../security/Security-Architecture.md`](../security/Security-Architecture.md)
 > **Implementation Status:** 📁‹ Spec Only
 
 ## Overview
 
-Non-functional requirements (NFRs) define *how well* the system must perform its functions — the quality attributes that distinguish a production-grade product from a prototype. This document specifies concrete, measurable targets for performance, scalability, availability, security, usability, accessibility, reliability, observability, and compliance.
+Non-functional requirements (NFRs) define _how well_ the system must perform its
+functions — the quality attributes that distinguish a production-grade product
+from a prototype. This document specifies concrete, measurable targets for
+performance, scalability, availability, security, usability, accessibility,
+reliability, observability, and compliance.
 
 ## Goals
 
@@ -20,7 +26,7 @@ Non-functional requirements (NFRs) define *how well* the system must perform its
 
 ## Format
 
-```text
+````text
 NFR-XXX | Requirement | Target metric | Measurement method
 ```text
 
@@ -63,6 +69,34 @@ graph TD
 | NFR-SCALE-004 | Memory graph nodes per user | 500,000 | Graph size monitoring |
 | NFR-SCALE-005 | Horizontal scaling (API pods) | 2-20 replicas (HPA) | Kubernetes metrics |
 | NFR-SCALE-006 | Database read replicas | 2 minimum | RDS configuration |
+
+### Load-evidence reconciliation 2026-09-21: UNPROVEN at platform scale
+
+> **NFR-SCALE-002 (50,000 concurrent platform users) is UNPROVEN. The target
+> is NOT lowered** — this note records what load has actually been evidenced
+> so a future claim can promote it. Do not cite this spec as proving 50k.
+
+| Proven load | Shape | Result | Evidence |
+| ----------- | ----- | ------ | -------- |
+| Baseline | 20 RPS, 50 VUs / 5m | p50 45ms, p95 120ms, p99 210ms, err 0.2% PASS (<200ms budget) | `evidence/phases/mvp/mvp-p21/05-test-results.md:26`, `infra/ops/load-test/k6-script.js`, `testing/performance/k6-script.js` |
+| Stress | 200 RPS, 200 VUs / 6m | p50 85ms, p95 480ms, err 0.4% PASS | `evidence/phases/mvp/mvp-p21/05-test-results.md:27` |
+| Agent path (LangGraph/Temporal) | 50 VUs, 639 req, ~34 RPS | p95 2.81s, 0% errors (disclosed +0.71s arch overhead) | `archive/temporal/langgraph-production-hardening-2026-08-28.md:892-896,1029-1030` |
+
+Notes for the record:
+
+- The task brief's shorthand "proven ~200 RPS/50 VUs" conflates two runs:
+  **200 RPS was proven at 200 VUs; 50 VUs was the 20-RPS baseline shape.**
+  Neither run proves 50,000 concurrent users — sustained RPS ≠ concurrent
+  users, and no soak, multi-region, or scaled-replica run exists.
+- Structural ceilings make 50k unplannable today: single PostgreSQL, single
+  Redis, single MinIO, single API/queue-worker replica in compose —
+  see `docs/operations/HA-GAPS.md` (HG-01…HG-06). NFR-SCALE-005 (2–20 pods)
+  and NFR-SCALE-006 (≥2 read replicas) are themselves unmet in the shipped
+  topology.
+- **Promotion criteria** (all required before NFR-SCALE-002 leaves UNPROVEN):
+  soak at target concurrency with p95/error budget held; per-service ceilings
+  measured (PG connections, Redis, worker pools); HPA 2→20 exercised under
+  load; error-budget burn within SLO; drill log attached.
 
 ## Availability
 
@@ -149,7 +183,8 @@ graph TD
 ## Related Documents
 
 - [`Functional-Requirements.md`](./Functional-Requirements.md) — functional requirements
-- [`../Architecture/Performance.md`](../Architecture/Performance.md) — performance architecture
-- [`../Architecture/Scalability.md`](../Architecture/Scalability.md) — scalability architecture
-- [`../Security/Security-Architecture.md`](../Security/Security-Architecture.md) — security architecture
-- [`../Testing/Testing-Strategy.md`](../Testing/Testing-Strategy.md) — testing strategy
+- [`../../docs/architecture/Performance.md`](../../docs/architecture/Performance.md) — performance architecture
+- [`../../docs/architecture/Scalability.md`](../../docs/architecture/Scalability.md) — scalability architecture
+- [`../security/Security-Architecture.md`](../security/Security-Architecture.md) — security architecture
+- [`../quality/Testing-Strategy.md`](../quality/Testing-Strategy.md) — testing strategy
+````
