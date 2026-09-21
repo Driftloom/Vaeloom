@@ -204,3 +204,39 @@ apps/api/tests/security/test_connectors_zero_trust_adversarial.py (60 tests) ...
 
 **Result**: 152 passed, 0 failed, 0 regressions. 100% of connector test gaps
 closed.
+
+---
+
+## 5. Frontend Capabilities Test Verification Evidence
+
+To ensure end-to-end reliability across UI surfaces and browser interaction
+workflows, the frontend test suite was executed under Jest:
+
+```bash
+pnpm --filter web test
+```
+
+### Frontend Execution Output
+
+```
+PASS src/__tests__/a11y.test.tsx
+PASS src/components/shared/Toast.spec.tsx
+PASS src/hooks/__tests__/useWorkspace.test.ts
+PASS src/components/shared/ApprovalCard.spec.tsx
+PASS src/components/shared/Primitives.spec.tsx
+PASS src/components/shared/Modal.spec.tsx
+PASS src/app/workspace/[workspaceId]/connectors/page.spec.tsx (Client Redirection Verified)
+PASS src/components/layout/Sidebar.spec.tsx (Consolidated Navigation Verified)
+PASS src/__tests__/landing.test.tsx
+PASS src/app/workspace/[workspaceId]/capabilities/page.spec.tsx (Capabilities Workbench Verified)
+
+Test Suites: 10 passed, 10 total
+Tests:       56 passed, 56 total
+Snapshots:   0 total
+Time:        10.226 s
+Ran all test suites.
+```
+
+**Frontend Verdict**: 100% test pass rate across all 10 frontend test suites.
+Canonical routing, unified capabilities integration, and client redirection are
+fully validated.

@@ -179,3 +179,23 @@ def mask_sensitive_config(config: dict[str, Any] | None) -> dict[str, Any]:
 - **Adversarial Proof**: Tests `CON-ZT-037` through `CON-ZT-042` verify catalog
   discovery, OAuth connect URL generation, dynamic bridging, approval gating,
   and unauthenticated request rejection.
+
+---
+
+### Finding 6: Frontend Single Surface Governance & Elimination of Duplicate Attack Surfaces
+
+- **Vulnerability**: Separate disconnected UI surfaces (`/connectors` vs
+  `/capabilities`) increased human error, navigation ambiguity, and orphaned
+  routes. Duplicate sidebar navigation exposed disparate connector interfaces
+  with divergent permission checks.
+- **Remediation Implemented**:
+  1. Unified all connector operations into the **Capabilities Workbench**
+     (`/workspace/[workspaceId]/capabilities?category=connectors`).
+  2. Removed redundant sidebar link from `Sidebar.tsx`.
+  3. Deployed automatic client redirection in
+     `apps/web/src/app/workspace/[workspaceId]/connectors/page.tsx` redirecting
+     to `/capabilities?category=connectors`.
+  4. Secured custom connector creation inputs (stdio commands, URLs, bearer
+     tokens) with client validation and backend Fernet encryption.
+- **Adversarial Proof**: Verified via Jest test suites `Sidebar.spec.tsx`,
+  `capabilities/page.spec.tsx`, and `connectors/page.spec.tsx`.

@@ -135,3 +135,27 @@ Module 04 equips Vaeloom agents with a robust multi-protocol tool ecosystem:
      requiring enterprise ATS API keys.
    - Fully hardened with SSRF protection preventing loopback and cloud metadata
      access.
+
+---
+
+## 6. Single-Pane-of-Glass Capabilities Experience
+
+To streamline agent operations and eliminate fragmented navigation, the
+enterprise connectors experience has been unified within the **Capabilities
+Workbench**:
+
+1. **Unified Studio Navigation**:
+   - Users and administrators manage all sovereign tools, skills, plugins,
+     agents, and connectors from a single responsive interface
+     (`/workspace/[workspaceId]/capabilities?category=connectors`).
+   - Redundant sidebar navigation links have been removed in favor of direct
+     capabilities access.
+2. **260+ Dynamic Enterprise Connectors**:
+   - Master directory includes Top 14 core connectors, Trending integrations
+     (Vanguard, BlackRock, Paxton, Rome2Rio), New additions with Desktop tags
+     (PDF Viewer), and 240+ Composio SaaS apps.
+   - Real-time category filtering (Google, Productivity, Engineering, Sales,
+     Financial, Legal, Native, MCP) with instant fuzzy search.
+3. **Transparent Redirection**:
+   - Any access to legacy `/workspace/[workspaceId]/connectors` immediately and
+     gracefully redirects to `/capabilities?category=connectors`.
