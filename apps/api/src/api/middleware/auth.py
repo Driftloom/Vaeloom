@@ -48,7 +48,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         path = request.url.path
-        if path in PUBLIC_PATHS:
+        if path in PUBLIC_PATHS or (path.startswith("/api/v1/connectors/") and path.endswith("/inbound-webhook")):
             return await call_next(request)
         for prefix in PUBLIC_PREFIXES:
             if path.startswith(prefix):
@@ -164,8 +164,18 @@ class AuthMiddleware(BaseHTTPMiddleware):
                         except Exception:
                             pass
                     if not u and email:
-                        res = await _s.execute(select(_User.id).where(_User.email == email))
-                        u = res.scalar_one_or_none()
+                        # ZERO-TRUST: Prevent Account Takeover via Unverified Email.
+                        # Only link to an existing account by email if the token explicitly asserts email_verified is True.
+                        user_meta = payload.get("user_metadata") or {}
+                        app_meta = payload.get("app_metadata") or {}
+                        is_verified = (
+                            payload.get("email_verified") is True
+                            or user_meta.get("email_verified") is True
+                            or app_meta.get("email_verified") is True
+                        )
+                        if is_verified:
+                            res = await _s.execute(select(_User.id).where(_User.email == email))
+                            u = res.scalar_one_or_none()
                     if u:
                         db_user_id = str(u)
             except Exception:

@@ -20,7 +20,7 @@ async def test_fallback_vector_store_safe_operations():
     store = FallbackVectorStore()
     # Non-crashing operations
     await store.upsert([])
-    results = await store.search([0.05] * 1536)
+    results = await store.search([0.05] * 1536, filters={"workspace_id": "ws-123"})
     assert results == []
     await store.delete(["chunk-uuid-1"])
 

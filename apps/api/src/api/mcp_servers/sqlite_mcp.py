@@ -21,26 +21,46 @@ logger = logging.getLogger("mcp.sqlite")
 
 server = MCPServer("vaeloom-sqlite-memory-mcp")
 
-# Default database path (can be overridden by CLI flag --db-path or tool parameter)
-_DEFAULT_DB_PATH = os.environ.get("SQLITE_MCP_DB_PATH", "./data/memory.db")
+# Sandboxed database directory strictly enforced
+_ALLOWED_DIR = Path(os.environ.get("SQLITE_MCP_ALLOWED_DIR", "./data/sqlite_mcp")).resolve()
+_ALLOWED_DIR.mkdir(parents=True, exist_ok=True)
+_DEFAULT_DB_PATH = str(_ALLOWED_DIR / "memory.db")
 
 
 def _sanitize_path(db_path: str) -> Path:
-    """Resolve and sanitize database path within allowed boundaries."""
-    path = Path(db_path or _DEFAULT_DB_PATH).resolve()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    return path
+    """Resolve and sanitize database path strictly within allowed boundaries."""
+    raw = (db_path or "").strip()
+    if not raw:
+        target = Path(_DEFAULT_DB_PATH).resolve()
+    else:
+        safe_name = Path(raw).name
+        if not safe_name or safe_name in ("dev.db", "test.db", ".env", "alembic.ini", "main.py"):
+            raise ValueError(f"Access denied: '{safe_name}' is a protected system file.")
+        target = (_ALLOWED_DIR / safe_name).resolve()
+
+    try:
+        target.relative_to(_ALLOWED_DIR)
+    except ValueError:
+        raise ValueError("Access denied: path traversal outside allowed sandbox directory.")
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    return target
 
 
 def _get_connection(db_path: str) -> sqlite3.Connection:
     target = _sanitize_path(db_path)
-    conn = sqlite3.connect(str(target))
+    if not target.exists():
+        with sqlite3.connect(str(target)) as init_conn:
+            init_conn.execute("VACUUM")
+    # Enforce native read-only connection via SQLite URI mode=ro
+    uri = f"file:{target.as_posix()}?mode=ro"
+    conn = sqlite3.connect(uri, uri=True)
     conn.row_factory = sqlite3.Row
     return conn
 
 
 _DISALLOWED_SQL_PATTERNS = re.compile(
-    r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|REPLACE|ATTACH|DETACH|VACUUM)\b",
+    r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|REPLACE|ATTACH|DETACH|VACUUM|PRAGMA\s+\w+\s*=)\b",
     re.IGNORECASE,
 )
 

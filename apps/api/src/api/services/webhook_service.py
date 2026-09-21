@@ -30,7 +30,7 @@ def _redact_body(body: str) -> str:
 
 
 class WebhookService:
-    async def create(self, tenant_id: str | None, name: str, url: str, secret: str, events: list[str], db: AsyncSession) -> Webhook:
+    async def create(self, tenant_id: str | None, name: str, url: str, secret: str, events: list[str], db: AsyncSession, connector_id: uuid.UUID | None = None) -> Webhook:
         url = await assert_public_http_url(url)
         tid = uuid.UUID(tenant_id) if tenant_id else uuid.uuid4()
         # Encrypt secret at rest
@@ -41,6 +41,7 @@ class WebhookService:
             url=url,
             secret=encrypted_secret,
             events=events,
+            connector_id=connector_id,
         )
         db.add(webhook)
         await db.commit()

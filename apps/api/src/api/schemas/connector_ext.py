@@ -18,10 +18,12 @@ class CreateConnectorRequest(BaseModel):
     type: ConnectorType
     config: dict[str, Any]
     tenant_id: str | None = None
+    token_ref: str | None = None
 
 class UpdateConnectorRequest(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=200)
     config: dict[str, Any] | None = None
+    token_ref: str | None = None
 
 class ConnectorResponse(BaseModel):
     id: uuid.UUID

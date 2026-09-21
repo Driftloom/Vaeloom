@@ -3710,8 +3710,8 @@ def _audit_log(
     action_tier: str | None = None,
 ):
     """
-    Append-only audit log. Records metadata only — never payload content.
-    In production this writes to PostgreSQL `agent_actions` table.
+    Append-only audit log. Records metadata to logger and persists
+    to PostgreSQL audit tables asynchronously.
     """
     log_entry = {
         "agent_id": agent_id,
@@ -3731,3 +3731,49 @@ def _audit_log(
         except Exception:
             pass
     logger.info(f"AUDIT: {log_entry}")
+
+    try:
+        import asyncio
+        import uuid as _uuid
+        from ..database import async_session_factory
+        from ..models.schema import AgentAction, AuditEvent
+
+        async def _persist_audit():
+            try:
+                async with async_session_factory() as s:
+                    ws_uuid = None
+                    try:
+                        ws_uuid = _uuid.UUID(str(workspace_id))
+                    except Exception:
+                        pass
+                    if ws_uuid:
+                        action_rec = AgentAction(
+                            workspace_id=ws_uuid,
+                            agent_name=agent_id or "executor",
+                            action_type=f"tool:{tool_name}",
+                            status="COMPLETED" if success else "FAILED",
+                            error=error,
+                            duration_ms=duration_ms,
+                        )
+                        s.add(action_rec)
+                    audit_rec = AuditEvent(
+                        actor_id=agent_id or "autonomous_agent",
+                        action=f"tool.execute.{tool_name}",
+                        resource="tool",
+                        resource_id=tool_name,
+                        tenant_id=None,
+                        metadata_json=log_entry,
+                    )
+                    s.add(audit_rec)
+                    await s.commit()
+            except Exception as _e:
+                logger.debug("Async tool audit log write failed: %s", _e)
+
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(_persist_audit())
+        except RuntimeError:
+            pass
+    except Exception:
+        pass
+

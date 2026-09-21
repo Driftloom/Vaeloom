@@ -103,7 +103,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         path = request.url.path
 
-        if path in SKIP_PATHS or any(path.startswith(p) for p in SKIP_PREFIXES):
+        if path in SKIP_PATHS or any(path.startswith(p) for p in SKIP_PREFIXES) or (path.startswith("/api/v1/connectors/") and path.endswith("/inbound-webhook")):
             return await call_next(request)
 
         if request.method in MUTATING_METHODS:

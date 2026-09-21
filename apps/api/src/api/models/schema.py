@@ -258,6 +258,7 @@ class Connector(Base):
 
     workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="connectors")
     documents: Mapped[list["Document"]] = relationship("Document", back_populates="connector")
+    webhooks: Mapped[list["Webhook"]] = relationship("Webhook", back_populates="connector")
 
     __table_args__ = (
         Index("idx_connectors_workspace_id", "workspace_id"),
@@ -1160,8 +1161,11 @@ class Webhook(Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     retry_count: Mapped[int] = mapped_column(Integer, default=3)
     timeout_ms: Mapped[int] = mapped_column(Integer, default=5000)
+    connector_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("connectors.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    connector: Mapped["Connector | None"] = relationship("Connector", back_populates="webhooks")
 
 
 class WebhookDelivery(Base):
@@ -1597,5 +1601,26 @@ class WorkspacePluginInstall(Base):
         Index("idx_ws_plugin_installs_ws", "workspace_id"),
         Index("idx_ws_plugin_installs_listing", "listing_id"),
     )
+
+
+class AuditEvent(Base):
+    """Immutable audit event log for compliance, tracking actor actions on resources."""
+
+    __tablename__ = "audit_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    actor_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    action: Mapped[str] = mapped_column(String(120), nullable=False)
+    resource: Mapped[str] = mapped_column(String(80), nullable=False)
+    resource_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    tenant_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    metadata_json: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        Index("idx_audit_events_tenant_action", "tenant_id", "action"),
+        Index("idx_audit_events_created_at", "created_at"),
+    )
+
 
 

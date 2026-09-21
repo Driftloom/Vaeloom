@@ -36,6 +36,7 @@ class WebhookCreate(BaseModel):
     active: bool = True
     retry_count: int = Field(default=3, ge=0, le=10)
     timeout_ms: int = Field(default=5000, ge=100, le=30000)
+    connector_id: uuid.UUID | None = None
 
     @field_validator("url")
     @classmethod
@@ -51,6 +52,7 @@ class WebhookUpdate(BaseModel):
     active: bool | None = None
     retry_count: int | None = Field(None, ge=0, le=10)
     timeout_ms: int | None = Field(None, ge=100, le=30000)
+    connector_id: uuid.UUID | None = None
 
     @field_validator("url")
     @classmethod
@@ -68,6 +70,7 @@ class WebhookResponse(BaseModel):
     active: bool
     retry_count: int
     timeout_ms: int
+    connector_id: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime
     model_config = {"from_attributes": True}
@@ -104,6 +107,7 @@ async def create_webhook(
             secret=dto.secret,
             events=dto.events,
             db=db,
+            connector_id=dto.connector_id,
         )
     except (UrlBlockedError, DnsResolutionError) as e:
         raise HTTPException(status_code=400, detail=f"SSRF policy violation: {e}")

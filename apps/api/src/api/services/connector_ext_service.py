@@ -1,7 +1,9 @@
+import asyncio
 import logging
 import re
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 from fastapi import HTTPException
@@ -30,6 +32,50 @@ _SENSITIVE_CONFIG_FIELDS: dict[str, list[str]] = {
 
 
 class ConnectorExtService:
+    def __init__(self) -> None:
+        self._sync_locks: dict[str, asyncio.Lock] = {}
+
+    async def _acquire_sync_lock(self, connector_id: str) -> tuple[bool, Any]:
+        """Acquire distributed Redis sync lock or in-memory fallback mutex."""
+        try:
+            import redis.asyncio as aioredis
+            from ..config import settings
+            redis_url = getattr(settings, "redis__url", None) or getattr(settings, "redis_url", None)
+            if redis_url:
+                r = aioredis.from_url(redis_url, socket_connect_timeout=1, decode_responses=True)
+                lock_key = f"lock:connector:sync:{connector_id}"
+                ok = await r.set(lock_key, "1", nx=True, ex=60)
+                if not ok:
+                    await r.aclose()
+                    return False, None
+                return True, ("redis", r, lock_key)
+        except Exception:
+            pass
+
+        if connector_id not in self._sync_locks:
+            self._sync_locks[connector_id] = asyncio.Lock()
+        lock = self._sync_locks[connector_id]
+        if lock.locked():
+            return False, None
+        await lock.acquire()
+        return True, ("memory", lock)
+
+    async def _release_sync_lock(self, handle: Any) -> None:
+        if not handle:
+            return
+        mode = handle[0]
+        if mode == "redis":
+            _, r, lock_key = handle
+            try:
+                await r.delete(lock_key)
+                await r.aclose()
+            except Exception:
+                pass
+        elif mode == "memory":
+            _, lock = handle
+            if lock.locked():
+                lock.release()
+
     async def create(
         self,
         dto,
@@ -384,6 +430,16 @@ class ConnectorExtService:
                 "synced_at": connector.last_synced_at,
             }
 
+        cid_str = str(connector_id)
+        lock_acquired, lock_handle = await self._acquire_sync_lock(cid_str)
+        if not lock_acquired:
+            return {
+                "connector_id": str(connector.id),
+                "status": "syncing",
+                "error": "Sync already in progress",
+                "synced_at": connector.last_synced_at,
+            }
+
         now = datetime.now(UTC)
         connector.status = "syncing"
         await db.commit()
@@ -494,6 +550,8 @@ class ConnectorExtService:
             except Exception:
                 pass
             logger.exception("connector_sync_trigger_failed", extra={"connector_id": str(connector_id)})
+        finally:
+            await self._release_sync_lock(lock_handle)
         await db.commit()
         await db.refresh(connector)
         return {

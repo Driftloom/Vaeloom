@@ -2,7 +2,8 @@ import logging
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -566,3 +567,67 @@ async def sync_mcp_bridge(
         "registered": registered,
         "bridged_total": len(get_bridge_definitions()),
     }
+
+
+# ── Inbound Webhook Ingestion ────────────────────────────────────────
+
+
+class InboundWebhookPayload(BaseModel):
+    event: str = Field(default="webhook.event")
+    payload: dict = Field(default_factory=dict)
+    timestamp: str | None = None
+
+
+@router.post("/{connector_id}/inbound-webhook")
+@rate_limit(max_requests=60, window_seconds=60)
+async def receive_inbound_webhook(
+    connector_id: uuid.UUID,
+    data: InboundWebhookPayload,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    tenant_id: str | None = Depends(get_tenant_id),
+    workspace_id: str | None = Depends(get_workspace_id),
+):
+    """Receive and attribute an inbound webhook to a specific connector instance."""
+    connector = await connector_ext_service.get(connector_id, tenant_id, db, workspace_id=workspace_id)
+    if not connector:
+        raise HTTPException(status_code=404, detail="Connector not found")
+
+    sig_header = request.headers.get("X-Hub-Signature-256") or request.headers.get("X-Webhook-Signature")
+    raw_token = getattr(connector, "token_ref", None) or ""
+    secret = connector_ext_service._decrypt_credential(raw_token) if raw_token else ""
+    if not secret:
+        cfg = getattr(connector, "config", {}) or {}
+        sec_val = cfg.get("webhook_secret") or cfg.get("secret") or cfg.get("apiKey")
+        if sec_val:
+            try:
+                secret = connector_ext_service._decrypt_credential(sec_val)
+            except Exception:
+                secret = str(sec_val)
+
+    if sig_header:
+        if not secret:
+            raise HTTPException(status_code=401, detail="No webhook secret configured on connector")
+        import hashlib
+        import hmac
+
+        body_bytes = await request.body()
+        expected = "sha256=" + hmac.new(secret.encode(), body_bytes, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(sig_header, expected):
+            raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+    await _record_connector_audit(
+        db,
+        "webhook",
+        "connector.webhook_received",
+        str(connector_id),
+        tenant_id,
+        {"event": data.event, "workspace_id": str(workspace_id) if workspace_id else None},
+    )
+    return {
+        "status": "received",
+        "connector_id": str(connector_id),
+        "event": data.event,
+        "dispatched": True,
+    }
+
