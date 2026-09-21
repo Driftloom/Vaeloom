@@ -3106,12 +3106,68 @@ export const marketplaceApi = {
 
 // ─── Capabilities API ───────────────────────────────────────────────────────
 
+export interface CapabilityItemRecord {
+  id: string;
+  workspaceId: string;
+  name: string;
+  category: 'skill' | 'connector' | 'mcp' | 'plugin' | 'tool' | 'agent';
+  description: string;
+  version: string;
+  status: string;
+  enabled: boolean;
+  author: string;
+  type: string;
+  runtime: string;
+  config: Record<string, unknown>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateCapabilityRequest {
+  name: string;
+  category: string;
+  description?: string;
+  version?: string;
+  author?: string;
+  type?: string;
+  runtime?: string;
+  config?: Record<string, unknown>;
+}
+
+export interface UpdateCapabilityRequest {
+  enabled?: boolean;
+  status?: string;
+  description?: string;
+  config?: Record<string, unknown>;
+}
+
 export const capabilitiesApi = {
-  getCapabilities(params?: { workspaceId?: string; category?: string }) {
-    return apiClient.get('/capabilities', params);
+  list(category?: string, workspaceId?: string): Promise<CapabilityItemRecord[]> {
+    const params: Record<string, string | undefined> = {};
+    if (category) params['category'] = category;
+    if (workspaceId) params['workspace_id'] = workspaceId;
+    return apiClient.get<CapabilityItemRecord[]>('/capabilities', params);
+  },
+  getCapabilities(params?: {
+    workspaceId?: string;
+    category?: string;
+  }): Promise<CapabilityItemRecord[]> {
+    return apiClient.get<CapabilityItemRecord[]>('/capabilities', params);
+  },
+  get(capabilityId: string): Promise<CapabilityItemRecord> {
+    return apiClient.get<CapabilityItemRecord>(`/capabilities/${capabilityId}`);
+  },
+  create(body: CreateCapabilityRequest): Promise<CapabilityItemRecord> {
+    return apiClient.post<CapabilityItemRecord>('/capabilities', body);
+  },
+  update(capabilityId: string, body: UpdateCapabilityRequest): Promise<CapabilityItemRecord> {
+    return apiClient.patch<CapabilityItemRecord>(`/capabilities/${capabilityId}`, body);
+  },
+  delete(capabilityId: string): Promise<void> {
+    return apiClient.delete<void>(`/capabilities/${capabilityId}`);
   },
   toggleCapability(capabilityId: string, enabled: boolean, workspaceId?: string) {
-    return apiClient.post(`/capabilities/${capabilityId}/toggle`, {
+    return apiClient.patch<CapabilityItemRecord>(`/capabilities/${capabilityId}`, {
       enabled,
       workspace_id: workspaceId,
     });

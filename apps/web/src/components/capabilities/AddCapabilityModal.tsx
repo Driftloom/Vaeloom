@@ -581,6 +581,53 @@ OPERATIONAL BOUNDARIES:
     setMcpEnvVal('');
   }, [mcpEnvKey, mcpEnvVal]);
 
+  // Handle local file upload (markdown, json, yaml)
+  const handleFileUpload = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (!content) return;
+      const fileName = file.name.replace(/\.[^/.]+$/, '');
+      setCapName(fileName.toLowerCase().replace(/[^a-z0-9_-]/g, '-'));
+
+      if (file.name.endsWith('.json')) {
+        try {
+          const parsed = JSON.parse(content);
+          if (parsed.name) setCapName(parsed.name);
+          if (parsed.description) setCapDescription(parsed.description);
+          if (parsed.category) setCapCategory(parsed.category);
+          if (parsed.tags && Array.isArray(parsed.tags)) setCapTags(parsed.tags);
+          if (parsed.mcpServers || parsed.transport) {
+            setCapCategory('mcp');
+            if (parsed.command) setMcpCommand(parsed.command);
+            if (parsed.transport) setMcpTransport(parsed.transport);
+          }
+        } catch {
+          // Keep raw content in doc
+        }
+        setCapDoc(content);
+      } else {
+        setCapDoc(content);
+        const titleMatch = content.match(/^#\s+(.+)$/m);
+        if (titleMatch && titleMatch[1]) {
+          setCapName(
+            titleMatch[1]
+              .trim()
+              .toLowerCase()
+              .replace(/[^a-z0-9_-]/g, '-'),
+          );
+        }
+        const descMatch = content.match(/##\s+(?:Mission|Description|Overview)\s*\n+([^#\n]+)/i);
+        if (descMatch && descMatch[1]) {
+          setCapDescription(descMatch[1].trim());
+        }
+        setCapCategory('skills');
+      }
+      setActiveTab('builder');
+    };
+    reader.readAsText(file);
+  }, []);
+
   // Generated JSON Schema for Tools
   const generatedInputSchema = useMemo(() => {
     if (capCategory !== 'tools') return undefined;
@@ -1121,13 +1168,14 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                 <label className="block text-xs font-medium text-[#a1a1aa] mb-1.5">
                   Capability Category *
                 </label>
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                   {[
                     { id: 'skills', label: 'Skills', desc: 'Reasoning loop' },
                     { id: 'agents', label: 'Agents', desc: 'Autonomous actor' },
                     { id: 'tools', label: 'Tools', desc: 'Typed function' },
                     { id: 'mcp', label: 'MCP', desc: 'Protocol bridge' },
                     { id: 'plugins', label: 'Plugins', desc: 'Lifecycle hook' },
+                    { id: 'connectors', label: 'Connectors', desc: 'SaaS & API' },
                   ].map((cat) => {
                     const isSel = capCategory === cat.id;
                     return (
@@ -2551,6 +2599,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                     const file = e.dataTransfer.files[0];
                     if (file) {
                       setFileParseSuccess(`Loaded ${file.name}`);
+                      handleFileUpload(file);
                     }
                   }}
                   className={`border-2 border-dashed rounded-xl p-5 text-center transition-all cursor-pointer ${
@@ -2575,12 +2624,21 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                     </svg>
                   </div>
                   <p className="text-xs font-semibold text-white">Drop your capability file here</p>
-                  <p className="text-2xs text-[#71717a] mt-0.5">or click to browse local files</p>
+                  <p className="text-2xs text-[#71717a] mt-0.5">
+                    or click to browse local files (.md, .json, .yaml)
+                  </p>
                   <input
                     type="file"
                     accept=".md,.markdown,.json,.yaml,.yml"
                     className="hidden"
                     id="capability-file-input"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setFileParseSuccess(`Loaded ${file.name}`);
+                        handleFileUpload(file);
+                      }
+                    }}
                   />
                   <label
                     htmlFor="capability-file-input"

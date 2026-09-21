@@ -148,6 +148,66 @@ export default function CapabilitiesPage() {
 
   const { connectors: liveConnectors } = useWorkspaceConnectors(workspaceId);
 
+  // Live Sovereign Capabilities Fetching via SWR
+  const { data: dbCapabilities, mutate: mutateCapabilities } = useSWR(
+    workspaceId ? ['workspace-capabilities', workspaceId] : null,
+    () => capabilitiesApi.list(undefined, workspaceId),
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  );
+
+  useEffect(() => {
+    if (!dbCapabilities || !Array.isArray(dbCapabilities) || dbCapabilities.length === 0) return;
+    setCapabilities((prev) => {
+      const merged = [...prev];
+      const catMap: Record<string, CapabilityCategory> = {
+        skill: 'skills',
+        skills: 'skills',
+        connector: 'connectors',
+        connectors: 'connectors',
+        mcp: 'mcp',
+        plugin: 'plugins',
+        plugins: 'plugins',
+        tool: 'tools',
+        tools: 'tools',
+        agent: 'agents',
+        agents: 'agents',
+      };
+      dbCapabilities.forEach((dbCap) => {
+        const mappedCat = catMap[dbCap.category] || 'skills';
+        const existingIdx = merged.findIndex(
+          (c) => c.id === dbCap.id || (c.name === dbCap.name && c.category === mappedCat),
+        );
+        const item: CapabilityItem = {
+          id: dbCap.id,
+          name: dbCap.name,
+          category: mappedCat,
+          tags: (dbCap.config?.['tags'] as string[]) || ['Workspace', 'Custom'],
+          description: dbCap.description || '',
+          enabled: dbCap.enabled,
+          source: 'custom',
+          usageCount: (dbCap.config?.['usageCount'] as number) || 0,
+          lastUsed: 'Recently',
+          requiredScope:
+            (dbCap.config?.['requiredScope'] as string) ||
+            (mappedCat === 'mcp' ? 'connector.mcp.execute' : 'system.execute'),
+          trustClass: mappedCat === 'mcp' ? 'mcp.workspace.write' : 'first_party',
+          version: dbCap.version || '1.0.0',
+          author: dbCap.author || 'Workspace Member',
+          autonomy: (dbCap.config?.['autonomy'] as any) || 'autonomous',
+          markdownDoc:
+            (dbCap.config?.['doc'] as string) || `# ${dbCap.name}\n\n${dbCap.description}\n`,
+          inputSchema: (dbCap.config?.['parameters'] as any) || undefined,
+        };
+        if (existingIdx >= 0) {
+          merged[existingIdx] = { ...merged[existingIdx], ...item };
+        } else {
+          merged.push(item);
+        }
+      });
+      return merged;
+    });
+  }, [dbCapabilities]);
+
   const liveConnectorsKey = useMemo(
     () => liveConnectors?.map((c) => `${c.id}:${c.status}`).join(',') || '',
     [liveConnectors],
@@ -344,13 +404,20 @@ export default function CapabilitiesPage() {
 
   // Toggle Item Enabled Status
   const handleToggle = useCallback(
-    (id: string, e?: React.MouseEvent) => {
+    async (id: string, e?: React.MouseEvent) => {
       e?.stopPropagation();
       const item = capabilities.find((c) => c.id === id);
       if (!item) return;
       const nextState = !item.enabled;
       const updated = setStoredCapabilityEnabled(workspaceId, id, nextState);
       setCapabilities(updated);
+
+      try {
+        await capabilitiesApi.toggleCapability(id, nextState, workspaceId);
+      } catch {
+        // Fallback for static capabilities not yet in DB
+      }
+
       toast({
         tone: nextState ? 'success' : 'warning',
         title: nextState ? `Enabled ${item.name}` : `Disabled ${item.name}`,
@@ -413,45 +480,27 @@ export default function CapabilitiesPage() {
         title: `Test completed: ${selectedItem.name}`,
         detail: `Execution finished with ${liveRes.status} (${liveRes.executionDurationMs}ms)`,
       });
-    } catch {
-      // Robust offline / mock fallback simulation
-      setTimeout(() => {
-        const latency = Math.floor(Math.random() * 60) + 22;
-        const mockResponse = {
-          status: 'success',
-          capability: selectedItem.name,
-          category: selectedItem.category,
-          timestamp: new Date().toISOString(),
-          executionDurationMs: latency,
-          inputPassed: parsedInput,
-          result:
-            selectedItem.category === 'tools'
-              ? {
-                  count: 3,
-                  matchedEntities: ['Document#104', 'GraphEdge#99', 'Artifact#22'],
-                  confidence: 0.96,
-                }
-              : selectedItem.category === 'agents'
-                ? {
-                    decision: 'PROCEED',
-                    nextAgent: 'ats',
-                    reason: 'Trajectory aligns with user workspace directives',
-                  }
-                : {
-                    message: 'Skill evaluated successfully with 0 violations',
-                    criteriaChecked: 6,
-                  },
-        };
-
-        setTestOutput(JSON.stringify(mockResponse, null, 2));
-        setTestLatency(latency);
-        setTestRunning(false);
-        toast({
-          tone: 'success',
-          title: `Test completed: ${selectedItem.name}`,
-          detail: `Execution returned 200 OK (${latency}ms)`,
-        });
-      }, 350);
+    } catch (err: unknown) {
+      setTestRunning(false);
+      const errMsg = err instanceof Error ? err.message : 'Execution failed';
+      setTestOutput(
+        JSON.stringify(
+          {
+            status: 'error',
+            capability: selectedItem.name,
+            category: selectedItem.category,
+            timestamp: new Date().toISOString(),
+            error: errMsg,
+          },
+          null,
+          2,
+        ),
+      );
+      toast({
+        tone: 'error',
+        title: `Test failed: ${selectedItem.name}`,
+        detail: errMsg,
+      });
     }
   }, [selectedItem, testInputJson, workspaceId, toast]);
 
@@ -785,7 +834,36 @@ export default function CapabilitiesPage() {
         }}
         defaultCategory={selectedCategory}
         initialMode={importModalOpen ? 'import' : 'builder'}
-        onCreate={(newCap) => {
+        onCreate={async (newCap) => {
+          try {
+            const catMap: Record<string, string> = {
+              skills: 'skill',
+              plugins: 'plugin',
+              tools: 'tool',
+              agents: 'agent',
+              connectors: 'connector',
+              mcp: 'mcp',
+            };
+            const created = await capabilitiesApi.create({
+              name: newCap.name,
+              category: catMap[newCap.category] || newCap.category,
+              description: newCap.description,
+              version: newCap.version || '1.0.0',
+              author: newCap.author || 'Workspace Member',
+              type: newCap.source || 'custom',
+              config: {
+                ...(newCap.metadata || {}),
+                parameters: newCap.inputSchema || {},
+                doc: newCap.markdownDoc || '',
+                tags: newCap.tags || [],
+                autonomy: newCap.autonomy || 'autonomous',
+              },
+            });
+            newCap.id = created.id;
+            mutateCapabilities();
+          } catch (err) {
+            console.warn('Backend capability creation failed (using local sync):', err);
+          }
           saveCustomCapability(workspaceId, newCap);
           const updated = setStoredCapabilityEnabled(workspaceId, newCap.id, true);
           setCapabilities(updated);
@@ -803,8 +881,38 @@ export default function CapabilitiesPage() {
             urlParts[urlParts.length - 1]?.replace(/\.git$/, '') || 'remote-capability';
           const cleanName = rawName.toLowerCase().replace(/[^a-z0-9-_]/g, '-');
 
+          let newId = `import-${cleanName}-${Date.now()}`;
+          try {
+            const catMap: Record<string, string> = {
+              skills: 'skill',
+              plugins: 'plugin',
+              tools: 'tool',
+              agents: 'agent',
+              connectors: 'connector',
+              mcp: 'mcp',
+            };
+            const created = await capabilitiesApi.create({
+              name: cleanName,
+              category: catMap[category] || category,
+              description: `Imported capability from ${url}`,
+              author: url.includes('github.com')
+                ? url.split('/')[3] || 'Git Author'
+                : 'Remote Registry',
+              type: category === 'mcp' ? 'mcp' : 'custom',
+              config: {
+                url,
+                importedAt: new Date().toISOString(),
+                tags: ['Imported', 'Remote', category],
+              },
+            });
+            newId = created.id;
+            mutateCapabilities();
+          } catch (err) {
+            console.warn('Backend capability import save failed (local fallback):', err);
+          }
+
           const newImportedItem: CapabilityItem = {
-            id: `import-${cleanName}-${Date.now()}`,
+            id: newId,
             name: cleanName,
             category: category,
             tags: ['Imported', 'Remote', category],

@@ -800,24 +800,6 @@ export function ConnectorsView({
       });
     });
 
-    // Add sovereign ATS crawler & Playwright browser as active
-    list.push({
-      id: 'native-ats-mcp',
-      name: 'Public ATS Job Search MCP',
-      type: 'MCP (stdio)',
-      status: 'active',
-      lastSync: new Date().toISOString(),
-      isWorkspaceIntegration: false,
-    });
-    list.push({
-      id: 'native-browser',
-      name: 'Browser Scraper (Playwright)',
-      type: 'Native Sovereign',
-      status: 'active',
-      lastSync: new Date().toISOString(),
-      isWorkspaceIntegration: false,
-    });
-
     return list;
   }, [connectors, dynamicConnectors]);
 
