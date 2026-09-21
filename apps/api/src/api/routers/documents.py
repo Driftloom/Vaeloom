@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import (
     APIRouter,
+    Body,
     Depends,
     File,
     HTTPException,
@@ -19,6 +20,7 @@ from ..database import get_db
 from ..dependencies import get_current_user
 from ..models.schema import Workspace, WorkspaceUser
 from ..schemas.document import (
+    BulkDownloadRequest,
     BulkUploadResponse,
     DocumentActionListResponse,
     DocumentActionResponse,
