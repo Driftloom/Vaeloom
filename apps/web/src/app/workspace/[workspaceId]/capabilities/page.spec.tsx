@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, act, within } from '@testing-library/react';
+import { render, screen, fireEvent, act, within, waitFor } from '@testing-library/react';
 import CapabilitiesPage from './page';
 
 jest.mock('next/navigation', () => ({
@@ -40,6 +40,29 @@ jest.mock('@/lib/api-client', () => ({
       validationErrors: [],
       result: { ok: true },
     }),
+  },
+  connectorsApi: {
+    list: jest.fn().mockResolvedValue([]),
+    create: jest.fn().mockResolvedValue({ id: 'conn-1', name: 'test', type: 'mcp' }),
+    update: jest.fn().mockResolvedValue({ id: 'conn-1', name: 'test', type: 'mcp' }),
+    delete: jest.fn().mockResolvedValue(undefined),
+    mcp: {
+      builtin: jest.fn().mockResolvedValue({ builtin_servers: [] }),
+      listTools: jest.fn().mockResolvedValue([]),
+      refreshTools: jest.fn().mockResolvedValue([]),
+      sync: jest
+        .fn()
+        .mockResolvedValue({ connector_id: 'conn-1', registered: [], bridged_total: 0 }),
+      call: jest.fn().mockResolvedValue({ result: 'ok' }),
+    },
+    composio: {
+      status: jest.fn().mockResolvedValue({ enabled: false, popular_apps: [], total_apps: 0 }),
+      apps: jest
+        .fn()
+        .mockResolvedValue({ total: 0, limit: 1600, offset: 0, apps: [], categories: [] }),
+      authUrl: jest.fn().mockResolvedValue({ url: 'https://example.com' }),
+      sync: jest.fn().mockResolvedValue({ registered: [] }),
+    },
   },
 }));
 
@@ -288,5 +311,21 @@ describe('CapabilitiesPage', () => {
         title: expect.stringContaining('Created vault-sqlite-mcp'),
       }),
     );
+  });
+
+  it('switches to MCP tab and displays verified catalog and mcp control plane', async () => {
+    render(<CapabilitiesPage />);
+
+    const mcpTab = screen.getByRole('tab', { name: /MCP/i });
+    await act(async () => {
+      fireEvent.click(mcpTab);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Verified Catalog')).toBeInTheDocument();
+      expect(screen.getByText('SQLite Memory MCP')).toBeInTheDocument();
+      expect(screen.getByText('Local Filesystem MCP')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Inspector & Tools/i })).toBeInTheDocument();
+    });
   });
 });

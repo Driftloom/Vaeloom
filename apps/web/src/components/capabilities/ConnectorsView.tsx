@@ -102,7 +102,7 @@ export function ConnectorsView({
   const [dynamicConnectors, setDynamicConnectors] = useState<ConnectorItem[]>([]);
   const [composioApps, setComposioApps] = useState<ComposioAppInfo[]>([]);
   const [composioCatalogApps, setComposioCatalogApps] = useState<ComposioAppInfo[]>([]);
-  const [composioTotalCount, setComposioTotalCount] = useState<number>(269);
+  const [composioTotalCount, setComposioTotalCount] = useState<number>(1553);
   const [builtinServers, setBuiltinServers] = useState<BuiltinMcpServer[]>([]);
   const [composioSyncing, setComposioSyncing] = useState(false);
 
@@ -155,7 +155,7 @@ export function ConnectorsView({
           : Promise.resolve<ComposioStatusResponse>({
               enabled: false,
               popular_apps: [],
-              total_apps: 269,
+              total_apps: 1553,
             }),
         connectorsApi?.composio?.apps
           ? connectorsApi.composio.apps({ limit: 1600 })
@@ -250,6 +250,8 @@ export function ConnectorsView({
       const rawName = (app.name || app.id || '').toLowerCase();
       const slugId = (app.id || app.name || '').toLowerCase().replace(/[^a-z0-9-_]/g, '-');
       const composioId = `composio-${slugId}`;
+      const actionCount =
+        (app as { action_count?: number; actionCount?: number }).actionCount ?? app.action_count;
       if (!seenIds.has(slugId) && !seenIds.has(composioId) && !seenIds.has(rawName)) {
         list.push({
           id: composioId,
@@ -259,7 +261,7 @@ export function ConnectorsView({
           category: (app.category as ConnectorCategory) || 'Productivity',
           protocol: 'OAuth 2.0',
           description: app.description || `Connect ${app.name} to execute automated agent tools.`,
-          scopes: app.action_count ? [`${app.action_count} dynamic actions`] : ['api:execute'],
+          scopes: actionCount ? [`${actionCount} dynamic actions`] : ['api:execute'],
           assignedAgents: ['ApplicationAgent', 'ExecutiveStrategyAgent'],
         });
         seenIds.add(composioId);
@@ -276,14 +278,74 @@ export function ConnectorsView({
     return fullCatalogList.filter((item) => {
       // Category filter
       if (selectedFilter !== 'All') {
-        if (selectedFilter === 'Google' && item.category !== 'Google') return false;
-        if (selectedFilter === 'Productivity' && item.category !== 'Productivity') return false;
-        if (selectedFilter === 'Engineering' && item.category !== 'Engineering') return false;
-        if (selectedFilter === 'Sales' && item.category !== 'Sales') return false;
-        if (selectedFilter === 'Financial' && item.category !== 'Financial') return false;
-        if (selectedFilter === 'Legal' && item.category !== 'Legal') return false;
-        if (selectedFilter === 'Native' && item.category !== 'Native') return false;
-        if (selectedFilter === 'MCP' && item.category !== 'MCP') return false;
+        const sel = selectedFilter.toLowerCase();
+        const cat = (item.category || '').toLowerCase();
+        let matches = false;
+
+        if (sel === 'sales') {
+          matches = cat.includes('sales') || cat.includes('crm') || cat.includes('lead');
+        } else if (sel === 'financial' || sel === 'finance') {
+          matches =
+            cat.includes('finance') ||
+            cat.includes('financial') ||
+            cat.includes('accounting') ||
+            cat.includes('banking');
+        } else if (sel === 'engineering') {
+          matches =
+            cat.includes('engineering') || cat.includes('devops') || cat.includes('developer');
+        } else if (sel === 'hr') {
+          matches =
+            cat.includes('hr') ||
+            cat.includes('talent') ||
+            cat.includes('recruit') ||
+            cat.includes('hiring');
+        } else if (sel === 'ai & ml') {
+          matches =
+            cat.includes('ai') || cat.includes('machine learning') || cat.includes('intelligence');
+        } else if (sel === 'data & analytics') {
+          matches =
+            cat.includes('analytics') ||
+            cat.includes('data') ||
+            cat.includes('bi') ||
+            cat.includes('warehouse');
+        } else if (sel === 'communication') {
+          matches =
+            cat.includes('communication') ||
+            cat.includes('messaging') ||
+            cat.includes('email') ||
+            cat.includes('chat');
+        } else if (sel === 'support') {
+          matches = cat.includes('support') || cat.includes('helpdesk') || cat.includes('ticket');
+        } else if (sel === 'education') {
+          matches =
+            cat.includes('education') ||
+            cat.includes('learning') ||
+            cat.includes('course') ||
+            cat.includes('academy');
+        } else if (sel === 'e-commerce') {
+          matches = cat.includes('commerce') || cat.includes('retail') || cat.includes('store');
+        } else if (sel === 'legal') {
+          matches = cat.includes('legal') || cat.includes('contract') || cat.includes('compliance');
+        } else if (sel === 'productivity') {
+          matches =
+            cat.includes('productivity') ||
+            cat.includes('task') ||
+            cat.includes('project') ||
+            cat.includes('workspace');
+        } else if (sel === 'mcp') {
+          matches = cat.includes('mcp') || item.protocol.includes('MCP') || item.provider === 'mcp';
+        } else if (sel === 'native') {
+          matches = item.provider === 'native' || item.protocol === 'Native Sovereign';
+        } else if (sel === 'google') {
+          matches =
+            item.category === 'Google' ||
+            item.id.toLowerCase().includes('google') ||
+            item.id.toLowerCase().includes('gmail');
+        } else {
+          matches = cat.includes(sel) || cat === sel;
+        }
+
+        if (!matches) return false;
       }
 
       // Search query
@@ -995,7 +1057,12 @@ export function ConnectorsView({
                           ? `${selectedFilter} connectors (${filteredCatalog.length})`
                           : `All connectors (${filteredCatalog.length})`}
                     </h2>
-                    <span className="text-xs text-[#71717a]">• 260+ available</span>
+                    <span className="text-xs text-[#71717a]">
+                      •{' '}
+                      {fullCatalogList.length > 0
+                        ? `${fullCatalogList.length.toLocaleString()} available`
+                        : `${composioTotalCount.toLocaleString()} available`}
+                    </span>
                   </div>
                   <button
                     type="button"

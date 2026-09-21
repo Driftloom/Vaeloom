@@ -748,6 +748,7 @@ export default function CapabilitiesPage() {
 
         {selectedCategory === 'mcp' && (
           <McpView
+            workspaceId={workspaceId}
             searchQuery={searchQuery}
             onOpenCreateServer={() => {
               setNewCapCategory('mcp');
