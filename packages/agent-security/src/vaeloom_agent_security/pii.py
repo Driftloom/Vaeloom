@@ -2,7 +2,7 @@ import re
 
 PATTERNS = [
     (re.compile(r"Bearer\s+[A-Za-z0-9\-_~+/]+=*", re.IGNORECASE), "Bearer [REDACTED_TOKEN]"),
-    (re.compile(r"sk-[a-zA-Z0-9]{20,}", re.IGNORECASE), "[REDACTED_API_KEY]"),
+    (re.compile(r"sk-[a-zA-Z0-9\-_]{16,}", re.IGNORECASE), "[REDACTED_API_KEY]"),
     (re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b"), "[REDACTED_EMAIL]"),
     (re.compile(r"\b(?:\d[ -]*?){13,16}\b"), "[REDACTED_CREDIT_CARD]"),
 ]
