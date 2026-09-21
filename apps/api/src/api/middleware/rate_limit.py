@@ -10,7 +10,9 @@ from starlette.responses import JSONResponse, Response
 logger = logging.getLogger("vaeloom-api.middleware.rate_limit")
 
 RATE_LIMIT_ATTR = "_rate_limit_config"
-SKIP_PATHS = frozenset({"/health", "/health/ready", "/docs", "/openapi.json", "/redoc", "/metrics", "/csrf-token"})
+# Zero-trust: /metrics and /csrf-token are NOT skipped — unauthenticated
+# token-exhaustion and metrics-scraping abuse are real. Health/docs stay open.
+SKIP_PATHS = frozenset({"/health", "/health/ready", "/docs", "/openapi.json", "/redoc"})
 
 API_KEY_HEADER = "X-API-Key"
 
@@ -104,10 +106,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app,
-        requests_per_minute: int = 100,
+        requests_per_minute: int = 60,
         window_seconds: int = 60,
         redis_url: str | None = None,
-        api_key_rate_limit: int = 1000,
+        api_key_rate_limit: int = 500,
     ):
         super().__init__(app)
         self.default_max_requests = requests_per_minute

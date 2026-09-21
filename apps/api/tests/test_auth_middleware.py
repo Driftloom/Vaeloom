@@ -31,7 +31,10 @@ class TestAuthMiddleware:
     @pytest.mark.asyncio
     async def test_public_paths_set(self):
         assert "/health" in PUBLIC_PATHS
-        assert "/docs" in PUBLIC_PATHS
+        # Zero-trust: docs/openapi/metrics/avatar are NOT public (authenticated).
+        assert "/docs" not in PUBLIC_PATHS
+        assert "/openapi.json" not in PUBLIC_PATHS
+        assert "/metrics" not in PUBLIC_PATHS
         assert "/api/v1/auth/login" in PUBLIC_PATHS
         assert "/api/v1/auth/signup" in PUBLIC_PATHS
 

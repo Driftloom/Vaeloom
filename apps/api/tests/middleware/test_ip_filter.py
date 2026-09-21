@@ -44,13 +44,17 @@ class TestIPAllowlistMiddleware:
 
     @pytest.mark.asyncio
     async def test_bypasses_auth_paths(self):
+        # Zero-trust: auth endpoints are NOT bypassed. When the allowlist is
+        # enabled, brute-force from a blocked IP must fail — including signup.
         app = MagicMock()
         middleware = IPAllowlistMiddleware(app, allowlist_raw="10.0.0.0/8")
         request = MagicMock(spec=Request)
         request.url.path = "/api/v1/auth/signup"
+        request.headers = {}
+        request.client.host = "203.0.113.9"
         call_next = AsyncMock(return_value=Response())
         result = await middleware.dispatch(request, call_next)
-        assert result.status_code == 200
+        assert result.status_code == 403
 
     @pytest.mark.asyncio
     async def test_allows_allowlisted_ip(self):
@@ -132,10 +136,14 @@ class TestIPAllowlistMiddleware:
 
     @pytest.mark.asyncio
     async def test_bypasses_sso_prefix(self):
+        # Zero-trust: SSO callback paths are NOT bypassed either (same brute-force
+        # reasoning as test_bypasses_auth_paths).
         app = MagicMock()
         middleware = IPAllowlistMiddleware(app, allowlist_raw="10.0.0.0/8")
         request = MagicMock(spec=Request)
         request.url.path = "/api/v1/auth/sso/google/callback"
+        request.headers = {}
+        request.client.host = "203.0.113.9"
         call_next = AsyncMock(return_value=Response())
         result = await middleware.dispatch(request, call_next)
-        assert result.status_code == 200
+        assert result.status_code == 403

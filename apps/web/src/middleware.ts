@@ -79,14 +79,24 @@ export function middleware(request: NextRequest) {
     'Permissions-Policy',
     'camera=(), microphone=(), geolocation=(), interest-cohort=()',
   );
+  // Zero-trust CSP: 'unsafe-eval' only in development (Next.js webpack HMR needs
+  // it; production builds must never allow eval). img-src narrowed from `https:`
+  // wildcard to explicit hosts + data:/blob: for avatars/uploads.
+  const isDevCsp =
+    process.env.NODE_ENV === 'development' ||
+    request.nextUrl.hostname === 'localhost' ||
+    request.nextUrl.hostname === '127.0.0.1';
+  const scriptSrc = isDevCsp
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vaeloom.app"
+    : "script-src 'self' 'unsafe-inline' https://vaeloom.app";
   response.headers.set(
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vaeloom.app",
+      scriptSrc,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: blob: https: https://vaeloom.app",
+      "img-src 'self' data: blob: https://vaeloom.app https://*.supabase.co https://**.googleusercontent.com https://**.githubusercontent.com https://**.slack.com",
       `connect-src 'self' https://*.supabase.co https://accounts.google.com https://*.algolia.net https://*.algolianet.com${
         process.env.NODE_ENV === 'development' ||
         process.env['ALLOW_LOCAL_API'] === 'true' ||

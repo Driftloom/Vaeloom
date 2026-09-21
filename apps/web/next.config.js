@@ -3,11 +3,6 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
   enabled: process.env.ANALYZE === 'true',
 });
 
-const cspConnectSrc =
-  process.env.NODE_ENV === 'development' || process.env.ALLOW_LOCAL_API === 'true'
-    ? "'self' http://localhost:8000 ws://localhost:8000 http://127.0.0.1:8000 ws://127.0.0.1:8000 https://*.supabase.co https://accounts.google.com https://*.algolia.net https://*.algolianet.com https://analytics.vaeloom.app"
-    : "'self' https://vaeloom.app https://*.supabase.co https://accounts.google.com https://*.algolia.net https://*.algolianet.com https://analytics.vaeloom.app";
-
 const nextConfig = {
   output: process.env.CI === 'true' && process.platform !== 'win32' ? 'standalone' : undefined,
   transpilePackages: ['@vaeloom/shared-types', '@vaeloom/ui-kit'],
@@ -28,6 +23,15 @@ const nextConfig = {
     ],
   },
   async headers() {
+    const isDevCsp =
+      process.env.NODE_ENV === 'development' || process.env.ALLOW_LOCAL_API === 'true';
+    const scriptSrc = isDevCsp
+      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vaeloom.app"
+      : "script-src 'self' 'unsafe-inline' https://vaeloom.app";
+    const connectSrc = isDevCsp
+      ? "'self' http://localhost:8000 ws://localhost:8000 http://127.0.0.1:8000 ws://127.0.0.1:8000 https://*.supabase.co https://accounts.google.com https://*.algolia.net https://*.algolianet.com https://analytics.vaeloom.app"
+      : "'self' https://vaeloom.app https://*.supabase.co https://accounts.google.com https://*.algolia.net https://*.algolianet.com https://analytics.vaeloom.app";
+
     return [
       {
         source: '/(.*)',
@@ -43,11 +47,11 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vaeloom.app",
+              scriptSrc,
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: blob: https: https://vaeloom.app",
-              `connect-src ${cspConnectSrc}`,
+              "img-src 'self' data: blob: https://vaeloom.app https://*.supabase.co https://**.googleusercontent.com https://**.githubusercontent.com https://**.slack.com",
+              `connect-src ${connectSrc}`,
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

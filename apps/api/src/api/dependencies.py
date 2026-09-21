@@ -42,12 +42,21 @@ async def get_workspace_id(request: Request) -> str | None:
     return getattr(request.state, "workspace_id", None)
 
 
+ROLE_HIERARCHY: dict[str, int] = {
+    "viewer": 1,
+    "editor": 2,
+    "admin": 3,
+}
+
+
 def require_role(role: str):
     async def role_checker(current_user: dict = Depends(get_current_user)):
         if not current_user:
             raise HTTPException(status_code=401, detail="Not authenticated")
         user_roles = current_user.get("roles", []) or current_user.get("realm_access", {}).get("roles", [])
-        if role not in user_roles:
+        user_level = max((ROLE_HIERARCHY.get(r, 0) for r in user_roles), default=0)
+        required_level = ROLE_HIERARCHY.get(role, 0)
+        if user_level < required_level:
             raise HTTPException(status_code=403, detail=f"Requires role: {role}")
         return current_user
     return role_checker

@@ -75,10 +75,10 @@ async def set_rls_session_vars(
             await db.execute(text("SELECT set_config('app.user_id', :uid, true)"), {"uid": str(uid)})
     except Exception as exc:
         # SQLite or non-PostgreSQL — RLS not applicable, ignore.
-        # On PostgreSQL this should never fail; log and continue (fail-closed:
-        # unset GUCs cause RLS policies to match zero rows).
+        # On PostgreSQL this must never fail silently in production; warn loudly
+        # (fail-closed: unset GUCs cause RLS policies to match zero rows).
         import logging as _log
-        _log.getLogger(__name__).debug("set_rls_session_vars skipped: %s", exc)
+        _log.getLogger(__name__).warning("set_rls_session_vars skipped (fail-closed, zero rows): %s", exc)
 
 
 async def check_user_workspace_access(session: AsyncSession, workspace_id: str, user_id: str, tenant_id: str | None = None) -> bool:
@@ -95,14 +95,19 @@ async def check_user_workspace_access(session: AsyncSession, workspace_id: str, 
     except (ValueError, TypeError):
         return False
 
-    # Establish session RLS variables so RLS policies allow reading workspaces for this user/tenant
+    # Establish session RLS variables so RLS policies allow reading workspaces for this user/tenant.
+    # Zero-trust: set ALL THREE GUCs (tenant + workspace + user) so workspace-scoped
+    # policies never see a NULL workspace and fail open.
     try:
         from sqlalchemy import text as _text
         if tenant_id:
             await session.execute(_text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": str(tenant_id)})
         await session.execute(_text("SELECT set_config('app.user_id', :uid, true)"), {"uid": uid})
-    except Exception:
-        pass
+        await session.execute(_text("SELECT set_config('app.workspace_id', :wid, true)"), {"wid": ws_uuid})
+    except Exception as exc:
+        import logging as _log
+        _log.getLogger(__name__).warning("check_user_workspace_access GUC setup failed (fail-closed): %s", exc)
+        return False
 
     stmt = (
         select(Workspace.id)

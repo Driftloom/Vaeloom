@@ -11,10 +11,6 @@ PUBLIC_PATHS = frozenset({
     "/health",
     "/health/ready",
     "/health/startup",
-    "/metrics",
-    "/docs",
-    "/openapi.json",
-    "/redoc",
     "/csrf-token",
     "/api/v1/auth/signup",
     "/api/v1/auth/login",
@@ -32,10 +28,6 @@ PUBLIC_PATHS = frozenset({
 })
 PUBLIC_PREFIXES = frozenset({
     "/api/v1/auth/sso/",
-    "/scim/",
-    "/scim",
-    "/api/v1/profile/avatar/",
-    "/api/v1/profile/public/",
 })
 
 
@@ -48,7 +40,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         path = request.url.path
-        if path in PUBLIC_PATHS or (path.startswith("/api/v1/connectors/") and path.endswith("/inbound-webhook")):
+        if path in PUBLIC_PATHS:
             return await call_next(request)
         for prefix in PUBLIC_PREFIXES:
             if path.startswith(prefix):

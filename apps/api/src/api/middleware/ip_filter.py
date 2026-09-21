@@ -30,13 +30,10 @@ ALLOWLIST_BYPASS_PATHS = frozenset({
     "/docs",
     "/openapi.json",
     "/redoc",
-    "/api/v1/auth/signup",
-    "/api/v1/auth/login",
-    "/api/v1/auth/refresh",
 })
-ALLOWLIST_BYPASS_PREFIXES = frozenset({
-    "/api/v1/auth/sso/",
-})
+# Zero-trust: auth endpoints are NOT bypassed. When the allowlist is enabled,
+# brute-force from a blocked IP must fail — including signup/login/refresh/SSO.
+ALLOWLIST_BYPASS_PREFIXES = frozenset()
 
 
 class IPAllowlistMiddleware(BaseHTTPMiddleware):

@@ -45,8 +45,13 @@ def _get_redis():
         return None
 
 MUTATING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
-SKIP_PATHS = frozenset({"/health", "/health/ready", "/docs", "/openapi.json", "/redoc", "/metrics", "/csrf-token", "/api/v1/gmail/webhook"})
-SKIP_PREFIXES = frozenset({"/api/v1/auth", "/scim"})
+# Zero-trust: CSRF skip is explicit per-path only. The old blanket
+# SKIP_PREFIXES={"/api/v1/auth"} skipped every current AND future auth endpoint.
+# Bearer-header APIs are CSRF-immune by design; cookie-authenticated mutating
+# calls still require the double-submit token. /csrf-token itself must stay
+# skipped (it issues the token).
+SKIP_PATHS = frozenset({"/health", "/health/ready", "/docs", "/openapi.json", "/redoc", "/metrics", "/csrf-token", "/api/v1/gmail/webhook", "/api/v1/auth/signup", "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password"})
+SKIP_PREFIXES = frozenset({"/scim"})
 
 
 def _sign_token(token: str, secret: str) -> str:
@@ -111,7 +116,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             csrf_cookie = request.cookies.get("csrf_token", "")
 
             if not csrf_header or not csrf_cookie:
-                return JSONResponse(status_code=403, content={"detail": "CSRF token missing"})
+                return JSONResponse(status_code=403, content={"detail": "CSRF token missing — GET /csrf-token then send X-CSRF-Token header + csrf_token cookie"})
 
             cookie_parts = csrf_cookie.split(":", 1)
             if len(cookie_parts) != 2:
