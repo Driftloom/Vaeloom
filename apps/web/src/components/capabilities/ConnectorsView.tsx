@@ -216,13 +216,16 @@ export function ConnectorsView({
         return dynamicConnectors.some(
           (c) =>
             c.type === 'mcp' &&
-            (c.name.toLowerCase().includes('job-search') || c.name.toLowerCase().includes('ats')),
+            Boolean(
+              c.name?.toLowerCase().includes('job-search') || c.name?.toLowerCase().includes('ats'),
+            ),
         );
       }
       if (item.provider === 'composio') {
         const appName = (item.composioApp || item.id.replace('composio-', '')).toLowerCase();
         return dynamicConnectors.some(
-          (c) => c.name.toLowerCase() === appName || c.config?.['app'] === appName,
+          (c) =>
+            Boolean(c.name && c.name.toLowerCase() === appName) || c.config?.['app'] === appName,
         );
       }
       if (item.provider === 'native') {
@@ -783,25 +786,36 @@ export function ConnectorsView({
     const list: Array<{
       id: string;
       name: string;
+      provider?: string;
       type: string;
       status: 'active' | 'syncing' | 'error';
       lastSync?: string;
       isWorkspaceIntegration?: boolean;
       originalConnector?: Connector;
       originalDynamic?: ConnectorItem;
+      config?: Record<string, unknown>;
     }> = [];
 
     // Add workspace integrations (Google Drive, Gmail, Calendar, Slack, GitHub, Notion)
     connectors.forEach((c) => {
-      const meta = PROVIDER_META[c.provider];
+      const providerKey = (c.provider || '').toLowerCase();
+      const meta = PROVIDER_META[providerKey] || PROVIDER_META[c.provider];
+      const resolvedName =
+        (c as unknown as { name?: string }).name?.trim() ||
+        meta?.name ||
+        (c.provider
+          ? c.provider.charAt(0).toUpperCase() + c.provider.slice(1)
+          : 'Connected Service');
       list.push({
         id: c.id,
-        name: meta?.name || c.provider,
+        name: resolvedName,
+        provider: c.provider,
         type: 'OAuth 2.0',
         status: c.status === 'connected' ? 'active' : 'error',
         lastSync: c.lastSyncAt,
         isWorkspaceIntegration: true,
         originalConnector: c,
+        config: (c as unknown as { config?: Record<string, unknown> })?.config,
       });
     });
 
@@ -810,11 +824,13 @@ export function ConnectorsView({
       list.push({
         id: dc.id,
         name: dc.name,
+        provider: dc.type,
         type: dc.type.toUpperCase(),
         status: dc.status === 'syncing' ? 'syncing' : dc.status === 'active' ? 'active' : 'error',
         lastSync: dc.updatedAt,
         isWorkspaceIntegration: false,
         originalDynamic: dc,
+        config: dc.config,
       });
     });
 
@@ -830,57 +846,57 @@ export function ConnectorsView({
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-[#09090b] text-[#f4f4f5] antialiased">
+    <div className="flex-1 flex flex-col min-h-0 bg-[#090b10] text-[#f4f4f5] antialiased">
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      {/* Subheader Bar: Sub-Navigation (Yours vs Discover) + Top Action Buttons    */}
+      {/* Subheader Bar: Segmented Modes + SaaS Sync Action Buttons                  */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="border-b border-[#1c1d24] bg-[#0c0d12] px-4 sm:px-6 py-2.5 shrink-0">
+      <div className="border-b border-[#1c2030] bg-[#0c0e15] px-4 sm:px-6 py-2.5 shrink-0 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          {/* Sub-nav Tabs */}
-          <div className="flex items-center gap-6">
-            <button
-              type="button"
-              onClick={() => setActiveSubTab('yours')}
-              className={`pb-1 text-sm font-medium transition-colors relative ${
-                activeSubTab === 'yours'
-                  ? 'text-white border-b-2 border-[#3b82f6]'
-                  : 'text-[#8b8e99] hover:text-[#d4d4d8]'
-              }`}
-            >
-              Yours
-              {configuredItems.length > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] bg-[#1c1d24] text-[#a1a1aa]">
-                  {configuredItems.length}
-                </span>
-              )}
-            </button>
+          {/* Sub-nav Segmented Switcher */}
+          <div className="flex items-center gap-1 p-0.5 rounded-lg bg-[#11141e] border border-[#202636]">
             <button
               type="button"
               onClick={() => setActiveSubTab('discover')}
-              className={`pb-1 text-sm font-medium transition-colors relative ${
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer ${
                 activeSubTab === 'discover'
-                  ? 'text-white border-b-2 border-[#3b82f6]'
-                  : 'text-[#8b8e99] hover:text-[#d4d4d8]'
+                  ? 'bg-[#1e2436] text-white font-semibold shadow-xs border border-[#353f5c]'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              Discover
+              Explore Directory
               {composioTotalCount > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] bg-[#1c1d24] text-[#a1a1aa]">
+                <span className="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-blue-500/20 text-blue-300 border border-blue-500/30">
                   {composioTotalCount.toLocaleString()}
                 </span>
               )}
             </button>
             <button
               type="button"
-              onClick={() => setActiveSubTab('studio')}
-              className={`pb-1 text-sm font-medium transition-colors relative flex items-center gap-1.5 ${
-                activeSubTab === 'studio'
-                  ? 'text-white border-b-2 border-[#3b82f6]'
-                  : 'text-[#8b8e99] hover:text-[#d4d4d8]'
+              onClick={() => setActiveSubTab('yours')}
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer ${
+                activeSubTab === 'yours'
+                  ? 'bg-[#1e2436] text-white font-semibold shadow-xs border border-[#353f5c]'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              <span>Full Connectors Studio</span>
-              <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-[#3b82f6]/15 text-[#60a5fa] border border-[#3b82f6]/30">
+              Installed
+              {configuredItems.length > 0 && (
+                <span className="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  {configuredItems.length}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('studio')}
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer flex items-center gap-1.5 ${
+                activeSubTab === 'studio'
+                  ? 'bg-[#1e2436] text-white font-semibold shadow-xs border border-[#353f5c]'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              <span>Custom Protocols</span>
+              <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">
                 MCP • REST • GraphQL
               </span>
             </button>
@@ -892,11 +908,11 @@ export function ConnectorsView({
               type="button"
               onClick={() => handleSyncAllComposio()}
               disabled={composioSyncing}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-[#181a22] border border-[#27272a] text-[#a1a1aa] hover:text-white hover:bg-[#222430] transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-[#141724] border border-[#242b3d] text-zinc-300 hover:text-white hover:bg-[#1a1f30] transition-colors cursor-pointer"
               title="Sync dynamic SaaS tools from Composio"
             >
               <svg
-                className={`w-3.5 h-3.5 text-[#3b82f6] ${composioSyncing ? 'animate-spin' : ''}`}
+                className={`w-3.5 h-3.5 text-blue-400 ${composioSyncing ? 'animate-spin' : ''}`}
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -919,10 +935,10 @@ export function ConnectorsView({
                   setIsAddModalOpen(true);
                 }
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md bg-[#3b82f6] hover:bg-[#2563eb] text-white shadow-xs transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-500 text-white shadow-sm transition-all cursor-pointer active:scale-[0.98]"
             >
               <PlusIcon />
-              <span>Add</span>
+              <span>Add Custom Connector</span>
             </button>
           </div>
         </div>
@@ -931,115 +947,287 @@ export function ConnectorsView({
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Main Content Area                                                          */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-5">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-5 min-h-0">
         {activeSubTab === 'discover' ? (
-          <div className="max-w-6xl mx-auto space-y-6">
-            {/* Breadcrumb & Filter Bar (Matches Screenshots) */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-2 text-sm text-[#71717a]">
-                <span>Connectors</span>
-                <span>/</span>
-                <span className="text-[#f4f4f5] font-medium">Directory</span>
+          <div className="max-w-7xl mx-auto space-y-6">
+            {/* Filter Toolbar: Purpose Selector + Filter Chips */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#1c2030] pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono uppercase tracking-wider text-zinc-500">
+                  Filter By Sector
+                </span>
+                <span className="text-zinc-600">•</span>
+                <span className="text-xs text-zinc-400">
+                  Showing {filteredCatalog.length} of {fullCatalogList.length} verified connectors
+                </span>
               </div>
 
-              {/* Search & Category Filter */}
-              <div className="flex flex-wrap items-center gap-2.5">
-                <div className="relative w-full sm:w-64">
-                  <svg
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#71717a] pointer-events-none"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                  <input
-                    type="text"
-                    value={internalSearch}
-                    onChange={(e) => setInternalSearch(e.target.value)}
-                    placeholder="Search connectors"
-                    className="w-full pl-9 pr-3 py-1.5 text-xs bg-[#121319] border border-[#27272a] rounded-md text-white placeholder-[#71717a] focus:outline-none focus:border-[#3b82f6] transition-colors"
-                  />
-                  {internalSearch && (
-                    <button
-                      type="button"
-                      onClick={() => setInternalSearch('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[#71717a] hover:text-white"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-
-                <div className="relative">
-                  <select
-                    value={selectedFilter}
-                    onChange={(e) => setSelectedFilter(e.target.value as ConnectorCategory)}
-                    className="appearance-none bg-[#121319] border border-[#27272a] rounded-md pl-3 pr-8 py-1.5 text-xs text-[#d4d4d8] focus:outline-none focus:border-[#3b82f6] cursor-pointer"
-                  >
-                    <option value="All">Filter: All Purposes</option>
-                    <option value="Education">🎓 Education & Learning</option>
-                    <option value="Sales">💼 Sales & CRM</option>
-                    <option value="Productivity">🚀 Productivity & Tasks</option>
-                    <option value="Engineering">💻 Engineering & DevOps</option>
-                    <option value="Financial">💰 Finance & Accounting</option>
-                    <option value="Legal">⚖️ Legal & Contracts</option>
-                    <option value="HR">👥 HR, Recruiting & Talent</option>
-                    <option value="AI & ML">🤖 AI, Agents & ML</option>
-                    <option value="Data & Analytics">📊 Data, Analytics & BI</option>
-                    <option value="Communication">💬 Communication & Messaging</option>
-                    <option value="Marketing">📣 Marketing & Social</option>
-                    <option value="Support">🎧 Customer Support</option>
-                    <option value="E-Commerce">🛒 E-Commerce & Retail</option>
-                    <option value="Google">Google Workspace</option>
-                    <option value="Native">Native Sovereign</option>
-                    <option value="MCP">⚡ Model Context Protocol (MCP)</option>
-                  </select>
-                  <svg
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[#71717a] pointer-events-none"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </div>
+              {/* Purpose Dropdown Filter */}
+              <div className="relative shrink-0">
+                <select
+                  value={selectedFilter}
+                  onChange={(e) => setSelectedFilter(e.target.value as ConnectorCategory)}
+                  className="appearance-none bg-[#121520] border border-[#242b3d] rounded-lg pl-3 pr-8 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-blue-500 cursor-pointer font-sans"
+                >
+                  <option value="All">All Purposes & Sectors</option>
+                  <option value="Education">Education & Learning</option>
+                  <option value="Sales">Sales & CRM</option>
+                  <option value="Productivity">Productivity & Tasks</option>
+                  <option value="Engineering">Engineering & DevOps</option>
+                  <option value="Financial">Finance & Accounting</option>
+                  <option value="Legal">Legal & Contracts</option>
+                  <option value="HR">HR, Recruiting & Talent</option>
+                  <option value="AI & ML">AI, Agents & ML</option>
+                  <option value="Data & Analytics">Data, Analytics & BI</option>
+                  <option value="Communication">Communication & Messaging</option>
+                  <option value="Marketing">Marketing & Social</option>
+                  <option value="Support">Customer Support</option>
+                  <option value="E-Commerce">E-Commerce & Retail</option>
+                  <option value="Google">Google Workspace</option>
+                  <option value="Native">Native Sovereign</option>
+                  <option value="MCP">Model Context Protocol (MCP)</option>
+                </select>
+                <svg
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-400 pointer-events-none"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
               </div>
             </div>
 
-            {/* Quick Purpose Filter Pills */}
+            {/* Quick Purpose Vector Filter Chips (Clean Lucide SVGs, NO Emojis per ui-ux-pro-max) */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
               {(
                 [
-                  { id: 'All', label: 'All', icon: '🌐' },
-                  { id: 'Education', label: 'Education', icon: '🎓' },
-                  { id: 'Sales', label: 'Sales & CRM', icon: '💼' },
-                  { id: 'Productivity', label: 'Productivity', icon: '🚀' },
-                  { id: 'Engineering', label: 'Engineering', icon: '💻' },
-                  { id: 'Financial', label: 'Finance', icon: '💰' },
-                  { id: 'HR', label: 'HR & Talent', icon: '👥' },
-                  { id: 'AI & ML', label: 'AI & ML', icon: '🤖' },
-                  { id: 'Data & Analytics', label: 'Analytics', icon: '📊' },
-                  { id: 'Communication', label: 'Messaging', icon: '💬' },
-                  { id: 'Legal', label: 'Legal', icon: '⚖️' },
-                  { id: 'Support', label: 'Support', icon: '🎧' },
-                  { id: 'MCP', label: 'MCP', icon: '⚡' },
+                  {
+                    id: 'All',
+                    label: 'All',
+                    icon: (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="2" y1="12" x2="22" y2="12" />
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    id: 'Productivity',
+                    label: 'Productivity',
+                    icon: (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <polyline points="9 11 12 14 22 4" />
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    id: 'Engineering',
+                    label: 'Engineering',
+                    icon: (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <polyline points="16 18 22 12 16 6" />
+                        <polyline points="8 6 2 12 8 18" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    id: 'Sales',
+                    label: 'Sales & CRM',
+                    icon: (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    id: 'Communication',
+                    label: 'Communication',
+                    icon: (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    id: 'AI & ML',
+                    label: 'AI & ML',
+                    icon: (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <rect x="3" y="11" width="18" height="10" rx="2" />
+                        <circle cx="12" cy="5" r="2" />
+                        <path d="M12 7v4" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    id: 'Financial',
+                    label: 'Finance',
+                    icon: (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+                        <line x1="1" y1="10" x2="23" y2="10" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    id: 'HR',
+                    label: 'HR & Talent',
+                    icon: (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    id: 'Data & Analytics',
+                    label: 'Analytics',
+                    icon: (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <line x1="18" y1="20" x2="18" y2="10" />
+                        <line x1="12" y1="20" x2="12" y2="4" />
+                        <line x1="6" y1="20" x2="6" y2="14" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    id: 'Legal',
+                    label: 'Legal',
+                    icon: (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    id: 'Support',
+                    label: 'Support',
+                    icon: (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+                        <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    id: 'Education',
+                    label: 'Education',
+                    icon: (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                        <path d="M6 12v5c3 3 9 3 12 0v-5" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    id: 'MCP',
+                    label: 'MCP',
+                    icon: (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                      </svg>
+                    ),
+                  },
                 ] as const
               ).map((pill) => (
                 <button
                   key={pill.id}
                   type="button"
                   onClick={() => setSelectedFilter(pill.id as ConnectorCategory)}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all whitespace-nowrap ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 whitespace-nowrap cursor-pointer ${
                     selectedFilter === pill.id
-                      ? 'bg-[#3b82f6] text-white shadow-xs font-semibold'
-                      : 'bg-[#121319] hover:bg-[#181a22] text-[#8b8e99] hover:text-white border border-[#27272a]'
+                      ? 'bg-blue-600 text-white shadow-xs font-semibold'
+                      : 'bg-[#121520] hover:bg-[#181d2c] text-zinc-400 hover:text-zinc-100 border border-[#232a3d]'
                   }`}
                 >
-                  <span>{pill.icon}</span>
+                  <span className={selectedFilter === pill.id ? 'text-white' : 'text-zinc-500'}>
+                    {pill.icon}
+                  </span>
                   <span>{pill.label}</span>
                 </button>
               ))}
@@ -1048,7 +1236,7 @@ export function ConnectorsView({
             {/* If Search is Active or Non-All Filter or ShowAll is toggled: Show Full Catalog Grid */}
             {showAllConnectors || effectiveQuery || selectedFilter !== 'All' ? (
               <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-[#1c1d24] pb-2">
+                <div className="flex items-center justify-between border-b border-[#1c2030] pb-2">
                   <div className="flex items-center gap-2">
                     <h2 className="text-sm font-semibold text-white">
                       {effectiveQuery
@@ -1057,11 +1245,8 @@ export function ConnectorsView({
                           ? `${selectedFilter} connectors (${filteredCatalog.length})`
                           : `All connectors (${filteredCatalog.length})`}
                     </h2>
-                    <span className="text-xs text-[#71717a]">
-                      •{' '}
-                      {fullCatalogList.length > 0
-                        ? `${fullCatalogList.length.toLocaleString()} available`
-                        : `${composioTotalCount.toLocaleString()} available`}
+                    <span className="text-xs text-zinc-500">
+                      • {fullCatalogList.length.toLocaleString()} total available
                     </span>
                   </div>
                   <button
@@ -1071,80 +1256,87 @@ export function ConnectorsView({
                       setInternalSearch('');
                       setSelectedFilter('All');
                     }}
-                    className="text-xs text-[#3b82f6] hover:underline"
+                    className="text-xs text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
                   >
                     ← Back to featured
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
                   {filteredCatalog.map((item) => {
                     const connected = isItemConnected(item);
                     return (
                       <div
                         key={item.id}
-                        className="group relative flex items-start justify-between p-3.5 rounded-lg bg-[#0e0f14] hover:bg-[#13141c] border border-[#1c1d24] hover:border-[#2c2f3d] transition-all cursor-pointer shadow-xs"
+                        className="group relative flex flex-col justify-between p-4 rounded-xl bg-[#0e111a] hover:bg-[#121624] border border-[#1e2335] hover:border-[#2f3852] transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md min-h-[160px]"
                         onClick={() => setSelectedItemDetails(item)}
                       >
-                        <div className="flex items-start gap-3 min-w-0 pr-3">
-                          <div className="shrink-0 mt-0.5">{renderCatalogIcon(item)}</div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-sm font-medium text-white truncate group-hover:text-[#93c5fd] transition-colors">
-                                {item.name}
-                              </span>
-                              <VerifiedCheck />
-                              {item.isTrending && (
-                                <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-amber-500/15 border border-amber-500/30 text-amber-300">
-                                  Trending
-                                </span>
-                              )}
-                              {item.isNew && (
-                                <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-blue-500/15 border border-blue-500/30 text-blue-300">
-                                  New
-                                </span>
-                              )}
-                              {item.isDesktop && (
-                                <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-purple-500/15 border border-purple-500/30 text-purple-300">
-                                  Desktop
-                                </span>
+                        <div>
+                          <div className="flex items-start justify-between gap-2.5">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-10 h-10 rounded-xl bg-[#161a27] border border-[#242b3d] flex items-center justify-center p-2 shrink-0 group-hover:border-[#3b4766] transition-colors">
+                                {renderCatalogIcon(item)}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <h3 className="text-sm font-semibold text-zinc-100 truncate group-hover:text-blue-400 transition-colors">
+                                    {item.name}
+                                  </h3>
+                                  <VerifiedCheck />
+                                </div>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-800/80 text-zinc-400 border border-zinc-700/50">
+                                    {item.protocol}
+                                  </span>
+                                  {item.isTrending && (
+                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-amber-500/15 border border-amber-500/30 text-amber-300">
+                                      Trending
+                                    </span>
+                                  )}
+                                  {item.isNew && (
+                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-blue-500/15 border border-blue-500/30 text-blue-300">
+                                      New
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Action Button */}
+                            <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                              {connected ? (
+                                <div
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-medium"
+                                  title="Connected in Workspace"
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                  <span>Connected</span>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleInitiateConnect(item)}
+                                  disabled={busyAction === `connect-${item.provider}`}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#181e2e] hover:bg-blue-600 hover:text-white border border-[#2a344e] hover:border-blue-500 text-zinc-300 text-xs font-medium transition-all duration-150 cursor-pointer shadow-xs active:scale-[0.97]"
+                                  title={`Connect ${item.name}`}
+                                >
+                                  <PlusIcon />
+                                  <span>Connect</span>
+                                </button>
                               )}
                             </div>
-                            <p className="text-xs text-[#8b8e99] line-clamp-2 mt-1 leading-relaxed">
-                              {item.description}
-                            </p>
                           </div>
+
+                          <p className="text-xs text-zinc-400 line-clamp-2 mt-2.5 leading-relaxed font-sans">
+                            {item.description}
+                          </p>
                         </div>
 
-                        {/* Right Action Button */}
-                        <div className="shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
-                          {connected ? (
-                            <div
-                              className="w-7 h-7 rounded-full bg-[#10b981]/15 border border-[#10b981]/30 flex items-center justify-center text-[#10b981]"
-                              title="Connected"
-                            >
-                              <svg
-                                className="w-3.5 h-3.5"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth={2.5}
-                              >
-                                <path d="M20 6L9 17l-5-5" />
-                              </svg>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleInitiateConnect(item)}
-                              disabled={busyAction === `connect-${item.provider}`}
-                              className="w-7 h-7 rounded-full bg-[#181a22] hover:bg-[#222430] border border-[#27272a] hover:border-[#3b82f6] text-[#a1a1aa] hover:text-white flex items-center justify-center transition-colors shadow-xs"
-                              title={`Connect ${item.name}`}
-                            >
-                              <PlusIcon />
-                              <span className="sr-only">Connect</span>
-                            </button>
-                          )}
+                        <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-[#181d2a] text-[11px] text-zinc-500">
+                          <span className="font-mono text-zinc-400">{item.category}</span>
+                          <span className="text-zinc-500 font-mono truncate max-w-[140px]">
+                            {item.scopes?.[0] || 'Standard Scope'}
+                          </span>
                         </div>
                       </div>
                     );
@@ -1152,80 +1344,93 @@ export function ConnectorsView({
                 </div>
               </div>
             ) : (
-              /* Normal Directory Layout (Matches Screenshots 1, 2, 3) */
+              /* Normal Directory Layout */
               <div className="space-y-8">
                 {/* 1. Top Connectors Section */}
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between border-b border-[#1c1d24] pb-2">
+                  <div className="flex items-center justify-between border-b border-[#1c2030] pb-2">
                     <div className="flex items-center gap-2">
                       <h2 className="text-sm font-semibold text-white">
                         Top connectors ({topConnectors.length})
                       </h2>
-                      <span className="text-xs text-[#71717a]">
+                      <span className="text-xs text-zinc-500">
                         • {fullCatalogList.length} available
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowAllConnectors(true)}
-                      className="text-xs text-[#3b82f6] hover:text-[#60a5fa] font-medium flex items-center gap-1 transition-colors"
+                      className="text-xs text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 transition-colors cursor-pointer"
                     >
                       <span>Show all ({fullCatalogList.length})</span>
                       <span>›</span>
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
                     {topConnectors.map((item) => {
                       const connected = isItemConnected(item);
                       return (
                         <div
                           key={item.id}
-                          className="group relative flex items-start justify-between p-3.5 rounded-lg bg-[#0e0f14] hover:bg-[#13141c] border border-[#1c1d24] hover:border-[#2c2f3d] transition-all cursor-pointer shadow-xs"
+                          className="group relative flex flex-col justify-between p-4 rounded-xl bg-[#0e111a] hover:bg-[#121624] border border-[#1e2335] hover:border-[#2f3852] transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md min-h-[160px]"
                           onClick={() => setSelectedItemDetails(item)}
                         >
-                          <div className="flex items-start gap-3 min-w-0 pr-3">
-                            <div className="shrink-0 mt-0.5">{renderCatalogIcon(item)}</div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-sm font-medium text-white truncate group-hover:text-[#93c5fd] transition-colors">
-                                  {item.name}
-                                </span>
-                                <VerifiedCheck />
+                          <div>
+                            <div className="flex items-start justify-between gap-2.5">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-10 h-10 rounded-xl bg-[#161a27] border border-[#242b3d] flex items-center justify-center p-2 shrink-0 group-hover:border-[#3b4766] transition-colors">
+                                  {renderCatalogIcon(item)}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <h3 className="text-sm font-semibold text-zinc-100 truncate group-hover:text-blue-400 transition-colors">
+                                      {item.name}
+                                    </h3>
+                                    <VerifiedCheck />
+                                  </div>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-800/80 text-zinc-400 border border-zinc-700/50">
+                                      {item.protocol}
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
-                              <p className="text-xs text-[#8b8e99] line-clamp-2 mt-1 leading-relaxed">
-                                {item.description}
-                              </p>
+
+                              <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                                {connected ? (
+                                  <div
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-medium"
+                                    title="Connected in Workspace"
+                                  >
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                    <span>Connected</span>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleInitiateConnect(item)}
+                                    disabled={busyAction === `connect-${item.provider}`}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#181e2e] hover:bg-blue-600 hover:text-white border border-[#2a344e] hover:border-blue-500 text-zinc-300 text-xs font-medium transition-all duration-150 cursor-pointer shadow-xs active:scale-[0.97]"
+                                    title={`Connect ${item.name}`}
+                                  >
+                                    <PlusIcon />
+                                    <span>Connect</span>
+                                  </button>
+                                )}
+                              </div>
                             </div>
+
+                            <p className="text-xs text-zinc-400 line-clamp-2 mt-2.5 leading-relaxed font-sans">
+                              {item.description}
+                            </p>
                           </div>
 
-                          <div className="shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
-                            {connected ? (
-                              <div
-                                className="w-7 h-7 rounded-full bg-[#10b981]/15 border border-[#10b981]/30 flex items-center justify-center text-[#10b981]"
-                                title="Connected"
-                              >
-                                <svg
-                                  className="w-3.5 h-3.5"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth={2.5}
-                                >
-                                  <path d="M20 6L9 17l-5-5" />
-                                </svg>
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => handleInitiateConnect(item)}
-                                className="w-7 h-7 rounded-full bg-[#181a22] hover:bg-[#222430] border border-[#27272a] hover:border-[#3b82f6] text-[#a1a1aa] hover:text-white flex items-center justify-center transition-colors shadow-xs"
-                                title={`Connect ${item.name}`}
-                              >
-                                <PlusIcon />
-                                <span className="sr-only">Connect</span>
-                              </button>
-                            )}
+                          <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-[#181d2a] text-[11px] text-zinc-500">
+                            <span className="font-mono text-zinc-400">{item.category}</span>
+                            <span className="text-zinc-500 font-mono truncate max-w-[140px]">
+                              {item.scopes?.[0] || 'Standard Scope'}
+                            </span>
                           </div>
                         </div>
                       );
@@ -1236,68 +1441,81 @@ export function ConnectorsView({
                 {/* 2. More Integrations & Dynamic Toolkits */}
                 {otherConnectors.length > 0 && (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between border-b border-[#1c1d24] pb-2">
+                    <div className="flex items-center justify-between border-b border-[#1c2030] pb-2">
                       <div className="flex items-center gap-2">
                         <h2 className="text-sm font-semibold text-white">
                           More Integrations & Dynamic Toolkits
                         </h2>
-                        <span className="text-xs text-[#71717a]">
+                        <span className="text-xs text-zinc-500">
                           • {otherConnectors.length} available
                         </span>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
                       {otherConnectors.map((item) => {
                         const connected = isItemConnected(item);
                         return (
                           <div
                             key={item.id}
-                            className="group relative flex items-start justify-between p-3.5 rounded-lg bg-[#0e0f14] hover:bg-[#13141c] border border-[#1c1d24] hover:border-[#2c2f3d] transition-all cursor-pointer shadow-xs"
+                            className="group relative flex flex-col justify-between p-4 rounded-xl bg-[#0e111a] hover:bg-[#121624] border border-[#1e2335] hover:border-[#2f3852] transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md min-h-[160px]"
                             onClick={() => setSelectedItemDetails(item)}
                           >
-                            <div className="flex items-start gap-3 min-w-0 pr-3">
-                              <div className="shrink-0 mt-0.5">{renderCatalogIcon(item)}</div>
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="text-sm font-medium text-white truncate group-hover:text-[#93c5fd] transition-colors">
-                                    {item.name}
-                                  </span>
-                                  <VerifiedCheck />
+                            <div>
+                              <div className="flex items-start justify-between gap-2.5">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="w-10 h-10 rounded-xl bg-[#161a27] border border-[#242b3d] flex items-center justify-center p-2 shrink-0 group-hover:border-[#3b4766] transition-colors">
+                                    {renderCatalogIcon(item)}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <h3 className="text-sm font-semibold text-zinc-100 truncate group-hover:text-blue-400 transition-colors">
+                                        {item.name}
+                                      </h3>
+                                      <VerifiedCheck />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-800/80 text-zinc-400 border border-zinc-700/50">
+                                        {item.protocol}
+                                      </span>
+                                    </div>
+                                  </div>
                                 </div>
-                                <p className="text-xs text-[#8b8e99] line-clamp-2 mt-1 leading-relaxed">
-                                  {item.description}
-                                </p>
+
+                                <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                                  {connected ? (
+                                    <div
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-medium"
+                                      title="Connected in Workspace"
+                                    >
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                      <span>Connected</span>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleInitiateConnect(item)}
+                                      disabled={busyAction === `connect-${item.provider}`}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#181e2e] hover:bg-blue-600 hover:text-white border border-[#2a344e] hover:border-blue-500 text-zinc-300 text-xs font-medium transition-all duration-150 cursor-pointer shadow-xs active:scale-[0.97]"
+                                      title={`Connect ${item.name}`}
+                                    >
+                                      <PlusIcon />
+                                      <span>Connect</span>
+                                    </button>
+                                  )}
+                                </div>
                               </div>
+
+                              <p className="text-xs text-zinc-400 line-clamp-2 mt-2.5 leading-relaxed font-sans">
+                                {item.description}
+                              </p>
                             </div>
 
-                            <div className="shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
-                              {connected ? (
-                                <div
-                                  className="w-7 h-7 rounded-full bg-[#10b981]/15 border border-[#10b981]/30 flex items-center justify-center text-[#10b981]"
-                                  title="Connected"
-                                >
-                                  <svg
-                                    className="w-3.5 h-3.5"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth={2.5}
-                                  >
-                                    <path d="M20 6L9 17l-5-5" />
-                                  </svg>
-                                </div>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleInitiateConnect(item)}
-                                  className="w-7 h-7 rounded-full bg-[#181a22] hover:bg-[#222430] border border-[#27272a] hover:border-[#3b82f6] text-[#a1a1aa] hover:text-white flex items-center justify-center transition-colors shadow-xs"
-                                  title={`Connect ${item.name}`}
-                                >
-                                  <PlusIcon />
-                                  <span className="sr-only">Connect</span>
-                                </button>
-                              )}
+                            <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-[#181d2a] text-[11px] text-zinc-500">
+                              <span className="font-mono text-zinc-400">{item.category}</span>
+                              <span className="text-zinc-500 font-mono truncate max-w-[140px]">
+                                {item.scopes?.[0] || 'Standard Scope'}
+                              </span>
                             </div>
                           </div>
                         );
@@ -1314,20 +1532,20 @@ export function ConnectorsView({
           /* ────────────────────────────────────────────────────────────────────────── */
           <div className="max-w-6xl mx-auto space-y-6">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#1c1d24] pb-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#1c2030] pb-4">
               <div>
-                <div className="flex items-center gap-2 text-sm text-[#71717a] mb-1">
-                  <span>Connectors</span>
+                <div className="flex items-center gap-2 text-xs text-zinc-500 mb-1.5 font-mono">
+                  <span>CONNECTORS</span>
                   <span>/</span>
-                  <span className="text-[#f4f4f5] font-medium">Full Connectors Studio</span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#3b82f6]/15 text-[#60a5fa] border border-[#3b82f6]/30">
+                  <span className="text-zinc-200 font-medium">STUDIO</span>
+                  <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30">
                     Enterprise Protocol Builder
                   </span>
                 </div>
-                <h1 className="text-lg font-semibold text-white">
+                <h1 className="text-base font-semibold text-white tracking-tight">
                   Connectors Studio & Protocol Orchestrator
                 </h1>
-                <p className="text-xs text-[#8b8e99] max-w-2xl mt-0.5">
+                <p className="text-xs text-zinc-400 max-w-2xl mt-1 leading-relaxed">
                   Build, test, and register custom Model Context Protocol (stdio/HTTP) servers,
                   enterprise REST APIs, and GraphQL endpoints with sandboxed execution and live
                   health monitoring.
@@ -1338,7 +1556,7 @@ export function ConnectorsView({
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-[#3b82f6] hover:bg-[#2563eb] text-white shadow-xs transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-500 text-white shadow-xs transition-all cursor-pointer active:scale-[0.98]"
                 >
                   <PlusIcon />
                   <span>Add Custom Connector</span>
@@ -1348,18 +1566,35 @@ export function ConnectorsView({
 
             {/* Protocol Architecture Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 rounded-lg bg-[#0e0f14] border border-[#1c1d24] hover:border-[#3b82f6]/40 transition-all flex flex-col justify-between space-y-3">
+              <div className="p-4 rounded-xl bg-[#0e111a] border border-[#1e2335] hover:border-[#354266] transition-all flex flex-col justify-between space-y-3 shadow-xs">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="w-8 h-8 rounded-lg bg-[#3b82f6]/15 border border-[#3b82f6]/30 flex items-center justify-center text-sm font-bold text-[#60a5fa]">
-                      ⚡
+                    <div className="w-9 h-9 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                      <svg
+                        className="w-5 h-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <rect x="4" y="4" width="16" height="16" rx="2" />
+                        <rect x="9" y="9" width="6" height="6" />
+                        <line x1="9" y1="1" x2="9" y2="4" />
+                        <line x1="15" y1="1" x2="15" y2="4" />
+                        <line x1="9" y1="20" x2="9" y2="23" />
+                        <line x1="15" y1="20" x2="15" y2="23" />
+                        <line x1="20" y1="9" x2="23" y2="9" />
+                        <line x1="20" y1="15" x2="23" y2="15" />
+                        <line x1="1" y1="9" x2="4" y2="9" />
+                        <line x1="1" y1="15" x2="4" y2="15" />
+                      </svg>
                     </div>
-                    <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-[#10b981]/15 text-[#34d399] border border-[#10b981]/30">
+                    <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
                       Standard v1.0
                     </span>
                   </div>
                   <h3 className="text-sm font-semibold text-white">Model Context Protocol (MCP)</h3>
-                  <p className="text-xs text-[#8b8e99] leading-relaxed">
+                  <p className="text-xs text-zinc-400 leading-relaxed">
                     Connect local subprocesses (stdio) or remote streamable-HTTP endpoints.
                     Auto-discovers dynamic tools, enforces typed JSON schema parameters, and routes
                     via approval gates.
@@ -1371,24 +1606,34 @@ export function ConnectorsView({
                     setCustomType('mcp');
                     setIsAddModalOpen(true);
                   }}
-                  className="w-full py-1.5 px-3 text-xs font-medium rounded bg-[#181a22] hover:bg-[#222430] border border-[#27272a] text-[#d4d4d8] hover:text-white transition-colors text-center"
+                  className="w-full py-1.5 px-3 text-xs font-medium rounded-lg bg-[#141724] hover:bg-[#1a1f30] border border-[#242b3d] text-zinc-200 hover:text-white transition-colors text-center cursor-pointer"
                 >
                   + Add MCP Server
                 </button>
               </div>
 
-              <div className="p-4 rounded-lg bg-[#0e0f14] border border-[#1c1d24] hover:border-[#10b981]/40 transition-all flex flex-col justify-between space-y-3">
+              <div className="p-4 rounded-xl bg-[#0e111a] border border-[#1e2335] hover:border-[#354266] transition-all flex flex-col justify-between space-y-3 shadow-xs">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="w-8 h-8 rounded-lg bg-[#10b981]/15 border border-[#10b981]/30 flex items-center justify-center text-sm font-bold text-[#34d399]">
-                      🌐
+                    <div className="w-9 h-9 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                      <svg
+                        className="w-5 h-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="2" y1="12" x2="22" y2="12" />
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                      </svg>
                     </div>
-                    <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-[#3b82f6]/15 text-[#60a5fa] border border-[#3b82f6]/30">
+                    <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30">
                       REST / Webhooks
                     </span>
                   </div>
                   <h3 className="text-sm font-semibold text-white">Enterprise REST API</h3>
-                  <p className="text-xs text-[#8b8e99] leading-relaxed">
+                  <p className="text-xs text-zinc-400 leading-relaxed">
                     Integrate proprietary corporate microservices, webhooks, and REST endpoints.
                     Supports Bearer token, custom API keys, and Infisical encrypted environment
                     variables.
@@ -1400,24 +1645,34 @@ export function ConnectorsView({
                     setCustomType('rest');
                     setIsAddModalOpen(true);
                   }}
-                  className="w-full py-1.5 px-3 text-xs font-medium rounded bg-[#181a22] hover:bg-[#222430] border border-[#27272a] text-[#d4d4d8] hover:text-white transition-colors text-center"
+                  className="w-full py-1.5 px-3 text-xs font-medium rounded-lg bg-[#141724] hover:bg-[#1a1f30] border border-[#242b3d] text-zinc-200 hover:text-white transition-colors text-center cursor-pointer"
                 >
                   + Add REST Connector
                 </button>
               </div>
 
-              <div className="p-4 rounded-lg bg-[#0e0f14] border border-[#1c1d24] hover:border-[#8b5cf6]/40 transition-all flex flex-col justify-between space-y-3">
+              <div className="p-4 rounded-xl bg-[#0e111a] border border-[#1e2335] hover:border-[#354266] transition-all flex flex-col justify-between space-y-3 shadow-xs">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="w-8 h-8 rounded-lg bg-[#8b5cf6]/15 border border-[#8b5cf6]/30 flex items-center justify-center text-sm font-bold text-[#a78bfa]">
-                      ⬡
+                    <div className="w-9 h-9 rounded-lg bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                      <svg
+                        className="w-5 h-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                        <polyline points="2 17 12 22 22 17" />
+                        <polyline points="2 12 12 17 22 12" />
+                      </svg>
                     </div>
-                    <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-[#8b5cf6]/15 text-[#a78bfa] border border-[#8b5cf6]/30">
+                    <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30">
                       GraphQL 2021
                     </span>
                   </div>
                   <h3 className="text-sm font-semibold text-white">GraphQL Explorer</h3>
-                  <p className="text-xs text-[#8b8e99] leading-relaxed">
+                  <p className="text-xs text-zinc-400 leading-relaxed">
                     Point Vaeloom agents to GraphQL endpoints with automated schema introspection,
                     custom queries, document mutations, and JWT header propagation.
                   </p>
@@ -1428,7 +1683,7 @@ export function ConnectorsView({
                     setCustomType('graphql');
                     setIsAddModalOpen(true);
                   }}
-                  className="w-full py-1.5 px-3 text-xs font-medium rounded bg-[#181a22] hover:bg-[#222430] border border-[#27272a] text-[#d4d4d8] hover:text-white transition-colors text-center"
+                  className="w-full py-1.5 px-3 text-xs font-medium rounded-lg bg-[#141724] hover:bg-[#1a1f30] border border-[#242b3d] text-zinc-200 hover:text-white transition-colors text-center cursor-pointer"
                 >
                   + Add GraphQL Endpoint
                 </button>
@@ -1437,21 +1692,22 @@ export function ConnectorsView({
 
             {/* Built-in Sovereign MCP Servers Grid */}
             <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between border-b border-[#1c2030] pb-2">
                 <div>
                   <h2 className="text-sm font-semibold text-white">
                     Built-in Sovereign MCP Servers
                   </h2>
-                  <p className="text-xs text-[#71717a]">
-                    Pre-configured, sandboxed protocols maintained by Vaeloom
+                  <p className="text-xs text-zinc-500">
+                    Pre-configured, sandboxed protocols maintained sovereignly by Vaeloom
                   </p>
                 </div>
-                <span className="text-xs text-[#10b981] font-mono font-medium">
-                  ● 5 active & sandboxed
+                <span className="text-xs text-emerald-400 font-mono font-medium flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>5 active & sandboxed</span>
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                 {[
                   {
                     name: 'SQLite Memory MCP',
@@ -1486,19 +1742,21 @@ export function ConnectorsView({
                 ].map((mcpItem, idx) => (
                   <div
                     key={idx}
-                    className="p-3.5 rounded-lg bg-[#0e0f14] border border-[#1c1d24] flex flex-col justify-between space-y-3"
+                    className="p-4 rounded-xl bg-[#0e111a] border border-[#1e2335] hover:border-[#2f3852] transition-all flex flex-col justify-between space-y-3 shadow-xs"
                   >
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-white">{mcpItem.name}</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <span className="text-xs font-semibold text-zinc-100">{mcpItem.name}</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                           {mcpItem.tag}
                         </span>
                       </div>
-                      <p className="text-xs text-[#8b8e99] line-clamp-2">{mcpItem.desc}</p>
+                      <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
+                        {mcpItem.desc}
+                      </p>
                     </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-[#181a22] text-[11px]">
-                      <span className="font-mono text-[#71717a]">{mcpItem.protocol}</span>
+                    <div className="flex items-center justify-between pt-2 border-t border-[#181d2a] text-[11px]">
+                      <span className="font-mono text-zinc-500">{mcpItem.protocol}</span>
                       <span className="text-emerald-400 font-medium">Ready</span>
                     </div>
                   </div>
@@ -1508,14 +1766,14 @@ export function ConnectorsView({
 
             {/* Configured Custom Connectors List */}
             <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between border-b border-[#1c2030] pb-2">
                 <div>
                   <h2 className="text-sm font-semibold text-white">Configured Custom Connectors</h2>
-                  <p className="text-xs text-[#71717a]">
+                  <p className="text-xs text-zinc-500">
                     Custom endpoints and private MCP instances active in this workspace
                   </p>
                 </div>
-                <span className="text-xs text-[#8b8e99]">
+                <span className="text-xs text-zinc-400 font-mono">
                   {
                     dynamicConnectors.filter((c) =>
                       ['mcp', 'rest', 'graphql'].includes(c.type?.toLowerCase()),
@@ -1528,35 +1786,37 @@ export function ConnectorsView({
               {dynamicConnectors.filter((c) =>
                 ['mcp', 'rest', 'graphql'].includes(c.type?.toLowerCase()),
               ).length === 0 ? (
-                <div className="text-center py-8 border border-dashed border-[#27272a] rounded-lg bg-[#0c0d12]/50">
-                  <p className="text-xs text-[#8b8e99]">
+                <div className="text-center py-10 border border-dashed border-[#242b3d] rounded-xl bg-[#0c0e15]/50">
+                  <p className="text-xs text-zinc-400">
                     No custom MCP, REST, or GraphQL connectors created in this workspace yet.
                   </p>
                   <button
                     type="button"
                     onClick={() => setIsAddModalOpen(true)}
-                    className="mt-2.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-[#3b82f6] text-white hover:bg-[#2563eb] transition-colors"
+                    className="mt-3 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-colors cursor-pointer"
                   >
                     + Add First Custom Connector
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                   {dynamicConnectors
                     .filter((c) => ['mcp', 'rest', 'graphql'].includes(c.type?.toLowerCase()))
                     .map((conn) => (
                       <div
                         key={conn.id}
-                        className="p-4 rounded-lg bg-[#0e0f14] border border-[#1c1d24] space-y-3"
+                        className="p-4 rounded-xl bg-[#0e111a] border border-[#1e2335] hover:border-[#2f3852] transition-all space-y-3 shadow-xs"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-[#3b82f6]/10 border border-[#3b82f6]/30 flex items-center justify-center font-mono font-bold text-xs text-[#60a5fa]">
+                            <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center font-mono font-bold text-xs text-blue-400">
                               {conn.type.toUpperCase()}
                             </div>
                             <div>
                               <h3 className="text-xs font-semibold text-white">{conn.name}</h3>
-                              <p className="text-[10px] font-mono text-[#71717a]">ID: {conn.id}</p>
+                              <p className="text-[10px] font-mono text-zinc-500 truncate max-w-[150px]">
+                                ID: {conn.id}
+                              </p>
                             </div>
                           </div>
                           <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 capitalize">
@@ -1564,11 +1824,11 @@ export function ConnectorsView({
                           </span>
                         </div>
 
-                        <div className="flex items-center justify-between pt-2 border-t border-[#181a22] text-xs">
+                        <div className="flex items-center justify-between pt-2 border-t border-[#181d2a] text-xs">
                           <button
                             type="button"
                             onClick={() => void handleTestConnection(conn.id)}
-                            className="px-2.5 py-1 rounded bg-[#181a22] hover:bg-[#222430] border border-[#27272a] text-[#d4d4d8] hover:text-white transition-colors"
+                            className="px-2.5 py-1 rounded-lg bg-[#141724] hover:bg-[#1c2236] border border-[#242b3d] text-zinc-300 hover:text-white transition-colors cursor-pointer"
                           >
                             Ping Health
                           </button>
@@ -1576,7 +1836,7 @@ export function ConnectorsView({
                             <button
                               type="button"
                               onClick={() => handleInspectTools(conn.id, conn.name)}
-                              className="px-2.5 py-1 rounded bg-[#3b82f6]/15 hover:bg-[#3b82f6]/25 border border-[#3b82f6]/30 text-[#93c5fd] transition-colors"
+                              className="px-2.5 py-1 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-300 transition-colors cursor-pointer"
                             >
                               Inspect Tools
                             </button>
@@ -1584,7 +1844,7 @@ export function ConnectorsView({
                           <button
                             type="button"
                             onClick={() => handleDisconnect(conn.id, conn.name, false)}
-                            className="text-rose-400 hover:text-rose-300 font-medium transition-colors"
+                            className="text-rose-400 hover:text-rose-300 font-medium transition-colors cursor-pointer text-xs"
                           >
                             Remove
                           </button>
@@ -1599,73 +1859,190 @@ export function ConnectorsView({
           /* ────────────────────────────────────────────────────────────────────────── */
           /* Yours View: Active & Configured Workspace Connectors                       */
           /* ────────────────────────────────────────────────────────────────────────── */
-          <div className="max-w-6xl mx-auto space-y-5">
-            <div className="flex items-center justify-between border-b border-[#1c1d24] pb-3">
-              <div className="flex items-center gap-2 text-sm text-[#71717a]">
-                <span>Connectors</span>
+          <div className="max-w-7xl mx-auto space-y-5">
+            <div className="flex items-center justify-between border-b border-[#1c2030] pb-3">
+              <div className="flex items-center gap-2 text-xs font-mono text-zinc-500">
+                <span>CONNECTORS</span>
                 <span>/</span>
-                <span className="text-[#f4f4f5] font-medium">Configured in Workspace</span>
-                <span className="text-xs text-[#71717a]">({configuredItems.length})</span>
+                <span className="text-zinc-200 font-medium font-sans text-sm">
+                  Configured in Workspace
+                </span>
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                  {configuredItems.length} active
+                </span>
               </div>
 
               <button
                 type="button"
                 onClick={() => setActiveSubTab('discover')}
-                className="text-xs text-[#3b82f6] hover:underline"
+                className="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors cursor-pointer flex items-center gap-1"
               >
-                + Browse Directory
+                <span>+ Browse Directory</span>
               </button>
             </div>
 
             {configuredItems.length === 0 ? (
-              <div className="text-center py-12 border border-dashed border-[#27272a] rounded-lg">
-                <p className="text-sm text-[#8b8e99]">
-                  No connectors configured in this workspace yet.
-                </p>
+              <div className="text-center py-16 border border-dashed border-[#242b3d] rounded-2xl bg-[#0c0e15]/50 max-w-lg mx-auto space-y-3">
+                <div className="w-12 h-12 rounded-xl bg-[#141724] border border-[#242b3d] flex items-center justify-center text-blue-400 mx-auto">
+                  <svg
+                    className="w-6 h-6"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.75}
+                  >
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                    <line x1="12" y1="22.08" x2="12" y2="12" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-white">No connectors configured</h3>
+                  <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
+                    Integrate Google Drive, GitHub, Slack, ATS crawlers, or custom MCP servers to
+                    empower your autonomous agents.
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={() => setActiveSubTab('discover')}
-                  className="mt-3 px-3 py-1.5 text-xs font-semibold rounded-md bg-[#3b82f6] text-white hover:bg-[#2563eb]"
+                  className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-all cursor-pointer shadow-xs active:scale-[0.98]"
                 >
-                  Discover Connectors
+                  <PlusIcon />
+                  <span>Discover Connectors</span>
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
                 {configuredItems.map((item) => {
                   const isSyncing = syncBusyId === item.id || busyAction === `sync-${item.id}`;
+                  const displayName =
+                    item.name?.trim() || item.provider?.toUpperCase() || 'Custom Connector';
+                  const catalogDef = fullCatalogList.find((c) => {
+                    if (
+                      item.provider &&
+                      c.provider &&
+                      c.provider.toLowerCase() === item.provider.toLowerCase()
+                    )
+                      return true;
+                    if (item.name && c.name && c.name.toLowerCase() === item.name.toLowerCase())
+                      return true;
+                    if (item.id && (c.id === item.id || c.id === `composio-${item.id}`))
+                      return true;
+                    return false;
+                  });
+
                   return (
                     <div
                       key={item.id}
-                      className="p-4 rounded-lg bg-[#0e0f14] border border-[#1c1d24] hover:border-[#27272a] transition-all space-y-3"
+                      className="group relative flex flex-col justify-between p-4 rounded-xl bg-[#0e111a] hover:bg-[#121624] border border-[#1e2335] hover:border-[#2f3852] transition-all duration-200 shadow-xs hover:shadow-md space-y-3.5"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <span
-                            className={`w-2 h-2 rounded-full ${
-                              item.status === 'active'
-                                ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
-                                : item.status === 'syncing'
-                                  ? 'bg-amber-500 animate-pulse'
-                                  : 'bg-rose-500'
-                            }`}
-                          />
-                          <h3 className="text-sm font-semibold text-white">{item.name}</h3>
-                          <VerifiedCheck />
+                      <div>
+                        <div className="flex items-start justify-between gap-2.5">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-[#161a27] border border-[#242b3d] flex items-center justify-center p-2 shrink-0 group-hover:border-[#3b4766] transition-colors">
+                              {catalogDef ? (
+                                renderCatalogIcon(catalogDef)
+                              ) : item.type.toLowerCase().includes('mcp') ? (
+                                <svg
+                                  className="w-5 h-5 text-emerald-400"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                >
+                                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                                </svg>
+                              ) : item.type.toLowerCase().includes('graphql') ? (
+                                <svg
+                                  className="w-5 h-5 text-purple-400"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                >
+                                  <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                                  <polyline points="2 17 12 22 22 17" />
+                                  <polyline points="2 12 12 17 22 12" />
+                                </svg>
+                              ) : item.type.toLowerCase().includes('rest') ? (
+                                <svg
+                                  className="w-5 h-5 text-blue-400"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                >
+                                  <circle cx="12" cy="12" r="10" />
+                                  <line x1="2" y1="12" x2="22" y2="12" />
+                                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                                </svg>
+                              ) : (
+                                <svg
+                                  className="w-5 h-5 text-blue-400"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth={1.75}
+                                >
+                                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                                </svg>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <h3 className="text-sm font-semibold text-zinc-100 truncate group-hover:text-blue-400 transition-colors">
+                                  {displayName}
+                                </h3>
+                                <VerifiedCheck />
+                              </div>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-800/80 text-zinc-400 border border-zinc-700/50">
+                                  {item.type}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Live Status Pill */}
+                          <div className="shrink-0">
+                            {item.status === 'active' ? (
+                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[10px] font-medium">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                <span>Active</span>
+                              </div>
+                            ) : item.status === 'syncing' || isSyncing ? (
+                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-medium">
+                                <svg
+                                  className="w-2.5 h-2.5 animate-spin"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                >
+                                  <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                  <path d="M3 3v5h5" />
+                                </svg>
+                                <span>Syncing</span>
+                              </div>
+                            ) : (
+                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-300 text-[10px] font-medium">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                                <span>Error</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#181a22] border border-[#27272a] text-[#8b8e99]">
-                          {item.type}
-                        </span>
+
+                        <div className="flex items-center justify-between text-[11px] text-zinc-500 font-mono pt-2">
+                          <span>Last synced</span>
+                          <span className="text-zinc-400">{formatDate(item.lastSync)}</span>
+                        </div>
                       </div>
 
-                      <div className="flex items-center justify-between text-xs text-[#71717a]">
-                        <span>Last sync: {formatDate(item.lastSync)}</span>
-                        <span className="text-emerald-400 capitalize">{item.status}</span>
-                      </div>
-
-                      {/* Action Row */}
-                      <div className="flex items-center justify-between pt-2 border-t border-[#181a22] gap-2">
-                        <div className="flex items-center gap-2">
+                      {/* Action Dock */}
+                      <div className="flex items-center justify-between pt-2.5 border-t border-[#181d2a] gap-2">
+                        <div className="flex items-center gap-1.5">
                           <button
                             type="button"
                             onClick={() => {
@@ -1676,9 +2053,24 @@ export function ConnectorsView({
                               }
                             }}
                             disabled={isSyncing}
-                            className="px-2 py-1 text-xs font-medium rounded bg-[#181a22] hover:bg-[#222430] border border-[#27272a] text-[#d4d4d8] hover:text-white transition-colors"
+                            className="px-2.5 py-1 text-xs font-medium rounded-lg bg-[#141724] hover:bg-[#1a1f30] border border-[#242b3d] text-zinc-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1"
                           >
-                            {isSyncing ? 'Syncing...' : 'Sync Now'}
+                            {isSyncing ? (
+                              <>
+                                <svg
+                                  className="w-3 h-3 animate-spin text-blue-400"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                >
+                                  <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                </svg>
+                                <span>Syncing...</span>
+                              </>
+                            ) : (
+                              <span>Sync Now</span>
+                            )}
                           </button>
 
                           <button
@@ -1690,20 +2082,20 @@ export function ConnectorsView({
                                 toast({
                                   tone: 'success',
                                   title: 'Health 200 OK',
-                                  detail: `${item.name} integration token valid and reachable.`,
+                                  detail: `${item.name} token is valid and reachable.`,
                                 });
                               }
                             }}
-                            className="px-2 py-1 text-xs font-medium rounded bg-[#181a22] hover:bg-[#222430] border border-[#27272a] text-[#a1a1aa] hover:text-white transition-colors"
+                            className="px-2.5 py-1 text-xs font-medium rounded-lg bg-[#141724] hover:bg-[#1a1f30] border border-[#242b3d] text-zinc-400 hover:text-white transition-colors cursor-pointer"
                           >
-                            Test
+                            Ping
                           </button>
 
                           {item.type.includes('MCP') && (
                             <button
                               type="button"
                               onClick={() => handleInspectTools(item.id, item.name)}
-                              className="px-2 py-1 text-xs font-medium rounded bg-[#3b82f6]/15 hover:bg-[#3b82f6]/25 border border-[#3b82f6]/30 text-[#93c5fd] transition-colors"
+                              className="px-2.5 py-1 text-xs font-medium rounded-lg bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-300 transition-colors cursor-pointer"
                             >
                               Tools
                             </button>
@@ -1715,7 +2107,7 @@ export function ConnectorsView({
                           onClick={() =>
                             handleDisconnect(item.id, item.name, item.isWorkspaceIntegration)
                           }
-                          className="text-xs text-rose-400 hover:text-rose-300 font-medium transition-colors"
+                          className="text-xs text-rose-400 hover:text-rose-300 font-medium transition-colors cursor-pointer"
                         >
                           Disconnect
                         </button>

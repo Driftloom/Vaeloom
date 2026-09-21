@@ -601,8 +601,9 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, search
                             {p.name}
                           </span>
                           {p.isRecommended && (
-                            <span className="px-1.5 py-0.2 rounded text-2xs font-sans font-medium bg-[#1e251e] text-[#86efac] border border-[#2b3a2c]">
-                              ★ recommended • free
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-2xs font-sans font-medium bg-[#1e251e] text-[#86efac] border border-[#2b3a2c]">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#86efac]" />
+                              <span>Recommended • Free</span>
                             </span>
                           )}
                           {p.badge && (
@@ -618,7 +619,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, search
 
                       <div className="shrink-0 flex items-center gap-1.5 mt-0.5">
                         <span
-                          className={`text-xs font-sans font-medium ${
+                          className={`inline-flex items-center gap-1 text-xs font-sans font-medium ${
                             p.status === 'Active'
                               ? 'text-[#22c55e]'
                               : p.status === 'Ready'
@@ -626,7 +627,16 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, search
                                 : 'text-[#eab308]'
                           }`}
                         >
-                          ✓ {p.status}
+                          <svg
+                            className="w-3.5 h-3.5"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2.5}
+                          >
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                          <span>{p.status}</span>
                         </span>
                       </div>
                     </div>

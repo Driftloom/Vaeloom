@@ -385,9 +385,9 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
     ).trim();
     setTestRunning(true);
     setTestEvents([
-      '⚡ Connecting to agent orchestration runtime…',
-      `🎯 Intent classified: ${selectedAgent.name} (99% confidence)`,
-      '🧭 Planning phase: generating sub-goals and tool DAG',
+      '[CONNECT] Connecting to agent orchestration runtime...',
+      `[INTENT] Intent classified: ${selectedAgent.name} (99% confidence)`,
+      '[PLAN] Planning phase: generating sub-goals and tool DAG',
     ]);
     setTestOutput(null);
 
@@ -395,7 +395,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
 
     try {
       const firstTool = selectedAgent.toolsUsed?.[0] || 'query_graph';
-      setTestEvents((prev) => [...prev, `🛠️ Tool execution: ${firstTool}(...)`]);
+      setTestEvents((prev) => [...prev, `[EXEC] Tool execution: ${firstTool}(...)`]);
 
       const res = await capabilitiesApi.test({
         workspaceId,
@@ -411,9 +411,9 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
       const latency = Date.now() - startTime;
       setTestEvents((prev) => [
         ...prev,
-        `✅ Tool returned structured result`,
-        `🧠 Reflect phase: episodic memory updated`,
-        `🏁 Execution completed successfully in ${res.executionDurationMs || latency}ms`,
+        `[TOOL_OK] Tool returned structured result`,
+        `[REFLECT] Episodic memory updated`,
+        `[DONE] Execution completed successfully in ${res.executionDurationMs || latency}ms`,
       ]);
 
       setTestOutput(
@@ -439,8 +439,8 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
       const errMsg = err instanceof Error ? err.message : 'Execution failed';
       setTestEvents((prev) => [
         ...prev,
-        `❌ Execution error: ${errMsg}`,
-        `🏁 Run terminated with failure in ${latency}ms`,
+        `[ERROR] Execution error: ${errMsg}`,
+        `[FAIL] Run terminated with failure in ${latency}ms`,
       ]);
 
       setTestOutput(

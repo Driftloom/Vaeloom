@@ -612,100 +612,219 @@ export default function CapabilitiesPage() {
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* 1. Header: Search (left) + Category Tabs (center/right)                    */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <header className="border-b border-[#1c1d24] bg-[#0c0d10] px-3 sm:px-5 py-2 shrink-0">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
-          {/* Left: Single Primary Search Bar (Compact & Sleek) */}
-          <div className="flex items-center gap-2 w-48 sm:w-56 md:w-60 shrink-0">
-            <h1 className="sr-only">Capabilities</h1>
-            <div className="relative w-full">
+      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {/* 1. Header: Enterprise Unified Command Ribbon                               */}
+      {/* ────────────────────────────────────────────────────────────────────────── */}
+      <header className="border-b border-[#1c2030] bg-[#0c0e15]/95 backdrop-blur-md px-4 sm:px-6 py-2.5 shrink-0 z-10 shadow-xs">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+          {/* Left: Breadcrumb / Identity & Omni-Search Bar */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-semibold text-white tracking-tight">Capabilities</span>
+              <span className="text-[#4b5563] text-xs">/</span>
+              <span className="text-xs font-medium text-blue-400 capitalize">
+                {selectedCategory === 'mcp' ? 'Model Context Protocol' : selectedCategory}
+              </span>
+            </div>
+
+            {/* Omni-Search Bar with Shortcut Hint */}
+            <div className="relative w-52 sm:w-64 md:w-72 shrink-0">
               <svg
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#71717a] pointer-events-none"
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
                 strokeWidth={2}
                 aria-hidden="true"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
-                />
+                <circle cx="11" cy="11" r="8" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35" />
               </svg>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={searchPlaceholder}
-                className="w-full bg-[#14151a] border border-[#23242c] rounded-md pl-8 pr-7 py-1 text-xs text-[#f4f4f5] placeholder-[#71717a] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/40 transition-all font-sans"
+                className="w-full bg-[#121520] border border-[#242b3d] rounded-lg pl-8 pr-12 py-1.5 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all font-sans"
               />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#71717a] hover:text-[#f4f4f5] p-0.5 transition-colors"
-                  title="Clear search"
-                  aria-label="Clear search"
-                >
-                  <svg
-                    className="w-3.5 h-3.5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
+                {searchQuery ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="text-zinc-400 hover:text-white p-0.5 pointer-events-auto cursor-pointer"
+                    title="Clear search"
+                    aria-label="Clear search"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              )}
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                ) : (
+                  <kbd className="hidden sm:inline-block font-mono text-[10px] text-zinc-500 border border-zinc-700/60 rounded px-1.5 py-0.5 bg-zinc-900/80">
+                    /
+                  </kbd>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Right: Category Tabs (Skills, Connectors, MCP, Plugins, Tools, Agents) */}
-          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-            {(
-              [
-                { id: 'skills', label: 'Skills', count: categoryCounts.skills },
-                { id: 'connectors', label: 'Connectors', count: categoryCounts.connectors },
-                { id: 'mcp', label: 'MCP', count: categoryCounts.mcp },
-                { id: 'plugins', label: 'Plugins', count: categoryCounts.plugins },
-                { id: 'tools', label: 'Tools', count: categoryCounts.tools },
-                { id: 'agents', label: 'Agents', count: categoryCounts.agents },
-              ] as const
-            ).map((tab) => {
-              const isActive = selectedCategory === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() => {
-                    setSelectedCategory(tab.id);
-                    setSelectedTag('All');
-                  }}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-sans font-medium transition-all ${
-                    isActive
-                      ? 'bg-[#181a22] text-white font-semibold shadow-xs border border-[#2c2f3d]'
-                      : 'text-[#8b8e99] hover:text-[#e4e4e7] hover:bg-[#14151a]'
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                  <span
-                    className={`text-2xs font-sans px-1.5 py-0.2 rounded-full ${
-                      isActive ? 'bg-primary/25 text-[#93c5fd] font-semibold' : 'text-[#61646d]'
+          {/* Right: Segmented Category Selector & Primary CTA Button */}
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar justify-between xl:justify-end">
+            <div className="flex items-center gap-1 p-0.5 rounded-lg bg-[#11141e] border border-[#202636]">
+              {(
+                [
+                  {
+                    id: 'skills',
+                    label: 'Skills',
+                    count: categoryCounts.skills,
+                    icon: (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    id: 'connectors',
+                    label: 'Connectors',
+                    count: categoryCounts.connectors,
+                    icon: (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    id: 'mcp',
+                    label: 'MCP',
+                    count: categoryCounts.mcp,
+                    icon: (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <rect x="4" y="4" width="16" height="16" rx="2" />
+                        <rect x="9" y="9" width="6" height="6" />
+                        <line x1="9" y1="1" x2="9" y2="4" />
+                        <line x1="15" y1="1" x2="15" y2="4" />
+                        <line x1="9" y1="20" x2="9" y2="23" />
+                        <line x1="15" y1="20" x2="15" y2="23" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    id: 'tools',
+                    label: 'Tools',
+                    count: categoryCounts.tools,
+                    icon: (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    id: 'plugins',
+                    label: 'Plugins',
+                    count: categoryCounts.plugins,
+                    icon: (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                      </svg>
+                    ),
+                  },
+                  {
+                    id: 'agents',
+                    label: 'Agents',
+                    count: categoryCounts.agents,
+                    icon: (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <rect x="3" y="11" width="18" height="10" rx="2" />
+                        <circle cx="12" cy="5" r="2" />
+                        <path d="M12 7v4" />
+                        <line x1="8" y1="16" x2="8" y2="16" />
+                        <line x1="16" y1="16" x2="16" y2="16" />
+                      </svg>
+                    ),
+                  },
+                ] as const
+              ).map((tab) => {
+                const isActive = selectedCategory === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => {
+                      setSelectedCategory(tab.id);
+                      setSelectedTag('All');
+                    }}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-sans font-medium transition-all duration-150 cursor-pointer ${
+                      isActive
+                        ? 'bg-[#1e2436] text-white font-semibold shadow-xs border border-[#353f5c]'
+                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#161a27]'
                     }`}
                   >
-                    {tab.count}
-                  </span>
-                </button>
-              );
-            })}
+                    <span className={isActive ? 'text-blue-400' : 'text-zinc-500'}>{tab.icon}</span>
+                    <span>{tab.label}</span>
+                    <span
+                      className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
+                        isActive
+                          ? 'bg-blue-500/20 text-blue-300 font-semibold border border-blue-500/30'
+                          : 'text-zinc-500 bg-zinc-800/60'
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
 
-            {/* Header Right Action: New Capability Button */}
+            {/* Header Right Action: Primary CTA Button */}
             <button
               type="button"
               onClick={() => {
@@ -717,20 +836,16 @@ export default function CapabilitiesPage() {
                 setCreateModalOpen(true);
               }}
               aria-label="New Capability"
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#181a22] border border-[#2c2f3d] text-xs font-sans font-medium text-white hover:bg-[#20222d] transition-colors shadow-xs shrink-0 ml-1.5"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-xs font-semibold text-white transition-all shadow-sm shrink-0 cursor-pointer"
             >
               <svg
-                className="w-3 h-3 text-[#93c5fd]"
+                className="w-3.5 h-3.5"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
+                strokeWidth={2.2}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4.5v15m7.5-7.5h-15"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
               <span>
                 {selectedCategory === 'skills'

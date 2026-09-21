@@ -988,23 +988,75 @@ export const McpView: React.FC<McpViewProps> = ({
         {activeSubTab === 'inspector' ? (
           <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
             {!selectedServer ? (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
-                <div className="w-12 h-12 rounded-xl bg-[#14151a] border border-[#22242e] flex items-center justify-center text-[#3b82f6]">
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M13 10V3L4 14h7v7l9-11h-7z"
-                    />
-                  </svg>
-                </div>
-                <div className="max-w-md">
-                  <h3 className="text-sm font-semibold text-white">No MCP Server Selected</h3>
-                  <p className="text-xs text-[#8b8e99] mt-1 leading-relaxed">
-                    Select a server from the left sidebar to inspect discovered tools, test protocol
-                    invocations, and sync tool schemas to your autonomous agents.
+              <div className="flex-1 flex flex-col p-6 max-w-4xl mx-auto w-full space-y-6">
+                <div className="text-center py-6 space-y-2 border-b border-[#1c2030]">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mx-auto">
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={1.75}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="text-base font-semibold text-white font-sans">
+                    Model Context Protocol (MCP v2) Runtime
+                  </h3>
+                  <p className="text-xs text-zinc-400 max-w-lg mx-auto leading-relaxed font-sans">
+                    Connect verified external tools, local filesystems, and databases directly to
+                    autonomous agents with sandboxed stdio subprocesses or streamable-http
+                    endpoints.
                   </p>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 font-mono">
+                      Recommended Sovereign Protocols
+                    </h4>
+                    <span className="text-xs text-zinc-500 font-mono">1-Click Fast Connect</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {MCP_CATALOG_TEMPLATES.slice(0, 4).map((template) => (
+                      <div
+                        key={template.id}
+                        className="p-4 rounded-xl bg-[#0e111a] border border-[#1e2335] hover:border-[#2f3852] transition-all duration-200 flex flex-col justify-between space-y-3 shadow-xs"
+                      >
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-semibold text-zinc-100 font-sans">
+                              {template.name}
+                            </span>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                              {template.category}
+                            </span>
+                          </div>
+                          <p className="text-xs text-zinc-400 leading-relaxed line-clamp-2">
+                            {template.description}
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-between pt-2.5 border-t border-[#181d2a]">
+                          <span className="text-[10px] font-mono text-zinc-500">
+                            {template.defaultConfig.transport.toUpperCase()}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleInstallCatalogServer(template)}
+                            className="px-3 py-1 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors cursor-pointer"
+                          >
+                            Install Protocol
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             ) : (
@@ -1300,15 +1352,17 @@ export const McpView: React.FC<McpViewProps> = ({
         )}
 
         {/* Bottom Console Logs */}
-        <div className="h-[200px] flex flex-col shrink-0 bg-[#07080a] border-t border-[#1c1d24]">
-          <div className="px-4 py-1.5 border-b border-[#1c1d24] bg-[#0c0d10] flex items-center justify-between shrink-0">
+        <div className="h-[200px] flex flex-col shrink-0 bg-[#07080c] border-t border-[#1c2030]">
+          <div className="px-4 py-2 border-b border-[#1c2030] bg-[#0c0e15] flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#22c55e]" />
-              <span className="text-xs font-sans font-medium text-white">Console & Audit Logs</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-xs font-sans font-semibold text-white">
+                Console & Audit Logs
+              </span>
               <select
                 value={logFilter}
                 onChange={(e) => setLogFilter(e.target.value)}
-                className="bg-[#14151a] border border-[#23242e] rounded px-2 py-0.5 text-2xs font-sans text-[#a1a1aa] focus:outline-none cursor-pointer"
+                className="bg-[#11141e] border border-[#202636] rounded-md px-2 py-0.5 text-xs font-sans text-zinc-300 focus:outline-none cursor-pointer"
               >
                 <option value="all">All events</option>
                 {installedServers.map((s) => (
@@ -1319,34 +1373,49 @@ export const McpView: React.FC<McpViewProps> = ({
               </select>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setLogs([])}
-              className="text-2xs font-sans text-[#71717a] hover:text-white transition-colors"
-            >
-              Clear
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const exportText = filteredLogs
+                    .map((l) => `[${l.timestamp}] ${l.level.toUpperCase()} > ${l.message}`)
+                    .join('\n');
+                  navigator.clipboard.writeText(exportText);
+                  toast({ tone: 'info', title: 'Logs copied to clipboard' });
+                }}
+                className="px-2 py-0.5 text-xs text-zinc-400 hover:text-white bg-[#141724] hover:bg-[#1a1f30] border border-[#242b3d] rounded transition-colors cursor-pointer"
+              >
+                Copy Logs
+              </button>
+              <button
+                type="button"
+                onClick={() => setLogs([])}
+                className="px-2 py-0.5 text-xs text-zinc-400 hover:text-white bg-[#141724] hover:bg-[#1a1f30] border border-[#242b3d] rounded transition-colors cursor-pointer"
+              >
+                Clear
+              </button>
+            </div>
           </div>
 
-          <div className="flex-1 p-3 overflow-y-auto font-mono text-xs leading-5 space-y-1">
+          <div className="flex-1 p-3 overflow-y-auto font-mono text-xs leading-5 space-y-1 bg-[#07080c]">
             {filteredLogs.length === 0 ? (
-              <div className="text-[#52525b] italic text-2xs">No activity logged yet.</div>
+              <div className="text-zinc-600 italic text-xs">No activity logged yet.</div>
             ) : (
               filteredLogs.map((log) => (
                 <div
                   key={log.id}
                   className={`flex items-start gap-2 ${
                     log.level === 'error'
-                      ? 'text-[#ef4444]'
+                      ? 'text-rose-400'
                       : log.level === 'success'
-                        ? 'text-[#86efac]'
+                        ? 'text-emerald-400'
                         : log.level === 'warn'
-                          ? 'text-[#fdba74]'
-                          : 'text-[#a1a1aa]'
+                          ? 'text-amber-400'
+                          : 'text-zinc-300'
                   }`}
                 >
-                  <span className="text-[#4b4e5c] select-none text-2xs">[{log.timestamp}]</span>
-                  <span className="text-[#4b4e5c] select-none">&gt;</span>
+                  <span className="text-zinc-500 select-none text-xs">[{log.timestamp}]</span>
+                  <span className="text-zinc-600 select-none">&gt;</span>
                   <span className="break-all">{log.message}</span>
                 </div>
               ))
