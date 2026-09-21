@@ -50,7 +50,7 @@ class ApplicationService:
         await db.refresh(application)
         return application
 
-    async def update_outcome(self, workspace_id: str, application_id: str, status: str, db=None):
+    async def update_outcome(self, workspace_id: str, application_id: str, status: str, outcome: str | None = None, db=None):
         result = await db.execute(
             select(Application).where(
                 Application.id == uuid.UUID(application_id),
@@ -60,6 +60,8 @@ class ApplicationService:
         application = result.scalar_one_or_none()
         if application:
             application.status = status
+            if outcome is not None:
+                application.outcome = outcome
             application.outcome_at = datetime.now(UTC)
             await db.flush()
             await db.refresh(application)

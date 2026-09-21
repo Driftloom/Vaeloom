@@ -85,7 +85,9 @@ async def update_application_outcome(
         raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = current_user.get("sub") or current_user.get("user_id")
     await _verify_workspace_access(workspace_id, user_id, db)
-    application = await application_service.update_outcome(workspace_id, application_id, dto.status, db)
+    application = await application_service.update_outcome(
+        workspace_id, application_id, dto.status, outcome=dto.outcome, db=db
+    )
     if not application:
         raise HTTPException(status_code=404, detail="Application not found")
     return ApplicationResponse.model_validate(application)

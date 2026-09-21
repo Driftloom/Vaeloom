@@ -32,7 +32,16 @@ class VectorStore(ABC):
 
 class PGVectorStore(VectorStore):
     def __init__(self, connection_url: str | None = None, collection_name: str = "vaeloom_vectors"):
-        self._url = connection_url or os.environ.get("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/vaeloom")
+        from ..config import settings
+        db_url = (
+            connection_url
+            or getattr(settings, "database__url", None)
+            or getattr(settings, "database_url", None)
+            or os.environ.get("DATABASE__URL")
+            or os.environ.get("DATABASE_URL")
+            or "postgresql+asyncpg://postgres:postgres@localhost:5432/vaeloom"
+        )
+        self._url = db_url
         self._collection = collection_name
         self._engine: Any = None
         self._session_factory: Any = None
@@ -100,7 +109,7 @@ class PGVectorStore(VectorStore):
                 conditions.append("workspace_id = :workspace_id")
                 params["workspace_id"] = filters["workspace_id"]
             if "tenant_id" in filters:
-                conditions.append("workspace_id = :tenant_id")
+                conditions.append("workspace_id IN (SELECT id FROM workspaces WHERE tenant_id = :tenant_id)")
                 params["tenant_id"] = filters["tenant_id"]
             if "source_type" in filters:
                 conditions.append("source_type = :source_type")

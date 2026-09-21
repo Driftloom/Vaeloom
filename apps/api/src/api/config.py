@@ -66,6 +66,12 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     embedding_model: str = "gemini-embedding-2"
 
+    # System 1: TypeSafe AI Jev Fast Decision Engine (Vercel AI Gateway / OpenRouter)
+    jev_api_key: str = ""
+    jev_gateway_url: str = "https://ai-gateway.vercel.sh/v1"
+    jev_model: str = "typesafe-ai/jev-latest"
+    jev_provider: Literal["vercel", "openrouter", "mock"] = "vercel"
+
     google_client_id: str = ""
     google_client_secret: str = ""
     google_refresh_token: str = ""

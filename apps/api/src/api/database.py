@@ -41,7 +41,11 @@ class RLSGuardedAsyncSession(AsyncSession):
         try:
             from .middleware.tenant import TenantContext, set_rls_session_vars
 
-            if TenantContext.get_tenant_id():
+            if (
+                TenantContext.get_tenant_id()
+                or TenantContext.get_workspace_id()
+                or TenantContext.get_user_id()
+            ):
                 await set_rls_session_vars(self)
         except Exception:
             pass

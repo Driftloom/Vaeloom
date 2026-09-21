@@ -1168,9 +1168,22 @@ async def _try_react_loop(
                     ordered.append(mcp_td)
         except Exception:  # noqa: BLE001 - bridging must never break the loop
             pass
-        ordered = ordered[:32]
+        ordered = ordered[:48]
         if not ordered:
             return None
+
+        # System 1: Fast routing candidate prioritization via Jev (<50ms)
+        try:
+            from ..services.jev_service import jev_service
+            _tool_choices = [td.name for td in ordered]
+            if len(_tool_choices) > 6:
+                _top_choice = await jev_service.choice(message, _tool_choices)
+                if _top_choice in _tool_choices:
+                    ordered.sort(key=lambda td: 0 if td.name == _top_choice else 1)
+        except Exception as _je:
+            logger.debug(f"Jev routing candidate selection skipped: {_je}")
+
+        ordered = ordered[:32]
         agent_allowed_scopes = [td.required_scope for td in ordered]
         tool_schemas = [
             {"type": "function", "function": {"name": td.name, "description": td.description, "parameters": td.input_schema}}
@@ -1819,7 +1832,18 @@ async def _try_react_loop(
                         # an atomic consume + hash/HMAC verify at this moment.
                         from ..tools.executor import approval_gated_tools
 
-                        if tname in approval_gated_tools():
+                        _needs_approval = tname in approval_gated_tools()
+                        if not _needs_approval:
+                            try:
+                                from ..services.jev_service import jev_service
+                                _is_dangerous = await jev_service.noul(tname, args)
+                                if _is_dangerous:
+                                    logger.info(f"Jev System 1 flagged '{tname}' as dangerous/requiring approval")
+                                    _needs_approval = True
+                            except Exception as _je:
+                                logger.debug(f"Jev safety check skipped: {_je}")
+
+                        if _needs_approval:
                             _appr = await _react_approval_gate(
                                 tname, args, agent_name, str(workspace_id), user_id, db, corr)
                             if _appr.get("approved"):

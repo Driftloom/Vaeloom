@@ -14,6 +14,7 @@ class ApplicationCreate(BaseModel):
 
 class ApplicationUpdateOutcome(BaseModel):
     status: str = Field(..., min_length=1)
+    outcome: str | None = None
 
 
 class ApplicationResponse(BaseModel):
