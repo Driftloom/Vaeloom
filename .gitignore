@@ -34,6 +34,7 @@ node_modules/
 .pnp.cjs
 .yarn/cache/
 .yarn/install-state.gz
+.node_repl_history
 
 # Build outputs
 dist/
@@ -94,6 +95,10 @@ infra/kubernetes/secrets/*.yaml
 *.key
 *.p12
 *.pfx
+*.crt
+*.cer
+*.csr
+*.der
 *.secret
 *.secrets
 .secrets/
@@ -112,16 +117,21 @@ yarn-error.log*
 coverage/
 .hypothesis/
 junit.xml
+test-report.xml
 lcov.info
 *.lcov
 *.prof
 *.lprof
+.last-run.json
+**/.last-run.json
 
 # Playwright
 test-results/
 playwright-report/
 blob-report/
 .playwright/
+**/test-results/
+**/playwright-report/
 
 # Husky internal auto-managed hooks
 .husky/_
@@ -136,6 +146,9 @@ blob-report/
 .agents/aaaduit/*
 !.agents/aaaduit/*.md
 .agents/skills/
+.agents/cache/
+.agents/scratch/
+.agent/
 .claude/
 .cursor/
 .qoder/
@@ -270,3 +283,5 @@ next-env.d.ts
 scratch_*
 scratch/
 *.scratch.*
+*composio_toolkits*.json
+all_composio_*.json

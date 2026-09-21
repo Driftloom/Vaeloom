@@ -102,6 +102,7 @@ services:
       LANGGRAPH_VERSION: 'v1'
       LANGGRAPH_SHADOW_MODE: '${LANGGRAPH_SHADOW_MODE:-false}'
       LANGGRAPH_AGENT_RUN_PERCENT: '${LANGGRAPH_AGENT_RUN_PERCENT:-0}'
+      COMPOSIO_API_KEY: '${COMPOSIO_API_KEY:-}'
     ports:
       - '8000:8000'
     depends_on:
@@ -308,13 +309,13 @@ services:
   otelcol:
     image: otel/opentelemetry-collector-contrib:0.102.0
     container_name: vaeloom-otelcol
-    command: ["--config", "/etc/otelcol/config.yaml"]
+    command: ['--config', '/etc/otelcol/config.yaml']
     volumes:
       - ./infra/monitoring/otelcol-config.yaml:/etc/otelcol/config.yaml:ro
     ports:
-      - '4317:4317'   # OTLP gRPC
-      - '4318:4318'   # OTLP HTTP
-      - '8889:8889'   # Prometheus export
+      - '4317:4317' # OTLP gRPC
+      - '4318:4318' # OTLP HTTP
+      - '8889:8889' # Prometheus export
     profiles:
       - monitoring
 
