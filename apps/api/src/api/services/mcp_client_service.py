@@ -102,8 +102,8 @@ def validate_mcp_config(config: dict) -> dict:
         parsed = urlparse(url)
         insecure = bool(cfg.get("allow_insecure"))
         if insecure:
-            from ..core.config import settings
-            if getattr(settings, "environment", "").lower() in ("production", "prod"):
+            from ..config import settings
+            if getattr(settings, "service_environment", "local").lower() in ("production", "prod"):
                 raise McpConfigError("allow_insecure=True is forbidden in production environments")
         if parsed.scheme == "http" and not insecure:
             raise McpConfigError("http:// URLs require allow_insecure=true (dev only)")
