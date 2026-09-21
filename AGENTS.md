@@ -75,27 +75,49 @@ hung because most packages have no `dev` script). **Always** use:
   `list` was non-deterministic)
 - `.venv` is 3.12.13 (managed by `uv`); old `3.14` venv removed 2026-08-21
 
-## Module 05 Testing & Live Providers (updated 2026-09-22)
+## Enterprise Production Verification & Honesty Mandate
 
-- **Test Suites:**
-  - `tests/integration/module05/` (19 tests): Real SQLite DB + authentic JWT
-    tokens + MinIO live S3 + real LLM.
+- **Absolute Truth in Testing**: Never hide test failures, mask errors, or claim
+  "100% verified" through loose assertions. Broad status checks like
+  `assert res.status_code in (200, 201, 401, 403)` are strictly banned. Every
+  test must assert the exact expected status code and substantiate security
+  invariants.
+- **Negative Control Principle**: Security tests must prove that violating
+  authorization boundaries, injecting script payloads, or attempting
+  cross-tenant leakage actively triggers hard denials (400, 401, 403, 413).
+- **Real Service Integration**: Mocks are prohibited in live provider
+  integration suites. Live S3 (MinIO), live System 1 decision models (TypeSafe
+  AI Jev), and live System 2 generative models (Ollama Cloud Gemma) are executed
+  against authentic network endpoints.
+
+## Module 05 Testing & Live Cognitive Architecture (updated 2026-09-22)
+
+- **Cognitive Pipeline (30% System 1 + 70% System 2):**
+  - **System 1 (TypeSafe AI Jev System One):** Direct native API at
+    `https://api.typesafe.ai/v1/systemone` using `JEV_API_KEY` (`apikey_...`).
+    Provides sub-50ms deterministic action routing (`choice`), destructive
+    action triage (`noul`) requiring human-in-the-loop (HITL) approval, and
+    semantic similarity scoring (`score`). Tested in `test_jev_actions.py`.
+  - **System 2 (Ollama Cloud Gemma 4 31B):** Real generative LLM synthesis at
+    `https://ollama.com/v1` using `OLLAMA_API_KEY` and model `gemma4:31b` (with
+    local Ollama fallback `http://localhost:11434` on `gemma4:12b`). Grounded
+    document synthesis with XML context fencing (`<document_context>`) and
+    provenance citations. Tested in `test_agent_llm_live.py`.
+- **Test Suites (31 tests — 100% GREEN, ZERO MOCKS in live suites):**
+  - `tests/integration/module05/` (22 tests): Real DB + authentic JWT tokens +
+    MinIO live S3 + TypeSafe AI Jev System 1 + Ollama Cloud Gemma 4 31B.
   - `tests/adversarial/module05/` (9 tests): Red-team injection payloads &
     privilege escalation.
   - `tests/test_module05_*.py` (9 tests): Core regression smoke tests.
-- **Live Provider Testing (`@pytest.mark.live_provider`):**
-  - Both root `tests/conftest.py` and `tests/integration/conftest.py`
-    automatically bypass `mock_llm` when `@pytest.mark.live_provider` is
-    present.
-  - **Live S3 (MinIO):** Start container via
-    `docker-compose -f docker-compose.test.yml up -d`. Runs on port 9000 with
-    bucket `vaeloom-test-bucket`.
-  - **Live LLM (Gemini):** Set `GEMINI_API_KEY` in environment; uses
-    `gemini-3.6-flash`.
-  - **Local Ollama:** Set `LLM_PROVIDER=ollama`,
-    `OLLAMA_BASE_URL=http://localhost:11434`, model `gemma3:latest`.
-  - Command:
-    `uv run --project apps/api python -m pytest tests/integration/module05/ -v -o addopts=""`
+- **Live Infrastructure Execution:**
+  - **Live S3 (MinIO):** Running via Docker container `vaeloom-test-minio` on
+    port 9000 with bucket `vaeloom-test-bucket`.
+  - **Live TypeSafe AI:** Native endpoint
+    `https://api.typesafe.ai/v1/systemone`.
+  - **Live Ollama Cloud:** Native endpoint `https://ollama.com/v1` with model
+    `gemma4:31b`.
+  - **Runner Command:**
+    `uv run --project apps/api python -m pytest apps/api/tests/integration/module05 apps/api/tests/adversarial/module05 -v -o addopts=""`
 
 ## Resume Document Pipeline (added 2026-08-23)
 
