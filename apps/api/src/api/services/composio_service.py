@@ -134,6 +134,113 @@ class ComposioService:
             logger.debug("Error checking Composio connection status: %s", exc)
             return {"connected": False, "status": "error", "error": str(exc), "app": app_name}
 
+    async def disconnect_connection(
+        self,
+        workspace_id: uuid.UUID,
+        app_name: str,
+    ) -> Dict[str, Any]:
+        """Revoke all Composio connected accounts for this workspace+app.
+
+        Idempotent: when nothing is connected the call succeeds with an empty
+        revoked list. Remote revocation is best-effort per account (SDK delete
+        when available, v3 REST fallback); failures are reported per account
+        without masking successful revocations.
+        """
+        if not self.is_configured:
+            return {
+                "status": "error",
+                "error_code": "COMPOSIO_API_KEY_REQUIRED",
+                "message": "Composio API key is not configured.",
+                "app": app_name,
+                "revoked": [],
+            }
+        slug = app_name.lower().strip().replace(" ", "-")
+        user_id = f"workspace_{workspace_id}"
+        try:
+            from composio import Composio
+            client = Composio(api_key=self.api_key)
+            accounts = client.connected_accounts.list(user_ids=[user_id])
+            items = getattr(accounts, "items", accounts) if not isinstance(accounts, list) else accounts
+            targets = []
+            for acc in items:
+                auth_cfg = getattr(acc, "auth_config_id", "") or (acc.get("auth_config_id") if isinstance(acc, dict) else "")
+                app_n = getattr(acc, "app_name", "") or (acc.get("app_name") if isinstance(acc, dict) else "")
+                if auth_cfg.lower() == slug or app_n.lower() == slug:
+                    acc_id = getattr(acc, "id", None) or (acc.get("id") if isinstance(acc, dict) else None)
+                    if acc_id:
+                        targets.append(str(acc_id))
+        except Exception as exc:
+            logger.debug("Composio disconnect listing failed for %s: %s", app_name, exc)
+            return {
+                "status": "error",
+                "error_code": "COMPOSIO_API_ERROR",
+                "message": f"Could not list Composio connections: {exc}",
+                "app": app_name,
+                "revoked": [],
+            }
+
+        revoked: List[str] = []
+        errors: List[Dict[str, str]] = []
+        for acc_id in targets:
+            try:
+                deleter = getattr(getattr(client, "connected_accounts", None), "delete", None)
+                if callable(deleter):
+                    res = deleter(acc_id)
+                    if hasattr(res, "__await__"):
+                        await res
+                else:
+                    import httpx
+                    resp = httpx.delete(
+                        f"{self.base_url.rstrip('/')}/connected_accounts/{acc_id}",
+                        headers={"x-api-key": self.api_key or ""},
+                        timeout=15.0,
+                    )
+                    if resp.status_code not in (200, 201, 202, 204, 404):
+                        raise RuntimeError(f"revocation returned HTTP {resp.status_code}")
+                revoked.append(acc_id)
+            except Exception as exc:
+                logger.warning("Composio revocation failed for account %s: %s", acc_id, exc)
+                errors.append({"id": acc_id, "error": str(exc)})
+        return {
+            "status": "success" if not errors or revoked else "partial",
+            "app": app_name,
+            "revoked": revoked,
+            "revocation_errors": errors,
+            "detail": "No active connections found; nothing to revoke." if not targets else None,
+        }
+
+    async def refresh_connection(
+        self,
+        workspace_id: uuid.UUID,
+        app_name: str,
+    ) -> Dict[str, Any]:
+        """Re-verify a Composio connection; re-issue an OAuth link when expired.
+
+        Composio holds provider refresh tokens server-side, so a client-side
+        refresh means: poll live status, and when the connection is not ACTIVE
+        return COMPOSIO_AUTH_REQUIRED together with a fresh connect URL.
+        """
+        from datetime import datetime, timezone
+        status = await self.get_connection_status(workspace_id, app_name)
+        checked_at = datetime.now(timezone.utc).isoformat()
+        if status.get("connected"):
+            return {
+                "status": "success",
+                "connected": True,
+                "app": app_name,
+                "checked_at": checked_at,
+            }
+        auth = self.get_auth_url(app_name, str(workspace_id))
+        return {
+            "status": "error",
+            "connected": False,
+            "error_code": "COMPOSIO_AUTH_REQUIRED",
+            "message": f"Composio app '{app_name}' needs reconnection. Complete OAuth to refresh access.",
+            "app": app_name,
+            "auth_url": auth.get("auth_url"),
+            "checked_at": checked_at,
+        }
+
     async def execute_composio_action(
         self,
         workspace_id: uuid.UUID,

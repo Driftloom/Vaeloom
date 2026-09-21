@@ -30,6 +30,76 @@ _SENSITIVE_CONFIG_FIELDS: dict[str, list[str]] = {
     "mcp": [],
 }
 
+# GraphQL stored-query safety bounds (CON-GQL-01: fail closed on abusive shapes)
+_GRAPHQL_MAX_CHARS = 32_768
+_GRAPHQL_MAX_DEPTH = 8
+_GRAPHQL_MAX_FIELDS = 200
+_GRAPHQL_INTROSPECTION_RE = re.compile(r"__schema|__type")
+
+
+def _strip_graphql_ignored(query: str) -> str:
+    """Remove GraphQL string literals, block strings and comments for shape analysis."""
+    out: list[str] = []
+    i, n = 0, len(query)
+    while i < n:
+        ch = query[i]
+        if ch == "#":
+            while i < n and query[i] != "\n":
+                i += 1
+            continue
+        if query.startswith('"""', i):
+            end = query.find('"""', i + 3)
+            i = n if end == -1 else end + 3
+            out.append(" ")
+            continue
+        if ch == '"':
+            i += 1
+            while i < n:
+                if query[i] == "\\":
+                    i += 2
+                    continue
+                if query[i] == '"':
+                    i += 1
+                    break
+                i += 1
+            out.append(" ")
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+def validate_graphql_query(query: str) -> None:
+    """Validate a stored GraphQL query template. Raises HTTPException(400) when abusive.
+
+    Enforces size, nesting depth, field count and introspection bans so a stored
+    template cannot become a deep-recursion or introspection-exfiltration vector
+    if ever executed by sync, test or agent tooling.
+    """
+    if not isinstance(query, str) or not query.strip():
+        raise HTTPException(400, "GraphQL query must be a non-empty string")
+    if len(query) > _GRAPHQL_MAX_CHARS:
+        raise HTTPException(400, f"GraphQL query exceeds {_GRAPHQL_MAX_CHARS} characters")
+    if _GRAPHQL_INTROSPECTION_RE.search(query):
+        raise HTTPException(400, "GraphQL introspection (__schema/__type) is not permitted in connector queries")
+    body = _strip_graphql_ignored(query)
+    depth = max_depth = 0
+    for ch in body:
+        if ch == "{":
+            depth += 1
+            max_depth = max(max_depth, depth)
+        elif ch == "}":
+            depth -= 1
+            if depth < 0:
+                raise HTTPException(400, "GraphQL query has unbalanced braces")
+    if depth != 0:
+        raise HTTPException(400, "GraphQL query has unbalanced braces")
+    if max_depth > _GRAPHQL_MAX_DEPTH:
+        raise HTTPException(400, f"GraphQL query nesting depth {max_depth} exceeds limit {_GRAPHQL_MAX_DEPTH}")
+    fields = re.findall(r"[A-Za-z_][A-Za-z0-9_]*", re.sub(r"\b(query|mutation|subscription|fragment|on|true|false|null)\b", " ", body))
+    if len(fields) > _GRAPHQL_MAX_FIELDS:
+        raise HTTPException(400, f"GraphQL query field count {len(fields)} exceeds limit {_GRAPHQL_MAX_FIELDS}")
+
 
 class ConnectorExtService:
     def __init__(self) -> None:
@@ -175,6 +245,8 @@ class ConnectorExtService:
             if not url:
                 raise HTTPException(400, f"URL is required for {conn_type} connectors")
             self._check_url_policy_sync(url)
+            if conn_type == "graphql" and config.get("query") not in (None, ""):
+                validate_graphql_query(config["query"])
         if conn_type == "database" and not config.get("connectionString"):
             raise HTTPException(400, "connectionString is required for database connectors")
         if conn_type == "file" and not config.get("path"):
@@ -267,6 +339,101 @@ class ConnectorExtService:
         }
         return data
 
+    _CONFIG_HISTORY_LIMIT = 20
+
+    @staticmethod
+    def _current_version(connector) -> int:
+        try:
+            return int(getattr(connector, "config_version", 1) or 1)
+        except (TypeError, ValueError):
+            return 1
+
+    @classmethod
+    def _snapshot_current_config(cls, connector) -> None:
+        """Append the live (still-encrypted) config to version history.
+
+        Snapshots store ciphertext exactly as persisted, so a rollback never
+        writes a decrypted secret back to the database. History is capped.
+        """
+        history = list(getattr(connector, "config_history", None) or [])
+        history.append(
+            {
+                "version": cls._current_version(connector),
+                "config": dict(getattr(connector, "config", {}) or {}),
+                "saved_at": datetime.now(UTC).isoformat(),
+            }
+        )
+        connector.config_history = history[-cls._CONFIG_HISTORY_LIMIT :]
+        connector.config_version = cls._current_version(connector) + 1
+
+    async def rollback_config(
+        self,
+        connector_id: uuid.UUID,
+        version: int,
+        tenant_id: str | None,
+        db: AsyncSession = None,
+        workspace_id: str | None = None,
+    ):
+        """Restore a previous config snapshot. The rollback itself is versioned."""
+        connector = await self.get(connector_id, tenant_id, db, workspace_id=workspace_id)
+        history = list(getattr(connector, "config_history", None) or [])
+        target = next((h for h in history if isinstance(h, dict) and h.get("version") == version), None)
+        if target is None:
+            raise HTTPException(404, f"Config version {version} not found in history")
+        self._validate_config(connector.type, dict(target.get("config") or {}))
+        self._snapshot_current_config(connector)
+        connector.config = dict(target.get("config") or {})
+        await db.commit()
+        await db.refresh(connector)
+        return connector
+
+    async def usage_summary(
+        self,
+        connector_id: uuid.UUID,
+        tenant_id: str | None,
+        db: AsyncSession = None,
+        workspace_id: str | None = None,
+    ) -> dict:
+        """Aggregate lifecycle activity for one connector from audit events.
+
+        The connector row is loaded first (tenant/workspace scoped, 404 for
+        outsiders), so filtering events by resource_id alone cannot leak
+        cross-tenant activity: connector IDs are UUID-unique and the row gate
+        runs before any event is read.
+        """
+        from sqlalchemy import text as _text
+
+        connector = await self.get(connector_id, tenant_id, db, workspace_id=workspace_id)
+        rows = (
+            await db.execute(
+                _text(
+                    "SELECT action, COUNT(*), MAX(created_at) FROM audit_events "
+                    "WHERE resource = 'connector' AND resource_id = :rid GROUP BY action"
+                ),
+                {"rid": str(connector_id)},
+            )
+        ).fetchall()
+        by_action = {r[0]: int(r[1]) for r in rows}
+        last_activity = None
+        for r in rows:
+            ts = r[2]
+            ts_str = ts.isoformat() if hasattr(ts, "isoformat") else (str(ts) if ts else None)
+            if ts_str and (last_activity is None or ts_str > last_activity):
+                last_activity = ts_str
+        return {
+            "connector_id": str(connector_id),
+            "name": connector.name,
+            "type": connector.type,
+            "status": getattr(connector, "status", None),
+            "config_version": self._current_version(connector),
+            "last_synced_at": connector.last_synced_at.isoformat()
+            if getattr(connector, "last_synced_at", None) and hasattr(connector.last_synced_at, "isoformat")
+            else None,
+            "events_by_action": by_action,
+            "total_events": sum(by_action.values()),
+            "last_activity_at": last_activity,
+        }
+
     async def update(
         self,
         connector_id: uuid.UUID,
@@ -280,6 +447,7 @@ class ConnectorExtService:
             connector.name = dto.name
         if dto.config is not None:
             self._validate_config(connector.type, dict(dto.config))
+            self._snapshot_current_config(connector)
             config = dict(dto.config)
             self._encrypt_config(config, connector.type)
             connector.config = config

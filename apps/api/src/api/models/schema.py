@@ -253,6 +253,8 @@ class Connector(Base):
     oauth_scopes: Mapped[dict | None] = mapped_column(JSON)
     refresh_token_rotated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     config: Mapped[dict] = mapped_column(JSON, default=dict)
+    config_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    config_history: Mapped[list | None] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

@@ -16,6 +16,7 @@ from ..schemas.connector_ext import (
     CreateConnectorRequest,
     McpCallRequest,
     McpToolInfoResponse,
+    RollbackConnectorRequest,
     SyncStatusResponse,
     UpdateConnectorRequest,
 )
@@ -44,6 +45,7 @@ def _mask_connector_response(connector: Any) -> ConnectorResponse:
         type=connector.type,
         status=connector.status,
         config=masked_cfg,
+        config_version=getattr(connector, "config_version", 1) or 1,
         scopes=getattr(connector, "scopes", None),
         last_synced_at=getattr(connector, "last_synced_at", None),
         created_at=connector.created_at,
@@ -126,6 +128,9 @@ async def create_connector(
         has_access = await check_user_workspace_access(db, user_id, workspace_id)
         if not has_access:
             raise HTTPException(403, "Access denied to workspace")
+    if bool((dto.config or {}).get("allow_insecure")) and workspace_id and user_id:
+        # Separation of duties: explicit TLS-bypass flags need workspace admin.
+        await _require_workspace_admin(str(workspace_id), current_user, db)
     connector = await connector_ext_service.create(dto, user_id, tenant_id, db, workspace_id=workspace_id)
     await _record_connector_audit(
         db,
@@ -269,6 +274,125 @@ async def sync_composio_tools(
     }
 
 
+async def _require_workspace_member(workspace_id: str, current_user: dict, db: AsyncSession) -> None:
+    """Owner-or-member guard for workspace-scoped Composio actions (IDOR guard).
+
+    Returns 404 (not 403) to avoid workspace existence enumeration.
+    """
+    try:
+        ws_uuid = uuid.UUID(str(workspace_id))
+        uid = uuid.UUID(str(current_user.get("sub") or current_user.get("user_id") or current_user.get("id")))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    try:
+        r1 = await db.execute(select(Workspace).where(Workspace.id == ws_uuid, Workspace.user_id == uid))
+        if r1.scalar_one_or_none():
+            return
+        r2 = await db.execute(
+            select(WorkspaceUser).where(WorkspaceUser.workspace_id == ws_uuid, WorkspaceUser.user_id == uid)
+        )
+        if r2.scalar_one_or_none():
+            return
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=503, detail="Authorization check failed")
+
+
+async def _require_workspace_admin(workspace_id: str, current_user: dict, db: AsyncSession) -> None:
+    """Owner-or-admin guard for destructive and insecure connector operations.
+
+    Separation of duties: ordinary members may manage standard connectors, but
+    only workspace owners and admins may delete connectors or create ones with
+    explicit `allow_insecure` transport flags. Members get 403; outsiders get
+    404 via the membership check first (callers must run it before this).
+    """
+    try:
+        ws_uuid = uuid.UUID(str(workspace_id))
+        uid = uuid.UUID(str(current_user.get("sub") or current_user.get("user_id") or current_user.get("id")))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    try:
+        owner = await db.execute(select(Workspace).where(Workspace.id == ws_uuid, Workspace.user_id == uid))
+        if owner.scalar_one_or_none():
+            return
+        role_res = await db.execute(
+            select(WorkspaceUser.role).where(
+                WorkspaceUser.workspace_id == ws_uuid, WorkspaceUser.user_id == uid
+            )
+        )
+        if (role_res.scalar_one_or_none() or "").upper() in ("ADMIN", "OWNER"):
+            return
+        raise HTTPException(status_code=403, detail="Forbidden: workspace admin role required")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=503, detail="Authorization check failed")
+
+
+@router.post("/composio/disconnect")
+@rate_limit(max_requests=10, window_seconds=60)
+async def disconnect_composio_app(
+    payload: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    workspace_id: str | None = Depends(get_workspace_id),
+):
+    """Revoke Composio OAuth connections for a SaaS app in this workspace."""
+    if not current_user:
+        raise HTTPException(401, "Not authenticated")
+    app_name = (payload or {}).get("app", "")
+    wid = str(workspace_id or (payload or {}).get("workspace_id", ""))
+    if not app_name or not wid:
+        raise HTTPException(400, "app and workspace_id are required")
+    await _require_workspace_member(wid, current_user, db)
+
+    from ..services.composio_service import composio_service
+
+    res = await composio_service.disconnect_connection(uuid.UUID(wid), app_name)
+    await _record_connector_audit(
+        db,
+        _get_user_id(current_user) or "system",
+        "connector.composio.disconnect",
+        None,
+        None,
+        {"app": app_name, "workspace_id": wid, "revoked": res.get("revoked", [])},
+    )
+    return res
+
+
+@router.post("/composio/refresh")
+@rate_limit(max_requests=10, window_seconds=60)
+async def refresh_composio_connection(
+    payload: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    workspace_id: str | None = Depends(get_workspace_id),
+):
+    """Re-verify a Composio connection; re-issue an OAuth link when expired."""
+    if not current_user:
+        raise HTTPException(401, "Not authenticated")
+    app_name = (payload or {}).get("app", "")
+    wid = str(workspace_id or (payload or {}).get("workspace_id", ""))
+    if not app_name or not wid:
+        raise HTTPException(400, "app and workspace_id are required")
+    await _require_workspace_member(wid, current_user, db)
+
+    from ..services.composio_service import composio_service
+
+    res = await composio_service.refresh_connection(uuid.UUID(wid), app_name)
+    await _record_connector_audit(
+        db,
+        _get_user_id(current_user) or "system",
+        "connector.composio.refresh",
+        None,
+        None,
+        {"app": app_name, "workspace_id": wid, "connected": res.get("connected")},
+    )
+    return res
+
+
 @router.get("/mcp/builtin")
 async def get_builtin_mcp_servers(
     current_user: dict = Depends(get_current_user),
@@ -347,6 +471,35 @@ async def update_connector(
     return _mask_connector_response(connector)
 
 
+@router.post("/{connector_id}/rollback", response_model=ConnectorResponse)
+@rate_limit(max_requests=10, window_seconds=60)
+async def rollback_connector(
+    connector_id: uuid.UUID,
+    dto: RollbackConnectorRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_tenant_id),
+    workspace_id: str | None = Depends(get_workspace_id),
+):
+    """Restore a previous config snapshot. Unknown versions 404; the rollback is versioned."""
+    if not current_user:
+        raise HTTPException(401, "Not authenticated")
+    user_id = _get_user_id(current_user)
+    await _get_authorized_connector(connector_id, user_id, tenant_id, workspace_id, db)
+    connector = await connector_ext_service.rollback_config(
+        connector_id, dto.version, tenant_id, db, workspace_id=workspace_id
+    )
+    await _record_connector_audit(
+        db,
+        user_id or "system",
+        "connector.rollback",
+        str(connector.id),
+        tenant_id,
+        {"version": dto.version, "config_version": getattr(connector, "config_version", None)},
+    )
+    return _mask_connector_response(connector)
+
+
 @router.delete("/{connector_id}", status_code=204)
 async def delete_connector(
     connector_id: uuid.UUID,
@@ -358,7 +511,8 @@ async def delete_connector(
     if not current_user:
         raise HTTPException(401, "Not authenticated")
     user_id = _get_user_id(current_user)
-    await _get_authorized_connector(connector_id, user_id, tenant_id, workspace_id, db)
+    connector = await _get_authorized_connector(connector_id, user_id, tenant_id, workspace_id, db)
+    await _require_workspace_admin(str(connector.workspace_id), current_user, db)
     await connector_ext_service.remove(connector_id, tenant_id, db, workspace_id=workspace_id)
     await _record_connector_audit(
         db,
@@ -367,6 +521,24 @@ async def delete_connector(
         str(connector_id),
         tenant_id,
         {"workspace_id": str(workspace_id) if workspace_id else None},
+    )
+
+
+@router.get("/{connector_id}/usage")
+async def get_connector_usage(
+    connector_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_tenant_id),
+    workspace_id: str | None = Depends(get_workspace_id),
+):
+    """Tenant-scoped lifecycle activity rollup for one connector."""
+    if not current_user:
+        raise HTTPException(401, "Not authenticated")
+    user_id = _get_user_id(current_user)
+    await _get_authorized_connector(connector_id, user_id, tenant_id, workspace_id, db)
+    return await connector_ext_service.usage_summary(
+        connector_id, tenant_id, db, workspace_id=workspace_id
     )
 
 

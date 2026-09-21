@@ -32,11 +32,15 @@ class ConnectorResponse(BaseModel):
     type: str
     status: str
     config: dict[str, Any]
+    config_version: int = 1
     scopes: list[str] | None = None
     last_synced_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
     model_config = {"from_attributes": True}
+
+class RollbackConnectorRequest(BaseModel):
+    version: int = Field(..., ge=1)
 
 class SyncStatusResponse(BaseModel):
     connector_id: str
