@@ -380,6 +380,20 @@ export function AppBrandIcon({ name, id }: { name: string; id: string; category?
     vercel: { bg: 'bg-white/10', text: 'text-white', border: 'border-white/20' },
     twilio: { bg: 'bg-[#f22f46]/20', text: 'text-[#f75e71]', border: 'border-[#f22f46]/40' },
     sendgrid: { bg: 'bg-[#009dd9]/20', text: 'text-[#33bee8]', border: 'border-[#009dd9]/40' },
+    canvas: { bg: 'bg-[#e72429]/20', text: 'text-[#f87171]', border: 'border-[#e72429]/40' },
+    blackboard: { bg: 'bg-[#d97706]/20', text: 'text-[#fbbf24]', border: 'border-[#d97706]/40' },
+    coursera: { bg: 'bg-[#0056d2]/20', text: 'text-[#60a5fa]', border: 'border-[#0056d2]/40' },
+    moodle: { bg: 'bg-[#f97316]/20', text: 'text-[#fb923c]', border: 'border-[#f97316]/40' },
+    google_classroom: {
+      bg: 'bg-[#16a34a]/20',
+      text: 'text-[#4ade80]',
+      border: 'border-[#16a34a]/40',
+    },
+    duolingo: { bg: 'bg-[#58cc02]/20', text: 'text-[#86efac]', border: 'border-[#58cc02]/40' },
+    greenhouse: { bg: 'bg-[#00b259]/20', text: 'text-[#34d399]', border: 'border-[#00b259]/40' },
+    lever: { bg: 'bg-[#206095]/20', text: 'text-[#60a5fa]', border: 'border-[#206095]/40' },
+    workday: { bg: 'bg-[#0875e1]/20', text: 'text-[#38bdf8]', border: 'border-[#0875e1]/40' },
+    docusign: { bg: 'bg-[#ffec00]/20', text: 'text-[#fde047]', border: 'border-[#ffec00]/40' },
     intercom: { bg: 'bg-[#0057ff]/20', text: 'text-[#4c84ff]', border: 'border-[#0057ff]/40' },
     apollo: { bg: 'bg-[#ffc107]/20', text: 'text-[#ffd54f]', border: 'border-[#ffc107]/40' },
     zoominfo: { bg: 'bg-[#0072ce]/20', text: 'text-[#3da0f0]', border: 'border-[#0072ce]/40' },
@@ -397,11 +411,48 @@ export function AppBrandIcon({ name, id }: { name: string; id: string; category?
     filevine: { bg: 'bg-[#10b981]/20', text: 'text-[#34d399]', border: 'border-[#10b981]/40' },
   };
 
-  const scheme = colorMap[id.toLowerCase()] || {
-    bg: 'bg-[#1c1d24]',
-    text: 'text-[#d4d2cc]',
-    border: 'border-[#27272a]',
+  const categoryFallback: Record<string, { bg: string; text: string; border: string }> = {
+    Education: {
+      bg: 'bg-emerald-500/20',
+      text: 'text-emerald-400',
+      border: 'border-emerald-500/40',
+    },
+    Sales: { bg: 'bg-amber-500/20', text: 'text-amber-400', border: 'border-amber-500/40' },
+    HR: { bg: 'bg-pink-500/20', text: 'text-pink-400', border: 'border-pink-500/40' },
+    'AI & ML': { bg: 'bg-purple-500/20', text: 'text-purple-400', border: 'border-purple-500/40' },
+    'Data & Analytics': {
+      bg: 'bg-cyan-500/20',
+      text: 'text-cyan-400',
+      border: 'border-cyan-500/40',
+    },
+    Financial: {
+      bg: 'bg-emerald-600/20',
+      text: 'text-emerald-300',
+      border: 'border-emerald-600/40',
+    },
+    Legal: { bg: 'bg-violet-500/20', text: 'text-violet-400', border: 'border-violet-500/40' },
+    Communication: { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/40' },
+    Marketing: { bg: 'bg-rose-500/20', text: 'text-rose-400', border: 'border-rose-500/40' },
+    Support: { bg: 'bg-teal-500/20', text: 'text-teal-400', border: 'border-teal-500/40' },
+    'E-Commerce': {
+      bg: 'bg-orange-500/20',
+      text: 'text-orange-400',
+      border: 'border-orange-500/40',
+    },
+    Engineering: {
+      bg: 'bg-indigo-500/20',
+      text: 'text-indigo-400',
+      border: 'border-indigo-500/40',
+    },
+    Productivity: { bg: 'bg-sky-500/20', text: 'text-sky-400', border: 'border-sky-500/40' },
   };
+
+  const scheme = colorMap[id.toLowerCase()] ||
+    (category && categoryFallback[category]) || {
+      bg: 'bg-[#1c1d24]',
+      text: 'text-[#d4d2cc]',
+      border: 'border-[#27272a]',
+    };
 
   const initials = name
     .split(/[\s-_]+/)
@@ -1040,6 +1091,75 @@ export const AUTHORITATIVE_CATALOG: ConnectorDefinition[] = [
     description: 'Serverless enterprise cloud data warehouse queries and datasets',
     scopes: ['bigquery.readonly', 'bigquery.jobs.create'],
     assignedAgents: ['DataEngineeringAgent'],
+  },
+  // ── Education & Learning Connectors ──
+  {
+    id: 'canvas-lms',
+    name: 'Canvas LMS',
+    provider: 'composio',
+    composioApp: 'canvas',
+    category: 'Education',
+    protocol: 'OAuth 2.0',
+    description: 'Online courses, syllabi, assignments, student submissions, and grading records',
+    scopes: ['courses:read', 'assignments:read', 'grades:read'],
+    assignedAgents: ['ExecutiveAssistantAgent', 'KnowledgeGraphAgent'],
+  },
+  {
+    id: 'blackboard',
+    name: 'Blackboard Learn',
+    provider: 'composio',
+    composioApp: 'blackboard',
+    category: 'Education',
+    protocol: 'OAuth 2.0',
+    description:
+      'Institutional course content, academic transcripts, announcements, and gradebooks',
+    scopes: ['read:courses', 'read:grades'],
+    assignedAgents: ['KnowledgeGraphAgent'],
+  },
+  {
+    id: 'coursera',
+    name: 'Coursera Enterprise',
+    provider: 'composio',
+    composioApp: 'coursera',
+    category: 'Education',
+    protocol: 'OAuth 2.0',
+    description:
+      'Professional certificates, course completions, verified skills, and learning hours',
+    scopes: ['user:certifications', 'user:courses'],
+    assignedAgents: ['CareerStrategyAgent', 'ResumeBuilderAgent'],
+  },
+  {
+    id: 'moodle',
+    name: 'Moodle LMS',
+    provider: 'composio',
+    composioApp: 'moodle',
+    category: 'Education',
+    protocol: 'OAuth 2.0',
+    description: 'Modular object-oriented learning platform, quiz evaluations, and course modules',
+    scopes: ['moodle/course:view', 'moodle/user:read'],
+    assignedAgents: ['KnowledgeGraphAgent'],
+  },
+  {
+    id: 'google-classroom',
+    name: 'Google Classroom',
+    provider: 'composio',
+    composioApp: 'google_classroom',
+    category: 'Education',
+    protocol: 'OAuth 2.0',
+    description: 'Class assignments, announcements, student rosters, and coursework submissions',
+    scopes: ['classroom.courses.readonly', 'classroom.coursework.me.readonly'],
+    assignedAgents: ['ExecutiveAssistantAgent'],
+  },
+  {
+    id: 'duolingo',
+    name: 'Duolingo Language',
+    provider: 'composio',
+    composioApp: 'duolingo',
+    category: 'Education',
+    protocol: 'OAuth 2.0',
+    description: 'Language proficiency milestones, CEFR fluency levels, streaks, and certificates',
+    scopes: ['profile:read', 'achievements:read'],
+    assignedAgents: ['ResumeBuilderAgent', 'CareerStrategyAgent'],
   },
 ];
 

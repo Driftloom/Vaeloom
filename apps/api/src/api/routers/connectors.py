@@ -169,9 +169,14 @@ async def get_composio_status(
     from ..services.composio_catalog import COMPOSIO_SUPPORTED_APPS
     from ..services.composio_service import composio_service
 
+    total_count = (
+        len(composio_service._toolkits_cache)
+        if composio_service._toolkits_cache
+        else (1553 if composio_service.is_configured else len(COMPOSIO_SUPPORTED_APPS))
+    )
     return {
         "enabled": composio_service.is_enabled,
-        "total_apps": len(COMPOSIO_SUPPORTED_APPS),
+        "total_apps": total_count,
         "popular_apps": [
             {"id": "slack", "name": "Slack", "description": "Send notifications and query channels"},
             {"id": "notion", "name": "Notion", "description": "Search and create workspace docs"},
