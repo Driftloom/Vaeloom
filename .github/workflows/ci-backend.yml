@@ -20,7 +20,8 @@ jobs:
         run: python ../../scripts/verify_architecture.py
       - name: Platform Packages & Agents Unit Tests
         run: |
-          export PYTHONPATH="$GITHUB_WORKSPACE/packages/agent-contracts/src:$GITHUB_WORKSPACE/packages/agent-security/src:$GITHUB_WORKSPACE/packages/agent-policy/src:$GITHUB_WORKSPACE/packages/agent-common/src:$GITHUB_WORKSPACE/packages/agent-memory/src:$GITHUB_WORKSPACE/packages/agent-tools/src:$GITHUB_WORKSPACE/packages/connectors/src:$GITHUB_WORKSPACE/packages/domain/src:$GITHUB_WORKSPACE/packages/agent-delegation/src:$GITHUB_WORKSPACE/packages/agent-observability/src:$GITHUB_WORKSPACE/packages/agent-evals/src:$GITHUB_WORKSPACE/runtimes/agent-sdk/src:$GITHUB_WORKSPACE/runtimes/messages-api-worker/src:."
+          PYTHONPATH="$(for d in $GITHUB_WORKSPACE/packages/*/src $GITHUB_WORKSPACE/runtimes/*/src; do [ -d "$d" ] && printf '%s:' "$d"; done)."
+          export PYTHONPATH
           python -m pytest ../../packages/ ../../runtimes/ -q
       - name: Temporal dry-run check
         run: python -m api.temporal.worker --dry-run
