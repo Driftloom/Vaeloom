@@ -8,10 +8,13 @@ from ..database import async_session_factory as _default_session_factory
 from ..services.auth_service import auth_service
 from .exception_handler import denial as _denial
 
+# /metrics stays public: Prometheus scrapes without credentials, and route
+# counters carry no PII. Edge protections (IP allowlist, WAF) still apply.
 PUBLIC_PATHS = frozenset({
     "/health",
     "/health/ready",
     "/health/startup",
+    "/metrics",
     "/csrf-token",
     "/api/v1/auth/signup",
     "/api/v1/auth/login",

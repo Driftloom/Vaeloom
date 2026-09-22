@@ -7,40 +7,13 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from prometheus_fastapi_instrumentator import Instrumentator
 
-# ── P1-37: pfi 7.1.0 crashes on FastAPI 0.141 _IncludedRouter (no .path) —
-# every request 500s. Upstream fixed in pfi 8.0.1 (2026-06-22) but 8.x
-# requires starlette>=1.0 which conflicts with pinned starlette==0.50.0 +
-# FastAPI 0.141. The coordinated framework upgrade is intentionally
-# deferred. Fallback preserves the route template (scope["route"].path) or
-# endpoint name so metric labels keep their cardinality instead of collapsing
-# to "unknown".
-try:
-    import prometheus_fastapi_instrumentator.routing as _pfi_routing
-
-    _orig_get_route_name = _pfi_routing.get_route_name
-
-    def _patched_get_route_name(request):  # type: ignore[no-untyped-def]
-        try:
-            return _orig_get_route_name(request)
-        except Exception:
-            try:
-                route = (getattr(request, "scope", {}) or {}).get("route")
-                path = getattr(route, "path", None)
-                if path:
-                    return path
-                endpoint = getattr(route, "endpoint", None)
-                name = getattr(endpoint, "__name__", None)
-                if name:
-                    return name
-            except Exception:
-                pass
-            return "unknown"
-
-    _pfi_routing.get_route_name = _patched_get_route_name  # type: ignore[attr-defined]
-except Exception:
-    pass  # prometheus not installed in some test envs
+# NOTE (Loop 3): prometheus-fastapi-instrumentator (pfi 7.x) was removed.
+# It crashed on FastAPI 0.141 routers (the P1-37 monkey-patch era) and its
+# upgrade (8.x) demands starlette>=1.0, conflicting with the pinned stack.
+# Observability now uses the hand-rolled MetricsMiddleware
+# (infrastructure/metrics.py), which emits the exact series our dashboards
+# and alerts query (http_requests_total, http_request_duration_seconds_*).
 
 if "sqlite" in __import__("os").environ.get("DATABASE__URL", ""):
     import sqlalchemy.types as sa_types
@@ -85,6 +58,7 @@ from .infrastructure.logging import (
     get_logger,
     setup_logging,
 )
+from .infrastructure.metrics import MetricsMiddleware as _MetricsMiddleware
 from .infrastructure.opentelemetry import instrumement_fastapi, setup_opentelemetry
 from .middleware.api_version import APIVersionMiddleware
 from .middleware.auth import AuthMiddleware
@@ -332,6 +306,7 @@ app.add_middleware(
     RateLimitMiddleware,
     requests_per_minute=settings.rate_limit_requests,
     window_seconds=settings.rate_limit_window,
+    redis_url=settings.rate_limit_redis_url or settings.redis__url or None,
     api_key_rate_limit=settings.api_key_rate_limit,
 )
 # IDEM-SCOPE-01: idempotency must execute AFTER Auth+Tenant (added before
@@ -356,6 +331,9 @@ app.add_middleware(
 
 # IP allowlist always mounted (ADR-031) — no-op when empty, enforce when configured
 app.add_middleware(IPAllowlistMiddleware, allowlist_raw=settings.ip_allowlist or "")
+# Metrics second-outermost (just inside CORS): counts every response,
+# including middleware denials (401/403/429) that inner positions miss.
+app.add_middleware(_MetricsMiddleware)
 # CORS must be outermost (last added) so OPTIONS preflight is handled first
 app.add_middleware(
     CORSMiddleware,
@@ -403,10 +381,19 @@ async def get_csrf_token():
 
 
 # ── Observability (re-enabled per ADR-011) ──────────────────────────
-try:
-    Instrumentator().instrument(app).expose(app, endpoint="/metrics")
-except Exception as e:
-    logger.warning("Prometheus Instrumentator failed to load: %s", e)
+# Hand-rolled Prometheus middleware (no pfi dependency — see import note).
+# Emits http_requests_total{method,path,status} +
+# http_request_duration_seconds_{bucket,sum,count}; dashboards/alerts query
+# exactly these series. The OTel FastAPI instrumentation below is separate
+# (tracing) and stays.
+
+
+@app.get("/metrics", tags=["observability"])
+async def _prometheus_metrics():
+    from fastapi.responses import PlainTextResponse
+    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+
+    return PlainTextResponse(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 try:
     instrumement_fastapi(app)

@@ -26,7 +26,11 @@ dependencies = [
     "alembic>=1.13.0",
     "pymupdf>=1.24.0",
     "python-docx>=1.1.0",
-    "prometheus-fastapi-instrumentator>=7.0.0",
+    # NOTE (Loop 3): prometheus-fastapi-instrumentator REMOVED — pfi 7.x crashes
+    # on FastAPI 0.141 routers and 8.x demands starlette>=1.0 (conflicts with
+    # the pinned stack). Observability uses prometheus_client directly via
+    # infrastructure/metrics.py (same series dashboards query).
+    "prometheus-client>=0.20.0",
     "opentelemetry-distro>=0.45b0",
     "opentelemetry-exporter-otlp>=0.45b0",
     "opentelemetry-instrumentation-fastapi>=0.45b0",
