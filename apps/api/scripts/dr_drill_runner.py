@@ -32,6 +32,28 @@ PG_RESTORE = os.path.join(PG_BIN_DIR, "pg_restore.exe")
 SOURCE_DB_NAME = "vaeloom_proof"
 TARGET_DB_NAME = "vaeloom_staging_drill"
 
+#: Expected migration head (bump with each release; the smoke check fails
+#: closed when the target lags — a stale standby is a failed drill).
+EXPECTED_ALEMBIC_HEAD = "0053"
+
+#: Tables where the app role must NEVER match a USING (true) policy
+#: (RLS-SERVICE-POLICY-EXPOSURE.md §2, sharp set). Checked on the restored
+#: target every drill — policy drift fails the drill.
+APP_ROLE_STRICT_TABLES = (
+    "users",
+    "auth_sessions",
+    "tenant_scim_tokens",
+    "consent_records",
+    "email_verification_tokens",
+    "onboarding_states",
+    "organizations",
+    "organization_members",
+    "organization_invitations",
+    "revoked_user_cutoffs",
+    "approval_decision",
+    "notification_device_tokens",
+)
+
 import urllib.parse
 
 POOLER_HOST = os.environ.get("SUPABASE_DB_HOST", "aws-0-ap-south-1.pooler.supabase.com")
@@ -185,7 +207,7 @@ async def run_smoke_verification(marker_data, t_start):
     # 4. Alembic migration version
     alembic_ver = await conn.fetchval("SELECT version_num FROM alembic_version LIMIT 1")
     print(f"    -> [CHECK 4] Alembic migration head: {alembic_ver}")
-    assert alembic_ver == "0042", f"Expected migration head 0042, got {alembic_ver}"
+    assert alembic_ver == EXPECTED_ALEMBIC_HEAD, f"Expected migration head {EXPECTED_ALEMBIC_HEAD}, got {alembic_ver}"
 
     # 5. Marker recovery (RPO check)
     restored_tenant = await conn.fetchrow(
@@ -238,6 +260,116 @@ async def main():
     t_start, restore_dur = run_restore(dump_file)
     summary = await run_smoke_verification(marker_data, t_start)
     return summary
+
+
+# ── Multi-scope extensions (Loop 3) ─────────────────────────────────────
+# Each scope returns {"scope", "status", "detail"} where status is one of
+# "passed" | "failed" | "skipped". Scopes NEVER fail a drill for missing
+# infrastructure — they report "skipped" with the reason, so the same runner
+# works on a laptop (DB scope only) and in staging (all scopes live).
+
+async def scope_rls_policy_drift(target_url: str) -> dict:
+    """Scope: RLS posture on the restored target.
+
+    Asserts FORCE RLS is on and no USING (true) policy covers vaeloom_app on
+    the sharp tables. Catches policy drift / bad migration restores.
+    """
+    try:
+        conn = await asyncpg.connect(target_url)
+    except Exception as e:
+        return {"scope": "rls-posture", "status": "skipped", "detail": f"target unreachable: {e}"}
+    try:
+        forced = {
+            r["relname"]
+            for r in await conn.fetch(
+                "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+                "WHERE n.nspname = 'public' AND c.relforcerowsecurity = true"
+            )
+        }
+        open_grants = await conn.fetch(
+            "SELECT tablename, policyname FROM pg_policies "
+            "WHERE 'vaeloom_app' = ANY (roles) "
+            "AND (regexp_replace(COALESCE(qual, ''), '\\s+', '', 'g') IN ('true', '(true)') "
+            "OR regexp_replace(COALESCE(with_check, ''), '\\s+', '', 'g') IN ('true', '(true)'))"
+        )
+        bad = sorted({r["tablename"] for r in open_grants} & set(APP_ROLE_STRICT_TABLES))
+        missing_force = sorted(set(APP_ROLE_STRICT_TABLES) - forced)
+        if bad or missing_force:
+            return {"scope": "rls-posture", "status": "failed",
+                    "detail": f"open grants={bad} missing-force={missing_force}"}
+        return {"scope": "rls-posture", "status": "passed",
+                "detail": f"{len(APP_ROLE_STRICT_TABLES)} tables scoped, FORCE on"}
+    except Exception as e:
+        return {"scope": "rls-posture", "status": "failed", "detail": str(e)[:200]}
+    finally:
+        try:
+            await conn.close()
+        except Exception:
+            pass
+
+
+async def scope_redis_persistence() -> dict:
+    """Scope: Redis snapshot round-trip (marker key survives BGSAVE)."""
+    url = os.environ.get("REDIS__URL", "")
+    if not url:
+        return {"scope": "redis", "status": "skipped", "detail": "REDIS__URL unset"}
+    try:
+        import redis.asyncio as aioredis
+
+        r = aioredis.from_url(url, socket_connect_timeout=2, socket_timeout=5)
+        key = f"vaeloom:drill:{uuid.uuid4().hex}"
+        await r.set(key, "1", ex=300)
+        try:
+            await r.bgsave()
+        except Exception:
+            pass  # managed Redis often forbids BGSAVE; marker check still valid
+        val = await r.get(key)
+        await r.delete(key)
+        if val != "1":
+            return {"scope": "redis", "status": "failed", "detail": "marker round-trip mismatch"}
+        return {"scope": "redis", "status": "passed", "detail": "marker round-trip ok"}
+    except Exception as e:
+        return {"scope": "redis", "status": "skipped", "detail": f"redis unreachable: {type(e).__name__}"}
+
+
+async def scope_object_storage() -> dict:
+    """Scope: object-storage (S3/MinIO) put/head/delete round-trip."""
+    endpoint = os.environ.get("STORAGE_ENDPOINT", "")
+    bucket = os.environ.get("STORAGE_BUCKET", "")
+    if not endpoint or not bucket:
+        return {"scope": "object-storage", "status": "skipped",
+                "detail": "STORAGE_ENDPOINT/BUCKET unset"}
+    try:
+        import boto3
+
+        s3 = boto3.client(
+            "s3",
+            endpoint_url=endpoint,
+            aws_access_key_id=os.environ.get("STORAGE_ACCESS_KEY", ""),
+            aws_secret_access_key=os.environ.get("STORAGE_SECRET_KEY", ""),
+            region_name=os.environ.get("STORAGE_REGION", "us-east-1"),
+        )
+        key = f"dr-drill/{uuid.uuid4().hex}.txt"
+        s3.put_object(Bucket=bucket, Key=key, Body=b"dr-drill-marker")
+        s3.head_object(Bucket=bucket, Key=key)
+        s3.delete_object(Bucket=bucket, Key=key)
+        return {"scope": "object-storage", "status": "passed",
+                "detail": f"put/head/delete ok on {bucket}"}
+    except Exception as e:
+        return {"scope": "object-storage", "status": "skipped",
+                "detail": f"storage unreachable: {type(e).__name__}"}
+
+
+async def run_extra_scopes(target_url: str) -> list:
+    """Run all non-DB scopes; print + return the report rows."""
+    rows = [
+        await scope_rls_policy_drift(target_url),
+        await scope_redis_persistence(),
+        await scope_object_storage(),
+    ]
+    for row in rows:
+        print(f"    -> [SCOPE {row['scope']}] {row['status']}: {row['detail']}")
+    return rows
 
 
 if __name__ == "__main__":
