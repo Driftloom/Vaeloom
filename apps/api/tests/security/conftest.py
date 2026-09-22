@@ -63,7 +63,8 @@ import api.models
 from api.config import Settings
 from api.database import Base, get_db
 from api.middleware.auth import AuthMiddleware
-from api.middleware.exception_handler import unified_exception_handler, generic_exception_handler
+from api.middleware.exception_handler import unified_exception_handler, generic_exception_handler, validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from api.middleware.prompt_injection import PromptInjectionMiddleware
 from api.middleware.rate_limit import RateLimitMiddleware
 
@@ -85,6 +86,7 @@ def _build_test_app(db_session, enable_rate_limit=False):
     test_app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
     test_app.add_exception_handler(StarletteHTTPException, unified_exception_handler)
     test_app.add_exception_handler(Exception, generic_exception_handler)
+    test_app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
     from api.infrastructure.metrics import MetricsMiddleware
     test_app.add_middleware(MetricsMiddleware)

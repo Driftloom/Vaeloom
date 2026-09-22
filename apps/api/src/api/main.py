@@ -3,8 +3,10 @@ import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from prometheus_fastapi_instrumentator import Instrumentator
 
 # ── P1-37: pfi 7.1.0 crashes on FastAPI 0.141 _IncludedRouter (no .path) —
@@ -75,8 +77,6 @@ if "sqlite" in __import__("os").environ.get("DATABASE__URL", ""):
     sqlite3.register_adapter(dict, lambda d: __import__("json").dumps(d))
     sqlite3.register_adapter(list, lambda l: __import__("json").dumps(l))
 
-from starlette.exceptions import HTTPException as StarletteHTTPException
-
 from .config import settings, validate_settings
 from .database import Base, engine
 from .infrastructure.logging import (
@@ -89,7 +89,7 @@ from .infrastructure.opentelemetry import instrumement_fastapi, setup_openteleme
 from .middleware.api_version import APIVersionMiddleware
 from .middleware.auth import AuthMiddleware
 from .middleware.csrf import CSRFMiddleware, create_csrf_token
-from .middleware.exception_handler import generic_exception_handler, unified_exception_handler
+from .middleware.exception_handler import generic_exception_handler, unified_exception_handler, validation_exception_handler
 from .middleware.idempotency import IdempotencyMiddleware
 from .middleware.ip_filter import IPAllowlistMiddleware
 from .middleware.prompt_injection import PromptInjectionMiddleware
@@ -367,6 +367,7 @@ app.add_middleware(
 
 app.add_exception_handler(StarletteHTTPException, unified_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 
 from .temporal.client import TemporalUnavailableError as _TemporalUnavailableError  # noqa: E402

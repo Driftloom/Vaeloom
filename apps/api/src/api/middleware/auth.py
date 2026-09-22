@@ -6,6 +6,7 @@ from starlette.responses import JSONResponse, Response
 from ..config import settings
 from ..database import async_session_factory as _default_session_factory
 from ..services.auth_service import auth_service
+from .exception_handler import denial as _denial
 
 PUBLIC_PATHS = frozenset({
     "/health",
@@ -70,7 +71,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         auth_header = request.headers.get("Authorization", "")
         if not auth_header.startswith("Bearer "):
-            return JSONResponse(status_code=401, content={"detail": "Not authenticated"})
+            return _denial(401, "Not authenticated", request)
 
         token = auth_header.removeprefix("Bearer ")
         try:
@@ -214,19 +215,16 @@ class AuthMiddleware(BaseHTTPMiddleware):
                     _log.getLogger(__name__).warning(
                         "revocation check unavailable, failing closed: %s", e
                     )
-                    return JSONResponse(
-                        status_code=401,
-                        content={"detail": "Authorization unavailable — try again"},
-                    )
+                    return _denial(401, "Authorization unavailable — try again", request)
                 if revoked:
-                    return JSONResponse(status_code=401, content={"detail": "Token has been revoked"})
+                    return _denial(401, "Token has been revoked", request)
 
             request.state.user = payload
             request.state.user_id = user_id
             request.state.tenant_id = payload.get("tenant_id")
         except jwt.ExpiredSignatureError:
-            return JSONResponse(status_code=401, content={"detail": "Token expired"})
+            return _denial(401, "Token expired", request)
         except jwt.InvalidTokenError:
-            return JSONResponse(status_code=401, content={"detail": "Invalid token"})
+            return _denial(401, "Invalid token", request)
 
         return await call_next(request)

@@ -164,11 +164,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     "API key rate limit exceeded  key_prefix=%s  path=%s",
                     api_key[:8], request.url.path,
                 )
-                return JSONResponse(
-                    status_code=429,
-                    content={"detail": "API key rate limit exceeded"},
-                    headers={"Retry-After": str(retry_after)},
-                )
+                from .exception_handler import denial as _denial
+
+                return _denial(429, "API key rate limit exceeded", request,
+                               headers={"Retry-After": str(retry_after)})
 
         user_id = getattr(request.state, "user_id", None)
         client_key: str = user_id or (
@@ -184,11 +183,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 "Rate limit exceeded  client=%s  path=%s  limit=%d  window=%ds",
                 client_key, request.url.path, max_req, window_sec,
             )
-            return JSONResponse(
-                status_code=429,
-                content={"detail": "Rate limit exceeded"},
-                headers={"Retry-After": str(retry_after)},
-            )
+            from .exception_handler import denial as _denial
+
+            return _denial(429, "Rate limit exceeded", request,
+                           headers={"Retry-After": str(retry_after)})
 
         response = await call_next(request)
         await self._add_rate_limit_headers(request, response, client_key)

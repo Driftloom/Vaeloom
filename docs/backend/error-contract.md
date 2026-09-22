@@ -1,10 +1,11 @@
 # Error Contract (RFC 7807 Gap) + Unversioned Infra Paths
 
-> **Status:** Gap documented; runtime NOT migrated (contract-only change).
-> **Last verified:** 2026-09-21 — audited against
-> `apps/api/src/api/middleware/exception_handler.py`,
-> `apps/api/src/api/middleware/rate_limit.py`, `apps/api/src/api/main.py`.
-> **Sibling:** [pagination-standard.md](./pagination-standard.md).
+> **Status:** RFC 7807 SUPERSET LANDED 2026-09-22 — `type`/`title`/`status`/
+> `instance` added to every error path (handlers + all middleware denials +
+> 422), legacy keys untouched. Full content-type migration to
+> `application/problem+json` remains Loop 4 (frontend parses bodies today).
+> **Last verified:** 2026-09-22. **Sibling:**
+> [pagination-standard.md](./pagination-standard.md).
 
 ## 1. Current error shapes (runtime truth, 2026-09-21)
 

@@ -57,9 +57,12 @@ class IPAllowlistMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         logger.warning("IP not allowlisted: %s (path=%s)", client_ip, path)
-        return JSONResponse(
-            status_code=403,
-            content={"detail": "Access denied: IP not allowlisted"},
+        from .exception_handler import denial as _denial
+
+        return _denial(
+            403,
+            "Access denied: IP not allowlisted",
+            request,
             headers={"X-IP-Allowlist": "denied"},
         )
 

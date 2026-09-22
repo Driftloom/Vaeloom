@@ -112,26 +112,28 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         if request.method in MUTATING_METHODS:
+            from .exception_handler import denial as _denial
+
             csrf_header = request.headers.get("X-CSRF-Token", "")
             csrf_cookie = request.cookies.get("csrf_token", "")
 
             if not csrf_header or not csrf_cookie:
-                return JSONResponse(status_code=403, content={"detail": "CSRF token missing — GET /csrf-token then send X-CSRF-Token header + csrf_token cookie"})
+                return _denial(403, "CSRF token missing — GET /csrf-token then send X-CSRF-Token header + csrf_token cookie", request)
 
             cookie_parts = csrf_cookie.split(":", 1)
             if len(cookie_parts) != 2:
-                return JSONResponse(status_code=403, content={"detail": "Invalid CSRF token"})
+                return _denial(403, "Invalid CSRF token", request)
 
             cookie_token, cookie_sig = cookie_parts
 
             if not _verify_token(cookie_token, cookie_sig, settings.jwt_secret):
-                return JSONResponse(status_code=403, content={"detail": "Invalid CSRF token"})
+                return _denial(403, "Invalid CSRF token", request)
 
             if not _token_store.validate(cookie_token):
-                return JSONResponse(status_code=403, content={"detail": "CSRF token expired"})
+                return _denial(403, "CSRF token expired", request)
 
             if not hmac.compare_digest(csrf_header.encode(), cookie_token.encode()):
-                return JSONResponse(status_code=403, content={"detail": "CSRF token mismatch"})
+                return _denial(403, "CSRF token mismatch", request)
 
         return await call_next(request)
 

@@ -199,10 +199,9 @@ class TenantMiddleware(BaseHTTPMiddleware):
                     ws_uuid = _uuid.UUID(str(requested_workspace_id))
                     uid = _uuid.UUID(str(jwt_user_id))
                 except (ValueError, TypeError):
-                    return JSONResponse(
-                        status_code=403,
-                        content={"detail": "Forbidden: Invalid workspace ID format"},
-                    )
+                    from .exception_handler import denial as _denial
+
+                    return _denial(403, "Forbidden: Invalid workspace ID format", request)
 
                 # Lazy import: api.database must not be imported at module top
                 # (it would create a database->middleware import cycle at
@@ -221,10 +220,9 @@ class TenantMiddleware(BaseHTTPMiddleware):
                         if path in {"/api/v1/auth/me", "/api/v1/workspaces", "/api/v1/workspaces/"}:
                             workspace_id = None
                         else:
-                            return JSONResponse(
-                                status_code=403,
-                                content={"detail": "Forbidden: Access to specified workspace denied"},
-                            )
+                            from .exception_handler import denial as _denial
+
+                            return _denial(403, "Forbidden: Access to specified workspace denied", request)
                     else:
                         workspace_id = str(requested_workspace_id)
 
