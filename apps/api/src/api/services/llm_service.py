@@ -6,7 +6,12 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 import httpx
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, stop_after_delay, wait_exponential
+
+# Total retry span per LLM call (Loop 2): attempts are unchanged (3), but the
+# whole retry sequence aborts after 60s so one hanging provider call cannot eat
+# the 120s run budget by itself. Fast failures behave exactly as before.
+_RETRY_SPAN_S = 60
 
 _ORIG_ASYNC_CLIENT = httpx.AsyncClient
 
@@ -426,7 +431,7 @@ class LLMService:
         return sys_prov, sys_key
 
     @retry(
-        stop=stop_after_attempt(3),
+        stop=(stop_after_attempt(3) | stop_after_delay(_RETRY_SPAN_S)),
         wait=wait_exponential(multiplier=1, min=2, max=30),
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
     )
@@ -543,7 +548,7 @@ class LLMService:
         raise LLMProviderError("Anthropic does not support standalone embeddings; use OpenAI for embeddings")
 
     @retry(
-        stop=stop_after_attempt(3),
+        stop=(stop_after_attempt(3) | stop_after_delay(_RETRY_SPAN_S)),
         wait=wait_exponential(multiplier=0.5, min=0.5, max=10),
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError, LLMTransientError)),
         reraise=True,
@@ -968,7 +973,7 @@ class LLMService:
         }
 
     @retry(
-        stop=stop_after_attempt(3),
+        stop=(stop_after_attempt(3) | stop_after_delay(_RETRY_SPAN_S)),
         wait=wait_exponential(multiplier=0.5, min=0.5, max=10),
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError, LLMTransientError)),
         reraise=True,

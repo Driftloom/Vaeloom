@@ -581,3 +581,65 @@ def score_tool_trajectory(
         "hallucination_rate": round(hallucination_rate, 4),
         "passed": passed,
     }
+
+
+# ── LLM-Judge Trajectory Grading (Loop 2, fail-closed) ──
+# Live LLM grading runs ONLY when explicitly enabled via
+# TRAJECTORY_JUDGE_LIVE=1 AND a judge_fn is provided by the caller.
+# Otherwise (default: every CI run, every offline run) the heuristic
+# score_tool_trajectory result is returned with judge="heuristic" and
+# live_gated=True, so no test or pipeline ever blocks on network/keys.
+JUDGE_LIVE_ENV_VAR = "TRAJECTORY_JUDGE_LIVE"
+
+
+def judge_trajectory(
+    predicted_tools: list[str] | None,
+    expected_tools: list[str] | None = None,
+    *,
+    context: str = "",
+    hallucinations: int = 0,
+    tool_errors: int = 0,
+    tool_calls: int = 0,
+    min_f1: float = DEFAULT_TRAJECTORY_F1_THRESHOLD,
+    max_error_rate: float = DEFAULT_TRAJECTORY_ERROR_THRESHOLD,
+    judge_fn=None,
+) -> dict:
+    """Grade one run's tool trajectory, heuristic by default, LLM when gated open.
+
+    judge_fn (optional): sync callable taking a grading prompt string and
+    returning a float score in [0, 1]. Invoked ONLY when the live gate is open.
+    Returns the heuristic verdict plus judge metadata either way.
+    """
+    import os
+
+    base = score_tool_trajectory(
+        predicted_tools,
+        expected_tools,
+        hallucinations=hallucinations,
+        tool_errors=tool_errors,
+        tool_calls=tool_calls,
+        min_f1=min_f1,
+        max_error_rate=max_error_rate,
+    )
+    live_open = os.environ.get(JUDGE_LIVE_ENV_VAR, "") == "1" and callable(judge_fn)
+    if not live_open:
+        return {**base, "judge": "heuristic", "live_gated": True, "judge_score": None}
+    prompt = (
+        "Grade this agent tool trajectory 0.0-1.0 (1.0 = perfect tool selection). "
+        f"Expected tools: {sorted(set(expected_tools or []))}. "
+        f"Executed tools: {sorted(set(predicted_tools or []))}. "
+        f"Context: {context[:500]} "
+        "Reply with ONLY a decimal number."
+    )
+    try:
+        raw = judge_fn(prompt)
+        score = max(0.0, min(1.0, float(raw)))
+    except Exception:
+        return {**base, "judge": "llm-error", "live_gated": False, "judge_score": None}
+    return {
+        **base,
+        "judge": "llm",
+        "live_gated": False,
+        "judge_score": round(score, 4),
+        "passed": bool(base["passed"] and score >= min_f1),
+    }

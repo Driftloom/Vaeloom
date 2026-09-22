@@ -3204,6 +3204,7 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
             "cost_usd": tracker.cost_usd, "tool_fingerprints": tracker.tool_fingerprints[-12:],
             "observation_fingerprints": tracker.observation_fingerprints[-12:],
             "plan_fingerprints": tracker.plan_fingerprints[-12:],
+            "unknown_tool_count": tracker.unknown_tool_count,
         })
         await save_checkpoint(state)
 
@@ -3284,8 +3285,70 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
     return escalated_resp
 
 
+def _record_run_metrics(state, request) -> None:
+    """Record per-run trajectory metrics (Loop 2: pipeline now feeds the collector).
+
+    Expected tools come from the agent's declared static tool list
+    (`request.agent.tools`, the static-dispatch contract); predicted tools,
+    errors, and hallucination counts come from durable run state. All reads
+    are defensive — metrics must never break a run. Failures are debug-logged.
+    """
+    try:
+        from ..services.trajectory_metrics import record_trajectory
+
+        recs = getattr(state, "completed_tool_calls", None) or []
+        predicted = [
+            str(r.get("tool")) for r in recs
+            if isinstance(r, dict) and r.get("tool")
+        ]
+        errors = sum(
+            1 for r in recs
+            if isinstance(r, dict)
+            and str(r.get("status", "error")) not in ("success", "proposed", "skipped")
+        )
+        try:
+            phases = getattr(state, "phases", None) or {}
+            safety = phases.get("safety_tracker", {}) or {}
+            hallucinations = int(safety.get("unknown_tool_count", 0) or 0)
+        except Exception:
+            hallucinations = 0
+        expected = None
+        try:
+            tools = getattr(getattr(request, "agent", None), "tools", None) or []
+            names = [getattr(t, "name", None) or (t.get("name") if isinstance(t, dict) else None) for t in tools]
+            names = [str(n) for n in names if n]
+            expected = names or None
+        except Exception:
+            expected = None
+        try:
+            spent = getattr(state, "spent", None) or {}
+            cost = float(spent.get("cost_usd", 0.0) or 0.0)
+            latency_ms = float(spent.get("elapsed_s", 0.0) or 0.0) * 1000.0
+        except Exception:
+            cost, latency_ms = 0.0, 0.0
+        try:
+            steps = int(getattr(state, "iteration", 0) or 0) + 1
+        except Exception:
+            steps = 0
+        record_trajectory(
+            str(getattr(state, "run_id", None) or getattr(request, "id", "unknown")),
+            str(getattr(state, "agent_id", None) or getattr(request, "agent_name", "") or ""),
+            steps=steps,
+            tool_calls=len(predicted),
+            tool_errors=errors,
+            hallucinations=hallucinations,
+            cost_usd=cost,
+            latency_ms=latency_ms,
+            predicted_tools=predicted,
+            expected_tools=expected,
+        )
+    except Exception as exc:
+        logger.debug(f"Run metrics skipped: {exc}")
+
+
 def _eval_ok(state, request, resp=None) -> None:
     """Persist trajectory evaluation post-run (non-blocking, Phase B §15)."""
+    _record_run_metrics(state, request)
     try:
         from ..services.trajectory_eval import evaluate_trajectory
         result = evaluate_trajectory(state.to_dict())
@@ -3330,6 +3393,7 @@ async def _save_eval_phase(state) -> None:
 
 
 def _eval_fail(state, request) -> None:
+    _record_run_metrics(state, request)
     try:
         from ..services.trajectory_eval import evaluate_trajectory
         result = evaluate_trajectory(state.to_dict())
