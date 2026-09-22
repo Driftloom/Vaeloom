@@ -28,16 +28,23 @@ class MockArray(sa_types.JSON):
         super().__init__(*args, **kwargs)
 
 import uuid
-
+import sqlalchemy.dialects.postgresql
+_orig_pg_uuid = getattr(sqlalchemy.dialects.postgresql, "UUID", None)
 
 class MockUUID(sa_types.TypeDecorator):
     impl = sa_types.String
     cache_ok = True
     def __init__(self, as_uuid=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "postgresql" and _orig_pg_uuid is not None:
+            return dialect.type_descriptor(_orig_pg_uuid(as_uuid=True))
+        return dialect.type_descriptor(sa_types.String(36))
     def process_bind_param(self, value, dialect):
         if value is None:
             return None
+        if dialect.name == "postgresql":
+            return value if isinstance(value, uuid.UUID) else uuid.UUID(str(value))
         if isinstance(value, uuid.UUID):
             return str(value)
         if isinstance(value, str):
@@ -50,7 +57,6 @@ class MockUUID(sa_types.TypeDecorator):
             return value
         return uuid.UUID(value) if value else None
 
-import sqlalchemy.dialects.postgresql
 sqlalchemy.dialects.postgresql.JSONB = JSON
 sqlalchemy.dialects.postgresql.ARRAY = MockArray
 sqlalchemy.dialects.postgresql.UUID = MockUUID

@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 import bcrypt
 import jwt
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, func
 
 from ..config import settings
 from ..models.schema import AuthSession, EmailVerificationToken, OnboardingState, User, Workspace
@@ -102,6 +102,15 @@ class AuthService:
             from fastapi import HTTPException
             raise HTTPException(status_code=400, detail="Password must be at least 8 characters long")
 
+        # Set transaction-scoped pre-auth lookup GUCs for RLS on PostgreSQL
+        if db is not None:
+            try:
+                from sqlalchemy import text
+                await db.execute(text("SELECT set_config('app.lookup_email', :email, true)"), {"email": email})
+                await db.execute(text("SELECT set_config('app.lookup_slug', 'default', true)"))
+            except Exception:
+                pass
+
         result = await db.execute(select(User).where(User.email == email))
         if result.scalar_one_or_none():
             from fastapi import HTTPException
@@ -134,6 +143,19 @@ class AuthService:
             consent_version="2026-v1",
             consent_granted_at=datetime.now(UTC),
         )
+
+        # Set user RLS context for subsequent inserts (workspaces, tokens, states)
+        if db is not None:
+            try:
+                from ..middleware.tenant import set_rls_session_vars
+                await set_rls_session_vars(
+                    db,
+                    tenant_id=str(tenant.id) if tenant else None,
+                    user_id=str(user.id),
+                )
+            except Exception:
+                pass
+
         db.add(user)
         await db.flush()
 
@@ -236,10 +258,31 @@ class AuthService:
         from fastapi import HTTPException
 
         email = email.strip().lower()
-        result = await db.execute(select(User).where(User.email == email))
+
+        # Set transaction-scoped lookup_email GUC for pre-auth RLS query on PostgreSQL
+        if db is not None:
+            try:
+                from sqlalchemy import text
+                await db.execute(text("SELECT set_config('app.lookup_email', :email, true)"), {"email": email})
+            except Exception:
+                pass
+
+        result = await db.execute(select(User).where(func.lower(User.email) == email))
         user = result.scalar_one_or_none()
         if not user or not user.password_hash:
             raise HTTPException(status_code=401, detail="Invalid email or password")
+
+        # Bind identity GUCs for the rest of this transaction (session INSERT,
+        # cutoff read, audit writes). Without these, RLS WITH CHECK denies the
+        # session row and cutoff reads go blind on PostgreSQL.
+        if db is not None:
+            try:
+                from sqlalchemy import text
+                await db.execute(text("SELECT set_config('app.user_id', :uid, true)"), {"uid": str(user.id)})
+                if user.tenant_id:
+                    await db.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": str(user.tenant_id)})
+            except Exception:
+                pass
 
         now = datetime.now(UTC)
         # Check lockout: 10 consecutive failed attempts -> locked for 15 minutes
@@ -256,11 +299,13 @@ class AuthService:
                 user.locked_until = None
                 user.failed_login_attempts = 0
 
+        uid_val = user.id if isinstance(user.id, uuid.UUID) else uuid.UUID(str(user.id))
+
         if not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
             # Atomic update to avoid concurrency race condition (GAP-AUTH-02)
             stmt = (
                 update(User)
-                .where(User.id == user.id)
+                .where(User.id == uid_val)
                 .values(failed_login_attempts=User.failed_login_attempts + 1)
                 .returning(User.failed_login_attempts)
             )
@@ -269,7 +314,7 @@ class AuthService:
             if updated_attempts >= 10:
                 await db.execute(
                     update(User)
-                    .where(User.id == user.id)
+                    .where(User.id == uid_val)
                     .values(locked_until=now + timedelta(minutes=15))
                 )
             await db.commit()
@@ -278,10 +323,22 @@ class AuthService:
         if user.status != "ACTIVE":
             raise HTTPException(status_code=403, detail="Account is not active")
 
+        # Establish authenticated RLS session context for this user and tenant
+        if db is not None:
+            try:
+                from ..middleware.tenant import set_rls_session_vars
+                await set_rls_session_vars(
+                    db,
+                    tenant_id=str(user.tenant_id) if getattr(user, "tenant_id", None) else None,
+                    user_id=str(user.id),
+                )
+            except Exception:
+                pass
+
         # Reset failed login attempts on successful login
         await db.execute(
             update(User)
-            .where(User.id == user.id)
+            .where(User.id == uid_val)
             .values(failed_login_attempts=0, locked_until=None)
         )
         user.failed_login_attempts = 0
@@ -427,6 +484,14 @@ class AuthService:
         refresh_token = secrets.token_urlsafe(64)
         token_family = family_id or uuid.uuid4()
 
+        # Set user_id RLS context for session insert on PostgreSQL
+        if db is not None:
+            try:
+                from sqlalchemy import text
+                await db.execute(text("SELECT set_config('app.user_id', :uid, true)"), {"uid": str(user_id)})
+            except Exception:
+                pass
+
         session = AuthSession(
             user_id=uuid.UUID(user_id),
             token=access_token,
@@ -450,6 +515,14 @@ class AuthService:
         db=None,
     ):
         from fastapi import HTTPException
+
+        # Set lookup_token RLS context for pre-auth refresh on PostgreSQL
+        if db is not None:
+            try:
+                from sqlalchemy import text
+                await db.execute(text("SELECT set_config('app.lookup_token', :tok, true)"), {"tok": refresh_token})
+            except Exception:
+                pass
 
         result = await db.execute(
             select(AuthSession).where(AuthSession.refresh_token == refresh_token)
@@ -535,6 +608,15 @@ class AuthService:
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         now = datetime.now(UTC)
 
+        # Pre-auth RLS context (PostgreSQL): token-hash scope unlocks exactly
+        # this row under the lookup policy; user scope follows once resolved.
+        if db is not None:
+            try:
+                from sqlalchemy import text
+                await db.execute(text("SELECT set_config('app.lookup_token_hash', :th, true)"), {"th": token_hash})
+            except Exception:
+                pass
+
         result = await db.execute(
             select(EmailVerificationToken).where(
                 EmailVerificationToken.token_hash == token_hash
@@ -543,6 +625,12 @@ class AuthService:
         record = result.scalar_one_or_none()
         if not record:
             raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+        if db is not None:
+            try:
+                from sqlalchemy import text
+                await db.execute(text("SELECT set_config('app.user_id', :uid, true)"), {"uid": str(record.user_id)})
+            except Exception:
+                pass
 
         expires_at = record.expires_at
         if expires_at.tzinfo is None:
@@ -568,6 +656,14 @@ class AuthService:
             return False
         email = email.strip().lower()
 
+        # Pre-auth RLS context (PostgreSQL): user lookup + token-hash scope.
+        if db is not None:
+            try:
+                from sqlalchemy import text
+                await db.execute(text("SELECT set_config('app.lookup_email', :email, true)"), {"email": email})
+            except Exception:
+                pass
+
         result = await db.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
         if not user or user.email_verified:
@@ -581,6 +677,13 @@ class AuthService:
 
         raw_token = secrets.token_urlsafe(32)
         token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        if db is not None:
+            try:
+                from sqlalchemy import text
+                await db.execute(text("SELECT set_config('app.lookup_token_hash', :th, true)"), {"th": token_hash})
+                await db.execute(text("SELECT set_config('app.user_id', :uid, true)"), {"uid": str(user.id)})
+            except Exception:
+                pass
         new_token = EmailVerificationToken(
             user_id=user.id,
             token_hash=token_hash,

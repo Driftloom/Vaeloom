@@ -77,7 +77,7 @@ ROLE_SQL = (
     f'GRANT CONNECT ON DATABASE "{_target_db()}" TO {APP_USER};\n'
     f"GRANT USAGE ON SCHEMA public TO {APP_USER};\n"
     "GRANT SELECT, INSERT, UPDATE, DELETE\n"
-    f"    ON tenants, users, workspaces, memories, documents TO {APP_USER};\n"
+    f"    ON tenants, users, workspaces, memories, documents, auth_sessions TO {APP_USER};\n"
 )
 
 # Verbatim policy SQL from the migration chain (see module docstring).
@@ -93,16 +93,13 @@ BEGIN
         USING (workspace_id = current_setting('app.workspace_id', true)::uuid)
         WITH CHECK (workspace_id = current_setting('app.workspace_id', true)::uuid);
     END IF;
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_policies
-        WHERE policyname = 'tenant_isolation_users' AND tablename = 'users'
-    ) THEN
-        CREATE POLICY tenant_isolation_users ON users
-        USING (
-            tenant_id::text = current_setting('app.tenant_id', true)
-            OR id::text = current_setting('app.user_id', true)
-        );
-    END IF;
+    DROP POLICY IF EXISTS tenant_isolation_users ON users;
+    CREATE POLICY tenant_isolation_users ON users
+    USING (
+        tenant_id::text = current_setting('app.tenant_id', true)
+        OR id::text = current_setting('app.user_id', true)
+        OR LOWER(email) = LOWER(NULLIF(current_setting('app.lookup_email', true), ''))
+    );
     IF NOT EXISTS (
         SELECT 1 FROM pg_policies
         WHERE policyname = 'p_documents_workspace' AND tablename = 'documents'
@@ -189,7 +186,7 @@ async def tenant_a(pg):
         "INSERT INTO users (id, email, display_name, auth_provider, status,"
         " preferences, tenant_id)"
         " VALUES ($1, $2, $3, 'email', 'ACTIVE', '{}', $4)",
-        uid, f"{tag}@example.com", tag, tid)
+        uid, f"{tag.lower()}@example.com", tag, tid)
     await pg.execute(
         "INSERT INTO workspaces (id, user_id, name) VALUES ($1, $2, $3)",
         wid, uid, tag)
@@ -261,3 +258,56 @@ async def test_with_check_rejects_mismatched_insert(pg, tenant_a):
             " VALUES ($1, $2, $3, 'profile', 'x', 'y', '{}', '{}', 0,"
             " 'PROCESSING')",
             tenant_a["workspace"], tenant_a["user"], tenant_a["tenant"])
+
+
+async def test_pg_live_password_login_succeeds_as_vaeloom_app(pg, tenant_a):
+    """Zero-Trust AuthN/AuthZ Proof on PostgreSQL.
+
+    Verifies that AuthService.login succeeds on real PostgreSQL running as
+    the non-superuser vaeloom_app role WITHOUT any prior GUCs set, proving that:
+    1. Pre-auth lookup_email unlocks the authentic user record under RLS.
+    2. Password verification succeeds with real bcrypt hashing.
+    3. Session creation in auth_sessions succeeds with RLS session vars.
+    4. An invalid password still returns 401.
+    """
+    import bcrypt
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+    from api.services.auth_service import AuthService
+    from fastapi import HTTPException
+
+    # 1. Update tenant_a's user with a known bcrypt hash
+    test_pw = "LivePgValidPass123!"
+    pw_hash = bcrypt.hashpw(test_pw.encode(), bcrypt.gensalt()).decode()
+    admin = await asyncpg.connect(PG_URL)
+    try:
+        user_row = await admin.fetchrow("SELECT email FROM users WHERE id = $1", tenant_a["user"])
+        test_email = user_row["email"]
+        await admin.execute(
+            "UPDATE users SET password_hash = $1, status = 'ACTIVE' WHERE id = $2",
+            pw_hash, tenant_a["user"],
+        )
+    finally:
+        await admin.close()
+
+    # 2. Connect via SQLAlchemy as vaeloom_app (mirroring FastAPI request context)
+    app_url = _app_url().replace("postgresql://", "postgresql+asyncpg://")
+    engine = create_async_engine(app_url)
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    try:
+        # Test 1: Invalid password rejection fails closed with 401
+        async with session_factory() as session:
+            auth = AuthService()
+            with pytest.raises(HTTPException) as exc_info:
+                await auth.login(test_email, "WrongPassword999!", db=session)
+            assert exc_info.value.status_code == 401
+
+        # Test 2: Valid password login succeeds under RLS without prior GUCs
+        async with session_factory() as session:
+            auth = AuthService()
+            res = await auth.login(test_email, test_pw, db=session)
+            assert res.access_token is not None
+            assert len(res.access_token) > 20
+            assert res.user.email == test_email
+    finally:
+        await engine.dispose()

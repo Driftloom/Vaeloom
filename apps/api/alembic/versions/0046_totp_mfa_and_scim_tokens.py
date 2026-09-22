@@ -74,15 +74,15 @@ def upgrade() -> None:
         """)
 
         # Add pre-auth service policies for email tokens and onboarding states
+        op.execute("DROP POLICY IF EXISTS p_email_tokens_service ON email_verification_tokens;")
         op.execute("""
-            DROP POLICY IF EXISTS p_email_tokens_service ON email_verification_tokens;
             CREATE POLICY p_email_tokens_service ON email_verification_tokens
             FOR ALL
             USING (true)
             WITH CHECK (true);
         """)
+        op.execute("DROP POLICY IF EXISTS p_onboarding_states_service ON onboarding_states;")
         op.execute("""
-            DROP POLICY IF EXISTS p_onboarding_states_service ON onboarding_states;
             CREATE POLICY p_onboarding_states_service ON onboarding_states
             FOR ALL
             USING (true)

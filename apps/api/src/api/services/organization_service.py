@@ -434,6 +434,13 @@ class OrganizationService:
         from datetime import datetime, timezone
 
         token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+        # RLS context (PostgreSQL): token-hash scope unlocks exactly this row.
+        if db is not None:
+            try:
+                from sqlalchemy import text
+                await db.execute(text("SELECT set_config('app.lookup_token_hash', :th, true)"), {"th": token_hash})
+            except Exception:
+                pass
         stmt = select(OrganizationInvitation).where(
             OrganizationInvitation.token_hash == token_hash,
             OrganizationInvitation.status == "pending",

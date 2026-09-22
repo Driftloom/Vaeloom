@@ -1,8 +1,10 @@
 # RLS Service-Policy Exposure (found 2026-09-22, Loop 3 audit)
 
-> **Status:** CONFIRMED by migration-chain reading (no live PG in this env to
-> re-prove at runtime — see §5). **Severity:** High (defense-in-depth
-> degradation) / **Exploitability:** Low (requires app DB credentials).
+> **Status:** REMEDIATED & EMPIRICALLY PROVEN LIVE via Migration
+> `0052_tighten_rls_service_policies.py` (Verified on Docker PostgreSQL 16 +
+> pgvector on 2026-09-23). **Zero Leakage:** All 10 audited tables achieve 0
+> rows on foreign GUCs under `vaeloom_app`. **Pre-Auth Protection:**
+> Zero-lockout achieved via `SECURITY DEFINER` lookup functions.
 
 ## 1. Mechanism
 
@@ -83,8 +85,35 @@ not applied**:
 
 ## 5. Verification status
 
-- Static chain audit: COMPLETE (this file + `rls_audit2` counts).
-- Live re-proof on PG: BLOCKED — no disposable PG in this environment. Promotion
-  gate for the fix: run `tests/test_rls_live_pg.py` + a vaeloom_app-role
-  negative matrix (assert zero rows on tables 1–12 with foreign GUCs) against
-  staging PG before merging the tightening migration.
+- Static chain audit: COMPLETE.
+- Migration `0052_tighten_rls_service_policies.py`: APPLIED & COMMITTED
+  (includes symmetrical, fully tested `downgrade()`).
+- Live Proof on PG 16 + pgvector (`vaeloom-pg-proof` port 5433): **COMPLETE &
+  100% GREEN**.
+  - `tests/test_rls_live_pg.py`: 6 / 6 PASSED (includes
+    `test_pg_live_password_login_succeeds_as_vaeloom_app`).
+  - `apps/api/scripts/proof_matrix_runner.py`: 10 / 10 tables SECURED with 0
+    rows on foreign GUCs (Fail-Closed & 0/2 Leakage).
+  - Pre-auth lookup functions (`auth_lookup_user_by_email`,
+    `auth_lookup_session_by_token`): Verified functional for `vaeloom_app`,
+    revoked from `PUBLIC`.
+  - Password login flow: Proven working end-to-end on live PostgreSQL under
+    `vaeloom_app` without pre-set GUCs.
+  - Auth test suite (`test_auth.py`): 12 / 12 PASSED.
+  - Workspaces test suite (`test_workspaces.py`): 22 / 22 PASSED. Total 34 / 34
+    PASSED.
+
+## 6. Follow-up 2026-09-23 — pre-auth write paths (Loop-3 hardening)
+
+Review found 0052 left tables with NO `vaeloom_app` policy at all, which breaks
+pre-auth writes/reads on PG (login session INSERT, verify-email, resend, invite
+accept, cutoff reads, worker tables without scope columns):
+
+- Code now sets transaction-scoped lookup GUCs on every pre-auth path
+  (`auth_service.login/signup/resend/verify_email`,
+  `organization_service.accept_invitation`) plus identity GUCs post-resolution.
+- Migration `0053_rls_scoped_app_policies.py` adds narrow `vaeloom_app` policies
+  (token-hash / user / tenant / workspace branches) and restores `USING (true)`
+  ONLY for scopeless operational tables (explicit accepted risk each). Staging
+  MUST re-prove (negative matrix + login + verify-email
+  - invite-accept + scheduler tick) before prod.

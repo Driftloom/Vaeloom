@@ -78,15 +78,37 @@ def upgrade() -> None:
         batch_op.create_index("idx_documents_folder_id", ["folder_id"])
         batch_op.create_index("idx_documents_workspace_status", ["workspace_id", "status"])
 
-    # 3. Add columns to document_actions table
-    with op.batch_alter_table("document_actions") as batch_op:
-        batch_op.add_column(
-            sa.Column("actor_id", sa.UUID(as_uuid=True) if is_pg else sa.String(36), nullable=True)
+    # 3. Create or add columns to document_actions table
+    conn = op.get_bind()
+    insp = sa.inspect(conn)
+    if not insp.has_table("document_actions"):
+        op.create_table(
+            "document_actions",
+            sa.Column("id", sa.UUID(as_uuid=True) if is_pg else sa.String(36), primary_key=True),
+            sa.Column("document_id", sa.UUID(as_uuid=True) if is_pg else sa.String(36), sa.ForeignKey("documents.id", ondelete="CASCADE"), nullable=False),
+            sa.Column("workspace_id", sa.UUID(as_uuid=True) if is_pg else sa.String(36), sa.ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False),
+            sa.Column("actor_id", sa.UUID(as_uuid=True) if is_pg else sa.String(36), nullable=True),
+            sa.Column("tenant_id", sa.UUID(as_uuid=True) if is_pg else sa.String(36), nullable=True),
+            sa.Column("action_type", sa.String(50), nullable=False),
+            sa.Column("old_path", sa.String(1000), nullable=True),
+            sa.Column("new_path", sa.String(1000), nullable=True),
+            sa.Column("old_deleted_at", sa.DateTime(timezone=True), nullable=True),
+            sa.Column("new_deleted_at", sa.DateTime(timezone=True), nullable=True),
+            sa.Column("undone_at", sa.DateTime(timezone=True), nullable=True),
+            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         )
-        batch_op.add_column(
-            sa.Column("tenant_id", sa.UUID(as_uuid=True) if is_pg else sa.String(36), nullable=True)
-        )
-        batch_op.create_index("idx_document_actions_actor", ["actor_id"])
+        op.create_index("idx_document_actions_document", "document_actions", ["document_id", "created_at"])
+        op.create_index("idx_document_actions_workspace", "document_actions", ["workspace_id", "created_at"])
+        op.create_index("idx_document_actions_actor", "document_actions", ["actor_id"])
+    else:
+        with op.batch_alter_table("document_actions") as batch_op:
+            batch_op.add_column(
+                sa.Column("actor_id", sa.UUID(as_uuid=True) if is_pg else sa.String(36), nullable=True)
+            )
+            batch_op.add_column(
+                sa.Column("tenant_id", sa.UUID(as_uuid=True) if is_pg else sa.String(36), nullable=True)
+            )
+            batch_op.create_index("idx_document_actions_actor", ["actor_id"])
 
     # 4. Create document_shares table
     op.create_table(
