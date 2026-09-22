@@ -34,12 +34,16 @@ async def send_notification(
 async def list_notifications(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    limit: int | None = Query(default=None, ge=1, le=100, description="Standard pagination page size (wins over page/page_size)"),
+    offset: int | None = Query(default=None, ge=0, description="Standard pagination rows to skip"),
     channel: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
     if not current_user:
         raise HTTPException(401, "Not authenticated")
+    from ..utils.pagination import resolve_page_params
+    page, page_size = resolve_page_params(page, page_size, limit, offset)
     rows, total = await notification_service.list_notifications(page, page_size, channel, db)
     return [NotificationResponse.model_validate(n) for n in rows]
 

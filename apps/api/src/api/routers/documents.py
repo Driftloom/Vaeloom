@@ -24,6 +24,9 @@ from ..schemas.document import (
     BulkUploadResponse,
     DocumentActionListResponse,
     DocumentActionResponse,
+    DocumentAuditResponse,
+    DocumentCompareRequest,
+    DocumentCompareResponse,
     DocumentListResponse,
     DocumentRenameRequest,
     DocumentResponse,
@@ -195,6 +198,8 @@ async def list_documents(
     folder_id: str | None = Query(None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    limit: int | None = Query(default=None, ge=1, le=100, description="Standard pagination page size (wins over page/page_size)"),
+    offset: int | None = Query(default=None, ge=0, description="Standard pagination rows to skip"),
     include_archived: bool = Query(default=False),
     status: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
@@ -205,6 +210,8 @@ async def list_documents(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
+    from ..utils.pagination import resolve_page_params
+    page, page_size = resolve_page_params(page, page_size, limit, offset)
     await _verify_workspace_access(workspace_id, _user_id(current_user), db)
     docs, total = await document_service.list_for_workspace(
         workspace_id=workspace_id,
@@ -642,6 +649,55 @@ async def restore_document_version(
         raise HTTPException(status_code=404, detail="Document not found")
 
     return DocumentResponse.model_validate(doc)
+
+
+# ============================================================================
+# Document Quality Audit & Version Comparison Endpoints
+# ============================================================================
+
+@router.post("/{document_id}/audit", response_model=DocumentAuditResponse)
+async def audit_document(
+    document_id: str,
+    workspace_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    try:
+        audit_res = await document_service.audit_document_quality(document_id, workspace_id, db)
+    except DocumentNotFound:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    return DocumentAuditResponse(**audit_res)
+
+
+@router.post("/{document_id}/compare", response_model=DocumentCompareResponse)
+async def compare_document(
+    document_id: str,
+    dto: DocumentCompareRequest = Body(...),
+    workspace_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    try:
+        compare_res = await document_service.compare_document_versions(
+            document_id=document_id,
+            version_a=dto.version_a,
+            version_b=dto.version_b,
+            workspace_id=workspace_id,
+            db=db,
+        )
+    except DocumentNotFound:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    return DocumentCompareResponse(**compare_res)
 
 
 # ============================================================================

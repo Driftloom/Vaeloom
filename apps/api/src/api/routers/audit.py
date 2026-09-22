@@ -36,6 +36,8 @@ async def record_event(
 async def query_events(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    limit: int | None = Query(default=None, ge=1, le=100, description="Standard pagination page size (wins over page/page_size)"),
+    offset: int | None = Query(default=None, ge=0, description="Standard pagination rows to skip"),
     actor_id: str | None = Query(None),
     action: str | None = Query(None),
     resource: str | None = Query(None),
@@ -69,6 +71,8 @@ async def query_events(
         "date_to": date_to,
     }
     filters = {k: v for k, v in filters.items() if v is not None}
+    from ..utils.pagination import resolve_page_params
+    page, page_size = resolve_page_params(page, page_size, limit, offset)
     rows, total = await audit_service.query_events(page=page, page_size=page_size, filters=filters, db=db)
     return {"items": rows, "total": total, "page": page, "page_size": page_size}
 

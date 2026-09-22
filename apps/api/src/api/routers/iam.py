@@ -24,9 +24,13 @@ async def create_user(
 async def list_users(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    limit: int | None = Query(default=None, ge=1, le=100, description="Standard pagination page size (wins over page/page_size)"),
+    offset: int | None = Query(default=None, ge=0, description="Standard pagination rows to skip"),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(require_role("admin")),
 ):
+    from ..utils.pagination import resolve_page_params
+    page, page_size = resolve_page_params(page, page_size, limit, offset)
     tenant_id = current_user.get("tenant_id")
     if not tenant_id:
         raise HTTPException(status_code=400, detail="Tenant ID required")

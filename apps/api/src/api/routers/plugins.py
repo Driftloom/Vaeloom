@@ -34,6 +34,8 @@ async def register_plugin(
 async def list_plugins(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    limit: int | None = Query(default=None, ge=1, le=100, description="Standard pagination page size (wins over page/page_size)"),
+    offset: int | None = Query(default=None, ge=0, description="Standard pagination rows to skip"),
     status: str | None = Query(None),
     tags: list[str] | None = Query(None),
     search: str | None = Query(None),
@@ -41,6 +43,8 @@ async def list_plugins(
     current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
 ):
+    from ..utils.pagination import resolve_page_params
+    page, page_size = resolve_page_params(page, page_size, limit, offset)
     plugins, total = await plugin_service.list_plugins(
         page=page, page_size=page_size, status=status,
         tags=tags, search=search, tenant_id=tenant_id, db=db,
@@ -130,11 +134,15 @@ async def list_plugin_executions(
     plugin_id: uuid.UUID,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    limit: int | None = Query(default=None, ge=1, le=100, description="Standard pagination page size (wins over page/page_size)"),
+    offset: int | None = Query(default=None, ge=0, description="Standard pagination rows to skip"),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    from ..utils.pagination import resolve_page_params
+    page, page_size = resolve_page_params(page, page_size, limit, offset)
     executions, total = await plugin_service.list_executions(plugin_id, page, page_size, db)
     return {
         "executions": [ExecutionResponse.model_validate(e) for e in executions],

@@ -101,6 +101,8 @@ async def create_node(
 async def list_nodes(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    limit: int | None = Query(default=None, ge=1, le=100, description="Standard pagination page size (wins over page/page_size)"),
+    offset: int | None = Query(default=None, ge=0, description="Standard pagination rows to skip"),
     type: str | None = Query(None, alias="type"),
     search: str | None = Query(None),
     min_importance: float | None = Query(None, ge=0, le=1),
@@ -113,6 +115,8 @@ async def list_nodes(
 ):
     if not current_user:
         raise HTTPException(status_code=401)
+    from ..utils.pagination import resolve_page_params
+    page, page_size = resolve_page_params(page, page_size, limit, offset)
     tenant_id = current_user.get("tenant_id")
     rows, total = await kg_service.list_nodes(
         page=page,
@@ -224,6 +228,8 @@ async def list_node_edges(
     node_id: uuid.UUID,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    limit: int | None = Query(default=None, ge=1, le=100, description="Standard pagination page size (wins over page/page_size)"),
+    offset: int | None = Query(default=None, ge=0, description="Standard pagination rows to skip"),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
     workspace_id: str | None = Depends(get_workspace_id),
@@ -232,6 +238,8 @@ async def list_node_edges(
         raise HTTPException(status_code=401)
     tenant_id = current_user.get("tenant_id")
     await _verify_node_scope(node_id, tenant_id, workspace_id, db)
+    from ..utils.pagination import resolve_page_params
+    page, page_size = resolve_page_params(page, page_size, limit, offset)
     rows, total = await kg_service.list_edges(node_id, page, page_size, db, workspace_id, tenant_id)
     return {
         "items": [EdgeResponse.model_validate(r._mapping) for r in rows],
@@ -245,6 +253,8 @@ async def list_node_edges(
 async def list_all_edges(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    limit: int | None = Query(default=None, ge=1, le=100, description="Standard pagination page size (wins over page/page_size)"),
+    offset: int | None = Query(default=None, ge=0, description="Standard pagination rows to skip"),
     relationship: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
@@ -254,6 +264,8 @@ async def list_all_edges(
         raise HTTPException(status_code=401)
     tenant_id = current_user.get("tenant_id")
     # Filter edges by workspace through source node's workspace_id
+    from ..utils.pagination import resolve_page_params
+    page, page_size = resolve_page_params(page, page_size, limit, offset)
     rows, total = await kg_service.list_all_edges(page, page_size, relationship, db, tenant_id=tenant_id, workspace_id=workspace_id)
     return {
         "items": [EdgeResponse.model_validate(r._mapping) for r in rows],

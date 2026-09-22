@@ -44,6 +44,8 @@ async def create_job(
 async def list_jobs(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    limit: int | None = Query(default=None, ge=1, le=100, description="Standard pagination page size (wins over page/page_size)"),
+    offset: int | None = Query(default=None, ge=0, description="Standard pagination rows to skip"),
     type: str | None = None,
     status: str | None = None,
     name: str | None = None,
@@ -53,6 +55,8 @@ async def list_jobs(
 ):
     if not current_user:
         raise HTTPException(401, "Not authenticated")
+    from ..utils.pagination import resolve_page_params
+    page, page_size = resolve_page_params(page, page_size, limit, offset)
     jobs = await scheduler_service.list_jobs(page, page_size, type, status, name, tenant_id, db)
     return [JobResponse.model_validate(j) for j in jobs]
 

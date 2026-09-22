@@ -1,10 +1,12 @@
 # Pagination Standard
 
-> **Status:** Standard declared; runtime NOT yet migrated (contract-only
-> change). **Last verified:** 2026-09-21 — audited against
-> `apps/api/src/api/routers/*.py`. **Companion:**
-> [error-contract.md](./error-contract.md) (error-shape gap + unversioned infra
-> paths).
+> **Status:** Dual-spelling LANDED 2026-09-22 — every endpoint below now accepts
+> `limit`/`offset` (standard, wins when given) AND legacy `page`/`page_size`
+> (still supported; web client sends it in ~48 call sites). Implemented in
+> `utils/pagination.py:resolve_page_params`, proven by
+> `tests/test_pagination_dual.py` (7 tests: unit equivalence + live endpoint
+> parity). Response envelopes keep `{page, page_size}` shape in both spellings
+> (envelope unification is Loop 3). **Last verified:** 2026-09-22.
 
 ## 1. The standard
 

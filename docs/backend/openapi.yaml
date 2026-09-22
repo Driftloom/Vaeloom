@@ -886,6 +886,29 @@ paths:
       summary: List Memories
       operationId: list_memories_api_v1_memories_get
       parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                maximum: 100
+                minimum: 1
+              - type: 'null'
+            description: Standard pagination page size (wins over page/page_size)
+            title: Limit
+          description: Standard pagination page size (wins over page/page_size)
+        - name: offset
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                minimum: 0
+              - type: 'null'
+            description: Standard pagination rows to skip
+            title: Offset
+          description: Standard pagination rows to skip
         - name: type
           in: query
           required: false
@@ -1034,6 +1057,29 @@ paths:
             minimum: 1
             default: 25
             title: Page Size
+        - name: limit
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                maximum: 100
+                minimum: 1
+              - type: 'null'
+            description: Standard pagination page size (wins over page/page_size)
+            title: Limit
+          description: Standard pagination page size (wins over page/page_size)
+        - name: offset
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                minimum: 0
+              - type: 'null'
+            description: Standard pagination rows to skip
+            title: Offset
+          description: Standard pagination rows to skip
       responses:
         '200':
           description: Successful Response
@@ -1334,6 +1380,29 @@ paths:
             minimum: 1
             default: 20
             title: Page Size
+        - name: limit
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                maximum: 100
+                minimum: 1
+              - type: 'null'
+            description: Standard pagination page size (wins over page/page_size)
+            title: Limit
+          description: Standard pagination page size (wins over page/page_size)
+        - name: offset
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                minimum: 0
+              - type: 'null'
+            description: Standard pagination rows to skip
+            title: Offset
+          description: Standard pagination rows to skip
         - name: category
           in: query
           required: false
@@ -1644,6 +1713,29 @@ paths:
             minimum: 1
             default: 20
             title: Page Size
+        - name: limit
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                maximum: 100
+                minimum: 1
+              - type: 'null'
+            description: Standard pagination page size (wins over page/page_size)
+            title: Limit
+          description: Standard pagination page size (wins over page/page_size)
+        - name: offset
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                minimum: 0
+              - type: 'null'
+            description: Standard pagination rows to skip
+            title: Offset
+          description: Standard pagination rows to skip
         - name: status
           in: query
           required: false
@@ -2069,6 +2161,29 @@ paths:
             minimum: 1
             default: 20
             title: Page Size
+        - name: limit
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                maximum: 100
+                minimum: 1
+              - type: 'null'
+            description: Standard pagination page size (wins over page/page_size)
+            title: Limit
+          description: Standard pagination page size (wins over page/page_size)
+        - name: offset
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                minimum: 0
+              - type: 'null'
+            description: Standard pagination rows to skip
+            title: Offset
+          description: Standard pagination rows to skip
         - name: include_archived
           in: query
           required: false
@@ -2798,6 +2913,78 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429': *id001
+  /api/v1/documents/{document_id}/audit:
+    post:
+      tags:
+        - documents
+      summary: Audit Document
+      operationId: audit_document_api_v1_documents__document_id__audit_post
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentAuditResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/{document_id}/compare:
+    post:
+      tags:
+        - documents
+      summary: Compare Document
+      operationId: compare_document_api_v1_documents__document_id__compare_post
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentCompareRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCompareResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/documents/{document_id}/share:
     post:
       tags:
@@ -3498,6 +3685,29 @@ paths:
             minimum: 1
             default: 20
             title: Page Size
+        - name: limit
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                maximum: 100
+                minimum: 1
+              - type: 'null'
+            description: Standard pagination page size (wins over page/page_size)
+            title: Limit
+          description: Standard pagination page size (wins over page/page_size)
+        - name: offset
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                minimum: 0
+              - type: 'null'
+            description: Standard pagination rows to skip
+            title: Offset
+          description: Standard pagination rows to skip
       responses:
         '200':
           description: Successful Response
@@ -3670,6 +3880,29 @@ paths:
             minimum: 1
             default: 20
             title: Page Size
+        - name: limit
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                maximum: 100
+                minimum: 1
+              - type: 'null'
+            description: Standard pagination page size (wins over page/page_size)
+            title: Limit
+          description: Standard pagination page size (wins over page/page_size)
+        - name: offset
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                minimum: 0
+              - type: 'null'
+            description: Standard pagination rows to skip
+            title: Offset
+          description: Standard pagination rows to skip
         - name: channel
           in: query
           required: false
@@ -3872,6 +4105,29 @@ paths:
             minimum: 1
             default: 20
             title: Page Size
+        - name: limit
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                maximum: 100
+                minimum: 1
+              - type: 'null'
+            description: Standard pagination page size (wins over page/page_size)
+            title: Limit
+          description: Standard pagination page size (wins over page/page_size)
+        - name: offset
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                minimum: 0
+              - type: 'null'
+            description: Standard pagination rows to skip
+            title: Offset
+          description: Standard pagination rows to skip
         - name: type
           in: query
           required: false
@@ -4754,6 +5010,29 @@ paths:
             minimum: 1
             default: 20
             title: Page Size
+        - name: limit
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                maximum: 100
+                minimum: 1
+              - type: 'null'
+            description: Standard pagination page size (wins over page/page_size)
+            title: Limit
+          description: Standard pagination page size (wins over page/page_size)
+        - name: offset
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                minimum: 0
+              - type: 'null'
+            description: Standard pagination rows to skip
+            title: Offset
+          description: Standard pagination rows to skip
         - name: type
           in: query
           required: false
@@ -5131,6 +5410,29 @@ paths:
             minimum: 1
             default: 20
             title: Page Size
+        - name: limit
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                maximum: 100
+                minimum: 1
+              - type: 'null'
+            description: Standard pagination page size (wins over page/page_size)
+            title: Limit
+          description: Standard pagination page size (wins over page/page_size)
+        - name: offset
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                minimum: 0
+              - type: 'null'
+            description: Standard pagination rows to skip
+            title: Offset
+          description: Standard pagination rows to skip
         - name: type
           in: query
           required: false
@@ -5349,6 +5651,29 @@ paths:
             minimum: 1
             default: 20
             title: Page Size
+        - name: limit
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                maximum: 100
+                minimum: 1
+              - type: 'null'
+            description: Standard pagination page size (wins over page/page_size)
+            title: Limit
+          description: Standard pagination page size (wins over page/page_size)
+        - name: offset
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                minimum: 0
+              - type: 'null'
+            description: Standard pagination rows to skip
+            title: Offset
+          description: Standard pagination rows to skip
       responses:
         '200':
           description: Successful Response
@@ -5390,6 +5715,29 @@ paths:
             minimum: 1
             default: 20
             title: Page Size
+        - name: limit
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                maximum: 100
+                minimum: 1
+              - type: 'null'
+            description: Standard pagination page size (wins over page/page_size)
+            title: Limit
+          description: Standard pagination page size (wins over page/page_size)
+        - name: offset
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                minimum: 0
+              - type: 'null'
+            description: Standard pagination rows to skip
+            title: Offset
+          description: Standard pagination rows to skip
         - name: relationship
           in: query
           required: false
@@ -8772,6 +9120,29 @@ paths:
             minimum: 1
             default: 50
             title: Page Size
+        - name: limit
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                maximum: 100
+                minimum: 1
+              - type: 'null'
+            description: Standard pagination page size (wins over page/page_size)
+            title: Limit
+          description: Standard pagination page size (wins over page/page_size)
+        - name: offset
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                minimum: 0
+              - type: 'null'
+            description: Standard pagination rows to skip
+            title: Offset
+          description: Standard pagination rows to skip
       responses:
         '200':
           description: Successful Response
@@ -11273,6 +11644,181 @@ components:
         - action_type
         - created_at
       title: DocumentActionResponse
+    DocumentAuditCategoryScore:
+      properties:
+        total:
+          type: integer
+          title: Total
+        passed:
+          type: integer
+          title: Passed
+        score:
+          type: number
+          title: Score
+      type: object
+      required:
+        - total
+        - passed
+        - score
+      title: DocumentAuditCategoryScore
+    DocumentAuditCheckItem:
+      properties:
+        id:
+          type: string
+          title: Id
+        name:
+          type: string
+          title: Name
+        category:
+          type: string
+          title: Category
+        passed:
+          type: boolean
+          title: Passed
+        score:
+          type: integer
+          title: Score
+        detail:
+          type: string
+          title: Detail
+        recommendation:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Recommendation
+      type: object
+      required:
+        - id
+        - name
+        - category
+        - passed
+        - score
+        - detail
+      title: DocumentAuditCheckItem
+    DocumentAuditResponse:
+      properties:
+        document_id:
+          type: string
+          format: uuid
+          title: Document Id
+        total_checks:
+          type: integer
+          title: Total Checks
+          default: 50
+        passed_checks:
+          type: integer
+          title: Passed Checks
+        failed_checks:
+          type: integer
+          title: Failed Checks
+        quality_score:
+          type: number
+          title: Quality Score
+        verdict:
+          type: string
+          title: Verdict
+        categories:
+          additionalProperties:
+            $ref: '#/components/schemas/DocumentAuditCategoryScore'
+          type: object
+          title: Categories
+        checks:
+          items:
+            $ref: '#/components/schemas/DocumentAuditCheckItem'
+          type: array
+          title: Checks
+        recommendations:
+          items:
+            type: string
+          type: array
+          title: Recommendations
+      type: object
+      required:
+        - document_id
+        - passed_checks
+        - failed_checks
+        - quality_score
+        - verdict
+        - categories
+        - checks
+        - recommendations
+      title: DocumentAuditResponse
+    DocumentCompareRequest:
+      properties:
+        version_a:
+          type: integer
+          minimum: 1.0
+          title: Version A
+          default: 1
+        version_b:
+          type: integer
+          minimum: 1.0
+          title: Version B
+          default: 2
+      type: object
+      title: DocumentCompareRequest
+    DocumentCompareResponse:
+      properties:
+        document_id:
+          type: string
+          format: uuid
+          title: Document Id
+        version_a:
+          type: integer
+          title: Version A
+        version_b:
+          type: integer
+          title: Version B
+        similarity_ratio:
+          type: number
+          title: Similarity Ratio
+        word_count_a:
+          type: integer
+          title: Word Count A
+        word_count_b:
+          type: integer
+          title: Word Count B
+        word_count_delta:
+          type: integer
+          title: Word Count Delta
+        additions_count:
+          type: integer
+          title: Additions Count
+        deletions_count:
+          type: integer
+          title: Deletions Count
+        additions:
+          items:
+            type: string
+          type: array
+          title: Additions
+          default: []
+        deletions:
+          items:
+            type: string
+          type: array
+          title: Deletions
+          default: []
+        diff_snippet:
+          type: string
+          title: Diff Snippet
+        summary:
+          type: string
+          title: Summary
+      type: object
+      required:
+        - document_id
+        - version_a
+        - version_b
+        - similarity_ratio
+        - word_count_a
+        - word_count_b
+        - word_count_delta
+        - additions_count
+        - deletions_count
+        - diff_snippet
+        - summary
+      title: DocumentCompareResponse
     DocumentListResponse:
       properties:
         documents:

@@ -21,11 +21,15 @@ class TenantProvisionRequest(BaseModel):
 async def admin_list_users(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    limit: int | None = Query(default=None, ge=1, le=100, description="Standard pagination page size (wins over page/page_size)"),
+    offset: int | None = Query(default=None, ge=0, description="Standard pagination rows to skip"),
     status: str | None = Query(None),
     tenant_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     _admin=Depends(require_role("admin")),
 ):
+    from ..utils.pagination import resolve_page_params
+    page, page_size = resolve_page_params(page, page_size, limit, offset)
     from ..models.schema import User
 
     query = select(User)
@@ -305,11 +309,15 @@ async def admin_action(
 async def admin_audit_log(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    limit: int | None = Query(default=None, ge=1, le=100, description="Standard pagination page size (wins over page/page_size)"),
+    offset: int | None = Query(default=None, ge=0, description="Standard pagination rows to skip"),
     action: str | None = Query(None),
     resource: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     _admin=Depends(require_role("admin")),
 ):
+    from ..utils.pagination import resolve_page_params
+    page, page_size = resolve_page_params(page, page_size, limit, offset)
     conditions: list[str] = []
     params: dict = {}
     caller_tenant = _admin.get("tenant_id") if isinstance(_admin, dict) else None

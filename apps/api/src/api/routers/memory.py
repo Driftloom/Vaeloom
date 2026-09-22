@@ -48,6 +48,8 @@ async def check_user_workspace_access(
 @router.get("", response_model=dict)
 async def list_memories(
     query: MemoryQuery = Depends(),
+    limit: int | None = Query(default=None, ge=1, le=100, description="Standard pagination page size (wins over page/page_size)"),
+    offset: int | None = Query(default=None, ge=0, description="Standard pagination rows to skip"),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
@@ -55,6 +57,8 @@ async def list_memories(
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    from ..utils.pagination import resolve_page_params
+    query.page, query.page_size = resolve_page_params(query.page, query.page_size, limit, offset)
     target_ws = workspace_id or (str(query.workspace_id) if query.workspace_id else None)
     if not target_ws:
         user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
@@ -88,6 +92,8 @@ async def get_agentic_feed(
     workspace_id: str | None = Query(None, description="Workspace to scope feed"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=25, ge=1, le=100),
+    limit: int | None = Query(default=None, ge=1, le=100, description="Standard pagination page size (wins over page/page_size)"),
+    offset: int | None = Query(default=None, ge=0, description="Standard pagination rows to skip"),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
@@ -96,6 +102,8 @@ async def get_agentic_feed(
 
     Shows agent-created, superseded, and human-corrected memories plus recent AgentAction entries.
     """
+    from ..utils.pagination import resolve_page_params
+    page, page_size = resolve_page_params(page, page_size, limit, offset)
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
