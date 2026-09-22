@@ -129,6 +129,102 @@ async def seed_data():
     finally:
         await conn.close()
 
+
+TOKEN_HASH_ALPHA = "tokhash_alpha_0053"
+TOKEN_HASH_BETA = "tokhash_beta_0053"
+
+
+async def seed_0053_tables():
+    """Seed pre-auth tables (Loop 3): token/user-scoped rows for 0053 policies."""
+    conn = await asyncpg.connect(SUPERUSER_URL)
+    try:
+        now = datetime.datetime.now(datetime.timezone.utc)
+        expires = now + datetime.timedelta(days=7)
+        # email_verification_tokens (user_id, token_hash scoped)
+        await conn.execute(
+            "INSERT INTO email_verification_tokens (id, user_id, token_hash, expires_at)"
+            " VALUES ($1, $2, $3, $4), ($5, $6, $7, $4)"
+            " ON CONFLICT DO NOTHING;",
+            uuid.uuid4(), USER_A, Tok_HASH_ALPHA, expires,
+            uuid.uuid4(), USER_B, Tok_HASH_BETA,
+        )
+        # revoked_user_cutoffs (user_id scoped)
+        await conn.execute(
+            "INSERT INTO revoked_user_cutoffs (user_id, cutoff_unix)"
+            " VALUES ($1, $2), ($3, $4) ON CONFLICT DO NOTHING;",
+            USER_A, 1000, USER_B, 2000,
+        )
+        # consent_records (user_id scoped)
+        await conn.execute(
+            "INSERT INTO consent_records (id, user_id, tenant_id, scope, granted_at)"
+            " VALUES ($1, $2, $3, 'terms', $4), ($5, $6, $7, 'terms', $4)"
+            " ON CONFLICT DO NOTHING;",
+            uuid.uuid4(), USER_A, TENANT_A, now,
+            uuid.uuid4(), USER_B, TENANT_B,
+        )
+        # onboarding_states (user_id scoped)
+        await conn.execute(
+            "INSERT INTO onboarding_states (id, user_id, tenant_id, current_step)"
+            " VALUES ($1, $2, $3, 'start'), ($4, $5, $6, 'start')"
+            " ON CONFLICT DO NOTHING;",
+            uuid.uuid4(), USER_A, TENANT_A, uuid.uuid4(), USER_B, TENANT_B,
+        )
+        print("[+] Seeded 0053 pre-auth tables (4 tables x Alpha/Beta).")
+    finally:
+        await conn.close()
+
+
+async def run_positive_scoped_checks():
+    """Positive proof (Loop 3): scoped policies VISIBLY work, not just locked.
+
+    Each table: foreign GUCs -> 0 rows AND scoped GUC (token_hash or user_id)
+    -> >= 1 row. A table that returns 0 under its OWN scope is FAIL-locked
+    (the 0052 over-tightening regression), not secure.
+    """
+    conn = await asyncpg.connect(APP_USER_URL)
+    try:
+        checks = [
+            # (table, scope_setup_sql, expect_min)
+            ("email_verification_tokens",
+             f"SELECT set_config('app.lookup_token_hash', '{Tok_HASH_ALPHA}', false);", 1),
+            ("revoked_user_cutoffs",
+             f"SELECT set_config('app.user_id', '{str(USER_A)}', false);", 1),
+            ("consent_records",
+             f"SELECT set_config('app.user_id', '{str(USER_A)}', false);", 1),
+            ("onboarding_states",
+             f"SELECT set_config('app.user_id', '{str(USER_A)}', false);", 1),
+            ("auth_sessions",
+             f"SELECT set_config('app.user_id', '{str(USER_A)}', false);", 1),
+        ]
+        print("\n" + "=" * 100)
+        print(f"{'TABLE':<28} | {'FOREIGN GUC':<12} | {'SCOPED GUC':<12} | {'VERIFIED STATUS'}")
+        print("=" * 100)
+        failures = 0
+        for table, scope_sql, expect_min in checks:
+            await conn.execute("RESET ALL;")
+            await conn.execute(f"SELECT set_config('app.tenant_id', '{str(FOREIGN_ID)}', false);")
+            await conn.execute(f"SELECT set_config('app.user_id', '{str(FOREIGN_ID)}', false);")
+            count_foreign = await conn.fetchval(f"SELECT count(*) FROM {table};")
+            await conn.execute("RESET ALL;")
+            await conn.execute(scope_sql)
+            count_scoped = await conn.fetchval(f"SELECT count(*) FROM {table};")
+            if count_foreign == 0 and count_scoped >= expect_min:
+                status = "[PASS] scoped-visible, foreign-blind"
+            elif count_foreign > 0:
+                status = f"[FAIL] foreign leakage: {count_foreign}"
+                failures += 1
+            else:
+                status = f"[FAIL] LOCKED-OUT own scope={count_scoped} (regression!)"
+                failures += 1
+            print(f"{table:<28} | {str(count_foreign):<12} | {str(count_scoped):<12} | {status}")
+        print("=" * 100)
+        if failures:
+            print(f"[-] {failures} SCOPED CHECKS FAILED")
+            sys.exit(1)
+        print("\n[+] 5 / 5 SCOPED TABLES POSITIVELY PROVEN (visible to owner, blind to foreign)")
+    finally:
+        await conn.close()
+
 async def run_proof_matrix():
     """Connect as vaeloom_app and probe the tables under 3 GUC states."""
     conn = await asyncpg.connect(APP_USER_URL)
@@ -196,7 +292,9 @@ async def run_proof_matrix():
 
 async def main():
     await seed_data()
+    await seed_0053_tables()
     await run_proof_matrix()
+    await run_positive_scoped_checks()
 
 if __name__ == "__main__":
     asyncio.run(main())
