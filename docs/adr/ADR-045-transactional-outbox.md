@@ -47,10 +47,15 @@ Adopt the **transactional outbox pattern**, in two loops:
   (`OUTBOX_RELAY_ENABLED`, default `False`).
 - ORM model `OutboxEvent` in `models/schema.py`, exported from `api.models`.
 
-**Loop 2 (explicitly NOT this slice):** rewire existing publishers to write via
-`record_outbox_event` instead of direct enqueue; pass a real BullMQ/Redis
-publisher into `publish_due_events`; run it on a timer (daemon or Temporal
-workflow); dead-letter triage for `failed` rows; RLS policy for the new table.
+**Loop 2 — LANDED 2026-09-22 (first publisher):** `EventService.publish`
+(`services/event_service.py`) now records the outbox row in the SAME transaction
+as the event row (`flush` → `record_outbox_event` → single `commit`); dispatch
+fan-out extracted to `dispatch_event_workflow()` (also fixes three dead
+`NameError` references — `get_temporal_client`, `EventTriggerInput`,
+`queue_name` — the Temporal branch previously crashed silently inside
+fire-and-forget); real relay publisher `publish_event_from_outbox()`;
+dead-letter triage `requeue_failed_events()`; 19/19 `tests/test_outbox.py`
+green. Relay timer + remaining publishers are Loop 3.
 
 ## Rationale
 

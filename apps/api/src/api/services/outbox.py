@@ -222,3 +222,34 @@ async def outbox_depth(db: AsyncSession) -> dict:
     for status, count in rows:
         counts[status] = count
     return counts
+
+
+async def requeue_failed_events(
+    db: AsyncSession,
+    event_ids: list,
+) -> int:
+    """Dead-letter triage (Loop 2): move ``failed`` rows back to ``pending``.
+
+    Attempts reset to 0 (operator explicitly triaged — the row gets a fresh
+    budget) and ``next_attempt_at`` cleared so the next relay pass picks it
+    up. Commits. Returns the number of rows requeued.
+    """
+    if not event_ids:
+        return 0
+    now = datetime.now(UTC)
+    result = await db.execute(
+        update(OutboxEvent)
+        .where(
+            OutboxEvent.id.in_(list(event_ids)),
+            OutboxEvent.status == OUTBOX_STATUS_FAILED,
+        )
+        .values(
+            status=OUTBOX_STATUS_PENDING,
+            attempts=0,
+            next_attempt_at=None,
+            last_error=None,
+            updated_at=now,
+        )
+    )
+    await db.commit()
+    return int(result.rowcount or 0)
