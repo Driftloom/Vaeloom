@@ -64,10 +64,10 @@ module "ecr" {
 }
 
 module "waf" {
-  source       = "./modules/waf"
-  environment  = var.environment
-  scope        = "CLOUDFRONT"
-  log_group_arn = module.monitoring.alert_topic_arn
+  source         = "./modules/waf"
+  environment    = var.environment
+  scope          = "CLOUDFRONT"
+  log_bucket_arn = var.waf_log_bucket_arn
 }
 
 module "cloudfront" {

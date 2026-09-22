@@ -7,6 +7,12 @@ variable "environment" {
   }
 }
 
+variable "waf_log_bucket_arn" {
+  description = "S3 bucket ARN for WAF log delivery (empty = no WAF logging)"
+  type        = string
+  default     = ""
+}
+
 variable "aws_region" {
   description = "AWS region"
   type        = string
