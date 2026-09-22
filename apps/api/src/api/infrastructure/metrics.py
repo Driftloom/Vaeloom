@@ -20,6 +20,15 @@ http_request_duration_seconds = Histogram(
 
 active_users = Gauge("active_users", "Currently active users")
 audit_log_total = Counter("audit_log_total", "Total audit log entries created")
+rate_limit_degraded_total = Counter(
+    "rate_limit_degraded_total",
+    "Requests passed without rate limiting because the limit store was down (fail-open)",
+)
+
+
+def inc_rate_limit_degraded() -> None:
+    """Count fail-open passes (called best-effort from the rate limiter)."""
+    rate_limit_degraded_total.inc()
 
 
 class MetricsMiddleware(BaseHTTPMiddleware):

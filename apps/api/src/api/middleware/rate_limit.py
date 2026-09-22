@@ -115,7 +115,19 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.default_max_requests = requests_per_minute
         self.default_window_seconds = window_seconds
         self.backend = RedisBackend(redis_url) if redis_url else MemoryBackend()
+        self._backend_degraded_logged = False
         self._api_key_limiter = APIKeyRateLimiter(self.backend, api_key_rate_limit, window_seconds)
+
+    def _backend_degraded(self, exc: Exception) -> None:
+        """Fail-open telemetry: warn loudly (once per process) + metric."""
+        if not self._backend_degraded_logged:
+            logger.warning("Rate-limit store unavailable, failing OPEN: %s", exc)
+            self._backend_degraded_logged = True
+        try:
+            from ..infrastructure.metrics import inc_rate_limit_degraded  # type: ignore
+            inc_rate_limit_degraded()
+        except Exception:
+            pass
 
     def _get_limits(self, request: Request) -> tuple[int, int]:
         route = request.scope.get("route")
@@ -158,7 +170,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         api_key = request.headers.get(API_KEY_HEADER)
         if api_key and getattr(request.state, "user_id", None):
-            allowed, retry_after = await self._api_key_limiter.check(api_key)
+            try:
+                allowed, retry_after = await self._api_key_limiter.check(api_key)
+            except Exception as exc:
+                self._backend_degraded(exc)
+                return await call_next(request)
             if not allowed:
                 logger.warning(
                     "API key rate limit exceeded  key_prefix=%s  path=%s",
@@ -176,7 +192,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         max_req, window_sec = self._get_limits(request)
         key = f"rl:{client_key}:{request.url.path}"
 
-        allowed, retry_after = await self.backend.check_and_record(key, max_req, window_sec)
+        try:
+            allowed, retry_after = await self.backend.check_and_record(key, max_req, window_sec)
+        except Exception as exc:
+            # Enterprise trade-off (documented): a dead rate-limit store must
+            # not take down the API (auth + WAF still protect). Fail OPEN with
+            # a loud warning + metric, never 500. Non-local boot already
+            # requires Redis, so this path means an outage, not misconfig.
+            self._backend_degraded(exc)
+            return await call_next(request)
 
         if not allowed:
             logger.warning(

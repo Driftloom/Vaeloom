@@ -352,8 +352,15 @@ def validate_settings() -> dict[str, list[str]]:
 
     if not settings.redis__url:
         warnings.append("REDIS_URL is not set — will use in-memory fallback")
+    # Zero-trust enterprise: per-process memory buckets give attackers N×limit
+    # on N workers. Non-local envs MUST point at shared Redis so limits are
+    # global. main.py wires it into RateLimitMiddleware (fail-open on outage).
     if not settings.rate_limit_redis_url:
-        warnings.append("RATE_LIMIT_REDIS_URL is not set — rate limiting will use in-memory fallback")
+        msg = "RATE_LIMIT_REDIS_URL is not set — rate limiting falls back to per-process memory"
+        if settings.service_environment != "local":
+            errors.append(msg + " — refusing to start in non-local (set shared Redis)")
+        else:
+            warnings.append(msg + " — allowed in local only")
 
     search_configured = bool(
         getattr(settings, "algolia_app_id", "") or os.environ.get("ALGOLIA_APP_ID") or os.environ.get("MEILISEARCH_URL")
