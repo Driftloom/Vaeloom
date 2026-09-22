@@ -31,6 +31,16 @@ jest.mock('@/lib/api-client', () => ({
     }),
   },
   capabilitiesApi: {
+    list: jest.fn().mockResolvedValue([]),
+    get: jest.fn().mockResolvedValue(null),
+    create: jest
+      .fn()
+      .mockImplementation((body: { name?: string }) =>
+        Promise.resolve({ id: `cap-${Date.now()}`, name: body?.name ?? 'cap' }),
+      ),
+    update: jest.fn().mockResolvedValue({}),
+    delete: jest.fn().mockResolvedValue(undefined),
+    toggleCapability: jest.fn().mockResolvedValue({}),
     test: jest.fn().mockResolvedValue({
       status: 'success',
       capability: 'test-cap',
