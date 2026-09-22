@@ -147,12 +147,16 @@ async def create_connector(
 async def list_connectors(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    limit: int | None = Query(default=None, ge=1, le=100, description="Standard pagination page size (wins over page/page_size)"),
+    offset: int | None = Query(default=None, ge=0, description="Standard pagination rows to skip"),
     type: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
     tenant_id: str | None = Depends(get_tenant_id),
     workspace_id: str | None = Depends(get_workspace_id),
 ):
+    from ..utils.pagination import resolve_page_params
+    page, page_size = resolve_page_params(page, page_size, limit, offset)
     if not current_user:
         raise HTTPException(401, "Not authenticated")
     user_id = _get_user_id(current_user)
