@@ -42,7 +42,7 @@ Enterprise track adds multi-tenancy (RLS 42/42, fail-closed), SSO
 | Path            | What                                                                                                                                        |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `apps/web`      | Next.js 15 web app (18+ wired pages, SWR caching, dark/light mode)                                                                          |
-| `apps/api`      | FastAPI backend (monolith-with-modules, 162 OpenAPI paths / 203 ops)                                                                        |
+| `apps/api`      | FastAPI backend (monolith-with-modules, 243 OpenAPI paths / 296 ops)                                                                        |
 | `packages/`     | Shared libs: `ui-kit`, `shared-types`, `eslint-config`, `tsconfig`, `observability`, `queue`, `plugin-sdk`, `python-common`, `service-auth` |
 | `integrations/` | calendar, email, github, google-drive, notion, slack                                                                                        |
 | `connectors/`   | graphql, mcp, rest adapters (incl. native MCP bridge `mcp__Server__Tool`)                                                                   |
@@ -52,7 +52,7 @@ Enterprise track adds multi-tenancy (RLS 42/42, fail-closed), SSO
 | `docs/`         | ~1033 files — start at [docs/README](docs/README.md)                                                                                        |
 
 Backend tests: ~2731 pytest (~94% coverage, security 233/233). API spec:
-`docs/backend/openapi.yaml` (v0.2.0, 162 paths / 203 ops, regen 2026-09-15).
+`docs/backend/openapi.yaml` (v0.2.0, 243 paths / 296 ops, regen 2026-09-21).
 ADRs: 44 (`docs/adr/ADR-001..ADR-044`).
 
 ## Quickstart
@@ -110,7 +110,7 @@ cd apps/api && uv run --project apps/api python -m pytest -q -o addopts=""  # se
 
 - [Documentation index](docs/README.md) — master navigation hub
 - [Architecture](docs/ARCHITECTURE.md) — pointer index (C4, HLD/LLD, ADRs)
-- [API reference](docs/API_REFERENCE.md) — v0.2.0, 162 paths / 203 ops
+- [API reference](docs/API_REFERENCE.md) — v0.2.0, 243 paths / 296 ops
 - [Contributing](CONTRIBUTING.md) — uv flow, `pnpm dev:web`-only rule
 - [Security](SECURITY.md) — disclosure via `security@vaeloom.dev` (48h ack)
 - [Support](docs/SUPPORT.md) | [Glossary](docs/GLOSSARY.md) |

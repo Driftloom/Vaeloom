@@ -1,6 +1,6 @@
 # Vaeloom Developer Onboarding Guide
 
-> **Last Updated:** 2026-09-15 · Backend 0.2.0 · API spec 162 paths / 203 ops
+> **Last Updated:** 2026-09-22 · Backend 0.2.0 · API spec 243 paths / 296 ops
 
 Welcome to Vaeloom. This guide walks you through setting up a local development
 environment, running the stack, and understanding the architecture.

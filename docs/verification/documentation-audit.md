@@ -13,7 +13,7 @@ code state.
   ADR-044 + index)
 - **Phase contract specifications**: 179 files in specs/phase-contracts/ (3
   tracks x 22 phases = 66 phase contracts + supporting documents)
-- **OpenAPI specs**: specs/api/openapi.yaml (v0.2.0, 162 paths / 203 operations)
+- **OpenAPI specs**: specs/api/openapi.yaml (v0.2.0, 243 paths / 296 operations)
   and docs/backend/openapi.yaml
 
 ---

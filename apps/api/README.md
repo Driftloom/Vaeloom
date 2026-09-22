@@ -10,13 +10,16 @@ All request handling lives in `src/api/`: routers in `src/api/routers/`,
 business logic in `src/api/services/` (82 files), middleware in
 `src/api/middleware/` (logger → auth → permissions → rate limit → validation).
 Docs: `docs/backend/` (start at
-[`docs/backend/API-Reference.md`](../../docs/backend/API-Reference.md), 162
-paths / 203 ops). Migrations: `alembic/versions/` (42 versions, RLS 42/42).
+[`docs/backend/API-Reference.md`](../../docs/backend/API-Reference.md), 241
+paths / 294 ops, regen 2026-09-21). Migrations: `alembic/versions/` (42
+versions, RLS 42/42).
 
 ## Environment (correct names)
 
-`model_config` has **no `env_file`** — export vars in the shell; `.env` files
-are ignored. Nested delimiter = **double underscore**.
+`model_config` has **no `env_file`** — export vars in the shell for certainty.
+Repo `.env` files (root, `apps/api/.env`) load as non-overriding fallback
+defaults only; explicit environment always wins. Nested delimiter = **double
+underscore**.
 
 | Variable                  | Local value                        | Required                                      |
 | ------------------------- | ---------------------------------- | --------------------------------------------- |
@@ -98,4 +101,4 @@ Enterprise-gated (`enterprise_routes_enabled=true`, default off — excluded fro
 `recommendations`, `webhooks`, `admin_console`, `scim`, `feature_flags`.
 
 Regen the spec after router changes: `python scripts/gen_openapi.py` (repo root)
-→ 162 paths expected.
+→ 243 paths expected.

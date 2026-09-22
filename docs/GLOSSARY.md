@@ -71,16 +71,16 @@
 
 ## API & Frontend
 
-| Term                     | Definition                                                                                                                                                     |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| camelCase / snake_case   | Backend serializes `access_token`; frontend expects `accessToken` — converted by `transformKeys()` in `api.ts`/`api-client.ts`. Any new client needs the same. |
-| CSRF                     | Cross-site request forgery protection — Redis backend; auth routes exempt via `SKIP_PREFIXES`, `/csrf-token` in `PUBLIC_PATHS`.                                |
-| Enterprise-gated routers | 10 routers excluded unless `enterprise_routes_enabled` — by design, not missing coverage.                                                                      |
-| OpenAPI spec             | `docs/backend/openapi.yaml` — v0.2.0, **162 paths / 203 ops**, regen via `scripts/gen_openapi.py`.                                                             |
-| PUBLIC_PATHS             | Auth-middleware allowlist (`middleware/auth.py`); includes `/csrf-token`.                                                                                      |
-| SKIP_PREFIXES            | CSRF-exempt prefixes (`middleware/csrf.py`); includes `/api/v1/auth`.                                                                                          |
-| SSE                      | Server-Sent Events — streaming transport for `POST /agents/{id}/execute?stream=true`.                                                                          |
-| transformKeys            | Frontend util converting API snake_case responses to camelCase.                                                                                                |
+| Term                     | Definition                                                                                                                                                                                                    |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| camelCase / snake_case   | Backend serializes `access_token`; frontend expects `accessToken` — converted by `transformKeys()` in `api.ts`/`api-client.ts`. Any new client needs the same.                                                |
+| CSRF                     | Cross-site request forgery protection — Redis backend; exempt paths are explicit in `SKIP_PATHS` (unauthenticated auth entry points + `/csrf-token`); the old blanket `/api/v1/auth` prefix skip was removed. |
+| Enterprise-gated routers | 10 routers excluded unless `enterprise_routes_enabled` — by design, not missing coverage.                                                                                                                     |
+| OpenAPI spec             | `docs/backend/openapi.yaml` — v0.2.0, **243 paths / 296 ops** (regen 2026-09-21), regen via `scripts/gen_openapi.py`.                                                                                         |
+| PUBLIC_PATHS             | Auth-middleware allowlist (`middleware/auth.py`); includes `/csrf-token`.                                                                                                                                     |
+| SKIP_PREFIXES            | CSRF-exempt prefixes (`middleware/csrf.py`); includes `/api/v1/auth`.                                                                                                                                         |
+| SSE                      | Server-Sent Events — streaming transport for `POST /agents/{id}/execute?stream=true`.                                                                                                                         |
+| transformKeys            | Frontend util converting API snake_case responses to camelCase.                                                                                                                                               |
 
 ## Delivery Process
 

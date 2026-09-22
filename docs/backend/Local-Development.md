@@ -46,8 +46,9 @@ uv run --project apps/api python -m uvicorn api.main:app --host 0.0.0.0 --port 8
 
 Swagger UI: `http://localhost:8000/docs`. Health: `GET /health`.
 
-Never `pnpm dev` (spawns Nx across all 25 packages, hangs). API-only:
-`pnpm dev:be`. Frontend: `pnpm dev:web` (or `make dev-web`).
+Never bare `pnpm dev` (disabled fail-fast with a redirect message — formerly
+spawned Nx across all 25 packages and hung). API-only: `pnpm dev:be`. Frontend:
+`pnpm dev:web` (or `make dev-web`).
 
 ## 3. Chromium (resume compile)
 

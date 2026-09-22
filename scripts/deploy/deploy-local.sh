@@ -21,9 +21,10 @@ pnpm db-migrate
 # Seed database
 pnpm db-seed
 
-# Build and start services
+# Build and start services (bare `pnpm dev` is disabled fail-fast — use targets)
 pnpm build
-pnpm dev &
+pnpm dev:web &
+pnpm dev:be &
 
 echo "✅ Local deployment complete"
 echo "   Web: http://localhost:3000"
