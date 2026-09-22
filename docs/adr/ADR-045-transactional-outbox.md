@@ -46,16 +46,21 @@ Adopt the **transactional outbox pattern**, in two loops:
   `max_attempts`. Default-off via `settings.outbox_relay_enabled`
   (`OUTBOX_RELAY_ENABLED`, default `False`).
 - ORM model `OutboxEvent` in `models/schema.py`, exported from `api.models`.
+  **Loop 3 — LANDED 2026-09-22:** relay timer `_run_outbox_relay()` wired into
+  the daemon 60s tick (scoped to `event.*` rows via new `event_type_prefix`
+  claim filter; honors `outbox_relay_enabled`, default OFF); 4 relay tests in
+  `tests/test_outbox_relay.py` (disabled no-op, real publish, family scoping,
+  tick-never-raises).
 
-**Loop 2 — LANDED 2026-09-22 (first publisher):** `EventService.publish`
-(`services/event_service.py`) now records the outbox row in the SAME transaction
-as the event row (`flush` → `record_outbox_event` → single `commit`); dispatch
-fan-out extracted to `dispatch_event_workflow()` (also fixes three dead
-`NameError` references — `get_temporal_client`, `EventTriggerInput`,
-`queue_name` — the Temporal branch previously crashed silently inside
-fire-and-forget); real relay publisher `publish_event_from_outbox()`;
-dead-letter triage `requeue_failed_events()`; 19/19 `tests/test_outbox.py`
-green. Relay timer + remaining publishers are Loop 3.
+**Remaining publishers (audited 2026-09-22, NOT yet rewired):**
+
+- `routers/documents.py` — direct `tclient.trigger(...)` on document ingest
+- `routers/temporal.py` — 3× direct `client.start_workflow(...)` (manual
+  triggers)
+- `services/approval.py` — direct `client.start_workflow(...)` on approval
+  execute Each needs: outbox row in the same txn + `event_type_prefix` family +
+  relay publisher entry. Relay timer + `requeue_failed_events` triage already
+  cover whatever families get rewired.
 
 ## Rationale
 

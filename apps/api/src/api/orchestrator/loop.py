@@ -68,12 +68,23 @@ def _deadline_remaining_s(deadline: float | None) -> float:
     return max(0.0, deadline - _t.monotonic())
 
 
+# Tolerance for "deadline reached" (event-loop timers may fire microseconds
+# early; callers re-check the deadline after wake, so an early True only
+# triggers one redundant re-check — never a wrong decision).
+_DEADLINE_EPSILON_S = 0.25
+
+
 async def _deadline_aware_sleep(delay_s: float, deadline: float | None) -> bool:
     """Sleep capped at the run deadline: min(delay, remaining).
 
     Returns True when the deadline has been reached (caller must re-check
     the deadline after wake instead of assuming the full delay elapsed).
     A None deadline means intentionally unbounded (post-terminal UX paths).
+
+    Boundary tolerance: event-loop timers may fire microseconds early, so
+    "reached" means within _DEADLINE_EPSILON_S of the deadline. Callers
+    re-check the deadline itself after wake, so an early True only triggers
+    one redundant re-check — never a wrong decision.
     """
     import time as _t
     if deadline is None:
@@ -83,7 +94,7 @@ async def _deadline_aware_sleep(delay_s: float, deadline: float | None) -> bool:
     if remaining <= 0:
         return True
     await asyncio.sleep(min(max(0.0, delay_s), remaining))
-    return _t.monotonic() >= deadline
+    return _t.monotonic() >= deadline - _DEADLINE_EPSILON_S
 
 
 # ── Spend & Quota Gate (Wave 1, 2026-09-06) ──────────────────────────

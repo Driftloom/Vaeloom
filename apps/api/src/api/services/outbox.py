@@ -112,6 +112,7 @@ async def claim_outbox_event(
     db: AsyncSession,
     *,
     max_attempts: int = 5,
+    event_type_prefix: str | None = None,
 ) -> OutboxEvent | None:
     """Atomically claim one due ``pending`` row. Exactly one claimant wins.
 
@@ -121,18 +122,24 @@ async def claim_outbox_event(
     and moves on. (PG could use ``SELECT ... FOR UPDATE SKIP LOCKED``; the
     guarded UPDATE keeps one code path for both dialects in slice 1.)
 
+    ``event_type_prefix`` scopes the claim (e.g. the event relay passes
+    ``"event."`` so it never grabs rows owned by another relay).
+
     Flushes the claim; the caller owns the commit (the relay commits per
     batch, see ``publish_due_events``). Returns ``None`` when nothing is due.
     """
     now = datetime.now(UTC)
     due = or_(OutboxEvent.next_attempt_at.is_(None), OutboxEvent.next_attempt_at <= now)
+    conds = [
+        OutboxEvent.status == OUTBOX_STATUS_PENDING,
+        OutboxEvent.attempts < max_attempts,
+        due,
+    ]
+    if event_type_prefix:
+        conds.append(OutboxEvent.event_type.like(event_type_prefix + "%"))
     stmt = (
         select(OutboxEvent.id)
-        .where(
-            OutboxEvent.status == OUTBOX_STATUS_PENDING,
-            OutboxEvent.attempts < max_attempts,
-            due,
-        )
+        .where(*conds)
         .order_by(OutboxEvent.created_at.asc())
         .limit(10)
     )
@@ -163,6 +170,7 @@ async def publish_due_events(
     max_attempts: int = 5,
     retry_delay_seconds: int = 60,
     enabled: bool | None = None,
+    event_type_prefix: str | None = None,
 ) -> dict:
     """Relay stub: claim due rows and deliver them. Commits once per call.
 
@@ -174,6 +182,8 @@ async def publish_due_events(
     - Publisher exceptions → row back to ``pending`` with
       ``next_attempt_at = now + retry_delay_seconds``; once
       ``attempts >= max_attempts`` → ``failed`` (dead-letter triage, Loop 2).
+    - ``event_type_prefix`` scopes the claim so relays for different row
+      families never steal each other's rows.
 
     Returns ``{"status", "published", "retried", "failed"}`` counters.
     """
@@ -186,7 +196,7 @@ async def publish_due_events(
     published = retried = failed = 0
 
     for _ in range(max(1, batch_size)):
-        event = await claim_outbox_event(db, max_attempts=max_attempts)
+        event = await claim_outbox_event(db, max_attempts=max_attempts, event_type_prefix=event_type_prefix)
         if event is None:
             break
         try:

@@ -845,6 +845,36 @@ async def catch_up_missed_runs(now: datetime) -> int:
 
 # ── Main daemon loop ────────────────────────────────────────────────
 
+async def _run_outbox_relay(now: datetime) -> dict:
+    """Outbox relay tick (Loop 3): deliver due ``event.*`` rows durably.
+
+    Best-effort by design — failures are logged, never crash the daemon loop.
+    Honors ``settings.outbox_relay_enabled`` (default OFF); when off this is a
+    no-op. Scoped to ``event.`` rows so future relays own their families.
+    """
+    try:
+        from api.database import async_session_factory
+        from api.services.event_service import publish_event_from_outbox
+        from api.services.outbox import publish_due_events
+
+        async with async_session_factory() as db:
+            result = await publish_due_events(
+                db,
+                publisher=publish_event_from_outbox,
+                event_type_prefix="event.",
+                batch_size=25,
+            )
+        if result.get("published") or result.get("failed"):
+            logger.info(
+                "DAEMON outbox relay: published=%s retried=%s failed=%s",
+                result.get("published"), result.get("retried"), result.get("failed"),
+            )
+        return result
+    except Exception as e:
+        logger.warning(f"DAEMON outbox relay failed (non-fatal): {e}")
+        return {"status": "error", "published": 0, "retried": 0, "failed": 0}
+
+
 async def _daemon_tick(now: datetime) -> None:
     """One polling iteration — run all due jobs for this minute."""
     try:
@@ -856,6 +886,7 @@ async def _daemon_tick(now: datetime) -> None:
             _run_calendar_monitor(now),
             _run_job_finder(now),
             _run_reflection(now),
+            _run_outbox_relay(now),
             return_exceptions=True,
         )
         # Log exceptions if any poller raised
