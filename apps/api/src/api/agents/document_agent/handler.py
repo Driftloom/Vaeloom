@@ -30,6 +30,8 @@ class DocumentAgent(BaseAgent):
         Tool(name="get_document_content", description="Retrieve safe plain text content of a document"),
         Tool(name="query_graph", description="Query knowledge graph entities and relations"),
         Tool(name="get_document_version", description="Inspect revision history of a document"),
+        Tool(name="audit_document_quality", description="Speculative 50-check quality, ATS, and impact audit"),
+        Tool(name="compare_document_versions", description="Myers diff and version comparison analysis"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["document", "knowledge", "reference"],
@@ -176,6 +178,21 @@ class DocumentAgent(BaseAgent):
         if not ws_id and context:
             ws_id = getattr(context, "workspace_id", None) or (context.get("workspace_id") if isinstance(context, dict) else None)
 
+        db_from_caller = getattr(request, "db", None) or (request.get("db") if isinstance(request, dict) else None)
+        if not db_from_caller and context:
+            db_from_caller = getattr(context, "db", None) or (context.get("db") if isinstance(context, dict) else None)
+
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def _get_db():
+            if db_from_caller:
+                yield db_from_caller
+            else:
+                from api.database import scoped_session
+                async with scoped_session(workspace_id=str(ws_id) if ws_id else None, require=False) as session:
+                    yield session
+
         real_docs: list[dict[str, Any]] = []
 
         # Minimal ReAct loop: up to MAX_REACT_STEPS retrieval iterations
@@ -190,19 +207,26 @@ class DocumentAgent(BaseAgent):
                 try:
                     import uuid as _uuid
                     from sqlalchemy import select
-                    from api.database import async_session_factory
                     from api.models.schema import Document
 
                     w_uuid = _uuid.UUID(str(ws_id))
-                    async with async_session_factory() as db:
+                    async with _get_db() as db:
                         stmt = select(Document).where(
                             Document.workspace_id == w_uuid,
                             Document.deleted_at.is_(None),
                         ).limit(10)
                         rows = (await db.execute(stmt)).scalars().all()
                         for r in rows:
-                            excerpt = (r.summary or r.path or "Document content")[:300]
-                            fname = r.path.rsplit("/", 1)[-1] if r.path else "Untitled Document"
+                            content_snippet = ""
+                            content_bytes = getattr(r, "content", None)
+                            if content_bytes:
+                                try:
+                                    content_snippet = content_bytes[:2000].decode("utf-8", errors="replace")
+                                except Exception:
+                                    content_snippet = ""
+                            excerpt = (getattr(r, "summary", None) or content_snippet or getattr(r, "path", None) or "Document content")[:2000]
+                            r_path = getattr(r, "path", None)
+                            fname = r_path.rsplit("/", 1)[-1] if r_path else "Untitled Document"
                             real_docs.append({
                                 "id": str(r.id),
                                 "title": fname,
@@ -219,14 +243,199 @@ class DocumentAgent(BaseAgent):
         from api.services.jev_service import jev_service
 
         # System 1: TypeSafe AI Jev Fast Decision Engine (<50ms) for action classification & HITL triage
-        action_choices = ["summarize", "search", "audit_security", "compare", "extract_skills"]
+        action_choices = ["suggest", "summarize", "search", "audit_quality", "compare", "extract_skills"]
         selected_action = await jev_service.choice(query, action_choices)
         is_dangerous = await jev_service.noul(query, {"workspace_id": str(ws_id) if ws_id else None})
 
+        # =========================================================================
+        # HIGHWAY A: Deterministic Operational Tool Execution (<50ms, bypasses Gemma)
+        # =========================================================================
+        if selected_action in ("audit_quality", "compare", "extract_skills"):
+            target_doc_id = real_docs[0]["id"] if real_docs else None
+
+            if selected_action == "audit_quality":
+                if target_doc_id and ws_id:
+                    from api.services.document_service import document_service
+                    async with _get_db() as db:
+                        audit_result = await document_service.audit_document_quality(
+                            document_id=target_doc_id,
+                            workspace_id=str(ws_id),
+                            db=db,
+                        )
+
+                    # 80/20 Cognitive Fusion: Jev provides 80% deterministic analysis; Gemma provides 20% tailored narrative coaching
+                    wants_narrative = any(w in query.lower() for w in ("explain", "why", "how", "advise", "recommend", "improve", "coach", "write"))
+                    if wants_narrative and getattr(settings, "ollama_api_key", None):
+                        enriched_docs = list(real_docs) + [{
+                            "id": "jev_audit",
+                            "title": "TypeSafe AI Jev 50-Check Audit Results",
+                            "excerpt": f"Audit Score: {audit_result['quality_score']}%. Verdict: {audit_result['verdict']}. Failed categories: {', '.join(k for k, v in audit_result['categories'].items() if v.get('score', 0) < 80)}. Top Recommendations: {'; '.join(audit_result.get('recommendations', [])[:3])}",
+                        }]
+                        synth = await self.synthesize_documents(query=query, documents=enriched_docs)
+                        return {
+                            "agent_name": "document",
+                            "highway": "fused_80_20_cognitive",
+                            "action": selected_action,
+                            "requires_approval": is_dangerous,
+                            "confidence": 0.99,
+                            "result": {
+                                "summary": synth["synthesis"],
+                                "details": f"FUSED 80/20 ENGINE: Factual analysis by TypeSafe AI Jev System 1 ({audit_result['passed_checks']}/50 checks passed, {audit_result['quality_score']}%), narrative coaching by Ollama Gemma 4 31B.",
+                                "action_data": audit_result,
+                                "proposals": [
+                                    {"type": "recommendation", "text": rec}
+                                    for rec in audit_result.get("recommendations", [])[:5]
+                                ],
+                                "questions": [],
+                            },
+                        }
+
+                    return {
+                        "agent_name": "document",
+                        "highway": "highway_a_fast_action",
+                        "action": selected_action,
+                        "requires_approval": is_dangerous,
+                        "confidence": 0.99,
+                        "result": {
+                            "summary": f"Speculative quality audit complete for '{real_docs[0]['title']}': Quality Score {audit_result['quality_score']}% ({audit_result['verdict']}). {audit_result['passed_checks']}/50 checks passed.",
+                            "details": f"Evaluated 50 discrete checks across contact, structure, metrics, ATS parseability, skills, and polish.",
+                            "action_data": audit_result,
+                            "proposals": [
+                                {"type": "recommendation", "text": rec}
+                                for rec in audit_result.get("recommendations", [])[:5]
+                            ],
+                            "questions": [],
+                        },
+                    }
+                else:
+                    return {
+                        "agent_name": "document",
+                        "highway": "highway_a_fast_action",
+                        "action": selected_action,
+                        "requires_approval": is_dangerous,
+                        "confidence": 0.50,
+                        "result": {
+                            "summary": "No active document found in workspace to audit.",
+                            "details": None,
+                            "action_data": None,
+                            "proposals": [],
+                            "questions": ["Please upload a document to perform a 50-check quality audit."],
+                        },
+                    }
+
+            elif selected_action == "compare":
+                if target_doc_id and ws_id:
+                    from api.services.document_service import document_service
+                    async with _get_db() as db:
+                        versions = await document_service.list_versions(target_doc_id, str(ws_id), db)
+                        if len(versions) >= 2:
+                            comp_result = await document_service.compare_document_versions(
+                                document_id=target_doc_id,
+                                version_a=versions[1].version_number,
+                                version_b=versions[0].version_number,
+                                workspace_id=str(ws_id),
+                                db=db,
+                            )
+                        else:
+                            comp_result = {
+                                "summary": f"Document '{real_docs[0]['title']}' only has 1 recorded version (no comparison possible).",
+                                "similarity_ratio": 1.0,
+                            }
+                    return {
+                        "agent_name": "document",
+                        "highway": "highway_a_fast_action",
+                        "action": selected_action,
+                        "requires_approval": is_dangerous,
+                        "confidence": 0.98,
+                        "result": {
+                            "summary": comp_result.get("summary", "Version comparison complete."),
+                            "details": "Analyzed revision diff and token similarity.",
+                            "action_data": comp_result,
+                            "proposals": [],
+                            "questions": [] if len(versions) >= 2 else ["Create a second version to view revision diffs."],
+                        },
+                    }
+
+            elif selected_action == "extract_skills":
+                extracted_skills = []
+                if real_docs:
+                    sample_text = " ".join(d["excerpt"] for d in real_docs).lower()
+                    tech_keywords = [
+                        "Python", "TypeScript", "React", "Docker", "Kubernetes", "PostgreSQL",
+                        "FastAPI", "Go", "AWS", "GCP", "Redis", "Kafka", "GraphQL", "Linux",
+                    ]
+                    extracted_skills = [tk for tk in tech_keywords if tk.lower() in sample_text]
+                return {
+                    "agent_name": "document",
+                    "highway": "highway_a_fast_action",
+                    "action": selected_action,
+                    "requires_approval": is_dangerous,
+                    "confidence": 0.95,
+                    "result": {
+                        "summary": f"Extracted {len(extracted_skills)} technical competencies from workspace documents: {', '.join(extracted_skills) if extracted_skills else 'None detected'}.",
+                        "details": "Deterministic skill extraction via modern technical taxonomy.",
+                        "action_data": {"skills": extracted_skills},
+                        "proposals": [],
+                        "questions": [],
+                    },
+                }
+
+        # =========================================================================
+        # HIGHWAY B: Generative Synthesis with Ollama Gemma 4 31B & XML Fencing
+        # =========================================================================
+        # Retrieve relevant workspace memories to augment generative synthesis
+        if ws_id:
+            try:
+                from api.services.memory_service import memory_service
+                from api.schemas.memory import MemoryQuery
+                async with _get_db() as mem_db:
+                    mem_query = MemoryQuery(type="knowledge", status="active", limit=3)
+                    m_rows, _ = await memory_service.list_memories(
+                        db=mem_db,
+                        query=mem_query,
+                        tenant_id=None,
+                        workspace_id=str(ws_id),
+                    )
+                    for m in m_rows:
+                        if m and (m.content or m.summary):
+                            real_docs.append({
+                                "id": f"mem_{m.id}",
+                                "title": m.title or "Workspace Knowledge Memory",
+                                "excerpt": (m.content or m.summary)[:300],
+                            })
+            except Exception as ex:
+                logger.debug("DocumentAgent memory retrieval bypassed: %s", ex)
+
         synth = await self.synthesize_documents(query=query, documents=real_docs)
+
+        # Persist newly generated synthesis insight to workspace memory
+        if ws_id and synth.get("synthesis") and len(synth["synthesis"]) > 40:
+            try:
+                from api.services.memory_service import memory_service
+                from api.schemas.memory import MemoryCreate
+                async with _get_db() as mem_db:
+                    await memory_service.create_memory(
+                        db=mem_db,
+                        dto=MemoryCreate(
+                            type="knowledge",
+                            domain="documents",
+                            title=f"Synthesis: {query[:40]}",
+                            summary=synth["synthesis"][:200],
+                            content=synth["synthesis"],
+                            workspace_id=str(ws_id),
+                            source_type="agent",
+                            source_label="DocumentAgent",
+                        ),
+                        tenant_id=None,
+                        user_id=None,
+                        workspace_id=str(ws_id),
+                    )
+            except Exception as ex:
+                logger.debug("DocumentAgent memory persistence bypassed: %s", ex)
 
         return {
             "agent_name": "document",
+            "highway": "highway_b_synthesis",
             "action": selected_action or "suggest",
             "requires_approval": is_dangerous,
             "confidence": 0.94 if real_docs else 0.50,

@@ -260,7 +260,11 @@ def _evaluate_conditional_branches(layer_results: list[dict[str, Any]], remainin
 
 
 def _detect_pending_approvals(layer_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Scan layer results for any actions or proposals requiring human approval."""
+    """Scan layer results for any actions or proposals requiring human approval.
+    Uses System 1 (TypeSafe AI Jev noul) to audit action descriptions for destructive commands.
+    """
+    from ..services.jev_service import jev_service
+
     pending = []
     for r in layer_results:
         if r.get("action") == "request_approval":
@@ -272,7 +276,17 @@ def _detect_pending_approvals(layer_results: list[dict[str, Any]]) -> list[dict[
         proposals = r.get("result", {}).get("proposals", [])
         if isinstance(proposals, list):
             for p in proposals:
-                if isinstance(p, dict) and p.get("requires_approval"):
+                if not isinstance(p, dict):
+                    continue
+                requires_app = p.get("requires_approval")
+                if not requires_app:
+                    p_text = f"{p.get('title', '')} {p.get('description', '')} {p.get('action', '')}"
+                    if p_text.strip() and jev_service._heuristic_noul(p_text):
+                        requires_app = True
+                        p["requires_approval"] = True
+                        p["approval_reason"] = "System 1 flagged potentially destructive operation"
+
+                if requires_app:
                     pending.append({
                         "agent_name": r.get("agent_name"),
                         "action_type": p.get("approval_type", "action"),
@@ -447,20 +461,54 @@ async def run_supervisor(
 
         layer_idx += 1
 
-    merged_summary = "\n".join(summaries) if summaries else "Multi-agent workflow completed."
+    raw_summary = "\n".join(summaries) if summaries else "Multi-agent workflow completed."
+    merged_summary = raw_summary
+    cognitive_mode = "deterministic_operational"
+
+    # ── 80/20 Cognitive Fusion (System 1 Deterministic + System 2 Synthesis) ──
+    # Specialist sub-agents + System 1 execute 80% (actions, tools, extraction, safety).
+    # System 2 (Gemma 4 31B / LLM) synthesizes the 20% cohesive executive narrative.
+    if len(summaries) >= 2:
+        try:
+            from ..config import settings
+            from ..services.llm_service import llm_service
+
+            if getattr(settings, "llm_api_key", None):
+                synthesis_prompt = (
+                    "You are the executive multi-agent synthesizer for Vaeloom. "
+                    "The specialist agents have completed their autonomous subtasks. "
+                    "Synthesize a cohesive, polished executive summary for the user based strictly on these agent findings.\n\n"
+                    f"<user_query>{message}</user_query>\n"
+                    f"<agent_results>\n{raw_summary}\n</agent_results>"
+                )
+                llm_resp = await llm_service.generate_completion(
+                    messages=[{"role": "user", "content": synthesis_prompt}],
+                    temperature=0.2,
+                    max_tokens=600,
+                    task_type="supervisor_synthesis",
+                )
+                synthesized = (llm_resp.get("content") or "").strip()
+                if synthesized:
+                    merged_summary = synthesized
+                    cognitive_mode = "fused_80_20_cognitive"
+        except Exception as e:
+            logger.debug(f"Supervisor System 2 synthesis skipped/failed: {e}")
 
     return {
         "agent_name": "supervisor",
         "action": "suggest",
         "confidence": 0.87,
         "status": "success",
+        "cognitive_fusion": cognitive_mode,
         "result": {
             "summary": merged_summary,
+            "raw_agent_summaries": summaries,
             "details": all_details,
             "proposals": all_proposals,
             "questions": [],
             "dag": layers_to_run,
             "subtasks": [a for a, _ in subtasks],
+            "cognitive_fusion": cognitive_mode,
         },
         "supervisor": True,
         "dag": layers_to_run,

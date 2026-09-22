@@ -26,8 +26,8 @@ async def test_forged_workspace_id_rejected(authenticated_context):
     headers = {"Authorization": f"Bearer {token}", "X-Workspace-ID": alien_ws}
     res = await client.get(f"/api/v1/documents/{alien_doc}/content?workspace_id={alien_ws}", headers=headers)
 
-    # Must be 403 (workspace access forbidden) or 404
-    assert res.status_code in (403, 404), f"Alien workspace access leaked with status {res.status_code}"
+    # Must be exact 403 (workspace access forbidden)
+    assert res.status_code == 403, f"Alien workspace access leaked with status {res.status_code}"
 
 
 @pytest.mark.asyncio

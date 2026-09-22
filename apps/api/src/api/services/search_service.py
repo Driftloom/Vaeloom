@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from sqlalchemy import String, cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models.schema import Entity, Memory, MemoryRecord, User, Workspace
+from ..models.schema import Document, Entity, Memory, MemoryRecord, User, Workspace
 
 
 def _extract_facets(results: list[dict]) -> dict:
@@ -231,6 +231,52 @@ class SearchService:
                         "type": getattr(ent, "type", "unknown"),
                         "aliases": getattr(ent, "aliases", []) or [],
                         "created_at": ent_created,
+                    },
+                })
+
+        if not sources or "document" in sources:
+            doc_stmt = select(Document).where(
+                Document.deleted_at.is_(None),
+                or_(
+                    Document.path.ilike(pattern),
+                    Document.summary.ilike(pattern),
+                ),
+            )
+            if ws_uuid:
+                doc_stmt = doc_stmt.where(Document.workspace_id == ws_uuid)
+                if tid_uuid:
+                    ws_subquery = (
+                        select(Workspace.id)
+                        .join(User, Workspace.user_id == User.id)
+                        .where(User.tenant_id == tid_uuid)
+                    )
+                    doc_stmt = doc_stmt.where(Document.workspace_id.in_(ws_subquery))
+            elif tid_uuid:
+                ws_subquery = (
+                    select(Workspace.id)
+                    .join(User, Workspace.user_id == User.id)
+                    .where(User.tenant_id == tid_uuid)
+                )
+                doc_stmt = doc_stmt.where(Document.workspace_id.in_(ws_subquery))
+
+            doc_result = await db.execute(doc_stmt)
+            docs = doc_result.scalars().all()
+            if ws_uuid:
+                docs = [d for d in docs if getattr(d, "workspace_id", None) == ws_uuid]
+            for doc in docs:
+                score = 2.0 if query.lower() in (doc.path or "").lower() else 1.0
+                doc_name = doc.path.rsplit("/", 1)[-1] if doc.path else "Untitled Document"
+                results.append({
+                    "id": str(doc.id),
+                    "text": doc_name,
+                    "score": score,
+                    "source": "document",
+                    "metadata": {
+                        "type": getattr(doc, "type", "unknown"),
+                        "path": doc.path,
+                        "summary": getattr(doc, "summary", "") or "",
+                        "status": getattr(doc, "status", "ACTIVE"),
+                        "created_at": getattr(doc, "created_at", None),
                     },
                 })
 

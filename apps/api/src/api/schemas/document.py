@@ -136,3 +136,54 @@ class BulkUploadResponse(BaseModel):
 
 class BulkDownloadRequest(BaseModel):
     document_ids: list[uuid.UUID]
+
+
+# Audit & Compare Schemas
+class DocumentAuditCheckItem(BaseModel):
+    id: str
+    name: str
+    category: str
+    passed: bool
+    score: int
+    detail: str
+    recommendation: str | None = None
+
+
+class DocumentAuditCategoryScore(BaseModel):
+    total: int
+    passed: int
+    score: float
+
+
+class DocumentAuditResponse(BaseModel):
+    document_id: uuid.UUID
+    total_checks: int = 50
+    passed_checks: int
+    failed_checks: int
+    quality_score: float
+    verdict: str
+    categories: dict[str, DocumentAuditCategoryScore]
+    checks: list[DocumentAuditCheckItem]
+    recommendations: list[str]
+
+
+class DocumentCompareRequest(BaseModel):
+    version_a: int = Field(default=1, ge=1)
+    version_b: int = Field(default=2, ge=1)
+
+
+class DocumentCompareResponse(BaseModel):
+    document_id: uuid.UUID
+    version_a: int
+    version_b: int
+    similarity_ratio: float
+    word_count_a: int
+    word_count_b: int
+    word_count_delta: int
+    additions_count: int
+    deletions_count: int
+    additions: list[str] = []
+    deletions: list[str] = []
+    diff_snippet: str
+    summary: str
+

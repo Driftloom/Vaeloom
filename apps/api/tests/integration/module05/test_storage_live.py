@@ -15,6 +15,13 @@ pytestmark = [pytest.mark.integration, pytest.mark.live_provider]
 @pytest.mark.asyncio
 async def test_live_minio_s3_lifecycle():
     """Verify live S3 upload, readback, listing, and deletion using running MinIO."""
+    import socket
+    try:
+        sock = socket.create_connection(("127.0.0.1", 9000), timeout=0.5)
+        sock.close()
+    except OSError:
+        pytest.skip("Live MinIO S3 container is not running on localhost:9000 (start vaeloom-test-minio container to run)")
+
     settings.storage_endpoint = "http://localhost:9000"
     settings.storage_access_key = "minioadmin"
     settings.storage_secret_key = "minioadmin"

@@ -37,12 +37,12 @@ async def check_dedup(workspace_id: str, content_hash: str, filename: str) -> st
         logger.warning(f"Dedup DB imports unavailable: {e}")
         return _fallback_dedup(workspace_id, content_hash, filename)
 
-    try:
+        w_uuid = uuid.UUID(str(workspace_id)) if workspace_id else None
         async with scoped_session(workspace_id=workspace_id, require=False) as session:
             version_stmt = (
                 select(DocumentVersion)
                 .join(Document, Document.id == DocumentVersion.document_id)
-                .where(Document.workspace_id == workspace_id)
+                .where(Document.workspace_id == w_uuid)
                 .where(DocumentVersion.checksum == content_hash)
                 .limit(1)
             )
@@ -54,7 +54,7 @@ async def check_dedup(workspace_id: str, content_hash: str, filename: str) -> st
                     select(Document)
                     .where(
                         Document.id == existing_version.document_id,
-                        Document.workspace_id == workspace_id,
+                        Document.workspace_id == w_uuid,
                     )
                 )
                 doc_result = await session.execute(doc_stmt)
@@ -65,7 +65,7 @@ async def check_dedup(workspace_id: str, content_hash: str, filename: str) -> st
 
             path_stmt = (
                 select(Document)
-                .where(Document.workspace_id == workspace_id)
+                .where(Document.workspace_id == w_uuid)
                 .where(Document.path == filename)
                 .limit(1)
             )
@@ -96,9 +96,11 @@ async def _fuzzy_path_match(session, workspace_id: str, filename: str) -> str | 
         # Lazy import mirrors check_dedup (avoids module-level cycles).
         from api.models.schema import Document
 
+        import uuid as _uuid
+        w_uuid = _uuid.UUID(str(workspace_id)) if workspace_id else None
         cand_stmt = (
             select(Document.id, Document.path)
-            .where(Document.workspace_id == workspace_id)
+            .where(Document.workspace_id == w_uuid)
             .limit(FUZZY_CANDIDATE_LIMIT)
         )
         result = await session.execute(cand_stmt)
