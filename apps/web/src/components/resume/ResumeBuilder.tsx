@@ -17,6 +17,7 @@ import { ConfidenceMeter } from '@/components/shared/ConfidenceMeter';
 import { DiffViewer } from '@/components/shared/DiffViewer';
 import { Modal } from '@vaeloom/ui-kit';
 import { useToast } from '@/components/shared/Toast';
+import { ResumeBuilderSkeleton } from './ResumeBuilderSkeleton';
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', {
@@ -299,19 +300,7 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col h-full">
-        <header className="mb-6">
-          <h1 className="text-3xl font-display font-medium text-text mb-2">Resume</h1>
-          <p className="text-text-muted">
-            Review your master resume, generate tailored variants, and export.
-          </p>
-        </header>
-        <div className="flex-1 flex items-center justify-center text-text-muted">
-          Loading resumes...
-        </div>
-      </div>
-    );
+    return <ResumeBuilderSkeleton />;
   }
 
   if (error) {

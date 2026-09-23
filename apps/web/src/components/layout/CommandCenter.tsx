@@ -761,7 +761,10 @@ export function CommandCenter({
     } else if (e.key === 'Tab') {
       e.preventDefault();
       const cats: CommandCategory[] = ['all', 'navigation', 'actions', 'search'];
-      const nextIdx = (cats.indexOf(activeCategory) + 1) % cats.length;
+      const curr = cats.indexOf(activeCategory);
+      const nextIdx = e.shiftKey
+        ? (curr - 1 + cats.length) % cats.length
+        : (curr + 1) % cats.length;
       setActiveCategory(cats[nextIdx]!);
     }
   };

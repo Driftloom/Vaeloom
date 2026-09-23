@@ -43,7 +43,8 @@ import { getBeatIndex, BEATS } from './vanilla/worldConstants';
 
 /** Resolved theme for scene wrappers (dark is SSR/brand default). */
 function useThemeValue(): Theme {
-  return useTheme().theme;
+  const { theme } = useTheme();
+  return theme === 'light' ? 'light' : 'dark';
 }
 
 const MemoryCoreCanvas = dynamic(() => import('./MemoryCoreCanvas'), { ssr: false });

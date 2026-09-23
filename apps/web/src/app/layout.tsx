@@ -116,7 +116,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             is applied before first paint. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}var r=document.documentElement;r.classList.remove('light','dark');r.classList.add(t);}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'&&t!=='high-contrast'){if(window.matchMedia('(prefers-contrast: more)').matches){t='high-contrast';}else{t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}}var r=document.documentElement;r.classList.remove('light','dark','high-contrast');r.classList.add(t);r.setAttribute('data-theme',t);}catch(e){}})();`,
           }}
         />
         <meta name="application-name" content="Vaeloom" />

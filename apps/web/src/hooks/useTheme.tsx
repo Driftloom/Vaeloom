@@ -14,7 +14,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-type Theme = 'light' | 'dark';
+export type Theme = 'light' | 'dark' | 'high-contrast';
 
 interface ThemeContextValue {
   theme: Theme;
@@ -28,10 +28,11 @@ function getInitialTheme(): Theme {
   if (typeof window !== 'undefined') {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored === 'light' || stored === 'dark') return stored;
+      if (stored === 'light' || stored === 'dark' || stored === 'high-contrast') return stored;
     } catch {
       // storage unavailable — fall through to media query
     }
+    if (window.matchMedia('(prefers-contrast: more)').matches) return 'high-contrast';
     return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
   }
   return 'dark';
@@ -40,14 +41,16 @@ function getInitialTheme(): Theme {
 function applyTheme(theme: Theme): void {
   if (typeof document !== 'undefined') {
     const root = document.documentElement;
-    root.classList.remove('light', 'dark');
+    root.classList.remove('light', 'dark', 'high-contrast');
     root.classList.add(theme);
+    root.setAttribute('data-theme', theme);
   }
 }
 
 const THEME_BG: Record<Theme, string> = {
   dark: '#000000',
   light: '#F7F8FC',
+  'high-contrast': '#000000',
 };
 
 const ThemeContext = createContext<ThemeContextValue>({
@@ -69,19 +72,29 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Follow OS changes only while the user has not made an explicit choice.
   useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: light)');
+    const mqLight = window.matchMedia('(prefers-color-scheme: light)');
+    const mqContrast = window.matchMedia('(prefers-contrast: more)');
     let stored: string | null = null;
     try {
       stored = localStorage.getItem(STORAGE_KEY);
     } catch {
       stored = null;
     }
-    if (stored === 'light' || stored === 'dark') return;
-    const onChange = (e: MediaQueryListEvent): void => {
-      setThemeState(e.matches ? 'light' : 'dark');
+    if (stored === 'light' || stored === 'dark' || stored === 'high-contrast') return;
+
+    const onChange = (): void => {
+      if (mqContrast.matches) {
+        setThemeState('high-contrast');
+      } else {
+        setThemeState(mqLight.matches ? 'light' : 'dark');
+      }
     };
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
+    mqLight.addEventListener('change', onChange);
+    mqContrast.addEventListener('change', onChange);
+    return () => {
+      mqLight.removeEventListener('change', onChange);
+      mqContrast.removeEventListener('change', onChange);
+    };
   }, []);
 
   const setTheme = useCallback((t: Theme) => {
@@ -96,7 +109,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const toggleTheme = useCallback(() => {
     setThemeState((prev) => {
-      const next: Theme = prev === 'dark' ? 'light' : 'dark';
+      const next: Theme = prev === 'dark' ? 'light' : prev === 'light' ? 'high-contrast' : 'dark';
       try {
         localStorage.setItem(STORAGE_KEY, next);
       } catch {

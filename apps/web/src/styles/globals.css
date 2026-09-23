@@ -12,6 +12,29 @@
  * Values are R G B triplets consumed by tailwind.config.ts with alpha support.
  * ────────────────────────────────────────────────────────────────────────────*/
 
+:root {
+  /* Radius Primitives & Semantics (DS-GATE-03 / Enterprise Tokens) */
+  --radius-none: 0px;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-full: 9999px;
+  --radius-control: var(--radius-md);
+  --radius-card: var(--radius-lg);
+  --radius-container: var(--radius-xl);
+  --radius-pill: var(--radius-full);
+
+  /* Elevation Primitives & Semantics */
+  --elevation-none: none;
+  --elevation-raised: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --elevation-overlay: 0 4px 12px 0 rgb(0 0 0 / 0.15), 0 2px 4px -1px rgb(0 0 0 / 0.1);
+  --elevation-modal: 0 12px 32px 0 rgb(0 0 0 / 0.25), 0 4px 8px -1px rgb(0 0 0 / 0.15);
+  --elevation-card: var(--elevation-raised);
+}
+
 :root,
 .dark {
   /* App canvas + surface hierarchy — PURE BLACK canvas, neutral ramp */
@@ -156,6 +179,86 @@
   --shadow-inner-highlight: rgb(255 255 255 / 0.6);
 }
 
+.high-contrast,
+html.high-contrast,
+[data-theme="high-contrast"] {
+  /* Ultra-high contrast (AAA 7:1+ compliant per DS-GATE-03 / high-contrast.json) */
+  --bg: 0 0 0;                  /* #000000 pure black canvas */
+  --surface: 10 10 12;          /* #0A0A0C */
+  --surface-elevated: 18 18 22; /* #121216 */
+  --surface-50: 10 10 12;
+  --surface-100: 18 18 22;
+  --surface-200: 26 26 34;
+  --surface-300: 40 40 50;
+  --surface-400: 55 55 68;
+  --surface-500: 100 100 120;
+  --surface-900: 0 0 0;
+  --surface-hover: 30 30 40;
+  --surface-active: 45 45 60;
+  --surface-selected: 50 50 70;
+
+  /* Text: pure white & crisp high-contrast values */
+  --text: 255 255 255;          /* #FFFFFF */
+  --text-secondary: 241 245 249; /* #F1F5F9 */
+  --text-muted: 226 229 239;    /* #E2E5EF */
+  --text-dim: 203 213 225;      /* #CBD5E1 */
+  --text-200: 255 255 255;
+  --text-300: 241 245 249;
+  --text-400: 226 229 239;
+  --text-500: 203 213 225;
+  --text-600: 180 190 210;
+
+  /* Borders: solid white & strong visual boundary */
+  --border: 255 255 255;        /* #FFFFFF */
+  --border-subtle: 180 180 195;
+  --border-strong: 255 255 255;
+
+  /* Primary & Action: high-luminance neon yellow / bright indigo */
+  --primary: 255 255 0;         /* #FFFF00 */
+  --primary-300: 255 255 100;
+  --primary-400: 255 255 0;
+  --action: 79 70 229;          /* #4F46E5 */
+  --action-hover: 99 102 241;
+  --action-active: 129 140 248;
+  --action-fg: 255 255 255;
+
+  --accent: 255 255 0;          /* #FFFF00 */
+  --accent-300: 255 255 100;
+  --accent-400: 255 255 0;
+  --accent-hover: 255 255 150;
+  --accent-active: 230 230 0;
+
+  /* High-luminance semantic status */
+  --success: 0 255 102;         /* #00FF66 */
+  --success-muted: 0 255 102;
+  --success-fg: 0 255 102;
+  --warning: 255 204 0;         /* #FFCC00 */
+  --warning-muted: 255 204 0;
+  --warning-fg: 255 204 0;
+  --error: 255 51 51;           /* #FF3333 */
+  --error-muted: 255 51 51;
+  --error-fg: 255 51 51;
+  --info: 0 204 255;            /* #00CCFF */
+  --info-muted: 0 204 255;
+  --info-fg: 0 204 255;
+
+  --overlay: 0 0 0;
+
+  --shadow-card: 0 0 0 2px #FFFFFF, 0 4px 12px rgb(0 0 0 / 0.9);
+  --shadow-card-hover: 0 0 0 2px #FFFF00, 0 6px 16px rgb(0 0 0 / 0.9);
+  --shadow-elevated: 0 0 0 2px #FFFFFF, 0 12px 32px rgb(0 0 0 / 0.95);
+  --shadow-inner-highlight: rgb(255 255 255 / 0.2);
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --border: 255 255 255;
+    --border-strong: 255 255 255;
+    --primary: 255 255 0;
+    --accent: 255 255 0;
+  }
+}
+
 @layer base {
   body {
     @apply bg-background text-text font-sans antialiased;
@@ -281,7 +384,8 @@
 
   .skip-link {
     @apply sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100]
-           focus:px-4 focus:py-2 focus:rounded-lg focus:bg-action focus:text-action-fg focus:font-medium;
+           focus:px-4 focus:py-2 focus:rounded-lg focus:bg-action focus:text-action-fg focus:font-medium
+           focus:ring-2 focus:ring-focus-ring focus:outline-none;
   }
 
   .toast-enter {
@@ -475,6 +579,10 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  .animate-pulse {
+    animation: none !important;
+    opacity: 0.75 !important;
   }
 }
 

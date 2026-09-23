@@ -35,5 +35,11 @@ describe('Vaeloom Design Token Engine (DS-GATE-03)', () => {
     expect(css).toContain('--color-bg-canvas: #08080a');
     expect(css).toContain('--color-bg-canvas: #f8f9fc');
     expect(css).toContain('--color-bg-canvas: #000000');
+    expect(css).toContain('--radius-md: 6px');
+    expect(css).toContain('--radius-control: var(--radius-md)');
+    expect(css).toContain('--radius-card: var(--radius-lg)');
+    expect(css).toContain('--elevation-raised: 0 1px 3px 0 rgb(0 0 0 / 0.1)');
+    expect(css).toContain('--elevation-card: var(--elevation-raised)');
+    expect(css).toContain('--color-focus-ring: #ffff00');
   });
 });
