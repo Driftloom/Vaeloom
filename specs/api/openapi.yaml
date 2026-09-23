@@ -38,21 +38,31 @@ paths:
               schema:
                 type: integer
           content:
-            application/json:
+            application/problem+json:
               schema:
                 type: object
                 properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
                   detail:
                     type: string
                 required:
                   - detail
               example:
+                type: https://api.vaeloom.app/errors/rate-limited
+                title: Too Many Requests
+                status: 429
                 detail: Rate limit exceeded
   /metrics:
     get:
-      summary: Metrics
-      description: Endpoint that serves Prometheus metrics.
-      operationId: metrics_metrics_get
+      tags:
+        - observability
+      summary: ' Prometheus Metrics'
+      operationId: _prometheus_metrics_metrics_get
       responses:
         '200':
           description: Successful Response

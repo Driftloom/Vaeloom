@@ -1,11 +1,10 @@
 # Error Contract (RFC 7807 Gap) + Unversioned Infra Paths
 
-> **Status:** RFC 7807 SUPERSET LANDED 2026-09-22 — `type`/`title`/`status`/
-> `instance` added to every error path (handlers + all middleware denials +
-> 422), legacy keys untouched. Full content-type migration to
-> `application/problem+json` remains Loop 4 (frontend parses bodies today).
-> **Last verified:** 2026-09-22. **Sibling:**
-> [pagination-standard.md](./pagination-standard.md).
+> **Status:** CUTOVER COMPLETE 2026-09-23 — all error responses serve
+> `application/problem+json` (handlers + all 15 middleware denials + 422; legacy
+> `detail` keys preserved; web client parses bodies via `res.json()` regardless
+> of content-type). 294/294 spec ops declare the media type. **Last verified:**
+> 2026-09-23. **Sibling:** [pagination-standard.md](./pagination-standard.md).
 
 ## 1. Current error shapes (runtime truth, 2026-09-21)
 

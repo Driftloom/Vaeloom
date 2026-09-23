@@ -32,6 +32,7 @@ class TestLiveErrorShapes:
     async def test_401_has_problem_fields(self, client: AsyncClient):
         res = await client.get("/api/v1/memories")
         assert res.status_code == 401
+        assert res.headers["content-type"].startswith("application/problem+json")
         body = res.json()
         assert body["error"]["code"] == 401
         assert body["type"] == "https://api.vaeloom.app/errors/unauthorized"
@@ -54,6 +55,7 @@ class TestLiveErrorShapes:
     async def test_422_keeps_detail_array(self, client: AsyncClient):
         res = await client.post("/api/v1/auth/signup", json={"email": "not-an-email"})
         assert res.status_code == 422
+        assert res.headers["content-type"].startswith("application/problem+json")
         body = res.json()
         assert body["type"] == "https://api.vaeloom.app/errors/validation-error"
         assert isinstance(body["detail"], list) and len(body["detail"]) > 0
