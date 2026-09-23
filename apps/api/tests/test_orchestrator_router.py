@@ -135,6 +135,28 @@ class TestClassifyIntent:
         assert agent == "agent_a"
         assert confidence > 0
 
+    async def test_jev_s1_intent_classification(self):
+        from api.orchestrator.router import classify_intent
+        agent, conf = await classify_intent("organize workspace folders")
+        assert agent == "workspace"
+        assert conf >= 0.7
+
+    async def test_jev_s1_negative_control(self):
+        from api.orchestrator.router import classify_intent
+        # Strict negative control: nonsense must never false-match
+        agent, conf = await classify_intent("blablabla zzzqqq xyzzy")
+        assert agent == "memory"
+        assert conf == 0.5
+
+    async def test_jev_s1_sub50ms_sla(self):
+        import time
+        from api.orchestrator.router import classify_intent
+        start = time.monotonic()
+        agent, conf = await classify_intent("audit formatting of resume")
+        duration_ms = (time.monotonic() - start) * 1000
+        assert duration_ms < 100
+        assert agent in ("ats", "resume")
+
 
 class TestHandle:
     async def test_low_confidence_returns_ask_clarification(self, monkeypatch):

@@ -244,10 +244,30 @@ def score_agent_candidates(message: str, candidates: list[str] | None = None) ->
 
 
 async def _llm_classify_intent(message: str) -> tuple[str, float] | None:
-    """Classify ambiguous or low-confidence queries using a fast micro-LLM."""
+    """Classify ambiguous or low-confidence queries using Jev System 1 (<50ms) with micro-LLM fallback."""
+    if not message or len(message.strip()) < 3:
+        return None
+
+    # Step 1: TypeSafe AI Jev System 1 (<50ms deterministic classifier)
+    try:
+        from ..services.jev_service import jev_service
+        registered_agents = list(AGENT_REGISTRY.keys())
+        jev_agent = await jev_service.choice(
+            prompt=message,
+            options=registered_agents,
+            context={"system": "intent_classification"},
+            require_match=True,
+        )
+        if jev_agent and jev_agent in AGENT_REGISTRY:
+            logger.info("ROUTER_JEV_S1_CLASSIFY: query='%s' -> %s", message[:50], jev_agent)
+            return jev_agent, 0.88
+    except Exception as exc:
+        logger.debug("Jev System 1 intent classification error: %s", exc)
+
+    # Step 2: Micro-LLM fallback if configured
     from ..config import settings
 
-    if not settings.llm_api_key or len(message.strip()) < 3:
+    if not settings.llm_api_key:
         return None
 
     try:

@@ -539,6 +539,32 @@ async def policy_check_node(state: dict[str, Any]) -> dict[str, Any]:
                 "approval_state": {"status": "pending", "tool": tool, "reason": f"tool {tool} requires approval"},
                 "metadata": {**state.get("metadata", {}), "node": "policy_check", "approval_required": True},
             }
+
+        # Check for dangerous non-read-only tools via Jev System 1 NOUL triage
+        _is_readonly = (
+            tool.startswith(("search_", "get_", "read_", "list_", "fetch_", "browse_", "audit_", "verify_", "check_", "calculate_"))
+            or tool in {
+                "search_documents", "query_graph", "read_file", "get_document_content",
+                "web_search", "scrape_company_insights", "browse_job_page",
+                "verify_application_link", "list_calendar_events",
+                "search_jobs", "calculate_semantic_ats_score",
+                "extract_missing_hard_skills", "audit_ats_formatting",
+            }
+        )
+        if not _is_readonly:
+            try:
+                from ..services.jev_service import jev_service
+                _task_context = {"workspace_id": str(state.get("workspace_id") or ""), "task": str(state.get("task") or "")}
+                if await jev_service.noul(tool, _task_context):
+                    logger.info("policy_check: Jev System 1 flagged tool %s as dangerous/requiring approval", tool)
+                    return {
+                        "execution_status": "waiting_approval",
+                        "approval_state": {"status": "pending", "tool": tool, "reason": f"tool {tool} flagged as dangerous/requiring approval"},
+                        "metadata": {**state.get("metadata", {}), "node": "policy_check", "approval_required": True, "jev_flagged": True},
+                    }
+            except Exception as _je:
+                logger.debug("policy_check: Jev safety triage skipped: %s", _je)
+
         # Unknown tool must not auto-execute — fail closed via tool_execute validation
         return {"execution_status": "executing_tool", "metadata": {**state.get("metadata", {}), "node": "policy_check"}}
     except Exception as e:
@@ -785,13 +811,29 @@ async def evaluate_node(state: dict[str, Any]) -> dict[str, Any]:
     except Exception:
         pass
 
+    task_text = str(state.get("task") or "")
+    summary_text = str((state.get("result") or {}).get("summary") or "")
+    alignment_score = 1.0
+    if task_text and summary_text and has_result:
+        try:
+            from ..services.jev_service import jev_service
+            alignment_score = await jev_service.score(task_text, summary_text)
+        except Exception:
+            alignment_score = 1.0
+
+    eval_meta = {
+        **state.get("metadata", {}),
+        "node": "evaluate",
+        "semantic_alignment": round(alignment_score, 3),
+    }
+
     if replan:
         # Genuine replan signal: stay out of finalize so the router can send
         # the run back to the agent node with an incremented attempt budget.
-        return {"execution_status": "needs_replan", "evaluation": eval_res, "metadata": {**state.get("metadata", {}), "node": "evaluate", "attempt": attempt + 1}}
+        return {"execution_status": "needs_replan", "evaluation": eval_res, "metadata": {**eval_meta, "attempt": attempt + 1}}
     if has_result:
-        return {"execution_status": "completed", "evaluation": eval_res, "metadata": {**state.get("metadata", {}), "node": "evaluate"}}
-    return {"execution_status": "failed", "evaluation": eval_res, "metadata": {**state.get("metadata", {}), "node": "evaluate"}}
+        return {"execution_status": "completed", "evaluation": eval_res, "metadata": eval_meta}
+    return {"execution_status": "failed", "evaluation": eval_res, "metadata": eval_meta}
 
 
 async def finalize_node(state: dict[str, Any]) -> dict[str, Any]:

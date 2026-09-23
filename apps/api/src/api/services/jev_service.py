@@ -93,16 +93,17 @@ class JevService:
         prompt: str,
         options: Sequence[str],
         context: dict[str, Any] | None = None,
+        require_match: bool = False,
     ) -> str:
         """Sub-50ms multi-way classification. Selects exactly one option from the list."""
         if not options:
             return ""
-        if len(options) == 1:
+        if len(options) == 1 and not require_match:
             return options[0]
 
-        cache_key = f"choice:{prompt}:{list(options)}:{context}"
+        cache_key = f"choice:{prompt}:{list(options)}:{context}:{require_match}"
         cached = self._cache.get(cache_key)
-        if cached is not None and cached in options:
+        if cached is not None and (cached in options or (require_match and cached == "")):
             return cached
 
         start_time = time.monotonic()
@@ -118,14 +119,21 @@ class JevService:
                 if self.api_key.startswith("apikey_") or "typesafe.ai" in self.gateway_url:
                     # Native TypeSafe AI System One Endpoint
                     endpoint = "https://api.typesafe.ai/v1/systemone"
+                    criteria = {opt: opt for opt in options}
+                    if require_match:
+                        criteria["none"] = "none of the options match"
                     payload = {
                         "state": f"Task: {prompt}\nContext: {context or {}}",
                         "model": "jev-latest",
                         "questions": {
                             "choice": {
                                 "type": "choice",
-                                "instructions": "Which option best matches the user's intent?",
-                                "criteria": {opt: opt for opt in options},
+                                "instructions": (
+                                    "Which option best matches the user's intent? "
+                                    "If none match or the query is irrelevant/nonsense, select 'none'."
+                                    if require_match else "Which option best matches the user's intent?"
+                                ),
+                                "criteria": criteria,
                             }
                         },
                     }
@@ -133,13 +141,20 @@ class JevService:
                     if resp.status_code == 200:
                         data = resp.json()
                         chosen = data.get("answers", {}).get("choice", {}).get("choice", "")
+                        if chosen == "none" and require_match:
+                            self._cache.set(cache_key, "")
+                            return ""
                         if chosen in options:
+                            if require_match and not self._heuristic_choice(prompt, [chosen], min_overlap=1):
+                                self._cache.set(cache_key, "")
+                                return ""
                             duration_ms = int((time.monotonic() - start_time) * 1000)
                             logger.debug("TypeSafe Jev native choice resolved in %dms: %s", duration_ms, chosen)
                             self._cache.set(cache_key, chosen)
                             return chosen
                 else:
                     # Vercel AI Gateway / OpenRouter
+                    opts_display = list(options) + (["none"] if require_match else [])
                     payload = {
                         "model": self.model,
                         "messages": [
@@ -148,11 +163,12 @@ class JevService:
                                 "content": (
                                     "You are Jev, a high-speed sub-50ms deterministic classifier. "
                                     "Return ONLY the exact option name chosen from the list."
+                                    + (" If none match, return 'none'." if require_match else "")
                                 ),
                             },
                             {
                                 "role": "user",
-                                "content": f"Task: {prompt}\nContext: {context or {}}\nOptions:\n" + "\n".join(f"- {opt}" for opt in options),
+                                "content": f"Task: {prompt}\nContext: {context or {}}\nOptions:\n" + "\n".join(f"- {opt}" for opt in opts_display),
                             },
                         ],
                         "temperature": 0.0,
@@ -163,8 +179,13 @@ class JevService:
                     if resp.status_code == 200:
                         data = resp.json()
                         chosen = data["choices"][0]["message"]["content"].strip()
+                        if chosen.lower() == "none" and require_match:
+                            self._cache.set(cache_key, "")
+                            return ""
                         for opt in options:
                             if opt.lower() == chosen.lower() or opt.lower() in chosen.lower():
+                                if require_match and not self._heuristic_choice(prompt, [opt], min_overlap=1):
+                                    continue
                                 duration_ms = int((time.monotonic() - start_time) * 1000)
                                 logger.debug("Jev choice live resolved in %dms: %s", duration_ms, opt)
                                 self._cache.set(cache_key, opt)
@@ -173,7 +194,7 @@ class JevService:
                 logger.debug("Jev live choice error (falling back to fast heuristic): %s", e)
 
         # High-speed deterministic local heuristic fallback (<1ms)
-        chosen = self._heuristic_choice(prompt, options)
+        chosen = self._heuristic_choice(prompt, options, min_overlap=1 if require_match else 0)
         duration_ms = int((time.monotonic() - start_time) * 1000)
         logger.debug("Jev heuristic choice resolved in %dms: %s", duration_ms, chosen)
         self._cache.set(cache_key, chosen)
@@ -336,18 +357,28 @@ class JevService:
         self._cache.set(cache_key, score_val)
         return score_val
 
-    def _heuristic_choice(self, prompt: str, options: Sequence[str]) -> str:
-        prompt_words = set(re.findall(r"\w+", prompt.lower()))
+    def _heuristic_choice(self, prompt: str, options: Sequence[str], min_overlap: int = 0) -> str:
+        prompt_words = [w for w in re.findall(r"\w+", prompt.lower()) if len(w) >= 3]
         best_score = -1
-        best_option = options[0]
+        best_option = options[0] if options and not min_overlap else ""
 
         for opt in options:
-            opt_words = set(re.findall(r"\w+", opt.lower().replace("_", " ")))
-            overlap = len(prompt_words.intersection(opt_words))
+            if opt.lower() == "none":
+                continue
+            opt_words = [w for w in re.findall(r"\w+", opt.lower().replace("_", " ")) if len(w) >= 3]
+            overlap = 0
+            for pw in prompt_words:
+                for ow in opt_words:
+                    if pw == ow:
+                        overlap += 2
+                    elif len(pw) >= 4 and len(ow) >= 4 and (pw.startswith(ow[:4]) or ow.startswith(pw[:4])):
+                        overlap += 1
             if overlap > best_score:
                 best_score = overlap
                 best_option = opt
 
+        if min_overlap > 0 and best_score < min_overlap:
+            return ""
         return best_option
 
     def _heuristic_noul(self, prompt: str, context: dict[str, Any] | None = None) -> bool:
