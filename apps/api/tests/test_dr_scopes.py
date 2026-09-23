@@ -61,23 +61,33 @@ class TestSkipPaths:
 
 
 class TestRlsDriftLogic:
-    def _fake_conn(self, forced, grants):
+    def _fake_conn(self, forced, grants, existing=None):
         class _FakeConn:
             async def fetch(self, sql):
                 if "relforcerowsecurity" in sql:
                     return [{"relname": t} for t in forced]
-                return grants
+                if "pg_tables" in sql:
+                    tables = existing if existing is not None else [
+                        t for t, _ in grants
+                    ]
+                    return [{"tablename": t} for t in tables]
+                return list(grants)
 
             async def close(self):
                 return None
 
         return _FakeConn()
 
+    def _restore_rows(self, mod):
+        return [{"tablename": t, "policyname": p}
+                for t, p in mod.ACCEPTED_OPEN_TABLES.items()]
+
     async def test_passes_when_scoped(self, monkeypatch):
         mod = _load_runner()
 
         async def _connect(url):
-            return self._fake_conn(list(mod.APP_ROLE_STRICT_TABLES), [])
+            return self._fake_conn(list(mod.APP_ROLE_STRICT_TABLES),
+                                   self._restore_rows(mod))
 
         monkeypatch.setattr(mod.asyncpg, "connect", _connect)
         out = await mod.scope_rls_policy_drift("postgresql://x/y")
@@ -89,7 +99,8 @@ class TestRlsDriftLogic:
         async def _connect(url):
             return self._fake_conn(
                 list(mod.APP_ROLE_STRICT_TABLES),
-                [{"tablename": "users", "policyname": "p_users_service"}],
+                self._restore_rows(mod)
+                + [{"tablename": "users", "policyname": "p_users_service"}],
             )
 
         monkeypatch.setattr(mod.asyncpg, "connect", _connect)
@@ -101,9 +112,29 @@ class TestRlsDriftLogic:
         mod = _load_runner()
 
         async def _connect(url):
-            return self._fake_conn(["users"], [])
+            return self._fake_conn(
+                ["users"],
+                self._restore_rows(mod),
+                existing=list(mod.APP_ROLE_STRICT_TABLES)
+                + list(mod.ACCEPTED_OPEN_TABLES),
+            )
 
         monkeypatch.setattr(mod.asyncpg, "connect", _connect)
         out = await mod.scope_rls_policy_drift("postgresql://x/y")
         assert out["status"] == "failed"
         assert "missing-force" in out["detail"]
+
+    async def test_fails_on_missing_restore(self, monkeypatch):
+        mod = _load_runner()
+
+        async def _connect(url):
+            return self._fake_conn(
+                list(mod.APP_ROLE_STRICT_TABLES),
+                [],
+                existing=list(mod.ACCEPTED_OPEN_TABLES)[:3],
+            )
+
+        monkeypatch.setattr(mod.asyncpg, "connect", _connect)
+        out = await mod.scope_rls_policy_drift("postgresql://x/y")
+        assert out["status"] == "failed"
+        assert "missing-restore" in out["detail"]

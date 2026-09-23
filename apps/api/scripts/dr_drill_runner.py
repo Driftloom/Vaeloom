@@ -34,7 +34,7 @@ TARGET_DB_NAME = "vaeloom_staging_drill"
 
 #: Expected migration head (bump with each release; the smoke check fails
 #: closed when the target lags — a stale standby is a failed drill).
-EXPECTED_ALEMBIC_HEAD = "0053"
+EXPECTED_ALEMBIC_HEAD = "0054"
 
 #: Tables where the app role must NEVER match a USING (true) policy
 #: (RLS-SERVICE-POLICY-EXPOSURE.md §2, sharp set). Checked on the restored
@@ -51,8 +51,24 @@ APP_ROLE_STRICT_TABLES = (
     "organization_invitations",
     "revoked_user_cutoffs",
     "approval_decision",
-    "notification_device_tokens",
+    "workspace_plugin_installs",
 )
+
+#: Scopeless operational tables with an explicit accepted-risk restore
+#: (0053 §10 / 0054): no user/tenant/workspace/token column exists, so the
+#: documented *_service policy WITH vaeloom_app is the intended state. The
+#: check verifies the restore EXISTS (accidental drops fail the drill).
+ACCEPTED_OPEN_TABLES = {
+    "agent_schedules": "p_agent_schedules_service",
+    "event_subscriptions": "p_event_subscriptions_service",
+    "job_executions": "p_job_executions_service",
+    "notification_templates": "p_notification_templates_service",
+    "plugin_executions": "p_plugin_executions_service",
+    "memory_taxonomy_ledger": "p_memory_taxonomy_ledger_service",
+    "notification_device_tokens": "p_notification_device_tokens_service",
+    "webhook_deliveries": "p_webhook_deliveries_service",
+    "dead_letter_events": "p_dead_letter_events_service",
+}
 
 import urllib.parse
 
@@ -292,13 +308,32 @@ async def scope_rls_policy_drift(target_url: str) -> dict:
             "AND (regexp_replace(COALESCE(qual, ''), '\\s+', '', 'g') IN ('true', '(true)') "
             "OR regexp_replace(COALESCE(with_check, ''), '\\s+', '', 'g') IN ('true', '(true)'))"
         )
-        bad = sorted({r["tablename"] for r in open_grants} & set(APP_ROLE_STRICT_TABLES))
-        missing_force = sorted(set(APP_ROLE_STRICT_TABLES) - forced)
-        if bad or missing_force:
+        open_set = {(r["tablename"], r["policyname"]) for r in open_grants}
+        existing = {
+            r["tablename"]
+            for r in await conn.fetch(
+                "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
+            )
+        }
+        bad = sorted({t for t, _ in open_set} & set(APP_ROLE_STRICT_TABLES))
+        missing_force = sorted((set(APP_ROLE_STRICT_TABLES) - forced) & existing)
+        missing_restore = sorted(
+            t for t, pol in ACCEPTED_OPEN_TABLES.items()
+            if t in existing and (t, pol) not in open_set
+        )
+        problems = []
+        if bad:
+            problems.append(f"open grants={bad}")
+        if missing_force:
+            problems.append(f"missing-force={missing_force}")
+        if missing_restore:
+            problems.append(f"missing-restore={missing_restore}")
+        if problems:
             return {"scope": "rls-posture", "status": "failed",
-                    "detail": f"open grants={bad} missing-force={missing_force}"}
+                    "detail": "; ".join(problems)}
         return {"scope": "rls-posture", "status": "passed",
-                "detail": f"{len(APP_ROLE_STRICT_TABLES)} tables scoped, FORCE on"}
+                "detail": f"{len(APP_ROLE_STRICT_TABLES)} scoped + "
+                          f"{len(ACCEPTED_OPEN_TABLES)} restores verified"}
     except Exception as e:
         return {"scope": "rls-posture", "status": "failed", "detail": str(e)[:200]}
     finally:

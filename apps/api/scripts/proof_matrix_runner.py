@@ -145,8 +145,8 @@ async def seed_0053_tables():
             "INSERT INTO email_verification_tokens (id, user_id, token_hash, expires_at)"
             " VALUES ($1, $2, $3, $4), ($5, $6, $7, $4)"
             " ON CONFLICT DO NOTHING;",
-            uuid.uuid4(), USER_A, Tok_HASH_ALPHA, expires,
-            uuid.uuid4(), USER_B, Tok_HASH_BETA,
+            uuid.uuid4(), USER_A, TOKEN_HASH_ALPHA, expires,
+            uuid.uuid4(), USER_B, TOKEN_HASH_BETA,
         )
         # revoked_user_cutoffs (user_id scoped)
         await conn.execute(
@@ -186,7 +186,7 @@ async def run_positive_scoped_checks():
         checks = [
             # (table, scope_setup_sql, expect_min)
             ("email_verification_tokens",
-             f"SELECT set_config('app.lookup_token_hash', '{Tok_HASH_ALPHA}', false);", 1),
+              f"SELECT set_config('app.lookup_token_hash', '{TOKEN_HASH_ALPHA}', false);", 1),
             ("revoked_user_cutoffs",
              f"SELECT set_config('app.user_id', '{str(USER_A)}', false);", 1),
             ("consent_records",
