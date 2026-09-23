@@ -98,6 +98,7 @@ const config: Config = {
           strong: rgb('var(--border-strong)'),
           focus: rgb('var(--accent)'),
         },
+        'focus-ring': 'var(--color-focus-ring, #818cf8)',
         // Semantic status — designed per theme for WCAG AA on real surfaces.
         success: {
           DEFAULT: rgb('var(--success)'),

@@ -84,6 +84,8 @@
   --accent-400: 129 140 248;
   --accent-hover: 165 180 252;
   --accent-active: 99 102 241;
+  --color-focus-ring: #818cf8;
+  --color-focus-ring-offset: #08080a;
 
   /* Semantic status (dark-tuned bright hues) */
   --success: 52 211 153;        /* #34D399 */
@@ -153,6 +155,8 @@
   --accent-400: 67 56 202;
   --accent-hover: 55 48 163;
   --accent-active: 49 46 129;
+  --color-focus-ring: #6366f1;
+  --color-focus-ring-offset: #ffffff;
 
   /* Semantic status (light-tuned deep hues, AA on white surfaces AND on
      their own /10–/20 alpha tints — axe color-contrast verified):
@@ -385,7 +389,10 @@ html.high-contrast,
   .skip-link {
     @apply sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100]
            focus:px-4 focus:py-2 focus:rounded-lg focus:bg-action focus:text-action-fg focus:font-medium
-           focus:ring-2 focus:ring-focus-ring focus:outline-none;
+           focus:outline-none;
+  }
+  .skip-link:focus {
+    box-shadow: 0 0 0 2px var(--color-focus-ring, #818cf8);
   }
 
   .toast-enter {
