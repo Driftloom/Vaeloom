@@ -13,6 +13,11 @@ logger = logging.getLogger(__name__)
 #: Base URI for stable machine-readable error types (RFC 7807 `type`).
 ERROR_TYPE_BASE = "https://api.vaeloom.app/errors"
 
+#: Media type for all error responses (Loop 4 cutover). The web client parses
+#: bodies with res.json() regardless of content-type (verified in api.ts),
+#: and legacy detail keys are preserved — so this is wire-compatible.
+PROBLEM_MEDIA_TYPE = "application/problem+json"
+
 _STATUS_TITLES = {
     400: ("bad-request", "Bad Request"),
     401: ("unauthorized", "Unauthorized"),
@@ -64,6 +69,7 @@ async def unified_exception_handler(request: Request, exc: StarletteHTTPExceptio
     return JSONResponse(
         status_code=exc.status_code,
         content=problem_envelope(exc.status_code, exc.detail, None, request),
+        media_type=PROBLEM_MEDIA_TYPE,
     )
 
 
@@ -88,6 +94,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             **problem_envelope(422, "Validation failed", details, request),
             "detail": details,
         },
+        media_type=PROBLEM_MEDIA_TYPE,
     )
 
 
@@ -111,6 +118,7 @@ def denial(
             "detail": detail,
         },
         headers=headers,
+        media_type=PROBLEM_MEDIA_TYPE,
     )
 
 
@@ -121,4 +129,4 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
     # Only leak the correlation_id in non-production (debug) mode (FIND-SEC-015).
     if getattr(settings, "debug", False):
         error["error"]["correlation_id"] = correlation_id
-    return JSONResponse(status_code=500, content=error)
+    return JSONResponse(status_code=500, content=error, media_type=PROBLEM_MEDIA_TYPE)

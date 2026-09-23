@@ -77,13 +77,23 @@ RATE_LIMIT_429_RESPONSE = {
         },
     },
     "content": {
-        "application/json": {
+        "application/problem+json": {
             "schema": {
                 "type": "object",
-                "properties": {"detail": {"type": "string"}},
+                "properties": {
+                    "type": {"type": "string"},
+                    "title": {"type": "string"},
+                    "status": {"type": "integer"},
+                    "detail": {"type": "string"},
+                },
                 "required": ["detail"],
             },
-            "example": {"detail": "Rate limit exceeded"},
+            "example": {
+                "type": "https://api.vaeloom.app/errors/rate-limited",
+                "title": "Too Many Requests",
+                "status": 429,
+                "detail": "Rate limit exceeded",
+            },
         }
     },
 }
