@@ -300,3 +300,28 @@ allure-report/
 *~
 .#*
 
+# Terraform (state holds secrets — never commit; infra/terraform/ is live)
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# Kubernetes local access (deploy uses kubectl; kubeconfigs hold cluster creds)
+kubeconfig
+*.kubeconfig
+.kube/
+
+# direnv (often exports secrets into the shell)
+.envrc
+
+# HTTP archives (HARs capture Authorization headers + tokens)
+*.har
+
+# Java keystores / truststores (binary secrets, like *.p12)
+*.jks
+*.keystore
+*.truststore
+
+# Local audit scratch (4 md reports) — ignored explicitly, not by accident of
+# the scratch_* wildcard above; force-add if one ever needs to be shared
+scratch_audit/
+
