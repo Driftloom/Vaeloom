@@ -1889,14 +1889,29 @@ async def _try_react_loop(
 
                         _needs_approval = tname in approval_gated_tools()
                         if not _needs_approval:
-                            try:
-                                from ..services.jev_service import jev_service
-                                _is_dangerous = await jev_service.noul(tname, args)
-                                if _is_dangerous:
-                                    logger.info(f"Jev System 1 flagged '{tname}' as dangerous/requiring approval")
-                                    _needs_approval = True
-                            except Exception as _je:
-                                logger.debug(f"Jev safety check skipped: {_je}")
+                            # Read-only retrieval tools are inherently safe and exempt from destructive triage
+                            from ..tools.definitions import ALL_TOOLS as _ALL_TOOLS
+                            _tdef = _ALL_TOOLS.get(tname)
+                            _is_readonly = (
+                                _tdef is not None
+                                and (_tdef.category in ("memory_read", "connector_read")
+                                     or _tdef.required_scope.endswith(".read"))
+                            ) or tname in {
+                                "search_documents", "query_graph", "read_file",
+                                "web_search", "scrape_company_insights", "browse_job_page",
+                                "verify_application_link", "list_calendar_events",
+                                "search_jobs", "calculate_semantic_ats_score",
+                                "extract_missing_hard_skills", "audit_ats_formatting",
+                            }
+                            if not _is_readonly:
+                                try:
+                                    from ..services.jev_service import jev_service
+                                    _is_dangerous = await jev_service.noul(tname, args)
+                                    if _is_dangerous:
+                                        logger.info(f"Jev System 1 flagged '{tname}' as dangerous/requiring approval")
+                                        _needs_approval = True
+                                except Exception as _je:
+                                    logger.debug(f"Jev safety check skipped: {_je}")
 
                         if _needs_approval:
                             _appr = await _react_approval_gate(

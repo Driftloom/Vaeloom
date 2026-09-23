@@ -351,15 +351,45 @@ class JevService:
         return best_option
 
     def _heuristic_noul(self, prompt: str, context: dict[str, Any] | None = None) -> bool:
-        combined = f"{prompt} {context or ''}".lower()
-        dangerous_patterns = [
+        prompt_lower = prompt.lower().strip()
+        # 1. Explicit read-only tools are inherently safe and never destructive
+        read_only_prefixes = (
+            "search_", "get_", "read_", "list_", "fetch_", "browse_", "audit_", "verify_", "check_", "calculate_"
+        )
+        if any(prompt_lower.startswith(p) for p in read_only_prefixes) and not any(
+            prompt_lower.startswith(d) for d in ("delete", "drop", "destroy", "exec")
+        ):
+            return False
+
+        # 2. Check for dangerous destructive patterns in prompt / action
+        dangerous_prompt_patterns = [
             r"\b(delete|drop|remove|destroy|terminate|kill|archive)\b",
             r"\b(send|email|publish|post|tweet|slack)\b",
             r"\b(write|update|insert|create|modify|alter)\b",
-            r"\b(exec|execute|eval|run|sudo|cmd|sh)\b",
+            r"\b(exec|execute|eval|sudo|cmd|sh)\b",
             r"\b(rotate|revoke|grant|admin)\b",
         ]
-        return any(re.search(pat, combined) for pat in dangerous_patterns)
+        if any(re.search(pat, prompt_lower) for pat in dangerous_prompt_patterns):
+            return True
+
+        # Check for leading imperative command verbs in prompt
+        if re.search(r"^(run|exec|execute|sudo|eval)\b", prompt_lower):
+            return True
+
+        # 3. Inspect context fields specifically for command/code execution or destructive actions
+        if context and isinstance(context, dict):
+            for cmd_key in ("command", "cmd", "code", "script", "exec", "sql", "query_mutation"):
+                val = str(context.get(cmd_key) or "").lower()
+                if val and any(re.search(pat, val) for pat in dangerous_prompt_patterns):
+                    return True
+                if val and re.search(r"\b(rm|sudo|drop|delete|kill|format)\b", val):
+                    return True
+
+            action_val = str(context.get("action") or context.get("operation") or "").lower()
+            if action_val and any(re.search(pat, action_val) for pat in dangerous_prompt_patterns):
+                return True
+
+        return False
 
     def _heuristic_score(self, text_a: str, text_b: str) -> float:
         words_a = set(re.findall(r"\w+", text_a.lower()))
