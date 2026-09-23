@@ -608,19 +608,16 @@ export default function CapabilitiesPage() {
   );
 
   return (
-    <div className="flex flex-col h-full min-h-0 bg-[#09090b] text-[#f4f4f5] antialiased selection:bg-primary/25 selection:text-primary overflow-hidden">
-      {/* ────────────────────────────────────────────────────────────────────────── */}
-      {/* 1. Header: Search (left) + Category Tabs (center/right)                    */}
-      {/* ────────────────────────────────────────────────────────────────────────── */}
+    <div className="flex flex-col h-full min-h-0 bg-background text-text antialiased selection:bg-primary/25 selection:text-primary overflow-hidden">
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* 1. Header: Enterprise Unified Command Ribbon                               */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <header className="border-b border-[#1c2030] bg-[#0c0e15]/95 backdrop-blur-md px-4 sm:px-6 py-2.5 shrink-0 z-10 shadow-xs">
+      <header className="border-b border-border-subtle bg-surface/95 backdrop-blur-md px-4 sm:px-6 py-2.5 shrink-0 z-10 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 min-w-0">
           {/* Left: Omni-Search Bar with Shortcut Hint (NO Breadcrumbs) */}
           <div className="relative w-full sm:w-56 md:w-60 lg:w-52 xl:w-56 shrink-0">
             <svg
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none"
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -635,14 +632,14 @@ export default function CapabilitiesPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={searchPlaceholder}
-              className="w-full bg-[#121520] border border-[#242b3d] rounded-lg pl-8 pr-9 py-1.5 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all font-sans"
+              className="w-full bg-surface-elevated border border-border rounded-lg pl-8 pr-9 py-1.5 text-xs text-text placeholder:text-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all font-sans"
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
               {searchQuery ? (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="text-zinc-400 hover:text-white p-0.5 pointer-events-auto cursor-pointer"
+                  className="text-text-muted hover:text-text p-0.5 pointer-events-auto cursor-pointer"
                   title="Clear search"
                   aria-label="Clear search"
                 >
@@ -661,7 +658,7 @@ export default function CapabilitiesPage() {
                   </svg>
                 </button>
               ) : (
-                <kbd className="hidden sm:inline-block font-mono text-[10px] text-zinc-500 border border-zinc-700/60 rounded px-1.5 py-0.5 bg-zinc-900/80">
+                <kbd className="hidden sm:inline-block font-mono text-[10px] text-text-muted border border-border rounded px-1.5 py-0.5 bg-surface">
                   /
                 </kbd>
               )}
@@ -674,7 +671,7 @@ export default function CapabilitiesPage() {
               <div
                 role="tablist"
                 aria-label="Capability category"
-                className="flex items-center gap-1 p-0.5 rounded-lg bg-[#11141e] border border-[#202636] w-max"
+                className="flex items-center gap-1 p-0.5 rounded-lg bg-surface-elevated border border-border-subtle w-max"
               >
                 {(
                   [
@@ -798,19 +795,19 @@ export default function CapabilitiesPage() {
                       }}
                       className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-sans font-medium transition-all duration-150 cursor-pointer whitespace-nowrap ${
                         isActive
-                          ? 'bg-[#1e2436] text-white font-semibold shadow-xs border border-[#353f5c]'
-                          : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#161a27]'
+                          ? 'bg-primary/10 text-primary font-semibold shadow-xs border border-primary/30'
+                          : 'text-text-secondary hover:text-text hover:bg-surface-hover'
                       }`}
                     >
-                      <span className={isActive ? 'text-blue-400' : 'text-zinc-500'}>
+                      <span className={isActive ? 'text-primary' : 'text-text-muted'}>
                         {tab.icon}
                       </span>
                       <span>{tab.label}</span>
                       <span
                         className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${
                           isActive
-                            ? 'bg-blue-500/20 text-blue-300 font-semibold border border-blue-500/30'
-                            : 'text-zinc-500 bg-zinc-800/60'
+                            ? 'bg-primary/20 text-primary font-semibold border border-primary/30'
+                            : 'text-text-muted bg-surface'
                         }`}
                       >
                         {tab.count}
@@ -833,7 +830,7 @@ export default function CapabilitiesPage() {
                 setCreateModalOpen(true);
               }}
               aria-label="New Capability"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-xs font-semibold text-white transition-all shadow-sm shrink-0 cursor-pointer whitespace-nowrap"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:bg-primary-hover active:scale-[0.98] text-xs font-semibold text-white transition-all shadow-sm shrink-0 cursor-pointer whitespace-nowrap"
             >
               <svg
                 className="w-3.5 h-3.5"
@@ -865,7 +862,7 @@ export default function CapabilitiesPage() {
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* 2. Adaptive Multi-Paradigm Main Workbench View                             */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <section className="flex-1 flex flex-col min-h-0 min-w-0 relative overflow-hidden bg-[#09090b]">
+      <section className="flex-1 flex flex-col min-h-0 min-w-0 relative overflow-hidden bg-background">
         {selectedCategory === 'skills' && (
           <SkillsView
             skills={capabilities.filter((c) => c.category === 'skills')}

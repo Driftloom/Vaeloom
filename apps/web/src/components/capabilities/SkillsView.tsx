@@ -116,41 +116,35 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
   };
 
   return (
-    <div className="flex-1 flex min-h-0 min-w-0 bg-[#09090b] overflow-hidden">
+    <div className="flex-1 flex min-h-0 min-w-0 bg-background text-text overflow-hidden">
       {/* Left Column: Capability List with 1 Most used sort */}
       <div
-        className={`w-full lg:w-[320px] xl:w-[350px] shrink-0 border-r border-[#1c1d24] bg-[#0c0d10] flex flex-col min-h-0 ${
+        className={`w-full lg:w-[320px] xl:w-[350px] shrink-0 border-r border-border bg-surface flex flex-col min-h-0 ${
           mobileDetailOpen ? 'hidden lg:flex' : 'flex'
         }`}
       >
         {/* Top Toolbar */}
-        <div className="p-3 border-b border-[#1c1d24] bg-[#0c0d10] shrink-0">
+        <div className="p-3 border-b border-border bg-surface shrink-0">
           <div className="flex items-center justify-between gap-2">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'most-used' | 'alphabetical' | 'recent')}
-              className="bg-transparent border-0 text-xs font-sans text-[#8b8e99] hover:text-[#e4e4e7] focus:outline-none cursor-pointer"
+              className="bg-surface-elevated border border-border rounded px-2 py-1 text-xs font-sans text-text focus:outline-none focus:border-primary cursor-pointer"
             >
-              <option value="most-used" className="bg-[#14151a] text-[#f4f4f5]">
-                Most used
-              </option>
-              <option value="alphabetical" className="bg-[#14151a] text-[#f4f4f5]">
-                Alphabetical
-              </option>
-              <option value="recent" className="bg-[#14151a] text-[#f4f4f5]">
-                Recently used
-              </option>
+              <option value="most-used">Most used</option>
+              <option value="alphabetical">Alphabetical</option>
+              <option value="recent">Recently used</option>
             </select>
 
             <div className="flex items-center gap-2">
-              <div className="flex items-center p-0.5 rounded bg-[#14151a] border border-[#23242c] text-xs font-sans">
+              <div className="flex items-center p-0.5 rounded bg-surface-elevated border border-border text-xs font-sans">
                 <button
                   type="button"
                   onClick={() => setTabView('installed')}
                   className={`px-2 py-0.5 rounded text-xs transition-colors ${
                     tabView === 'installed'
-                      ? 'bg-[#22242e] text-[#f4f4f5] font-semibold'
-                      : 'text-[#71717a] hover:text-[#d4d4d8]'
+                      ? 'bg-primary/10 text-primary font-semibold'
+                      : 'text-text-muted hover:text-text'
                   }`}
                 >
                   Installed ({installedCount})
@@ -160,8 +154,8 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                   onClick={() => setTabView('browse')}
                   className={`px-2 py-0.5 rounded text-xs transition-colors ${
                     tabView === 'browse'
-                      ? 'bg-[#22242e] text-[#f4f4f5] font-semibold'
-                      : 'text-[#71717a] hover:text-[#d4d4d8]'
+                      ? 'bg-primary/10 text-primary font-semibold'
+                      : 'text-text-muted hover:text-text'
                   }`}
                 >
                   Browse ({browseCount})
@@ -173,7 +167,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                 onClick={onOpenCreate}
                 aria-label="Create Skill"
                 title="Create Skill"
-                className="w-6 h-6 rounded bg-[#14151a] border border-[#252732] hover:bg-[#1c1e26] hover:text-white text-[#8b8e99] flex items-center justify-center transition-colors shrink-0"
+                className="w-6 h-6 rounded bg-surface border border-border hover:bg-surface-hover hover:text-text text-text-secondary flex items-center justify-center transition-colors shrink-0 cursor-pointer"
               >
                 <svg
                   className="w-3.5 h-3.5"
@@ -190,7 +184,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
         </div>
 
         {/* Scrollable Capability Items */}
-        <div className="flex-1 overflow-y-auto divide-y divide-[#17181f] p-1.5 space-y-0.5">
+        <div className="flex-1 overflow-y-auto divide-y divide-border p-1.5 space-y-0.5">
           {sortedSkills.length === 0 ? (
             <div className="p-8">
               <EmptyState
@@ -212,8 +206,8 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                   }}
                   className={`group relative flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-all duration-120 ${
                     isSelected
-                      ? 'bg-[#181920] border border-[#2b2d39] shadow-xs'
-                      : 'hover:bg-[#121318] border border-transparent'
+                      ? 'bg-primary/10 border-l-2 border-primary border-y border-r border-border shadow-xs text-primary'
+                      : 'hover:bg-surface-hover border border-transparent text-text'
                   }`}
                 >
                   <div className="min-w-0 flex-1">
@@ -221,8 +215,8 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                       <span
                         className={`text-xs font-sans font-medium tracking-tight truncate ${
                           isSelected
-                            ? 'text-white font-semibold'
-                            : 'text-[#d4d4d8] group-hover:text-white'
+                            ? 'text-primary font-semibold'
+                            : 'text-text group-hover:text-primary'
                         }`}
                       >
                         {item.name}
@@ -230,15 +224,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                     </div>
                     <div className="flex items-center gap-1 mt-1 flex-wrap">
                       {item.source && (
-                        <span
-                          className={`px-1.5 py-0.2 rounded text-2xs font-sans font-medium capitalize ${
-                            item.source === 'custom'
-                              ? 'bg-[#1c2233] text-[#93c5fd] border border-[#252f48]'
-                              : item.source === 'learned'
-                                ? 'bg-[#221c33] text-[#c4b5fd] border border-[#312548]'
-                                : 'bg-[#181920] text-[#9ca3af] border border-[#272934]'
-                          }`}
-                        >
+                        <span className="px-1.5 py-0.2 rounded text-2xs font-sans font-medium capitalize bg-surface-elevated text-text-secondary border border-border">
                           {item.source}
                         </span>
                       )}
@@ -254,7 +240,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                         .map((tag) => (
                           <span
                             key={tag}
-                            className="px-1.5 py-0.2 rounded text-2xs font-sans font-medium bg-[#14151a] text-[#8b8e99] border border-[#23242c]"
+                            className="px-1.5 py-0.2 rounded text-2xs font-sans font-medium bg-surface-elevated text-text-muted border border-border-subtle"
                           >
                             {tag}
                           </span>
@@ -270,7 +256,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                       aria-label={`Toggle ${item.name}`}
                       onClick={() => onToggleSkill(item.id)}
                       className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        item.enabled ? 'bg-[#22c55e]' : 'bg-surface-active'
+                        item.enabled ? 'bg-success' : 'bg-surface-active'
                       }`}
                     >
                       <span
@@ -289,40 +275,32 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
 
       {/* Right Column: Deep Detail Inspector */}
       <div
-        className={`flex-1 flex flex-col min-h-0 min-w-0 bg-[#09090b] overflow-hidden ${
+        className={`flex-1 flex flex-col min-h-0 min-w-0 bg-background overflow-hidden ${
           mobileDetailOpen ? 'flex' : 'hidden lg:flex'
         }`}
       >
         {selectedItem ? (
           <div className="flex-1 flex flex-col min-h-0 min-w-0">
             {/* Detail Header & Action Links */}
-            <div className="p-4 sm:p-5 border-b border-[#1c1d24] bg-[#0c0d10] shrink-0 font-sans">
+            <div className="p-4 sm:p-5 border-b border-border bg-surface shrink-0 font-sans shadow-xs">
               <div className="flex flex-col gap-2">
                 {/* Back button on mobile */}
                 <div className="lg:hidden">
                   <button
                     type="button"
                     onClick={() => setMobileDetailOpen(false)}
-                    className="text-xs text-[#8b8e99] hover:text-white inline-flex items-center gap-1 mb-1"
+                    className="text-xs text-text-muted hover:text-text inline-flex items-center gap-1 mb-1"
                   >
                     <span>← Back to list</span>
                   </button>
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-base sm:text-lg font-semibold tracking-tight text-white font-sans truncate">
+                  <h2 className="text-base sm:text-lg font-semibold tracking-tight text-text font-sans truncate">
                     {selectedItem.name}
                   </h2>
                   {selectedItem.source && (
-                    <span
-                      className={`px-1.5 py-0.5 text-2xs font-sans font-medium rounded capitalize ${
-                        selectedItem.source === 'custom'
-                          ? 'bg-[#1c2233] text-[#93c5fd] border border-[#252f48]'
-                          : selectedItem.source === 'learned'
-                            ? 'bg-[#221c33] text-[#c4b5fd] border border-[#312548]'
-                            : 'bg-[#181920] text-[#9ca3af] border border-[#272934]'
-                      }`}
-                    >
+                    <span className="px-1.5 py-0.5 text-2xs font-sans font-medium rounded capitalize bg-surface-elevated text-text-secondary border border-border">
                       {selectedItem.source}
                     </span>
                   )}
@@ -338,14 +316,14 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                     .map((tag) => (
                       <span
                         key={tag}
-                        className="px-1.5 py-0.5 text-2xs font-sans font-medium rounded bg-[#14151a] text-[#8b8e99] border border-[#23242c]"
+                        className="px-1.5 py-0.5 text-2xs font-sans font-medium rounded bg-surface-elevated text-text-muted border border-border-subtle"
                       >
                         {tag}
                       </span>
                     ))}
                 </div>
 
-                <p className="text-xs text-[#8b8e99] leading-relaxed max-w-2xl mt-0.5 font-sans">
+                <p className="text-xs text-text-secondary leading-relaxed max-w-2xl mt-0.5 font-sans">
                   {selectedItem.description}
                 </p>
 
@@ -356,14 +334,14 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                       <button
                         type="button"
                         onClick={handleSave}
-                        className="text-primary hover:text-primary-hover font-semibold transition-colors flex items-center gap-1"
+                        className="text-primary hover:text-primary-hover font-semibold transition-colors flex items-center gap-1 cursor-pointer"
                       >
                         <span>Save Changes</span>
                       </button>
                       <button
                         type="button"
                         onClick={handleCancel}
-                        className="text-[#8b8e99] hover:text-white transition-colors"
+                        className="text-text-muted hover:text-text transition-colors cursor-pointer"
                       >
                         Cancel
                       </button>
@@ -373,14 +351,14 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                       <button
                         type="button"
                         onClick={() => setIsEditing(true)}
-                        className="text-[#8b8e99] hover:text-white transition-colors"
+                        className="text-text-secondary hover:text-text transition-colors cursor-pointer"
                       >
                         Edit
                       </button>
                       <button
                         type="button"
                         onClick={() => onToggleSkill(selectedItem.id)}
-                        className="text-[#ef4444] hover:text-[#f87171] transition-colors"
+                        className="text-error hover:underline transition-colors cursor-pointer"
                       >
                         {selectedItem.enabled ? 'Archive' : 'Restore'}
                       </button>
@@ -390,7 +368,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onDeleteSkill(selectedItem.id)}
-                            className="text-[#71717a] hover:text-[#ef4444] transition-colors text-xs"
+                            className="text-text-muted hover:text-error transition-colors text-xs cursor-pointer"
                           >
                             Delete
                           </button>
@@ -401,7 +379,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                     type="button"
                     onClick={handleCopyInstructions}
                     title="Copy full instructions to clipboard"
-                    className="text-[#8b8e99] hover:text-white transition-colors ml-auto text-2xs flex items-center gap-1"
+                    className="text-text-muted hover:text-text transition-colors ml-auto text-2xs flex items-center gap-1 cursor-pointer"
                     aria-label="Copy full instructions"
                   >
                     <svg
@@ -424,15 +402,15 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
             </div>
 
             {/* Detail Content Body: Clean Monospace Instructions */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-[#09090b] min-h-0 space-y-3.5">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-background min-h-0 space-y-3.5">
               {isEditing ? (
-                <div className="rounded-xl border border-[#2c2f3d] bg-[#0c0d12] p-4 shadow-md space-y-3">
-                  <div className="flex items-center justify-between text-2xs font-sans text-[#8b8e99] pb-2 border-b border-[#1c1d24]">
-                    <span className="flex items-center gap-1.5 text-amber-400 font-medium">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                <div className="rounded-xl border border-border bg-surface p-4 shadow-md space-y-3">
+                  <div className="flex items-center justify-between text-2xs font-sans text-text-secondary pb-2 border-b border-border">
+                    <span className="flex items-center gap-1.5 text-warning font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
                       Editing Instructions (Markdown)
                     </span>
-                    <span className="font-mono text-[#71717a]">
+                    <span className="font-mono text-text-muted">
                       Ctrl+Enter to save • Esc to cancel
                     </span>
                   </div>
@@ -449,11 +427,11 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                     }}
                     aria-label="Skill Instructions"
                     rows={20}
-                    className="w-full font-mono text-xs text-[#f4f4f5] bg-[#08090c] border border-[#1f212a] focus:border-primary focus:ring-1 focus:ring-primary/30 rounded-lg p-3.5 leading-relaxed outline-none resize-y"
+                    className="w-full font-mono text-xs text-text bg-surface-elevated border border-border focus:border-primary focus:ring-1 focus:ring-primary/30 rounded-lg p-3.5 leading-relaxed outline-none resize-y"
                     placeholder="# Enter skill rules, triggers and instructions in markdown..."
                   />
                   <div className="flex items-center justify-between pt-1 text-2xs font-sans">
-                    <span className="text-[#71717a] font-mono">
+                    <span className="text-text-muted font-mono">
                       {editedDoc.split('\n').length} lines • {editedDoc.length} characters
                     </span>
                     <div className="flex items-center gap-2">
@@ -477,8 +455,8 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="rounded-xl border border-[#1e2028] bg-[#0c0d12] p-4 sm:p-5 shadow-xs">
-                  <pre className="font-mono text-xs text-[#d4d4d8] leading-relaxed whitespace-pre-wrap select-text font-normal">
+                <div className="rounded-xl border border-border bg-surface p-4 sm:p-5 shadow-xs">
+                  <pre className="font-mono text-xs text-text leading-relaxed whitespace-pre-wrap select-text font-normal">
                     {selectedItem.markdownDoc}
                   </pre>
                 </div>

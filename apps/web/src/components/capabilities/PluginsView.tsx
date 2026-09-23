@@ -106,12 +106,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
   const renderIcon = (type: 'bots' | 'kanban' | 'radio' | 'default') => {
     if (type === 'bots') {
       return (
-        <svg
-          className="w-5 h-5 text-[#93c5fd]"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
+        <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -123,12 +118,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
     }
     if (type === 'kanban') {
       return (
-        <svg
-          className="w-5 h-5 text-[#a78bfa]"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
+        <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -140,12 +130,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
     }
     if (type === 'radio') {
       return (
-        <svg
-          className="w-5 h-5 text-[#f472b6]"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
+        <svg className="w-5 h-5 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -156,7 +141,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
       );
     }
     return (
-      <svg className="w-5 h-5 text-[#38bdf8]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -168,11 +153,11 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-[#090b10] text-[#f4f4f5] overflow-y-auto antialiased">
+    <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-background text-text overflow-y-auto antialiased">
       {/* Top Banner Toolbar: Subtitle + Action buttons */}
-      <div className="px-5 py-3 border-b border-[#1c2030] bg-[#0c0e15] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 shadow-xs">
+      <div className="px-5 py-3 border-b border-border bg-surface flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 shadow-xs">
         <div>
-          <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+          <p className="text-xs text-text-secondary font-sans leading-relaxed">
             One row per plugin. A plugin can extend this app, the autonomous agent, or both — each
             lifecycle half has its own switch.
           </p>
@@ -182,10 +167,10 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
           <button
             type="button"
             onClick={onOpenGitImport}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#141724] border border-[#242b3d] text-xs font-sans font-medium text-zinc-200 hover:text-white hover:bg-[#1a1f30] transition-colors shadow-xs cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-border text-xs font-sans font-medium text-text hover:bg-surface-hover transition-colors shadow-xs cursor-pointer"
           >
             <svg
-              className="w-3.5 h-3.5 text-blue-400"
+              className="w-3.5 h-3.5 text-primary"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -204,7 +189,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
             type="button"
             onClick={() => toast({ tone: 'info', title: 'Local plugins directory: ./plugins/' })}
             title="Browse local plugins directory"
-            className="w-7 h-7 rounded-lg bg-[#141724] border border-[#242b3d] hover:bg-[#1c2236] hover:text-white text-zinc-400 flex items-center justify-center transition-colors cursor-pointer"
+            className="w-7 h-7 rounded-lg bg-surface border border-border hover:bg-surface-hover text-text-secondary hover:text-text flex items-center justify-center transition-colors cursor-pointer"
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
@@ -220,7 +205,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
             type="button"
             onClick={() => toast({ tone: 'info', title: 'Plugins scanned & reloaded' })}
             title="Reload plugins"
-            className="w-7 h-7 rounded-lg bg-[#141724] border border-[#242b3d] hover:bg-[#1c2236] hover:text-white text-zinc-400 flex items-center justify-center transition-colors cursor-pointer"
+            className="w-7 h-7 rounded-lg bg-surface border border-border hover:bg-surface-hover text-text-secondary hover:text-text flex items-center justify-center transition-colors cursor-pointer"
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
@@ -236,18 +221,18 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
 
       {/* Dual Switch Table Container */}
       <div className="flex-1 p-4 sm:p-6 min-w-0">
-        <div className="rounded-xl border border-[#1e2335] bg-[#0e111a] overflow-x-auto shadow-xs">
+        <div className="rounded-xl border border-border bg-surface overflow-x-auto shadow-xs">
           {/* Table Header */}
-          <div className="min-w-[540px] grid grid-cols-[1fr_120px_160px] sm:grid-cols-[1fr_140px_200px] items-center px-5 py-3 border-b border-[#1c2030] bg-[#11141e] text-xs font-sans font-medium text-zinc-400">
+          <div className="min-w-[540px] grid grid-cols-[1fr_120px_160px] sm:grid-cols-[1fr_140px_200px] items-center px-5 py-3 border-b border-border bg-surface-elevated text-xs font-sans font-medium text-text-secondary">
             <div>Plugin</div>
             <div className="text-center font-medium">Desktop UI</div>
             <div className="text-center font-medium">Agent Runtime</div>
           </div>
 
           {/* Table Body */}
-          <div className="divide-y divide-[#181c28]">
+          <div className="divide-y divide-border">
             {filteredBuiltins.length === 0 && filteredCustom.length === 0 && effectiveQuery ? (
-              <div className="p-8 text-center text-xs text-zinc-500 font-sans">
+              <div className="p-8 text-center text-xs text-text-muted font-sans">
                 No plugins match your filter.
               </div>
             ) : null}
@@ -261,28 +246,28 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
               return (
                 <div
                   key={p.id}
-                  className="min-w-[540px] grid grid-cols-[1fr_120px_160px] sm:grid-cols-[1fr_140px_200px] items-center px-5 py-4 hover:bg-[#121624] transition-colors"
+                  className="min-w-[540px] grid grid-cols-[1fr_120px_160px] sm:grid-cols-[1fr_140px_200px] items-center px-5 py-4 hover:bg-surface-hover transition-colors"
                 >
                   {/* Plugin Info */}
                   <div className="flex items-start gap-3.5 pr-4">
-                    <div className="w-10 h-10 rounded-xl bg-[#161a27] border border-[#242b3d] flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+                    <div className="w-10 h-10 rounded-xl bg-surface-elevated border border-border flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
                       {renderIcon(p.icon)}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-semibold text-zinc-100 font-sans tracking-tight">
+                        <span className="text-sm font-semibold text-text font-sans tracking-tight">
                           {p.name}
                         </span>
                         {p.badges.map((badge) => (
                           <span
                             key={badge}
-                            className="px-2 py-0.5 text-[10px] font-mono font-medium rounded bg-[#181e2e] text-zinc-400 border border-[#252f48]"
+                            className="px-2 py-0.5 text-[10px] font-mono font-medium rounded bg-surface-elevated text-text-secondary border border-border"
                           >
                             {badge}
                           </span>
                         ))}
                       </div>
-                      <p className="text-xs text-zinc-400 font-sans leading-relaxed mt-1 max-w-2xl">
+                      <p className="text-xs text-text-muted font-sans leading-relaxed mt-1 max-w-2xl">
                         {p.description}
                       </p>
                     </div>
@@ -297,7 +282,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
                       aria-label={`Toggle desktop for ${p.name}`}
                       onClick={() => toggleBuiltin(p.id, 'desktop')}
                       className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        state.desktop ? 'bg-emerald-500' : 'bg-[#1c2234] border-[#2a344e]'
+                        state.desktop ? 'bg-success' : 'bg-surface-active border-border'
                       }`}
                     >
                       <span
@@ -317,7 +302,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
                       aria-label={`Toggle agent for ${p.name}`}
                       onClick={() => toggleBuiltin(p.id, 'agent')}
                       className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        state.agent ? 'bg-emerald-500' : 'bg-[#1c2234] border-[#2a344e]'
+                        state.agent ? 'bg-success' : 'bg-surface-active border-border'
                       }`}
                     >
                       <span
@@ -335,28 +320,28 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
             {filteredCustom.map((item) => (
               <div
                 key={item.id}
-                className="min-w-[540px] grid grid-cols-[1fr_120px_160px] sm:grid-cols-[1fr_140px_200px] items-center px-5 py-4 hover:bg-[#121624] transition-colors"
+                className="min-w-[540px] grid grid-cols-[1fr_120px_160px] sm:grid-cols-[1fr_140px_200px] items-center px-5 py-4 hover:bg-surface-hover transition-colors"
               >
                 {/* Plugin Info */}
                 <div className="flex items-start gap-3.5 pr-4">
-                  <div className="w-10 h-10 rounded-xl bg-[#161a27] border border-[#242b3d] flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+                  <div className="w-10 h-10 rounded-xl bg-surface-elevated border border-border flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
                     {renderIcon('default')}
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-zinc-100 font-sans tracking-tight">
+                      <span className="text-sm font-semibold text-text font-sans tracking-tight">
                         {item.name}
                       </span>
-                      <span className="px-2 py-0.5 text-[10px] font-mono font-medium rounded bg-[#181e2e] text-zinc-400 border border-[#252f48]">
+                      <span className="px-2 py-0.5 text-[10px] font-mono font-medium rounded bg-surface-elevated text-text-secondary border border-border">
                         {item.source === 'built-in' ? 'bundled' : 'custom'}
                       </span>
                       {item.version && (
-                        <span className="px-1.5 py-0.5 text-[10px] font-mono text-zinc-500">
+                        <span className="px-1.5 py-0.5 text-[10px] font-mono text-text-muted">
                           v{item.version}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-zinc-400 font-sans leading-relaxed mt-1 max-w-2xl">
+                    <p className="text-xs text-text-muted font-sans leading-relaxed mt-1 max-w-2xl">
                       {item.description}
                     </p>
                   </div>
@@ -371,7 +356,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
                     aria-label={`Toggle desktop for ${item.name}`}
                     onClick={() => onTogglePlugin(item.id)}
                     className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      item.enabled ? 'bg-emerald-500' : 'bg-[#1c2234] border-[#2a344e]'
+                      item.enabled ? 'bg-success' : 'bg-surface-active border-border'
                     }`}
                   >
                     <span
@@ -391,7 +376,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
                     aria-label={`Toggle agent for ${item.name}`}
                     onClick={() => onTogglePlugin(item.id)}
                     className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      item.enabled ? 'bg-emerald-500' : 'bg-[#1c2234] border-[#2a344e]'
+                      item.enabled ? 'bg-success' : 'bg-surface-active border-border'
                     }`}
                   >
                     <span

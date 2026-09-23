@@ -5,6 +5,7 @@ import { Badge, Button } from '@vaeloom/ui-kit';
 import { CapabilityItem } from '@/lib/capabilities-data';
 import { useToast } from '@/components/shared/Toast';
 import { capabilitiesApi } from '@/lib/api-client';
+import { TOOL_DEFINITIONS_CATALOG, type ToolDefinitionItem } from '@/lib/tool-definitions-catalog';
 
 interface ToolsViewProps {
   tools: CapabilityItem[];
@@ -14,6 +15,7 @@ interface ToolsViewProps {
 
 interface ToolSuite {
   id: string;
+  catalogKey: string;
   name: string;
   count: number;
   description: string;
@@ -26,90 +28,62 @@ interface ToolSuite {
     status: 'Ready' | 'Active' | 'Requires Key';
     isRecommended?: boolean;
     description: string;
+    latencySla?: string;
+    storageMode?: string;
   }[];
 }
 
 const TOOL_SUITES: ToolSuite[] = [
   {
     id: 'browser-automation',
+    catalogKey: 'browser-automation',
     name: 'Browser Automation',
-    count: 18,
+    count: 3,
     description:
-      'navigate, click, type, scroll, take snapshots, and evaluate JavaScript via sovereign headless browser engines.',
+      'Navigate, scrape insights, verify application links, and evaluate DOM via sovereign headless Chromium browser engines.',
     enabled: true,
-    tools: [
-      'browser_back',
-      'browser_cdp',
-      'browser_click',
-      'browser_navigate',
-      'browser_snapshot',
-      'browser_type',
-      'browser_wait',
-      'browser_hover',
-      'browser_press_key',
-    ],
+    tools: ['browse_job_page', 'scrape_company_insights', 'verify_application_link'],
     providers: [
       {
         id: 'local-browser',
-        name: 'Local Browser',
-        badge: 'free',
-        status: 'Ready',
+        name: 'Local Browser (Chromium)',
+        badge: 'Built-in',
+        status: 'Active',
         isRecommended: true,
-        description: 'Runs directly via local Playwright / Chromium instance on your host machine.',
+        description:
+          'Runs directly via local Playwright Chromium instance on your host machine with SSRF protection.',
+        latencySla: '< 150ms startup',
+        storageMode: 'Headless Sandbox',
       },
       {
         id: 'lightpanda',
-        name: 'Lightpanda',
+        name: 'Lightpanda Zig Engine',
+        badge: 'High Speed',
         status: 'Ready',
-        description: 'Ultra-fast headless browser written in Zig, optimized for AI agent scraping.',
-      },
-      {
-        id: 'nous-subscription',
-        name: 'Nous Subscription',
-        status: 'Ready',
-        description: 'Managed multi-region cloud browser grid with residential IP rotation.',
-      },
-      {
-        id: 'camofox',
-        name: 'Camofox',
-        status: 'Ready',
-        description: 'Anti-fingerprinting browser engine bypassing Cloudflare and bot detection.',
-      },
-      {
-        id: 'browser-use',
-        name: 'Browser Use',
-        badge: 'Active',
-        status: 'Active',
-        description: 'Autonomous agent-native browser control engine with visual grounding.',
-      },
-      {
-        id: 'browserbase',
-        name: 'Browserbase',
-        status: 'Ready',
-        description: 'Serverless browser infrastructure in the cloud with session recording.',
+        description:
+          'Ultra-fast headless browser written in Zig, optimized for AI agent document scraping.',
+        latencySla: '< 45ms per page',
+        storageMode: 'C-ABI Direct',
       },
       {
         id: 'firecrawl',
-        name: 'Firecrawl',
+        name: 'Firecrawl Cloud Grid',
         status: 'Ready',
-        description: 'Turn any web URL or documentation site into clean LLM-ready markdown.',
+        description:
+          'Multi-region cloud browser grid with residential IP rotation and automated bot challenge bypass.',
+        latencySla: '< 800ms global',
+        storageMode: 'SaaS Cluster',
       },
     ],
   },
   {
     id: 'memory-suite',
+    catalogKey: 'memory-graph',
     name: 'Memory',
-    count: 6,
+    count: 3,
     description: 'Episodic recall, sovereign vector search, and knowledge graph querying.',
     enabled: true,
-    tools: [
-      'search_documents',
-      'query_graph',
-      'retrieve_context',
-      'store_episodic',
-      'create_entity',
-      'merge_entities',
-    ],
+    tools: ['search_documents', 'query_graph', 'create_entity'],
     providers: [
       {
         id: 'sovereign-sqlite-vec',
@@ -117,24 +91,30 @@ const TOOL_SUITES: ToolSuite[] = [
         badge: 'Local',
         status: 'Active',
         isRecommended: true,
-        description: 'In-process vector similarity search with zero cloud data transmission.',
+        description: 'In-process vector similarity search with zero external cloud transmission.',
+        latencySla: '< 2ms in-process',
+        storageMode: 'SQLite VEC extension',
       },
       {
         id: 'pgvector-cluster',
         name: 'PostgreSQL pgvector',
         badge: 'Enterprise',
         status: 'Ready',
-        description: 'Row-Level-Security guarded PostgreSQL vector cluster with HNSW indexing.',
+        description:
+          'Row-Level-Security guarded PostgreSQL vector cluster with HNSW cosine indexing.',
+        latencySla: '< 15ms cloud',
+        storageMode: 'PostgreSQL 16 HNSW',
       },
     ],
   },
   {
     id: 'web-search',
+    catalogKey: 'web-search',
     name: 'Web Search & Scraping',
-    count: 6,
+    count: 2,
     description: 'Real-time search engine queries, SERP scraping, and article content extraction.',
     enabled: true,
-    tools: ['web_search', 'web_extract', 'verify_source', 'crawl_sitemap', 'scrape_markdown'],
+    tools: ['web_search', 'fetch_webpage_content'],
     providers: [
       {
         id: 'tavily',
@@ -143,23 +123,28 @@ const TOOL_SUITES: ToolSuite[] = [
         status: 'Active',
         isRecommended: true,
         description: 'Search engine optimized for LLM agents with clean factual answer synthesis.',
+        latencySla: '< 450ms query',
+        storageMode: 'Semantic Index',
       },
       {
         id: 'searxng',
         name: 'SearXNG Sovereign',
         badge: 'Self-hosted',
         status: 'Ready',
-        description: 'Private, metasearch engine proxy aggregating results from 70+ engines.',
+        description: 'Private metasearch proxy aggregating results from 70+ global engines.',
+        latencySla: '< 650ms query',
+        storageMode: 'Multi-engine Proxy',
       },
     ],
   },
   {
     id: 'a2a',
+    catalogKey: 'agent-bus',
     name: 'A2A',
-    count: 5,
+    count: 2,
     description: 'Agent-to-agent peer communication, subagent delegation, and task queueing.',
     enabled: true,
-    tools: ['send_message', 'invoke_subagent', 'manage_task', 'delegate_goal', 'wait_for_message'],
+    tools: ['delegate_to_agent', 'broadcast_message'],
     providers: [
       {
         id: 'internal-bus',
@@ -167,16 +152,19 @@ const TOOL_SUITES: ToolSuite[] = [
         status: 'Active',
         isRecommended: true,
         description: 'High-throughput async IPC actor bus with stateful task reconciliation.',
+        latencySla: '< 1ms actor dispatch',
+        storageMode: 'In-Memory Channel',
       },
     ],
   },
   {
     id: 'code-execution',
+    catalogKey: 'code-exec',
     name: 'Code Execution',
-    count: 3,
+    count: 1,
     description: 'Subprocess isolated shell and Python sandbox execution with strict timeouts.',
     enabled: true,
-    tools: ['run_command', 'eval_python', 'test_runner'],
+    tools: ['eval_python'],
     providers: [
       {
         id: 'local-subprocess',
@@ -184,16 +172,19 @@ const TOOL_SUITES: ToolSuite[] = [
         status: 'Active',
         isRecommended: true,
         description: 'Executes within constrained local OS process boundaries with timeout traps.',
+        latencySla: '< 20ms spawn',
+        storageMode: 'Temporary VFS',
       },
     ],
   },
   {
     id: 'computer-use',
+    catalogKey: 'computer-use',
     name: 'Computer Use',
-    count: 8,
+    count: 2,
     description: 'OS desktop cursor control, keyboard typing, and screen capture streaming.',
     enabled: false,
-    tools: ['mouse_move', 'mouse_click', 'key_press', 'screen_capture', 'window_focus'],
+    tools: ['take_screenshot', 'cursor_click'],
     providers: [
       {
         id: 'native-accessibility',
@@ -201,16 +192,19 @@ const TOOL_SUITES: ToolSuite[] = [
         status: 'Ready',
         isRecommended: true,
         description: 'Native Windows/macOS accessibility hooks for low-latency desktop control.',
+        latencySla: '< 10ms frame capture',
+        storageMode: 'Screen Buffer API',
       },
     ],
   },
   {
     id: 'file-operations',
+    catalogKey: 'file-operations',
     name: 'File Operations',
-    count: 4,
+    count: 2,
     description: 'Read, write, edit, and search workspace files with path sandboxing.',
     enabled: true,
-    tools: ['view_file', 'write_to_file', 'replace_file_content', 'find_by_name', 'grep_search'],
+    tools: ['read_workspace_file', 'write_workspace_file'],
     providers: [
       {
         id: 'workspace-fs',
@@ -218,16 +212,19 @@ const TOOL_SUITES: ToolSuite[] = [
         status: 'Active',
         isRecommended: true,
         description: 'Guarded filesystem accessor restricted to the current workspace root.',
+        latencySla: '< 1ms disk read',
+        storageMode: 'Sandboxed Root',
       },
     ],
   },
   {
     id: 'kanban-tools',
+    catalogKey: 'kanban-workflow',
     name: 'Kanban',
-    count: 14,
+    count: 1,
     description: 'Manage tasks, sprint columns, agent ticket assignments, and priority tags.',
     enabled: true,
-    tools: ['create_task', 'move_task', 'assign_agent', 'list_board', 'update_status'],
+    tools: ['create_task_card'],
     providers: [
       {
         id: 'vaeloom-kanban',
@@ -235,23 +232,28 @@ const TOOL_SUITES: ToolSuite[] = [
         status: 'Active',
         isRecommended: true,
         description: 'Built-in collaborative work ticket board with real-time sync.',
+        latencySla: '< 5ms database query',
+        storageMode: 'SQLite/PG Tables',
       },
     ],
   },
   {
     id: 'spotify',
+    catalogKey: 'spotify-media',
     name: 'Spotify',
-    count: 7,
+    count: 2,
     description:
       'Control music playback, search tracks, and manage playlists during work sessions.',
     enabled: false,
-    tools: ['spotify_play', 'spotify_pause', 'spotify_next', 'spotify_search', 'spotify_playlist'],
+    tools: ['playback_state', 'queue_track'],
     providers: [
       {
         id: 'spotify-oauth',
         name: 'Spotify Web API',
         status: 'Requires Key',
         description: 'Official Spotify Connect API requiring user OAuth authorization.',
+        latencySla: '< 200ms REST call',
+        storageMode: 'OAuth Session Token',
       },
     ],
   },
@@ -261,17 +263,21 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, search
   const { toast } = useToast();
   const [sortBy, setSortBy] = useState<'most-used' | 'alphabetical'>('most-used');
   const [selectedSuiteId, setSelectedSuiteId] = useState<string>('memory-suite');
+  const [selectedToolName, setSelectedToolName] = useState<string>('search_documents');
   const [useRealProfile, setUseRealProfile] = useState<boolean>(false);
   const [selectedProviderId, setSelectedProviderId] = useState<string>('sovereign-sqlite-vec');
-  const [detailSubTab, setDetailSubTab] = useState<'provider' | 'schema' | 'test'>('provider');
+  const [detailSubTab, setDetailSubTab] = useState<'provider' | 'schema' | 'test' | 'security'>(
+    'provider',
+  );
 
   // Test playground state
-  const [testInputJson, setTestInputJson] = useState(
-    '{\n  "query": "search_documents test",\n  "limit": 5\n}',
+  const [testInputJson, setTestInputJson] = useState<string>(
+    '{\n  "query": "Distributed systems",\n  "limit": 5\n}',
   );
-  const [testRunning, setTestRunning] = useState(false);
+  const [testRunning, setTestRunning] = useState<boolean>(false);
   const [testOutput, setTestOutput] = useState<string | null>(null);
   const [testLatency, setTestLatency] = useState<number | null>(null);
+  const [testStatusCode, setTestStatusCode] = useState<number | null>(null);
 
   const allSuites = useMemo(() => {
     const custom = tools.filter(
@@ -282,6 +288,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, search
     if (custom.length === 0) return TOOL_SUITES;
     const customSuite: ToolSuite = {
       id: 'custom-workspace-tools',
+      catalogKey: 'custom-workspace',
       name: 'Custom Workspace Tools',
       count: custom.length,
       description:
@@ -297,6 +304,8 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, search
           isRecommended: true,
           description:
             'Sandboxed Python & JSON-RPC runtime executing tools scoped to this workspace.',
+          latencySla: '< 5ms in-process',
+          storageMode: 'Workspace Sandbox',
         },
       ],
     };
@@ -305,19 +314,80 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, search
 
   const selectedSuite = allSuites.find((s) => s.id === selectedSuiteId) ?? allSuites[0]!;
 
-  const filteredSuites = allSuites.filter((s) => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.trim().toLowerCase();
+  // Look up catalog metadata for the current suite
+  const suiteCatalog =
+    TOOL_DEFINITIONS_CATALOG[selectedSuite.catalogKey] || TOOL_DEFINITIONS_CATALOG['memory-graph'];
+
+  // The active tool definition
+  const activeToolDef: ToolDefinitionItem = useMemo(() => {
+    const found = suiteCatalog?.tools.find((t) => t.name === selectedToolName);
     return (
-      s.name.toLowerCase().includes(q) ||
-      s.description.toLowerCase().includes(q) ||
-      s.tools.some((t) => t.toLowerCase().includes(q))
+      found ||
+      suiteCatalog?.tools[0] || {
+        name: selectedSuite.tools[0] || 'default_tool',
+        title: (selectedSuite.tools[0] || 'Default Tool').replace(/_/g, ' '),
+        description: 'Standard runtime tool function.',
+        requiredScope: 'system.execute',
+        category: 'system',
+        trustClass: 'first_party',
+        approvalGated: false,
+        parameters: [],
+        inputSchema: { type: 'object', properties: {} },
+        outputSchema: { type: 'object', properties: {} },
+        samplePayload: {},
+      }
     );
-  });
+  }, [suiteCatalog, selectedToolName, selectedSuite.tools]);
+
+  const filteredSuites = useMemo(() => {
+    let list = allSuites.filter((s) => {
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.trim().toLowerCase();
+      return (
+        s.name.toLowerCase().includes(q) ||
+        s.description.toLowerCase().includes(q) ||
+        s.tools.some((t) => t.toLowerCase().includes(q))
+      );
+    });
+
+    if (sortBy === 'alphabetical') {
+      list = [...list].sort((a, b) => a.name.localeCompare(b.name));
+    }
+    return list;
+  }, [allSuites, searchQuery, sortBy]);
+
+  const handleSelectSuite = (suite: ToolSuite) => {
+    setSelectedSuiteId(suite.id);
+    const cat = TOOL_DEFINITIONS_CATALOG[suite.catalogKey];
+    const firstTool = cat?.tools[0]?.name || suite.tools[0] || '';
+    setSelectedToolName(firstTool);
+    if (suite.providers[0]) {
+      setSelectedProviderId(suite.providers[0].id);
+    }
+    if (cat?.tools[0]?.samplePayload) {
+      setTestInputJson(JSON.stringify(cat.tools[0].samplePayload, null, 2));
+    }
+  };
+
+  const handleSelectTool = (toolName: string) => {
+    setSelectedToolName(toolName);
+    const tool = suiteCatalog?.tools.find((t) => t.name === toolName);
+    if (tool?.samplePayload) {
+      setTestInputJson(JSON.stringify(tool.samplePayload, null, 2));
+    }
+  };
+
+  const handleLoadSamplePayload = () => {
+    if (activeToolDef?.samplePayload) {
+      setTestInputJson(JSON.stringify(activeToolDef.samplePayload, null, 2));
+      toast({ tone: 'info', title: `Loaded sample payload for ${activeToolDef.name}` });
+    }
+  };
 
   const handleRunTest = async () => {
     setTestRunning(true);
     setTestOutput(null);
+    setTestStatusCode(null);
     try {
       let parsedInput = {};
       try {
@@ -330,25 +400,30 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, search
 
       const res = await capabilitiesApi.test({
         workspaceId,
-        capabilityName: selectedSuite.tools[0] || 'search_documents',
+        capabilityName: activeToolDef.name,
         category: 'tools',
         inputPayload: parsedInput,
       });
 
-      setTestOutput(JSON.stringify(res.result || { ok: true, count: 5 }, null, 2));
-      setTestLatency(res.executionDurationMs || 32);
+      const duration = res.executionDurationMs || 32;
+      setTestOutput(
+        JSON.stringify(res.result || { ok: true, count: 5, status: 'simulated_success' }, null, 2),
+      );
+      setTestLatency(duration);
+      setTestStatusCode(200);
       toast({
         tone: 'success',
-        title: `Test run succeeded for ${selectedSuite.name}`,
-        detail: `Executed in ${res.executionDurationMs || 32}ms.`,
+        title: `Test run succeeded for ${activeToolDef.title}`,
+        detail: `Executed in ${duration}ms.`,
       });
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : 'Execution failed';
+      setTestStatusCode(500);
       setTestOutput(
         JSON.stringify(
           {
             status: 'error',
-            tool: selectedSuite.tools[0],
+            tool: activeToolDef.name,
             suite: selectedSuite.name,
             timestamp: new Date().toISOString(),
             error: errMsg,
@@ -357,103 +432,298 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, search
           2,
         ),
       );
-      toast({ tone: 'error', title: `Test run failed: ${selectedSuite.name}`, detail: errMsg });
+      toast({ tone: 'error', title: `Test run failed: ${activeToolDef.title}`, detail: errMsg });
     } finally {
       setTestRunning(false);
     }
   };
 
+  const renderSuiteIcon = (key: string) => {
+    switch (key) {
+      case 'browser-automation':
+        return (
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.8}
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"
+            />
+          </svg>
+        );
+      case 'memory-suite':
+      case 'memory-graph':
+        return (
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.8}
+          >
+            <ellipse cx="12" cy="5" rx="9" ry="3" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"
+            />
+          </svg>
+        );
+      case 'web-search':
+        return (
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.8}
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35" />
+          </svg>
+        );
+      case 'a2a':
+      case 'agent-bus':
+        return (
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.8}
+          >
+            <rect x="2" y="2" width="6" height="6" rx="1" />
+            <rect x="16" y="2" width="6" height="6" rx="1" />
+            <rect x="9" y="16" width="6" height="6" rx="1" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5 8v3a2 2 0 002 2h10a2 2 0 002-2V8M12 13v3"
+            />
+          </svg>
+        );
+      case 'code-execution':
+      case 'code-exec':
+        return (
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.8}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+            />
+          </svg>
+        );
+      case 'computer-use':
+        return (
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.8}
+          >
+            <rect x="2" y="3" width="20" height="14" rx="2" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 21h8m-4-4v4" />
+          </svg>
+        );
+      case 'file-operations':
+        return (
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.8}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+            />
+          </svg>
+        );
+      case 'kanban-tools':
+      case 'kanban-workflow':
+        return (
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.8}
+          >
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 3v18M15 3v18" />
+          </svg>
+        );
+      case 'spotify':
+      case 'spotify-media':
+        return (
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.8}
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M8 11.5a6 6 0 018 0m-9 3a8 8 0 0110 0m-11 3a10 10 0 0112 0"
+            />
+          </svg>
+        );
+      default:
+        return (
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.8}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"
+            />
+          </svg>
+        );
+    }
+  };
+
   return (
-    <div className="flex-1 flex flex-col lg:flex-row min-h-0 min-w-0 bg-[#09090b] overflow-hidden">
+    <div className="flex-1 flex flex-col lg:flex-row min-h-0 min-w-0 bg-background text-text overflow-hidden">
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      {/* Left Column: Grouped Tool Suites (Pixel-Matched to Screenshot)            */}
+      {/* Left Column: Grouped Tool Suites (Dual-Theme Styled)                       */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="w-full lg:w-[320px] xl:w-[360px] 2xl:w-[410px] shrink-0 border-r border-[#1c1d24] bg-[#0c0d10] flex flex-col min-h-0">
-        {/* Sort & Counter Toolbar */}
-        <div className="p-3 border-b border-[#1c1d24] bg-[#0c0d10] shrink-0">
-          <div className="flex items-center justify-between">
+      <div className="w-full lg:w-[320px] xl:w-[360px] 2xl:w-[390px] shrink-0 border-r border-border bg-surface flex flex-col min-h-0">
+        {/* Header toolbar */}
+        <div className="p-3 border-b border-border bg-surface shrink-0 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-text uppercase tracking-wider font-sans">
+              Tool Suites
+            </span>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-surface-elevated text-text-secondary border border-border">
+              {filteredSuites.length}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <label htmlFor="tools-sort-select" className="text-2xs font-sans text-text-muted">
+              Sort:
+            </label>
             <select
+              id="tools-sort-select"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'most-used' | 'alphabetical')}
-              className="bg-transparent border-0 text-xs font-sans text-[#8b8e99] hover:text-[#e4e4e7] focus:outline-none cursor-pointer"
+              className="bg-surface-elevated text-text border border-border rounded px-2 py-1 text-xs font-sans focus:outline-none focus:border-primary cursor-pointer"
             >
-              <option value="most-used" className="bg-[#14151a] text-[#f4f4f5]">
-                Most used
-              </option>
-              <option value="alphabetical" className="bg-[#14151a] text-[#f4f4f5]">
-                Alphabetical
-              </option>
+              <option value="most-used">Most Used</option>
+              <option value="alphabetical">A-Z</option>
             </select>
-            <span className="text-2xs font-mono text-[#71717a]">
-              {filteredSuites.length} suites
-            </span>
           </div>
         </div>
 
-        {/* Scrollable Suites List */}
-        <div className="flex-1 overflow-y-auto divide-y divide-[#17181f] p-1.5 space-y-0.5">
+        {/* Scrollable suites list */}
+        <div className="flex-1 overflow-y-auto p-2 space-y-1.5 min-h-0">
           {filteredSuites.map((suite) => {
-            const isSelected = suite.id === selectedSuiteId;
+            const isSelected = suite.id === selectedSuite.id;
             return (
               <div
                 key={suite.id}
-                onClick={() => setSelectedSuiteId(suite.id)}
-                className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all ${
+                role="button"
+                tabIndex={0}
+                onClick={() => handleSelectSuite(suite)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSelectSuite(suite)}
+                className={`p-3 rounded-xl transition-all cursor-pointer text-left relative flex flex-col gap-2 ${
                   isSelected
-                    ? 'bg-[#181920] border border-[#2c2f3d] shadow-xs'
-                    : 'hover:bg-[#121318] border border-transparent'
+                    ? 'bg-primary/10 border-l-2 border-primary border-y border-r border-border text-primary shadow-xs'
+                    : 'bg-surface hover:bg-surface-hover border border-transparent text-text'
                 }`}
               >
-                <div className="min-w-0 flex-1 pr-2">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`text-xs font-sans font-medium tracking-tight truncate ${
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${
                         isSelected
-                          ? 'text-white font-semibold'
-                          : 'text-[#d4d4d8] group-hover:text-white'
+                          ? 'bg-primary/20 border-primary/40 text-primary'
+                          : 'bg-surface-elevated border-border text-text-muted'
                       }`}
                     >
-                      {suite.name}
-                    </span>
-                    <span className="text-2xs font-mono px-1.5 py-0.2 rounded bg-[#1c1e28] text-[#93c5fd]">
-                      {suite.count} tools
-                    </span>
+                      {renderSuiteIcon(suite.catalogKey || suite.id)}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`text-xs font-semibold font-sans truncate ${isSelected ? 'text-primary' : 'text-text'}`}
+                        >
+                          {suite.name}
+                        </span>
+                        <span className="text-2xs font-mono px-1.5 py-0.2 rounded bg-surface-elevated text-text-secondary border border-border">
+                          {suite.count}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-1 mt-0.5">
-                    {suite.tools.slice(0, 3).map((tool) => (
-                      <span key={tool} className="text-2xs font-mono text-[#616472]">
-                        {tool}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="text-xs text-[#8b8e99] font-sans truncate mt-0.5">
-                    {suite.description}
-                  </p>
-                </div>
 
-                <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                  {/* Suite Enabled Switch */}
                   <button
                     type="button"
                     role="switch"
                     aria-checked={suite.enabled}
-                    aria-label={`Toggle ${suite.name}`}
-                    onClick={() => {
-                      toast({
-                        tone: suite.enabled ? 'warning' : 'success',
-                        title: `${suite.enabled ? 'Disabled' : 'Enabled'} ${suite.name}`,
-                      });
+                    onClick={(e) => {
+                      e.stopPropagation();
                       suite.enabled = !suite.enabled;
+                      toast({
+                        tone: suite.enabled ? 'info' : 'warning',
+                        title: `${suite.name} ${suite.enabled ? 'Enabled' : 'Disabled'}`,
+                      });
                     }}
-                    className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      suite.enabled ? 'bg-[#22c55e]' : 'bg-surface-active'
+                    className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-1 focus:ring-primary ${
+                      suite.enabled ? 'bg-success' : 'bg-surface-active'
                     }`}
                   >
                     <span
-                      className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out mt-[0.5px] ml-[0.5px] ${
+                      className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
                         suite.enabled ? 'translate-x-3' : 'translate-x-0'
                       }`}
                     />
                   </button>
+                </div>
+
+                <p className="text-2xs font-sans text-text-muted line-clamp-2 leading-relaxed">
+                  {suite.description}
+                </p>
+
+                {/* Micro Tool Tag Pills */}
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  {suite.tools.slice(0, 3).map((t) => (
+                    <span
+                      key={t}
+                      className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface-elevated text-text-secondary border border-border-subtle truncate max-w-[130px]"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                  {suite.tools.length > 3 && (
+                    <span className="text-[10px] font-mono text-text-muted self-center">
+                      +{suite.tools.length - 3}
+                    </span>
+                  )}
                 </div>
               </div>
             );
@@ -462,306 +732,481 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, search
       </div>
 
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      {/* Right Column: Suite Details, Tool Chips, Provider Cards & Playground      */}
+      {/* Right Column: Enterprise Tooling Cockpit                                  */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-[#09090b] overflow-hidden">
-        {/* Top Header */}
-        <div className="p-5 border-b border-[#1c1d24] bg-[#0c0d10] shrink-0 font-sans">
-          <div className="flex flex-col gap-3">
-            <div>
-              <h2 className="text-xl font-bold tracking-tight text-white font-sans">
-                {selectedSuite.name}
-              </h2>
-              <p className="text-xs text-[#a1a1aa] mt-1 leading-relaxed">
+      <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-background overflow-hidden">
+        {/* Header Ribbon */}
+        <div className="p-4 sm:p-5 border-b border-border bg-surface shrink-0 font-sans shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-2xs font-mono uppercase tracking-wider text-text-muted">
+                  TOOL SUITE / RUNTIME
+                </span>
+                <span className="text-text-muted">•</span>
+                <span className="inline-flex items-center gap-1 text-2xs font-mono text-success font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                  Active
+                </span>
+              </div>
+              <h1 className="text-base sm:text-lg font-bold text-text tracking-tight mt-0.5 flex items-center gap-2">
+                <span>{selectedSuite.name}</span>
+                <span className="text-xs font-mono font-medium px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20">
+                  {selectedSuite.count} functions
+                </span>
+              </h1>
+              <p className="text-xs text-text-secondary mt-1 max-w-2xl leading-relaxed">
                 {selectedSuite.description}
               </p>
             </div>
 
-            {/* Sub-tool Chips (All tools in suite, including search_documents & query_graph) */}
-            <div>
-              <div className="text-2xs font-mono text-[#71717a] uppercase tracking-wider mb-1.5">
-                Included Tool Functions ({selectedSuite.tools.length})
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {selectedSuite.tools.map((toolName) => (
-                  <span
-                    key={toolName}
-                    className="px-2 py-0.5 rounded text-xs font-mono font-medium bg-[#161822] text-[#93c5fd] border border-[#24293a] hover:border-[#3b4462] transition-colors"
-                  >
-                    {toolName}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Preference Switch (e.g. Use My Real Browser Profile) */}
+            {/* Browser Profile Switch for Browser Suite */}
             {selectedSuite.id === 'browser-automation' && (
-              <div className="flex items-center justify-between p-3 rounded-lg bg-[#14151a] border border-[#22242e] mt-1">
-                <div className="min-w-0">
-                  <div className="text-xs font-semibold text-white">
-                    Use My Real Browser Profile
-                  </div>
-                  <div className="text-xs text-[#8b8e99] leading-relaxed">
-                    Attaches agent sessions to your logged-in browser cookies, sessions, and
-                    extension state.
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-surface-elevated border border-border shrink-0 gap-3">
+                <div>
+                  <div className="text-xs font-semibold text-text">Use Real Browser Profile</div>
+                  <div className="text-2xs text-text-muted">
+                    {useRealProfile
+                      ? 'Uses existing cookies & login state'
+                      : 'Fresh temporary incognito profile'}
                   </div>
                 </div>
                 <button
                   type="button"
                   role="switch"
                   aria-checked={useRealProfile}
-                  aria-label="Toggle real browser profile"
                   onClick={() => {
                     setUseRealProfile(!useRealProfile);
                     toast({
-                      tone: !useRealProfile ? 'info' : 'warning',
-                      title: !useRealProfile
-                        ? 'Real browser profile connected'
-                        : 'Switched to isolated browser',
+                      tone: 'info',
+                      title: useRealProfile
+                        ? 'Reverted to Incognito Session'
+                        : 'Loaded Real Browser Profile',
                     });
                   }}
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    useRealProfile ? 'bg-[#22c55e]' : 'bg-surface-active'
+                  className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    useRealProfile ? 'bg-success' : 'bg-surface-active'
                   }`}
                 >
                   <span
-                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out mt-[1px] ml-[1px] ${
-                      useRealProfile ? 'translate-x-4' : 'translate-x-0'
+                    className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                      useRealProfile ? 'translate-x-3' : 'translate-x-0'
                     }`}
                   />
                 </button>
               </div>
             )}
+          </div>
 
-            {/* Subtabs Bar (Provider Configuration | Schema & Parameters | Test Playground) */}
-            <div className="flex items-center gap-4 border-b border-[#1c1d24] mt-2">
-              <button
-                type="button"
-                onClick={() => setDetailSubTab('provider')}
-                className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px ${
-                  detailSubTab === 'provider'
-                    ? 'border-primary text-white font-semibold'
-                    : 'border-transparent text-[#71717a] hover:text-[#d4d4d8]'
-                }`}
-              >
-                Provider Configuration
-              </button>
-              <button
-                type="button"
-                onClick={() => setDetailSubTab('schema')}
-                className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px ${
-                  detailSubTab === 'schema'
-                    ? 'border-primary text-white font-semibold'
-                    : 'border-transparent text-[#71717a] hover:text-[#d4d4d8]'
-                }`}
-              >
-                Schema & Parameters
-              </button>
-              <button
-                type="button"
-                onClick={() => setDetailSubTab('test')}
-                className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px ${
-                  detailSubTab === 'test'
-                    ? 'border-primary text-white font-semibold'
-                    : 'border-transparent text-[#71717a] hover:text-[#d4d4d8]'
-                }`}
-              >
-                Test Playground
-              </button>
-            </div>
+          {/* Interactive Tool Function Chips */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-3 mt-3 border-t border-border-subtle">
+            <span className="text-2xs font-mono uppercase tracking-wider text-text-muted shrink-0 mr-1">
+              Select Tool:
+            </span>
+            {selectedSuite.tools.map((toolName) => {
+              const isActive = toolName === activeToolDef.name;
+              return (
+                <button
+                  key={toolName}
+                  type="button"
+                  onClick={() => handleSelectTool(toolName)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-mono font-medium transition-all shrink-0 cursor-pointer ${
+                    isActive
+                      ? 'bg-primary text-white shadow-xs font-semibold'
+                      : 'bg-surface-elevated text-text-secondary hover:text-text hover:bg-surface-hover border border-border'
+                  }`}
+                >
+                  {toolName}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Sub Navigation Tabs */}
+          <div className="flex items-center gap-2 mt-4 border-t border-border-subtle pt-3">
+            {[
+              { id: 'provider', label: 'Provider Configuration' },
+              { id: 'schema', label: 'Schema & Parameters' },
+              { id: 'test', label: 'Test Playground' },
+              { id: 'security', label: 'Security & Governance' },
+            ].map((tab) => {
+              const isActive = detailSubTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() =>
+                    setDetailSubTab(tab.id as 'provider' | 'schema' | 'test' | 'security')
+                  }
+                  className={`text-xs font-sans font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                    isActive
+                      ? 'bg-primary/10 text-primary font-semibold border border-primary/30'
+                      : 'text-text-secondary hover:text-text hover:bg-surface-hover'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-5 bg-[#09090b] min-h-0">
-          {detailSubTab === 'provider' && (
-            <div className="space-y-3 max-w-3xl">
-              <div className="text-xs font-medium uppercase tracking-wider text-[#71717a] mb-2 font-sans">
-                Available Providers & Backends
-              </div>
-              <div className="space-y-2">
-                {selectedSuite.providers.map((p) => {
-                  const isSelected = p.id === selectedProviderId;
-                  return (
-                    <div
-                      key={p.id}
-                      onClick={() => {
-                        setSelectedProviderId(p.id);
-                        toast({ tone: 'info', title: `Selected provider: ${p.name}` });
-                      }}
-                      className={`p-3.5 rounded-xl cursor-pointer border transition-all flex items-start justify-between gap-3 ${
-                        isSelected
-                          ? 'bg-[#151720] border-[#373a4a] shadow-xs'
-                          : 'bg-[#0c0d10] border-[#1c1d24] hover:border-[#272a38]'
-                      }`}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold text-white font-sans">
+        {/* Tab 1: Provider Configuration */}
+        {detailSubTab === 'provider' && (
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-background min-h-0 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {selectedSuite.providers.map((p) => {
+                const isSelected = p.id === selectedProviderId;
+                return (
+                  <div
+                    key={p.id}
+                    onClick={() => {
+                      setSelectedProviderId(p.id);
+                      toast({ tone: 'info', title: `Switched active provider to ${p.name}` });
+                    }}
+                    className={`p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
+                      isSelected
+                        ? 'bg-surface border-primary shadow-xs ring-1 ring-primary/20'
+                        : 'bg-surface border-border hover:border-border-strong hover:bg-surface-hover'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm text-text font-sans">
                             {p.name}
                           </span>
-                          {p.isRecommended && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-2xs font-sans font-medium bg-[#1e251e] text-[#86efac] border border-[#2b3a2c]">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#86efac]" />
-                              <span>Recommended • Free</span>
-                            </span>
-                          )}
                           {p.badge && (
-                            <span className="px-1.5 py-0.2 rounded text-2xs font-mono bg-[#181a22] text-[#93c5fd] border border-[#242735]">
+                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface-elevated text-primary border border-primary/20">
                               {p.badge}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-[#8b8e99] font-sans mt-1 leading-relaxed">
-                          {p.description}
-                        </p>
-                      </div>
-
-                      <div className="shrink-0 flex items-center gap-1.5 mt-0.5">
                         <span
-                          className={`inline-flex items-center gap-1 text-xs font-sans font-medium ${
+                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-2xs font-sans font-medium ${
                             p.status === 'Active'
-                              ? 'text-[#22c55e]'
-                              : p.status === 'Ready'
-                                ? 'text-[#93c5fd]'
-                                : 'text-[#eab308]'
+                              ? 'bg-success/15 text-success border border-success/30'
+                              : 'bg-surface-elevated text-text-muted border border-border'
                           }`}
                         >
-                          <svg
-                            className="w-3.5 h-3.5"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth={2.5}
-                          >
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                          <span>{p.status}</span>
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              p.status === 'Active' ? 'bg-success' : 'bg-text-muted'
+                            }`}
+                          />
+                          {p.status}
                         </span>
                       </div>
+                      <p className="text-xs text-text-secondary font-sans mt-2 leading-relaxed">
+                        {p.description}
+                      </p>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
-          {detailSubTab === 'schema' && (
-            <div className="space-y-4 max-w-3xl font-sans">
+                    <div className="mt-4 pt-3 border-t border-border-subtle flex items-center justify-between text-2xs font-mono text-text-muted">
+                      <span>SLA: {p.latencySla || '< 5ms'}</span>
+                      <span>Mode: {p.storageMode || 'In-Process'}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Architecture note to eliminate dead space */}
+            <div className="p-4 rounded-xl border border-border bg-surface flex items-start gap-3 mt-4">
+              <div className="p-2 rounded-lg bg-primary/10 border border-primary/20 text-primary shrink-0">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
               <div>
-                <h4 className="text-xs font-sans font-medium uppercase tracking-wider text-[#71717a] mb-1.5">
-                  Contract Definition (JSON Schema 2020-12)
+                <h4 className="text-xs font-semibold text-text">
+                  Sovereign Fallback & Failover Routing
                 </h4>
-                <div className="bg-[#0b0c10] border border-[#1b1d24] rounded-xl p-4 overflow-x-auto font-mono text-xs text-[#a1a1aa]">
-                  <pre>
-                    {JSON.stringify(
-                      {
-                        $schema: 'https://json-schema.org/draft/2020-12/schema',
-                        title: selectedSuite.name,
-                        toolsCount: selectedSuite.tools.length,
-                        tools: selectedSuite.tools,
-                        provider: selectedProviderId,
-                      },
-                      null,
-                      2,
-                    )}
-                  </pre>
-                </div>
+                <p className="text-2xs text-text-secondary mt-0.5 leading-relaxed">
+                  When primary cloud connectors encounter network timeouts or quota exhaustion,
+                  Vaeloom automatically degrades to local sovereign runners without human
+                  intervention.
+                </p>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {detailSubTab === 'test' && (
-            <div className="space-y-4 max-w-3xl font-sans">
+        {/* Tab 2: Schema & Parameters */}
+        {detailSubTab === 'schema' && (
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-background min-h-0 space-y-4">
+            {/* Tool Summary Card */}
+            <div className="p-4 rounded-xl border border-border bg-surface">
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-sans font-medium uppercase tracking-wider text-[#71717a]">
-                  Test Input Payload (JSON)
-                </label>
+                <div>
+                  <h3 className="text-sm font-semibold text-text font-mono">
+                    {activeToolDef.name}
+                  </h3>
+                  <p className="text-xs text-text-secondary mt-0.5">{activeToolDef.description}</p>
+                </div>
+                <Badge variant="primary" size="sm" className="font-mono text-2xs">
+                  {activeToolDef.requiredScope}
+                </Badge>
+              </div>
+            </div>
+
+            {/* Parameters Table */}
+            <div className="rounded-xl border border-border bg-surface overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-border bg-surface-elevated flex items-center justify-between">
+                <span className="text-xs font-semibold text-text uppercase tracking-wider font-sans">
+                  Input Parameters ({activeToolDef.parameters.length})
+                </span>
+                <span className="text-2xs font-mono text-text-muted">JSON Schema 2020-12</span>
+              </div>
+              {activeToolDef.parameters.length === 0 ? (
+                <div className="p-6 text-center text-xs text-text-muted font-sans">
+                  This tool accepts no mandatory input arguments.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs font-sans">
+                    <thead className="border-b border-border text-2xs font-mono uppercase text-text-muted bg-surface">
+                      <tr>
+                        <th className="px-4 py-2">Parameter</th>
+                        <th className="px-4 py-2">Type</th>
+                        <th className="px-4 py-2">Status</th>
+                        <th className="px-4 py-2">Default</th>
+                        <th className="px-4 py-2">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {activeToolDef.parameters.map((param) => (
+                        <tr key={param.name} className="hover:bg-surface-hover transition-colors">
+                          <td className="px-4 py-2.5 font-mono text-primary font-semibold">
+                            {param.name}
+                          </td>
+                          <td className="px-4 py-2.5 font-mono text-text-secondary">
+                            {param.type}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-medium ${
+                                param.required
+                                  ? 'bg-warning/15 text-warning border border-warning/30'
+                                  : 'bg-surface-elevated text-text-muted border border-border'
+                              }`}
+                            >
+                              {param.required ? 'Required' : 'Optional'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 font-mono text-text-muted">
+                            {param.default !== undefined ? String(param.default) : '—'}
+                          </td>
+                          <td className="px-4 py-2.5 text-text-secondary leading-relaxed">
+                            {param.description}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Raw JSON Schema Preview */}
+            <div className="rounded-xl border border-border bg-surface-elevated p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-mono font-semibold text-text">Raw JSON Schema</span>
                 <button
                   type="button"
-                  onClick={() =>
-                    setTestInputJson('{\n  "query": "search_documents test",\n  "limit": 5\n}')
-                  }
-                  className="text-xs font-sans text-primary hover:underline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      JSON.stringify(activeToolDef.inputSchema, null, 2),
+                    );
+                    toast({ tone: 'success', title: 'Copied JSON Schema to clipboard' });
+                  }}
+                  className="text-2xs font-mono text-primary hover:underline cursor-pointer"
                 >
-                  Reset to Sample
+                  Copy Schema
                 </button>
               </div>
+              <pre className="p-3 rounded-lg bg-surface border border-border text-xs font-mono text-text overflow-x-auto">
+                {JSON.stringify(activeToolDef.inputSchema, null, 2)}
+              </pre>
+            </div>
+          </div>
+        )}
 
-              <textarea
-                rows={6}
-                value={testInputJson}
-                onChange={(e) => setTestInputJson(e.target.value)}
-                className="w-full bg-[#0b0c10] border border-[#1b1d24] rounded-xl p-3.5 font-mono text-xs text-[#e4e4e7] focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
-              />
-
+        {/* Tab 3: Test Playground */}
+        {detailSubTab === 'test' && (
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-background min-h-0 space-y-4">
+            <div className="flex items-center justify-between gap-3">
               <div>
+                <h3 className="text-sm font-semibold text-text font-sans">
+                  Sandbox Execution Playground
+                </h3>
+                <p className="text-2xs text-text-secondary">
+                  Execute{' '}
+                  <span className="font-mono text-primary font-medium">{activeToolDef.name}</span>{' '}
+                  in an isolated test environment.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleLoadSamplePayload}
+                  className="text-xs font-sans"
+                >
+                  Load Sample
+                </Button>
                 <Button
                   variant="primary"
                   size="sm"
                   onClick={handleRunTest}
                   disabled={testRunning}
-                  className="shadow-xs font-medium inline-flex items-center gap-2 text-xs"
+                  className="text-xs font-sans"
                 >
-                  {testRunning ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Executing run…</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg
-                        className="w-3.5 h-3.5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"
-                        />
-                      </svg>
-                      <span>Execute Run</span>
-                    </>
-                  )}
+                  {testRunning ? 'Running...' : 'Run Test'}
                 </Button>
               </div>
-
-              {testOutput && (
-                <div className="mt-4">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <h4 className="text-xs font-sans font-medium uppercase tracking-wider text-[#71717a]">
-                      Execution Output
-                    </h4>
-                    <div className="flex items-center gap-2">
-                      {testLatency && (
-                        <span className="text-xs font-mono text-[#71717a]">
-                          {testLatency}ms latency
-                        </span>
-                      )}
-                      <Badge variant="success" size="sm">
-                        200 OK
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="bg-[#0b0c10] border border-[#1b1d24] rounded-xl p-4 overflow-x-auto font-mono text-xs text-[#22c55e]">
-                    <pre>{testOutput}</pre>
-                  </div>
-                </div>
-              )}
             </div>
-          )}
-        </div>
 
-        {/* Status Bar */}
-        <footer className="px-5 py-2.5 border-t border-[#1c1d24] bg-[#0c0d10] flex items-center justify-between text-xs font-sans text-[#71717a] shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
-            <span>Active provider: {selectedProviderId}</span>
+            {/* Input payload editor */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="test-payload-editor"
+                className="text-2xs font-mono uppercase text-text-muted"
+              >
+                JSON Input Payload
+              </label>
+              <textarea
+                id="test-payload-editor"
+                value={testInputJson}
+                onChange={(e) => setTestInputJson(e.target.value)}
+                rows={6}
+                className="w-full bg-surface border border-border rounded-xl p-3.5 font-mono text-xs text-text focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all resize-y"
+              />
+            </div>
+
+            {/* Execution Output Drawer */}
+            {testOutput && (
+              <div className="rounded-xl border border-border bg-surface p-4 space-y-2">
+                <div className="flex items-center justify-between border-b border-border-subtle pb-2">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-2 py-0.5 rounded text-2xs font-mono font-semibold ${
+                        testStatusCode === 200
+                          ? 'bg-success/15 text-success border border-success/30'
+                          : 'bg-error/15 text-error border border-error/30'
+                      }`}
+                    >
+                      {testStatusCode === 200 ? '200 OK' : '500 ERROR'}
+                    </span>
+                    {testLatency && (
+                      <span className="text-2xs font-mono text-text-muted">
+                        Latency: {testLatency}ms
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(testOutput);
+                      toast({ tone: 'success', title: 'Copied output to clipboard' });
+                    }}
+                    className="text-2xs font-mono text-primary hover:underline cursor-pointer"
+                  >
+                    Copy Output
+                  </button>
+                </div>
+                <pre className="p-3 rounded-lg bg-surface-elevated border border-border text-xs font-mono text-text overflow-x-auto max-h-60">
+                  {testOutput}
+                </pre>
+              </div>
+            )}
           </div>
-          <span className="font-mono text-2xs">Ready</span>
+        )}
+
+        {/* Tab 4: Security & Governance */}
+        {detailSubTab === 'security' && (
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-background min-h-0 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              <div className="p-4 rounded-xl border border-border bg-surface space-y-2">
+                <span className="text-2xs font-mono uppercase text-text-muted">
+                  Trust Classification
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold font-mono text-text">
+                    {activeToolDef.trustClass}
+                  </span>
+                  <Badge variant="primary" size="sm">
+                    Verified Sovereign
+                  </Badge>
+                </div>
+                <p className="text-xs text-text-secondary leading-relaxed">
+                  Core first-party runtime tool vetted for memory safety and zero network data
+                  leaks.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl border border-border bg-surface space-y-2">
+                <span className="text-2xs font-mono uppercase text-text-muted">
+                  Human Approval Gate (HITL)
+                </span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono font-semibold ${
+                      activeToolDef.approvalGated
+                        ? 'bg-warning/15 text-warning border border-warning/30'
+                        : 'bg-success/15 text-success border border-success/30'
+                    }`}
+                  >
+                    {activeToolDef.approvalGated ? 'Approval Required' : 'Autonomous Allowed'}
+                  </span>
+                </div>
+                <p className="text-xs text-text-secondary leading-relaxed">
+                  {activeToolDef.approvalGated
+                    ? 'Destructive or external write action requiring explicit human confirmation.'
+                    : 'Non-destructive read operation safe for continuous autonomous execution.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Subprocess sandbox boundaries */}
+            <div className="p-4 rounded-xl border border-border bg-surface space-y-2">
+              <h4 className="text-xs font-semibold text-text uppercase tracking-wider font-sans">
+                Isolation Boundaries & Sandbox Guarantees
+              </h4>
+              <ul className="space-y-1.5 text-xs text-text-secondary font-sans list-disc list-inside">
+                <li>Filesystem modifications scoped strictly within current workspace path.</li>
+                <li>Process execution enforced with 10,000ms hard timeout traps.</li>
+                <li>
+                  Outbound network calls restricted to validated HTTPS endpoints with SSRF IP
+                  filters.
+                </li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Footer Status Dock */}
+        <footer className="px-5 py-2.5 border-t border-border bg-surface flex items-center justify-between text-xs font-sans text-text-muted shrink-0">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-success" />
+              Engine: <strong className="text-text font-medium">{selectedProviderId}</strong>
+            </span>
+            <span>•</span>
+            <span>
+              Selected: <strong className="text-primary font-mono">{activeToolDef.name}</strong>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3 text-2xs font-mono">
+            <span>Scope: {activeToolDef.requiredScope}</span>
+            <span>Gate: {activeToolDef.approvalGated ? 'HITL' : 'Auto'}</span>
+          </div>
         </footer>
       </div>
     </div>

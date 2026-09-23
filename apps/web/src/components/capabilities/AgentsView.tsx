@@ -463,12 +463,12 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col lg:flex-row min-h-0 min-w-0 bg-[#09090b] overflow-hidden">
+    <div className="flex-1 flex flex-col lg:flex-row min-h-0 min-w-0 bg-background text-text overflow-hidden">
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Left Column: Autonomous Agents Directory                                    */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="w-full lg:w-[320px] xl:w-[360px] 2xl:w-[410px] shrink-0 border-r border-[#1c1d24] bg-[#0c0d10] flex flex-col min-h-0">
-        <div className="p-3 border-b border-[#1c1d24] bg-[#0c0d10] shrink-0">
+      <div className="w-full lg:w-[320px] xl:w-[360px] 2xl:w-[410px] shrink-0 border-r border-border bg-surface flex flex-col min-h-0">
+        <div className="p-3 border-b border-border bg-surface shrink-0">
           {/* Type Filter Pills + Counter */}
           <div className="flex items-center justify-between gap-1 text-xs">
             <div className="flex items-center gap-1">
@@ -484,10 +484,10 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                   <button
                     key={tab.id}
                     onClick={() => setActiveTypeFilter(tab.id)}
-                    className={`px-2 py-0.5 rounded text-xs font-sans font-medium transition-colors ${
+                    className={`px-2 py-0.5 rounded text-xs font-sans font-medium transition-colors cursor-pointer ${
                       isActive
-                        ? 'bg-[#22242e] text-white font-semibold'
-                        : 'text-[#8b8e99] hover:text-white'
+                        ? 'bg-primary/10 text-primary font-semibold'
+                        : 'text-text-muted hover:text-text'
                     }`}
                   >
                     {tab.label}
@@ -495,14 +495,14 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                 );
               })}
             </div>
-            <span className="text-2xs font-sans text-[#71717a]">
+            <span className="text-2xs font-sans text-text-muted">
               {filteredAgents.length} agents
             </span>
           </div>
         </div>
 
         {/* Scrollable Agent Items List */}
-        <div className="flex-1 overflow-y-auto divide-y divide-[#17181f] p-1.5 space-y-0.5">
+        <div className="flex-1 overflow-y-auto divide-y divide-border p-1.5 space-y-0.5">
           {filteredAgents.map((agent) => {
             const isSelected = agent.id === selectedAgent?.id;
             const meta = getAgentVisualMeta(agent.name);
@@ -512,8 +512,8 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                 onClick={() => setSelectedAgentId(agent.id)}
                 className={`group flex items-start justify-between p-3 rounded-lg cursor-pointer transition-all ${
                   isSelected
-                    ? 'bg-[#181920] border border-[#2c2f3d] shadow-xs'
-                    : 'hover:bg-[#121318] border border-transparent'
+                    ? 'bg-primary/10 border-l-2 border-primary border-y border-r border-border shadow-xs text-primary'
+                    : 'hover:bg-surface-hover border border-transparent text-text'
                 }`}
               >
                 <div className="flex items-start gap-2.5 min-w-0 flex-1 pr-2">
@@ -528,30 +528,30 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                       <span
                         className={`text-xs font-sans font-medium tracking-tight truncate ${
                           isSelected
-                            ? 'text-white font-semibold'
-                            : 'text-[#d4d4d8] group-hover:text-white'
+                            ? 'text-primary font-semibold'
+                            : 'text-text group-hover:text-primary'
                         }`}
                       >
                         {meta.readableTitle}
                       </span>
-                      <span className="text-2xs font-mono text-[#71717a] bg-[#14151a] px-1 py-0.5 rounded border border-[#23242c]">
+                      <span className="text-2xs font-mono text-text-muted bg-surface-elevated px-1 py-0.5 rounded border border-border">
                         {agent.name}
                       </span>
                       {meta.isCanonical && (
-                        <span className="px-1.5 py-0.2 rounded text-[9px] font-sans font-medium bg-[#1c2438] text-[#93c5fd] border border-[#232f48]">
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-sans font-medium bg-primary/10 text-primary border border-primary/20">
                           Canonical
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-[#8b8e99] font-sans line-clamp-2 mt-0.5 leading-relaxed">
+                    <p className="text-xs text-text-secondary font-sans line-clamp-2 mt-0.5 leading-relaxed">
                       {agent.description}
                     </p>
                     <div className="flex items-center gap-2 mt-1.5">
-                      <span className="text-2xs font-mono text-[#71717a]">
+                      <span className="text-2xs font-mono text-text-muted">
                         {agent.toolsUsed?.length || 4} tools
                       </span>
-                      <span className="text-[#3f3f46]">•</span>
-                      <span className="text-2xs font-sans text-[#a1a1aa] capitalize">
+                      <span className="text-text-muted">•</span>
+                      <span className="text-2xs font-sans text-text-secondary capitalize">
                         {agent.autonomy || 'autonomous'}
                       </span>
                     </div>
@@ -566,7 +566,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                     aria-label={`Toggle ${agent.name}`}
                     onClick={() => onToggleAgent(agent.id)}
                     className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      agent.enabled ? 'bg-[#22c55e]' : 'bg-surface-active'
+                      agent.enabled ? 'bg-success' : 'bg-surface-active'
                     }`}
                   >
                     <span
@@ -585,10 +585,10 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Right Column: AgentCard Studio & Orchestration Inspector                   */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-[#09090b] overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-background overflow-hidden">
         {selectedAgent && (
           <>
-            <div className="p-5 border-b border-[#1c1d24] bg-[#0c0d10] shrink-0 font-sans">
+            <div className="p-5 border-b border-border bg-surface shrink-0 font-sans shadow-xs">
               <div className="flex flex-col gap-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-start gap-3">
@@ -600,23 +600,23 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h2 className="text-xl font-bold tracking-tight text-white font-sans">
+                        <h2 className="text-xl font-bold tracking-tight text-text font-sans">
                           {visual.readableTitle}
                         </h2>
-                        <span className="px-1.5 py-0.5 text-xs font-mono text-[#a1a1aa] bg-[#14151a] border border-[#23242c] rounded">
+                        <span className="px-1.5 py-0.5 text-xs font-mono text-text-muted bg-surface-elevated border border-border rounded">
                           {selectedAgent.name}
                         </span>
                         {visual.isCanonical ? (
-                          <span className="px-2 py-0.5 text-xs font-medium rounded bg-[#1c2233] text-[#93c5fd] border border-[#252f48]">
+                          <span className="px-2 py-0.5 text-xs font-medium rounded bg-primary/10 text-primary border border-primary/20">
                             Canonical Core Agent
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 text-xs font-medium rounded bg-[#1e2027] text-[#9ca3af] border border-[#282a34]">
+                          <span className="px-2 py-0.5 text-xs font-medium rounded bg-surface-elevated text-text-secondary border border-border">
                             Specialist Agent
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-[#a1a1aa] mt-1 leading-relaxed max-w-2xl">
+                      <p className="text-xs text-text-secondary mt-1 leading-relaxed max-w-2xl">
                         {selectedAgent.description}
                       </p>
                     </div>
@@ -647,14 +647,14 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                     </Link>
 
                     {/* Autonomy Level Pill Selector */}
-                    <div className="flex items-center p-0.5 rounded-lg bg-[#14151a] border border-[#23242c] text-xs font-sans">
+                    <div className="flex items-center p-0.5 rounded-lg bg-surface-elevated border border-border text-xs font-sans">
                       <button
                         type="button"
                         onClick={() => setAutonomyMode('suggest')}
-                        className={`px-2 py-1 rounded-md transition-colors ${
+                        className={`px-2 py-1 rounded-md transition-colors cursor-pointer ${
                           autonomyMode === 'suggest'
-                            ? 'bg-[#22242e] text-white font-semibold shadow-xs'
-                            : 'text-[#71717a] hover:text-white'
+                            ? 'bg-primary/10 text-primary font-semibold shadow-xs'
+                            : 'text-text-muted hover:text-text'
                         }`}
                       >
                         Suggest Only
@@ -662,10 +662,10 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                       <button
                         type="button"
                         onClick={() => setAutonomyMode('approval_required')}
-                        className={`px-2 py-1 rounded-md transition-colors ${
+                        className={`px-2 py-1 rounded-md transition-colors cursor-pointer ${
                           autonomyMode === 'approval_required'
-                            ? 'bg-[#22242e] text-white font-semibold shadow-xs'
-                            : 'text-[#71717a] hover:text-white'
+                            ? 'bg-primary/10 text-primary font-semibold shadow-xs'
+                            : 'text-text-muted hover:text-text'
                         }`}
                       >
                         Approval Gated
@@ -673,10 +673,10 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                       <button
                         type="button"
                         onClick={() => setAutonomyMode('autonomous')}
-                        className={`px-2 py-1 rounded-md transition-colors ${
+                        className={`px-2 py-1 rounded-md transition-colors cursor-pointer ${
                           autonomyMode === 'autonomous'
-                            ? 'bg-[#22242e] text-white font-semibold shadow-xs'
-                            : 'text-[#71717a] hover:text-white'
+                            ? 'bg-primary/10 text-primary font-semibold shadow-xs'
+                            : 'text-text-muted hover:text-text'
                         }`}
                       >
                         Autonomous
@@ -686,14 +686,14 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                 </div>
 
                 {/* Subtabs Bar */}
-                <div className="flex items-center gap-4 border-b border-[#1c1d24] mt-2 overflow-x-auto no-scrollbar">
+                <div className="flex items-center gap-4 border-b border-border mt-2 overflow-x-auto no-scrollbar">
                   <button
                     type="button"
                     onClick={() => setDetailSubTab('card')}
-                    className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px shrink-0 ${
+                    className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px shrink-0 cursor-pointer ${
                       detailSubTab === 'card'
-                        ? 'border-primary text-white font-semibold'
-                        : 'border-transparent text-[#71717a] hover:text-[#d4d4d8]'
+                        ? 'border-primary text-primary font-semibold'
+                        : 'border-transparent text-text-muted hover:text-text'
                     }`}
                   >
                     Mission &amp; Prompts
@@ -701,10 +701,10 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setDetailSubTab('scopes')}
-                    className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px shrink-0 ${
+                    className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px shrink-0 cursor-pointer ${
                       detailSubTab === 'scopes'
-                        ? 'border-primary text-white font-semibold'
-                        : 'border-transparent text-[#71717a] hover:text-[#d4d4d8]'
+                        ? 'border-primary text-primary font-semibold'
+                        : 'border-transparent text-text-muted hover:text-text'
                     }`}
                   >
                     Memory &amp; Scopes
@@ -712,10 +712,10 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setDetailSubTab('tools')}
-                    className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px shrink-0 ${
+                    className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px shrink-0 cursor-pointer ${
                       detailSubTab === 'tools'
-                        ? 'border-primary text-white font-semibold'
-                        : 'border-transparent text-[#71717a] hover:text-[#d4d4d8]'
+                        ? 'border-primary text-primary font-semibold'
+                        : 'border-transparent text-text-muted hover:text-text'
                     }`}
                   >
                     Declared Tools ({selectedAgent.toolsUsed?.length || 4})
@@ -723,10 +723,10 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setDetailSubTab('schema')}
-                    className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px shrink-0 ${
+                    className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px shrink-0 cursor-pointer ${
                       detailSubTab === 'schema'
-                        ? 'border-primary text-white font-semibold'
-                        : 'border-transparent text-[#71717a] hover:text-[#d4d4d8]'
+                        ? 'border-primary text-primary font-semibold'
+                        : 'border-transparent text-text-muted hover:text-text'
                     }`}
                   >
                     Contract (AgentCard)
@@ -734,10 +734,10 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setDetailSubTab('test')}
-                    className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px shrink-0 ${
+                    className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px shrink-0 cursor-pointer ${
                       detailSubTab === 'test'
-                        ? 'border-primary text-white font-semibold'
-                        : 'border-transparent text-[#71717a] hover:text-[#d4d4d8]'
+                        ? 'border-primary text-primary font-semibold'
+                        : 'border-transparent text-text-muted hover:text-text'
                     }`}
                   >
                     Test Playground
@@ -747,25 +747,25 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
             </div>
 
             {/* Subtab Content Panels */}
-            <div className="flex-1 overflow-y-auto p-5 bg-[#09090b] min-h-0 font-sans">
+            <div className="flex-1 overflow-y-auto p-5 bg-background min-h-0 font-sans">
               {/* 1. MISSION & PROMPTS SUBTAB */}
               {detailSubTab === 'card' && (
                 <div className="space-y-5 max-w-3xl">
                   {/* Interactive Sample Prompts */}
-                  <div className="p-4 rounded-xl bg-[#0e0f14] border border-[#1e2029] space-y-2.5">
+                  <div className="p-4 rounded-xl bg-surface border border-border space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <div className="text-xs font-semibold uppercase tracking-wider text-[#9ca3af] font-sans">
+                      <div className="text-xs font-semibold uppercase tracking-wider text-text-secondary font-sans">
                         Sample Task Prompts
                       </div>
-                      <span className="text-xs text-[#71717a]">Click to load into playground</span>
+                      <span className="text-xs text-text-muted">Click to load into playground</span>
                     </div>
                     <div className="flex flex-col gap-2">
                       {visual.samplePrompts.map((prompt, idx) => (
                         <div
                           key={idx}
-                          className="flex items-center justify-between p-2.5 rounded-lg bg-[#14161f] border border-[#222533] hover:border-primary/50 transition-all text-xs"
+                          className="flex items-center justify-between p-2.5 rounded-lg bg-surface-elevated border border-border hover:border-primary/50 transition-all text-xs"
                         >
-                          <span className="text-[#d4d4d8] leading-relaxed flex-1 pr-3">
+                          <span className="text-text leading-relaxed flex-1 pr-3">
                             &ldquo;{prompt}&rdquo;
                           </span>
                           <div className="flex items-center gap-2 shrink-0">
@@ -775,13 +775,13 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                                 setTestPrompt(prompt);
                                 setDetailSubTab('test');
                               }}
-                              className="px-2 py-1 rounded text-xs font-medium bg-[#1d202d] text-[#93c5fd] hover:bg-[#252a3d] transition-colors"
+                              className="px-2 py-1 rounded text-xs font-medium bg-surface text-primary hover:bg-surface-hover transition-colors border border-border cursor-pointer"
                             >
                               Test ↗
                             </button>
                             <Link
                               href={`/workspace/${workspaceId}/chat?agent=${selectedAgent.name}&prompt=${encodeURIComponent(prompt)}`}
-                              className="px-2 py-1 rounded text-xs font-medium bg-primary/20 text-[#93c5fd] hover:bg-primary/30 transition-colors"
+                              className="px-2 py-1 rounded text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors border border-primary/20"
                             >
                               Chat ↗
                             </Link>
@@ -794,34 +794,34 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                   {/* Jinja2 System Prompt Template */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <div className="text-xs font-semibold uppercase tracking-wider text-[#71717a] font-sans">
+                      <div className="text-xs font-semibold uppercase tracking-wider text-text-muted font-sans">
                         Jinja2 System Prompt Specification
                       </div>
-                      <div className="flex items-center gap-1.5 text-xs font-mono text-[#8b8e99]">
+                      <div className="flex items-center gap-1.5 text-xs font-mono text-text-muted">
                         <span>Tokens:</span>
-                        <span className="px-1.5 py-0.2 rounded bg-[#161822] text-[#93c5fd] border border-[#232738]">
+                        <span className="px-1.5 py-0.2 rounded bg-surface-elevated text-primary border border-border">
                           {`{{ profile }}`}
                         </span>
-                        <span className="px-1.5 py-0.2 rounded bg-[#161822] text-[#93c5fd] border border-[#232738]">
+                        <span className="px-1.5 py-0.2 rounded bg-surface-elevated text-primary border border-border">
                           {`{{ tools }}`}
                         </span>
-                        <span className="px-1.5 py-0.2 rounded bg-[#161822] text-[#93c5fd] border border-[#232738]">
+                        <span className="px-1.5 py-0.2 rounded bg-surface-elevated text-primary border border-border">
                           {`{{ memory_context }}`}
                         </span>
                       </div>
                     </div>
-                    <div className="bg-[#0b0c10] border border-[#1b1d24] rounded-xl p-4 overflow-x-auto font-mono text-xs text-[#d4d4d8] leading-relaxed">
+                    <div className="bg-surface-elevated border border-border rounded-xl p-4 overflow-x-auto font-mono text-xs text-text leading-relaxed">
                       <pre className="whitespace-pre-wrap">{selectedAgent.markdownDoc}</pre>
                     </div>
                   </div>
 
                   {/* ReAct Iteration Limit Guardrail */}
-                  <div className="p-4 rounded-xl bg-[#111216] border border-[#1e2027] flex items-center justify-between">
+                  <div className="p-4 rounded-xl bg-surface border border-border flex items-center justify-between">
                     <div>
-                      <div className="text-xs font-semibold text-white">
+                      <div className="text-xs font-semibold text-text">
                         ReAct Reasoning Iteration Guardrail
                       </div>
-                      <div className="text-xs text-[#8b8e99] mt-0.5">
+                      <div className="text-xs text-text-muted mt-0.5">
                         Maximum recursive reasoning and tool execution loops allowed before
                         demanding user confirmation.
                       </div>
@@ -833,9 +833,9 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                         max={50}
                         value={maxRounds}
                         onChange={(e) => setMaxRounds(Number(e.target.value))}
-                        className="w-16 bg-[#181920] border border-[#272935] rounded px-2 py-1 text-xs font-mono text-white text-center focus:outline-none focus:border-primary"
+                        className="w-16 bg-surface-elevated border border-border rounded px-2 py-1 text-xs font-mono text-text text-center focus:outline-none focus:border-primary"
                       />
-                      <span className="text-xs text-[#71717a]">rounds</span>
+                      <span className="text-xs text-text-muted">rounds</span>
                     </div>
                   </div>
                 </div>
@@ -845,18 +845,18 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
               {detailSubTab === 'scopes' && (
                 <div className="space-y-5 max-w-3xl font-sans">
                   {/* Read Memory Scopes */}
-                  <div className="p-4 rounded-xl bg-[#0e0f14] border border-[#1e2029] space-y-3">
+                  <div className="p-4 rounded-xl bg-surface border border-border space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="text-xs font-semibold uppercase tracking-wider text-[#22c55e]">
+                      <div className="text-xs font-semibold uppercase tracking-wider text-success">
                         Read Scopes (Memory &amp; Knowledge Graph)
                       </div>
-                      <span className="text-xs text-[#71717a]">Authorized read entities</span>
+                      <span className="text-xs text-text-muted">Authorized read entities</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {visual.readScopes.map((scope) => (
                         <span
                           key={scope}
-                          className="px-2.5 py-1 rounded-md text-xs font-mono bg-[#12241b] border border-[#1f402f] text-[#4ade80]"
+                          className="px-2.5 py-1 rounded-md text-xs font-mono bg-success/15 border border-success/30 text-success"
                         >
                           read:{scope}
                         </span>
@@ -865,18 +865,18 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                   </div>
 
                   {/* Write Memory Scopes */}
-                  <div className="p-4 rounded-xl bg-[#0e0f14] border border-[#1e2029] space-y-3">
+                  <div className="p-4 rounded-xl bg-surface border border-border space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="text-xs font-semibold uppercase tracking-wider text-[#eab308]">
+                      <div className="text-xs font-semibold uppercase tracking-wider text-warning">
                         Write Scopes (Mutations &amp; Storage)
                       </div>
-                      <span className="text-xs text-[#71717a]">State persist authorization</span>
+                      <span className="text-xs text-text-muted">State persist authorization</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {visual.writeScopes.map((scope) => (
                         <span
                           key={scope}
-                          className="px-2.5 py-1 rounded-md text-xs font-mono bg-[#282110] border border-[#483a1a] text-[#fde047]"
+                          className="px-2.5 py-1 rounded-md text-xs font-mono bg-warning/15 border border-warning/30 text-warning"
                         >
                           write:{scope}
                         </span>
@@ -885,11 +885,11 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                   </div>
 
                   {/* Knowledge Graph Retention Policy */}
-                  <div className="p-4 rounded-xl bg-[#111216] border border-[#1e2027] space-y-2">
-                    <div className="text-xs font-semibold text-white">
+                  <div className="p-4 rounded-xl bg-surface border border-border space-y-2">
+                    <div className="text-xs font-semibold text-text">
                       Sovereign Graph Retention Policy
                     </div>
-                    <p className="text-xs text-[#a1a1aa] leading-relaxed">
+                    <p className="text-xs text-text-secondary leading-relaxed">
                       Triples written by this agent inherit cryptographic workspace isolation. Nodes
                       decay according to an exponential half-life curve unless reinforced in
                       subsequent reasoning turns.
@@ -902,10 +902,10 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
               {detailSubTab === 'tools' && (
                 <div className="space-y-4 max-w-3xl font-sans">
                   <div className="flex items-center justify-between">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-[#71717a]">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                       Assigned Tool Capabilities ({selectedAgent.toolsUsed?.length || 4})
                     </div>
-                    <span className="text-xs text-[#71717a]">Function calling enabled</span>
+                    <span className="text-xs text-text-muted">Function calling enabled</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -919,17 +919,17 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                     ).map((tool) => (
                       <div
                         key={tool}
-                        className="p-3.5 rounded-xl bg-[#0e0f14] border border-[#1e2029] flex flex-col justify-between space-y-2"
+                        className="p-3.5 rounded-xl bg-surface border border-border flex flex-col justify-between space-y-2"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-mono font-semibold text-[#93c5fd]">
+                          <span className="text-xs font-mono font-semibold text-primary">
                             {tool}
                           </span>
-                          <span className="text-2xs font-sans px-1.5 py-0.5 rounded bg-[#161822] text-[#9ca3af] border border-[#232738]">
+                          <span className="text-2xs font-sans px-1.5 py-0.5 rounded bg-surface-elevated text-text-secondary border border-border">
                             Built-in
                           </span>
                         </div>
-                        <p className="text-xs text-[#8b8e99] leading-relaxed">
+                        <p className="text-xs text-text-secondary leading-relaxed">
                           Autonomous function-calling capability exposed to {selectedAgent.name}{' '}
                           during ReAct loop.
                         </p>
@@ -943,19 +943,19 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
               {detailSubTab === 'schema' && (
                 <div className="space-y-4 max-w-3xl font-sans">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-[#71717a]">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                       AgentCard JSON Contract Specification
                     </h4>
                     <button
                       type="button"
                       onClick={handleCopyAgentCard}
-                      className="px-2.5 py-1 rounded text-xs font-medium bg-[#1a1c26] hover:bg-[#242838] text-[#93c5fd] transition-colors border border-[#282d40]"
+                      className="px-2.5 py-1 rounded text-xs font-medium bg-surface hover:bg-surface-hover text-primary transition-colors border border-border cursor-pointer"
                     >
                       {copiedSchema ? '✓ Copied!' : 'Copy AgentCard JSON'}
                     </button>
                   </div>
 
-                  <div className="bg-[#0b0c10] border border-[#1b1d24] rounded-xl p-4 overflow-x-auto font-mono text-xs text-[#a1a1aa] leading-relaxed">
+                  <div className="bg-surface-elevated border border-border rounded-xl p-4 overflow-x-auto font-mono text-xs text-text leading-relaxed">
                     <pre>
                       {JSON.stringify(
                         {
@@ -988,13 +988,13 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                 <div className="space-y-5 max-w-3xl font-sans">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-[#71717a]">
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted">
                         Test Prompt / Message
                       </label>
                       <button
                         type="button"
                         onClick={() => setTestPrompt(visual.samplePrompts[0] || '')}
-                        className="text-xs text-primary hover:underline"
+                        className="text-xs text-primary hover:underline cursor-pointer"
                       >
                         Reset to Sample Prompt
                       </button>
@@ -1005,7 +1005,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                       value={testPrompt || visual.samplePrompts[0] || ''}
                       onChange={(e) => setTestPrompt(e.target.value)}
                       placeholder="Type a test task message for the agent..."
-                      className="w-full bg-[#0b0c10] border border-[#1b1d24] rounded-xl p-3.5 font-mono text-xs text-[#e4e4e7] focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
+                      className="w-full bg-surface border border-border rounded-xl p-3.5 font-mono text-xs text-text focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
                     />
                   </div>
 
@@ -1047,13 +1047,13 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                   {/* Live Execution Stream Event Trace */}
                   {testEvents.length > 0 && (
                     <div className="space-y-2">
-                      <div className="text-xs font-semibold uppercase tracking-wider text-[#71717a]">
+                      <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                         Execution Stream Trace
                       </div>
-                      <div className="bg-[#0b0c10] border border-[#1b1d24] rounded-xl p-3.5 space-y-1.5 font-mono text-xs">
+                      <div className="bg-surface-elevated border border-border rounded-xl p-3.5 space-y-1.5 font-mono text-xs">
                         {testEvents.map((evt, idx) => (
-                          <div key={idx} className="text-[#a1a1aa] flex items-center gap-2">
-                            <span className="text-2xs text-[#52525b]">#{idx + 1}</span>
+                          <div key={idx} className="text-text-secondary flex items-center gap-2">
+                            <span className="text-2xs text-text-muted">#{idx + 1}</span>
                             <span>{evt}</span>
                           </div>
                         ))}
@@ -1065,12 +1065,12 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                   {testOutput && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-semibold uppercase tracking-wider text-[#71717a]">
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                           Structured Execution Output
                         </h4>
                         <div className="flex items-center gap-2">
                           {testLatency && (
-                            <span className="text-xs font-mono text-[#71717a]">
+                            <span className="text-xs font-mono text-text-muted">
                               {testLatency}ms latency
                             </span>
                           )}
@@ -1079,7 +1079,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                           </Badge>
                         </div>
                       </div>
-                      <div className="bg-[#0b0c10] border border-[#1b1d24] rounded-xl p-4 overflow-x-auto font-mono text-xs text-[#22c55e] leading-relaxed">
+                      <div className="bg-surface-elevated border border-border rounded-xl p-4 overflow-x-auto font-mono text-xs text-success leading-relaxed">
                         <pre>{testOutput}</pre>
                       </div>
                     </div>
@@ -1089,9 +1089,9 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
             </div>
 
             {/* Footer Status Bar */}
-            <footer className="px-5 py-2.5 border-t border-[#1c1d24] bg-[#0c0d10] flex items-center justify-between text-xs font-sans text-[#71717a] shrink-0">
+            <footer className="px-5 py-2.5 border-t border-border bg-surface flex items-center justify-between text-xs font-sans text-text-muted shrink-0">
               <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-success" />
                 <span>Active in workspace sessions • ReAct Loop Guarded</span>
               </div>
               <span className="font-mono text-2xs">v{selectedAgent.version || '2.0.0'}</span>

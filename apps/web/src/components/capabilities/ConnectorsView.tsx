@@ -846,26 +846,26 @@ export function ConnectorsView({
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-[#090b10] text-[#f4f4f5] antialiased overflow-hidden">
+    <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-background text-text antialiased overflow-hidden">
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Subheader Bar: Segmented Modes + SaaS Sync Action Buttons                  */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="border-b border-[#1c2030] bg-[#0c0e15] px-4 sm:px-6 py-2.5 shrink-0 shadow-xs">
+      <div className="border-b border-border bg-surface px-4 sm:px-6 py-2.5 shrink-0 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 min-w-0">
           {/* Sub-nav Segmented Switcher */}
-          <div className="flex items-center gap-1 p-0.5 rounded-lg bg-[#11141e] border border-[#202636] overflow-x-auto no-scrollbar shrink-0">
+          <div className="flex items-center gap-1 p-0.5 rounded-lg bg-surface-elevated border border-border overflow-x-auto no-scrollbar shrink-0">
             <button
               type="button"
               onClick={() => setActiveSubTab('discover')}
               className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer whitespace-nowrap ${
                 activeSubTab === 'discover'
-                  ? 'bg-[#1e2436] text-white font-semibold shadow-xs border border-[#353f5c]'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
+                  : 'text-text-muted hover:text-text'
               }`}
             >
               Explore Directory
               {composioTotalCount > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                <span className="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-primary/10 text-primary border border-primary/20">
                   {composioTotalCount.toLocaleString()}
                 </span>
               )}
@@ -875,13 +875,13 @@ export function ConnectorsView({
               onClick={() => setActiveSubTab('yours')}
               className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer whitespace-nowrap ${
                 activeSubTab === 'yours'
-                  ? 'bg-[#1e2436] text-white font-semibold shadow-xs border border-[#353f5c]'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
+                  : 'text-text-muted hover:text-text'
               }`}
             >
               Installed
               {configuredItems.length > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-success/15 text-success border border-success/30 font-medium">
                   {configuredItems.length}
                 </span>
               )}
@@ -891,12 +891,12 @@ export function ConnectorsView({
               onClick={() => setActiveSubTab('studio')}
               className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 activeSubTab === 'studio'
-                  ? 'bg-[#1e2436] text-white font-semibold shadow-xs border border-[#353f5c]'
-                  : 'text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
+                  : 'text-text-muted hover:text-text'
               }`}
             >
               <span>Custom Protocols</span>
-              <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+              <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-semibold bg-primary/15 text-primary border border-primary/30">
                 MCP • REST • GraphQL
               </span>
             </button>
@@ -908,11 +908,11 @@ export function ConnectorsView({
               type="button"
               onClick={() => handleSyncAllComposio()}
               disabled={composioSyncing}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-[#141724] border border-[#242b3d] text-zinc-300 hover:text-white hover:bg-[#1a1f30] transition-colors cursor-pointer whitespace-nowrap"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-surface-elevated border border-border text-text-secondary hover:text-text hover:bg-surface-hover transition-colors cursor-pointer whitespace-nowrap"
               title="Sync dynamic SaaS tools from Composio"
             >
               <svg
-                className={`w-3.5 h-3.5 text-blue-400 ${composioSyncing ? 'animate-spin' : ''}`}
+                className={`w-3.5 h-3.5 text-primary ${composioSyncing ? 'animate-spin' : ''}`}
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -935,7 +935,7 @@ export function ConnectorsView({
                   setIsAddModalOpen(true);
                 }
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-500 text-white shadow-sm transition-all cursor-pointer active:scale-[0.98] whitespace-nowrap"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary hover:bg-primary-hover text-primary-foreground shadow-xs transition-all cursor-pointer active:scale-[0.98] whitespace-nowrap"
             >
               <PlusIcon />
               <span>Add Custom Connector</span>
@@ -947,17 +947,17 @@ export function ConnectorsView({
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Main Content Area                                                          */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-5 min-h-0 min-w-0">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-5 min-h-0 min-w-0 bg-background">
         {activeSubTab === 'discover' ? (
           <div className="max-w-7xl mx-auto space-y-6 min-w-0">
             {/* Filter Toolbar: Purpose Selector + Filter Chips */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#1c2030] pb-3 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono uppercase tracking-wider text-zinc-500">
+                <span className="text-xs font-mono uppercase tracking-wider text-text-muted">
                   Filter By Sector
                 </span>
-                <span className="text-zinc-600">•</span>
-                <span className="text-xs text-zinc-400">
+                <span className="text-border">•</span>
+                <span className="text-xs text-text-secondary">
                   Showing {filteredCatalog.length} of {fullCatalogList.length} verified connectors
                 </span>
               </div>
@@ -967,7 +967,7 @@ export function ConnectorsView({
                 <select
                   value={selectedFilter}
                   onChange={(e) => setSelectedFilter(e.target.value as ConnectorCategory)}
-                  className="appearance-none bg-[#121520] border border-[#242b3d] rounded-lg pl-3 pr-8 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-blue-500 cursor-pointer font-sans"
+                  className="appearance-none bg-surface-elevated border border-border rounded-lg pl-3 pr-8 py-1.5 text-xs text-text focus:outline-none focus:border-primary cursor-pointer font-sans"
                 >
                   <option value="All">All Purposes & Sectors</option>
                   <option value="Education">Education & Learning</option>
@@ -988,7 +988,7 @@ export function ConnectorsView({
                   <option value="MCP">Model Context Protocol (MCP)</option>
                 </select>
                 <svg
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-400 pointer-events-none"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-text-muted pointer-events-none"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -1221,11 +1221,15 @@ export function ConnectorsView({
                   onClick={() => setSelectedFilter(pill.id as ConnectorCategory)}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 whitespace-nowrap cursor-pointer ${
                     selectedFilter === pill.id
-                      ? 'bg-blue-600 text-white shadow-xs font-semibold'
-                      : 'bg-[#121520] hover:bg-[#181d2c] text-zinc-400 hover:text-zinc-100 border border-[#232a3d]'
+                      ? 'bg-primary text-primary-foreground shadow-xs font-semibold'
+                      : 'bg-surface-elevated hover:bg-surface-hover text-text-secondary hover:text-text border border-border'
                   }`}
                 >
-                  <span className={selectedFilter === pill.id ? 'text-white' : 'text-zinc-500'}>
+                  <span
+                    className={
+                      selectedFilter === pill.id ? 'text-primary-foreground' : 'text-text-muted'
+                    }
+                  >
                     {pill.icon}
                   </span>
                   <span>{pill.label}</span>
@@ -1236,16 +1240,16 @@ export function ConnectorsView({
             {/* If Search is Active or Non-All Filter or ShowAll is toggled: Show Full Catalog Grid */}
             {showAllConnectors || effectiveQuery || selectedFilter !== 'All' ? (
               <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-[#1c2030] pb-2">
+                <div className="flex items-center justify-between border-b border-border pb-2">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-sm font-semibold text-white">
+                    <h2 className="text-sm font-semibold text-text">
                       {effectiveQuery
                         ? `Search results (${filteredCatalog.length})`
                         : selectedFilter !== 'All'
                           ? `${selectedFilter} connectors (${filteredCatalog.length})`
                           : `All connectors (${filteredCatalog.length})`}
                     </h2>
-                    <span className="text-xs text-zinc-500">
+                    <span className="text-xs text-text-muted">
                       • {fullCatalogList.length.toLocaleString()} total available
                     </span>
                   </div>
@@ -1256,7 +1260,7 @@ export function ConnectorsView({
                       setInternalSearch('');
                       setSelectedFilter('All');
                     }}
-                    className="text-xs text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
+                    className="text-xs text-primary hover:text-primary-hover transition-colors cursor-pointer"
                   >
                     ← Back to featured
                   </button>
@@ -1268,33 +1272,33 @@ export function ConnectorsView({
                     return (
                       <div
                         key={item.id}
-                        className="group relative flex flex-col justify-between p-4 rounded-xl bg-[#0e111a] hover:bg-[#121624] border border-[#1e2335] hover:border-[#2f3852] transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md min-h-[160px]"
+                        className="group relative flex flex-col justify-between p-4 rounded-xl bg-surface hover:bg-surface-hover/50 border border-border hover:border-border-subtle transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md min-h-[160px]"
                         onClick={() => setSelectedItemDetails(item)}
                       >
                         <div>
                           <div className="flex items-start justify-between gap-2.5">
                             <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-10 h-10 rounded-xl bg-[#161a27] border border-[#242b3d] flex items-center justify-center p-2 shrink-0 group-hover:border-[#3b4766] transition-colors">
+                              <div className="w-10 h-10 rounded-xl bg-surface-elevated border border-border flex items-center justify-center p-2 shrink-0 group-hover:border-primary/40 transition-colors">
                                 {renderCatalogIcon(item)}
                               </div>
                               <div className="min-w-0">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <h3 className="text-sm font-semibold text-zinc-100 truncate group-hover:text-blue-400 transition-colors">
+                                  <h3 className="text-sm font-semibold text-text truncate group-hover:text-primary transition-colors">
                                     {item.name}
                                   </h3>
                                   <VerifiedCheck />
                                 </div>
                                 <div className="flex items-center gap-1.5 mt-0.5">
-                                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-800/80 text-zinc-400 border border-zinc-700/50">
+                                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface-elevated text-text-secondary border border-border">
                                     {item.protocol}
                                   </span>
                                   {item.isTrending && (
-                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-amber-500/15 border border-amber-500/30 text-amber-300">
+                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-warning/15 border border-warning/30 text-warning">
                                       Trending
                                     </span>
                                   )}
                                   {item.isNew && (
-                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-blue-500/15 border border-blue-500/30 text-blue-300">
+                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-primary/15 border border-primary/30 text-primary">
                                       New
                                     </span>
                                   )}
@@ -1306,10 +1310,10 @@ export function ConnectorsView({
                             <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
                               {connected ? (
                                 <div
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-medium"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-success/15 border border-success/30 text-success text-xs font-medium"
                                   title="Connected in Workspace"
                                 >
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                  <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                                   <span>Connected</span>
                                 </div>
                               ) : (
@@ -1317,7 +1321,7 @@ export function ConnectorsView({
                                   type="button"
                                   onClick={() => handleInitiateConnect(item)}
                                   disabled={busyAction === `connect-${item.provider}`}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#181e2e] hover:bg-blue-600 hover:text-white border border-[#2a344e] hover:border-blue-500 text-zinc-300 text-xs font-medium transition-all duration-150 cursor-pointer shadow-xs active:scale-[0.97]"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-elevated hover:bg-primary hover:text-primary-foreground border border-border hover:border-primary text-text-secondary text-xs font-medium transition-all duration-150 cursor-pointer shadow-xs active:scale-[0.97]"
                                   title={`Connect ${item.name}`}
                                 >
                                   <PlusIcon />
@@ -1327,14 +1331,14 @@ export function ConnectorsView({
                             </div>
                           </div>
 
-                          <p className="text-xs text-zinc-400 line-clamp-2 mt-2.5 leading-relaxed font-sans">
+                          <p className="text-xs text-text-secondary line-clamp-2 mt-2.5 leading-relaxed font-sans">
                             {item.description}
                           </p>
                         </div>
 
-                        <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-[#181d2a] text-[11px] text-zinc-500">
-                          <span className="font-mono text-zinc-400">{item.category}</span>
-                          <span className="text-zinc-500 font-mono truncate max-w-[140px]">
+                        <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-border text-[11px] text-text-muted">
+                          <span className="font-mono text-text-secondary">{item.category}</span>
+                          <span className="text-text-muted font-mono truncate max-w-[140px]">
                             {item.scopes?.[0] || 'Standard Scope'}
                           </span>
                         </div>
@@ -1348,19 +1352,19 @@ export function ConnectorsView({
               <div className="space-y-8">
                 {/* 1. Top Connectors Section */}
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between border-b border-[#1c2030] pb-2">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
                     <div className="flex items-center gap-2">
-                      <h2 className="text-sm font-semibold text-white">
+                      <h2 className="text-sm font-semibold text-text">
                         Top connectors ({topConnectors.length})
                       </h2>
-                      <span className="text-xs text-zinc-500">
+                      <span className="text-xs text-text-muted">
                         • {fullCatalogList.length} available
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowAllConnectors(true)}
-                      className="text-xs text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                      className="text-xs text-primary hover:text-primary-hover font-medium flex items-center gap-1 transition-colors cursor-pointer"
                     >
                       <span>Show all ({fullCatalogList.length})</span>
                       <span>›</span>
@@ -1373,24 +1377,24 @@ export function ConnectorsView({
                       return (
                         <div
                           key={item.id}
-                          className="group relative flex flex-col justify-between p-4 rounded-xl bg-[#0e111a] hover:bg-[#121624] border border-[#1e2335] hover:border-[#2f3852] transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md min-h-[160px]"
+                          className="group relative flex flex-col justify-between p-4 rounded-xl bg-surface hover:bg-surface-hover/50 border border-border hover:border-border-subtle transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md min-h-[160px]"
                           onClick={() => setSelectedItemDetails(item)}
                         >
                           <div>
                             <div className="flex items-start justify-between gap-2.5">
                               <div className="flex items-center gap-3 min-w-0">
-                                <div className="w-10 h-10 rounded-xl bg-[#161a27] border border-[#242b3d] flex items-center justify-center p-2 shrink-0 group-hover:border-[#3b4766] transition-colors">
+                                <div className="w-10 h-10 rounded-xl bg-surface-elevated border border-border flex items-center justify-center p-2 shrink-0 group-hover:border-primary/40 transition-colors">
                                   {renderCatalogIcon(item)}
                                 </div>
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-1.5 flex-wrap">
-                                    <h3 className="text-sm font-semibold text-zinc-100 truncate group-hover:text-blue-400 transition-colors">
+                                    <h3 className="text-sm font-semibold text-text truncate group-hover:text-primary transition-colors">
                                       {item.name}
                                     </h3>
                                     <VerifiedCheck />
                                   </div>
                                   <div className="flex items-center gap-1.5 mt-0.5">
-                                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-800/80 text-zinc-400 border border-zinc-700/50">
+                                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface-elevated text-text-secondary border border-border">
                                       {item.protocol}
                                     </span>
                                   </div>
@@ -1400,10 +1404,10 @@ export function ConnectorsView({
                               <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
                                 {connected ? (
                                   <div
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-medium"
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-success/15 border border-success/30 text-success text-xs font-medium"
                                     title="Connected in Workspace"
                                   >
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                    <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                                     <span>Connected</span>
                                   </div>
                                 ) : (
@@ -1411,7 +1415,7 @@ export function ConnectorsView({
                                     type="button"
                                     onClick={() => handleInitiateConnect(item)}
                                     disabled={busyAction === `connect-${item.provider}`}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#181e2e] hover:bg-blue-600 hover:text-white border border-[#2a344e] hover:border-blue-500 text-zinc-300 text-xs font-medium transition-all duration-150 cursor-pointer shadow-xs active:scale-[0.97]"
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-elevated hover:bg-primary hover:text-primary-foreground border border-border hover:border-primary text-text-secondary text-xs font-medium transition-all duration-150 cursor-pointer shadow-xs active:scale-[0.97]"
                                     title={`Connect ${item.name}`}
                                   >
                                     <PlusIcon />
@@ -1421,14 +1425,14 @@ export function ConnectorsView({
                               </div>
                             </div>
 
-                            <p className="text-xs text-zinc-400 line-clamp-2 mt-2.5 leading-relaxed font-sans">
+                            <p className="text-xs text-text-secondary line-clamp-2 mt-2.5 leading-relaxed font-sans">
                               {item.description}
                             </p>
                           </div>
 
-                          <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-[#181d2a] text-[11px] text-zinc-500">
-                            <span className="font-mono text-zinc-400">{item.category}</span>
-                            <span className="text-zinc-500 font-mono truncate max-w-[140px]">
+                          <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-border text-[11px] text-text-muted">
+                            <span className="font-mono text-text-secondary">{item.category}</span>
+                            <span className="text-text-muted font-mono truncate max-w-[140px]">
                               {item.scopes?.[0] || 'Standard Scope'}
                             </span>
                           </div>
@@ -1441,12 +1445,12 @@ export function ConnectorsView({
                 {/* 2. More Integrations & Dynamic Toolkits */}
                 {otherConnectors.length > 0 && (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between border-b border-[#1c2030] pb-2">
+                    <div className="flex items-center justify-between border-b border-border pb-2">
                       <div className="flex items-center gap-2">
-                        <h2 className="text-sm font-semibold text-white">
+                        <h2 className="text-sm font-semibold text-text">
                           More Integrations & Dynamic Toolkits
                         </h2>
-                        <span className="text-xs text-zinc-500">
+                        <span className="text-xs text-text-muted">
                           • {otherConnectors.length} available
                         </span>
                       </div>
@@ -1458,24 +1462,24 @@ export function ConnectorsView({
                         return (
                           <div
                             key={item.id}
-                            className="group relative flex flex-col justify-between p-4 rounded-xl bg-[#0e111a] hover:bg-[#121624] border border-[#1e2335] hover:border-[#2f3852] transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md min-h-[160px]"
+                            className="group relative flex flex-col justify-between p-4 rounded-xl bg-surface hover:bg-surface-hover/50 border border-border hover:border-border-subtle transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md min-h-[160px]"
                             onClick={() => setSelectedItemDetails(item)}
                           >
                             <div>
                               <div className="flex items-start justify-between gap-2.5">
                                 <div className="flex items-center gap-3 min-w-0">
-                                  <div className="w-10 h-10 rounded-xl bg-[#161a27] border border-[#242b3d] flex items-center justify-center p-2 shrink-0 group-hover:border-[#3b4766] transition-colors">
+                                  <div className="w-10 h-10 rounded-xl bg-surface-elevated border border-border flex items-center justify-center p-2 shrink-0 group-hover:border-primary/40 transition-colors">
                                     {renderCatalogIcon(item)}
                                   </div>
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-1.5 flex-wrap">
-                                      <h3 className="text-sm font-semibold text-zinc-100 truncate group-hover:text-blue-400 transition-colors">
+                                      <h3 className="text-sm font-semibold text-text truncate group-hover:text-primary transition-colors">
                                         {item.name}
                                       </h3>
                                       <VerifiedCheck />
                                     </div>
                                     <div className="flex items-center gap-1.5 mt-0.5">
-                                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-800/80 text-zinc-400 border border-zinc-700/50">
+                                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface-elevated text-text-secondary border border-border">
                                         {item.protocol}
                                       </span>
                                     </div>
@@ -1485,10 +1489,10 @@ export function ConnectorsView({
                                 <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
                                   {connected ? (
                                     <div
-                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-medium"
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-success/15 border border-success/30 text-success text-xs font-medium"
                                       title="Connected in Workspace"
                                     >
-                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                      <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                                       <span>Connected</span>
                                     </div>
                                   ) : (
@@ -1496,7 +1500,7 @@ export function ConnectorsView({
                                       type="button"
                                       onClick={() => handleInitiateConnect(item)}
                                       disabled={busyAction === `connect-${item.provider}`}
-                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#181e2e] hover:bg-blue-600 hover:text-white border border-[#2a344e] hover:border-blue-500 text-zinc-300 text-xs font-medium transition-all duration-150 cursor-pointer shadow-xs active:scale-[0.97]"
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-elevated hover:bg-primary hover:text-primary-foreground border border-border hover:border-primary text-text-secondary text-xs font-medium transition-all duration-150 cursor-pointer shadow-xs active:scale-[0.97]"
                                       title={`Connect ${item.name}`}
                                     >
                                       <PlusIcon />
@@ -1506,14 +1510,14 @@ export function ConnectorsView({
                                 </div>
                               </div>
 
-                              <p className="text-xs text-zinc-400 line-clamp-2 mt-2.5 leading-relaxed font-sans">
+                              <p className="text-xs text-text-secondary line-clamp-2 mt-2.5 leading-relaxed font-sans">
                                 {item.description}
                               </p>
                             </div>
 
-                            <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-[#181d2a] text-[11px] text-zinc-500">
-                              <span className="font-mono text-zinc-400">{item.category}</span>
-                              <span className="text-zinc-500 font-mono truncate max-w-[140px]">
+                            <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-border text-[11px] text-text-muted">
+                              <span className="font-mono text-text-secondary">{item.category}</span>
+                              <span className="text-text-muted font-mono truncate max-w-[140px]">
                                 {item.scopes?.[0] || 'Standard Scope'}
                               </span>
                             </div>
@@ -1532,20 +1536,20 @@ export function ConnectorsView({
           /* ────────────────────────────────────────────────────────────────────────── */
           <div className="max-w-6xl mx-auto space-y-6">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#1c2030] pb-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
               <div>
-                <div className="flex items-center gap-2 text-xs text-zinc-500 mb-1.5 font-mono">
+                <div className="flex items-center gap-2 text-xs text-text-muted mb-1.5 font-mono">
                   <span>CONNECTORS</span>
                   <span>/</span>
-                  <span className="text-zinc-200 font-medium">STUDIO</span>
-                  <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30">
+                  <span className="text-text font-medium">STUDIO</span>
+                  <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-primary/15 text-primary border border-primary/30">
                     Enterprise Protocol Builder
                   </span>
                 </div>
-                <h1 className="text-base font-semibold text-white tracking-tight">
+                <h1 className="text-base font-semibold text-text tracking-tight">
                   Connectors Studio & Protocol Orchestrator
                 </h1>
-                <p className="text-xs text-zinc-400 max-w-2xl mt-1 leading-relaxed">
+                <p className="text-xs text-text-secondary max-w-2xl mt-1 leading-relaxed">
                   Build, test, and register custom Model Context Protocol (stdio/HTTP) servers,
                   enterprise REST APIs, and GraphQL endpoints with sandboxed execution and live
                   health monitoring.
@@ -1556,7 +1560,7 @@ export function ConnectorsView({
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-500 text-white shadow-xs transition-all cursor-pointer active:scale-[0.98]"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary hover:bg-primary-hover text-primary-foreground shadow-xs transition-all cursor-pointer active:scale-[0.98]"
                 >
                   <PlusIcon />
                   <span>Add Custom Connector</span>
@@ -1566,10 +1570,10 @@ export function ConnectorsView({
 
             {/* Protocol Architecture Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 rounded-xl bg-[#0e111a] border border-[#1e2335] hover:border-[#354266] transition-all flex flex-col justify-between space-y-3 shadow-xs">
+              <div className="p-4 rounded-xl bg-surface border border-border hover:border-border-subtle transition-all flex flex-col justify-between space-y-3 shadow-xs">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="w-9 h-9 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                    <div className="w-9 h-9 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center text-primary">
                       <svg
                         className="w-5 h-5"
                         viewBox="0 0 24 24"
@@ -1589,12 +1593,12 @@ export function ConnectorsView({
                         <line x1="1" y1="15" x2="4" y2="15" />
                       </svg>
                     </div>
-                    <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                    <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-success/15 text-success border border-success/30">
                       Standard v1.0
                     </span>
                   </div>
-                  <h3 className="text-sm font-semibold text-white">Model Context Protocol (MCP)</h3>
-                  <p className="text-xs text-zinc-400 leading-relaxed">
+                  <h3 className="text-sm font-semibold text-text">Model Context Protocol (MCP)</h3>
+                  <p className="text-xs text-text-secondary leading-relaxed">
                     Connect local subprocesses (stdio) or remote streamable-HTTP endpoints.
                     Auto-discovers dynamic tools, enforces typed JSON schema parameters, and routes
                     via approval gates.
@@ -1606,16 +1610,16 @@ export function ConnectorsView({
                     setCustomType('mcp');
                     setIsAddModalOpen(true);
                   }}
-                  className="w-full py-1.5 px-3 text-xs font-medium rounded-lg bg-[#141724] hover:bg-[#1a1f30] border border-[#242b3d] text-zinc-200 hover:text-white transition-colors text-center cursor-pointer"
+                  className="w-full py-1.5 px-3 text-xs font-medium rounded-lg bg-surface-elevated hover:bg-surface-hover border border-border text-text transition-colors text-center cursor-pointer"
                 >
                   + Add MCP Server
                 </button>
               </div>
 
-              <div className="p-4 rounded-xl bg-[#0e111a] border border-[#1e2335] hover:border-[#354266] transition-all flex flex-col justify-between space-y-3 shadow-xs">
+              <div className="p-4 rounded-xl bg-surface border border-border hover:border-border-subtle transition-all flex flex-col justify-between space-y-3 shadow-xs">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="w-9 h-9 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                    <div className="w-9 h-9 rounded-lg bg-success/15 border border-success/30 flex items-center justify-center text-success">
                       <svg
                         className="w-5 h-5"
                         viewBox="0 0 24 24"
@@ -1628,12 +1632,12 @@ export function ConnectorsView({
                         <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                       </svg>
                     </div>
-                    <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30">
+                    <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-primary/15 text-primary border border-primary/30">
                       REST / Webhooks
                     </span>
                   </div>
-                  <h3 className="text-sm font-semibold text-white">Enterprise REST API</h3>
-                  <p className="text-xs text-zinc-400 leading-relaxed">
+                  <h3 className="text-sm font-semibold text-text">Enterprise REST API</h3>
+                  <p className="text-xs text-text-secondary leading-relaxed">
                     Integrate proprietary corporate microservices, webhooks, and REST endpoints.
                     Supports Bearer token, custom API keys, and Infisical encrypted environment
                     variables.
@@ -1645,16 +1649,16 @@ export function ConnectorsView({
                     setCustomType('rest');
                     setIsAddModalOpen(true);
                   }}
-                  className="w-full py-1.5 px-3 text-xs font-medium rounded-lg bg-[#141724] hover:bg-[#1a1f30] border border-[#242b3d] text-zinc-200 hover:text-white transition-colors text-center cursor-pointer"
+                  className="w-full py-1.5 px-3 text-xs font-medium rounded-lg bg-surface-elevated hover:bg-surface-hover border border-border text-text transition-colors text-center cursor-pointer"
                 >
                   + Add REST Connector
                 </button>
               </div>
 
-              <div className="p-4 rounded-xl bg-[#0e111a] border border-[#1e2335] hover:border-[#354266] transition-all flex flex-col justify-between space-y-3 shadow-xs">
+              <div className="p-4 rounded-xl bg-surface border border-border hover:border-border-subtle transition-all flex flex-col justify-between space-y-3 shadow-xs">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="w-9 h-9 rounded-lg bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                    <div className="w-9 h-9 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center text-primary">
                       <svg
                         className="w-5 h-5"
                         viewBox="0 0 24 24"
@@ -1667,12 +1671,12 @@ export function ConnectorsView({
                         <polyline points="2 12 12 17 22 12" />
                       </svg>
                     </div>
-                    <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                    <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-primary/15 text-primary border border-primary/30">
                       GraphQL 2021
                     </span>
                   </div>
-                  <h3 className="text-sm font-semibold text-white">GraphQL Explorer</h3>
-                  <p className="text-xs text-zinc-400 leading-relaxed">
+                  <h3 className="text-sm font-semibold text-text">GraphQL Explorer</h3>
+                  <p className="text-xs text-text-secondary leading-relaxed">
                     Point Vaeloom agents to GraphQL endpoints with automated schema introspection,
                     custom queries, document mutations, and JWT header propagation.
                   </p>
@@ -1683,7 +1687,7 @@ export function ConnectorsView({
                     setCustomType('graphql');
                     setIsAddModalOpen(true);
                   }}
-                  className="w-full py-1.5 px-3 text-xs font-medium rounded-lg bg-[#141724] hover:bg-[#1a1f30] border border-[#242b3d] text-zinc-200 hover:text-white transition-colors text-center cursor-pointer"
+                  className="w-full py-1.5 px-3 text-xs font-medium rounded-lg bg-surface-elevated hover:bg-surface-hover border border-border text-text transition-colors text-center cursor-pointer"
                 >
                   + Add GraphQL Endpoint
                 </button>
@@ -1692,17 +1696,17 @@ export function ConnectorsView({
 
             {/* Built-in Sovereign MCP Servers Grid */}
             <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between border-b border-[#1c2030] pb-2">
+              <div className="flex items-center justify-between border-b border-border pb-2">
                 <div>
-                  <h2 className="text-sm font-semibold text-white">
+                  <h2 className="text-sm font-semibold text-text">
                     Built-in Sovereign MCP Servers
                   </h2>
-                  <p className="text-xs text-zinc-500">
+                  <p className="text-xs text-text-muted">
                     Pre-configured, sandboxed protocols maintained sovereignly by Vaeloom
                   </p>
                 </div>
-                <span className="text-xs text-emerald-400 font-mono font-medium flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-xs text-success font-mono font-medium flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                   <span>5 active & sandboxed</span>
                 </span>
               </div>
@@ -1742,22 +1746,22 @@ export function ConnectorsView({
                 ].map((mcpItem, idx) => (
                   <div
                     key={idx}
-                    className="p-4 rounded-xl bg-[#0e111a] border border-[#1e2335] hover:border-[#2f3852] transition-all flex flex-col justify-between space-y-3 shadow-xs"
+                    className="p-4 rounded-xl bg-surface border border-border hover:border-border-subtle transition-all flex flex-col justify-between space-y-3 shadow-xs"
                   >
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-zinc-100">{mcpItem.name}</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <span className="text-xs font-semibold text-text">{mcpItem.name}</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-success/10 text-success border border-success/20">
                           {mcpItem.tag}
                         </span>
                       </div>
-                      <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
+                      <p className="text-xs text-text-secondary line-clamp-2 leading-relaxed">
                         {mcpItem.desc}
                       </p>
                     </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-[#181d2a] text-[11px]">
-                      <span className="font-mono text-zinc-500">{mcpItem.protocol}</span>
-                      <span className="text-emerald-400 font-medium">Ready</span>
+                    <div className="flex items-center justify-between pt-2 border-t border-border text-[11px]">
+                      <span className="font-mono text-text-muted">{mcpItem.protocol}</span>
+                      <span className="text-success font-medium">Ready</span>
                     </div>
                   </div>
                 ))}
@@ -1766,14 +1770,14 @@ export function ConnectorsView({
 
             {/* Configured Custom Connectors List */}
             <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between border-b border-[#1c2030] pb-2">
+              <div className="flex items-center justify-between border-b border-border pb-2">
                 <div>
-                  <h2 className="text-sm font-semibold text-white">Configured Custom Connectors</h2>
-                  <p className="text-xs text-zinc-500">
+                  <h2 className="text-sm font-semibold text-text">Configured Custom Connectors</h2>
+                  <p className="text-xs text-text-muted">
                     Custom endpoints and private MCP instances active in this workspace
                   </p>
                 </div>
-                <span className="text-xs text-zinc-400 font-mono">
+                <span className="text-xs text-text-muted font-mono">
                   {
                     dynamicConnectors.filter((c) =>
                       ['mcp', 'rest', 'graphql'].includes(c.type?.toLowerCase()),
@@ -1786,14 +1790,14 @@ export function ConnectorsView({
               {dynamicConnectors.filter((c) =>
                 ['mcp', 'rest', 'graphql'].includes(c.type?.toLowerCase()),
               ).length === 0 ? (
-                <div className="text-center py-10 border border-dashed border-[#242b3d] rounded-xl bg-[#0c0e15]/50">
-                  <p className="text-xs text-zinc-400">
+                <div className="text-center py-10 border border-dashed border-border rounded-xl bg-surface-elevated/40">
+                  <p className="text-xs text-text-secondary">
                     No custom MCP, REST, or GraphQL connectors created in this workspace yet.
                   </p>
                   <button
                     type="button"
                     onClick={() => setIsAddModalOpen(true)}
-                    className="mt-3 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-colors cursor-pointer"
+                    className="mt-3 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary-hover transition-colors cursor-pointer"
                   >
                     + Add First Custom Connector
                   </button>
@@ -1805,30 +1809,30 @@ export function ConnectorsView({
                     .map((conn) => (
                       <div
                         key={conn.id}
-                        className="p-4 rounded-xl bg-[#0e111a] border border-[#1e2335] hover:border-[#2f3852] transition-all space-y-3 shadow-xs"
+                        className="p-4 rounded-xl bg-surface border border-border hover:border-border-subtle transition-all space-y-3 shadow-xs"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center font-mono font-bold text-xs text-blue-400">
+                            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/30 flex items-center justify-center font-mono font-bold text-xs text-primary">
                               {conn.type.toUpperCase()}
                             </div>
                             <div>
-                              <h3 className="text-xs font-semibold text-white">{conn.name}</h3>
-                              <p className="text-[10px] font-mono text-zinc-500 truncate max-w-[150px]">
+                              <h3 className="text-xs font-semibold text-text">{conn.name}</h3>
+                              <p className="text-[10px] font-mono text-text-muted truncate max-w-[150px]">
                                 ID: {conn.id}
                               </p>
                             </div>
                           </div>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 capitalize">
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20 capitalize">
                             {conn.status || 'Active'}
                           </span>
                         </div>
 
-                        <div className="flex items-center justify-between pt-2 border-t border-[#181d2a] text-xs">
+                        <div className="flex items-center justify-between pt-2 border-t border-border text-xs">
                           <button
                             type="button"
                             onClick={() => void handleTestConnection(conn.id)}
-                            className="px-2.5 py-1 rounded-lg bg-[#141724] hover:bg-[#1c2236] border border-[#242b3d] text-zinc-300 hover:text-white transition-colors cursor-pointer"
+                            className="px-2.5 py-1 rounded-lg bg-surface-elevated hover:bg-surface-hover border border-border text-text-secondary hover:text-text transition-colors cursor-pointer"
                           >
                             Ping Health
                           </button>
@@ -1836,7 +1840,7 @@ export function ConnectorsView({
                             <button
                               type="button"
                               onClick={() => handleInspectTools(conn.id, conn.name)}
-                              className="px-2.5 py-1 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-300 transition-colors cursor-pointer"
+                              className="px-2.5 py-1 rounded-lg bg-primary/15 hover:bg-primary/25 border border-primary/30 text-primary transition-colors cursor-pointer"
                             >
                               Inspect Tools
                             </button>
@@ -1844,7 +1848,7 @@ export function ConnectorsView({
                           <button
                             type="button"
                             onClick={() => handleDisconnect(conn.id, conn.name, false)}
-                            className="text-rose-400 hover:text-rose-300 font-medium transition-colors cursor-pointer text-xs"
+                            className="text-danger hover:text-danger/80 font-medium transition-colors cursor-pointer text-xs"
                           >
                             Remove
                           </button>
@@ -1860,14 +1864,14 @@ export function ConnectorsView({
           /* Yours View: Active & Configured Workspace Connectors                       */
           /* ────────────────────────────────────────────────────────────────────────── */
           <div className="max-w-7xl mx-auto space-y-5">
-            <div className="flex items-center justify-between border-b border-[#1c2030] pb-3">
-              <div className="flex items-center gap-2 text-xs font-mono text-zinc-500">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2 text-xs font-mono text-text-muted">
                 <span>CONNECTORS</span>
                 <span>/</span>
-                <span className="text-zinc-200 font-medium font-sans text-sm">
+                <span className="text-text font-medium font-sans text-sm">
                   Configured in Workspace
                 </span>
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-success/15 text-success border border-success/30 font-medium">
                   {configuredItems.length} active
                 </span>
               </div>
@@ -1875,15 +1879,15 @@ export function ConnectorsView({
               <button
                 type="button"
                 onClick={() => setActiveSubTab('discover')}
-                className="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors cursor-pointer flex items-center gap-1"
+                className="text-xs text-primary hover:text-primary-hover font-medium transition-colors cursor-pointer flex items-center gap-1"
               >
                 <span>+ Browse Directory</span>
               </button>
             </div>
 
             {configuredItems.length === 0 ? (
-              <div className="text-center py-16 border border-dashed border-[#242b3d] rounded-2xl bg-[#0c0e15]/50 max-w-lg mx-auto space-y-3">
-                <div className="w-12 h-12 rounded-xl bg-[#141724] border border-[#242b3d] flex items-center justify-center text-blue-400 mx-auto">
+              <div className="text-center py-16 border border-dashed border-border rounded-2xl bg-surface-elevated/40 max-w-lg mx-auto space-y-3">
+                <div className="w-12 h-12 rounded-xl bg-surface border border-border flex items-center justify-center text-primary mx-auto shadow-xs">
                   <svg
                     className="w-6 h-6"
                     viewBox="0 0 24 24"
@@ -1897,8 +1901,8 @@ export function ConnectorsView({
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-white">No connectors configured</h3>
-                  <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
+                  <h3 className="text-sm font-semibold text-text">No connectors configured</h3>
+                  <p className="text-xs text-text-secondary mt-1 max-w-sm mx-auto">
                     Integrate Google Drive, GitHub, Slack, ATS crawlers, or custom MCP servers to
                     empower your autonomous agents.
                   </p>
@@ -1906,7 +1910,7 @@ export function ConnectorsView({
                 <button
                   type="button"
                   onClick={() => setActiveSubTab('discover')}
-                  className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+                  className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary-hover transition-all cursor-pointer shadow-xs active:scale-[0.98]"
                 >
                   <PlusIcon />
                   <span>Discover Connectors</span>
@@ -1935,17 +1939,17 @@ export function ConnectorsView({
                   return (
                     <div
                       key={item.id}
-                      className="group relative flex flex-col justify-between p-4 rounded-xl bg-[#0e111a] hover:bg-[#121624] border border-[#1e2335] hover:border-[#2f3852] transition-all duration-200 shadow-xs hover:shadow-md space-y-3.5"
+                      className="group relative flex flex-col justify-between p-4 rounded-xl bg-surface hover:bg-surface-hover/50 border border-border hover:border-border-subtle transition-all duration-200 shadow-xs hover:shadow-md space-y-3.5"
                     >
                       <div>
                         <div className="flex items-start justify-between gap-2.5">
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-10 h-10 rounded-xl bg-[#161a27] border border-[#242b3d] flex items-center justify-center p-2 shrink-0 group-hover:border-[#3b4766] transition-colors">
+                            <div className="w-10 h-10 rounded-xl bg-surface-elevated border border-border flex items-center justify-center p-2 shrink-0 group-hover:border-primary/40 transition-colors">
                               {catalogDef ? (
                                 renderCatalogIcon(catalogDef)
                               ) : item.type.toLowerCase().includes('mcp') ? (
                                 <svg
-                                  className="w-5 h-5 text-emerald-400"
+                                  className="w-5 h-5 text-primary"
                                   viewBox="0 0 24 24"
                                   fill="none"
                                   stroke="currentColor"
@@ -1955,7 +1959,7 @@ export function ConnectorsView({
                                 </svg>
                               ) : item.type.toLowerCase().includes('graphql') ? (
                                 <svg
-                                  className="w-5 h-5 text-purple-400"
+                                  className="w-5 h-5 text-primary"
                                   viewBox="0 0 24 24"
                                   fill="none"
                                   stroke="currentColor"
@@ -1967,7 +1971,7 @@ export function ConnectorsView({
                                 </svg>
                               ) : item.type.toLowerCase().includes('rest') ? (
                                 <svg
-                                  className="w-5 h-5 text-blue-400"
+                                  className="w-5 h-5 text-primary"
                                   viewBox="0 0 24 24"
                                   fill="none"
                                   stroke="currentColor"
@@ -1979,7 +1983,7 @@ export function ConnectorsView({
                                 </svg>
                               ) : (
                                 <svg
-                                  className="w-5 h-5 text-blue-400"
+                                  className="w-5 h-5 text-primary"
                                   viewBox="0 0 24 24"
                                   fill="none"
                                   stroke="currentColor"
@@ -1991,13 +1995,13 @@ export function ConnectorsView({
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <h3 className="text-sm font-semibold text-zinc-100 truncate group-hover:text-blue-400 transition-colors">
+                                <h3 className="text-sm font-semibold text-text truncate group-hover:text-primary transition-colors">
                                   {displayName}
                                 </h3>
                                 <VerifiedCheck />
                               </div>
                               <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-800/80 text-zinc-400 border border-zinc-700/50">
+                                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-surface-elevated text-text-secondary border border-border">
                                   {item.type}
                                 </span>
                               </div>
@@ -2007,12 +2011,12 @@ export function ConnectorsView({
                           {/* Live Status Pill */}
                           <div className="shrink-0">
                             {item.status === 'active' ? (
-                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[10px] font-medium">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/15 border border-success/30 text-success text-[10px] font-medium">
+                                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                                 <span>Active</span>
                               </div>
                             ) : item.status === 'syncing' || isSyncing ? (
-                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-medium">
+                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning/15 border border-warning/30 text-warning text-[10px] font-medium">
                                 <svg
                                   className="w-2.5 h-2.5 animate-spin"
                                   viewBox="0 0 24 24"
@@ -2026,22 +2030,22 @@ export function ConnectorsView({
                                 <span>Syncing</span>
                               </div>
                             ) : (
-                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-300 text-[10px] font-medium">
-                                <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-danger/15 border border-danger/30 text-danger text-[10px] font-medium">
+                                <span className="w-1.5 h-1.5 rounded-full bg-danger" />
                                 <span>Error</span>
                               </div>
                             )}
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between text-[11px] text-zinc-500 font-mono pt-2">
+                        <div className="flex items-center justify-between text-[11px] text-text-muted font-mono pt-2">
                           <span>Last synced</span>
-                          <span className="text-zinc-400">{formatDate(item.lastSync)}</span>
+                          <span className="text-text-secondary">{formatDate(item.lastSync)}</span>
                         </div>
                       </div>
 
                       {/* Action Dock */}
-                      <div className="flex items-center justify-between pt-2.5 border-t border-[#181d2a] gap-2">
+                      <div className="flex items-center justify-between pt-2.5 border-t border-border gap-2">
                         <div className="flex items-center gap-1.5">
                           <button
                             type="button"
@@ -2053,12 +2057,12 @@ export function ConnectorsView({
                               }
                             }}
                             disabled={isSyncing}
-                            className="px-2.5 py-1 text-xs font-medium rounded-lg bg-[#141724] hover:bg-[#1a1f30] border border-[#242b3d] text-zinc-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1"
+                            className="px-2.5 py-1 text-xs font-medium rounded-lg bg-surface-elevated hover:bg-surface-hover border border-border text-text-secondary hover:text-text transition-colors cursor-pointer flex items-center gap-1"
                           >
                             {isSyncing ? (
                               <>
                                 <svg
-                                  className="w-3 h-3 animate-spin text-blue-400"
+                                  className="w-3 h-3 animate-spin text-primary"
                                   viewBox="0 0 24 24"
                                   fill="none"
                                   stroke="currentColor"
@@ -2086,7 +2090,7 @@ export function ConnectorsView({
                                 });
                               }
                             }}
-                            className="px-2.5 py-1 text-xs font-medium rounded-lg bg-[#141724] hover:bg-[#1a1f30] border border-[#242b3d] text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                            className="px-2.5 py-1 text-xs font-medium rounded-lg bg-surface-elevated hover:bg-surface-hover border border-border text-text-muted hover:text-text transition-colors cursor-pointer"
                           >
                             Ping
                           </button>
@@ -2095,7 +2099,7 @@ export function ConnectorsView({
                             <button
                               type="button"
                               onClick={() => handleInspectTools(item.id, item.name)}
-                              className="px-2.5 py-1 text-xs font-medium rounded-lg bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-300 transition-colors cursor-pointer"
+                              className="px-2.5 py-1 text-xs font-medium rounded-lg bg-primary/15 hover:bg-primary/25 border border-primary/30 text-primary transition-colors cursor-pointer"
                             >
                               Tools
                             </button>
@@ -2107,7 +2111,7 @@ export function ConnectorsView({
                           onClick={() =>
                             handleDisconnect(item.id, item.name, item.isWorkspaceIntegration)
                           }
-                          className="text-xs text-rose-400 hover:text-rose-300 font-medium transition-colors cursor-pointer"
+                          className="text-xs text-danger hover:text-danger/80 font-medium transition-colors cursor-pointer"
                         >
                           Disconnect
                         </button>
@@ -2132,27 +2136,25 @@ export function ConnectorsView({
           size="md"
         >
           <div className="space-y-4 text-xs">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-[#121319] border border-[#1c1d24]">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-surface-elevated border border-border">
               <div className="shrink-0">{renderCatalogIcon(selectedItemDetails)}</div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-semibold text-white">
+                  <span className="text-sm font-semibold text-text">
                     {selectedItemDetails.name}
                   </span>
                   <VerifiedCheck />
                 </div>
-                <p className="text-[#8b8e99] mt-0.5">{selectedItemDetails.description}</p>
+                <p className="text-text-muted mt-0.5">{selectedItemDetails.description}</p>
               </div>
             </div>
 
             <div className="space-y-2">
-              <span className="font-semibold text-[#f4f4f5] block">
-                Security Scopes & Permissions:
-              </span>
-              <ul className="space-y-1.5 font-mono text-[11px] text-[#a1a1aa] bg-[#0c0d12] p-3 rounded border border-[#1c1d24]">
+              <span className="font-semibold text-text block">Security Scopes & Permissions:</span>
+              <ul className="space-y-1.5 font-mono text-[11px] text-text-secondary bg-surface p-3 rounded border border-border">
                 {selectedItemDetails.scopes.map((s, idx) => (
                   <li key={idx} className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#3b82f6]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                     <span>{s}</span>
                   </li>
                 ))}
@@ -2160,14 +2162,12 @@ export function ConnectorsView({
             </div>
 
             <div className="space-y-2">
-              <span className="font-semibold text-[#f4f4f5] block">
-                Assigned Autonomous Agents:
-              </span>
+              <span className="font-semibold text-text block">Assigned Autonomous Agents:</span>
               <div className="flex flex-wrap gap-1.5">
                 {selectedItemDetails.assignedAgents.map((agent, idx) => (
                   <span
                     key={idx}
-                    className="px-2 py-0.5 rounded text-[10px] font-sans font-medium bg-[#181a22] border border-[#27272a] text-[#93c5fd]"
+                    className="px-2 py-0.5 rounded text-[10px] font-sans font-medium bg-primary/10 border border-primary/20 text-primary"
                   >
                     {agent}
                   </span>
@@ -2175,11 +2175,11 @@ export function ConnectorsView({
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#1c1d24]">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
               <button
                 type="button"
                 onClick={() => setSelectedItemDetails(null)}
-                className="px-3 py-1.5 rounded text-xs text-[#8b8e99] hover:text-white transition-colors"
+                className="px-3 py-1.5 rounded text-xs text-text-muted hover:text-text transition-colors"
               >
                 Close
               </button>
@@ -2189,7 +2189,7 @@ export function ConnectorsView({
                   onClick={() => {
                     handleDisconnect(selectedItemDetails.id, selectedItemDetails.name, true);
                   }}
-                  className="px-3 py-1.5 rounded text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white transition-colors"
+                  className="px-3 py-1.5 rounded text-xs font-semibold bg-danger hover:bg-danger/90 text-white transition-colors"
                 >
                   Disconnect
                 </button>
@@ -2200,7 +2200,7 @@ export function ConnectorsView({
                     setSelectedItemDetails(null);
                     handleInitiateConnect(selectedItemDetails);
                   }}
-                  className="px-3 py-1.5 rounded text-xs font-semibold bg-[#3b82f6] hover:bg-[#2563eb] text-white transition-colors"
+                  className="px-3 py-1.5 rounded text-xs font-semibold bg-primary hover:bg-primary-hover text-primary-foreground transition-colors"
                 >
                   Connect
                 </button>
@@ -2221,25 +2221,25 @@ export function ConnectorsView({
           size="sm"
         >
           <div className="space-y-4 text-xs">
-            <p className="text-[#a1a1aa]">
+            <p className="text-text-secondary">
               {PROVIDER_META[pendingProvider]?.description ??
                 'Authorizing this connector allows Vaeloom agents to ingest context with zero write privileges.'}
             </p>
-            <div className="bg-[#0c0d12] p-2.5 rounded border border-[#1c1d24]">
-              <span className="text-[11px] font-semibold text-white block mb-1">
+            <div className="bg-surface-elevated p-2.5 rounded border border-border">
+              <span className="text-[11px] font-semibold text-text block mb-1">
                 Requested Scopes:
               </span>
               {PROVIDER_META[pendingProvider]?.scopes?.map((scope, idx) => (
-                <div key={idx} className="text-[11px] font-mono text-[#8b8e99]">
+                <div key={idx} className="text-[11px] font-mono text-text-muted">
                   • {scope}
                 </div>
               ))}
             </div>
-            <div className="flex justify-end gap-2 pt-2 border-t border-[#1c1d24]">
+            <div className="flex justify-end gap-2 pt-2 border-t border-border">
               <button
                 type="button"
                 onClick={() => setPendingProvider(null)}
-                className="px-3 py-1.5 rounded text-xs text-[#71717a] hover:text-white"
+                className="px-3 py-1.5 rounded text-xs text-text-muted hover:text-text transition-colors"
               >
                 Cancel
               </button>
@@ -2247,7 +2247,7 @@ export function ConnectorsView({
                 type="button"
                 disabled={busyAction === `connect-${pendingProvider}`}
                 onClick={() => handleExecuteConnect(pendingProvider)}
-                className="px-3 py-1.5 rounded text-xs font-semibold bg-[#3b82f6] hover:bg-[#2563eb] text-white transition-colors"
+                className="px-3 py-1.5 rounded text-xs font-semibold bg-primary hover:bg-primary-hover text-primary-foreground transition-colors"
               >
                 {busyAction === `connect-${pendingProvider}`
                   ? 'Connecting...'
@@ -2271,7 +2271,9 @@ export function ConnectorsView({
           <form onSubmit={handleCreateCustomConnector} className="space-y-4 text-xs">
             {/* Connector Type Selector */}
             <div>
-              <label className="block text-[#a1a1aa] mb-1 font-medium">Connector Protocol</label>
+              <label className="block text-text-secondary mb-1 font-medium">
+                Connector Protocol
+              </label>
               <div className="grid grid-cols-3 gap-2">
                 {(['mcp', 'rest', 'graphql'] as const).map((type) => (
                   <button
@@ -2280,8 +2282,8 @@ export function ConnectorsView({
                     onClick={() => setCustomType(type)}
                     className={`py-1.5 px-2 rounded border text-center font-medium transition-all ${
                       customType === type
-                        ? 'border-[#3b82f6] bg-[#3b82f6]/10 text-white'
-                        : 'border-[#27272a] bg-[#121319] text-[#71717a] hover:text-[#d4d4d8]'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border bg-surface text-text-muted hover:text-text hover:bg-surface-hover'
                     }`}
                   >
                     {type === 'mcp' ? 'MCP Server' : type === 'rest' ? 'REST API' : 'GraphQL API'}
@@ -2292,14 +2294,14 @@ export function ConnectorsView({
 
             {/* Name */}
             <div>
-              <label className="block text-[#a1a1aa] mb-1 font-medium">Connector Name</label>
+              <label className="block text-text-secondary mb-1 font-medium">Connector Name</label>
               <input
                 type="text"
                 required
                 value={customName}
                 onChange={(e) => setCustomName(e.target.value)}
                 placeholder="e.g. Internal Analytics MCP"
-                className="w-full px-3 py-1.5 bg-[#121319] border border-[#27272a] rounded text-white text-xs placeholder-[#71717a] focus:outline-none focus:border-[#3b82f6]"
+                className="w-full px-3 py-1.5 bg-surface border border-border rounded text-text text-xs placeholder:text-text-muted focus:outline-none focus:border-primary"
               />
             </div>
 
@@ -2307,25 +2309,27 @@ export function ConnectorsView({
             {customType === 'mcp' && (
               <>
                 <div>
-                  <label className="block text-[#a1a1aa] mb-1 font-medium">MCP Transport</label>
+                  <label className="block text-text-secondary mb-1 font-medium">
+                    MCP Transport
+                  </label>
                   <div className="flex gap-3">
-                    <label className="flex items-center gap-1.5 cursor-pointer text-[#d4d4d8]">
+                    <label className="flex items-center gap-1.5 cursor-pointer text-text">
                       <input
                         type="radio"
                         name="mcpTransport"
                         checked={customMcpTransport === 'stdio'}
                         onChange={() => setCustomMcpTransport('stdio')}
-                        className="accent-[#3b82f6]"
+                        className="accent-primary"
                       />
                       <span>stdio (local process)</span>
                     </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer text-[#d4d4d8]">
+                    <label className="flex items-center gap-1.5 cursor-pointer text-text">
                       <input
                         type="radio"
                         name="mcpTransport"
                         checked={customMcpTransport === 'http'}
                         onChange={() => setCustomMcpTransport('http')}
-                        className="accent-[#3b82f6]"
+                        className="accent-primary"
                       />
                       <span>Streamable-HTTP (remote SSE)</span>
                     </label>
@@ -2335,7 +2339,7 @@ export function ConnectorsView({
                 {customMcpTransport === 'stdio' ? (
                   <>
                     <div>
-                      <label className="block text-[#a1a1aa] mb-1 font-medium">
+                      <label className="block text-text-secondary mb-1 font-medium">
                         Executable Command
                       </label>
                       <input
@@ -2344,11 +2348,11 @@ export function ConnectorsView({
                         value={customCommand}
                         onChange={(e) => setCustomCommand(e.target.value)}
                         placeholder="e.g. npx or uvx"
-                        className="w-full px-3 py-1.5 bg-[#121319] border border-[#27272a] rounded text-white text-xs placeholder-[#71717a] focus:outline-none focus:border-[#3b82f6]"
+                        className="w-full px-3 py-1.5 bg-surface border border-border rounded text-text text-xs placeholder:text-text-muted focus:outline-none focus:border-primary"
                       />
                     </div>
                     <div>
-                      <label className="block text-[#a1a1aa] mb-1 font-medium">
+                      <label className="block text-text-secondary mb-1 font-medium">
                         Command Arguments
                       </label>
                       <input
@@ -2356,13 +2360,13 @@ export function ConnectorsView({
                         value={customArgs}
                         onChange={(e) => setCustomArgs(e.target.value)}
                         placeholder="e.g. -y @modelcontextprotocol/server-postgres"
-                        className="w-full px-3 py-1.5 bg-[#121319] border border-[#27272a] rounded text-white text-xs placeholder-[#71717a] focus:outline-none focus:border-[#3b82f6]"
+                        className="w-full px-3 py-1.5 bg-surface border border-border rounded text-text text-xs placeholder:text-text-muted focus:outline-none focus:border-primary"
                       />
                     </div>
                   </>
                 ) : (
                   <div>
-                    <label className="block text-[#a1a1aa] mb-1 font-medium">
+                    <label className="block text-text-secondary mb-1 font-medium">
                       Server URL (HTTPS / SSE)
                     </label>
                     <input
@@ -2371,7 +2375,7 @@ export function ConnectorsView({
                       value={customUrl}
                       onChange={(e) => setCustomUrl(e.target.value)}
                       placeholder="https://mcp.internal.company.com/sse"
-                      className="w-full px-3 py-1.5 bg-[#121319] border border-[#27272a] rounded text-white text-xs placeholder-[#71717a] focus:outline-none focus:border-[#3b82f6]"
+                      className="w-full px-3 py-1.5 bg-surface border border-border rounded text-text text-xs placeholder:text-text-muted focus:outline-none focus:border-primary"
                     />
                   </div>
                 )}
@@ -2382,18 +2386,20 @@ export function ConnectorsView({
             {(customType === 'rest' || customType === 'graphql') && (
               <>
                 <div>
-                  <label className="block text-[#a1a1aa] mb-1 font-medium">Endpoint Base URL</label>
+                  <label className="block text-text-secondary mb-1 font-medium">
+                    Endpoint Base URL
+                  </label>
                   <input
                     type="url"
                     required
                     value={customUrl}
                     onChange={(e) => setCustomUrl(e.target.value)}
                     placeholder="https://api.company.com/v1"
-                    className="w-full px-3 py-1.5 bg-[#121319] border border-[#27272a] rounded text-white text-xs placeholder-[#71717a] focus:outline-none focus:border-[#3b82f6]"
+                    className="w-full px-3 py-1.5 bg-surface border border-border rounded text-text text-xs placeholder:text-text-muted focus:outline-none focus:border-primary"
                   />
                 </div>
                 <div>
-                  <label className="block text-[#a1a1aa] mb-1 font-medium">
+                  <label className="block text-text-secondary mb-1 font-medium">
                     API Key or Bearer Token (Optional)
                   </label>
                   <input
@@ -2401,24 +2407,24 @@ export function ConnectorsView({
                     value={customApiKey}
                     onChange={(e) => setCustomApiKey(e.target.value)}
                     placeholder="sk_live_..."
-                    className="w-full px-3 py-1.5 bg-[#121319] border border-[#27272a] rounded text-white text-xs placeholder-[#71717a] focus:outline-none focus:border-[#3b82f6]"
+                    className="w-full px-3 py-1.5 bg-surface border border-border rounded text-text text-xs placeholder:text-text-muted focus:outline-none focus:border-primary"
                   />
                 </div>
               </>
             )}
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-[#1c1d24]">
+            <div className="flex justify-end gap-2 pt-3 border-t border-border">
               <button
                 type="button"
                 onClick={() => setIsAddModalOpen(false)}
-                className="px-3 py-1.5 rounded text-xs text-[#71717a] hover:text-white"
+                className="px-3 py-1.5 rounded text-xs text-text-muted hover:text-text transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={submittingCustom}
-                className="px-4 py-1.5 rounded text-xs font-semibold bg-[#3b82f6] hover:bg-[#2563eb] text-white transition-colors"
+                className="px-4 py-1.5 rounded text-xs font-semibold bg-primary hover:bg-primary-hover text-primary-foreground transition-colors"
               >
                 {submittingCustom ? 'Registering...' : 'Register Connector'}
               </button>
@@ -2439,11 +2445,11 @@ export function ConnectorsView({
         >
           <div className="space-y-4 text-xs">
             {toolsLoading ? (
-              <div className="text-center py-8 text-[#8b8e99]">
+              <div className="text-center py-8 text-text-muted">
                 Inspecting dynamic MCP tools schema...
               </div>
             ) : toolsList.length === 0 ? (
-              <div className="text-center py-6 text-[#71717a]">
+              <div className="text-center py-6 text-text-muted">
                 No MCP tools exported by this server or discovery cache is empty.
               </div>
             ) : (
@@ -2451,17 +2457,17 @@ export function ConnectorsView({
                 {toolsList.map((tool, idx) => (
                   <div
                     key={idx}
-                    className="p-3 rounded-lg bg-[#121319] border border-[#1c1d24] space-y-2"
+                    className="p-3 rounded-lg bg-surface-elevated border border-border space-y-2"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-mono font-semibold text-[#93c5fd]">{tool.name}</span>
-                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-[#181a22] text-[#8b8e99]">
+                      <span className="font-mono font-semibold text-primary">{tool.name}</span>
+                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-surface border border-border text-text-muted">
                         Approval-Gated
                       </span>
                     </div>
-                    <p className="text-[#a1a1aa]">{tool.description}</p>
+                    <p className="text-text-secondary">{tool.description}</p>
                     {tool.inputSchema && (
-                      <pre className="p-2 rounded bg-[#09090b] text-[10px] text-[#71717a] font-mono overflow-x-auto">
+                      <pre className="p-2 rounded bg-surface border border-border text-[10px] text-text-muted font-mono overflow-x-auto">
                         {JSON.stringify(tool.inputSchema, null, 2)}
                       </pre>
                     )}
@@ -2470,11 +2476,11 @@ export function ConnectorsView({
               </div>
             )}
 
-            <div className="flex justify-end pt-2 border-t border-[#1c1d24]">
+            <div className="flex justify-end pt-2 border-t border-border">
               <button
                 type="button"
                 onClick={() => setToolsModalTarget(null)}
-                className="px-3 py-1.5 rounded text-xs bg-[#181a22] text-white hover:bg-[#222430]"
+                className="px-3 py-1.5 rounded text-xs bg-surface-hover text-text hover:bg-surface border border-border transition-colors"
               >
                 Close
               </button>

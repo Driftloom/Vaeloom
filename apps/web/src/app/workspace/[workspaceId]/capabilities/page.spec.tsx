@@ -104,7 +104,7 @@ describe('CapabilitiesPage', () => {
   it('renders the header and all 6 category tabs with counts', () => {
     render(<CapabilitiesPage />);
 
-    expect(screen.getByRole('heading', { name: 'Capabilities' })).toBeInTheDocument();
+    expect(screen.getByRole('tablist', { name: /Capability category/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Skills/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Connectors/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /MCP/i })).toBeInTheDocument();
@@ -120,7 +120,7 @@ describe('CapabilitiesPage', () => {
     fireEvent.click(connectorsTab);
 
     expect(screen.getByText('Google Drive')).toBeInTheDocument();
-    expect(screen.getByText('Full Connectors Studio')).toBeInTheDocument();
+    expect(screen.getByText(/Custom Protocols/i)).toBeInTheDocument();
   });
 
   it('defaults to Skills tab and shows skills like acceptance-criteria-review', () => {
@@ -172,7 +172,7 @@ describe('CapabilitiesPage', () => {
     expect(screen.queryByText('acceptance-criteria-review')).not.toBeInTheDocument();
   });
 
-  it('toggles a capability on and off and triggers toast notification', () => {
+  it('toggles a capability on and off and triggers toast notification', async () => {
     render(<CapabilitiesPage />);
 
     const toggleButton = screen.getByRole('switch', { name: /Toggle acceptance-criteria-review/i });
@@ -181,18 +181,20 @@ describe('CapabilitiesPage', () => {
     // Click toggle to disable
     fireEvent.click(toggleButton);
 
-    expect(mockToast).toHaveBeenCalledWith(
-      expect.objectContaining({
-        tone: 'warning',
-        title: expect.stringContaining('Disabled acceptance-criteria-review'),
-      }),
-    );
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tone: 'warning',
+          title: expect.stringContaining('Disabled acceptance-criteria-review'),
+        }),
+      );
+    });
   });
 
-  it('opens and submits custom capability modal', () => {
+  it('opens and submits custom capability modal', async () => {
     render(<CapabilitiesPage />);
 
-    const newBtn = screen.getByRole('button', { name: /New Capability/i });
+    const newBtn = screen.getByRole('button', { name: /New Capability|New Skill/i });
     fireEvent.click(newBtn);
 
     expect(screen.getByText('Add Custom Capability')).toBeInTheDocument();
@@ -205,7 +207,9 @@ describe('CapabilitiesPage', () => {
       fireEvent.click(submitBtn);
     });
 
-    expect(screen.getAllByText('custom-eval-skill').length).toBeGreaterThanOrEqual(1);
+    await waitFor(() => {
+      expect(screen.getAllByText('custom-eval-skill').length).toBeGreaterThanOrEqual(1);
+    });
     expect(mockToast).toHaveBeenCalledWith(
       expect.objectContaining({
         tone: 'success',
@@ -225,12 +229,14 @@ describe('CapabilitiesPage', () => {
     act(() => {
       fireEvent.click(deleteBtn);
     });
-    expect(mockToast).toHaveBeenCalledWith(
-      expect.objectContaining({
-        tone: 'info',
-        title: 'Skill deleted',
-      }),
-    );
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tone: 'info',
+          title: 'Skill deleted',
+        }),
+      );
+    });
   });
 
   it('edits skill instructions and saves updated definition', () => {
@@ -259,14 +265,14 @@ describe('CapabilitiesPage', () => {
     );
   });
 
-  it('instantiates a capability from enterprise preset scaffolds in 1 click', () => {
+  it('instantiates a capability from enterprise preset scaffolds in 1 click', async () => {
     render(<CapabilitiesPage />);
 
-    const newBtn = screen.getByRole('button', { name: /New Capability/i });
+    const newBtn = screen.getByRole('button', { name: /New Capability|New Skill/i });
     fireEvent.click(newBtn);
 
     // Click Presets tab
-    const presetsTab = screen.getByRole('button', { name: /⚡ Presets/i });
+    const presetsTab = screen.getByRole('button', { name: /Presets/i });
     fireEvent.click(presetsTab);
 
     expect(screen.getByText('Enterprise Production Scaffolds')).toBeInTheDocument();
@@ -285,18 +291,20 @@ describe('CapabilitiesPage', () => {
       fireEvent.click(submitBtn);
     });
 
-    expect(mockToast).toHaveBeenCalledWith(
-      expect.objectContaining({
-        tone: 'success',
-        title: expect.stringContaining('Created rest-api-webhook'),
-      }),
-    );
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tone: 'success',
+          title: expect.stringContaining('Created rest-api-webhook'),
+        }),
+      );
+    });
   });
 
-  it('switches to MCP category in Studio Builder and configures protocol settings', () => {
+  it('switches to MCP category in Studio Builder and configures protocol settings', async () => {
     render(<CapabilitiesPage />);
 
-    const newBtn = screen.getByRole('button', { name: /New Capability/i });
+    const newBtn = screen.getByRole('button', { name: /New Capability|New Skill/i });
     fireEvent.click(newBtn);
 
     const dialog = screen.getByRole('dialog');
@@ -315,12 +323,14 @@ describe('CapabilitiesPage', () => {
       fireEvent.click(submitBtn);
     });
 
-    expect(mockToast).toHaveBeenCalledWith(
-      expect.objectContaining({
-        tone: 'success',
-        title: expect.stringContaining('Created vault-sqlite-mcp'),
-      }),
-    );
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tone: 'success',
+          title: expect.stringContaining('Created vault-sqlite-mcp'),
+        }),
+      );
+    });
   });
 
   it('switches to MCP tab and displays verified catalog and mcp control plane', async () => {
@@ -333,8 +343,8 @@ describe('CapabilitiesPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Verified Catalog')).toBeInTheDocument();
-      expect(screen.getByText('SQLite Memory MCP')).toBeInTheDocument();
-      expect(screen.getByText('Local Filesystem MCP')).toBeInTheDocument();
+      expect(screen.getAllByText('SQLite Memory MCP').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('Local Filesystem MCP').length).toBeGreaterThanOrEqual(1);
       expect(screen.getByRole('button', { name: /Inspector & Tools/i })).toBeInTheDocument();
     });
   });

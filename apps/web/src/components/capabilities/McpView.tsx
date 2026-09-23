@@ -619,19 +619,19 @@ export const McpView: React.FC<McpViewProps> = ({
   }, [logs, logFilter]);
 
   return (
-    <div className="flex-1 flex flex-col lg:flex-row min-h-0 min-w-0 bg-[#09090b] overflow-hidden">
+    <div className="flex-1 flex flex-col lg:flex-row min-h-0 min-w-0 bg-background text-text overflow-hidden">
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Left Column: Servers + Catalog (Pixel-Matched to Design System)          */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="w-full lg:w-[320px] xl:w-[360px] 2xl:w-[400px] shrink-0 border-r border-[#1c1d24] bg-[#0c0d10] flex flex-col min-h-0">
+      <div className="w-full lg:w-[320px] xl:w-[360px] 2xl:w-[400px] shrink-0 border-r border-border bg-surface flex flex-col min-h-0">
         {/* Section 1: Installed Servers Header */}
-        <div className="border-b border-[#1c1d24] flex flex-col shrink-0">
-          <div className="px-4 py-2.5 border-b border-[#1c1d24] bg-[#101116] flex items-center justify-between">
+        <div className="border-b border-border flex flex-col shrink-0">
+          <div className="px-4 py-2.5 border-b border-border bg-surface-elevated/70 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-white font-sans tracking-tight">
+              <span className="text-xs font-semibold text-text font-sans tracking-tight">
                 Servers
               </span>
-              <span className="text-2xs font-mono px-1.5 py-0.2 rounded-full bg-[#181a22] text-[#8b8e99] border border-[#252734]">
+              <span className="text-2xs font-mono px-1.5 py-0.2 rounded-full bg-surface-elevated text-text-secondary border border-border">
                 {installedServers.length}
               </span>
             </div>
@@ -639,7 +639,7 @@ export const McpView: React.FC<McpViewProps> = ({
               <button
                 type="button"
                 onClick={onOpenImport}
-                className="inline-flex items-center gap-1 text-xs font-sans font-medium text-[#8b8e99] hover:text-white transition-colors"
+                className="inline-flex items-center gap-1 text-xs font-sans font-medium text-text-muted hover:text-text transition-colors"
                 title="Import mcp.json configuration"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -658,13 +658,13 @@ export const McpView: React.FC<McpViewProps> = ({
           {/* Installed Servers List */}
           <div className="p-3 space-y-2 max-h-[260px] overflow-y-auto">
             {loadingServers ? (
-              <div className="py-4 text-center text-xs text-[#71717a] animate-pulse">
+              <div className="py-4 text-center text-xs text-text-muted animate-pulse">
                 Loading workspace servers...
               </div>
             ) : filteredInstalled.length === 0 ? (
-              <div className="p-3 rounded-lg border border-dashed border-[#22242e] bg-[#101116] text-center space-y-1">
-                <p className="text-xs font-medium text-[#d4d4d8]">No MCP servers connected</p>
-                <p className="text-2xs text-[#71717a]">
+              <div className="p-3 rounded-lg border border-dashed border-border bg-surface-elevated/40 text-center space-y-1">
+                <p className="text-xs font-medium text-text">No MCP servers connected</p>
+                <p className="text-2xs text-text-muted">
                   Install a server from the catalog below or create a custom server.
                 </p>
               </div>
@@ -686,31 +686,31 @@ export const McpView: React.FC<McpViewProps> = ({
                     }}
                     className={`flex items-center justify-between p-2.5 rounded-lg border transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-[#181a24] border-[#3b82f6] shadow-xs'
-                        : 'bg-[#14151a] border-[#22242e] hover:border-[#2f3240]'
+                        ? 'bg-primary/10 border-primary/40 shadow-xs'
+                        : 'bg-surface-elevated border-border hover:border-border-subtle hover:bg-surface-hover'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span
                         className={`w-2 h-2 rounded-full shrink-0 ${
                           status === 'active'
-                            ? 'bg-[#22c55e]'
+                            ? 'bg-success'
                             : status === 'syncing' || isSyncing
-                              ? 'bg-[#eab308] animate-ping'
-                              : 'bg-[#ef4444]'
+                              ? 'bg-warning animate-ping'
+                              : 'bg-danger'
                         }`}
                         title={`Status: ${status}`}
                       />
-                      <span className="text-xs font-mono font-medium text-white truncate">
+                      <span className="text-xs font-mono font-medium text-text truncate">
                         {server.name}
                       </span>
-                      <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-[#1c1e28] text-[#93c5fd] border border-[#272b3b]">
+                      <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-surface text-text-secondary border border-border">
                         {isStdio ? 'stdio' : 'http'}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-2xs font-sans text-[#71717a]">
+                      <span className="text-2xs font-sans text-text-muted">
                         {isSyncing ? 'syncing...' : status === 'active' ? 'connected' : 'error'}
                       </span>
                       <button
@@ -719,7 +719,7 @@ export const McpView: React.FC<McpViewProps> = ({
                           e.stopPropagation();
                           handleDeleteServer(server);
                         }}
-                        className="opacity-0 group-hover:opacity-100 hover:text-[#ef4444] text-[#71717a] transition-all p-1"
+                        className="opacity-0 group-hover:opacity-100 hover:text-danger text-text-muted transition-all p-1"
                         title={`Delete ${server.name}`}
                       >
                         <svg
@@ -745,7 +745,7 @@ export const McpView: React.FC<McpViewProps> = ({
             <button
               type="button"
               onClick={onOpenCreateServer}
-              className="w-full py-2 px-3 rounded-lg border border-dashed border-[#262835] hover:border-[#3b3e52] text-xs font-sans font-medium text-[#8b8e99] hover:text-white flex items-center justify-center gap-1.5 transition-colors bg-[#111217]"
+              className="w-full py-2 px-3 rounded-lg border border-dashed border-border hover:border-border-subtle text-xs font-sans font-medium text-text-secondary hover:text-text flex items-center justify-center gap-1.5 transition-colors bg-surface-elevated/40"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
@@ -762,19 +762,19 @@ export const McpView: React.FC<McpViewProps> = ({
 
         {/* Section 2: Catalog (1-click installable verified servers) */}
         <div className="flex-1 flex flex-col min-h-0">
-          <div className="px-4 py-2.5 border-b border-[#1c1d24] bg-[#101116] flex items-center justify-between shrink-0">
+          <div className="px-4 py-2.5 border-b border-border bg-surface-elevated/70 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-white font-sans tracking-tight">
+              <span className="text-xs font-semibold text-text font-sans tracking-tight">
                 Verified Catalog
               </span>
-              <span className="text-2xs font-sans px-1.5 py-0.2 rounded-full bg-[#181a22] text-[#8b8e99] border border-[#252734]">
+              <span className="text-2xs font-sans px-1.5 py-0.2 rounded-full bg-surface-elevated text-text-secondary border border-border">
                 {filteredCatalog.length} available
               </span>
             </div>
-            <span className="text-2xs font-mono text-[#3b82f6]">1-Click Install</span>
+            <span className="text-2xs font-mono text-primary font-medium">1-Click Install</span>
           </div>
 
-          <div className="flex-1 overflow-y-auto divide-y divide-[#17181f] p-2 space-y-1">
+          <div className="flex-1 overflow-y-auto divide-y divide-border-subtle p-2 space-y-1">
             {filteredCatalog.map((template) => {
               const isInstalled = installedServers.some(
                 (s) =>
@@ -785,31 +785,31 @@ export const McpView: React.FC<McpViewProps> = ({
               return (
                 <div
                   key={template.id}
-                  className="p-3 rounded-lg hover:bg-[#121319] transition-colors flex items-start justify-between gap-3 group"
+                  className="p-3 rounded-lg hover:bg-surface-hover/70 transition-colors flex items-start justify-between gap-3 group"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-xs font-semibold text-white font-sans">
+                      <span className="text-xs font-semibold text-text font-sans">
                         {template.name}
                       </span>
                       {template.transports.map((t) => (
                         <span
                           key={t}
-                          className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-[#181a22] text-[#8b8e99] border border-[#242633]"
+                          className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-surface-elevated text-text-secondary border border-border"
                         >
                           {t}
                         </span>
                       ))}
                       {template.authType && (
-                        <span className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-[#1b2233] text-[#93c5fd] border border-[#25324c]">
+                        <span className="px-1.5 py-0.2 text-[9px] font-mono rounded bg-primary/10 text-primary border border-primary/20">
                           {template.authType}
                         </span>
                       )}
-                      <span className="px-1.5 py-0.2 text-[9px] font-sans rounded bg-[#161a22] text-[#71717a]">
+                      <span className="px-1.5 py-0.2 text-[9px] font-sans rounded bg-surface-elevated text-text-muted">
                         {template.category}
                       </span>
                     </div>
-                    <p className="text-xs text-[#8b8e99] font-sans leading-relaxed mt-1 line-clamp-2">
+                    <p className="text-xs text-text-secondary font-sans leading-relaxed mt-1 line-clamp-2">
                       {template.description}
                     </p>
                   </div>
@@ -820,8 +820,8 @@ export const McpView: React.FC<McpViewProps> = ({
                     onClick={() => handleInstallCatalogServer(template)}
                     className={`px-2.5 py-1 rounded text-xs font-sans font-medium transition-colors shrink-0 ${
                       isInstalled
-                        ? 'bg-[#181a22] text-[#52525b] border border-[#232530] cursor-default'
-                        : 'bg-[#1a1c25] hover:bg-[#232634] text-white border border-[#2d3040] shadow-xs'
+                        ? 'bg-surface-elevated text-text-muted border border-border cursor-default'
+                        : 'bg-primary hover:bg-primary-hover text-primary-foreground border border-primary/40 shadow-xs'
                     }`}
                   >
                     {isInstalled ? 'Installed' : 'Install'}
@@ -836,17 +836,17 @@ export const McpView: React.FC<McpViewProps> = ({
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Right Column: Server Inspector & Tools OR mcp.json Manifest Editor         */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-[#09090b] overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-background text-text overflow-hidden">
         {/* Sub-navigation Tabs */}
-        <div className="border-b border-[#1c1d24] bg-[#0c0d10] px-4 py-2 flex items-center justify-between shrink-0">
+        <div className="border-b border-border bg-surface px-4 py-2 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-4">
             <button
               type="button"
               onClick={() => setActiveSubTab('inspector')}
               className={`text-xs font-sans font-semibold pb-1 border-b-2 transition-colors flex items-center gap-1.5 ${
                 activeSubTab === 'inspector'
-                  ? 'border-[#3b82f6] text-white'
-                  : 'border-transparent text-[#8b8e99] hover:text-white'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-text-muted hover:text-text'
               }`}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -859,7 +859,7 @@ export const McpView: React.FC<McpViewProps> = ({
               </svg>
               <span>Inspector & Tools</span>
               {serverTools.length > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-[#1c1d24] text-[#93c5fd]">
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-primary/10 text-primary border border-primary/20">
                   {serverTools.length}
                 </span>
               )}
@@ -875,8 +875,8 @@ export const McpView: React.FC<McpViewProps> = ({
               }}
               className={`text-xs font-sans font-semibold pb-1 border-b-2 transition-colors flex items-center gap-1.5 ${
                 activeSubTab === 'manifest'
-                  ? 'border-[#3b82f6] text-white'
-                  : 'border-transparent text-[#8b8e99] hover:text-white'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-text-muted hover:text-text'
               }`}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -888,7 +888,7 @@ export const McpView: React.FC<McpViewProps> = ({
                 />
               </svg>
               <span>mcp.json Manifest</span>
-              <span className="text-[10px] font-mono text-[#71717a]">Claude Desktop / Cursor</span>
+              <span className="text-[10px] font-mono text-text-muted">Claude Desktop / Cursor</span>
             </button>
           </div>
 
@@ -899,7 +899,7 @@ export const McpView: React.FC<McpViewProps> = ({
                 type="button"
                 onClick={handleFormatConfig}
                 title="Format JSON"
-                className="px-2.5 py-1 rounded text-xs font-mono text-[#8b8e99] hover:text-white bg-[#14151a] border border-[#232530] hover:bg-[#1a1c24] transition-colors"
+                className="px-2.5 py-1 rounded text-xs font-mono text-text-secondary hover:text-text bg-surface-elevated border border-border hover:bg-surface-hover transition-colors"
               >
                 {`{ } Format`}
               </button>
@@ -907,7 +907,7 @@ export const McpView: React.FC<McpViewProps> = ({
                 type="button"
                 onClick={handleSaveConfig}
                 disabled={savingConfig}
-                className="px-3 py-1 rounded bg-[#22c55e] hover:bg-[#16a34a] text-xs font-sans font-semibold text-black transition-colors shadow-xs flex items-center gap-1.5"
+                className="px-3 py-1 rounded bg-primary hover:bg-primary-hover text-xs font-sans font-semibold text-primary-foreground transition-colors shadow-xs flex items-center gap-1.5"
               >
                 {savingConfig ? (
                   <>
@@ -939,11 +939,11 @@ export const McpView: React.FC<McpViewProps> = ({
                 type="button"
                 onClick={() => loadServerTools(selectedServer.id, true)}
                 disabled={refreshingTools}
-                className="px-2.5 py-1 rounded text-xs font-sans text-[#8b8e99] hover:text-white bg-[#14151a] border border-[#232530] hover:bg-[#1a1c24] transition-colors flex items-center gap-1.5"
+                className="px-2.5 py-1 rounded text-xs font-sans text-text-secondary hover:text-text bg-surface-elevated border border-border hover:bg-surface-hover transition-colors flex items-center gap-1.5"
                 title="Query server for updated tool definitions"
               >
                 <svg
-                  className={`w-3.5 h-3.5 text-[#3b82f6] ${refreshingTools ? 'animate-spin' : ''}`}
+                  className={`w-3.5 h-3.5 text-primary ${refreshingTools ? 'animate-spin' : ''}`}
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -962,7 +962,7 @@ export const McpView: React.FC<McpViewProps> = ({
                 type="button"
                 onClick={() => handleSyncBridge(selectedServer)}
                 disabled={syncingServerId === selectedServer.id}
-                className="px-3 py-1 rounded bg-[#3b82f6] hover:bg-[#2563eb] text-xs font-sans font-semibold text-white transition-colors shadow-xs flex items-center gap-1.5"
+                className="px-3 py-1 rounded bg-primary hover:bg-primary-hover text-xs font-sans font-semibold text-primary-foreground transition-colors shadow-xs flex items-center gap-1.5"
                 title="Register discovered tools into agent executor"
               >
                 <svg
@@ -989,8 +989,8 @@ export const McpView: React.FC<McpViewProps> = ({
           <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
             {!selectedServer ? (
               <div className="flex-1 flex flex-col p-6 max-w-4xl mx-auto w-full space-y-6">
-                <div className="text-center py-6 space-y-2 border-b border-[#1c2030]">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mx-auto">
+                <div className="text-center py-6 space-y-2 border-b border-border">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mx-auto">
                     <svg
                       className="w-6 h-6"
                       fill="none"
@@ -1005,10 +1005,10 @@ export const McpView: React.FC<McpViewProps> = ({
                       />
                     </svg>
                   </div>
-                  <h3 className="text-base font-semibold text-white font-sans">
+                  <h3 className="text-base font-semibold text-text font-sans">
                     Model Context Protocol (MCP v2) Runtime
                   </h3>
-                  <p className="text-xs text-zinc-400 max-w-lg mx-auto leading-relaxed font-sans">
+                  <p className="text-xs text-text-secondary max-w-lg mx-auto leading-relaxed font-sans">
                     Connect verified external tools, local filesystems, and databases directly to
                     autonomous agents with sandboxed stdio subprocesses or streamable-http
                     endpoints.
@@ -1017,39 +1017,39 @@ export const McpView: React.FC<McpViewProps> = ({
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 font-mono">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted font-mono">
                       Recommended Sovereign Protocols
                     </h4>
-                    <span className="text-xs text-zinc-500 font-mono">1-Click Fast Connect</span>
+                    <span className="text-xs text-text-muted font-mono">1-Click Fast Connect</span>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                     {MCP_CATALOG_TEMPLATES.slice(0, 4).map((template) => (
                       <div
                         key={template.id}
-                        className="p-4 rounded-xl bg-[#0e111a] border border-[#1e2335] hover:border-[#2f3852] transition-all duration-200 flex flex-col justify-between space-y-3 shadow-xs"
+                        className="p-4 rounded-xl bg-surface border border-border hover:border-primary/40 transition-all duration-200 flex flex-col justify-between space-y-3 shadow-xs"
                       >
                         <div className="space-y-1.5">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-semibold text-zinc-100 font-sans">
+                            <span className="text-sm font-semibold text-text font-sans">
                               {template.name}
                             </span>
-                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
                               {template.category}
                             </span>
                           </div>
-                          <p className="text-xs text-zinc-400 leading-relaxed line-clamp-2">
+                          <p className="text-xs text-text-secondary leading-relaxed line-clamp-2">
                             {template.description}
                           </p>
                         </div>
-                        <div className="flex items-center justify-between pt-2.5 border-t border-[#181d2a]">
-                          <span className="text-[10px] font-mono text-zinc-500">
+                        <div className="flex items-center justify-between pt-2.5 border-t border-border">
+                          <span className="text-[10px] font-mono text-text-muted">
                             {template.defaultConfig.transport.toUpperCase()}
                           </span>
                           <button
                             type="button"
                             onClick={() => handleInstallCatalogServer(template)}
-                            className="px-3 py-1 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors cursor-pointer"
+                            className="px-3 py-1 text-xs font-medium rounded-lg bg-primary hover:bg-primary-hover text-primary-foreground transition-colors cursor-pointer"
                           >
                             Install Protocol
                           </button>
@@ -1062,22 +1062,22 @@ export const McpView: React.FC<McpViewProps> = ({
             ) : (
               <div className="p-4 sm:p-6 space-y-6">
                 {/* Server Overview Banner */}
-                <div className="p-4 rounded-xl bg-[#101116] border border-[#1e2028] space-y-3">
+                <div className="p-4 rounded-xl bg-surface border border-border shadow-xs space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-[#22c55e]" />
-                        <h2 className="text-base font-semibold text-white font-mono">
+                        <span className="w-2.5 h-2.5 rounded-full bg-success" />
+                        <h2 className="text-base font-semibold text-text font-mono">
                           {selectedServer.name}
                         </h2>
-                        <span className="px-2 py-0.5 rounded text-2xs font-mono bg-[#1c1e28] text-[#93c5fd] border border-[#272b3b]">
+                        <span className="px-2 py-0.5 rounded text-2xs font-mono bg-surface-elevated text-text-secondary border border-border">
                           {selectedServer.config?.['transport'] || 'stdio'}
                         </span>
-                        <span className="px-2 py-0.5 rounded text-2xs font-sans bg-[#122216] text-[#86efac] border border-[#1c3822]">
+                        <span className="px-2 py-0.5 rounded text-2xs font-sans bg-success/15 text-success border border-success/30 font-medium">
                           Active
                         </span>
                       </div>
-                      <p className="text-xs text-[#8b8e99] mt-1 font-mono">
+                      <p className="text-xs text-text-muted mt-1 font-mono">
                         ID: {selectedServer.id} • Last synced:{' '}
                         {selectedServer.lastSync
                           ? new Date(selectedServer.lastSync).toLocaleTimeString()
@@ -1089,7 +1089,7 @@ export const McpView: React.FC<McpViewProps> = ({
                       <button
                         type="button"
                         onClick={() => handleDeleteServer(selectedServer)}
-                        className="px-2.5 py-1 text-xs text-[#ef4444] hover:bg-[#ef4444]/10 rounded border border-[#ef4444]/30 transition-colors"
+                        className="px-2.5 py-1 text-xs text-danger hover:bg-danger/10 rounded border border-danger/30 transition-colors"
                       >
                         Disconnect Server
                       </button>
@@ -1097,14 +1097,14 @@ export const McpView: React.FC<McpViewProps> = ({
                   </div>
 
                   {/* Config Details */}
-                  <div className="p-3 rounded-lg bg-[#090a0d] border border-[#1a1b22] font-mono text-xs text-[#d4d4d8] space-y-1">
+                  <div className="p-3 rounded-lg bg-surface-elevated border border-border font-mono text-xs text-text space-y-1">
                     {selectedServer.config?.['command'] ? (
                       <div>
-                        <span className="text-[#71717a]">command: </span>
-                        <span className="text-[#a5b4fc]">
+                        <span className="text-text-muted">command: </span>
+                        <span className="text-primary font-medium">
                           {selectedServer.config['command']}
                         </span>{' '}
-                        <span className="text-[#d4d4d8]">
+                        <span className="text-text-secondary">
                           {Array.isArray(selectedServer.config['args'])
                             ? selectedServer.config['args'].join(' ')
                             : ''}
@@ -1112,44 +1112,46 @@ export const McpView: React.FC<McpViewProps> = ({
                       </div>
                     ) : selectedServer.config?.['url'] ? (
                       <div>
-                        <span className="text-[#71717a]">url: </span>
-                        <span className="text-[#38bdf8]">{selectedServer.config['url']}</span>
+                        <span className="text-text-muted">url: </span>
+                        <span className="text-primary font-medium">
+                          {selectedServer.config['url']}
+                        </span>
                       </div>
                     ) : (
-                      <div className="text-[#71717a]">Sovereign standard configuration active.</div>
+                      <div className="text-text-muted">
+                        Sovereign standard configuration active.
+                      </div>
                     )}
                   </div>
                 </div>
 
                 {/* Discovered Protocol Tools Section */}
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between border-b border-[#1c1d24] pb-2">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-semibold text-white">
-                        Discovered Protocol Tools
-                      </h3>
-                      <span className="text-xs text-[#71717a]">({serverTools.length})</span>
+                      <h3 className="text-sm font-semibold text-text">Discovered Protocol Tools</h3>
+                      <span className="text-xs text-text-muted">({serverTools.length})</span>
                     </div>
-                    <span className="text-2xs text-[#71717a]">
+                    <span className="text-2xs text-text-muted">
                       Exposed as dynamic tools to Agent Orchestrator
                     </span>
                   </div>
 
                   {loadingTools ? (
-                    <div className="py-8 text-center text-xs text-[#71717a] animate-pulse">
+                    <div className="py-8 text-center text-xs text-text-muted animate-pulse">
                       Querying MCP tools/list protocol...
                     </div>
                   ) : serverTools.length === 0 ? (
-                    <div className="p-6 rounded-xl border border-dashed border-[#1c1d24] bg-[#0c0d10] text-center space-y-2">
-                      <p className="text-xs font-medium text-white">No tools discovered yet</p>
-                      <p className="text-xs text-[#71717a] max-w-sm mx-auto">
+                    <div className="p-6 rounded-xl border border-dashed border-border bg-surface text-center space-y-2">
+                      <p className="text-xs font-medium text-text">No tools discovered yet</p>
+                      <p className="text-xs text-text-muted max-w-sm mx-auto">
                         This server is connected. Click &quot;Sync Bridge&quot; or &quot;Refresh
                         Tools&quot; above to discover and register its available tools.
                       </p>
                       <button
                         type="button"
                         onClick={() => handleSyncBridge(selectedServer)}
-                        className="mt-2 px-3 py-1 rounded bg-[#3b82f6] text-white text-xs font-medium"
+                        className="mt-2 px-3 py-1 rounded bg-primary text-primary-foreground text-xs font-medium hover:bg-primary-hover"
                       >
                         Sync Bridge Now
                       </button>
@@ -1163,30 +1165,30 @@ export const McpView: React.FC<McpViewProps> = ({
                             key={tool.name}
                             className={`p-3.5 rounded-xl border transition-all ${
                               isTestingThis
-                                ? 'bg-[#141724] border-[#3b82f6]'
-                                : 'bg-[#0f1015] border-[#1c1d24] hover:border-[#2a2c38]'
+                                ? 'bg-primary/5 border-primary/50 shadow-xs'
+                                : 'bg-surface border-border hover:border-border-subtle hover:bg-surface-hover/30'
                             }`}
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-mono text-sm font-semibold text-white">
+                                  <span className="font-mono text-sm font-semibold text-text">
                                     {tool.name}
                                   </span>
-                                  <span className="px-2 py-0.2 rounded text-[10px] font-mono bg-[#1c1e28] text-[#93c5fd] border border-[#272b3b]">
+                                  <span className="px-2 py-0.2 rounded text-[10px] font-mono bg-surface-elevated text-text-secondary border border-border">
                                     connector.mcp.execute
                                   </span>
                                   {tool.readOnly ? (
-                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-sans bg-[#122216] text-[#86efac] border border-[#1c3822]">
+                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-sans bg-success/15 text-success border border-success/30 font-medium">
                                       Read-Only
                                     </span>
                                   ) : (
-                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-sans bg-[#2a1c12] text-[#fdba74] border border-[#432c1b]">
+                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-sans bg-warning/15 text-warning border border-warning/30 font-medium">
                                       Approval Gated
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-xs text-[#8b8e99] mt-1.5 leading-relaxed font-sans">
+                                <p className="text-xs text-text-secondary mt-1.5 leading-relaxed font-sans">
                                   {tool.description || 'No tool description provided by server.'}
                                 </p>
                               </div>
@@ -1205,8 +1207,8 @@ export const McpView: React.FC<McpViewProps> = ({
                                 }}
                                 className={`px-2.5 py-1 rounded text-xs font-sans font-medium transition-colors shrink-0 ${
                                   isTestingThis
-                                    ? 'bg-[#3b82f6] text-white'
-                                    : 'bg-[#181a22] hover:bg-[#222430] text-[#a1a1aa] hover:text-white border border-[#27272a]'
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-surface-elevated hover:bg-surface-hover text-text-secondary hover:text-text border border-border'
                                 }`}
                               >
                                 {isTestingThis ? 'Close Test' : 'Test Tool'}
@@ -1215,25 +1217,25 @@ export const McpView: React.FC<McpViewProps> = ({
 
                             {/* Interactive Test Runner Drawer */}
                             {isTestingThis && (
-                              <div className="mt-4 pt-3 border-t border-[#232532] space-y-3">
+                              <div className="mt-4 pt-3 border-t border-border space-y-3">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-xs font-semibold text-white font-sans">
+                                  <span className="text-xs font-semibold text-text font-sans">
                                     Tool Execution Playground
                                   </span>
-                                  <span className="text-2xs font-mono text-[#71717a]">
+                                  <span className="text-2xs font-mono text-text-muted">
                                     POST /connectors/{selectedServer.id}/mcp/call
                                   </span>
                                 </div>
 
                                 <div>
-                                  <label className="block text-2xs font-mono text-[#8b8e99] mb-1">
+                                  <label className="block text-2xs font-mono text-text-secondary mb-1">
                                     Arguments (JSON):
                                   </label>
                                   <textarea
                                     value={testArgsJson}
                                     onChange={(e) => setTestArgsJson(e.target.value)}
                                     rows={3}
-                                    className="w-full p-2 rounded bg-[#090a0d] border border-[#22242e] font-mono text-xs text-white focus:outline-none focus:border-[#3b82f6]"
+                                    className="w-full p-2 rounded bg-surface-elevated border border-border font-mono text-xs text-text focus:outline-none focus:border-primary placeholder:text-text-muted"
                                     placeholder='{ "query": "test" }'
                                   />
                                 </div>
@@ -1243,7 +1245,7 @@ export const McpView: React.FC<McpViewProps> = ({
                                     type="button"
                                     onClick={handleExecuteToolCall}
                                     disabled={testCalling}
-                                    className="px-3 py-1.5 rounded bg-[#22c55e] hover:bg-[#16a34a] text-black font-medium text-xs flex items-center gap-1.5 shadow-xs"
+                                    className="px-3 py-1.5 rounded bg-primary hover:bg-primary-hover text-primary-foreground font-medium text-xs flex items-center gap-1.5 shadow-xs"
                                   >
                                     {testCalling ? (
                                       <>
@@ -1274,7 +1276,7 @@ export const McpView: React.FC<McpViewProps> = ({
                                   </button>
 
                                   {testLatencyMs !== null && (
-                                    <span className="text-2xs font-mono text-[#86efac]">
+                                    <span className="text-2xs font-mono text-success">
                                       Latency: {testLatencyMs}ms
                                     </span>
                                   )}
@@ -1282,17 +1284,17 @@ export const McpView: React.FC<McpViewProps> = ({
 
                                 {/* Results viewer */}
                                 {testError && (
-                                  <div className="p-2.5 rounded bg-[#2d1215] border border-[#521c22] text-xs font-mono text-[#fca5a5]">
+                                  <div className="p-2.5 rounded bg-danger/10 border border-danger/30 text-xs font-mono text-danger">
                                     Error: {testError}
                                   </div>
                                 )}
 
                                 {testResult && (
                                   <div>
-                                    <label className="block text-2xs font-mono text-[#8b8e99] mb-1">
+                                    <label className="block text-2xs font-mono text-text-secondary mb-1">
                                       Result Output:
                                     </label>
-                                    <pre className="p-2.5 rounded bg-[#090a0d] border border-[#22242e] font-mono text-2xs text-[#86efac] max-h-48 overflow-auto">
+                                    <pre className="p-2.5 rounded bg-surface-elevated border border-border font-mono text-2xs text-text max-h-48 overflow-auto">
                                       {JSON.stringify(testResult, null, 2)}
                                     </pre>
                                   </div>
@@ -1310,11 +1312,11 @@ export const McpView: React.FC<McpViewProps> = ({
           </div>
         ) : (
           /* mcp.json Raw Manifest Editor (Full Height) */
-          <div className="flex-1 flex flex-col min-h-0 bg-[#09090b]">
-            <div className="px-4 py-2 border-b border-[#1c1d24] bg-[#0c0d10] flex items-center justify-between shrink-0">
+          <div className="flex-1 flex flex-col min-h-0 bg-surface">
+            <div className="px-4 py-2 border-b border-border bg-surface-elevated/70 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-medium text-white">mcp.json</span>
-                <span className="text-2xs font-mono text-[#71717a]">
+                <span className="text-xs font-mono font-medium text-text">mcp.json</span>
+                <span className="text-2xs font-mono text-text-muted">
                   (Claude Desktop / Cursor Compatible Manifest)
                 </span>
               </div>
@@ -1324,15 +1326,15 @@ export const McpView: React.FC<McpViewProps> = ({
                   navigator.clipboard.writeText(mcpConfigText);
                   toast({ tone: 'info', title: 'Copied mcp.json to clipboard' });
                 }}
-                className="text-xs text-[#8b8e99] hover:text-white transition-colors"
+                className="text-xs text-text-secondary hover:text-text transition-colors"
               >
                 Copy JSON
               </button>
             </div>
 
             {/* Editor with line numbers */}
-            <div className="flex-1 flex overflow-hidden bg-[#09090b] font-mono text-xs">
-              <div className="w-10 py-3 bg-[#0a0b0e] border-r border-[#171820] text-right pr-2 text-[#4b4e5c] select-none text-xs leading-5 shrink-0">
+            <div className="flex-1 flex overflow-hidden bg-surface font-mono text-xs">
+              <div className="w-10 py-3 bg-surface-elevated border-r border-border text-right pr-2 text-text-muted select-none text-xs leading-5 shrink-0">
                 {mcpConfigText.split('\n').map((_, idx) => (
                   <div key={idx}>{idx + 1}</div>
                 ))}
@@ -1345,24 +1347,24 @@ export const McpView: React.FC<McpViewProps> = ({
                   setIsEditorDirty(true);
                 }}
                 spellCheck={false}
-                className="flex-1 p-3 bg-transparent text-[#e4e4e7] focus:outline-none resize-none leading-5 overflow-auto selection:bg-[#28324f]"
+                className="flex-1 p-3 bg-transparent text-text focus:outline-none resize-none leading-5 overflow-auto selection:bg-primary/20"
               />
             </div>
           </div>
         )}
 
         {/* Bottom Console Logs */}
-        <div className="h-[200px] flex flex-col shrink-0 bg-[#07080c] border-t border-[#1c2030]">
-          <div className="px-4 py-2 border-b border-[#1c2030] bg-[#0c0e15] flex items-center justify-between shrink-0">
+        <div className="h-[200px] flex flex-col shrink-0 bg-surface border-t border-border">
+          <div className="px-4 py-2 border-b border-border bg-surface-elevated/70 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs font-sans font-semibold text-white">
+              <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
+              <span className="text-xs font-sans font-semibold text-text">
                 Console & Audit Logs
               </span>
               <select
                 value={logFilter}
                 onChange={(e) => setLogFilter(e.target.value)}
-                className="bg-[#11141e] border border-[#202636] rounded-md px-2 py-0.5 text-xs font-sans text-zinc-300 focus:outline-none cursor-pointer"
+                className="bg-surface border border-border rounded-md px-2 py-0.5 text-xs font-sans text-text focus:outline-none cursor-pointer"
               >
                 <option value="all">All events</option>
                 {installedServers.map((s) => (
@@ -1383,39 +1385,39 @@ export const McpView: React.FC<McpViewProps> = ({
                   navigator.clipboard.writeText(exportText);
                   toast({ tone: 'info', title: 'Logs copied to clipboard' });
                 }}
-                className="px-2 py-0.5 text-xs text-zinc-400 hover:text-white bg-[#141724] hover:bg-[#1a1f30] border border-[#242b3d] rounded transition-colors cursor-pointer"
+                className="px-2 py-0.5 text-xs text-text-secondary hover:text-text bg-surface-elevated hover:bg-surface-hover border border-border rounded transition-colors cursor-pointer"
               >
                 Copy Logs
               </button>
               <button
                 type="button"
                 onClick={() => setLogs([])}
-                className="px-2 py-0.5 text-xs text-zinc-400 hover:text-white bg-[#141724] hover:bg-[#1a1f30] border border-[#242b3d] rounded transition-colors cursor-pointer"
+                className="px-2 py-0.5 text-xs text-text-secondary hover:text-text bg-surface-elevated hover:bg-surface-hover border border-border rounded transition-colors cursor-pointer"
               >
                 Clear
               </button>
             </div>
           </div>
 
-          <div className="flex-1 p-3 overflow-y-auto font-mono text-xs leading-5 space-y-1 bg-[#07080c]">
+          <div className="flex-1 p-3 overflow-y-auto font-mono text-xs leading-5 space-y-1 bg-surface">
             {filteredLogs.length === 0 ? (
-              <div className="text-zinc-600 italic text-xs">No activity logged yet.</div>
+              <div className="text-text-muted italic text-xs">No activity logged yet.</div>
             ) : (
               filteredLogs.map((log) => (
                 <div
                   key={log.id}
                   className={`flex items-start gap-2 ${
                     log.level === 'error'
-                      ? 'text-rose-400'
+                      ? 'text-danger'
                       : log.level === 'success'
-                        ? 'text-emerald-400'
+                        ? 'text-success'
                         : log.level === 'warn'
-                          ? 'text-amber-400'
-                          : 'text-zinc-300'
+                          ? 'text-warning'
+                          : 'text-text-secondary'
                   }`}
                 >
-                  <span className="text-zinc-500 select-none text-xs">[{log.timestamp}]</span>
-                  <span className="text-zinc-600 select-none">&gt;</span>
+                  <span className="text-text-muted select-none text-xs">[{log.timestamp}]</span>
+                  <span className="text-text-muted select-none">&gt;</span>
                   <span className="break-all">{log.message}</span>
                 </div>
               ))

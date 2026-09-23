@@ -925,11 +925,11 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
       aria-modal="true"
       aria-labelledby="add-capability-modal-title"
       aria-describedby="add-capability-modal-desc"
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
     >
-      <div className="w-full max-w-5xl h-[670px] max-h-[90vh] bg-[#0c0d12] border border-[#232738] rounded-2xl shadow-2xl flex flex-col overflow-hidden text-[#f4f4f5] antialiased">
+      <div className="w-full max-w-5xl h-[670px] max-h-[90vh] bg-surface border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden text-text antialiased">
         {/* ── 1. Top Header: Title, Category Badge, and Mode Navigation ──────── */}
-        <header className="px-5 py-3 border-b border-[#1c1e28] bg-[#0f1118] flex items-center justify-between gap-4 shrink-0">
+        <header className="px-5 py-3 border-b border-border bg-surface-elevated flex items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center text-primary text-xs font-semibold shrink-0">
               <svg
@@ -946,11 +946,11 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
               <div className="flex items-center gap-2">
                 <h2
                   id="add-capability-modal-title"
-                  className="text-sm font-semibold text-white tracking-tight font-sans flex items-center gap-1.5"
+                  className="text-sm font-semibold text-text tracking-tight font-sans flex items-center gap-1.5"
                 >
                   <span>Add Custom Capability</span>
-                  <span className="text-[#52525b] font-normal">•</span>
-                  <span className="text-[#93c5fd] font-medium">
+                  <span className="text-text-muted font-normal">•</span>
+                  <span className="text-primary font-medium">
                     {capCategory === 'skills'
                       ? 'Skill Studio'
                       : capCategory === 'agents'
@@ -977,7 +977,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                   </Badge>
                 )}
               </div>
-              <p id="add-capability-modal-desc" className="text-xs text-[#a1a1aa] font-sans">
+              <p id="add-capability-modal-desc" className="text-xs text-text-muted font-sans">
                 {capCategory === 'skills'
                   ? 'Author Claude & Codex reasoning playbooks with sovereign operating rules'
                   : capCategory === 'agents'
@@ -992,18 +992,18 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
           </div>
 
           {/* Mode Switcher Buttons */}
-          <div className="flex items-center gap-1 p-0.5 rounded-lg bg-[#141620] border border-[#222533] text-xs font-sans">
+          <div className="flex items-center gap-1 p-0.5 rounded-lg bg-surface border border-border text-xs font-sans">
             <button
               type="button"
               onClick={() => setActiveTab('templates')}
               className={`px-3 py-1 rounded-md transition-all font-medium inline-flex items-center gap-1.5 ${
                 activeTab === 'templates'
-                  ? 'bg-[#222638] text-white shadow-xs'
-                  : 'text-[#8b8e99] hover:text-[#f4f4f5]'
+                  ? 'bg-surface-elevated text-text shadow-xs border border-border'
+                  : 'text-text-muted hover:text-text'
               }`}
             >
               <svg
-                className="w-3.5 h-3.5 text-amber-400"
+                className="w-3.5 h-3.5 text-warning"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -1018,12 +1018,12 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
               onClick={() => setActiveTab('builder')}
               className={`px-3 py-1 rounded-md transition-all font-medium inline-flex items-center gap-1.5 ${
                 activeTab === 'builder'
-                  ? 'bg-[#222638] text-white shadow-xs'
-                  : 'text-[#8b8e99] hover:text-[#f4f4f5]'
+                  ? 'bg-surface-elevated text-text shadow-xs border border-border'
+                  : 'text-text-muted hover:text-text'
               }`}
             >
               <svg
-                className="w-3.5 h-3.5 text-blue-400"
+                className="w-3.5 h-3.5 text-primary"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -1039,12 +1039,12 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
               onClick={() => setActiveTab('import')}
               className={`px-3 py-1 rounded-md transition-all font-medium inline-flex items-center gap-1.5 ${
                 activeTab === 'import'
-                  ? 'bg-[#222638] text-white shadow-xs'
-                  : 'text-[#8b8e99] hover:text-[#f4f4f5]'
+                  ? 'bg-surface-elevated text-text shadow-xs border border-border'
+                  : 'text-text-muted hover:text-text'
               }`}
             >
               <svg
-                className="w-3.5 h-3.5 text-emerald-400"
+                className="w-3.5 h-3.5 text-success"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -1062,7 +1062,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
           <button
             type="button"
             onClick={onClose}
-            className="text-[#8b8e99] hover:text-white p-1 rounded-lg hover:bg-[#181a24] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="text-text-muted hover:text-text p-1 rounded-lg hover:bg-surface-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             aria-label="Close modal"
           >
             <svg
@@ -1079,10 +1079,10 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
 
         {/* ── Notification Banners ────────────────────────────────────────── */}
         {validationError && (
-          <div className="px-5 py-2 bg-rose-950/40 border-b border-rose-900/40 flex items-center justify-between text-xs text-rose-300 font-sans shrink-0">
+          <div className="px-5 py-2 bg-danger/10 border-b border-danger/20 flex items-center justify-between text-xs text-danger font-sans shrink-0">
             <span className="flex items-center gap-2">
               <svg
-                className="w-3.5 h-3.5 text-rose-400"
+                className="w-3.5 h-3.5 text-danger"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -1099,7 +1099,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
             <button
               type="button"
               onClick={() => setValidationError(null)}
-              className="text-rose-400 hover:text-rose-200"
+              className="text-danger hover:text-danger/80"
             >
               ×
             </button>
@@ -1113,12 +1113,12 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
           {/* ──────────────────────────────────────────────────────────────── */}
           {activeTab === 'templates' && (
             <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#1c1e28]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-border">
                 <div>
-                  <h3 className="text-sm font-semibold text-white font-sans">
+                  <h3 className="text-sm font-semibold text-text font-sans">
                     Enterprise Production Scaffolds
                   </h3>
-                  <p className="text-xs text-[#a1a1aa] font-sans mt-0.5">
+                  <p className="text-xs text-text-muted font-sans mt-0.5">
                     Select a pre-configured template to bootstrap your capability with production
                     rules and typed schemas.
                   </p>
@@ -1130,13 +1130,13 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                     placeholder="Search blueprints..."
                     value={presetSearch}
                     onChange={(e) => setPresetSearch(e.target.value)}
-                    className="px-2.5 py-1 text-xs rounded-lg bg-[#141620] border border-[#222533] text-white focus:outline-none focus:border-primary w-44"
+                    className="px-2.5 py-1 text-xs rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary w-44"
                   />
                   <select
                     value={presetCategoryFilter}
                     onChange={(e) => setPresetCategoryFilter(e.target.value)}
                     aria-label="Filter presets by category"
-                    className="px-2 py-1 text-xs rounded-lg bg-[#141620] border border-[#222533] text-[#d4d4d8] focus:outline-none focus:border-primary"
+                    className="px-2 py-1 text-xs rounded-lg bg-surface border border-border text-text focus:outline-none focus:border-primary"
                   >
                     <option value="all">All Types</option>
                     <option value="skills">Skills</option>
@@ -1154,28 +1154,28 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                   <div
                     key={template.id}
                     onClick={() => handleSelectTemplate(template)}
-                    className="group p-3.5 rounded-xl border border-[#202330] bg-[#10121a] hover:bg-[#151824] hover:border-primary/50 transition-all cursor-pointer flex flex-col justify-between"
+                    className="group p-3.5 rounded-xl border border-border bg-surface-elevated hover:bg-surface-hover hover:border-primary/50 transition-all cursor-pointer flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-semibold text-white group-hover:text-primary transition-colors">
+                        <span className="text-xs font-semibold text-text group-hover:text-primary transition-colors">
                           {template.title}
                         </span>
                         <Badge variant="mono" size="sm" className="capitalize text-2xs">
                           {template.category}
                         </Badge>
                       </div>
-                      <p className="text-xs text-[#a1a1aa] line-clamp-2 leading-relaxed">
+                      <p className="text-xs text-text-muted line-clamp-2 leading-relaxed">
                         {template.description}
                       </p>
                     </div>
 
-                    <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-[#181a24] text-xs">
+                    <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border text-xs">
                       <div className="flex flex-wrap gap-1">
                         {template.tags.slice(0, 3).map((t) => (
                           <span
                             key={t}
-                            className="px-1.5 py-0.2 rounded text-2xs bg-[#161822] text-[#8b8e99] border border-[#222432]"
+                            className="px-1.5 py-0.2 rounded text-2xs bg-surface text-text-muted border border-border"
                           >
                             {t}
                           </span>
@@ -1198,7 +1198,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
             <form onSubmit={handleFinalSubmit} className="space-y-4">
               {/* Category Segmented Bar */}
               <div>
-                <label className="block text-xs font-medium text-[#a1a1aa] mb-1.5">
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">
                   Capability Category *
                 </label>
                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
@@ -1221,12 +1221,12 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         }}
                         className={`flex flex-col items-center justify-center p-2 rounded-xl border text-xs font-medium transition-all ${
                           isSel
-                            ? 'bg-primary/15 border-primary text-white shadow-xs ring-1 ring-primary/40'
-                            : 'bg-[#12131a] border-[#222430] text-[#8b8e99] hover:text-white hover:border-[#2f3244]'
+                            ? 'bg-primary/15 border-primary text-primary shadow-xs ring-1 ring-primary/40'
+                            : 'bg-surface border-border text-text-muted hover:text-text hover:bg-surface-hover'
                         }`}
                       >
-                        <span className="font-semibold text-xs text-white">{cat.label}</span>
-                        <span className="text-2xs text-[#71717a] font-normal">{cat.desc}</span>
+                        <span className="font-semibold text-xs text-text">{cat.label}</span>
+                        <span className="text-2xs text-text-muted font-normal">{cat.desc}</span>
                       </button>
                     );
                   })}
@@ -1244,11 +1244,11 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       <div className="flex items-center justify-between mb-1">
                         <label
                           htmlFor="cap-name-input"
-                          className="block text-xs font-medium text-[#a1a1aa]"
+                          className="block text-xs font-medium text-text-secondary"
                         >
                           Skill Name / Identifier *
                         </label>
-                        <span className="text-2xs font-mono text-[#71717a]">
+                        <span className="text-2xs font-mono text-text-muted">
                           slug: lowercase-hyphenated
                         </span>
                       </div>
@@ -1263,14 +1263,14 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                           setValidationError(null);
                         }}
                         placeholder="e.g. code-synthesizer or ats-scoring"
-                        className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-primary"
+                        className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-primary"
                       />
                     </div>
 
                     <div>
                       <label
                         htmlFor="cap-desc-input"
-                        className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                        className="block text-xs font-medium text-text-secondary mb-1"
                       >
                         When to Activate / Skill Description
                       </label>
@@ -1280,14 +1280,14 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         value={capDescription}
                         onChange={(e) => setCapDescription(e.target.value)}
                         placeholder="e.g. Activate when reviewing pull requests, evaluating code security, or checking diffs"
-                        className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary text-xs"
+                        className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary text-xs"
                       />
                     </div>
 
                     <div>
                       <label
                         htmlFor="cap-triggers-input"
-                        className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                        className="block text-xs font-medium text-text-secondary mb-1"
                       >
                         Routing &amp; Trigger Keywords (comma-separated)
                       </label>
@@ -1297,7 +1297,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         value={capTriggers}
                         onChange={(e) => setCapTriggers(e.target.value)}
                         placeholder="e.g. /review, /ats-audit, pr audit, check code quality"
-                        className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary text-xs font-mono"
+                        className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary text-xs font-mono"
                       />
                     </div>
 
@@ -1306,23 +1306,23 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       <div className="flex items-center justify-between mb-1">
                         <label
                           htmlFor="cap-tag-input-skills"
-                          className="text-xs font-medium text-[#a1a1aa]"
+                          className="text-xs font-medium text-text-secondary"
                         >
                           Tags &amp; Taxonomy
                         </label>
-                        <span className="text-xs text-[#71717a]">Click a chip to quickly add</span>
+                        <span className="text-xs text-text-muted">Click a chip to quickly add</span>
                       </div>
-                      <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-[#12141c] border border-[#232636] min-h-[38px]">
+                      <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-surface border border-border min-h-[38px]">
                         {capTags.map((tag) => (
                           <span
                             key={tag}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium bg-[#1a1c26] text-[#e4e4e7] border border-[#292c3a]"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium bg-surface-elevated text-text border border-border"
                           >
                             <span>{tag}</span>
                             <button
                               type="button"
                               onClick={() => handleRemoveTag(tag)}
-                              className="text-[#71717a] hover:text-white ml-0.5"
+                              className="text-text-muted hover:text-text ml-0.5"
                             >
                               ×
                             </button>
@@ -1340,7 +1340,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             }
                           }}
                           placeholder="+ Type tag and hit Enter..."
-                          className="bg-transparent text-xs text-white placeholder-[#71717a] focus:outline-none flex-1 min-w-[120px] px-1 font-sans"
+                          className="bg-transparent text-xs text-text placeholder:text-text-muted focus:outline-none flex-1 min-w-[120px] px-1 font-sans"
                         />
                       </div>
 
@@ -1353,7 +1353,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                               key={suggest}
                               type="button"
                               onClick={() => handleAddTag(suggest)}
-                              className="text-2xs px-1.5 py-0.2 rounded bg-[#10121a] text-[#8b8e99] hover:text-white hover:bg-[#181a24] border border-[#20222e] transition-colors"
+                              className="text-2xs px-1.5 py-0.2 rounded bg-surface-elevated text-text-muted hover:text-text hover:bg-surface-hover border border-border transition-colors"
                             >
                               + {suggest}
                             </button>
@@ -1362,16 +1362,16 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                     </div>
 
                     {/* Claude & Codex Directives Card */}
-                    <div className="p-3 rounded-xl bg-[#101118] border border-[#202330] space-y-1.5">
+                    <div className="p-3 rounded-xl bg-surface-elevated border border-border space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-white">
+                        <span className="text-xs font-semibold text-text">
                           Claude &amp; Codex Directives
                         </span>
                         <Badge variant="mono" size="sm" className="text-2xs">
                           SKILL.md Spec
                         </Badge>
                       </div>
-                      <p className="text-xs text-[#8b8e99] leading-relaxed">
+                      <p className="text-xs text-text-muted leading-relaxed">
                         Skills inject deterministic prompts and operating rules into agent context
                         windows. They provide multi-step guidelines without requiring code execution
                         or approval gates.
@@ -1380,9 +1380,9 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                   </div>
 
                   {/* Right Column: Playbook Markdown Studio (col-span-6) */}
-                  <div className="md:col-span-6 flex flex-col min-h-[380px] bg-[#090a0f] rounded-xl border border-[#1e202d] p-3.5 space-y-2.5">
-                    <div className="flex items-center justify-between pb-2 border-b border-[#1a1c26]">
-                      <span className="font-semibold text-white text-xs">
+                  <div className="md:col-span-6 flex flex-col min-h-[380px] bg-surface-elevated rounded-xl border border-border p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between pb-2 border-b border-border">
+                      <span className="font-semibold text-text text-xs">
                         Playbook Documentation &amp; Rules
                       </span>
                       <button
@@ -1400,21 +1400,21 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         value={capDoc}
                         onChange={(e) => setCapDoc(e.target.value)}
                         placeholder={`# ${capName || 'Skill Title'}\n\n## Mission\nExecute mission with verifiable evidence.\n\n## Operating Rules\n1. Always verify assumptions.`}
-                        className="w-full flex-1 p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary font-mono text-xs leading-relaxed resize-none"
+                        className="w-full flex-1 p-2.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary font-mono text-xs leading-relaxed resize-none"
                       />
                     ) : (
-                      <div className="w-full flex-1 p-3 rounded-lg bg-[#12141c] border border-[#232636] text-[#e4e4e7] overflow-y-auto max-h-[290px] prose prose-invert prose-xs max-w-none">
+                      <div className="w-full flex-1 p-3 rounded-lg bg-surface border border-border text-text overflow-y-auto max-h-[290px] prose dark:prose-invert prose-xs max-w-none">
                         {capDoc ? (
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>{capDoc}</ReactMarkdown>
                         ) : (
-                          <span className="text-[#71717a] italic">
+                          <span className="text-text-muted italic">
                             No documentation entered yet.
                           </span>
                         )}
                       </div>
                     )}
 
-                    <div className="flex flex-wrap items-center gap-1 pt-1 text-2xs text-[#71717a]">
+                    <div className="flex flex-wrap items-center gap-1 pt-1 text-2xs text-text-muted">
                       <span>Insert:</span>
                       <button
                         type="button"
@@ -1424,7 +1424,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                               `${prev}\n\n## Mission\nExecute mission with verifiable evidence.`,
                           )
                         }
-                        className="px-1.5 py-0.5 rounded bg-[#141620] hover:text-white border border-[#232636]"
+                        className="px-1.5 py-0.5 rounded bg-surface hover:text-text hover:bg-surface-hover border border-border transition-colors"
                       >
                         + Mission
                       </button>
@@ -1436,7 +1436,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                               `${prev}\n\n## Operating Rules\n1. Enforce zero-trust boundaries.\n2. Fall back to deterministic heuristics.`,
                           )
                         }
-                        className="px-1.5 py-0.5 rounded bg-[#141620] hover:text-white border border-[#232636]"
+                        className="px-1.5 py-0.5 rounded bg-surface hover:text-text hover:bg-surface-hover border border-border transition-colors"
                       >
                         + Rules
                       </button>
@@ -1448,7 +1448,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                               `${prev}\n\n## Security Fence\nRequires supervisor audit before network egress.`,
                           )
                         }
-                        className="px-1.5 py-0.5 rounded bg-[#141620] hover:text-white border border-[#232636]"
+                        className="px-1.5 py-0.5 rounded bg-surface hover:text-text hover:bg-surface-hover border border-border transition-colors"
                       >
                         + Security
                       </button>
@@ -1468,7 +1468,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       <div className="flex items-center justify-between mb-1">
                         <label
                           htmlFor="cap-name-input"
-                          className="block text-xs font-medium text-[#a1a1aa]"
+                          className="block text-xs font-medium text-text-secondary"
                         >
                           Agent Name / Identifier *
                         </label>
@@ -1487,14 +1487,14 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                           setValidationError(null);
                         }}
                         placeholder="e.g. code-synthesizer or ats-scoring"
-                        className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-primary"
+                        className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-primary"
                       />
                     </div>
 
                     <div>
                       <label
                         htmlFor="cap-desc-input"
-                        className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                        className="block text-xs font-medium text-text-secondary mb-1"
                       >
                         Agent Role Mission &amp; Specialization
                       </label>
@@ -1504,7 +1504,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         value={capDescription}
                         onChange={(e) => setCapDescription(e.target.value)}
                         placeholder="e.g. Autonomous forensic auditor validating zero-trust evidence and pull requests"
-                        className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary text-xs"
+                        className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary text-xs"
                       />
                     </div>
 
@@ -1513,7 +1513,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       <div>
                         <label
                           htmlFor="agent-archetype-select"
-                          className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                          className="block text-xs font-medium text-text-secondary mb-1"
                         >
                           Role Archetype
                         </label>
@@ -1521,7 +1521,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                           id="agent-archetype-select"
                           value={agentArchetype}
                           onChange={(e) => setAgentArchetype(e.target.value as any)}
-                          className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
+                          className="w-full px-2 py-1.5 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
                         >
                           <option value="specialist">Specialist Worker</option>
                           <option value="supervisor">Supervisor Orchestrator</option>
@@ -1531,7 +1531,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       <div>
                         <label
                           htmlFor="cap-autonomy-select"
-                          className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                          className="block text-xs font-medium text-text-secondary mb-1"
                         >
                           Autonomy Policy
                         </label>
@@ -1543,7 +1543,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                               e.target.value as 'autonomous' | 'approval_required' | 'suggest',
                             )
                           }
-                          className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
+                          className="w-full px-2 py-1.5 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
                         >
                           <option value="autonomous">Autonomous Execution</option>
                           <option value="approval_required">Human Approval Gate</option>
@@ -1557,7 +1557,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       <div>
                         <label
                           htmlFor="agent-model-select"
-                          className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                          className="block text-xs font-medium text-text-secondary mb-1"
                         >
                           Model Tier
                         </label>
@@ -1565,7 +1565,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                           id="agent-model-select"
                           value={agentModelTier}
                           onChange={(e) => setAgentModelTier(e.target.value as any)}
-                          className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
+                          className="w-full px-2 py-1.5 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
                         >
                           <option value="pro">Pro (Claude 3.7 / GPT-4o)</option>
                           <option value="flash">Flash (Fast Heuristic)</option>
@@ -1575,7 +1575,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       <div>
                         <label
                           htmlFor="agent-max-turns"
-                          className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                          className="block text-xs font-medium text-text-secondary mb-1"
                         >
                           Max ReAct Rounds
                         </label>
@@ -1586,14 +1586,14 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                           max={30}
                           value={agentMaxTurns}
                           onChange={(e) => setAgentMaxTurns(parseInt(e.target.value, 10) || 12)}
-                          className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs"
+                          className="w-full px-2 py-1.5 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
                         />
                       </div>
                     </div>
 
                     {/* Tool Fleet Assignment Checkboxes */}
                     <div>
-                      <label className="block text-xs font-medium text-[#a1a1aa] mb-1.5">
+                      <label className="block text-xs font-medium text-text-secondary mb-1.5">
                         Assigned Workspace Tools ({agentSelectedTools.length} selected)
                       </label>
                       <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto pr-1">
@@ -1604,8 +1604,8 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                               key={tool.id}
                               className={`flex items-center gap-2 p-1.5 rounded border text-xs cursor-pointer transition-colors ${
                                 checked
-                                  ? 'bg-[#181a24] border-primary/50 text-white'
-                                  : 'bg-[#12141c] border-[#222432] text-[#8b8e99] hover:text-white'
+                                  ? 'bg-primary/10 border-primary/40 text-primary'
+                                  : 'bg-surface border-border text-text-muted hover:text-text hover:bg-surface-hover'
                               }`}
                             >
                               <input
@@ -1618,7 +1618,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                                       : [...prev, tool.id],
                                   );
                                 }}
-                                className="rounded border-[#2c2e3c] bg-[#151722] text-primary"
+                                className="rounded border-border bg-surface text-primary accent-primary"
                               />
                               <span className="font-mono text-xs truncate">{tool.name}</span>
                             </label>
@@ -1631,21 +1631,21 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                     <div>
                       <label
                         htmlFor="cap-tag-input-agent"
-                        className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                        className="block text-xs font-medium text-text-secondary mb-1"
                       >
                         Tags &amp; Archetype Taxonomy
                       </label>
-                      <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-[#12141c] border border-[#232636] min-h-[38px]">
+                      <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-surface border border-border min-h-[38px]">
                         {capTags.map((tag) => (
                           <span
                             key={tag}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium bg-[#1a1c26] text-[#e4e4e7] border border-[#292c3a]"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium bg-surface-elevated text-text border border-border"
                           >
                             <span>{tag}</span>
                             <button
                               type="button"
                               onClick={() => handleRemoveTag(tag)}
-                              className="text-[#71717a] hover:text-white ml-0.5"
+                              className="text-text-muted hover:text-text ml-0.5"
                             >
                               ×
                             </button>
@@ -1663,23 +1663,23 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             }
                           }}
                           placeholder="+ Type tag and hit Enter..."
-                          className="bg-transparent text-xs text-white placeholder-[#71717a] focus:outline-none flex-1 min-w-[120px] px-1 font-sans"
+                          className="bg-transparent text-xs text-text placeholder:text-text-muted focus:outline-none flex-1 min-w-[120px] px-1 font-sans"
                         />
                       </div>
                     </div>
                   </div>
 
                   {/* Right Column: System Template & AgentCard JSON (col-span-6) */}
-                  <div className="md:col-span-6 flex flex-col min-h-[380px] bg-[#090a0f] rounded-xl border border-[#1e202d] p-3.5 space-y-2.5">
-                    <div className="flex items-center justify-between pb-2 border-b border-[#1a1c26]">
+                  <div className="md:col-span-6 flex flex-col min-h-[380px] bg-surface-elevated rounded-xl border border-border p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between pb-2 border-b border-border">
                       <div className="flex items-center gap-2 text-xs">
                         <button
                           type="button"
                           onClick={() => setAgentRightTab('prompt')}
                           className={`font-medium pb-0.5 border-b-2 transition-colors ${
                             agentRightTab === 'prompt'
-                              ? 'text-white border-primary'
-                              : 'text-[#8b8e99] border-transparent hover:text-white'
+                              ? 'text-primary border-primary'
+                              : 'text-text-muted border-transparent hover:text-text'
                           }`}
                         >
                           System Template (Jinja2)
@@ -1689,8 +1689,8 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                           onClick={() => setAgentRightTab('card')}
                           className={`font-medium pb-0.5 border-b-2 transition-colors ${
                             agentRightTab === 'card'
-                              ? 'text-white border-primary'
-                              : 'text-[#8b8e99] border-transparent hover:text-white'
+                              ? 'text-primary border-primary'
+                              : 'text-text-muted border-transparent hover:text-text'
                           }`}
                         >
                           AgentCard JSON
@@ -1704,9 +1704,9 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                           rows={11}
                           value={agentPromptTemplate}
                           onChange={(e) => setAgentPromptTemplate(e.target.value)}
-                          className="w-full flex-1 p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary font-mono text-xs leading-relaxed resize-none"
+                          className="w-full flex-1 p-2.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary font-mono text-xs leading-relaxed resize-none"
                         />
-                        <div className="flex flex-wrap items-center gap-1 pt-1 text-2xs text-[#71717a]">
+                        <div className="flex flex-wrap items-center gap-1 pt-1 text-2xs text-text-muted">
                           <span>Insert Context:</span>
                           <button
                             type="button"
@@ -1715,7 +1715,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                                 (prev) => `${prev}\n\nUSER PROFILE:\n{{ profile | tojson }}`,
                               )
                             }
-                            className="px-1.5 py-0.5 rounded bg-[#141620] hover:text-white border border-[#232636]"
+                            className="px-1.5 py-0.5 rounded bg-surface hover:text-text hover:bg-surface-hover border border-border transition-colors"
                           >
                             + profile
                           </button>
@@ -1727,7 +1727,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                                   `${prev}\n\nRETRIEVED KNOWLEDGE:\n{{ rag_context | tojson }}`,
                               )
                             }
-                            className="px-1.5 py-0.5 rounded bg-[#141620] hover:text-white border border-[#232636]"
+                            className="px-1.5 py-0.5 rounded bg-surface hover:text-text hover:bg-surface-hover border border-border transition-colors"
                           >
                             + rag_context
                           </button>
@@ -1738,7 +1738,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                                 (prev) => `${prev}\n\nAVAILABLE TOOLS:\n{{ tools | tojson }}`,
                               )
                             }
-                            className="px-1.5 py-0.5 rounded bg-[#141620] hover:text-white border border-[#232636]"
+                            className="px-1.5 py-0.5 rounded bg-surface hover:text-text hover:bg-surface-hover border border-border transition-colors"
                           >
                             + tools
                           </button>
@@ -1747,7 +1747,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                     )}
 
                     {agentRightTab === 'card' && (
-                      <div className="p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-[#93c5fd] font-mono text-xs overflow-x-auto max-h-[290px] whitespace-pre select-all">
+                      <div className="p-2.5 rounded-lg bg-surface border border-border text-primary font-mono text-xs overflow-x-auto max-h-[290px] whitespace-pre select-all">
                         {generatedSpecString}
                       </div>
                     )}
@@ -1761,12 +1761,12 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
               {capCategory === 'mcp' && (
                 <div className="space-y-3">
                   {/* Top Protocol Banner */}
-                  <div className="p-2.5 rounded-xl bg-[#101118] border border-[#222430] flex items-center justify-between">
+                  <div className="p-2.5 rounded-xl bg-surface-elevated border border-border flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <h4 className="font-semibold text-white text-xs">
+                      <h4 className="font-semibold text-text text-xs">
                         MCP Protocol Configuration
                       </h4>
-                      <span className="text-xs text-[#71717a]">
+                      <span className="text-xs text-text-muted">
                         Model Context Protocol v2 Connector Bridge
                       </span>
                     </div>
@@ -1781,7 +1781,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       <div>
                         <label
                           htmlFor="cap-name-input"
-                          className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                          className="block text-xs font-medium text-text-secondary mb-1"
                         >
                           MCP Server Identifier *
                         </label>
@@ -1796,14 +1796,14 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             setValidationError(null);
                           }}
                           placeholder="e.g. code-synthesizer or ats-scoring"
-                          className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-primary"
+                          className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-primary"
                         />
                       </div>
 
                       <div>
                         <label
                           htmlFor="cap-desc-input"
-                          className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                          className="block text-xs font-medium text-text-secondary mb-1"
                         >
                           Server Description &amp; Scope
                         </label>
@@ -1813,7 +1813,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                           value={capDescription}
                           onChange={(e) => setCapDescription(e.target.value)}
                           placeholder="e.g. Connects local filesystem tools or remote GitHub MCP server"
-                          className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary text-xs"
+                          className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary text-xs"
                         />
                       </div>
 
@@ -1821,7 +1821,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         <div>
                           <label
                             htmlFor="mcp-transport-select"
-                            className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                            className="block text-xs font-medium text-text-secondary mb-1"
                           >
                             Transport
                           </label>
@@ -1829,7 +1829,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             id="mcp-transport-select"
                             value={mcpTransport}
                             onChange={(e) => setMcpTransport(e.target.value as 'stdio' | 'sse')}
-                            className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
+                            className="w-full px-2 py-1.5 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
                           >
                             <option value="stdio">stdio (Local Command)</option>
                             <option value="sse">Streamable HTTP / SSE</option>
@@ -1838,7 +1838,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         <div className="sm:col-span-2">
                           <label
                             htmlFor="mcp-cmd-input"
-                            className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                            className="block text-xs font-medium text-text-secondary mb-1"
                           >
                             {mcpTransport === 'stdio' ? 'Command & Arguments' : 'SSE Endpoint URL'}
                           </label>
@@ -1852,14 +1852,14 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                                 ? 'e.g. npx -y @modelcontextprotocol/server-filesystem /path'
                                 : 'https://api.my-mcp.internal/sse'
                             }
-                            className="w-full px-2.5 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white font-mono text-xs focus:outline-none focus:border-primary"
+                            className="w-full px-2.5 py-1.5 rounded bg-surface border border-border text-text font-mono text-xs placeholder:text-text-muted focus:outline-none focus:border-primary"
                           />
                         </div>
                       </div>
 
                       {/* Env Vars */}
                       <div>
-                        <label className="block text-xs font-medium text-[#a1a1aa] mb-1">
+                        <label className="block text-xs font-medium text-text-secondary mb-1">
                           Environment Variables &amp; Vault Secrets
                         </label>
                         <div className="flex items-center gap-1.5">
@@ -1868,14 +1868,14 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             placeholder="KEY"
                             value={mcpEnvKey}
                             onChange={(e) => setMcpEnvKey(e.target.value)}
-                            className="w-1/3 px-2 py-1 rounded bg-[#151722] border border-[#272a38] text-white font-mono text-xs focus:outline-none focus:border-primary"
+                            className="w-1/3 px-2 py-1 rounded bg-surface border border-border text-text font-mono text-xs placeholder:text-text-muted focus:outline-none focus:border-primary"
                           />
                           <input
                             type="password"
                             placeholder="SECRET_VAL"
                             value={mcpEnvVal}
                             onChange={(e) => setMcpEnvVal(e.target.value)}
-                            className="flex-1 px-2 py-1 rounded bg-[#151722] border border-[#272a38] text-white font-mono text-xs focus:outline-none focus:border-primary"
+                            className="flex-1 px-2 py-1 rounded bg-surface border border-border text-text font-mono text-xs placeholder:text-text-muted focus:outline-none focus:border-primary"
                           />
                           <Button
                             type="button"
@@ -1892,7 +1892,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             {mcpEnvList.map((env, i) => (
                               <span
                                 key={i}
-                                className="px-2 py-0.5 rounded bg-[#161822] border border-[#262938] text-2xs font-mono text-[#93c5fd] flex items-center gap-1"
+                                className="px-2 py-0.5 rounded bg-surface-elevated border border-border text-2xs font-mono text-primary flex items-center gap-1"
                               >
                                 <span>{env.key}=••••••</span>
                                 <button
@@ -1900,7 +1900,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                                   onClick={() =>
                                     setMcpEnvList((prev) => prev.filter((_, idx) => idx !== i))
                                   }
-                                  className="text-[#71717a] hover:text-white"
+                                  className="text-text-muted hover:text-text"
                                 >
                                   ×
                                 </button>
@@ -1914,21 +1914,21 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       <div>
                         <label
                           htmlFor="cap-tag-input-mcp"
-                          className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                          className="block text-xs font-medium text-text-secondary mb-1"
                         >
                           Tags &amp; Taxonomy
                         </label>
-                        <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-[#12141c] border border-[#232636] min-h-[38px]">
+                        <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-surface border border-border min-h-[38px]">
                           {capTags.map((tag) => (
                             <span
                               key={tag}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium bg-[#1a1c26] text-[#e4e4e7] border border-[#292c3a]"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium bg-surface-elevated text-text border border-border"
                             >
                               <span>{tag}</span>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveTag(tag)}
-                                className="text-[#71717a] hover:text-white ml-0.5"
+                                className="text-text-muted hover:text-text ml-0.5"
                               >
                                 ×
                               </button>
@@ -1946,23 +1946,23 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                               }
                             }}
                             placeholder="+ Type tag and hit Enter..."
-                            className="bg-transparent text-xs text-white placeholder-[#71717a] focus:outline-none flex-1 min-w-[120px] px-1 font-sans"
+                            className="bg-transparent text-xs text-text placeholder:text-text-muted focus:outline-none flex-1 min-w-[120px] px-1 font-sans"
                           />
                         </div>
                       </div>
                     </div>
 
                     {/* Right Column: Manifest, Tools, Audit (col-span-6) */}
-                    <div className="md:col-span-6 flex flex-col min-h-[380px] bg-[#090a0f] rounded-xl border border-[#1e202d] p-3.5 space-y-2.5">
-                      <div className="flex items-center justify-between pb-2 border-b border-[#1a1c26]">
+                    <div className="md:col-span-6 flex flex-col min-h-[380px] bg-surface-elevated rounded-xl border border-border p-3.5 space-y-2.5">
+                      <div className="flex items-center justify-between pb-2 border-b border-border">
                         <div className="flex items-center gap-2 text-xs">
                           <button
                             type="button"
                             onClick={() => setMcpRightTab('manifest')}
                             className={`font-medium pb-0.5 border-b-2 transition-colors ${
                               mcpRightTab === 'manifest'
-                                ? 'text-white border-primary'
-                                : 'text-[#8b8e99] border-transparent hover:text-white'
+                                ? 'text-primary border-primary'
+                                : 'text-text-muted border-transparent hover:text-text'
                             }`}
                           >
                             mcp.json Manifest
@@ -1972,8 +1972,8 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             onClick={() => setMcpRightTab('tools')}
                             className={`font-medium pb-0.5 border-b-2 transition-colors ${
                               mcpRightTab === 'tools'
-                                ? 'text-white border-primary'
-                                : 'text-[#8b8e99] border-transparent hover:text-white'
+                                ? 'text-primary border-primary'
+                                : 'text-text-muted border-transparent hover:text-text'
                             }`}
                           >
                             Exposed Tools
@@ -1983,8 +1983,8 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             onClick={() => setMcpRightTab('audit')}
                             className={`font-medium pb-0.5 border-b-2 transition-colors ${
                               mcpRightTab === 'audit'
-                                ? 'text-white border-primary'
-                                : 'text-[#8b8e99] border-transparent hover:text-white'
+                                ? 'text-primary border-primary'
+                                : 'text-text-muted border-transparent hover:text-text'
                             }`}
                           >
                             Zero-Trust Audit
@@ -1994,10 +1994,10 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
 
                       {mcpRightTab === 'manifest' && (
                         <div className="flex-1 flex flex-col justify-between">
-                          <div className="p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-[#93c5fd] font-mono text-xs overflow-x-auto max-h-[290px] whitespace-pre leading-relaxed select-all">
+                          <div className="p-2.5 rounded-lg bg-surface border border-border text-primary font-mono text-xs overflow-x-auto max-h-[290px] whitespace-pre leading-relaxed select-all">
                             {generatedSpecString}
                           </div>
-                          <div className="flex items-center justify-between text-2xs text-[#71717a] mt-2">
+                          <div className="flex items-center justify-between text-2xs text-text-muted mt-2">
                             <span>Standard MCP v2 Client configuration schema</span>
                             <button
                               type="button"
@@ -2014,18 +2014,18 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
 
                       {mcpRightTab === 'tools' && (
                         <div className="flex-1 space-y-2 p-1 overflow-y-auto text-xs">
-                          <p className="text-[#a1a1aa] text-xs">
+                          <p className="text-text-secondary text-xs">
                             Tools discovered dynamically on server startup under scope{' '}
-                            <code className="text-[#93c5fd]">connector.mcp.execute</code>:
+                            <code className="text-primary">connector.mcp.execute</code>:
                           </p>
-                          <div className="p-2.5 rounded-lg bg-[#12141c] border border-[#222432] space-y-2 font-mono text-xs">
-                            <div className="flex items-center justify-between text-[#e4e4e7]">
+                          <div className="p-2.5 rounded-lg bg-surface border border-border space-y-2 font-mono text-xs">
+                            <div className="flex items-center justify-between text-text">
                               <span>mcp__{capName || 'server'}__query</span>
                               <Badge variant="mono" size="sm">
                                 Read-Only
                               </Badge>
                             </div>
-                            <div className="flex items-center justify-between text-[#e4e4e7]">
+                            <div className="flex items-center justify-between text-text">
                               <span>mcp__{capName || 'server'}__mutate</span>
                               <Badge variant="warning" size="sm">
                                 Approval-Gated
@@ -2037,11 +2037,11 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
 
                       {mcpRightTab === 'audit' && (
                         <div className="flex-1 space-y-2 p-1 text-xs">
-                          <div className="p-2.5 rounded-lg bg-[#11131a] border border-[#1e202d] space-y-1.5">
-                            <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
+                          <div className="p-2.5 rounded-lg bg-surface border border-border space-y-1.5">
+                            <span className="text-success font-semibold flex items-center gap-1.5">
                               ✓ Zero-Trust Subprocess Isolation Passed
                             </span>
-                            <p className="text-xs text-[#a1a1aa]">
+                            <p className="text-xs text-text-secondary">
                               Shell metacharacters denied; environment variables encrypted
                               per-workspace key.
                             </p>
@@ -2059,12 +2059,12 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
               {capCategory === 'plugins' && (
                 <div className="space-y-3">
                   {/* Top Scope Banner */}
-                  <div className="p-2.5 rounded-xl bg-[#101118] border border-[#222430] flex items-center justify-between">
+                  <div className="p-2.5 rounded-xl bg-surface-elevated border border-border flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <h4 className="font-semibold text-white text-xs">
+                      <h4 className="font-semibold text-text text-xs">
                         Plugin Sandbox &amp; Scope Architecture
                       </h4>
-                      <span className="text-xs text-[#71717a]">
+                      <span className="text-xs text-text-muted">
                         Subprocess-isolated Python lifecycle interceptor
                       </span>
                     </div>
@@ -2079,7 +2079,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       <div>
                         <label
                           htmlFor="cap-name-input"
-                          className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                          className="block text-xs font-medium text-text-secondary mb-1"
                         >
                           Plugin Name / Identifier *
                         </label>
@@ -2094,14 +2094,14 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             setValidationError(null);
                           }}
                           placeholder="e.g. code-synthesizer or ats-scoring"
-                          className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-primary"
+                          className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-primary"
                         />
                       </div>
 
                       <div>
                         <label
                           htmlFor="cap-desc-input"
-                          className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                          className="block text-xs font-medium text-text-secondary mb-1"
                         >
                           Summary Description
                         </label>
@@ -2111,7 +2111,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                           value={capDescription}
                           onChange={(e) => setCapDescription(e.target.value)}
                           placeholder="Brief description explaining when agents should activate this capability"
-                          className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary text-xs"
+                          className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary text-xs"
                         />
                       </div>
 
@@ -2119,7 +2119,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         <div>
                           <label
                             htmlFor="plugin-target-select"
-                            className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                            className="block text-xs font-medium text-text-secondary mb-1"
                           >
                             Execution Target
                           </label>
@@ -2127,7 +2127,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             id="plugin-target-select"
                             value={pluginTarget}
                             onChange={(e) => setPluginTarget(e.target.value as any)}
-                            className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
+                            className="w-full px-2 py-1.5 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
                           >
                             <option value="both">Both (Desktop UI &amp; Agent Runtime)</option>
                             <option value="desktop">Desktop UI Only</option>
@@ -2137,7 +2137,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         <div>
                           <label
                             htmlFor="plugin-hook-select"
-                            className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                            className="block text-xs font-medium text-text-secondary mb-1"
                           >
                             Lifecycle Hook Point
                           </label>
@@ -2145,7 +2145,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             id="plugin-hook-select"
                             value={pluginHook}
                             onChange={(e) => setPluginHook(e.target.value as any)}
-                            className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
+                            className="w-full px-2 py-1.5 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
                           >
                             <option value="on_tool_call">
                               on_tool_call (Inspect / Egress DLP)
@@ -2162,7 +2162,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         <div>
                           <label
                             htmlFor="plugin-author-input"
-                            className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                            className="block text-xs font-medium text-text-secondary mb-1"
                           >
                             Author / Organization
                           </label>
@@ -2171,13 +2171,13 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             type="text"
                             value={pluginAuthor}
                             onChange={(e) => setPluginAuthor(e.target.value)}
-                            className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs"
+                            className="w-full px-2 py-1.5 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
                           />
                         </div>
                         <div>
                           <label
                             htmlFor="plugin-license-input"
-                            className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                            className="block text-xs font-medium text-text-secondary mb-1"
                           >
                             SPDX License
                           </label>
@@ -2186,7 +2186,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             type="text"
                             value={pluginLicense}
                             onChange={(e) => setPluginLicense(e.target.value)}
-                            className="w-full px-2 py-1.5 rounded bg-[#151722] border border-[#272a38] text-white text-xs"
+                            className="w-full px-2 py-1.5 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
                           />
                         </div>
                       </div>
@@ -2195,21 +2195,21 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       <div>
                         <label
                           htmlFor="cap-tag-input-plugin"
-                          className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                          className="block text-xs font-medium text-text-secondary mb-1"
                         >
                           Tags &amp; Taxonomy
                         </label>
-                        <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-[#12141c] border border-[#232636] min-h-[38px]">
+                        <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-surface border border-border min-h-[38px]">
                           {capTags.map((tag) => (
                             <span
                               key={tag}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium bg-[#1a1c26] text-[#e4e4e7] border border-[#292c3a]"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium bg-surface-elevated text-text border border-border"
                             >
                               <span>{tag}</span>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveTag(tag)}
-                                className="text-[#71717a] hover:text-white ml-0.5"
+                                className="text-text-muted hover:text-text ml-0.5"
                               >
                                 ×
                               </button>
@@ -2227,23 +2227,23 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                               }
                             }}
                             placeholder="+ Type tag and hit Enter..."
-                            className="bg-transparent text-xs text-white placeholder-[#71717a] focus:outline-none flex-1 min-w-[120px] px-1 font-sans"
+                            className="bg-transparent text-xs text-text placeholder:text-text-muted focus:outline-none flex-1 min-w-[120px] px-1 font-sans"
                           />
                         </div>
                       </div>
                     </div>
 
                     {/* Right Column: Code Editor & Simulator (col-span-6) */}
-                    <div className="md:col-span-6 flex flex-col min-h-[380px] bg-[#090a0f] rounded-xl border border-[#1e202d] p-3.5 space-y-2.5">
-                      <div className="flex items-center justify-between pb-2 border-b border-[#1a1c26]">
+                    <div className="md:col-span-6 flex flex-col min-h-[380px] bg-surface-elevated rounded-xl border border-border p-3.5 space-y-2.5">
+                      <div className="flex items-center justify-between pb-2 border-b border-border">
                         <div className="flex items-center gap-2 text-xs">
                           <button
                             type="button"
                             onClick={() => setPluginRightTab('code')}
                             className={`font-medium pb-0.5 border-b-2 transition-colors ${
                               pluginRightTab === 'code'
-                                ? 'text-white border-primary'
-                                : 'text-[#8b8e99] border-transparent hover:text-white'
+                                ? 'text-primary border-primary'
+                                : 'text-text-muted border-transparent hover:text-text'
                             }`}
                           >
                             Python Sandbox Code
@@ -2253,8 +2253,8 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             onClick={() => setPluginRightTab('test')}
                             className={`font-medium pb-0.5 border-b-2 transition-colors ${
                               pluginRightTab === 'test'
-                                ? 'text-white border-primary'
-                                : 'text-[#8b8e99] border-transparent hover:text-white'
+                                ? 'text-primary border-primary'
+                                : 'text-text-muted border-transparent hover:text-text'
                             }`}
                           >
                             Test Simulator
@@ -2264,8 +2264,8 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             onClick={() => setPluginRightTab('manifest')}
                             className={`font-medium pb-0.5 border-b-2 transition-colors ${
                               pluginRightTab === 'manifest'
-                                ? 'text-white border-primary'
-                                : 'text-[#8b8e99] border-transparent hover:text-white'
+                                ? 'text-primary border-primary'
+                                : 'text-text-muted border-transparent hover:text-text'
                             }`}
                           >
                             plugin.json
@@ -2279,9 +2279,9 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             rows={11}
                             value={pluginCode}
                             onChange={(e) => setPluginCode(e.target.value)}
-                            className="w-full flex-1 p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-[#93c5fd] focus:outline-none focus:border-primary font-mono text-xs leading-relaxed resize-none"
+                            className="w-full flex-1 p-2.5 rounded-lg bg-surface border border-border text-primary focus:outline-none focus:border-primary font-mono text-xs leading-relaxed resize-none"
                           />
-                          <div className="flex flex-wrap items-center gap-1 pt-1 text-2xs text-[#71717a]">
+                          <div className="flex flex-wrap items-center gap-1 pt-1 text-2xs text-text-muted">
                             <span>Templates:</span>
                             <button
                               type="button"
@@ -2292,7 +2292,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
     return {"words": len(words), "chars": len(text)}
 `)
                               }
-                              className="px-1.5 py-0.5 rounded bg-[#141620] hover:text-white border border-[#232636]"
+                              className="px-1.5 py-0.5 rounded bg-surface hover:text-text hover:bg-surface-hover border border-border transition-colors"
                             >
                               + Word Count
                             </button>
@@ -2306,7 +2306,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
     return {"sentiment_score": pos - neg}
 `)
                               }
-                              className="px-1.5 py-0.5 rounded bg-[#141620] hover:text-white border border-[#232636]"
+                              className="px-1.5 py-0.5 rounded bg-surface hover:text-text hover:bg-surface-hover border border-border transition-colors"
                             >
                               + Sentiment
                             </button>
@@ -2316,14 +2316,14 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
 
                       {pluginRightTab === 'test' && (
                         <div className="flex-1 flex flex-col gap-2">
-                          <label className="text-xs text-[#a1a1aa]">
+                          <label className="text-xs text-text-secondary">
                             Simulate Input Payload (JSON):
                           </label>
                           <textarea
                             rows={5}
                             value={pluginTestPayload}
                             onChange={(e) => setPluginTestPayload(e.target.value)}
-                            className="p-2 rounded bg-[#12141c] border border-[#232636] text-white font-mono text-xs"
+                            className="p-2 rounded bg-surface border border-border text-text font-mono text-xs"
                           />
                           <Button
                             type="button"
@@ -2392,7 +2392,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             Run Sandbox Test
                           </Button>
                           {pluginTestResult && (
-                            <pre className="p-2 rounded bg-[#12141c] border border-[#232636] text-[#34d399] font-mono text-xs overflow-x-auto">
+                            <pre className="p-2 rounded bg-surface border border-border text-success font-mono text-xs overflow-x-auto">
                               {pluginTestResult}
                             </pre>
                           )}
@@ -2400,7 +2400,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       )}
 
                       {pluginRightTab === 'manifest' && (
-                        <div className="p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-[#93c5fd] font-mono text-xs overflow-x-auto max-h-[290px] whitespace-pre select-all">
+                        <div className="p-2.5 rounded-lg bg-surface border border-border text-primary font-mono text-xs overflow-x-auto max-h-[290px] whitespace-pre select-all">
                           {generatedSpecString}
                         </div>
                       )}
@@ -2419,7 +2419,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                     <div>
                       <label
                         htmlFor="cap-name-input"
-                        className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                        className="block text-xs font-medium text-text-secondary mb-1"
                       >
                         Tool Function Name *
                       </label>
@@ -2434,14 +2434,14 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                           setValidationError(null);
                         }}
                         placeholder="e.g. code-synthesizer or ats-scoring"
-                        className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-primary"
+                        className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-primary"
                       />
                     </div>
 
                     <div>
                       <label
                         htmlFor="cap-desc-input"
-                        className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                        className="block text-xs font-medium text-text-secondary mb-1"
                       >
                         Function Description (Injected in LLM Tool Schema)
                       </label>
@@ -2451,14 +2451,14 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         value={capDescription}
                         onChange={(e) => setCapDescription(e.target.value)}
                         placeholder="Brief description explaining what this tool does"
-                        className="w-full px-3 py-1.5 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary text-xs"
+                        className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary text-xs"
                       />
                     </div>
 
                     {/* Parameter Builder */}
-                    <div className="p-3 rounded-xl bg-[#101118] border border-[#222430] space-y-2.5">
-                      <div className="flex items-center justify-between pb-1.5 border-b border-[#1b1c24]">
-                        <h4 className="font-semibold text-white text-xs">
+                    <div className="p-3 rounded-xl bg-surface-elevated border border-border space-y-2.5">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-border">
+                        <h4 className="font-semibold text-text text-xs">
                           Visual Parameter Builder (JSON Schema)
                         </h4>
                         <Button
@@ -2486,7 +2486,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                                   ),
                                 );
                               }}
-                              className="w-28 px-2 py-1 rounded bg-[#151722] border border-[#272a38] text-white font-mono text-xs focus:outline-none focus:border-primary"
+                              className="w-28 px-2 py-1 rounded bg-surface border border-border text-text font-mono text-xs focus:outline-none focus:border-primary"
                             />
                             <select
                               value={p.type}
@@ -2498,7 +2498,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                                   ),
                                 );
                               }}
-                              className="w-20 px-2 py-1 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
+                              className="w-20 px-2 py-1 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
                             >
                               <option value="string">string</option>
                               <option value="number">number</option>
@@ -2518,9 +2518,9 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                                   ),
                                 );
                               }}
-                              className="flex-1 px-2 py-1 rounded bg-[#151722] border border-[#272a38] text-white text-xs focus:outline-none focus:border-primary"
+                              className="flex-1 px-2 py-1 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
                             />
-                            <label className="flex items-center gap-1 text-2xs text-[#a1a1aa] shrink-0">
+                            <label className="flex items-center gap-1 text-2xs text-text-muted shrink-0">
                               <input
                                 type="checkbox"
                                 checked={p.required}
@@ -2532,14 +2532,14 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                                     ),
                                   );
                                 }}
-                                className="rounded border-[#2c2e3c] bg-[#151722] text-primary"
+                                className="rounded border-border bg-surface text-primary accent-primary"
                               />
                               <span>Req</span>
                             </label>
                             <button
                               type="button"
                               onClick={() => handleRemoveParam(idx)}
-                              className="text-[#71717a] hover:text-red-400 p-0.5"
+                              className="text-text-muted hover:text-danger p-0.5"
                             >
                               ×
                             </button>
@@ -2547,15 +2547,15 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         ))}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[#1b1c24]">
+                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border">
                         <div>
-                          <label className="block text-xs font-medium text-[#a1a1aa] mb-1">
+                          <label className="block text-xs font-medium text-text-secondary mb-1">
                             Required Security Scope
                           </label>
                           <select
                             value={toolScope}
                             onChange={(e) => setToolScope(e.target.value)}
-                            className="w-full px-2 py-1 rounded bg-[#151722] border border-[#272a38] text-white text-xs"
+                            className="w-full px-2 py-1 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
                           >
                             <option value="memory.read">memory.read</option>
                             <option value="memory.write">memory.write</option>
@@ -2564,13 +2564,13 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-[#a1a1aa] mb-1">
+                          <label className="block text-xs font-medium text-text-secondary mb-1">
                             Category Classification
                           </label>
                           <select
                             value={toolCategoryGroup}
                             onChange={(e) => setToolCategoryGroup(e.target.value)}
-                            className="w-full px-2 py-1 rounded bg-[#151722] border border-[#272a38] text-white text-xs"
+                            className="w-full px-2 py-1 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
                           >
                             <option value="memory_read">memory_read</option>
                             <option value="memory_write">memory_write</option>
@@ -2586,21 +2586,21 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                     <div>
                       <label
                         htmlFor="cap-tag-input-tools"
-                        className="block text-xs font-medium text-[#a1a1aa] mb-1"
+                        className="block text-xs font-medium text-text-secondary mb-1"
                       >
                         Tags &amp; Taxonomy
                       </label>
-                      <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-[#12141c] border border-[#232636] min-h-[38px]">
+                      <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-surface border border-border min-h-[38px]">
                         {capTags.map((tag) => (
                           <span
                             key={tag}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium bg-[#1a1c26] text-[#e4e4e7] border border-[#292c3a]"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium bg-surface-elevated text-text border border-border"
                           >
                             <span>{tag}</span>
                             <button
                               type="button"
                               onClick={() => handleRemoveTag(tag)}
-                              className="text-[#71717a] hover:text-white ml-0.5"
+                              className="text-text-muted hover:text-text ml-0.5"
                             >
                               ×
                             </button>
@@ -2618,16 +2618,16 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                             }
                           }}
                           placeholder="+ Type tag and hit Enter..."
-                          className="bg-transparent text-xs text-white placeholder-[#71717a] focus:outline-none flex-1 min-w-[120px] px-1 font-sans"
+                          className="bg-transparent text-xs text-text placeholder:text-text-muted focus:outline-none flex-1 min-w-[120px] px-1 font-sans"
                         />
                       </div>
                     </div>
                   </div>
 
                   {/* Right Column: JSON Schema Specification (col-span-6) */}
-                  <div className="md:col-span-6 flex flex-col min-h-[380px] bg-[#090a0f] rounded-xl border border-[#1e202d] p-3.5 space-y-2.5">
-                    <div className="flex items-center justify-between pb-2 border-b border-[#1a1c26]">
-                      <span className="font-semibold text-white text-xs">
+                  <div className="md:col-span-6 flex flex-col min-h-[380px] bg-surface-elevated rounded-xl border border-border p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between pb-2 border-b border-border">
+                      <span className="font-semibold text-text text-xs">
                         JSON Schema Input &amp; Output Contract
                       </span>
                       <Badge variant="mono" size="sm">
@@ -2635,11 +2635,11 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       </Badge>
                     </div>
 
-                    <div className="p-2.5 rounded-lg bg-[#12141c] border border-[#232636] text-[#93c5fd] font-mono text-xs overflow-x-auto max-h-[290px] whitespace-pre leading-relaxed select-all">
+                    <div className="p-2.5 rounded-lg bg-surface border border-border text-primary font-mono text-xs overflow-x-auto max-h-[290px] whitespace-pre leading-relaxed select-all">
                       {generatedSpecString}
                     </div>
 
-                    <p className="text-2xs text-[#71717a]">
+                    <p className="text-2xs text-text-muted">
                       Strict schema contract enforced at tool dispatch and validation gates.
                     </p>
                   </div>
@@ -2654,12 +2654,12 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
           {activeTab === 'import' && (
             <div className="space-y-4 text-xs font-sans">
               <div>
-                <h3 className="text-sm font-semibold text-white mb-1">
+                <h3 className="text-sm font-semibold text-text mb-1">
                   Drag &amp; Drop SKILL.md or Specification File
                 </h3>
-                <p className="text-xs text-[#a1a1aa] mb-2.5">
-                  Supports <code className="text-[#93c5fd]">SKILL.md</code> with YAML frontmatter,{' '}
-                  <code className="text-[#93c5fd]">mcp.json</code>, or OpenAPI schemas.
+                <p className="text-xs text-text-muted mb-2.5">
+                  Supports <code className="text-primary">SKILL.md</code> with YAML frontmatter,{' '}
+                  <code className="text-primary">mcp.json</code>, or OpenAPI schemas.
                 </p>
 
                 <div
@@ -2680,10 +2680,10 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                   className={`border-2 border-dashed rounded-xl p-5 text-center transition-all cursor-pointer ${
                     dragOver
                       ? 'border-primary bg-primary/10'
-                      : 'border-[#292c3a] bg-[#11131b] hover:border-[#383b4e] hover:bg-[#141622]'
+                      : 'border-border bg-surface-elevated hover:border-primary/50 hover:bg-surface-hover'
                   }`}
                 >
-                  <div className="w-8 h-8 mx-auto mb-1.5 rounded-lg bg-[#181a24] border border-[#262838] flex items-center justify-center text-primary">
+                  <div className="w-8 h-8 mx-auto mb-1.5 rounded-lg bg-surface border border-border flex items-center justify-center text-primary">
                     <svg
                       className="w-4 h-4"
                       fill="none"
@@ -2698,8 +2698,8 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       />
                     </svg>
                   </div>
-                  <p className="text-xs font-semibold text-white">Drop your capability file here</p>
-                  <p className="text-2xs text-[#71717a] mt-0.5">
+                  <p className="text-xs font-semibold text-text">Drop your capability file here</p>
+                  <p className="text-2xs text-text-muted mt-0.5">
                     or click to browse local files (.md, .json, .yaml)
                   </p>
                   <input
@@ -2717,7 +2717,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                   />
                   <label
                     htmlFor="capability-file-input"
-                    className="inline-block mt-2 px-3 py-1 rounded-md bg-[#1b1e2a] hover:bg-[#252838] text-xs font-medium text-white border border-[#2d3144] cursor-pointer transition-colors"
+                    className="inline-block mt-2 px-3 py-1 rounded-md bg-surface hover:bg-surface-hover text-xs font-medium text-text border border-border cursor-pointer transition-colors"
                   >
                     Browse Files
                   </label>
@@ -2725,11 +2725,11 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
               </div>
 
               {/* Git / Remote URL Fetcher */}
-              <div className="pt-3 border-t border-[#1c1e28]">
-                <h4 className="text-xs font-semibold text-white mb-1">
+              <div className="pt-3 border-t border-border">
+                <h4 className="text-xs font-semibold text-text mb-1">
                   Import Capability from Git / URL
                 </h4>
-                <p className="text-xs text-[#a1a1aa] mb-2.5">
+                <p className="text-xs text-text-muted mb-2.5">
                   Clone a public GitHub skill directory, raw SKILL.md link, or remote MCP server
                   endpoint.
                 </p>
@@ -2738,7 +2738,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                   <div>
                     <label
                       htmlFor="import-url-input"
-                      className="block text-[#a1a1aa] font-medium mb-1"
+                      className="block text-text-secondary font-medium mb-1"
                     >
                       Repository URL / Endpoint *
                     </label>
@@ -2749,7 +2749,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       value={importUrl}
                       onChange={(e) => setImportUrl(e.target.value)}
                       placeholder="https://github.com/vaeloom/skills-community/tree/main/rag-eval"
-                      className="w-full px-3 py-2 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary text-xs font-mono"
+                      className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary text-xs font-mono"
                     />
                   </div>
 
@@ -2757,7 +2757,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                     <div>
                       <label
                         htmlFor="import-cat-select"
-                        className="block text-[#a1a1aa] font-medium mb-1"
+                        className="block text-text-secondary font-medium mb-1"
                       >
                         Target Category
                       </label>
@@ -2765,7 +2765,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         id="import-cat-select"
                         value={importCategory}
                         onChange={(e) => setImportCategory(e.target.value as CapabilityCategory)}
-                        className="w-full px-3 py-2 rounded-lg bg-[#12141c] border border-[#232636] text-white focus:outline-none focus:border-primary text-xs"
+                        className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-text focus:outline-none focus:border-primary text-xs"
                       >
                         <option value="skills">Skills</option>
                         <option value="plugins">Plugins</option>
@@ -2804,18 +2804,18 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
         </div>
 
         {/* ── 3. Sticky Bottom Footer (ALWAYS 100% VISIBLE & PINNED) ─────────── */}
-        <footer className="px-5 py-3 border-t border-[#1c1e28] bg-[#0c0d12] flex items-center justify-between gap-3 shrink-0 z-20 font-sans">
+        <footer className="px-5 py-3 border-t border-border bg-surface-elevated flex items-center justify-between gap-3 shrink-0 z-20 font-sans">
           <div className="flex items-center gap-2">
             <Button type="button" variant="secondary" size="sm" onClick={onClose}>
               Cancel
             </Button>
-            <span className="text-xs text-[#71717a] hidden sm:inline-block">
+            <span className="text-xs text-text-muted hidden sm:inline-block">
               Press{' '}
-              <kbd className="px-1 py-0.5 rounded bg-[#171822] text-[#93c5fd] font-mono text-2xs">
+              <kbd className="px-1 py-0.5 rounded bg-surface text-primary border border-border font-mono text-2xs">
                 Esc
               </kbd>{' '}
               to exit •{' '}
-              <kbd className="px-1 py-0.5 rounded bg-[#171822] text-[#93c5fd] font-mono text-2xs">
+              <kbd className="px-1 py-0.5 rounded bg-surface text-primary border border-border font-mono text-2xs">
                 Ctrl+Enter
               </kbd>{' '}
               to save
