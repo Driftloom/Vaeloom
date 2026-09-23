@@ -37,6 +37,9 @@ interface ChatMessage {
   error?: boolean;
   latencyMs?: number;
   streaming?: boolean;
+  highway?: string;
+  s1LatencyMs?: number;
+  s2LatencyMs?: number;
 }
 interface Thread {
   id: string;
@@ -825,15 +828,46 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
               else if (typeof r === 'string') reply = r;
               else reply = JSON.stringify(r).slice(0, 2000);
               if (!reply.trim()) reply = 'No response — try rephrasing or @mention an agent.';
+              let fbHighway = typeof r['highway'] === 'string' ? String(r['highway']) : undefined;
+              const resObj = r['result'] as Record<string, unknown> | undefined;
+              const fbTelem = (r['telemetry'] || resObj?.['telemetry'] || {}) as Record<
+                string,
+                unknown
+              >;
+              const fbS1Ms =
+                typeof fbTelem['s1_ms'] === 'number' ? (fbTelem['s1_ms'] as number) : undefined;
+              const fbS2Ms =
+                typeof fbTelem['s2_ms'] === 'number' ? (fbTelem['s2_ms'] as number) : undefined;
+              if (!fbHighway && fbTelem['highway']) fbHighway = String(fbTelem['highway']);
               await streamText(reply, agentId);
               setMessages((p) =>
-                p.map((m) => (m.id === agentId ? { ...m, text: reply, streaming: false } : m)),
+                p.map((m) =>
+                  m.id === agentId
+                    ? {
+                        ...m,
+                        text: reply,
+                        streaming: false,
+                        highway: fbHighway,
+                        s1LatencyMs: fbS1Ms,
+                        s2LatencyMs: fbS2Ms,
+                      }
+                    : m,
+                ),
               );
               setThreads((p) =>
                 p.map((t) => ({
                   ...t,
                   messages: t.messages.map((m) =>
-                    m.id === agentId ? { ...m, text: reply, streaming: false } : m,
+                    m.id === agentId
+                      ? {
+                          ...m,
+                          text: reply,
+                          streaming: false,
+                          highway: fbHighway,
+                          s1LatencyMs: fbS1Ms,
+                          s2LatencyMs: fbS2Ms,
+                        }
+                      : m,
                   ),
                 })),
               );
@@ -912,6 +946,9 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
         let cites: ChatMessage['citations'];
         let an = agentForCall;
         let streamedAny = false;
+        let highway: string | undefined;
+        let s1LatencyMs: number | undefined;
+        let s2LatencyMs: number | undefined;
 
         // 1. Try real Server-Sent Events (SSE) streaming
         const controller = new AbortController();
@@ -1021,6 +1058,20 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
               reply = String((r as { reply?: string }).reply || '');
             else if (typeof r === 'string') reply = r;
             else reply = JSON.stringify(r).slice(0, 2000);
+            highway = typeof r['highway'] === 'string' ? String(r['highway']) : undefined;
+            const resObj2 = r['result'] as Record<string, unknown> | undefined;
+            const telem = (r['telemetry'] || resObj2?.['telemetry'] || {}) as Record<
+              string,
+              unknown
+            >;
+            s1LatencyMs =
+              typeof telem['s1_ms'] === 'number' ? (telem['s1_ms'] as number) : undefined;
+            s2LatencyMs =
+              typeof telem['s2_ms'] === 'number' ? (telem['s2_ms'] as number) : undefined;
+            if (!highway && telem['highway']) highway = String(telem['highway']);
+            if (!highway && typeof resObj2?.['highway'] === 'string') {
+              highway = String(resObj2['highway']);
+            }
           } else {
             throw streamErr;
           }
@@ -1036,6 +1087,9 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           citations: cites,
           agentName: an || 'assistant',
           streaming: false,
+          highway,
+          s1LatencyMs,
+          s2LatencyMs,
           latencyMs: Math.round(420 + Math.random() * 500),
         };
 
@@ -1272,7 +1326,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                       className={`${m.role === 'user' ? 'max-w-[75%] bg-surface-elevated text-text border border-border-subtle rounded-2xl px-4 py-3 shadow-card' : 'flex-1 min-w-0'}`}
                     >
                       {m.role === 'agent' && (
-                        <div className="flex items-center gap-2 mb-1.5">
+                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                           <span className="text-xs font-medium capitalize text-text">
                             {(m.agentName || 'assistant').replace('_', ' ')}
                           </span>
@@ -1282,6 +1336,61 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                               className={`text-xs font-mono px-1.5 py-0.5 rounded border ${m.confidence >= 0.9 ? 'border-success/20 text-success' : m.confidence >= 0.7 ? 'border-warning/20 text-warning' : 'border-error/20 text-error'}`}
                             >
                               {Math.round(m.confidence * 100)}%
+                            </span>
+                          )}
+                          {m.highway && (
+                            <span
+                              className="inline-flex items-center gap-1 text-[11px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20"
+                              title="Execution Highway Routing"
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                              {m.highway === 'A' || m.highway.includes('highway_a')
+                                ? 'Highway A (Express)'
+                                : m.highway.includes('fused')
+                                  ? '80/20 Cognitive Fusion'
+                                  : 'Highway B (Deliberative)'}
+                            </span>
+                          )}
+                          {m.s1LatencyMs !== undefined && (
+                            <span
+                              className="inline-flex items-center gap-1 text-[11px] font-mono px-1.5 py-0.5 rounded bg-warning/10 text-warning border border-warning/20"
+                              title="System 1 Jev Deterministic Latency"
+                            >
+                              <svg
+                                className="w-3 h-3 text-warning"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                                />
+                              </svg>
+                              <span>S1 Jev: {m.s1LatencyMs}ms</span>
+                            </span>
+                          )}
+                          {m.s2LatencyMs !== undefined && (
+                            <span
+                              className="inline-flex items-center gap-1 text-[11px] font-mono px-1.5 py-0.5 rounded bg-accent/10 text-accent border border-accent/20"
+                              title="System 2 Generative Model Latency"
+                            >
+                              <svg
+                                className="w-3 h-3 text-accent"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                                />
+                              </svg>
+                              <span>S2 Gen: {m.s2LatencyMs}ms</span>
                             </span>
                           )}
                           {m.latencyMs && (
