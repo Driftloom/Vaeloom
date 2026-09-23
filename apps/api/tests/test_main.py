@@ -49,9 +49,10 @@ ENTERPRISE_ROUTER_PREFIXES = [
 
 @pytest.fixture(autouse=True)
 def _patch_prometheus():
-    with patch("prometheus_fastapi_instrumentator.Instrumentator") as m:
-        m.return_value.instrument.return_value.expose.return_value = None
-        yield
+    # NOTE (Loop 3): prometheus-fastapi-instrumentator was removed from main.py
+    # (hand-rolled middleware needs no import-time patch). Keep the module reset
+    # so each test reimports a pristine app instance.
+    yield
     sys.modules.pop("api.main", None)
 
 
@@ -277,11 +278,9 @@ class TestOpenTelemetry:
                 raise ImportError("Simulated failure")
             return real_import(name, *args, **kwargs)
 
-        with patch("prometheus_fastapi_instrumentator.Instrumentator") as mp:
-            mp.return_value.instrument.return_value.expose.return_value = None
-            with patch("builtins.__import__", side_effect=_mock_import):
-                import api.main as mod2
-            assert isinstance(mod2.app, FastAPI)
+        with patch("builtins.__import__", side_effect=_mock_import):
+            import api.main as mod2
+        assert isinstance(mod2.app, FastAPI)
 
     def test_instrumentation_succeeds_when_available(self):
         mod = _reimport_main()
