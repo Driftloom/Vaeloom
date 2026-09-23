@@ -79,6 +79,18 @@ CATEGORY_RETRIES = {
     "system": 1,
 }
 
+# Total wall-clock span cap per execute_tool call (Loop 4): per-attempt
+# timeouts x retries can otherwise exceed the 120s run budget on their own
+# (e.g. browse_job_page 45s x 3 attempts). Attempts beyond the span abort
+# early; attempts and per-attempt timeouts are unchanged.
+TOOL_MAX_SPAN_S = 90.0
+
+
+def _capped_backoff(backoff: float, start_time: float) -> float:
+    """Clamp a retry sleep so it never pushes the call past the span cap."""
+    remaining = TOOL_MAX_SPAN_S - (time.monotonic() - start_time)
+    return max(0.0, min(backoff, remaining))
+
 # Per-tool timeout overrides (seconds) — browser tools need longer than the
 # connector_read default because chromium cold-start + navigation is slow.
 TOOL_TIMEOUT_OVERRIDES = {
@@ -3541,6 +3553,16 @@ async def execute_tool(
     last_error: Exception | None = None
 
     for attempt in range(1, max_retries + 1):
+        if attempt > 1 and (time.monotonic() - start_time) >= TOOL_MAX_SPAN_S:
+            last_error = TimeoutError(
+                f"Tool {tool.name} exceeded {TOOL_MAX_SPAN_S:g}s total span "
+                f"({attempt - 1}/{max_retries} attempts)"
+            )
+            logger.warning(
+                f"SPAN-CAP {tool.name}: aborting retries after "
+                f"{TOOL_MAX_SPAN_S:g}s total span"
+            )
+            break
         try:
             ws_handlers = WORKSPACE_DYNAMIC_HANDLERS.get(str(workspace_id), {}) if workspace_id else {}
             handler = TOOL_DISPATCH.get(tool.name) or ws_handlers.get(tool.name) or DYNAMIC_HANDLERS.get(tool.name)
@@ -3676,7 +3698,7 @@ async def execute_tool(
                 f"RETRY {attempt}/{max_retries}: {tool.name} timed out, "
                 f"backoff={backoff}s"
             )
-            await asyncio.sleep(backoff)
+            await asyncio.sleep(_capped_backoff(backoff, start_time))
 
         except PermissionDeniedError:
             await _abandon_idem_claim(workspace_id, idem_key, idem_claim)
@@ -3691,7 +3713,7 @@ async def execute_tool(
                 f"RETRY {attempt}/{max_retries}: {tool.name} failed: {e}, "
                 f"backoff={backoff}s"
             )
-            await asyncio.sleep(backoff)
+            await asyncio.sleep(_capped_backoff(backoff, start_time))
 
     duration_ms = int((time.monotonic() - start_time) * 1000)
     error_msg = str(last_error) if last_error else "unknown"

@@ -158,32 +158,43 @@ async def upload_document(
         tenant_id=current_user.get("tenant_id"),
         db=db,
     )
+    # Outbox (Loop 4): mirror the ingest intent in the SAME transaction as the
+    # document row. If upload() already committed, this commits separately (no
+    # worse than the old fire-and-forget); otherwise crash-atomicity holds and
+    # the relay delivers via publish_document_from_outbox().
+    try:
+        from ..services.outbox import record_outbox_event
+
+        record_outbox_event(
+            db,
+            event_type="document.ingest",
+            payload={
+                "document_id": str(doc.id),
+                "workspace_id": workspace_id,
+                "filename": getattr(doc, "path", "untitled"),
+                "requested_by": _user_id(current_user),
+            },
+            workspace_id=workspace_id,
+            tenant_id=current_user.get("tenant_id"),
+        )
+    except Exception:
+        pass
     await db.commit()
     await db.refresh(doc)
 
     # Optional background ingest workflow (Trigger.dev / BullMQ / Temporal — fail-open)
     try:
-        from ..config import settings as _settings
-        from ..trigger.client import TASK_INGEST_DOCUMENT, get_trigger_client, is_trigger_enabled
+        from ..services.document_service import dispatch_document_ingest
+        from ..trigger.client import is_trigger_enabled
 
         if is_trigger_enabled():
             import asyncio as _aio
 
             async def _start_trigger() -> None:
-                try:
-                    tclient = get_trigger_client()
-                    await tclient.trigger(
-                        task_name=TASK_INGEST_DOCUMENT,
-                        payload={
-                            "workspace_id": workspace_id,
-                            "document_id": str(doc.id),
-                            "filename": getattr(doc, "path", "untitled"),
-                            "requested_by": _user_id(current_user),
-                        },
-                        options={"idempotencyKey": f"ingest:{doc.id}"},
-                    )
-                except Exception as ex:
-                    logger.warning(f"Trigger.dev document ingest dispatch failed: {ex}")
+                await dispatch_document_ingest(
+                    str(doc.id), workspace_id,
+                    getattr(doc, "path", "untitled"), _user_id(current_user),
+                )
 
             _aio.create_task(_start_trigger())
     except Exception:

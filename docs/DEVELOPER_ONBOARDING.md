@@ -87,8 +87,9 @@ pnpm dev:web
 cd apps/web && pnpm next dev
 ```
 
-**IMPORTANT:** Never use `pnpm dev` — it runs Nx across all 25 packages and
-hangs. Use `pnpm dev:web` (`make dev-web` is fastest) or `pnpm dev:be`.
+**IMPORTANT:** Never use bare `pnpm dev` — it is disabled fail-fast (prints a
+redirect; it formerly ran Nx across all 25 packages and hung). Use
+`pnpm dev:web` (`make dev-web` is fastest) or `pnpm dev:be`.
 
 Frontend at `http://localhost:3000`. Test account: `demo@vaeloom.app` /
 `demo1234` (seeded demo DB; sign up if missing).

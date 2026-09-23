@@ -44,7 +44,7 @@ REL_ID = uuid.uuid4()
 class MockDoc:
     def __init__(self, id=DOC_ID, path="/docs/report.pdf", type="pdf",
                  summary="Annual report", created_at=None, metadata_=None,
-                 workspace_id=None):
+                 workspace_id=None, deleted_at=None):
         self.id = id
         self.path = path
         self.type = type
@@ -52,6 +52,7 @@ class MockDoc:
         self.created_at = created_at or datetime.datetime.now(datetime.timezone.utc)
         self.metadata_ = metadata_ or {}
         self.workspace_id = workspace_id or uuid.UUID(WS_ID)
+        self.deleted_at = deleted_at
 
 
 class MockEntity:

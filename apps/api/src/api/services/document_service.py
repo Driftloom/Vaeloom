@@ -309,6 +309,54 @@ def _run_50_checks(
     }
 
 
+async def dispatch_document_ingest(
+    document_id: str,
+    workspace_id: str | None,
+    filename: str = "untitled",
+    requested_by: str | None = None,
+) -> None:
+    """Durable fan-out for document ingest (Loop 4, mirrors event_service).
+
+    Called fire-and-forget from the upload router AND by the outbox relay for
+    ``document.ingest`` rows. At-least-once: idempotencyKey dedups redelivery.
+    No-op unless Trigger.dev is enabled (fail-open preserved).
+    """
+    from ..trigger.client import TASK_INGEST_DOCUMENT, get_trigger_client, is_trigger_enabled
+
+    if not is_trigger_enabled():
+        return
+    try:
+        tclient = get_trigger_client()
+        await tclient.trigger(
+            task_name=TASK_INGEST_DOCUMENT,
+            payload={
+                "workspace_id": workspace_id,
+                "document_id": str(document_id),
+                "filename": filename,
+                "requested_by": requested_by,
+            },
+            options={"idempotencyKey": f"ingest:{document_id}"},
+        )
+    except Exception as ex:
+        logger.warning(f"Trigger.dev document ingest dispatch failed: {ex}")
+
+
+async def publish_document_from_outbox(outbox_event) -> None:
+    """Outbox relay publisher for ``document.ingest`` rows (Loop 4).
+
+    Raises on dispatch failure so the relay retries/exhausts per policy.
+    """
+    data = getattr(outbox_event, "payload", None) or {}
+    if not isinstance(data, dict):
+        return
+    await dispatch_document_ingest(
+        str(data.get("document_id") or getattr(outbox_event, "id", "")),
+        data.get("workspace_id"),
+        data.get("filename", "untitled"),
+        data.get("requested_by"),
+    )
+
+
 class DocumentService:
     async def upload(
         self,

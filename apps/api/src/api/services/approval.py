@@ -377,6 +377,21 @@ async def _ingest_feedback_preference(
 approval_manager = ApprovalManager()
 
 
+async def publish_approval_from_outbox(outbox_event) -> None:
+    """Outbox relay publisher for ``approval.wait`` rows (Loop 4).
+
+    Raises on dispatch failure so the relay retries/exhausts per policy.
+    Unknown event types are a no-op success.
+    """
+    data = getattr(outbox_event, "payload", None) or {}
+    if not isinstance(data, dict):
+        return
+    approval_id = str(data.get("approval_id") or getattr(outbox_event, "id", ""))
+    if not approval_id:
+        return
+    await _maybe_start_approval_workflow(approval_id, data.get("workspace_id"))
+
+
 async def _maybe_start_approval_workflow(approval_id: str, workspace_id: str | None, timeout_seconds: int = 3600) -> None:
     """Best-effort: start the durable ApprovalWorkflow when Temporal is enabled.
 
@@ -474,6 +489,23 @@ async def request_approval(
         metadata={"agent_name": dto.agent_name, "action_type": dto.action_type},
         db=db,
     )
+    # Outbox (Loop 4): mirror the approval in the SAME transaction. Restores
+    # the durable wait-workflow intent if this process dies after commit.
+    try:
+        from .outbox import record_outbox_event
+
+        record_outbox_event(
+            db,
+            event_type="approval.wait",
+            payload={
+                "approval_id": str(approval.id),
+                "workspace_id": str(approval.workspace_id) if approval.workspace_id else None,
+            },
+            workspace_id=getattr(approval, "workspace_id", None),
+            tenant_id=current_user.get("tenant_id"),
+        )
+    except Exception:
+        pass
     await db.commit()
     # Fire-and-forget Temporal wait workflow (non-blocking, fail-open)
     try:

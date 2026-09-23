@@ -58,9 +58,15 @@ Adopt the **transactional outbox pattern**, in two loops:
 - `routers/temporal.py` — 3× direct `client.start_workflow(...)` (manual
   triggers)
 - `services/approval.py` — direct `client.start_workflow(...)` on approval
-  execute Each needs: outbox row in the same txn + `event_type_prefix` family +
-  relay publisher entry. Relay timer + `requeue_failed_events` triage already
-  cover whatever families get rewired.
+  execute. Relay timer + `requeue_failed_events` triage already cover whatever
+  families get rewired.
+
+  **Loop 4 — LANDED 2026-09-23:** `documents` upload rewired (`document.ingest`
+  row same-txn + `publish_document_from_outbox`); `approval` request rewired
+  (`approval.wait` row same-txn + `publish_approval_from_outbox`).
+  `routers/temporal.py` manual triggers DELIBERATELY NOT rewired: synchronous
+  user actions returning the workflow handle in-band — no background fan-out to
+  lose, so outbox adds latency without safety.
 
 ## Rationale
 
