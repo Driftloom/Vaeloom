@@ -108,7 +108,7 @@ class TestDocumentContentAndOperations:
             f"/api/v1/documents/{doc_id}/content?workspace_id={ws_id}",
             headers=other_headers,
         )
-        assert res.status_code in (403, 404)
+        assert res.status_code == 404
 
     async def test_rename_records_action_and_undo_restores(self, client: AsyncClient):
         headers = await self._auth_header(client)

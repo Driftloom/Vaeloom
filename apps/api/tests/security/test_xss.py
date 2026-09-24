@@ -18,7 +18,7 @@ class TestXSS:
             "/api/v1/auth/signup",
             json={"email": f"xss-{payload}@test.com", "password": "Test1234!"},
         )
-        assert res.status_code in (201, 400, 422)
+        assert res.status_code == 422
 
     @pytest.mark.parametrize("payload", [
         "<script>alert('xss')</script>",

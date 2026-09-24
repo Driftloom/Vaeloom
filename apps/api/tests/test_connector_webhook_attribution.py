@@ -20,7 +20,7 @@ async def _signup_and_get_workspace(client: AsyncClient, prefix: str) -> tuple[d
     assert me_res.status_code == 200
     uid = me_res.json()["user"]["id"]
     ws_res = await client.post("/api/v1/workspaces", json={"name": f"{prefix}-ws"}, headers=headers)
-    assert ws_res.status_code in (200, 201)
+    assert ws_res.status_code == 201
     wid = ws_res.json()["id"]
     return headers, uid, wid
 

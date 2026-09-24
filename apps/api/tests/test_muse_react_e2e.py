@@ -947,7 +947,7 @@ async def test_REACT_E2E_01_http_full_path(client, monkeypatch, tmp_path):
     assert r.status_code == 201, r.text
     headers = {"Authorization": f"Bearer {r.json()['access_token']}"}
     ws = await client.post("/api/v1/workspaces", json={"name": "react-ws"}, headers=headers)
-    assert ws.status_code in (200, 201), ws.text
+    assert ws.status_code == 201, ws.text
     ws_id = ws.json().get("id") or ws.json().get("workspace_id")
 
     SCRIPTS["http-01"] = [{"text": '{"summary": "HTTP ReAct answer.", "proposals": []}'}]

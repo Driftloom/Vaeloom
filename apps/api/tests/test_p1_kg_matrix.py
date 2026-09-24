@@ -30,7 +30,7 @@ async def _node(client: AsyncClient, h: dict, label: str, ws: str | None = None)
 
 async def _ws(client: AsyncClient, h: dict, name: str) -> str:
     r = await client.post("/api/v1/workspaces", json={"name": name}, headers=h)
-    assert r.status_code in (200, 201), r.text
+    assert r.status_code == 201, r.text
     return r.json()["id"]
 
 

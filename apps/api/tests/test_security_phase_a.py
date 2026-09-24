@@ -353,7 +353,7 @@ class TestSecurityPhaseA:
             f"/api/v1/connectors/{conn_id}",
             headers={"Authorization": f"Bearer {token_b}", "X-Workspace-ID": ws_b},
         )
-        assert b_get.status_code in (403, 404), f"Expected 403/404, got {b_get.status_code}"
+        assert b_get.status_code == 404, f"Expected 404, got {b_get.status_code}"
 
         # Workspace B attempts PUT
         b_put = await client.put(
@@ -361,14 +361,14 @@ class TestSecurityPhaseA:
             headers={"Authorization": f"Bearer {token_b}", "X-Workspace-ID": ws_b},
             json={"name": "Hijacked Connector"},
         )
-        assert b_put.status_code in (403, 404), f"Expected 403/404, got {b_put.status_code}"
+        assert b_put.status_code == 404, f"Expected 404, got {b_put.status_code}"
 
         # Workspace B attempts DELETE
         b_del = await client.delete(
             f"/api/v1/connectors/{conn_id}",
             headers={"Authorization": f"Bearer {token_b}", "X-Workspace-ID": ws_b},
         )
-        assert b_del.status_code in (403, 404), f"Expected 403/404, got {b_del.status_code}"
+        assert b_del.status_code == 404, f"Expected 404, got {b_del.status_code}"
 
         # Workspace B attempts MCP call
         b_call = await client.post(
@@ -376,7 +376,7 @@ class TestSecurityPhaseA:
             headers={"Authorization": f"Bearer {token_b}", "X-Workspace-ID": ws_b},
             json={"tool_name": "list_secrets", "arguments": {}},
         )
-        assert b_call.status_code in (403, 404), f"Expected 403/404, got {b_call.status_code}"
+        assert b_call.status_code == 404, f"Expected 404, got {b_call.status_code}"
 
     # ── Attack 13: Forged Worker Context / Background Envelope ─────────
     async def test_attack_13_forged_worker_context_envelope(self):
@@ -424,7 +424,7 @@ class TestSecurityPhaseA:
             f"/api/v1/memories/{mem_id}",
             headers={"Authorization": f"Bearer {token_b}", "X-Workspace-ID": ws_b},
         )
-        assert del_res.status_code in (403, 404), f"Expected 403/404, got {del_res.status_code}"
+        assert del_res.status_code == 404, f"Expected 404, got {del_res.status_code}"
 
         # Verify memory still exists
         check_a = await client.get(
@@ -453,7 +453,7 @@ class TestSecurityPhaseA:
             f"/api/v1/memories/{mem_id}",
             headers={"Authorization": f"Bearer {token_b}", "X-Workspace-ID": ws_b},
         )
-        assert get_res.status_code in (403, 404), f"Expected 403/404, got {get_res.status_code}"
+        assert get_res.status_code == 404, f"Expected 404, got {get_res.status_code}"
 
         # User B attempts PUT
         put_res = await client.put(
@@ -461,7 +461,7 @@ class TestSecurityPhaseA:
             headers={"Authorization": f"Bearer {token_b}", "X-Workspace-ID": ws_b},
             json={"title": "Hacked Title"},
         )
-        assert put_res.status_code in (403, 404), f"Expected 403/404, got {put_res.status_code}"
+        assert put_res.status_code == 404, f"Expected 404, got {put_res.status_code}"
 
     # ── Attack 16: Live Approval Flow and Replay Rejection ─────────────
     async def test_attack_16_live_approval_flow_and_replay_rejection(self, db_session: AsyncSession):

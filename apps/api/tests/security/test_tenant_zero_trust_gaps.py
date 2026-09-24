@@ -68,15 +68,15 @@ async def test_workspace_member_cannot_escalate_role(client: AsyncClient, db_ses
         json={"name": "Member Hijacked Name"},
         headers={"Authorization": f"Bearer {token_member}"},
     )
-    # Must reject with 404 (anti-enumeration) or 403
-    assert patch_res.status_code in (403, 404)
+    # Must reject with 404 (anti-enumeration)
+    assert patch_res.status_code == 404
 
     # 4. Member attempts to DELETE the workspace
     del_res = await client.delete(
         f"/api/v1/workspaces/{ws_id}",
         headers={"Authorization": f"Bearer {token_member}"},
     )
-    assert del_res.status_code in (403, 404)
+    assert del_res.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -135,12 +135,10 @@ async def test_cross_tenant_org_tree_isolation(client: AsyncClient):
         "/api/v1/organizations/tree",
         headers={"Authorization": f"Bearer {token_b}"},
     )
-    # If user has no tenant, fails closed (400); if user has tenant, only sees own orgs
-    if res_b_tree.status_code == 200:
-        orgs = res_b_tree.json()
-        assert isinstance(orgs, list)
-    else:
-        assert res_b_tree.status_code in (400, 403, 404)
+    # User with tenant gets 200 and sees own orgs
+    assert res_b_tree.status_code == 200
+    orgs = res_b_tree.json()
+    assert isinstance(orgs, list)
 
 
 @pytest.mark.asyncio

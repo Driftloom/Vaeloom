@@ -111,11 +111,11 @@ class TestComposioOAuthRoutes:
             headers=hb,
         )
         assert r.status_code == 404
-        # Anonymous -> 401/403
+        # Anonymous -> 401
         r = await client.post(
             "/api/v1/connectors/composio/disconnect", json={"app": "slack", "workspace_id": ws_a}
         )
-        assert r.status_code in (401, 403)
+        assert r.status_code == 401
 
     async def test_disconnect_route_owner_idempotent(self, client: AsyncClient):
         ha, ws_a = await self._setup(client)
@@ -151,4 +151,4 @@ class TestComposioOAuthRoutes:
         r = await client.post(
             "/api/v1/connectors/composio/refresh", json={"app": "slack", "workspace_id": ws_a}
         )
-        assert r.status_code in (401, 403)
+        assert r.status_code == 401

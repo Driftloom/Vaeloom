@@ -88,7 +88,7 @@ class TestRequireRole:
         checker = require_role("admin")
         with pytest.raises(HTTPException) as exc:
             await checker(current_user=None)
-        assert exc.value.status_code in (401, 403)
+        assert exc.value.status_code == 401
 
     @pytest.mark.asyncio
     async def test_raises_403_when_role_missing(self):

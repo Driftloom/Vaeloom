@@ -12,7 +12,7 @@ async def _auth(client: AsyncClient) -> dict:
         "email": f"commands-{uuid.uuid4().hex[:10]}@test.com",
         "password": "Test1234!",
     })
-    assert res.status_code in (200, 201), res.text
+    assert res.status_code == 201, res.text
     return {"Authorization": f"Bearer {res.json()['access_token']}"}
 
 

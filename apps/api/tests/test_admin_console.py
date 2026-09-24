@@ -69,7 +69,7 @@ class TestAdminGetUser:
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
             res = await ac.get(f"/admin/users/{user.id}")
-            assert res.status_code in (200, 404)
+            assert res.status_code == 200
 
     async def test_404(self, db_session):
         app = _build_app(db_session)

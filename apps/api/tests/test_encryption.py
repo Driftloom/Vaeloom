@@ -60,4 +60,4 @@ class TestEncryptionService:
     @pytest.mark.asyncio
     async def test_endpoint_requires_admin(self, client):
         response = await client.get("/api/v1/security/encryption-status")
-        assert response.status_code in (401, 403)
+        assert response.status_code == 401

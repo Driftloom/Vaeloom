@@ -76,13 +76,13 @@ class TestAgentsRouterCoverage:
         res = await client.post("/api/v1/agents/chat", json={
             "message": "hello", "workspaceId": str(uuid.uuid4()),
         }, headers=headers)
-        assert res.status_code in (200, 404, 500)
+        assert res.status_code == 404
 
     async def test_chat_cross_workspace_denied(self, client: AsyncClient):
         """User B must get 404 on user A's workspace (IDOR regression)."""
         headers_a = await self._auth_header(client)
         ws = await client.post("/api/v1/workspaces", json={"name": "ws-a"}, headers=headers_a)
-        assert ws.status_code in (200, 201), ws.text
+        assert ws.status_code == 201, ws.text
         ws_id = ws.json().get("id") or ws.json().get("workspace_id")
         # Second user
         res2 = await client.post("/api/v1/auth/signup", json={
@@ -97,7 +97,7 @@ class TestAgentsRouterCoverage:
         ok = await client.post("/api/v1/agents/chat", json={
             "message": "hello", "workspaceId": ws_id,
         }, headers=headers_a)
-        assert ok.status_code in (200, 500), ok.text
+        assert ok.status_code == 200, ok.text
 
     # --- list_executions ---
 
@@ -206,7 +206,7 @@ class TestAgentsRouterCoverage:
         headers = await self._auth_header(client)
         aid = await self._create_agent(client, headers, "ExecOk")
         res = await client.post(f"/api/v1/agents/{aid}/execute", json={"input": {}}, headers=headers)
-        assert res.status_code in (200, 500)
+        assert res.status_code == 200
 
     async def test_execute_agent_value_error(self, client: AsyncClient):
         headers = await self._auth_header(client)

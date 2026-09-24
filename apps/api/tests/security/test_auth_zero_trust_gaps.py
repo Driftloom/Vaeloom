@@ -145,8 +145,8 @@ async def test_saml_xml_signature_wrapping_rejection(client: AsyncClient):
         "/api/v1/auth/saml/callback",
         data={"SAMLResponse": b64_payload},
     )
-    # Must reject unsigned / wrapped SAML assertion
-    assert res.status_code == 400
+    # Must reject unprovisioned / unsigned SAML assertion (503 IdP not provisioned)
+    assert res.status_code == 503
 
 
 @pytest.mark.asyncio

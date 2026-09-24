@@ -25,7 +25,7 @@ class TestBilling:
             "plan": "free",
         }, headers=headers)
         res = await client.get("/api/v1/billing/subscription", headers=headers)
-        assert res.status_code in (200, 404)
+        assert res.status_code == 200
 
     async def test_get_usage(self, client: AsyncClient):
         headers = await self._auth_header(client)

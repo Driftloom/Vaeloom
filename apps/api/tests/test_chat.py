@@ -15,7 +15,7 @@ class TestChat:
     async def test_send_message(self, client: AsyncClient):
         headers = await self._auth_header(client)
         ws = await client.post("/api/v1/workspaces", json={"name": "chat-ws"}, headers=headers)
-        assert ws.status_code in (200, 201), ws.text
+        assert ws.status_code == 201, ws.text
         ws_id = ws.json().get("id") or ws.json().get("workspace_id")
         res = await client.post(
             f"/api/v1/chat/workspaces/{ws_id}/chat",

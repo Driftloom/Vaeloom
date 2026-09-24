@@ -86,9 +86,10 @@ class TestSQLInjection:
             {"email": "test@test.com", "password": "' OR 1=1--"},
             {"email": "'; DROP TABLE users; --@test.com", "password": "test1234"},
         ]
-        for body in payloads:
+        expected_statuses = [422, 201, 201]
+        for body, expected_status in zip(payloads, expected_statuses):
             res = await client.post("/api/v1/auth/signup", json=body)
-            assert res.status_code in (201, 400, 422)
+            assert res.status_code == expected_status
 
     async def test_sso_injection(self, client: AsyncClient):
         payloads = [
@@ -98,4 +99,4 @@ class TestSQLInjection:
         ]
         for body in payloads:
             res = await client.post("/api/v1/auth/sso/google", json=body)
-            assert res.status_code in (400, 401, 422)
+            assert res.status_code == 400

@@ -98,7 +98,7 @@ class TestConnectors:
         assert created.status_code == 201
         cid = created.json()["id"]
         res = await client.post(f"/api/v1/connectors/{cid}/sync", headers=headers)
-        assert res.status_code in (200, 401)
+        assert res.status_code == 200
 
     async def test_get_sync_status(self, client: AsyncClient):
         headers = await self._auth_header(client)

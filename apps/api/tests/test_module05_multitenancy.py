@@ -21,7 +21,7 @@ async def test_cross_workspace_access_denied():
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         # User in Workspace A attempts to access Workspace B document
         res = await ac.get(f"/api/v1/documents/{doc_id}?workspace_id={ws_b}", headers=headers_a)
-        assert res.status_code in (401, 403, 404)
+        assert res.status_code == 401
 
 
 @pytest.mark.asyncio
@@ -36,4 +36,4 @@ async def test_cross_tenant_access_denied():
 
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         res = await ac.get(f"/api/v1/workspaces/{ws_b}", headers=headers_a)
-        assert res.status_code in (401, 403, 404)
+        assert res.status_code == 401

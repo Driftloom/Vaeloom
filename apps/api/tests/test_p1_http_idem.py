@@ -23,7 +23,7 @@ async def _signup(client: AsyncClient, email: str) -> tuple[dict, str]:
 
 async def _ws(client: AsyncClient, headers: dict, name: str) -> str:
     r = await client.post("/api/v1/workspaces", json={"name": name}, headers=headers)
-    assert r.status_code in (200, 201), r.text
+    assert r.status_code == 201, r.text
     return r.json()["id"]
 
 

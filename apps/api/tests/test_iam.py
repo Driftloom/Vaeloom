@@ -106,7 +106,7 @@ class TestIAM:
     async def test_list_users(self, client: AsyncClient):
         headers = self._admin_headers()
         res = await client.get("/api/v1/iam/users", headers=headers)
-        assert res.status_code in (200, 400)
+        assert res.status_code == 400
 
     async def test_list_users_with_tenant(self, db_session):
         from api.dependencies import get_current_user

@@ -34,7 +34,7 @@ class TestMemoryQuality:
             headers=headers,
             json={"type": "profile", "content": "User is a software engineer with 5 years experience"},
         )
-        assert res.status_code in (200, 201)
+        assert res.status_code == 201
         body = res.json()
         assert body["type"] == "profile"
         assert body["content"] == "User is a software engineer with 5 years experience"
@@ -51,7 +51,7 @@ class TestMemoryQuality:
                 headers=headers,
                 json={"type": mem_type, "content": f"Test {mem_type} memory"},
             )
-            assert res.status_code in (200, 201), f"Failed to create {mem_type} memory"
+            assert res.status_code == 201, f"Failed to create {mem_type} memory"
 
     async def test_memory_list_returns_created(self, client: AsyncClient):
         """Listed memories should be retrievable."""
@@ -84,14 +84,14 @@ class TestMemoryQuality:
             headers=headers,
             json={"type": "profile", "content": content},
         )
-        assert res1.status_code in (200, 201)
+        assert res1.status_code == 201
 
         res2 = await client.post(
             "/api/v1/memories",
             headers=headers,
             json={"type": "profile", "content": content},
         )
-        assert res2.status_code in (200, 201, 409)
+        assert res2.status_code == 201
 
     async def test_memory_content_hash(self, client: AsyncClient):
         """Memories should have content_hash for dedup."""
@@ -129,7 +129,7 @@ class TestAgentExecution:
             headers=headers,
             json={"name": "Test Agent", "category": "memory", "config": {}},
         )
-        assert res.status_code in (200, 201)
+        assert res.status_code == 201
 
         res = await client.get("/api/v1/agents", headers=headers)
         assert res.status_code == 200

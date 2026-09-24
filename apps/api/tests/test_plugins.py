@@ -106,7 +106,7 @@ class TestPlugins:
             "input": {"action": "run", "params": {}},
             "code": "print('ok')",
         }, headers=headers)
-        assert res.status_code in (200, 401, 500)
+        assert res.status_code == 200
 
     async def test_get_plugin_permissions(self, client: AsyncClient):
         headers = await self._auth_header(client)

@@ -25,7 +25,7 @@ async def test_master_auth_matrix(client):
     tok_a = ra.json()["access_token"]
 
     dup = await _signup(client, "mprobe-a@zt.test")
-    assert dup.status_code in (400, 409), dup.text
+    assert dup.status_code == 409, dup.text
 
     bad_email = await client.post(
         "/api/v1/auth/signup",
@@ -66,7 +66,7 @@ async def test_master_workspace_isolation(client):
     ha = {"Authorization": f"Bearer {ra.json()['access_token']}"}
     hb = {"Authorization": f"Bearer {rb.json()['access_token']}"}
 
-    assert (await client.get("/api/v1/workspaces", headers=hb)).status_code in (200, 404)
+    assert (await client.get("/api/v1/workspaces", headers=hb)).status_code == 200
 
     ca = await client.post(
         "/api/v1/workspaces", json={"name": "Alice Secret"}, headers=ha
@@ -81,9 +81,9 @@ async def test_master_workspace_isolation(client):
     if lb.status_code == 200:
         assert all(w["id"] != ws_id for w in lb.json())
 
-    # B direct-object access must fail closed (403 or 404, never 200)
+    # B direct-object access must fail closed (404, never 200)
     cross = await client.get(f"/api/v1/workspaces/{ws_id}", headers=hb)
-    assert cross.status_code in (403, 404), cross.text
+    assert cross.status_code == 404, cross.text
 
     own = await client.get(f"/api/v1/workspaces/{ws_id}", headers=ha)
     assert own.status_code == 200
@@ -115,7 +115,7 @@ async def test_master_memory_isolation(client):
 
     assert (await client.get("/api/v1/memories")).status_code == 401
     cross = await client.get(f"/api/v1/memories/{mem_id}", headers=hb)
-    assert cross.status_code in (403, 404), cross.text
+    assert cross.status_code == 403, cross.text
 
     # B must not retrieve A's memory content via search either
     found = await client.post(

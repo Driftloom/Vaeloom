@@ -311,7 +311,7 @@ async def test_LANGGRAPH_E2E_01b_http_entry_authorized(client, monkeypatch, tmp_
     user_obj = me_json.get("user") or {}
     user_id = user_obj.get("id") or me_json.get("id") or me_json.get("user_id")
     ws = await client.post("/api/v1/workspaces", json={"name": "graph-ws"}, headers=headers)
-    assert ws.status_code in (200, 201), ws.text
+    assert ws.status_code == 201, ws.text
     ws_id = ws.json().get("id") or ws.json().get("workspace_id")
     assert ws_id and user_id
 
@@ -358,7 +358,7 @@ async def test_LANGGRAPH_E2E_01b_http_entry_authorized(client, monkeypatch, tmp_
                                 json={"workspaceId": str(uuid.uuid4()),
                                       "message": "remember this", "agentName": "memory"},
                                 headers=theaders)
-    assert foreign.status_code in (403, 404), foreign.status_code
+    assert foreign.status_code == 404, foreign.status_code
     assert get_graph_stats()["runs"] == 0  # no denied request touched the graph
 
 

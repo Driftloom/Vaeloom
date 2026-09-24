@@ -1,3 +1,4 @@
+import uuid
 import pytest
 from httpx import AsyncClient
 
@@ -5,58 +6,60 @@ pytestmark = pytest.mark.asyncio
 
 
 class TestResumes:
-    async def _auth_header(self, client: AsyncClient) -> dict:
+    async def _auth_and_ws(self, client: AsyncClient) -> tuple[dict, uuid.UUID]:
         res = await client.post("/api/v1/auth/signup", json={
-            "email": "res@test.com", "password": "Test1234!",
+            "email": f"res-{uuid.uuid4().hex[:6]}@test.com", "password": "Test1234!",
         })
         token = res.json()["access_token"]
-        return {"Authorization": f"Bearer {token}"}
+        headers = {"Authorization": f"Bearer {token}"}
+        ws = await client.post("/api/v1/workspaces", json={"name": "res-ws"}, headers=headers)
+        ws_id = uuid.UUID(ws.json()["id"])
+        return headers, ws_id
 
     async def test_list_resumes(self, client: AsyncClient):
-        headers = await self._auth_header(client)
+        headers, ws_id = await self._auth_and_ws(client)
         res = await client.get(
-            "/api/v1/resumes?workspace_id=00000000-0000-0000-0000-000000000001",
+            f"/api/v1/resumes?workspace_id={ws_id}",
             headers=headers,
         )
         assert res.status_code == 200
 
     async def test_get_master_not_found(self, client: AsyncClient):
-        headers = await self._auth_header(client)
+        headers, ws_id = await self._auth_and_ws(client)
         res = await client.get(
-            "/api/v1/resumes/master?workspace_id=00000000-0000-0000-0000-000000000001",
+            f"/api/v1/resumes/master?workspace_id={ws_id}",
             headers=headers,
         )
         assert res.status_code == 404
 
     async def test_resume_requires_workspace_id(self, client: AsyncClient):
-        headers = await self._auth_header(client)
+        headers, _ = await self._auth_and_ws(client)
         res = await client.get("/api/v1/resumes", headers=headers)
         assert res.status_code == 400
 
-    async def test_get_master_resume_success(self, client: AsyncClient):
-        headers = await self._auth_header(client)
+    async def test_get_master_resume_unseeded(self, client: AsyncClient):
+        headers, ws_id = await self._auth_and_ws(client)
         res = await client.get(
-            "/api/v1/resumes/master?workspace_id=00000000-0000-0000-0000-000000000001",
+            f"/api/v1/resumes/master?workspace_id={ws_id}",
             headers=headers,
         )
-        assert res.status_code in (200, 404)
+        assert res.status_code == 404
 
     async def test_generate_resume(self, client: AsyncClient):
-        headers = await self._auth_header(client)
+        headers, ws_id = await self._auth_and_ws(client)
         res = await client.post(
-            "/api/v1/resumes/00000000-0000-0000-0000-000000000001/generate",
+            f"/api/v1/resumes/{uuid.uuid4()}/generate",
             json={"job_description": "Software Engineer", "variant_type": "standard"},
             headers=headers,
         )
-        assert res.status_code in (200, 404, 500)
+        assert res.status_code == 404
 
     async def test_get_master_resume_found(self, client: AsyncClient, db_session):
-        headers = await self._auth_header(client)
-        import uuid
+        headers, ws_id = await self._auth_and_ws(client)
         from api.models.schema import Resume
         resume = Resume(
             id=uuid.uuid4(),
-            workspace_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+            workspace_id=ws_id,
             variant_type="master",
             content={},
             version=1,
@@ -64,19 +67,18 @@ class TestResumes:
         db_session.add(resume)
         await db_session.commit()
         res = await client.get(
-            "/api/v1/resumes/master?workspace_id=00000000-0000-0000-0000-000000000001",
+            f"/api/v1/resumes/master?workspace_id={ws_id}",
             headers=headers,
         )
         assert res.status_code == 200
         assert res.json()["variant_type"] == "master"
 
     async def test_generate_resume_success(self, client: AsyncClient, db_session):
-        headers = await self._auth_header(client)
-        import uuid
+        headers, ws_id = await self._auth_and_ws(client)
         from api.models.schema import Resume
         resume = Resume(
             id=uuid.uuid4(),
-            workspace_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+            workspace_id=ws_id,
             variant_type="master",
             content={},
             version=1,

@@ -76,7 +76,7 @@ class TestAgentCouncilUnit:
 class TestAgentCouncilApi:
     async def test_council_api_unauthenticated(self, client: AsyncClient):
         resp = await client.post("/api/v1/council/review", json={"artifact": "Sample text"})
-        assert resp.status_code in (401, 403)
+        assert resp.status_code == 401
 
     async def test_council_triage_api(self, client: AsyncClient, auth_headers: dict):
         resp = await client.post(

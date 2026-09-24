@@ -23,7 +23,7 @@ async def _make_workspace(client: AsyncClient, headers: dict, name: str) -> str:
     res = await client.post(
         "/api/v1/workspaces", json={"name": name}, headers=headers
     )
-    assert res.status_code in (200, 201), res.text
+    assert res.status_code == 201, res.text
     return res.json()["id"]
 
 

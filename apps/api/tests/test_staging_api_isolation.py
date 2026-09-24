@@ -72,13 +72,13 @@ class TestStagingIsolation:
             tag = uuid.uuid4().hex[:8]
             tok_a = await _signup(client, f"gate-a-{tag}@example.com")
             ws = await client.post("/api/v1/workspaces", json={"name": f"ws-a-{tag}"}, headers=_auth(tok_a))
-            assert ws.status_code in (200, 201), ws.text[:200]
+            assert ws.status_code == 201, ws.text[:200]
             ws_id = ws.json()["id"]
             secret = f"GATE-SECRET-{tag}-alpha"
             mem = await client.post("/api/v1/memories", json={
                 "type": "profile", "title": f"mem-{tag}", "content": secret,
             }, headers={**_auth(tok_a), "X-Workspace-ID": ws_id})
-            assert mem.status_code in (200, 201), mem.text[:300]
+            assert mem.status_code == 201, mem.text[:300]
 
             tok_b = await _signup(client, f"gate-b-{tag}@example.com")
             listed = await client.get("/api/v1/memories", headers=_auth(tok_b))
@@ -86,10 +86,10 @@ class TestStagingIsolation:
             assert secret not in listed.text, "cross-user memory leak via staging API"
 
             direct = await client.get(f"/api/v1/workspaces/{ws_id}", headers=_auth(tok_b))
-            assert direct.status_code in (403, 404), f"cross-workspace read: {direct.status_code}"
+            assert direct.status_code == 404, f"cross-workspace read: {direct.status_code}"
 
             found = await client.post("/api/v1/search", json={"query": secret}, headers=_auth(tok_b))
-            assert found.status_code in (200, 400)
+            assert found.status_code == 200
             if found.status_code == 200:
                 assert secret not in found.text, "cross-user retrieval leak via staging search"
         finally:
@@ -106,13 +106,13 @@ class TestStagingIsolation:
                 tok = await _signup(client, f"load-{tag}-{i}@example.com")
                 ws = await client.post("/api/v1/workspaces", json={"name": f"load-ws-{tag}-{i}"},
                                        headers=_auth(tok))
-                assert ws.status_code in (200, 201), ws.text[:200]
+                assert ws.status_code == 201, ws.text[:200]
                 wid = ws.json()["id"]
                 secret = f"LOAD-SECRET-{tag}-{i}"
                 mem = await client.post("/api/v1/memories", json={
                     "type": "profile", "title": f"load-{tag}-{i}", "content": secret,
                 }, headers={**_auth(tok), "X-Workspace-ID": wid})
-                assert mem.status_code in (200, 201), mem.text[:300]
+                assert mem.status_code == 201, mem.text[:300]
                 users.append((tok, wid, secret))
 
             lat: list[float] = []
@@ -158,7 +158,7 @@ class TestStagingIsolation:
                 try:
                     r = await client.post("/api/v1/search", json={"query": secret}, headers=_auth(tok))
                     lat2.append((time.monotonic() - t0) * 1000)
-                    assert r.status_code in (200, 400)
+                    assert r.status_code == 200
                     if r.status_code == 200:
                         for _, _, other in users:
                             if other != secret and other in r.text:

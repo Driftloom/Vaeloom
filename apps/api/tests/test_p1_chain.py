@@ -47,7 +47,7 @@ class TestWholeSystemChain:
 
         # 2. workspace (owner)
         w = await client.post("/api/v1/workspaces", json={"name": "chain-ws"}, headers=h)
-        assert w.status_code in (200, 201), w.text
+        assert w.status_code == 201, w.text
         ws = w.json()["id"]
 
         # 3. memory write (retrieval substrate for the run)
@@ -55,7 +55,7 @@ class TestWholeSystemChain:
                               json={"type": "note", "title": "Chain Fact",
                                     "content": "the chain code is 7",
                                     "workspace_id": ws}, headers=h)
-        assert m.status_code in (200, 201), m.text
+        assert m.status_code == 201, m.text
 
         # 4. agent run through the loop substrate with the HTTP-minted
         # identity (tenant/workspace/user straight from signup). Uses a stub
@@ -118,4 +118,4 @@ class TestWholeSystemChain:
         r = await client.post("/api/v1/agents/chat",
                               json={"message": "hi", "workspaceId": wa},
                               headers={"Authorization": f"Bearer {tb}"})
-        assert r.status_code in (403, 404), r.text
+        assert r.status_code == 404, r.text

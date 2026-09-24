@@ -159,4 +159,4 @@ class TestResponseSchemas:
             headers=auth_headers,
             json={"name": "test", "extra": True, "another": 123},
         )
-        assert res.status_code in (200, 201)
+        assert res.status_code == 201

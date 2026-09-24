@@ -34,7 +34,7 @@ async def _signup_and_workspace(client: AsyncClient):
     assert me.status_code == 200
     # workspace
     ws = await client.post("/api/v1/workspaces", json={"name": f"ws-{uuid.uuid4().hex[:6]}"}, headers=headers)
-    assert ws.status_code in (201, 200), ws.text
+    assert ws.status_code == 201, ws.text
     ws_id = ws.json().get("id") or ws.json().get("workspace_id") or ws.json().get("workspaceId")
     assert ws_id
     return headers, ws_id, token
@@ -69,12 +69,12 @@ async def test_B_memory_write_future_retrieval(client: AsyncClient):
         "status": "active",
     }
     c1 = await client.post("/api/v1/memories", json=payload, headers=headers)
-    assert c1.status_code in (201, 200), c1.text
+    assert c1.status_code == 201, c1.text
     mem_id = c1.json().get("id")
     assert mem_id
-    # second identical should either dedup or create second (we test no crash)
+    # second identical creates second without crashing
     c2 = await client.post("/api/v1/memories", json=payload, headers=headers)
-    assert c2.status_code in (201, 200, 409)
+    assert c2.status_code == 201
     # search should find at least one
     search = await client.post("/api/v1/memories/search", json={"query": "React", "top_k": 5}, headers=headers)
     # search may require tenant header — if 422, try list filter
@@ -101,8 +101,7 @@ async def test_C_rag_ingest_retrieval(client: AsyncClient):
     from io import BytesIO
     files = {"file": ("plan.txt", BytesIO(b"Project plan for Vaeloom Q4"), "text/plain")}
     doc = await client.post(f"/api/v1/documents?workspace_id={ws_id}", files=files, headers=headers)
-    # conftest uses sqlite, may succeed without vector; at least verify 201 or fallback
-    assert doc.status_code in (200, 201, 400, 422), doc.text
+    assert doc.status_code == 201, doc.text
     if doc.status_code in (200, 201):
         # verify list contains it
         listed = await client.get(f"/api/v1/documents?workspace_id={ws_id}", headers=headers)
@@ -261,7 +260,7 @@ async def test_J_security_cross_workspace_denied(client: AsyncClient):
     headers_b, ws_b, _ = await _signup_and_workspace(client)
     # A creates memory in ws_a
     m = await client.post("/api/v1/memories", json={"workspace_id": ws_a, "type": "profile", "domain": "Skill", "title": "SecretSkill", "content": "isolated", "tags": ["secret"]}, headers=headers_a)
-    assert m.status_code in (200, 201)
+    assert m.status_code == 201
     # B tries to list ws_a memories — should be empty or 403/404 depending on RLS; at least not see SecretSkill via ws_b filter
     listed_b_as_a = await client.get(f"/api/v1/memories?workspace_id={ws_b}", headers=headers_a)
     if listed_b_as_a.status_code == 200:
@@ -278,8 +277,9 @@ async def test_J_security_cross_workspace_denied(client: AsyncClient):
         if doc_id:
             # B tries to read it via workspace B id
             fetched = await client.get(f"/api/v1/documents/{doc_id}/content?workspace_id={ws_b}", headers=headers_b)
-            # Should be 404, 403, or at least not contain secret summary
-            assert fetched.status_code in (404, 403, 400, 500) or "secret doc" not in fetched.text.lower()
+            # Fails closed with 404 and does not leak content
+            assert fetched.status_code == 404
+            assert "secret doc" not in fetched.text.lower()
     # Direct Temporal workspace isolation via durable agent
     from api.temporal.workflows import DurableAgentRunWorkflow
     from temporalio.testing import WorkflowEnvironment

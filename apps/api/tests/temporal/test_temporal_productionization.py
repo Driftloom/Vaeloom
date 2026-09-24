@@ -1198,7 +1198,7 @@ async def test_API02_no_auth_401(db_session, monkeypatch):
     async with ac:
         r = await ac.post("/api/v1/temporal/workflows/durable-agent",
                           json={"workspace_id": str(uuid.uuid4()), "input": {}})
-        assert r.status_code in (401, 403), (r.status_code, r.text)
+        assert r.status_code == 401, (r.status_code, r.text)
 
 
 async def test_API03_malformed_workspace_400(db_session, monkeypatch):

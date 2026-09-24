@@ -27,12 +27,12 @@ async def test_adversarial_cross_workspace_idor():
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         # Attacker tries to read victim document
         res = await ac.get(f"/api/v1/documents/{doc_id}/content?workspace_id={ws_victim}", headers=headers_attacker)
-        # Must be rejected fail-closed (401 or 403 or 404)
-        assert res.status_code in (401, 403, 404)
+        # Must be rejected fail-closed (401 invalid token)
+        assert res.status_code == 401
 
         # Attacker tries to archive victim document
         archive_res = await ac.post(f"/api/v1/documents/{doc_id}/archive?workspace_id={ws_victim}", headers=headers_attacker)
-        assert archive_res.status_code in (401, 403, 404)
+        assert archive_res.status_code == 401
 
 
 def test_adversarial_dangerous_extensions_and_traversal():
