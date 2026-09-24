@@ -199,7 +199,7 @@ function getSlashIcon(agent: string) {
   }
 }
 
-const SLASH = [
+const DEFAULT_SLASH = [
   { trigger: '/organize', desc: 'Organize workspace files', agent: 'organization' },
   { trigger: '/remember', desc: 'Extract memories', agent: 'memory' },
   { trigger: '/resume', desc: 'Generate resume', agent: 'resume' },
@@ -208,7 +208,12 @@ const SLASH = [
   { trigger: '/apply', desc: 'Draft application', agent: 'application' },
   { trigger: '/email', desc: 'Draft email (approval)', agent: 'gmail' },
   { trigger: '/schedule', desc: 'Calendar & reminders', agent: 'scheduler' },
+  { trigger: '/research', desc: 'Research companies & roles', agent: 'research' },
+  { trigger: '/career', desc: 'Career coaching & strategy', agent: 'career' },
+  { trigger: '/code', desc: 'Coding assistance & audit', agent: 'coding' },
 ];
+
+const SLASH = DEFAULT_SLASH;
 
 const QUICK = [
   { label: 'Organize my files', prompt: '/organize my recent files' },
@@ -238,14 +243,31 @@ function agentDot(a?: string) {
   const m: Record<string, string> = {
     organization: 'bg-warning',
     memory: 'bg-accent',
-    resume: 'bg-info',
-    ats: 'bg-success',
-    job_search: 'bg-primary',
-    application: 'bg-primary-400',
-    gmail: 'bg-error',
-    scheduler: 'bg-warning',
+    resume: 'bg-sky-500',
+    ats: 'bg-emerald-500',
+    job_search: 'bg-blue-500',
+    application: 'bg-pink-500',
+    gmail: 'bg-rose-500',
+    scheduler: 'bg-amber-600',
+    research: 'bg-indigo-500',
+    career: 'bg-violet-500',
+    learning: 'bg-teal-500',
+    github: 'bg-slate-700',
+    coding: 'bg-cyan-500',
+    reminder: 'bg-yellow-500',
+    analytics: 'bg-orange-500',
+    recommendation: 'bg-purple-500',
+    reflection: 'bg-fuchsia-500',
+    security: 'bg-red-600',
+    calendar: 'bg-amber-500',
+    internship: 'bg-lime-600',
+    document: 'bg-blue-400',
+    pdf: 'bg-red-500',
+    conversation: 'bg-gray-500',
+    self_improvement: 'bg-emerald-600',
+    qa: 'bg-emerald-700',
   };
-  return m[a || ''] || 'bg-surface-400';
+  return m[a || ''] || 'bg-primary';
 }
 
 export function ChatWindow({ workspaceId }: { workspaceId: string }) {
@@ -262,6 +284,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState('auto');
   const [catalog, setCatalog] = useState<CatalogAgent[]>([]);
+  const [slashCommands, setSlashCommands] = useState(DEFAULT_SLASH);
   const [slashOpen, setSlashOpen] = useState(false);
   const [mentionOpen, setMentionOpen] = useState(false);
   const [slashF, setSlashF] = useState('');
@@ -273,6 +296,21 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   const [durableMode, setDurableMode] = useState(false);
   const [durableWorkflowId, setDurableWorkflowId] = useState<string | null>(null);
   const [durableRagStatus, setDurableRagStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch(`/api/v1/agents/commands?workspace_id=${encodeURIComponent(workspaceId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (active && Array.isArray(data?.commands) && data.commands.length > 0) {
+          setSlashCommands(data.commands);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [workspaceId]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -582,9 +620,9 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   const filteredSlash = useMemo(() => {
     const f = slashF.toLowerCase();
     return !f
-      ? SLASH
-      : SLASH.filter((s) => s.trigger.includes(f) || s.desc.toLowerCase().includes(f));
-  }, [slashF]);
+      ? slashCommands
+      : slashCommands.filter((s) => s.trigger.includes(f) || s.desc.toLowerCase().includes(f));
+  }, [slashF, slashCommands]);
   const filteredMention = useMemo(() => {
     const f = mentionF.toLowerCase();
     const list = [
