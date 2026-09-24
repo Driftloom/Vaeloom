@@ -116,3 +116,27 @@ export type { MemoryEntityProps } from './components/memory/MemoryEntity';
 export type { MemoryRelationshipProps } from './components/memory/MemoryRelationship';
 export type { MemoryEvidenceProps } from './components/memory/MemoryEvidence';
 export type { MemoryTimelineProps, MemoryTimelineItem } from './components/memory/MemoryTimeline';
+
+// Extended Navigation & Data Components
+export { Breadcrumb } from './components/navigation/Breadcrumb';
+export { Pagination } from './components/navigation/Pagination';
+export { StatCard } from './components/data/StatCard';
+export { FilterBar } from './components/data/FilterBar';
+export { FormField } from './components/forms/FormField';
+export { ErrorState } from './components/feedback/ErrorState';
+
+export type { BreadcrumbProps, BreadcrumbItem } from './components/navigation/Breadcrumb';
+export type { PaginationProps } from './components/navigation/Pagination';
+export type { StatCardProps } from './components/data/StatCard';
+export type { FilterBarProps, FilterOption } from './components/data/FilterBar';
+export type { FormFieldProps } from './components/forms/FormField';
+export type { ErrorStateProps } from './components/feedback/ErrorState';
+
+// Extended AI Components
+export { AIMessage } from './components/ai/AIMessage';
+export { ChatComposer } from './components/ai/ChatComposer';
+export { AIInsight } from './components/ai/AIInsight';
+
+export type { AIMessageProps } from './components/ai/AIMessage';
+export type { ChatComposerProps } from './components/ai/ChatComposer';
+export type { AIInsightProps } from './components/ai/AIInsight';

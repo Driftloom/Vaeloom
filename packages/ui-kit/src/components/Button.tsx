@@ -2,7 +2,7 @@ import React from 'react';
 import { Spinner } from './Spinner';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   fullWidth?: boolean;
@@ -27,6 +27,8 @@ export const Button: React.FC<ButtonProps> = ({
       'bg-action text-action-fg hover:bg-action-hover active:bg-action-active focus:ring-accent',
     secondary:
       'bg-surface-hover text-text hover:bg-surface-active focus:ring-border border border-border',
+    outline:
+      'bg-transparent text-text hover:bg-surface-hover focus:ring-border border border-border',
     ghost: 'bg-transparent text-text hover:bg-surface-hover focus:ring-border',
     // Destructive actions use the semantic error color, not the accent.
     danger: 'bg-error text-error-fg hover:bg-error/90 active:bg-error/80 focus:ring-error',
