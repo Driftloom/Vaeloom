@@ -20,6 +20,11 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   XIcon,
+  MailIcon,
+  HelpCircleIcon,
+  CheckSquareIcon,
+  LockIcon,
+  UsersIcon,
 } from '@vaeloom/ui-kit';
 
 interface NavLink {
@@ -49,6 +54,7 @@ function groupLinks(workspaceId: string): NavGroup[] {
         { name: 'Dashboard', path: ws(''), icon: <CpuIcon size={16} /> },
         { name: 'Capabilities', path: ws('/capabilities'), icon: <TerminalIcon size={16} /> },
         { name: 'Chat', path: ws('/chat'), icon: <BrainIcon size={16} /> },
+        { name: 'Agents', path: ws('/agents'), icon: <UsersIcon size={16} /> },
       ],
     },
     {
@@ -56,14 +62,14 @@ function groupLinks(workspaceId: string): NavGroup[] {
       links: [
         { name: 'Memory Graph', path: ws('/memory'), icon: <BrainIcon size={16} /> },
         { name: 'Search', path: ws('/search'), icon: <SearchIcon size={16} /> },
-        { name: 'Documents', path: ws('/documents'), icon: <FileTextIcon size={16} /> },
+        { name: 'Documents', path: ws('/files'), icon: <FileTextIcon size={16} /> },
       ],
     },
     {
       label: 'Career',
       links: [
-        { name: 'Career Overview', path: ws('/career'), icon: <BriefcaseIcon size={16} /> },
-        { name: 'Resumes', path: ws('/resumes'), icon: <FileTextIcon size={16} /> },
+        { name: 'Career Strategy', path: ws('/career'), icon: <BriefcaseIcon size={16} /> },
+        { name: 'Resumes', path: ws('/resume'), icon: <FileTextIcon size={16} /> },
         { name: 'Jobs', path: ws('/jobs'), icon: <BriefcaseIcon size={16} /> },
         { name: 'Applications', path: ws('/applications'), icon: <FileTextIcon size={16} /> },
       ],
@@ -71,9 +77,12 @@ function groupLinks(workspaceId: string): NavGroup[] {
     {
       label: 'Operations',
       links: [
+        { name: 'Tasks & DAGs', path: ws('/tasks'), icon: <CheckSquareIcon size={16} /> },
         { name: 'Activity Log', path: ws('/history'), icon: <ClockIcon size={16} /> },
         { name: 'Schedule', path: ws('/schedule'), icon: <CalendarIcon size={16} /> },
         { name: 'Approvals', path: ws('/approvals'), icon: <ShieldIcon size={16} /> },
+        { name: 'Connectors', path: ws('/connectors'), icon: <PlugIcon size={16} /> },
+        { name: 'Email Intel', path: ws('/email'), icon: <MailIcon size={16} /> },
       ],
     },
     {
@@ -81,7 +90,9 @@ function groupLinks(workspaceId: string): NavGroup[] {
       links: [
         { name: 'Workspace Settings', path: ws('/settings'), icon: <SettingsIcon size={16} /> },
         { name: 'Security & Keys', path: ws('/settings/security'), icon: <ShieldIcon size={16} /> },
-        { name: 'Secrets Vault', path: ws('/vault'), icon: <ShieldIcon size={16} /> },
+        { name: 'Secrets Vault', path: ws('/vault'), icon: <LockIcon size={16} /> },
+        { name: 'Billing & Plans', path: ws('/billing'), icon: <DatabaseIcon size={16} /> },
+        { name: 'Help & Guides', path: ws('/help'), icon: <HelpCircleIcon size={16} /> },
       ],
     },
   ];

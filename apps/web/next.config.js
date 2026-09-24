@@ -4,6 +4,7 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 });
 
 const nextConfig = {
+  serverExternalPackages: ['@supabase/ssr', '@supabase/supabase-js'],
   output: process.env.CI === 'true' && process.platform !== 'win32' ? 'standalone' : undefined,
   transpilePackages: ['@vaeloom/shared-types', '@vaeloom/ui-kit'],
   reactStrictMode: true,
