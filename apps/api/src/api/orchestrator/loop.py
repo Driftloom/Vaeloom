@@ -1208,21 +1208,23 @@ async def _try_react_loop(
 
         # Retrieve declarative AgentCard for prompt templating & schema verification
         card = getattr(agent, "card", None) or get_agent_card(agent_name)
-
-        # Build tool schemas — least-privilege: only offer tools the agent or its card is explicitly allowed (OWASP LLM06/PATI)
         card_tools = set(card.tools) if (card and getattr(card, "tools", None)) else set()
         agent_tools = {t.name for t in getattr(agent, "tools", []) or []}
-        declared = agent_tools | card_tools
-        ordered = [td for td in ALL_TOOLS.values() if td.name in declared]
-        # Offer MCP-bridged tools (workspace ownership is enforced at call time)
-        try:
-            from ..tools.executor import dynamic_tool_definitions
 
-            for name, mcp_td in dynamic_tool_definitions(workspace_id=str(workspace_id) if workspace_id else None).items():
-                if name not in declared:
-                    ordered.append(mcp_td)
-        except Exception:  # noqa: BLE001 - bridging must never break the loop
-            pass
+        # Build tool schemas — dynamic least-privilege discovery via ToolRegistryService
+        try:
+            from ..services.tool_registry_service import tool_registry_service
+            ordered = await tool_registry_service.discover_tools(
+                agent_name=agent_name,
+                workspace_id=str(workspace_id) if workspace_id else None,
+                tenant_id=str(_tenant) if _tenant else None,
+                card=card,
+                declared_tools=agent_tools | card_tools,
+            )
+        except Exception:
+            declared = agent_tools | card_tools
+            ordered = [td for td in ALL_TOOLS.values() if td.name in declared]
+
         ordered = ordered[:48]
         if not ordered:
             return None

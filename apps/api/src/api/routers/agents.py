@@ -192,6 +192,16 @@ async def _verify_workspace_access(workspace_id: str, current_user: dict, db: As
         raise HTTPException(status_code=503, detail="Authorization check failed")
 
 
+@router.get("/commands", response_model=dict[str, Any])
+async def get_agent_commands(
+    workspace_id: str | None = Query(None, description="Optional workspace ID"),
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Return dynamically discovered slash commands and UI metadata for all active agents."""
+    from .agent_commands import get_agent_commands as _get_agent_commands
+    return await _get_agent_commands(workspace_id=workspace_id, current_user=current_user)
+
+
 class CapabilityTestRequest(BaseModel):
     workspace_id: str
     capability_name: str

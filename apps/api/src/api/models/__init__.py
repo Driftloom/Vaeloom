@@ -41,6 +41,13 @@ from .schema import (
     Workspace,
     WorkspaceUser,
 )
+from .registries import (
+    EvaluationEntry,
+    ModelProviderEntry,
+    PolicyEntry,
+    PromptVersionEntry,
+    ToolRegistryEntry,
+)
 
 __all__ = [
     "Agent", "AgentAction", "AgentExecution", "AgentSchedule", "ApiKey",
@@ -50,4 +57,6 @@ __all__ = [
     "Notification", "OutboxEvent", "Permission", "Plugin", "PluginExecution", "ProactiveProposal",
     "Relationship", "Resume", "ScaleMemoryNode", "ScheduleEvent", "SovereignIdentity", "Subscription", "Tenant",
     "UsageRecord", "User", "VerifiableCredential", "Webhook", "WebhookDelivery", "Workspace", "WorkspaceUser",
+    "ToolRegistryEntry", "ModelProviderEntry", "PolicyEntry", "PromptVersionEntry", "EvaluationEntry",
 ]
+

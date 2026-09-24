@@ -72,6 +72,7 @@ from .middleware.security_headers import SecurityHeadersMiddleware
 from .middleware.tenant import TenantMiddleware
 from .routers import (
     admin_console,
+    agent_commands,
     agents,
     analytics,
     anticipation,
@@ -105,6 +106,7 @@ from .routers import (
     provider_keys,
     realtime,
     recommendations,
+    registries,
     resumes,
     scheduler,
     search,
@@ -446,6 +448,7 @@ _safe_include(organizations.router, "/api/v1/organizations", ["organizations"])
 _safe_include(marketplace.router, "/api/v1/marketplace", ["marketplace"])
 _safe_include(onboarding.router, "/api/v1/onboarding", ["onboarding"])
 _safe_include(orchestrator.router, "/api/v1/orchestrator", ["orchestrator"])
+_safe_include(registries.router, "/api/v1", ["registries"])
 
 
 # ── Enterprise routes (CF-06 / R6) ──────────────────────────────────

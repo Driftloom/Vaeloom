@@ -6,36 +6,8 @@ import logging
 import time
 from typing import Any
 
-from api.agents.analytics_agent.handler import AnalyticsAgent  # G7
-from api.agents.application_agent.handler import ApplicationAgent
-from api.agents.ats_agent.handler import ATSAgent
-from api.agents.calendar_agent.handler import CalendarAgent
-from api.agents.career_agent.handler import CareerAgent  # G1
-from api.agents.coding_agent.handler import CodingAgent  # G5
-from api.agents.connector_agent.handler import ConnectorAgent  # G11
 from api.agents.conversation_agent.handler import ConversationAgent
-from api.agents.document_agent.handler import DocumentAgent
-from api.agents.drive_agent.handler import DriveAgent  # G13
-from api.agents.github_agent.handler import GitHubAgent  # G4
-from api.agents.gmail_agent.handler import GmailAgent
-from api.agents.internship_agent.handler import InternshipAgent
-from api.agents.job_search_agent.handler import JobSearchAgent
-from api.agents.learning_agent.handler import LearningAgent  # G2
-from api.agents.memory.planning_agent import PlanningAgent  # Planning - roadmap
-from api.agents.memory_agent.handler import MemoryAgentHandler
-from api.agents.organization_agent.handler import OrganizationAgent
-from api.agents.pdf_agent.handler import PDFAgent
-from api.agents.plugin_agent.handler import PluginAgent  # G12
 from api.agents.qa_agent.handler import QAAgent, QAValidationResult
-from api.agents.recommendation_agent.handler import RecommendationAgent  # G8
-from api.agents.reflection_agent.handler import ReflectionAgent  # G9
-from api.agents.reminder_agent.handler import ReminderAgent  # G6
-from api.agents.research_agent.handler import ResearchAgent  # G3
-from api.agents.resume_agent.handler import ResumeAgent
-from api.agents.scheduler_agent.handler import SchedulerAgent
-from api.agents.security_agent.handler import SecurityAgent  # G10
-from api.agents.self_improvement_agent.handler import SelfImprovementAgent
-from api.agents.workspace_agent.handler import WorkspaceAgent
 from api.infrastructure.agent_eval import detect_adversarial_prompt
 from api.infrastructure.agent_observability import (
     AgentMetric,
@@ -45,66 +17,23 @@ from api.infrastructure.agent_observability import (
     workspace_limiter,
 )
 
+from .agent_discovery import agent_registry as AGENT_REGISTRY
 from .loop import AgentRequest, run_agent_loop
 
 logger = logging.getLogger(__name__)
 
-# ── Light multi-agent heuristic (imported here to avoid circular at supervisor import time) ──
 def _is_complex_multi_agent(message: str) -> bool:
     """Quick check without importing supervisor (avoids circular)."""
     if len(message.split()) < 8:
         return False
-    msg_lower = message.lower()
-    # Respect MVP scope lock: only count canonical categories when enforced (AC-02)
     try:
-        from ..config import settings as _settings
-        if _settings.mvp_scope_enforced:
-            cats = sum(1 for cat, kws in CATEGORY_KEYWORDS.items() if cat in MVP_CATEGORY_AGENT_MAP and any(kw in msg_lower for kw in kws))
-            return cats >= 2
+        from .capability_registry import capability_registry
+        candidates = capability_registry.resolve_candidate_capabilities(message, top_k=5)
+        unique_agents = {c.agent_id for c in candidates}
+        return len(unique_agents) >= 2
     except Exception:
-        pass
-    cats = sum(1 for kws in CATEGORY_KEYWORDS.values() if any(kw in msg_lower for kw in kws))
-    return cats >= 2
+        return False
 
-# ── Agent Registry ─────────────────────────────────────────────────
-
-AGENT_REGISTRY: dict[str, type] = {
-    "conversation": ConversationAgent,
-    "organization": OrganizationAgent,
-    "memory": MemoryAgentHandler,
-    "resume": ResumeAgent,
-    "ats": ATSAgent,
-    "job_search": JobSearchAgent,
-    "application": ApplicationAgent,
-    "gmail": GmailAgent,
-    "scheduler": SchedulerAgent,
-    "planning": PlanningAgent,
-    "research": ResearchAgent,
-    "career": CareerAgent,
-    "learning": LearningAgent,
-    "github": GitHubAgent,
-    "coding": CodingAgent,
-    "reminder": ReminderAgent,
-    "analytics": AnalyticsAgent,
-    "recommendation": RecommendationAgent,
-    "reflection": ReflectionAgent,
-    "security": SecurityAgent,
-    "connector": ConnectorAgent,
-    "plugin": PluginAgent,
-    "drive": DriveAgent,
-    # Full Enterprise Specialist Agents (completing 28-agent roster)
-    "workspace": WorkspaceAgent,
-    "calendar": CalendarAgent,
-    "internship": InternshipAgent,
-    "document": DocumentAgent,
-    "pdf": PDFAgent,
-    "self_improvement": SelfImprovementAgent,
-    # Enterprise Specialist Aliases
-    "interview": CareerAgent,
-    "market_intelligence": CareerAgent,
-    "network": CareerAgent,
-    "wellness": ConversationAgent,
-}
 
 # ── Intent Classification Categories ───────────────────────────────
 
@@ -167,15 +96,19 @@ class UserRequest:
 # path (tie-breaks and low-confidence arbitration). Deterministic, no LLM.
 
 def _agent_keyword_score(agent_name: str, msg_lower: str) -> float:
-    """Best category keyword strength among categories containing the agent."""
-    best = 0
-    for category, agents in CATEGORY_AGENT_MAP.items():
-        if agent_name in agents:
-            kws = CATEGORY_KEYWORDS.get(category, [])
-            hits = sum(1 for kw in kws if kw in msg_lower)
-            if kws:
-                best = max(best, hits / max(1, len(kws)))
-    return round(min(1.0, best * 2.0), 3)
+    """Capability exemplar strength for the agent."""
+    try:
+        from .capability_registry import capability_registry
+        caps = capability_registry.get_by_agent(agent_name)
+        if not caps:
+            return 0.0
+        matched = capability_registry.resolve_candidate_capabilities(msg_lower, top_k=5)
+        for idx, c in enumerate(matched):
+            if c.agent_id == agent_name:
+                return round(max(0.2, 1.0 - (idx * 0.2)), 3)
+    except Exception:
+        pass
+    return 0.0
 
 
 def _agent_capability(agent_name: str) -> tuple[float, str]:
@@ -393,137 +326,46 @@ async def classify_intent(message: str, workspace_id: str | None = None) -> tupl
         logger.info(f"ROUTER_DISTRESS: query='{message[:50]}' -> conversation (emotional containment fast-path)")
         return "conversation", 0.95
 
-    # ── Stage 1: Coarse category — collect all scores ─────────────────────────
-    scores: dict[str, int] = {}
-    for category, keywords in CATEGORY_KEYWORDS.items():
-        scores[category] = sum(1 for kw in keywords if kw in msg_lower)
-
-    best_score = max(scores.values()) if scores else 0
-    if best_score == 0:
-        # Check LLM before default conversational fallback
-        llm_match = await _llm_classify_intent(message)
-        if llm_match:
-            logger.info(f"ROUTER_LLM_CLASSIFY: query='{message[:50]}' fallback -> {llm_match[0]} ({llm_match[1]:.2f})")
-            return llm_match
-        return "conversation", 0.85  # Conversational partner fallback
-
-    # Gather all categories tied at best_score and break tie via disambiguation strength
-    tied = [cat for cat, sc in scores.items() if sc == best_score]
-    if len(tied) == 1:
-        best_category = tied[0]
-    else:
-        # Secondary: count of stage-2 disambiguator hits inside tied categories
-        def _secondary(cat: str) -> int:
-            if cat == "career_resume":
-                return sum(1 for kw in ["score", "ats", "gap", "keyword"] if kw in msg_lower) + sum(1 for kw in ["resume", "cv", "bullet"] if kw in msg_lower)
-            if cat == "job_search":
-                return sum(1 for kw in ["apply", "application", "submit", "cover letter"] if kw in msg_lower)
-            if cat == "career_development":
-                return sum(1 for kw in ["course", "learn", "training", "certification", "study"] if kw in msg_lower)
-            if cat == "research_github":
-                return sum(1 for kw in ["github", "repository", "repo", "profile"] if kw in msg_lower)
-            if cat == "planning_research":
-                return sum(1 for kw in ["plan", "roadmap", "milestone", "goal", "strategy"] if kw in msg_lower)
-            if cat == "reminders_analytics":
-                return sum(1 for kw in ["deadline", "remind", "follow up", "task", "todo"] if kw in msg_lower)
-            if cat == "integrations":
-                return sum(1 for kw in ["connector", "integration", "connect", "setup", "configure"] if kw in msg_lower)
-            return 0
-        tied_sorted = sorted(tied, key=lambda c: _secondary(c), reverse=True)
-        # Muse §7: capability-aware tie-break. When disambiguation strength
-        # also ties, prefer the category whose agent scores higher on
-        # capability/availability/cost — never by dictionary order alone.
-        try:
-            _top_secs = sorted({_secondary(c) for c in tied_sorted}, reverse=True)
-            if len(_top_secs) > 1 and _top_secs[0] == _top_secs[1]:
-                _tied_cats = [c for c in tied_sorted if _secondary(c) == _top_secs[0]]
-                _cands: list[str] = []
-                for _c in _tied_cats:
-                    _cands.extend(CATEGORY_AGENT_MAP.get(_c, []))
-                _ranked = score_agent_candidates(message, sorted(set(_cands)))
-                if _ranked:
-                    _by_agent = {r["agent"]: r["score"] for r in _ranked}
-                    _cat_score = {c: max([_by_agent.get(a, 0.0) for a in CATEGORY_AGENT_MAP.get(c, [])] or [0.0]) for c in _tied_cats}
-                    _best_cat = max(_tied_cats, key=lambda c: (_cat_score[c], -_tied_cats.index(c)))
-                    if _cat_score[_best_cat] > 0:
-                        tied_sorted = sorted(tied_sorted, key=lambda c: (c != _best_cat, tied_sorted.index(c)))
-        except Exception:
-            pass
-        best_category = tied_sorted[0]
-
-    confidence = min(best_score / 3.0, 1.0)
-    if best_score == 2 and confidence < 0.75:
-        if len(tied) == 1 or _secondary(best_category) > 0:  # type: ignore
-            confidence = 0.8
-
-    # Stage 2: Pick specific agent within category
-    agents_in_category = CATEGORY_AGENT_MAP.get(best_category, ["memory"])
-
-    if len(agents_in_category) == 1:
-        fast_agent = agents_in_category[0]
-    elif best_category == "document_organization":
-        if any(kw in msg_lower for kw in ["pdf", "fill", "form"]):
-            fast_agent = "pdf"
-        elif any(kw in msg_lower for kw in ["synthesize", "citation", "deep", "q&a"]):
-            fast_agent = "document"
-        elif any(kw in msg_lower for kw in ["workspace", "hierarchy", "sprawl", "hygiene"]):
-            fast_agent = "workspace"
-        else:
-            fast_agent = "organization"
-    elif best_category == "career_resume":
-        fast_agent = "ats" if any(kw in msg_lower for kw in ["score", "ats", "gap", "keyword"]) else "resume"
-    elif best_category == "job_search":
-        if any(kw in msg_lower for kw in ["internship", "intern", "co-op", "fellowship"]):
-            fast_agent = "internship"
-        elif any(kw in msg_lower for kw in ["apply", "application", "submit", "cover letter"]):
-            fast_agent = "application"
-        else:
-            fast_agent = "job_search"
-    elif best_category == "schedule_time":
-        fast_agent = "calendar" if any(kw in msg_lower for kw in ["calendar", "open slot", "availability", "free time"]) else "scheduler"
-    elif best_category == "career_development":
-        fast_agent = "learning" if any(kw in msg_lower for kw in ["course", "learn", "training", "certification", "study"]) else "career"
-    elif best_category == "research_github":
-        fast_agent = "github" if any(kw in msg_lower for kw in ["github", "repository", "repo", "profile"]) else "research"
-    elif best_category == "planning_research":
-        fast_agent = "planning" if any(kw in msg_lower for kw in ["plan", "roadmap", "milestone", "goal", "strategy"]) else "research"
-    elif best_category == "reminders_analytics":
-        fast_agent = "reminder" if any(kw in msg_lower for kw in ["deadline", "remind", "follow up", "task", "todo"]) else "analytics"
-    elif best_category == "reflection":
-        fast_agent = "self_improvement" if any(kw in msg_lower for kw in ["accuracy", "critique", "benchmark", "improve prompt"]) else "reflection"
-    elif best_category == "integrations":
-        fast_agent = "connector" if any(kw in msg_lower for kw in ["connector", "integration", "connect", "setup", "configure"]) else "plugin"
-    else:
-        fast_agent = agents_in_category[0]
-
-    # If confident, return fast-path
-    if confidence >= 0.75:
-        return fast_agent, confidence
-
-    # Muse §7: capability-aware arbitration before the micro-LLM fallback.
-    # When the scorer decisively prefers a viable agent (margin >= 0.15 at
-    # score >= 0.6), take it — capability/availability/cost evidence beats a
-    # weak keyword signal and saves the model call. Otherwise fall through.
+    # ── Stage 1: Dynamic Capability Resolution via Capability Registry ─────────
     try:
-        _arb_cands = sorted(set(agents_in_category + [fast_agent]))
-        _arb = score_agent_candidates(message, _arb_cands)
-        if len(_arb) >= 1:
-            _second = _arb[1]["score"] if len(_arb) > 1 else 0.0
-            if _arb[0]["score"] >= 0.6 and (_arb[0]["score"] - _second) >= 0.15:
-                logger.info(f"ROUTER_SCORER: query='{message[:50]}' fast={fast_agent}({confidence:.2f}) -> scorer={_arb[0]['agent']}({_arb[0]['score']:.2f})")
-                return _arb[0]["agent"], max(confidence, min(0.85, _arb[0]["score"]))
-    except Exception:
-        pass
+        from .capability_registry import capability_registry
+        candidates = capability_registry.resolve_candidate_capabilities(message, top_k=5)
+        if candidates:
+            top_cap = candidates[0]
+            top_agent = top_cap.agent_id
+
+            has_explicit_cue = any(
+                len(clean_msg) >= 3 and clean_msg in ex.lower()
+                for ex in top_cap.semantic_exemplars
+            )
+            confidence = 0.90 if has_explicit_cue else 0.85
+
+            try:
+                _arb_cands = sorted({c.agent_id for c in candidates})
+                _arb = score_agent_candidates(message, _arb_cands)
+                if _arb and _arb[0]["score"] >= 0.6:
+                    top_agent = _arb[0]["agent"]
+                    confidence = max(confidence, min(0.95, _arb[0]["score"]))
+            except Exception:
+                pass
+
+            logger.info(
+                "ROUTER_CAPABILITY_RESOLVE: query='%s' -> agent=%s cap=%s conf=%.2f",
+                message[:50], top_agent, top_cap.capability_id, confidence,
+            )
+            return top_agent, confidence
+    except Exception as exc:
+        logger.debug("ROUTER_CAPABILITY_ERROR: %s", exc)
 
     # For ambiguous or low-confidence queries, trigger micro-LLM intent calibration
     llm_match = await _llm_classify_intent(message)
     if llm_match:
-        logger.info(f"ROUTER_LLM_CLASSIFY: query='{message[:50]}' fast={fast_agent}({confidence:.2f}) -> llm={llm_match[0]}({llm_match[1]:.2f})")
+        logger.info("ROUTER_LLM_CLASSIFY: query='%s' -> llm=%s (%.2f)", message[:50], llm_match[0], llm_match[1])
         return llm_match
 
-    # Log telemetry for low-confidence routes
-    logger.info(f"ROUTER_LOW_CONFIDENCE: query='{message[:50]}' agent={fast_agent} conf={confidence:.2f}")
-    return fast_agent, confidence
+    # Conversational partner fallback
+    return "conversation", 0.85
+
 
 
 # ── MVP scope lock (INT-02 §2.2): 10 canonical agents ───────────────
@@ -670,8 +512,12 @@ async def handle(request: UserRequest) -> dict[str, Any]:
         agent_name, confidence = preferred, 0.98
         logger.info(f"Explicit agent override: {agent_name} (confidence={confidence})")
     else:
-        agent_name, confidence = await classify_intent(request.message, workspace_id=request.workspace_id)
+        try:
+            agent_name, confidence = await classify_intent(request.message, workspace_id=request.workspace_id)
+        except TypeError:
+            agent_name, confidence = await classify_intent(request.message)
         logger.info(f"Classified: agent={agent_name}, confidence={confidence}")
+
 
     # ── 1b. MVP scope lock ─────────────────────────────────────────
     if settings.mvp_scope_enforced and agent_name not in MVP_CANONICAL_AGENTS:

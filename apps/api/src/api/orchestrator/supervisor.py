@@ -12,8 +12,13 @@ import logging
 import uuid
 from typing import Any
 
+from .agent_bus import agent_bus
+from .agent_discovery import dynamic_agent_registry as AGENT_REGISTRY
+from .capability_registry import capability_registry
+from .contracts.agent_message import AgentMessage, AgentResponseEnvelope, MessageType, TaskStatus
 from .loop import AgentRequest
-from .router import AGENT_REGISTRY, CATEGORY_KEYWORDS, classify_intent
+from .router import CATEGORY_KEYWORDS, classify_intent
+from .sub_agent_manager import sub_agent_manager
 
 logger = logging.getLogger(__name__)
 
@@ -37,26 +42,39 @@ MULTI_AGENT_MIN_MESSAGE_WORDS = 8  # avoid false positives on short messages
 
 
 async def _detect_subtasks(message: str) -> list[tuple[str, float]]:
-    """Return list of (agent_name, confidence) for every matching category."""
+    """Return list of (agent_name, confidence) dynamically using capability manifests and semantic resolution."""
     msg_lower = message.lower()
     candidates: list[tuple[str, float]] = []
-    for category, keywords in CATEGORY_KEYWORDS.items():
-        score = sum(1 for kw in keywords if kw in msg_lower)
-        if score >= MULTI_AGENT_KEYWORD_THRESHOLD:
-            confidence = min(score / 3.0, 1.0)
-            from .router import CATEGORY_AGENT_MAP  # local to avoid circular at top
-            agents_in_cat = CATEGORY_AGENT_MAP.get(category, ["memory"])
-            agent_name, conf = await classify_intent(message)
-            if agent_name in agents_in_cat:
-                if agent_name not in [c[0] for c in candidates]:
-                    candidates.append((agent_name, confidence))
-            else:
+
+    # 1. Dynamic semantic capability matching
+    try:
+        cap_candidates = capability_registry.resolve_candidate_capabilities(message)
+        for cap, score in cap_candidates:
+            if score >= 0.2:
+                if cap.agent_name not in [c[0] for c in candidates]:
+                    candidates.append((cap.agent_name, min(score, 1.0)))
+    except Exception as exc:
+        logger.debug("Dynamic capability matching fallback in supervisor: %s", exc)
+
+    # 2. Category keyword fallback if fewer than 2 candidates
+    if len(candidates) < 2:
+        for category, keywords in CATEGORY_KEYWORDS.items():
+            score = sum(1 for kw in keywords if kw in msg_lower)
+            if score >= MULTI_AGENT_KEYWORD_THRESHOLD:
+                confidence = min(score / 3.0, 1.0)
+                from .router import CATEGORY_AGENT_MAP
+                agents_in_cat = CATEGORY_AGENT_MAP.get(category, ["memory"])
                 primary = agents_in_cat[0]
                 if primary not in [c[0] for c in candidates]:
                     candidates.append((primary, confidence))
-    top_agent, top_conf = await classify_intent(message)
-    if top_agent not in [c[0] for c in candidates] and top_conf >= 0.33:
-        candidates.insert(0, (top_agent, top_conf))
+
+    try:
+        top_agent, top_conf = await classify_intent(message)
+        if top_agent not in [c[0] for c in candidates] and top_conf >= 0.33:
+            candidates.insert(0, (top_agent, top_conf))
+    except Exception:
+        pass
+
     # MVP scope lock: filter to canonical agents when enforced (AC-02 fix)
     try:
         from ..config import settings as _settings
