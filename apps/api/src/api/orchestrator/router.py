@@ -13,6 +13,7 @@ from api.agents.calendar_agent.handler import CalendarAgent
 from api.agents.career_agent.handler import CareerAgent  # G1
 from api.agents.coding_agent.handler import CodingAgent  # G5
 from api.agents.connector_agent.handler import ConnectorAgent  # G11
+from api.agents.conversation_agent.handler import ConversationAgent
 from api.agents.document_agent.handler import DocumentAgent
 from api.agents.drive_agent.handler import DriveAgent  # G13
 from api.agents.github_agent.handler import GitHubAgent  # G4
@@ -68,6 +69,7 @@ def _is_complex_multi_agent(message: str) -> bool:
 # ── Agent Registry ─────────────────────────────────────────────────
 
 AGENT_REGISTRY: dict[str, type] = {
+    "conversation": ConversationAgent,
     "organization": OrganizationAgent,
     "memory": MemoryAgentHandler,
     "resume": ResumeAgent,
@@ -97,6 +99,11 @@ AGENT_REGISTRY: dict[str, type] = {
     "document": DocumentAgent,
     "pdf": PDFAgent,
     "self_improvement": SelfImprovementAgent,
+    # Enterprise Specialist Aliases
+    "interview": CareerAgent,
+    "market_intelligence": CareerAgent,
+    "network": CareerAgent,
+    "wellness": ConversationAgent,
 }
 
 # ── Intent Classification Categories ───────────────────────────────
@@ -277,6 +284,7 @@ async def _llm_classify_intent(message: str) -> tuple[str, float] | None:
         from ..services.llm_service import llm_service
 
         agent_desc = [
+            "- conversation: general chat, questions about capabilities, greetings, ambiguous requests, emotional support or coaching",
             "- organization: file and document organization, folders, categorization",
             "- memory: remember facts, retrieve memory, notes, profile context",
             "- resume: write, improve, tailor resume bullets or CV",
@@ -306,7 +314,7 @@ async def _llm_classify_intent(message: str) -> tuple[str, float] | None:
                 {"role": "user", "content": message},
             ],
             temperature=0.0,
-            max_tokens=64,
+            max_tokens=512,
             task_type="intent_classify",
         )
         txt = resp.get("content", "").strip()
@@ -322,29 +330,82 @@ async def _llm_classify_intent(message: str) -> tuple[str, float] | None:
     return None
 
 
-async def classify_intent(message: str) -> tuple[str, float]:
+async def classify_intent(message: str, workspace_id: str | None = None) -> tuple[str, float]:
+    """Authoritative semantic intent classification via the zero-trust 6-layer RoutingEngine.
+
+    Combines TypeSafe AI Jev System 1 with Gemma / LLM System 2.
+    Falls back to legacy heuristic scoring if cognitive engine is offline.
     """
-    Two-stage intent classification with micro-LLM fallback and misroute telemetry.
-    Stage 1: Coarse category from keywords (fast-path).
-    Stage 2: Specific agent within category.
-    Fallback: Micro-LLM intent classifier for ambiguous/low-confidence queries.
-    Returns (agent_name, confidence).
-    """
+    # ── Primary: Zero-Trust 6-Layer Cognitive Routing Engine ─────────
+    try:
+        from .routing import routing_engine
+        env, plan = await routing_engine.route(
+            query=message,
+            workspace_id=workspace_id or "00000000-0000-0000-0000-000000000001",
+        )
+        if env and env.selected_agent:
+            return env.selected_agent, env.confidence
+    except Exception as exc:
+        logger.debug(f"ROUTER_ENGINE: routing_engine fallback to legacy heuristics: {exc}")
+
     msg_lower = message.lower()
 
-    # Stage 1: Coarse category — collect all scores
+    # ── Stage 0: Conversational greeting / small-talk fast-path ──────────────
+    # Short social messages score zero keyword hits → fall into the low-confidence
+    # clarification trap. Detect them early and route with high confidence to
+    # ConversationAgent.
+    # Note: Strip any leading @mention (e.g. @auto, @scheduler) or /command (e.g. /schedule)
+    import re as _re
+    clean_msg = _re.sub(r"^[@/]\w+\s*", "", msg_lower).strip()
+
+    _GREETINGS = frozenset([
+        "hi", "hello", "hey", "hlo", "hola", "howdy", "greetings", "sup", "yo",
+        "hiya", "heyo", "heyy", "hihi", "hai", "heya", "namaste",
+        "good morning", "good afternoon", "good evening", "good night",
+        "how are you", "how r u", "how are u", "what's up", "whats up",
+        "wassup", "wazzup", "wsp", "how's it going", "how is it going",
+        "how's everything", "how's life", "how do you do",
+        "bye", "goodbye", "see you", "later", "take care", "cya", "ttyl",
+        "thanks", "thank you", "thx", "ty", "cheers",
+    ])
+    _stripped = clean_msg.rstrip("!?.,'\"")
+    if _stripped in _GREETINGS:
+        logger.info(f"ROUTER_GREETING: query='{message[:50]}' -> conversation (greeting fast-path)")
+        return "conversation", 0.95
+    _GREETING_PREFIXES = ("good morning", "good afternoon", "good evening", "good night", "how are", "how's")
+    if any(_stripped.startswith(p) for p in _GREETING_PREFIXES):
+        logger.info(f"ROUTER_GREETING_PREFIX: query='{message[:50]}' -> conversation (greeting prefix)")
+        return "conversation", 0.95
+
+    # ── Stage 0b: Psychological containment & emotional distress fast-path ──
+    # Expressing burnout, anxiety, feeling overwhelmed, or job search fatigue
+    # must route to ConversationAgent for Rogers OARS containment, not specialist
+    # task execution (e.g. "I feel overwhelmed and stressed about job applications"
+    # should NOT be treated as a job application creation request).
+    _DISTRESS_KEYWORDS = (
+        "overwhelmed", "stressed", "stress", "burnout", "burned out", "burnt out",
+        "anxious", "anxiety", "depressed", "depression", "exhausted", "frustrated",
+        "hopeless", "lost", "giving up", "give up", "imposter syndrome",
+        "impostor syndrome", "panic", "panicking", "discouraged", "mental health",
+        "feeling down", "stressed out", "so tired", "too much pressure",
+    )
+    if not message.strip().startswith(("@", "/")) and any(kw in clean_msg for kw in _DISTRESS_KEYWORDS):
+        logger.info(f"ROUTER_DISTRESS: query='{message[:50]}' -> conversation (emotional containment fast-path)")
+        return "conversation", 0.95
+
+    # ── Stage 1: Coarse category — collect all scores ─────────────────────────
     scores: dict[str, int] = {}
     for category, keywords in CATEGORY_KEYWORDS.items():
         scores[category] = sum(1 for kw in keywords if kw in msg_lower)
 
     best_score = max(scores.values()) if scores else 0
     if best_score == 0:
-        # Check LLM before default memory fallback
+        # Check LLM before default conversational fallback
         llm_match = await _llm_classify_intent(message)
         if llm_match:
             logger.info(f"ROUTER_LLM_CLASSIFY: query='{message[:50]}' fallback -> {llm_match[0]} ({llm_match[1]:.2f})")
             return llm_match
-        return "memory", 0.5  # Default fallback
+        return "conversation", 0.85  # Conversational partner fallback
 
     # Gather all categories tied at best_score and break tie via disambiguation strength
     tied = [cat for cat, sc in scores.items() if sc == best_score]
@@ -473,7 +534,7 @@ async def classify_intent(message: str) -> tuple[str, float]:
 # extras that must not run in MVP builds (CF-05, R5/R6).
 
 MVP_CANONICAL_AGENTS = frozenset({
-    "organization", "memory", "resume", "ats", "job_search",
+    "conversation", "organization", "memory", "resume", "ats", "job_search",
     "application", "gmail", "scheduler", "planning", "research",
 })
 
@@ -609,33 +670,19 @@ async def handle(request: UserRequest) -> dict[str, Any]:
         agent_name, confidence = preferred, 0.98
         logger.info(f"Explicit agent override: {agent_name} (confidence={confidence})")
     else:
-        agent_name, confidence = await classify_intent(request.message)
+        agent_name, confidence = await classify_intent(request.message, workspace_id=request.workspace_id)
         logger.info(f"Classified: agent={agent_name}, confidence={confidence}")
 
     # ── 1b. MVP scope lock ─────────────────────────────────────────
     if settings.mvp_scope_enforced and agent_name not in MVP_CANONICAL_AGENTS:
         return _handle_out_of_scope(agent_name, confidence)
 
-    # ── 2. Low confidence → ask clarification ──────────────────────
+    # ── 2. Low confidence → consultative assistance ─────────────────
     if confidence < 0.7:
-        logger.info(f"Low confidence ({confidence}) — asking clarification")
-        return {
-            "agent_name": "orchestrator",
-            "action": "ask_clarification",
-            "confidence": confidence,
-            "result": {
-                "summary": "I'm not sure which specialist to route this to.",
-                "details": None,
-                "proposals": [],
-                "questions": [
-                    "Could you clarify what you'd like help with? "
-                    "Options: organize files, build roadmap/plan, research, build/score resume, career guidance, "
-                    "learning courses, company research, GitHub analysis, coding prep, "
-                    "reminders, analytics, recommendations, weekly reflection, "
-                    "security scan, integrations, plugins, email, schedule."
-                ],
-            },
-        }
+        logger.info(f"Low confidence ({confidence:.2f}) — routing to consultative conversation partner")
+        agent_name = "conversation"
+        confidence = 0.85
+
 
     # ── 2b. LangGraph direct path (gated, opt-in) ────────────────────
     # When enabled, the compiled graph orchestrates (its supervisor node owns
@@ -782,11 +829,25 @@ async def handle(request: UserRequest) -> dict[str, Any]:
 
     # ── 4. QA Gate (mandatory) ─────────────────────────────────────
     qa = QAAgent()
+    raw_res = loop_response.result if isinstance(loop_response.result, dict) else {}
+    if not raw_res and isinstance(loop_response.final_result, dict):
+        raw_res = loop_response.final_result
+
+    merged_res: dict[str, Any] = {
+        "summary": loop_response.final_result if isinstance(loop_response.final_result, str) else raw_res.get("summary", ""),
+        "details": raw_res.get("details", None),
+        "proposals": raw_res.get("proposals", []),
+        "questions": raw_res.get("questions", []),
+    }
+    for k, v in raw_res.items():
+        if k not in merged_res:
+            merged_res[k] = v
+
     agent_output: dict[str, Any] = {
         "agent_name": agent_name,
-        "action": "suggest",
+        "action": getattr(loop_response, "action", "suggest"),
         "confidence": confidence,
-        "result": {"summary": loop_response.final_result, "details": None, "proposals": [], "questions": []},
+        "result": merged_res,
     }
 
     max_qa_retries = 3

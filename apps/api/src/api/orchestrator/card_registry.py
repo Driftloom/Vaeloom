@@ -152,7 +152,7 @@ APPLICATION_CARD = AgentCard(
         "browse_job_page",
         "compile_resume_pdf",
         "compile_resume_docx",
-        "send_email",
+        "draft_email",
     ],
     output_schema={
         "type": "object",
@@ -203,7 +203,7 @@ ORGANIZATION_CARD = AgentCard(
     tools=[
         "search_documents",
         "query_graph",
-        "tag_document",
+        "categorize_document",
     ],
     output_schema={
         "type": "object",
@@ -303,17 +303,45 @@ GITHUB_CARD = AgentCard(
         "create_github_issue",
         "create_github_pull_request",
         "web_search",
-        "analyze_profile",
-        "get_repo_stats",
-        "assess_skills",
         "search_documents",
     ],
 )
 
 
-# ── Canonical Registry Dict ───────────────────────────────────────
+CONVERSATION_CARD = AgentCard(
+    name="conversation",
+    version="1.0.0",
+    description="Executive career advisor, cognitive scaffolding, and conversational partner. Provides empathetic containment, helps clarify goals, guides users toward high-leverage workflows, and coordinates specialist agents invisibly.",
+    tools=[
+        "search_documents",
+        "query_graph",
+        "web_search",
+    ],
+    output_schema={
+        "type": "object",
+        "properties": {
+            "summary": {"type": "string"},
+            "details": {"type": ["string", "null"]},
+            "action_chips": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+            "questions": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["summary"],
+    },
+    safety_guidelines=[
+        "Always maintain psychological safety, unconditional positive regard, and conversational warmth.",
+        "Never display internal machine routing confidence, scores, or engineering telemetry in human chat replies.",
+        "When user intent is ambiguous, offer consultative re-framing with 2-3 tactile action chips rather than cold clarification walls.",
+    ],
+)
+
+
+# ── Canonical Registry Dict (All 29 Specialist Agents) ────────────
 
 _CANONICAL_CARDS: dict[str, AgentCard] = {
+    "conversation": CONVERSATION_CARD,
     "resume": RESUME_CARD,
     "job_search": JOB_SEARCH_CARD,
     "application": APPLICATION_CARD,
@@ -326,6 +354,21 @@ _CANONICAL_CARDS: dict[str, AgentCard] = {
     "drive": DRIVE_CARD,
     "github": GITHUB_CARD,
 }
+
+# Auto-seed the remaining specialist agents from Capability Manifests
+try:
+    from .capability_registry import CANONICAL_CAPABILITIES
+    for _cap in CANONICAL_CAPABILITIES:
+        if _cap.agent_id not in _CANONICAL_CARDS:
+            _CANONICAL_CARDS[_cap.agent_id] = AgentCard(
+                name=_cap.agent_id,
+                version="1.0.0",
+                description=_cap.description,
+                tools=list(_cap.required_tools + _cap.optional_tools),
+            )
+except Exception:
+    pass
+
 
 
 class AgentCardRegistry:

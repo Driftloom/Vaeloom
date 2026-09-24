@@ -634,10 +634,20 @@ async def _assemble_rag_context(
 
                         for sid, stype in rows:
                             try:
-                                if stype in ('entity', 'memory') and len(entities) < 8:
+                                if stype == 'entity' and len(entities) < 8:
                                     ent = await session.get(Entity, _uuid.UUID(sid))
                                     if ent and not any(e["id"] == sid for e in entities):
                                         entities.append({"id": sid, "name": ent.canonical_name, "type": ent.type, "aliases": ent.aliases})
+                                elif stype == 'memory' and len(entities) < 8:
+                                    from ..models.schema import Memory as _MemModel
+                                    mem = await session.get(_MemModel, _uuid.UUID(sid))
+                                    if mem and not any(e["id"] == sid for e in entities):
+                                        entities.append({
+                                            "id": sid,
+                                            "name": mem.title or (mem.summary or "")[:60] or "Saved Memory",
+                                            "type": mem.type or "memory",
+                                            "aliases": [],
+                                        })
                                 elif stype == 'document' and len(documents) < 8:
                                     doc = await session.get(Document, _uuid.UUID(sid))
                                     if doc and not any(d["id"] == sid for d in documents):
@@ -914,7 +924,7 @@ async def plan_phase(request: AgentRequest, state: LoopState) -> dict[str, Any]:
             "message": request.message,
             "workspace_id": request.workspace_id,
             "rag_context": rag_context,
-            "agent_context": agent_context,
+            "agent_context": agent_context.model_dump() if agent_context and hasattr(agent_context, "model_dump") else (agent_context.__dict__ if agent_context and hasattr(agent_context, "__dict__") else agent_context),
             # Flatten for easy consumption by Act/ReAct
             "context_prompt": _build_context_prompt(rag_context),
         }
@@ -1043,9 +1053,16 @@ async def _try_react_loop(
     termination_reason on every return. Returns result dict or None to fall
     back to static dispatch (deliberate best-effort ladder, observed).
     """
-    if not settings.agent_react_enabled:
-        return None
-    if not _REACT_AVAILABLE or not settings.llm_api_key:
+    import os as _os
+    has_llm = bool(
+        settings.llm_api_key
+        or getattr(settings, "ollama_api_key", None)
+        or _os.environ.get("OLLAMA_API_KEY")
+        or _os.environ.get("GROQ_API_KEY")
+        or getattr(settings, "groq_api_key", None)
+        or _os.environ.get("OPENAI_API_KEY")
+    )
+    if not _REACT_AVAILABLE or not has_llm:
         return None
     # Only attempt ReAct for agents that could benefit from live tools
     # Skip for very short messages to avoid overhead — still allow via explicit flag
@@ -1250,14 +1267,21 @@ async def _try_react_loop(
         try:
             from ..services.prompt_compiler import PromptCompiler, PromptLayers
             _tool_desc = "\n".join(f"- {td.name}: {td.description}" for td in ordered[:32])
+            clean_user_message = message
+            rag_evidence = ""
+            if "\n\n[Context from knowledge graph" in message:
+                parts = message.split("\n\n[Context from knowledge graph", 1)
+                clean_user_message = parts[0].strip()
+                rag_evidence = "[Context from knowledge graph" + parts[1]
+
             _layers = PromptLayers(
                 platform_policy="Vaeloom agent runtime: least-privilege tools, approval gates, workspace isolation.",
                 safety_policy="\n".join(getattr(card, "safety_guidelines", []) or []) if card else "",
                 agent_contract=system_content or getattr(card, "description", "") or getattr(agent, "mission", ""),
-                task_contract=message[:2000],
-                user_intent=message[:2000],
+                task_contract=f"Handle request: {clean_user_message[:500]}",
+                user_intent=clean_user_message[:2000],
                 memory_context="",
-                evidence="",
+                evidence=rag_evidence[:3000],
                 tool_context=_tool_desc,
                 observations="",
                 current_state="",
@@ -2448,7 +2472,36 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
             return result
         return _dispatch_with_approval(request, agent, "drive_sync", _drive_handler, payload={"action": "drive_sync"})
 
+    if agent_type == "ConversationAgent" or registry_key == "conversation":
+        return agent.execute(
+            content=message,
+            source_type="user_input",
+            source_id=f"input_{request.id}",
+            workspace_id=request.workspace_id,
+        )
+
     if agent_type == "SchedulerAgent" or registry_key == "scheduler":
+        _SCHED_GREETINGS = frozenset([
+            "hi", "hello", "hey", "hlo", "hola", "howdy", "greetings", "sup", "yo",
+            "help", "what's up", "how are you",
+        ])
+        _raw_sched = re.split(r"\n\n\[Context from", message, maxsplit=1)[0].strip().lower()
+        _msg_sched = re.sub(r"^[@/]\w+\s*", "", _raw_sched).strip().rstrip("!?.,'\"")
+        if _msg_sched in _SCHED_GREETINGS or not _msg_sched:
+            async def _sched_greeting():
+                return {
+                    "agent_name": "scheduler",
+                    "action": "suggest",
+                    "confidence": 0.95,
+                    "result": {
+                        "summary": "Hello! 👋 I'm your Scheduler Agent. I can help manage calendar events, track deadlines, and detect scheduling conflicts.",
+                        "details": None,
+                        "proposals": [],
+                        "questions": ["What event or deadline would you like me to schedule?"],
+                        "action_chips": ["📅 View Upcoming Events", "➕ Schedule Interview Prep", "🔍 Check Conflicts"],
+                    },
+                }
+            return _sched_greeting()
         return _dispatch_with_approval(
             request,
             agent,
@@ -2458,6 +2511,50 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
         )
 
     if agent_type in ("MemoryAgent", "MemoryAgentHandler") or registry_key == "memory":
+        # Greeting shortcut — social messages produce no useful entity extraction;
+        # return a friendly response so the chat feels alive.
+        _GREETING_TOKENS = frozenset([
+            "hi", "hello", "hey", "hlo", "hola", "howdy", "greetings", "sup", "yo",
+            "hiya", "heyo", "heyy", "hihi", "hai", "heya", "namaste",
+            "good morning", "good afternoon", "good evening", "good night",
+            "how are you", "how r u", "how are u", "what's up", "whats up",
+            "wassup", "wazzup", "wsp", "how's it going", "how is it going",
+            "how's everything", "how's life", "how do you do",
+            "bye", "goodbye", "see you", "later", "take care", "cya", "ttyl",
+            "thanks", "thank you", "thx", "ty", "cheers",
+        ])
+        _msg_stripped = msg_lower.strip().rstrip("!?.,'\"")
+        _is_greeting = _msg_stripped in _GREETING_TOKENS or any(
+            _msg_stripped.startswith(p) for p in ("good morning", "good afternoon", "good evening", "good night", "how are", "how's")
+        )
+        if _is_greeting:
+            _farewell_tokens = frozenset(["bye", "goodbye", "see you", "later", "take care", "cya", "ttyl"])
+            _thanks_tokens = frozenset(["thanks", "thank you", "thx", "ty", "cheers"])
+            if _msg_stripped in _farewell_tokens:
+                _greeting_reply = "Goodbye! 👋 Come back anytime — I'm here whenever you need help."
+            elif _msg_stripped in _thanks_tokens:
+                _greeting_reply = "You're welcome! 😊 Is there anything else I can help you with?"
+            else:
+                _greeting_reply = (
+                    "Hello! 👋 I'm your AI assistant. I can help you with:\n\n"
+                    "• 📄 **Resumes** — tailor, score ATS, generate cover letters\n"
+                    "• 🔍 **Job Search** — find roles, research companies, prep interviews\n"
+                    "• 🧠 **Memory** — organize files, extract insights from documents\n"
+                    "• 📅 **Planning** — schedule tasks, set reminders, manage your calendar\n"
+                    "• 💻 **Coding** — review code, solve challenges, suggest improvements\n\n"
+                    "What would you like to work on today?"
+                )
+            return {
+                "agent_name": "memory",
+                "action": "suggest",
+                "confidence": 0.92,
+                "result": {
+                    "summary": _greeting_reply,
+                    "details": None,
+                    "proposals": [],
+                    "questions": [],
+                },
+            }
         return agent.execute(
             content=message,
             source_type="user_input",
@@ -2604,6 +2701,14 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
     if agent_type == "SelfImprovementAgent" or registry_key == "self_improvement":
         return agent.process(request)
 
+    if agent_type == "ConversationAgent" or registry_key == "conversation":
+        return agent.execute(
+            content=message,
+            source_type="user_input",
+            source_id=f"input_{request.id}",
+            workspace_id=request.workspace_id,
+        )
+
     logger.warning(
         "dispatch_unknown_agent",
         extra={"agent_type": agent_type, "request_id": str(request.id), "action": "fallback"},
@@ -2702,11 +2807,17 @@ async def improve_phase(state: LoopState, request: AgentRequest) -> AgentRespons
     logger.info("IMPROVE: packaging final result and consolidating trajectory")
 
     final_summary = "Task completed"
+    final_result_dict: dict[str, Any] = {}
     for i in range(2, -1, -1):
         key = f"observe_{i}"
         if key in state.phases:
             payload = state.phases[key].get("payload", {})
-            final_summary = payload.get("result", {}).get("summary", "Task completed")
+            res = payload.get("result", {})
+            if isinstance(res, dict):
+                final_summary = res.get("summary", "Task completed")
+                final_result_dict = res
+            elif isinstance(payload, dict):
+                final_summary = payload.get("summary", "Task completed")
             break
 
     # Wave 5: Memory Learning Closure (Self-Improvement)
@@ -2757,11 +2868,15 @@ async def improve_phase(state: LoopState, request: AgentRequest) -> AgentRespons
         logger.warning(f"LEARNING_IMPROVE_FAILED correlation={getattr(request, 'correlation_id', '?')} "
                        f"workspace={str(getattr(request, 'workspace_id', '?'))[:8]} error={exc}")
 
+    merged_result = {"summary": str(final_summary), "details": None, "proposals": [], "questions": []}
+    if final_result_dict:
+        merged_result.update(final_result_dict)
+
     return AgentResponse(
         status="success",
         final_result=final_summary,
         action="suggest",
-        result={"summary": str(final_summary), "details": None, "proposals": [], "questions": []},
+        result=merged_result,
     )
 
 
@@ -2970,7 +3085,8 @@ async def run_agent_loop_stream(request: AgentRequest) -> AsyncGenerator[dict[st
                     # deadline applies, but every sleep goes through the
                     # deadline-aware helper so future budgets cover this path.
                     await _deadline_aware_sleep(0, None)  # allow event loop to flush
-            yield {"event": "done", "data": {"status": improve_resp.status, "result": improve_resp.final_result}}
+            chips = improve_resp.result.get("action_chips", []) if isinstance(improve_resp.result, dict) else []
+            yield {"event": "done", "data": {"status": improve_resp.status, "result": improve_resp.final_result, "action_chips": chips}}
             return
 
     escalated = await escalate_to_user(state)

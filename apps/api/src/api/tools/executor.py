@@ -284,10 +284,10 @@ _BASE_APPROVAL_GATED = frozenset({
     # (notification), web_search (read-only fetch) stay OPEN by decision —
     # see docs/phases/agentic-safety-w2/01-wave-report.md.
     "execute_code_sandbox",
-    # Phase B: Google Docs mutating tools (connector_write) added without a
-    # gate — closed here per the Tier-3 redteam contract that every
-    # memory_write/connector_write tool must be approval-gated.
+    # Mutating workspace & connector tools gated per zero-trust audit
     "create_google_doc", "append_google_doc", "replace_google_doc_text",
+    "create_workspace_folder", "restore_document_version", "share_workspace_document",
+    "sync_notion_pages",
 })
 
 
@@ -3476,7 +3476,9 @@ async def execute_tool(
             card = card_registry.get(agent_id)
             if card and card.tools:
                 # If card specifies allowed tools, tool.name must be in card.tools (or prefix match)
-                if tool.name not in card.tools and not any(tool.name.startswith(f"{t}:") or tool.name.startswith(f"{t}_") for t in card.tools):
+                # MCP tools and dynamic custom tools are exempt from static card.tools whitelist
+                is_dynamic = tool.name.startswith("mcp__") or getattr(tool, "category", "") in ("mcp", "custom")
+                if not is_dynamic and tool.name not in card.tools and not any(tool.name.startswith(f"{t}:") or tool.name.startswith(f"{t}_") for t in card.tools):
                     logger.warning(
                         f"AGENT_CARD_DENIAL: agent={agent_id} tool={tool.name} not in card.tools={card.tools}"
                     )

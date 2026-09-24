@@ -409,6 +409,17 @@ class LLMService:
             if key:
                 return prov, key
 
+        elif prov == "ollama":
+            key = (
+                getattr(settings, "ollama_api_key", "")
+                or os.environ.get("OLLAMA_API_KEY", "")
+                or (settings.llm_api_key if settings.llm_provider == "ollama" else "")
+                or (self.api_key if self.provider == "ollama" else "")
+                or "ollama"
+            )
+            if key:
+                return prov, key
+
         # If prov matches system default provider, use system key
         if settings.llm_provider == prov and settings.llm_api_key:
             return prov, settings.llm_api_key

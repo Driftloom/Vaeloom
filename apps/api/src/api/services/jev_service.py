@@ -57,7 +57,7 @@ class JevService:
         api_key: str | None = None,
         gateway_url: str | None = None,
         model: str | None = None,
-        timeout: float = 1.2,
+        timeout: float = 5.0,
     ) -> None:
         self.api_key = api_key or getattr(settings, "jev_api_key", "") or os.environ.get("JEV_API_KEY", "")
         if self.api_key.startswith("apikey_") and (not gateway_url or "vercel.sh" in (getattr(settings, "jev_gateway_url", "") or "")):
@@ -94,6 +94,7 @@ class JevService:
         options: Sequence[str],
         context: dict[str, Any] | None = None,
         require_match: bool = False,
+        criteria: dict[str, str] | None = None,
     ) -> str:
         """Sub-50ms multi-way classification. Selects exactly one option from the list."""
         if not options:
@@ -101,7 +102,7 @@ class JevService:
         if len(options) == 1 and not require_match:
             return options[0]
 
-        cache_key = f"choice:{prompt}:{list(options)}:{context}:{require_match}"
+        cache_key = f"choice:{prompt}:{list(options)}:{context}:{require_match}:{criteria}"
         cached = self._cache.get(cache_key)
         if cached is not None and (cached in options or (require_match and cached == "")):
             return cached
@@ -119,9 +120,9 @@ class JevService:
                 if self.api_key.startswith("apikey_") or "typesafe.ai" in self.gateway_url:
                     # Native TypeSafe AI System One Endpoint
                     endpoint = "https://api.typesafe.ai/v1/systemone"
-                    criteria = {opt: opt for opt in options}
+                    eval_criteria = dict(criteria) if criteria else {opt: opt for opt in options}
                     if require_match:
-                        criteria["none"] = "none of the options match"
+                        eval_criteria["none"] = "none of the options match"
                     payload = {
                         "state": f"Task: {prompt}\nContext: {context or {}}",
                         "model": "jev-latest",
@@ -133,7 +134,7 @@ class JevService:
                                     "If none match or the query is irrelevant/nonsense, select 'none'."
                                     if require_match else "Which option best matches the user's intent?"
                                 ),
-                                "criteria": criteria,
+                                "criteria": eval_criteria,
                             }
                         },
                     }
