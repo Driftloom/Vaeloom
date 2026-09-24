@@ -1180,6 +1180,68 @@ QUERY_NOTEBOOKLM = ToolDefinition(
 )
 
 
+# ── Multi-Agent Sub-Agent Delegation Tools ──────────────────────────
+
+SPAWN_SUB_AGENTS = ToolDefinition(
+    name="spawn_sub_agents",
+    description="Spawn one or more specialist sub-agents in parallel to execute subtasks concurrently. Available specialist agents: organization, memory, resume, ats, job_search, application, gmail, scheduler, research, career, coding, analytics, recommendation.",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "tasks": {
+                "type": "array",
+                "description": "List of sub-agent task definitions to execute in parallel.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "agent_name": {"type": "string", "description": "Target agent name"},
+                        "instruction": {"type": "string", "description": "Clear instruction for the sub-agent"},
+                        "context": {"type": "object", "description": "Optional prior step outputs or structured parameters"},
+                    },
+                    "required": ["agent_name", "instruction"],
+                },
+            },
+        },
+        "required": ["tasks"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "status": {"type": "string"},
+            "results": {"type": "array", "items": {"type": "object"}},
+            "aggregated_summary": {"type": "string"},
+        },
+    },
+    required_scope="agent.spawn",
+    category="system",
+    trust_class="core_trusted",
+)
+
+DELEGATE_TO_SUB_AGENT = ToolDefinition(
+    name="delegate_to_sub_agent",
+    description="Delegate a focused subtask to a single specialist agent and wait for its structured response.",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "agent_name": {"type": "string", "description": "Target specialist agent name"},
+            "instruction": {"type": "string", "description": "Instruction for the sub-agent"},
+            "context": {"type": "object", "description": "Optional context dictionary"},
+        },
+        "required": ["agent_name", "instruction"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "status": {"type": "string"},
+            "result": {"type": "object"},
+        },
+    },
+    required_scope="agent.spawn",
+    category="system",
+    trust_class="core_trusted",
+)
+
+
 # ── Registry ───────────────────────────────────────────────────────
 
 ALL_TOOLS: dict[str, ToolDefinition] = {
@@ -1207,6 +1269,7 @@ ALL_TOOLS: dict[str, ToolDefinition] = {
         SEND_SLACK_MESSAGE,
         SYNC_NOTION_PAGES, EXECUTE_CODE_SANDBOX,
         QUERY_NOTEBOOKLM,
+        SPAWN_SUB_AGENTS, DELEGATE_TO_SUB_AGENT,
     ]
 }
 

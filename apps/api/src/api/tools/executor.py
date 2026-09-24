@@ -3052,6 +3052,75 @@ async def _handle_unrecognized_tool(
 _execute_mock = _handle_unrecognized_tool
 
 
+async def _execute_spawn_sub_agents(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    from ..orchestrator.sub_agent_manager import sub_agent_manager
+
+    tasks = params.get("tasks", [])
+    if not isinstance(tasks, list) or not tasks:
+        return {"status": "error", "error": "No tasks provided for sub-agent execution"}
+
+    # Limit to maximum 4 concurrent sub-agents per call to prevent resource exhaustion
+    sub_tasks = [
+        {
+            "agent_name": t.get("agent_name", ""),
+            "task": t.get("instruction", ""),
+            "context": t.get("context", {}),
+        }
+        for t in tasks[:4]
+        if isinstance(t, dict) and t.get("agent_name")
+    ]
+
+    if not sub_tasks:
+        return {"status": "error", "error": "All task entries missing valid 'agent_name'"}
+
+    envelope = await sub_agent_manager.spawn_sub_agents_parallel(
+        parent_agent="main",
+        parent_run_id=f"spawn-{uuid_lib.uuid4().hex[:8]}",
+        sub_tasks=sub_tasks,
+        workspace_id=workspace_id,
+    )
+
+    summary_parts = []
+    for r in envelope.sub_agent_results:
+        agent = r.get("agent", "")
+        summary = (r.get("data") or {}).get("summary") or str(r.get("data"))[:200]
+        summary_parts.append(f"[{agent}]: {summary}")
+
+    return {
+        "status": envelope.status.value,
+        "count": len(envelope.sub_agent_results),
+        "results": envelope.sub_agent_results,
+        "aggregated_summary": "\n".join(summary_parts) if summary_parts else "Sub-agents finished execution.",
+    }
+
+
+async def _execute_delegate_to_sub_agent(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    from ..orchestrator.sub_agent_manager import sub_agent_manager
+
+    agent_name = params.get("agent_name", "")
+    instruction = params.get("instruction", "")
+    context = params.get("context", {})
+
+    if not agent_name or not instruction:
+        return {"status": "error", "error": "Both 'agent_name' and 'instruction' are required"}
+
+    envelope = await sub_agent_manager.spawn_sub_agent(
+        parent_agent="main",
+        parent_run_id=f"delegate-{uuid_lib.uuid4().hex[:8]}",
+        sub_agent_name=agent_name,
+        task_instruction=instruction,
+        context=context,
+        workspace_id=workspace_id,
+    )
+
+    return {
+        "status": envelope.status.value,
+        "agent": agent_name,
+        "result": envelope.data,
+        "error": envelope.error_message,
+    }
+
+
 TOOL_DISPATCH: dict[str, Any] = {
     "search_documents": _execute_search_documents,
     "get_document_content": _execute_get_document_content,
@@ -3115,6 +3184,8 @@ TOOL_DISPATCH: dict[str, Any] = {
     "sync_notion_pages": _execute_sync_notion_pages,
     "execute_code_sandbox": _execute_execute_code_sandbox,
     "query_notebooklm": _execute_query_notebooklm,
+    "spawn_sub_agents": _execute_spawn_sub_agents,
+    "delegate_to_sub_agent": _execute_delegate_to_sub_agent,
 }
 
 

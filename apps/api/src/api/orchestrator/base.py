@@ -68,5 +68,17 @@ class BaseAgent:
         """
         return await self.fallback()
 
+    async def execute_react(
+        self,
+        plan: dict[str, Any],
+        tools: list[Any] | None = None,
+        context: AgentContext | None = None,
+    ) -> Any:
+        """Universal ReAct execution entrypoint for autonomous tool orchestration.
+
+        Subclasses implement custom dynamic reasoning or delegate to standard execute().
+        """
+        return await self.execute(plan, context=context)
+
     async def fallback(self) -> Any:
         raise NotImplementedError("Every agent must implement a fallback method")

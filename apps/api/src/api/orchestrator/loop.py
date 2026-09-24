@@ -428,7 +428,19 @@ async def lookup_approval(
 
 
 class AgentRequest:
-    def __init__(self, agent: BaseAgent, request_id: str, message: str, workspace_id: str, agent_name: str = "", db: Any = None, correlation_id: str | None = None, user_id: str | None = None, tenant_id: str | None = None):
+    def __init__(
+        self,
+        agent: BaseAgent,
+        request_id: str,
+        message: str,
+        workspace_id: str,
+        agent_name: str = "",
+        db: Any = None,
+        correlation_id: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+        execution_plan: Any | None = None,
+    ):
         self.agent = agent
         self.id = request_id
         self.message = message
@@ -441,6 +453,7 @@ class AgentRequest:
         self.user_id = user_id
         # Tenant binding for policy/observability (middleware context authoritative).
         self.tenant_id = tenant_id
+        self.execution_plan = execution_plan
 
     def _derive_agent_name(self) -> str:
         name = type(self.agent).__name__
@@ -919,7 +932,7 @@ async def plan_phase(request: AgentRequest, state: LoopState) -> dict[str, Any]:
         except Exception as e:
             logger.warning(f"Context loading failed (non-blocking): {e}")
 
-        return {
+        plan_dict = {
             "agent_type": request.agent_name,
             "message": request.message,
             "workspace_id": request.workspace_id,
@@ -928,10 +941,29 @@ async def plan_phase(request: AgentRequest, state: LoopState) -> dict[str, Any]:
             # Flatten for easy consumption by Act/ReAct
             "context_prompt": _build_context_prompt(rag_context),
         }
+        if getattr(request, "execution_plan", None):
+            plan_dict["execution_plan"] = (
+                request.execution_plan.model_dump()
+                if hasattr(request.execution_plan, "model_dump")
+                else (
+                    request.execution_plan.dict()
+                    if hasattr(request.execution_plan, "dict")
+                    else request.execution_plan
+                )
+            )
+        return plan_dict
 
 
 def _build_context_prompt(rag: dict[str, Any]) -> str:
-    """Turn RAG bundles into compact LLM context string."""
+    """Turn RAG bundles into XML fenced context string via ContextAssembler."""
+    try:
+        from .context.context_assembler import context_assembler
+        xml_prompt = context_assembler.assemble_rag_prompt(rag)
+        if xml_prompt:
+            return xml_prompt
+    except Exception:
+        pass
+
     parts: list[str] = []
     for ent in (rag.get("entities") or [])[:5]:
         parts.append(f"Entity: {ent.get('name')} ({ent.get('type')})")
@@ -1248,7 +1280,20 @@ async def _try_react_loop(
         ]
 
         # Render structured system prompt with safety boundaries, profile, and contracts
-        if hasattr(agent, "get_system_prompt"):
+        # Check dynamic DB prompt registry first for versioned / tenant prompt (R-05)
+        prompt_entry = None
+        try:
+            from ..services.prompt_registry import prompt_registry
+            prompt_entry = prompt_registry.get_prompt(
+                agent_name,
+                workspace_id=str(workspace_id) if workspace_id else None,
+            )
+        except Exception as _pr_err:
+            logger.debug(f"Prompt registry lookup skipped: {_pr_err}")
+
+        if prompt_entry and getattr(prompt_entry, "template", None):
+            system_content = prompt_entry.template
+        elif hasattr(agent, "get_system_prompt"):
             system_content = agent.get_system_prompt(context=context)
         elif card and hasattr(card, "render_system_prompt"):
             system_content = card.render_system_prompt(context=context)
@@ -2944,6 +2989,12 @@ async def run_agent_loop_stream(request: AgentRequest) -> AsyncGenerator[dict[st
     # Emit intent classification immediately (re-emit from router context if available)
     yield {"event": "intent", "data": {"agent": request.agent_name, "request_id": str(request.id)}}
 
+    # Emit execution plan DAG if present on the request
+    if getattr(request, "execution_plan", None):
+        plan_obj = request.execution_plan
+        plan_payload = plan_obj.model_dump() if hasattr(plan_obj, "model_dump") else (plan_obj.dict() if hasattr(plan_obj, "dict") else {"plan_id": getattr(plan_obj, "plan_id", "plan_default"), "subtasks": getattr(plan_obj, "subtasks", [])})
+        yield {"event": "plan", "data": plan_payload}
+
     for iteration in range(3):
         logger.info(f"--- Stream Iteration {iteration + 1}/3 ---")
 
@@ -3029,7 +3080,54 @@ async def run_agent_loop_stream(request: AgentRequest) -> AsyncGenerator[dict[st
         # Emit tool-level events if act_result contains tool calls info
         tool_calls = act_result.get("tool_calls") or act_result.get("result", {}).get("tool_calls") or []
         for tc in tool_calls:
-            yield {"event": "tool_start", "data": {"tool": tc.get("function", {}).get("name", "unknown"), "params": tc.get("function", {}).get("arguments", {})}}
+            tname = tc.get("function", {}).get("name", "unknown") if isinstance(tc.get("function"), dict) else tc.get("tool", "unknown")
+            targs = tc.get("function", {}).get("arguments", {}) if isinstance(tc.get("function"), dict) else tc.get("params", {})
+            if isinstance(targs, str):
+                try:
+                    targs = json.loads(targs)
+                except Exception:
+                    pass
+            yield {"event": "tool_start", "data": {"tool": tname, "params": targs}}
+
+            # Multi-agent child delegation SSE events (R-07)
+            if tname == "spawn_sub_agents":
+                tasks_list = targs.get("tasks", []) if isinstance(targs, dict) else []
+                for sub_t in tasks_list:
+                    if isinstance(sub_t, dict) and sub_t.get("agent_name"):
+                        yield {
+                            "event": "sub_agent_spawned",
+                            "data": {
+                                "parent_agent": request.agent_name,
+                                "child_agent": sub_t.get("agent_name"),
+                                "instruction": sub_t.get("instruction", ""),
+                            },
+                        }
+                        yield {
+                            "event": "sub_agent_completed",
+                            "data": {
+                                "child_agent": sub_t.get("agent_name"),
+                                "status": "success",
+                            },
+                        }
+            elif tname == "delegate_to_sub_agent":
+                if isinstance(targs, dict) and targs.get("agent_name"):
+                    yield {
+                        "event": "sub_agent_spawned",
+                        "data": {
+                            "parent_agent": request.agent_name,
+                            "child_agent": targs.get("agent_name"),
+                            "instruction": targs.get("instruction", ""),
+                        },
+                    }
+                    yield {
+                        "event": "sub_agent_completed",
+                        "data": {
+                            "child_agent": targs.get("agent_name"),
+                            "status": "success",
+                        },
+                    }
+
+            yield {"event": "tool_result", "data": {"tool": tname, "status": "done"}}
         # If approval gate surfaced a pending approval inside result
         proposals = act_result.get("result", {}).get("proposals") or []
         for p in proposals:
@@ -3158,6 +3256,29 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
             if final != "Task completed":
                 break
         return AgentResponse(status=state.status, final_result=final, termination_reason=state.termination_reason)
+
+    # Enterprise StateGraph dynamic execution route (Phase 7 / R-03)
+    if getattr(settings, "stategraph_execution_enabled", False):
+        try:
+            from .execution.graph import state_graph
+            from .execution.state import ExecutionState
+            graph_state = ExecutionState(
+                run_id=str(request.id),
+                agent_name=request.agent_name,
+                message=request.message,
+                workspace_id=str(request.workspace_id) if request.workspace_id else None,
+                tenant_id=str(getattr(request, "tenant_id", None)) if getattr(request, "tenant_id", None) else None,
+                user_id=str(getattr(request, "user_id", None)) if getattr(request, "user_id", None) else None,
+                correlation_id=str(getattr(request, "correlation_id", request.id)),
+            )
+            final_graph_state = await state_graph.run(graph_state)
+            return AgentResponse(
+                status=final_graph_state.status,
+                final_result=final_graph_state.final_response or final_graph_state.error or "Completed",
+                termination_reason="success" if final_graph_state.status == "completed" else final_graph_state.status,
+            )
+        except Exception as _sg_exc:
+            logger.warning(f"StateGraph execution fallback to standard loop: {_sg_exc}")
 
     # Run identity + budgets (hard per-run ceilings; daily budget is separate).
     state.run_id = state.run_id or request.id
