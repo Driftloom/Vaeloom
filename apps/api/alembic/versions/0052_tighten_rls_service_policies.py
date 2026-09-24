@@ -69,7 +69,7 @@ def upgrade() -> None:
             LIMIT 1;
         $$;
     """)
-    run("REVOKE EXECUTE ON FUNCTION auth_lookup_user_by_email(text) FROM PUBLIC;")
+    run("REVOKE EXECUTE ON FUNCTION auth_lookup_user_by_email(text) FROM PUBLIC, anon, authenticated;")
     run("GRANT EXECUTE ON FUNCTION auth_lookup_user_by_email(text) TO vaeloom_app, service_role, postgres;")
 
     run("""
@@ -91,7 +91,7 @@ def upgrade() -> None:
             LIMIT 1;
         $$;
     """)
-    run("REVOKE EXECUTE ON FUNCTION auth_lookup_session_by_token(text) FROM PUBLIC;")
+    run("REVOKE EXECUTE ON FUNCTION auth_lookup_session_by_token(text) FROM PUBLIC, anon, authenticated;")
     run("GRANT EXECUTE ON FUNCTION auth_lookup_session_by_token(text) TO vaeloom_app, service_role, postgres;")
 
     # 2. USERS: Remove vaeloom_app from USING (true), install tenant/user/email-scoped policy
