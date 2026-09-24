@@ -115,8 +115,8 @@ async def test_password_edge_cases_and_dos_prevention(client: AsyncClient):
             "display_name": "<script>document.cookie</script>",
         },
     )
-    # Should either succeed with sanitized fields or reject cleanly, never 500
-    assert res_xss.status_code in (201, 400, 422)
+    # Should succeed with sanitized fields
+    assert res_xss.status_code == 201
     if res_xss.status_code == 201:
         data = res_xss.json()
         assert "<script>" not in data.get("user", {}).get("display_name", "")
@@ -146,7 +146,7 @@ async def test_saml_xml_signature_wrapping_rejection(client: AsyncClient):
         data={"SAMLResponse": b64_payload},
     )
     # Must reject unsigned / wrapped SAML assertion
-    assert res.status_code in (400, 401, 422, 500, 503)
+    assert res.status_code == 400
 
 
 @pytest.mark.asyncio

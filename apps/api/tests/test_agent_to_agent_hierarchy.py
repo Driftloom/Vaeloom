@@ -215,3 +215,37 @@ async def test_sub_agent_timeout_handling():
 
         assert envelope.status == TaskStatus.TIMEOUT
         assert "timed out" in envelope.error_message
+
+
+async def test_spawn_sub_agents_tool_execution():
+    """Verify that spawn_sub_agents tool dispatches correctly through execute_tool."""
+    from api.tools.definitions import ALL_TOOLS
+    from api.tools.executor import execute_tool
+
+    spawn_tool = ALL_TOOLS.get("spawn_sub_agents")
+    assert spawn_tool is not None
+
+    fake_handler = MagicMock()
+    inst = MagicMock()
+    inst.handle = AsyncMock(return_value={"summary": "Resume tailored perfectly"})
+    fake_handler.return_value = inst
+
+    with patch("api.orchestrator.sub_agent_manager.dynamic_agent_registry.get", return_value=fake_handler):
+        result = await execute_tool(
+            tool=spawn_tool,
+            params={
+                "tasks": [
+                    {"agent_name": "resume", "instruction": "Tailor resume for Stripe"},
+                ]
+            },
+            agent_id="supervisor",
+            agent_scopes=["agent.spawn"],
+            workspace_id="ws-test-123",
+        )
+
+        assert result["status"] == "success"
+        assert result["count"] == 1
+        assert len(result["results"]) == 1
+        assert result["results"][0]["agent"] == "resume"
+        assert "Resume tailored perfectly" in result["aggregated_summary"]
+

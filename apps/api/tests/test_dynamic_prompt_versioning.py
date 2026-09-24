@@ -92,3 +92,16 @@ async def test_prompt_db_sync(db_session):
     synced_prompt = reg.get_latest("ats_tailor_db")
     assert synced_prompt is not None
     assert synced_prompt.content == "DB Template for ATS"
+    assert synced_prompt.template == "DB Template for ATS"
+    assert reg.get_prompt("ats_tailor_db").template == "DB Template for ATS"
+
+
+async def test_get_prompt_alias_and_template_property():
+    """Verify get_prompt alias and template property."""
+    reg = PromptRegistry()
+    reg.register_prompt("researcher", "Research instructions v1")
+    p = reg.get_prompt("researcher")
+    assert p is not None
+    assert p.template == "Research instructions v1"
+    assert p.content == "Research instructions v1"
+

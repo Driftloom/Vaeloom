@@ -19,7 +19,7 @@ class TestOpportunitiesApi:
                 }
             },
         )
-        assert resp.status_code in (401, 403)
+        assert resp.status_code == 401
 
     async def test_opportunities_match_authenticated(self, client: AsyncClient, auth_headers: dict):
         resp = await client.post(

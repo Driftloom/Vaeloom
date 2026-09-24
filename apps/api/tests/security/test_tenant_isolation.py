@@ -35,7 +35,7 @@ class TestWorkspaceIsolation:
             headers={"Authorization": f"Bearer {token_a}"},
             json={"name": "Private Workspace A"},
         )
-        assert res.status_code in (200, 201)
+        assert res.status_code == 201
         ws_a_id = res.json()["id"]
 
         res = await client.get(
@@ -59,14 +59,14 @@ class TestWorkspaceIsolation:
             headers={"Authorization": f"Bearer {token_a}"},
             json={"name": "Private Workspace A2"},
         )
-        assert res.status_code in (200, 201)
+        assert res.status_code == 201
         ws_a_id = res.json()["id"]
 
         res = await client.get(
             f"/api/v1/workspaces/{ws_a_id}",
             headers={"Authorization": f"Bearer {token_b}"},
         )
-        assert res.status_code in (403, 404), f"Expected 403/404, got {res.status_code}"
+        assert res.status_code == 404, f"Expected 404, got {res.status_code}"
 
     async def test_user_cannot_access_other_users_memories(
         self, client: AsyncClient,
@@ -80,7 +80,7 @@ class TestWorkspaceIsolation:
             headers={"Authorization": f"Bearer {token_a}"},
             json={"type": "profile", "content": "Secret memory from user A"},
         )
-        assert res.status_code in (200, 201)
+        assert res.status_code == 201
 
         res = await client.get(
             "/api/v1/memories",
@@ -104,7 +104,7 @@ class TestWorkspaceIsolation:
             headers={"Authorization": f"Bearer {token_a}"},
             json={"name": "Workspace U3"},
         )
-        assert res.status_code in (200, 201)
+        assert res.status_code == 201
         ws_id = res.json()["id"]
 
         res = await client.patch(
@@ -112,7 +112,7 @@ class TestWorkspaceIsolation:
             headers={"Authorization": f"Bearer {token_b}"},
             json={"name": "Hacked Workspace"},
         )
-        assert res.status_code in (403, 404), f"Expected 403/404, got {res.status_code}"
+        assert res.status_code == 404, f"Expected 404, got {res.status_code}"
 
     async def test_user_cannot_delete_other_users_workspace(
         self, client: AsyncClient,
@@ -126,14 +126,14 @@ class TestWorkspaceIsolation:
             headers={"Authorization": f"Bearer {token_a}"},
             json={"name": "Workspace D1"},
         )
-        assert res.status_code in (200, 201)
+        assert res.status_code == 201
         ws_id = res.json()["id"]
 
         res = await client.delete(
             f"/api/v1/workspaces/{ws_id}",
             headers={"Authorization": f"Bearer {token_b}"},
         )
-        assert res.status_code in (403, 404), f"Expected 403/404, got {res.status_code}"
+        assert res.status_code == 404, f"Expected 404, got {res.status_code}"
 
     async def test_unauthenticated_user_cannot_access_anything(self, client: AsyncClient):
         """Unauthenticated requests should be rejected on private endpoints."""

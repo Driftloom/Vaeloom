@@ -60,8 +60,7 @@ async def test_onboarding_step_data_sanitization_and_schema(client: AsyncClient)
         json={"step": "WORKSPACE", "step_data": massive_data},
         headers={"Authorization": f"Bearer {token}"},
     )
-    # System should either handle cleanly or reject oversized body (413/422/400), never unhandled 500
-    assert res.status_code in (200, 400, 413, 422)
+    assert res.status_code == 200
 
 
 @pytest.mark.asyncio

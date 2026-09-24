@@ -81,5 +81,5 @@ async def test_agent_cross_workspace_memory_isolation(client: AsyncClient, db_se
         f"/api/v1/workspaces/{ws_b_id}/memories",
         headers={"Authorization": f"Bearer {token_a}"},
     )
-    assert direct_attempt.status_code in (403, 404), \
-        f"Expected 403/404 on cross-workspace memory endpoint, got {direct_attempt.status_code}"
+    assert direct_attempt.status_code == 404, \
+        f"Expected 404 on cross-workspace memory endpoint, got {direct_attempt.status_code}"

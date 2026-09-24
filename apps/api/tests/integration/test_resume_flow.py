@@ -15,7 +15,7 @@ class TestResumeFlow:
     async def _own_workspace(self, client: AsyncClient, auth_headers: dict) -> uuid.UUID:
         res = await client.post("/api/v1/workspaces", json={"name": "resume-ws"},
                                 headers=auth_headers)
-        assert res.status_code in (200, 201), res.text
+        assert res.status_code == 201, res.text
         return uuid.UUID(res.json()["id"])
 
     async def _seed_master_resume(self, db_session: AsyncSession, workspace_id: uuid.UUID):

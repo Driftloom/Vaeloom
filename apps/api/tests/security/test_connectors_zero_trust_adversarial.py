@@ -66,7 +66,7 @@ async def _signup_and_get_workspace(client: AsyncClient, email_prefix: str) -> t
         json={"name": f"{email_prefix}-ws"},
         headers=headers,
     )
-    assert ws_res.status_code in (200, 201)
+    assert ws_res.status_code == 201
     workspace_id = ws_res.json()["id"]
     return headers, user_id, workspace_id
 
