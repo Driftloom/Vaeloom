@@ -242,7 +242,16 @@ async def invite_workspace_member(
                 detail="Forbidden: Only workspace owners and admins can invite members",
             )
 
-    u_res = await db.execute(select(User).where(User.email == dto.email))
+    try:
+        from sqlalchemy import text, func
+        await db.execute(
+            text("SELECT set_config('app.lookup_email', :email, true)"),
+            {"email": str(dto.email).strip().lower()},
+        )
+    except Exception:
+        pass
+
+    u_res = await db.execute(select(User).where(func.lower(User.email) == str(dto.email).strip().lower()))
     target_user = u_res.scalar_one_or_none()
 
     try:

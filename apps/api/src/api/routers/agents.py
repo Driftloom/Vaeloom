@@ -458,21 +458,61 @@ async def chat_stream(
                 yield f"event: done\ndata: {json.dumps({'status': 'out_of_scope'})}\n\n"
                 return
 
-            # ── 2. Low confidence ────────────────────────────────
+            # ── 2. Low confidence / General conversation fallback ─
             if confidence < 0.7:
-                yield f"event: ask_clarification\ndata: {json.dumps({'confidence': confidence, 'questions': ['Could you clarify what you need help with?']})}\n\n"
-                yield f"event: done\ndata: {json.dumps({'status': 'needs_clarification'})}\n\n"
+                try:
+                    logger.info(f"Low confidence ({confidence:.2f}) for '{dto.message[:50]}' — invoking conversational LLM fallback")
+                    from api.services.llm_service import llm_service
+                    conv_system = (
+                        "You are Vaeloom, an empathetic AI career companion and executive partner. "
+                        "The user asked something that does not cleanly match a specialized tool. "
+                        "Respond warmly, thoughtfully, and helpfully. "
+                        "If appropriate, guide them toward what you can do (Resumes, Job Search, ATS Scoring, Career Strategy, Interview Prep, Scheduling). "
+                        "Keep your response concise, psychologically grounding, and encouraging."
+                    )
+                    conv_resp = await llm_service.generate_completion(
+                        messages=[
+                            {"role": "system", "content": conv_system},
+                            {"role": "user", "content": dto.message},
+                        ],
+                        temperature=0.7,
+                        max_tokens=512,
+                    )
+                    conv_content = conv_resp.get("content", "").strip()
+                    if conv_content:
+                        from api.orchestrator.proposals_engine import action_proposal_engine
+                        dyn_proposals = await action_proposal_engine.generate_proposals(
+                            query=dto.message,
+                            workspace_id=str(dto.workspaceId) if dto.workspaceId else "00000000-0000-0000-0000-000000000000",
+                        )
+                        chips = [p.title for p in dyn_proposals]
+                        yield f"event: token\ndata: {json.dumps({'token': conv_content, 'text': conv_content}, default=str)}\n\n"
+                        yield f"event: done\ndata: {json.dumps({'status': 'completed', 'result': {'summary': conv_content, 'action_chips': chips}}, default=str)}\n\n"
+                        return
+                except Exception as ce:
+                    logger.warning(f"Conversational streaming fallback failed: {ce}")
+
+                from api.orchestrator.proposals_engine import action_proposal_engine
+                dyn_proposals = await action_proposal_engine.generate_proposals(
+                    query=dto.message,
+                    workspace_id=str(dto.workspaceId) if dto.workspaceId else "00000000-0000-0000-0000-000000000000",
+                )
+                chips = [p.title for p in dyn_proposals]
+                consultative_msg = "I want to make sure I guide you to the highest leverage tool. What would you like to focus on?"
+                yield f"event: ask_clarification\ndata: {json.dumps({'confidence': confidence, 'questions': [consultative_msg], 'action_chips': chips}, default=str)}\n\n"
+                yield f"event: done\ndata: {json.dumps({'status': 'needs_clarification', 'result': {'summary': consultative_msg, 'action_chips': chips}}, default=str)}\n\n"
                 return
+
 
             # ── 3. Guards ───────────────────────────────────────
             if not kill_switch.is_enabled(agent_name):
                 _msg = f"Agent '{agent_name}' is disabled"
-                yield f"event: error\ndata: {json.dumps({'message': _msg})}\n\n"
+                yield f"event: error\ndata: {json.dumps({'message': _msg}, default=str)}\n\n"
                 yield "event: done\ndata: {}\n\n"
                 return
             adversarial = detect_adversarial_prompt(dto.message)
             if adversarial and any(d.get("severity") == "critical" for d in adversarial):
-                yield f"event: error\ndata: {json.dumps({'message': 'Input flagged by security filter'})}\n\n"
+                yield f"event: error\ndata: {json.dumps({'message': 'Input flagged by security filter'}, default=str)}\n\n"
                 yield "event: done\ndata: {}\n\n"
                 return
 
@@ -494,15 +534,15 @@ async def chat_stream(
                     summary = graph_res.get("summary") or str(graph_res.get("result", ""))
                     if not summary and "final_answer" in graph_res:
                         summary = str(graph_res["final_answer"])
-                    yield f"event: token\ndata: {json.dumps({'token': summary})}\n\n"
-                    yield f"event: done\ndata: {json.dumps({'status': 'completed', 'result': summary})}\n\n"
+                    yield f"event: token\ndata: {json.dumps({'token': summary}, default=str)}\n\n"
+                    yield f"event: done\ndata: {json.dumps({'status': 'completed', 'result': summary}, default=str)}\n\n"
                     return
             except Exception as ge:
                 logger.warning(f"LangGraph execution bypassed/failed, continuing via ReAct loop: {ge}")
 
             agent_cls = AGENT_REGISTRY.get(agent_name)
             if not agent_cls:
-                yield f"event: error\ndata: {json.dumps({'message': f'No agent for {agent_name}'})}\n\n"
+                yield f"event: error\ndata: {json.dumps({'message': f'No agent for {agent_name}'}, default=str)}\n\n"
                 yield "event: done\ndata: {}\n\n"
                 return
             agent = agent_cls()
@@ -522,7 +562,7 @@ async def chat_stream(
                     agent_output = {"agent_name": agent_name, "action": "suggest", "confidence": confidence, "result": {"summary": final_summary, "details": None, "proposals": [], "questions": []}}
                     for attempt in range(3):
                         qa_res = await qa.validate(agent_output)
-                        yield f"event: qa\ndata: {json.dumps({'attempt': attempt+1, 'decision': qa_res.decision, 'issues': qa_res.issues})}\n\n"
+                        yield f"event: qa\ndata: {json.dumps({'attempt': attempt+1, 'decision': qa_res.decision, 'issues': qa_res.issues}, default=str)}\n\n"
                         if qa_res.decision == "approved":
                             break
                     # Surface pending approvals
@@ -530,19 +570,19 @@ async def chat_stream(
                         from ..orchestrator.loop import fetch_pending_approvals
                         pending = await fetch_pending_approvals(dto.workspaceId)
                         for p in pending:
-                            yield f"event: approval_required\ndata: {json.dumps(p)}\n\n"
+                            yield f"event: approval_required\ndata: {json.dumps(p, default=str)}\n\n"
                     except Exception:
                         pass
-                    yield f"event: {ev_type}\ndata: {json.dumps(ev_data)}\n\n"
+                    yield f"event: {ev_type}\ndata: {json.dumps(ev_data, default=str)}\n\n"
                     return
                 # Forward with SSE framing — split token events individually already handled in loop_stream
-                yield f"event: {ev_type}\ndata: {json.dumps(ev_data)}\n\n"
+                yield f"event: {ev_type}\ndata: {json.dumps(ev_data, default=str)}\n\n"
 
             # Fallback done if loop didn't emit it
-            yield f"event: done\ndata: {json.dumps({'status': 'completed', 'result': final_summary})}\n\n"
+            yield f"event: done\ndata: {json.dumps({'status': 'completed', 'result': final_summary}, default=str)}\n\n"
 
         except Exception as e:
-            yield f"event: error\ndata: {json.dumps({'message': str(e)})}\n\n"
+            yield f"event: error\ndata: {json.dumps({'message': str(e)}, default=str)}\n\n"
             yield "event: done\ndata: {}\n\n"
 
     return StreamingResponse(

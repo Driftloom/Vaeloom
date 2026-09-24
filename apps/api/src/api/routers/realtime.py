@@ -30,8 +30,16 @@ class BroadcastRequest(BaseModel):
     data: Dict[str, Any] = Field(default_factory=dict, description="Event payload")
 
 
-def _authenticate_token(token: str) -> Dict[str, Any]:
-    """Validate JWT token and return payload."""
+async def _authenticate_token(token: str) -> Dict[str, Any]:
+    """Validate JWT token and return payload.
+
+    Supports the full verification chain: native secret → Supabase HMAC →
+    Supabase JWKS → Supabase Auth API fallback.  Mirrors AuthMiddleware so
+    Supabase users have parity on WebSocket connections.
+    """
+    payload = None
+
+    # 1. Native JWT secret
     try:
         payload = jwt.decode(
             token,
@@ -40,11 +48,87 @@ def _authenticate_token(token: str) -> Dict[str, Any]:
             options={"require": ["exp", "sub"]},
         )
         return payload
-    except Exception as exc:
+    except jwt.ExpiredSignatureError:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid authentication token: {exc}",
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired"
         )
+    except Exception:
+        pass
+
+    supa_secret = getattr(settings, "supabase_jwt_secret", "")
+    supa_url = getattr(settings, "supabase_url", "")
+
+    # 2. Supabase HMAC secret
+    if supa_secret:
+        try:
+            payload = jwt.decode(
+                token,
+                supa_secret,
+                algorithms=["HS256"],
+                options={"verify_aud": False, "require": ["exp", "sub"]},
+            )
+            return payload
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired"
+            )
+        except Exception:
+            pass
+
+    # 3. Supabase JWKS (asymmetric ES256 / RS256)
+    if supa_url:
+        try:
+            from jwt import PyJWKClient
+
+            jwks_url = f"{supa_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
+            jwks_client = PyJWKClient(jwks_url, cache_jwk_set=True, lifespan=3600)
+            signing_key = jwks_client.get_signing_key_from_jwt(token)
+            payload = jwt.decode(
+                token,
+                signing_key.key,
+                algorithms=["ES256", "RS256", "HS256"],
+                options={"verify_aud": False, "require": ["exp", "sub"]},
+            )
+            return payload
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired"
+            )
+        except Exception:
+            pass
+
+    # 4. Supabase Auth API verification (final fallback for opaque tokens)
+    if supa_url:
+        try:
+            import time
+            import httpx
+
+            supa_key = getattr(settings, "supabase_anon_key", "")
+            headers: Dict[str, str] = {"Authorization": f"Bearer {token}"}
+            if supa_key:
+                headers["apikey"] = supa_key
+            async with httpx.AsyncClient(timeout=2.0) as client:
+                resp = await client.get(
+                    f"{supa_url.rstrip('/')}/auth/v1/user", headers=headers
+                )
+                if resp.status_code == 200:
+                    user_data = resp.json()
+                    now_ts = int(time.time())
+                    return {
+                        "sub": user_data.get("id"),
+                        "email": user_data.get("email"),
+                        "user_metadata": user_data.get("user_metadata", {}) or {},
+                        "aud": "authenticated",
+                        "iat": now_ts,
+                        "exp": now_ts + 3600,
+                    }
+        except Exception:
+            pass
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid authentication token: could not verify with any provider",
+    )
 
 
 @router.websocket("/ws")
@@ -58,7 +142,7 @@ async def websocket_endpoint(
     payload = None
     if token:
         try:
-            payload = _authenticate_token(token)
+            payload = await _authenticate_token(token)
         except Exception:
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
@@ -70,7 +154,7 @@ async def websocket_endpoint(
             init_msg = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
             data = json.loads(init_msg)
             if data.get("type") == "AUTH" and data.get("token"):
-                payload = _authenticate_token(data["token"])
+                payload = await _authenticate_token(data["token"])
                 if data.get("workspace_id"):
                     workspace_id = data.get("workspace_id")
             else:

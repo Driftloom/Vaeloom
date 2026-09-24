@@ -166,15 +166,22 @@ class AuthMiddleware(BaseHTTPMiddleware):
             # synchronize the user_id so all RLS and workspaces match seamlessly.
             db_user_id = user_id
             try:
-                from sqlalchemy import select
+                from sqlalchemy import select, text, func
                 from ..models.schema import User as _User
                 async with self._session_factory() as _s:
                     u = None
+                    tenant_id = payload.get("tenant_id")
                     if user_id:
                         import uuid as _uuid
                         try:
-                            res = await _s.execute(select(_User.id).where(_User.id == _uuid.UUID(str(user_id))))
-                            u = res.scalar_one_or_none()
+                            await _s.execute(
+                                text("SELECT set_config('app.user_id', :uid, true)"),
+                                {"uid": str(user_id)},
+                            )
+                            res = await _s.execute(select(_User.id, _User.tenant_id).where(_User.id == _uuid.UUID(str(user_id))))
+                            row = res.first()
+                            if row:
+                                u, tenant_id = row[0], row[1]
                         except Exception:
                             pass
                     if not u and email:
@@ -186,12 +193,30 @@ class AuthMiddleware(BaseHTTPMiddleware):
                             payload.get("email_verified") is True
                             or user_meta.get("email_verified") is True
                             or app_meta.get("email_verified") is True
+                            or bool(payload.get("email_confirmed_at"))
+                            or bool(user_meta.get("email_confirmed_at"))
+                            or payload.get("aud") == "authenticated"
                         )
                         if is_verified:
-                            res = await _s.execute(select(_User.id).where(_User.email == email))
-                            u = res.scalar_one_or_none()
+                            try:
+                                await _s.execute(
+                                    text("SELECT set_config('app.lookup_email', :email, true)"),
+                                    {"email": str(email).strip().lower()},
+                                )
+                            except Exception:
+                                pass
+                            res = await _s.execute(
+                                select(_User.id, _User.tenant_id).where(
+                                    func.lower(_User.email) == str(email).strip().lower()
+                                )
+                            )
+                            row = res.first()
+                            if row:
+                                u, tenant_id = row[0], row[1]
                     if u:
                         db_user_id = str(u)
+                        if tenant_id:
+                            payload["tenant_id"] = str(tenant_id)
             except Exception:
                 pass
 

@@ -211,10 +211,18 @@ async def me(current_user: dict = Depends(get_current_user), db: AsyncSession = 
         email = current_user.get("email")
         if email:
             import uuid as _uuid
-            from sqlalchemy import select, delete
-            from ..models.schema import User as _User, AuthSession as _AuthSession
+            from sqlalchemy import select, delete, text, func
+            from ..models.schema import User as _User, AuthSession as _AuthSession, Tenant as _Tenant
 
-            res = await db.execute(select(_User).where(_User.email == email))
+            try:
+                await db.execute(
+                    text("SELECT set_config('app.lookup_email', :email, true)"),
+                    {"email": str(email).strip().lower()},
+                )
+            except Exception:
+                pass
+
+            res = await db.execute(select(_User).where(func.lower(_User.email) == str(email).strip().lower()))
             existing_user = res.scalar_one_or_none()
             if existing_user:
                 if existing_user.auth_provider != "supabase":
@@ -224,12 +232,20 @@ async def me(current_user: dict = Depends(get_current_user), db: AsyncSession = 
                 user = existing_user
             else:
                 metadata = current_user.get("user_metadata", {}) or {}
-                display_name = metadata.get("full_name") or metadata.get("name") or current_user.get("name") or email.split("@")[0]
+                display_name = metadata.get("full_name") or metadata.get("name") or current_user.get("name") or str(email).split("@")[0]
+
+                tenant_result = await db.execute(select(_Tenant).where(_Tenant.slug == "default"))
+                tenant = tenant_result.scalar_one_or_none()
+                if not tenant:
+                    tenant = _Tenant(name="Default", slug="default")
+                    db.add(tenant)
+                    await db.flush()
 
                 user_obj = _User(
                     id=_uuid.UUID(user_id),
-                    email=email,
+                    email=str(email).strip().lower(),
                     display_name=display_name,
+                    tenant_id=tenant.id if tenant else None,
                     auth_provider="supabase",
                     status="ACTIVE",
                 )
@@ -255,6 +271,8 @@ async def me(current_user: dict = Depends(get_current_user), db: AsyncSession = 
     if not workspaces:
         default_ws = await workspace_service.create(user_id=str(user.id), name="Default Workspace", db=db)
         workspaces = [default_ws]
+
+    await db.commit()
 
     return MeResponse(
         user=user,
@@ -294,7 +312,16 @@ async def sso_token_login(
     if not email:
         raise HTTPException(status_code=401, detail="Email not provided by SSO provider")
 
-    result = await db.execute(select(User).where(User.email == email))
+    try:
+        from sqlalchemy import text, func
+        await db.execute(
+            text("SELECT set_config('app.lookup_email', :email, true)"),
+            {"email": str(email).strip().lower()},
+        )
+    except Exception:
+        pass
+
+    result = await db.execute(select(User).where(func.lower(User.email) == str(email).strip().lower()))
     user = result.scalar_one_or_none()
 
     if not user:
@@ -410,7 +437,16 @@ async def sso_callback(
         raise HTTPException(status_code=401, detail="Email not provided by SSO provider")
 
     payload.get("sub")
-    result = await db.execute(select(User).where(User.email == email))
+    try:
+        from sqlalchemy import text, func
+        await db.execute(
+            text("SELECT set_config('app.lookup_email', :email, true)"),
+            {"email": str(email).strip().lower()},
+        )
+    except Exception:
+        pass
+
+    result = await db.execute(select(User).where(func.lower(User.email) == str(email).strip().lower()))
     user = result.scalar_one_or_none()
 
     if not user:
@@ -619,7 +655,16 @@ async def saml_callback_post(request: Request, db: AsyncSession = Depends(get_db
     from ..models.schema import User
     from ..schemas.auth import AuthResponse as AuthResp2
     from ..schemas.auth import PublicUser
-    result = await db.execute(select(User).where(User.email == email))
+    try:
+        from sqlalchemy import text, func
+        await db.execute(
+            text("SELECT set_config('app.lookup_email', :email, true)"),
+            {"email": str(email).strip().lower()},
+        )
+    except Exception:
+        pass
+
+    result = await db.execute(select(User).where(func.lower(User.email) == str(email).strip().lower()))
     user = result.scalar_one_or_none()
     if not user:
         display_name = info.get('name') or email.split('@')[0]
