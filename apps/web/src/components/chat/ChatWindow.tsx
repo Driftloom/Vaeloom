@@ -40,6 +40,7 @@ interface ChatMessage {
   highway?: string;
   s1LatencyMs?: number;
   s2LatencyMs?: number;
+  actionChips?: string[];
 }
 interface Thread {
   id: string;
@@ -949,6 +950,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
         let highway: string | undefined;
         let s1LatencyMs: number | undefined;
         let s2LatencyMs: number | undefined;
+        let actionChips: string[] | undefined;
 
         // 1. Try real Server-Sent Events (SSE) streaming
         const controller = new AbortController();
@@ -992,10 +994,52 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                 setMessages((p) =>
                   p.map((m) => (m.id === agentId ? { ...m, toolCalls: tools } : m)),
                 );
+              } else if (event === 'ask_clarification') {
+                // Backend couldn't classify intent confidently — surface the question.
+                const qs = data['questions'] as string[] | undefined;
+                const clarText =
+                  Array.isArray(qs) && qs.length > 0
+                    ? qs.join('\n\n')
+                    : (data['message'] as string) ||
+                      "I wasn't sure what you meant — could you clarify what you need help with?";
+                reply = clarText;
+                const chips = (data['action_chips'] || data['actionChips']) as string[] | undefined;
+                if (Array.isArray(chips)) actionChips = chips;
+                setMessages((p) =>
+                  p.map((m) =>
+                    m.id === agentId
+                      ? { ...m, text: reply, streaming: false, actionChips: chips || m.actionChips }
+                      : m,
+                  ),
+                );
+              } else if (event === 'out_of_scope') {
+                const scopeMsg =
+                  (data['message'] as string) ||
+                  'That request is outside the current scope. Try asking about resumes, jobs, files, or coding.';
+                reply = scopeMsg;
+                setMessages((p) =>
+                  p.map((m) => (m.id === agentId ? { ...m, text: reply, streaming: false } : m)),
+                );
               } else if (event === 'done') {
                 const res = data['result'] ?? data['summary'];
                 if (typeof res === 'string' && res.trim() && !reply.trim()) {
                   reply = res;
+                } else if (res && typeof res === 'object') {
+                  const resSummary = (res as any)['summary'];
+                  if (typeof resSummary === 'string' && resSummary.trim() && !reply.trim()) {
+                    reply = resSummary;
+                  }
+                }
+                const chips = (data['action_chips'] ||
+                  data['actionChips'] ||
+                  (res && typeof res === 'object'
+                    ? (res as any)['action_chips'] || (res as any)['actionChips']
+                    : null)) as string[] | undefined;
+                if (Array.isArray(chips)) {
+                  actionChips = chips;
+                  setMessages((p) =>
+                    p.map((m) => (m.id === agentId ? { ...m, actionChips: chips } : m)),
+                  );
                 }
               }
             },
@@ -1043,6 +1087,12 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
               if (Array.isArray(questions) && questions.length > 0) {
                 reply = reply ? `${reply}\n\n${questions.join('\n\n')}` : questions.join('\n\n');
               }
+              const chips =
+                (o as any)?.action_chips ||
+                (o as any)?.actionChips ||
+                (r as any)?.action_chips ||
+                (r as any)?.actionChips;
+              if (Array.isArray(chips)) actionChips = chips;
               conf = (r as { confidence?: number }).confidence;
               an = (r as { agent_name?: string }).agent_name || an;
               const d = o?.details as Record<string, unknown> | undefined;
@@ -1083,6 +1133,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           confidence: conf,
           proposals,
           questions,
+          actionChips,
           toolCalls: tools && tools.length > 0 ? tools : undefined,
           citations: cites,
           agentName: an || 'assistant',
@@ -1331,9 +1382,10 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                             {(m.agentName || 'assistant').replace('_', ' ')}
                           </span>
                           <span className="text-xs text-text-dim">{fmtTime(m.timestamp)}</span>
-                          {m.confidence !== undefined && (
+                          {m.confidence !== undefined && m.confidence >= 0.9 && (
                             <span
-                              className={`text-xs font-mono px-1.5 py-0.5 rounded border ${m.confidence >= 0.9 ? 'border-success/20 text-success' : m.confidence >= 0.7 ? 'border-warning/20 text-warning' : 'border-error/20 text-error'}`}
+                              className="text-xs font-mono px-1.5 py-0.5 rounded border border-success/20 text-success"
+                              title="Verified Intent Confidence"
                             >
                               {Math.round(m.confidence * 100)}%
                             </span>
@@ -1583,6 +1635,20 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                                   className="rounded-full border border-border/50 px-3 py-1 text-xs hover:bg-surface-hover"
                                 >
                                   {q}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {m.actionChips && m.actionChips.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2 pt-2 border-t border-border-subtle/50">
+                              {m.actionChips.map((chip, i) => (
+                                <button
+                                  key={i}
+                                  type="button"
+                                  onClick={() => handleSend(chip)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-surface-elevated hover:bg-surface-hover text-text border border-border transition-all cursor-pointer shadow-sm hover:border-primary/50 hover:text-primary active:scale-95"
+                                >
+                                  {chip}
                                 </button>
                               ))}
                             </div>
