@@ -26,6 +26,8 @@ RESUME_CARD = AgentCard(
         "audit_ats_formatting",
         "compile_resume_pdf",
         "compile_resume_docx",
+        "spawn_sub_agents",
+        "delegate_to_sub_agent",
     ],
     output_schema={
         "type": "object",
@@ -90,6 +92,8 @@ JOB_SEARCH_CARD = AgentCard(
         "scrape_company_insights",
         "search_documents",
         "query_graph",
+        "spawn_sub_agents",
+        "delegate_to_sub_agent",
     ],
     output_schema={
         "type": "object",

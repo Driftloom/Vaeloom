@@ -98,3 +98,11 @@ class AgentCapabilityManifest(BaseModel):
     )
     cost_class: str = Field(default="standard", description="'low', 'standard', 'high'")
     tier_requirement: str = Field(default="mvp", description="'mvp' vs 'enterprise'")
+    depends_on: list[str] = Field(
+        default_factory=list,
+        description="List of agent names that must execute before this agent in multi-agent pipelines",
+    )
+    parallel_safe: bool = Field(
+        default=True,
+        description="Whether this agent can execute concurrently with other independent agents",
+    )

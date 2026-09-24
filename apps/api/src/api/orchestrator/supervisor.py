@@ -22,18 +22,34 @@ from .sub_agent_manager import sub_agent_manager
 
 logger = logging.getLogger(__name__)
 
-# ── Heuristics: which agents can run in parallel vs sequential ──────────
-# Resume -> ATS -> Application is a sequential pipeline (each needs previous output).
-# Gmail, Scheduler, Organization are independent and can run in parallel.
-# ADR-037 extends chains to cover common continuations (memory↔resume, github↔coding)
-PARALLEL_SAFE = {"gmail", "scheduler", "organization", "memory", "research", "github", "analytics", "recommendation"}
-SEQUENTIAL_CHAINS = [
-    ["memory", "resume", "ats", "application"],
-    ["career", "learning"],
-    ["planning", "research"],
-    ["github", "coding"],
-    ["organization", "memory"],
-]
+# ── Dynamic Multi-Agent Dependency & Concurrency Management ─────────────
+
+def _get_agent_dependencies(agent_name: str) -> list[str]:
+    """Retrieve explicit dependencies for an agent from capability registry."""
+    caps = capability_registry.get_by_agent(agent_name)
+    deps: set[str] = set()
+    for c in caps:
+        deps.update(getattr(c, "depends_on", []) or [])
+    # Default fallbacks if capabilities don't declare
+    if not deps:
+        if agent_name == "ats":
+            deps.add("resume")
+        elif agent_name == "application":
+            deps.add("resume")
+            deps.add("ats")
+        elif agent_name == "learning":
+            deps.add("career")
+        elif agent_name == "coding":
+            deps.add("github")
+    return list(deps)
+
+
+def _is_parallel_safe(agent_name: str) -> bool:
+    """Check if agent can execute concurrently."""
+    caps = capability_registry.get_by_agent(agent_name)
+    if caps:
+        return any(getattr(c, "parallel_safe", True) for c in caps)
+    return True
 
 # Minimum thresholds for multi-agent detection
 MULTI_AGENT_KEYWORD_THRESHOLD = 1  # at least 1 keyword match per extra category
@@ -87,29 +103,44 @@ async def _detect_subtasks(message: str) -> list[tuple[str, float]]:
 
 
 def _build_dag(subtasks: list[tuple[str, float]]) -> list[list[str]]:
-    """Group subtasks into execution layers (parallel batches) respecting sequential chains."""
+    """Group subtasks into execution layers respecting dynamic dependencies."""
     agents = [a for a, _ in subtasks]
-    # If no sequential chain applies, all can run in parallel in one layer
+    if not agents:
+        return []
+
     layers: list[list[str]] = []
-    remaining = set(agents)
+    remaining = list(agents)
+    executed: set[str] = set()
 
-    # Extract chain-ordered agents first
-    for chain in SEQUENTIAL_CHAINS:
-        chain_in_request = [a for a in chain if a in remaining]
-        if len(chain_in_request) >= 2:
-            # Each step in chain is its own layer (sequential)
-            for ag in chain_in_request:
-                layers.append([ag])
-                remaining.discard(ag)
+    max_iter = len(agents) + 2
+    it = 0
+    while remaining and it < max_iter:
+        it += 1
+        # Find agents whose dependencies in this request are already executed
+        ready = []
+        for ag in remaining:
+            req_deps = set(_get_agent_dependencies(ag)) & set(agents)
+            if req_deps.issubset(executed):
+                ready.append(ag)
 
-    # Remaining agents can run in parallel (if parallel-safe) or each in own layer
-    if remaining:
-        parallel_batch = [a for a in remaining if a in PARALLEL_SAFE]
-        sequential_rest = [a for a in remaining if a not in PARALLEL_SAFE]
+        if not ready:
+            # Cycle or unresolved dependency — break cycle by taking first remaining
+            ready = [remaining[0]]
+
+        # Partition ready into parallel-safe vs sequential
+        parallel_batch = [a for a in ready if _is_parallel_safe(a)]
+        sequential_rest = [a for a in ready if not _is_parallel_safe(a)]
+
         if parallel_batch:
             layers.append(parallel_batch)
+            for a in parallel_batch:
+                remaining.remove(a)
+                executed.add(a)
+
         for ag in sequential_rest:
             layers.append([ag])
+            remaining.remove(ag)
+            executed.add(ag)
 
     if not layers and agents:
         layers = [agents]
@@ -414,8 +445,35 @@ async def run_supervisor(
             result = await _safe_call_single(layer[0], context)
             results = [result]
         else:
-            # Parallel execution
-            results = await asyncio.gather(*[_safe_call_single(ag, context) for ag in layer])
+            # Parallel execution via sub_agent_manager
+            try:
+                sub_tasks = [{"agent_name": ag, "task": message, "context": context} for ag in layer]
+                envelope = await sub_agent_manager.spawn_sub_agents_parallel(
+                    parent_agent="supervisor",
+                    parent_run_id=request_id,
+                    sub_tasks=sub_tasks,
+                    workspace_id=workspace_id,
+                    user_id=user_id,
+                    tenant_id=tenant_id,
+                )
+                results = [
+                    {
+                        "agent_name": r["agent"],
+                        "action": "suggest",
+                        "confidence": 0.85,
+                        "result": {
+                            "summary": (r.get("data") or {}).get("summary") or str(r.get("data")),
+                            "details": (r.get("data") or {}).get("details"),
+                            "proposals": (r.get("data") or {}).get("proposals", []),
+                            "questions": (r.get("data") or {}).get("questions", []),
+                        },
+                        "status": r.get("status", "success"),
+                    }
+                    for r in envelope.sub_agent_results
+                ]
+            except Exception as _sam_exc:
+                logger.warning(f"SubAgentManager parallel fallback to safe_call: {_sam_exc}")
+                results = await asyncio.gather(*[_safe_call_single(ag, context) for ag in layer])
         _controller.commit_step(f"layer:{layer_idx}")
         _controller_snapshot = _controller.snapshot()
         _controller_snapshot["spawn_counts"] = _spawn_counts

@@ -197,7 +197,7 @@ class Settings(BaseSettings):
     # for determinism and offline tests). When True but LLM_API_KEY missing,
     # _try_react_loop gracefully falls back to static, so ON is safe.
     # Convergence (ADR-037): both tiers now share executor audit/timeout.
-    agent_react_enabled: bool = False
+    agent_react_enabled: bool = True
     # Agentic scale-safety ceilings (Wave 1, 2026-09-06).
     # Max ReAct tool-calling rounds per loop invocation (replaces hardcoded 3).
     agent_max_react_rounds: int = 5
@@ -242,6 +242,8 @@ class Settings(BaseSettings):
     langgraph_checkpoint_backend: str = "memory"  # memory|postgres|redis (memory = MemorySaver)
     langgraph_max_messages: int = 20
     langgraph_max_state_bytes: int = 20480
+    # Enterprise StateGraph dynamic execution engine (Phase 7 / R-03)
+    stategraph_execution_enabled: bool = False
 
     # ── CONT-P12 Agent/Model/Retrieval kill switches & lineage (ADR-040..043) ──
     agent_kill_switches: dict[str, bool] = {}  # {"memory": false, "retrieval": false}

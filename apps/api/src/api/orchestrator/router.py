@@ -263,6 +263,23 @@ async def _llm_classify_intent(message: str) -> tuple[str, float] | None:
     return None
 
 
+async def route_intent_and_plan(message: str, workspace_id: str | None = None) -> tuple[str, float, Any | None]:
+    """Primary zero-trust cognitive routing returning (selected_agent, confidence, execution_plan)."""
+    try:
+        from .routing import routing_engine
+        env, plan = await routing_engine.route(
+            query=message,
+            workspace_id=workspace_id or "00000000-0000-0000-0000-000000000001",
+        )
+        if env and env.selected_agent:
+            return env.selected_agent, env.confidence, plan
+    except Exception as exc:
+        logger.debug(f"ROUTER_ENGINE: routing_engine fallback to legacy heuristics: {exc}")
+
+    ag, conf = await classify_intent(message, workspace_id=workspace_id)
+    return ag, conf, None
+
+
 async def classify_intent(message: str, workspace_id: str | None = None) -> tuple[str, float]:
     """Authoritative semantic intent classification via the zero-trust 6-layer RoutingEngine.
 
@@ -508,15 +525,20 @@ async def handle(request: UserRequest) -> dict[str, Any]:
 
     # ── 1. Intent Classification (explicit agent override for enterprise chat) ──
     preferred = getattr(request, 'preferred_agent', None)
+    execution_plan = None
     if preferred and preferred in AGENT_REGISTRY:
         agent_name, confidence = preferred, 0.98
         logger.info(f"Explicit agent override: {agent_name} (confidence={confidence})")
     else:
         try:
-            agent_name, confidence = await classify_intent(request.message, workspace_id=request.workspace_id)
-        except TypeError:
+            agent_name, confidence, execution_plan = await route_intent_and_plan(request.message, workspace_id=request.workspace_id)
+        except Exception:
             agent_name, confidence = await classify_intent(request.message)
+            execution_plan = None
         logger.info(f"Classified: agent={agent_name}, confidence={confidence}")
+
+    if execution_plan:
+        setattr(request, "execution_plan", execution_plan)
 
 
     # ── 1b. MVP scope lock ─────────────────────────────────────────

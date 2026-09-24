@@ -265,8 +265,25 @@ async def lifespan(app: FastAPI):
             import asyncio as _aio2
 
             _aio2.create_task(get_temporal_client())
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Temporal warm-up failed to schedule (non-fatal): {e}")
+
+    # ── Enterprise Registries Bootstrapping (Phase 1 / R-04) ────────
+    try:
+        from .services.registry_seeder import seed_registries
+        await seed_registries()
+        logger.info("Dynamic registries successfully seeded and verified in database")
+    except Exception as e:
+        logger.warning("Dynamic registry seeding skipped or non-fatal error: %s", e)
+
+    # ── Model Router DB Synchronization (Phase 5 / R-04) ───────────
+    try:
+        from .services.model_router import model_router
+        await model_router.sync_from_db()
+        logger.info("Model router synchronized with DB registry")
+    except Exception as e:
+        logger.warning("Model router DB sync skipped: %s", e)
+
     yield
     # ── Stop background daemon ──────────────────────────────────────
     if _mcp_task:

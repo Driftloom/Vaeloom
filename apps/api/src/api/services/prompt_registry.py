@@ -44,6 +44,11 @@ class PromptVersion:
         if not self.checksum:
             self.checksum = hashlib.sha256(self.content.encode()).hexdigest()[:16]
 
+    @property
+    def template(self) -> str:
+        """Alias for content providing template string compatibility."""
+        return self.content
+
 
 class PromptRegistry:
     """Enterprise Prompt Registry supporting DB overrides, A/B canary, and rollbacks."""
@@ -119,6 +124,10 @@ class PromptRegistry:
                 return active_versions[-2]
 
         return latest
+
+    def get_prompt(self, name: str, workspace_id: str | None = None) -> PromptVersion | None:
+        """Alias for get_latest respecting workspace overrides and canary routing."""
+        return self.get_latest(name, workspace_id=workspace_id)
 
     def get_version(self, name: str, version: str) -> PromptVersion | None:
         """Retrieve a specific prompt version."""

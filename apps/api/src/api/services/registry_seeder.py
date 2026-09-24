@@ -19,8 +19,13 @@ from ..tools.definitions import ALL_TOOLS
 logger = logging.getLogger(__name__)
 
 
-async def seed_registries(db: AsyncSession) -> dict[str, int]:
+async def seed_registries(db: AsyncSession | None = None) -> dict[str, int]:
     """Sync built-in tools and models into database registries."""
+    if db is None:
+        from ..database import async_session_factory
+        async with async_session_factory() as session:
+            return await seed_registries(session)
+
     stats = {"tools": 0, "models": 0, "policies": 0}
 
     # 1. Seed Tools

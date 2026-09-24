@@ -455,12 +455,20 @@ async def chat_stream(
                     # Fall through to single-agent on supervisor error
                     yield f"event: supervisor_error\ndata: {json.dumps({'message': str(e), 'fallback': 'single-agent'})}\n\n"
 
-            # ── 1. Intent classification ──────────────────────────
+            # ── 1. Intent classification & execution planning ───────
+            plan = None
             if preferred and preferred in AGENT_REGISTRY:
                 agent_name, confidence = preferred, 0.98
             else:
-                agent_name, confidence = await classify_intent(dto.message)
+                from api.orchestrator.router import route_intent_and_plan
+                agent_name, confidence, plan = await route_intent_and_plan(
+                    dto.message,
+                    workspace_id=str(dto.workspaceId) if dto.workspaceId else None,
+                )
             yield f"event: intent\ndata: {json.dumps({'agent': agent_name, 'confidence': confidence, 'request_id': req_id})}\n\n"
+            if plan:
+                plan_data = plan.model_dump() if hasattr(plan, "model_dump") else (plan.dict() if hasattr(plan, "dict") else {"plan_id": getattr(plan, "plan_id", "plan_default")})
+                yield f"event: plan\ndata: {json.dumps(plan_data, default=str)}\n\n"
 
             # ── MVP scope lock ──────────────────────────────────
             if settings.mvp_scope_enforced and agent_name not in __import__('api.orchestrator.router', fromlist=['MVP_CANONICAL_AGENTS']).MVP_CANONICAL_AGENTS:
@@ -558,7 +566,7 @@ async def chat_stream(
             agent = agent_cls()
             agent_req = AgentRequest(agent=agent, request_id=req_id, message=dto.message, workspace_id=dto.workspaceId, agent_name=agent_name,
                                      db=db, user_id=(current_user.get("sub") or current_user.get("user_id")) if current_user else None,
-                                     correlation_id=req_id)
+                                     correlation_id=req_id, execution_plan=plan)
 
             final_summary = ""
             async for evt in run_agent_loop_stream(agent_req):
