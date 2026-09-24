@@ -7,6 +7,7 @@ import {
   approvalApi,
   documentApi,
   temporalApi,
+  getToken,
   type CatalogAgent,
 } from '@/lib/api-client';
 import { ExecutionTimeline } from '@/components/execution/ExecutionTimeline';
@@ -16,6 +17,19 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 type ProposalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'error';
+
+interface ExecutionPlanPayload {
+  plan_id?: string;
+  goal_summary?: string;
+  subtasks?: Array<{
+    task_id: string;
+    title: string;
+    agent_assigned: string;
+    capability_required?: string;
+    dependencies?: string[];
+  }>;
+  is_sequential?: boolean;
+}
 
 interface ChatMessage {
   id: string;
@@ -41,6 +55,7 @@ interface ChatMessage {
   s1LatencyMs?: number;
   s2LatencyMs?: number;
   actionChips?: string[];
+  executionPlan?: ExecutionPlanPayload;
 }
 interface Thread {
   id: string;
@@ -299,7 +314,16 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
 
   useEffect(() => {
     let active = true;
-    fetch(`/api/v1/agents/commands?workspace_id=${encodeURIComponent(workspaceId)}`)
+    const token = typeof window !== 'undefined' ? getToken() : null;
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    fetch(`/api/v1/agents/commands?workspace_id=${encodeURIComponent(workspaceId)}`, {
+      headers,
+      credentials: 'same-origin',
+    })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (active && Array.isArray(data?.commands) && data.commands.length > 0) {
@@ -977,6 +1001,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
       setMentionOpen(false);
       setLoading(true);
       try {
+        const requestStartTime = performance.now();
         let reply = '';
         let conf: number | undefined;
         let proposals: ChatMessage['proposals'];
@@ -989,6 +1014,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
         let s1LatencyMs: number | undefined;
         let s2LatencyMs: number | undefined;
         let actionChips: string[] | undefined;
+        let executionPlan: ExecutionPlanPayload | undefined;
 
         // 1. Try real Server-Sent Events (SSE) streaming
         const controller = new AbortController();
@@ -1010,6 +1036,12 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                     m.id === agentId ? { ...m, agentName: an || m.agentName, confidence: conf } : m,
                   ),
                 );
+              } else if (event === 'plan') {
+                const planData = data as ExecutionPlanPayload;
+                executionPlan = planData;
+                setMessages((p) =>
+                  p.map((m) => (m.id === agentId ? { ...m, executionPlan: planData } : m)),
+                );
               } else if (event === 'token') {
                 const tok = (data['token'] as string) || (data['text'] as string) || '';
                 reply += tok;
@@ -1027,6 +1059,27 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                 tools = (tools || []).map((t) =>
                   t.name === tName && t.status === 'running'
                     ? { ...t, status: 'done' as const, latencyMs: 240 }
+                    : t,
+                );
+                setMessages((p) =>
+                  p.map((m) => (m.id === agentId ? { ...m, toolCalls: tools } : m)),
+                );
+              } else if (event === 'sub_agent_spawned') {
+                const childAgent = (data['child_agent'] as string) || 'specialist';
+                tools = [...(tools || []), { name: `⚡ @${childAgent}`, status: 'running' }];
+                setMessages((p) =>
+                  p.map((m) => (m.id === agentId ? { ...m, toolCalls: tools } : m)),
+                );
+              } else if (event === 'sub_agent_completed') {
+                const childAgent = (data['child_agent'] as string) || 'specialist';
+                const status = (data['status'] as string) || 'success';
+                tools = (tools || []).map((t) =>
+                  t.name === `⚡ @${childAgent}` && t.status === 'running'
+                    ? {
+                        ...t,
+                        status: status === 'success' ? ('done' as const) : ('error' as const),
+                        latencyMs: 350,
+                      }
                     : t,
                 );
                 setMessages((p) =>
@@ -1134,12 +1187,19 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
               conf = (r as { confidence?: number }).confidence;
               an = (r as { agent_name?: string }).agent_name || an;
               const d = o?.details as Record<string, unknown> | undefined;
-              if (d && Array.isArray((d as Record<string, unknown>)['entities']))
-                tools = [
-                  { name: 'search_documents', status: 'done', latencyMs: 210 },
-                  { name: 'query_graph', status: 'done', latencyMs: 170 },
-                ];
-              else if (an) tools = [{ name: `${an}_run`, status: 'done', latencyMs: 280 }];
+              // Authentic tool calls from backend execution (never fabricate dummy tools)
+              if (d && Array.isArray((d as Record<string, unknown>)['tool_calls'])) {
+                tools = (
+                  (d as Record<string, unknown>)['tool_calls'] as Array<Record<string, unknown>>
+                ).map((tc) => ({
+                  name: String(tc['name'] || tc['tool'] || 'tool'),
+                  status: 'done' as const,
+                  latencyMs:
+                    typeof tc['latency_ms'] === 'number' ? (tc['latency_ms'] as number) : undefined,
+                }));
+              } else {
+                tools = undefined;
+              }
               if (d && Array.isArray((d as Record<string, unknown>)['citations']))
                 cites = d['citations'] as ChatMessage['citations'];
             } else if (r && 'reply' in (r as Record<string, unknown>))
@@ -1166,6 +1226,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
         }
 
         if (!reply.trim()) reply = 'No response — try rephrasing or @mention an agent.';
+        const measuredLatencyMs = Math.round(performance.now() - requestStartTime);
         const final: Partial<ChatMessage> = {
           text: reply,
           confidence: conf,
@@ -1179,7 +1240,8 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           highway,
           s1LatencyMs,
           s2LatencyMs,
-          latencyMs: Math.round(420 + Math.random() * 500),
+          latencyMs: measuredLatencyMs,
+          executionPlan,
         };
 
         if (!streamedAny) {
@@ -1598,6 +1660,45 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                               ))}
                             </div>
                           )}
+                          {m.executionPlan &&
+                            m.executionPlan.subtasks &&
+                            m.executionPlan.subtasks.length > 1 && (
+                              <details className="mt-3 text-xs bg-surface/50 border border-border/50 rounded-lg p-3">
+                                <summary className="font-mono text-text-muted cursor-pointer hover:text-text select-none flex items-center justify-between">
+                                  <span className="font-medium text-text">
+                                    📋 Execution Plan ({m.executionPlan.subtasks.length} subtasks
+                                    {m.executionPlan.is_sequential
+                                      ? ' · sequential'
+                                      : ' · parallel'}
+                                    )
+                                  </span>
+                                  <span className="text-[10px] text-text-dim font-mono">
+                                    {m.executionPlan.plan_id || 'DAG'}
+                                  </span>
+                                </summary>
+                                <div className="mt-2 space-y-1.5 pl-2 border-l border-border/40 font-mono text-[11px]">
+                                  {m.executionPlan.goal_summary && (
+                                    <div className="text-text-dim italic mb-1.5">
+                                      Goal: {m.executionPlan.goal_summary}
+                                    </div>
+                                  )}
+                                  {m.executionPlan.subtasks.map((st, sIdx) => (
+                                    <div key={sIdx} className="flex items-center gap-2">
+                                      <span className="text-text-dim">{sIdx + 1}.</span>
+                                      <span className="font-medium text-text">{st.title}</span>
+                                      <span className="text-accent text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border/50">
+                                        @{st.agent_assigned}
+                                      </span>
+                                      {st.dependencies && st.dependencies.length > 0 && (
+                                        <span className="text-text-dim text-[10px]">
+                                          (wait: {st.dependencies.join(', ')})
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </details>
+                            )}
                           {m.citations && m.citations.length > 0 && (
                             <div className="mt-3 flex gap-2 overflow-x-auto">
                               {m.citations.map((c, i) => (
