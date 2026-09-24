@@ -217,8 +217,8 @@ CANONICAL_CAPABILITIES: list[AgentCapabilityManifest] = [
     AgentCapabilityManifest(
         capability_id="workspace.calendar.plan",
         agent_id="calendar",
-        display_name="Interview & Milestone Calendar Planning",
-        description="Schedule interview preparation, block focus time, and manage calendar events with conflict checking.",
+        display_name="Calendar Planning & Calendar Reminders",
+        description="Schedule interview preparation, block focus time, add calendar reminders and calendar events with conflict checking.",
         semantic_exemplars=[
             "schedule mock interview for tomorrow",
             "schedule mock interview for tomorrow at 3pm",
@@ -226,6 +226,8 @@ CANONICAL_CAPABILITIES: list[AgentCapabilityManifest] = [
             "check my calendar for interview conflicts",
             "block two hours for leetcode prep on thursday",
             "schedule an event on my calendar",
+            "add a calendar reminder to submit my take-home assignment by Friday",
+            "add a calendar reminder",
         ],
         required_tools=["list_calendar_events"],
         optional_tools=["create_calendar_event", "list_outlook_calendar_events", "create_outlook_calendar_event"],
