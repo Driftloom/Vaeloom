@@ -9,7 +9,7 @@ from ..models.schema import Integration
 
 
 class IntegrationService:
-    async def create(self, dto, user_id: str, db: AsyncSession = None):
+    async def create(self, dto, user_id: str, db: AsyncSession = None, tenant_id: str | None = None):
         existing = await db.execute(
             select(Integration).where(
                 Integration.user_id == uuid.UUID(user_id),
@@ -28,6 +28,7 @@ class IntegrationService:
             config=dto.config,
             status="disconnected",
             user_id=uuid.UUID(user_id),
+            tenant_id=uuid.UUID(tenant_id) if tenant_id else None,
         )
         db.add(integration)
         await db.commit()

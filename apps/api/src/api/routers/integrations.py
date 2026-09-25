@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..dependencies import get_current_user
+from ..dependencies import get_current_user, get_tenant_id
 from ..schemas.integration import IntegrationCreate, IntegrationResponse, IntegrationUpdate
 from ..services.integration_service import integration_service
 
@@ -20,11 +20,12 @@ async def create_integration(
     dto: IntegrationCreate,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_tenant_id),
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = _get_user_id(current_user)
-    integration = await integration_service.create(dto, user_id, db)
+    integration = await integration_service.create(dto, user_id, db, tenant_id=tenant_id)
     return IntegrationResponse.model_validate(integration)
 
 
