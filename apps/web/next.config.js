@@ -4,7 +4,19 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 });
 
 const nextConfig = {
-  serverExternalPackages: ['@supabase/ssr', '@supabase/supabase-js'],
+  serverExternalPackages: [
+    '@supabase/ssr',
+    '@supabase/supabase-js',
+    '@supabase/auth-js',
+    '@opentelemetry/api',
+  ],
+  webpack(config, { isServer, dev }) {
+    if (isServer && dev) {
+      config.optimization = config.optimization || {};
+      config.optimization.splitChunks = false;
+    }
+    return config;
+  },
   output: process.env.CI === 'true' && process.platform !== 'win32' ? 'standalone' : undefined,
   transpilePackages: ['@vaeloom/shared-types', '@vaeloom/ui-kit'],
   reactStrictMode: true,
