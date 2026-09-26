@@ -4,12 +4,14 @@ import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..database import get_db
 from ..dependencies import get_current_user
 from ..middleware.rate_limit import rate_limit
+from ..models.schema import AuthSession
 from ..schemas.auth import (
     AuthResponse,
     ForgotPasswordRequest,
@@ -183,15 +185,20 @@ async def logout(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    from sqlalchemy import text
-    user_id = current_user.get("sub")
+    """Revoke the caller's own session.
+
+    Scoped to this token's `jti`. The previous implementation revoked every
+    ACTIVE session for the user, so signing out on one device silently signed
+    the user out of all of them. Bulk revocation belongs to
+    `POST /auth/sessions/revoke-others`.
+    """
     jti = current_user.get("jti")
     if jti:
         auth_service.revoke_token(jti=jti)
-    if user_id:
         await db.execute(
-            text("UPDATE auth_sessions SET status = 'REVOKED' WHERE user_id = :uid AND status = 'ACTIVE'"),  # nosec B608
-            {"uid": user_id},
+            update(AuthSession)
+            .where(AuthSession.jti == jti, AuthSession.status == "ACTIVE")
+            .values(status="REVOKED")
         )
         await db.commit()
     return None
@@ -292,6 +299,7 @@ async def sso_token_login(
     provider: str,
     dto: SSOTokenRequest,
     db: AsyncSession = Depends(get_db),
+    request: Request = None,
 ):
     from sqlalchemy import select
 
@@ -338,14 +346,14 @@ async def sso_token_login(
     if user.status != "ACTIVE":
         raise HTTPException(status_code=403, detail="Account is not active")
 
-    access_token, refresh_token = await auth_service.issue_token(
-        str(user.id), user.email, db=db,
-    )
-
-    return AuthResp(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        user=PublicUser.model_validate(user),
+    # Federated login must not skip the MFA challenge: calling issue_token here
+    # issued a full token pair to any TOTP-enrolled user who signed in with an
+    # SSO assertion.
+    return await auth_service.issue_login_response(
+        db,
+        user,
+        user_agent=request.headers.get("user-agent") if request else None,
+        ip_address=request.client.host if request and request.client else None,
     )
 
 
@@ -527,19 +535,14 @@ async def sso_callback(
     if user.status != "ACTIVE":
         raise HTTPException(status_code=403, detail="Account is not active")
 
-    access_token, refresh_token = await auth_service.issue_token(
-        str(user.id),
-        user.email,
-        tenant_id=str(user.tenant_id) if user.tenant_id else None,
-        db=db,
-    )
-
     await db.commit()
 
-    return AuthResp(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        user=PublicUser.model_validate(user),
+    # Same reasoning as the SSO handler: SAML assertions must not bypass MFA.
+    return await auth_service.issue_login_response(
+        db,
+        user,
+        user_agent=request.headers.get("user-agent") if request else None,
+        ip_address=request.client.host if request and request.client else None,
     )
 
 
@@ -674,8 +677,12 @@ async def saml_callback_post(request: Request, db: AsyncSession = Depends(get_db
         await db.refresh(user)
     if user.status != 'ACTIVE':
         raise HTTPException(status_code=403, detail='Account is not active')
-    access_token, refresh_token = await auth_service.issue_token(str(user.id), user.email, db=db)
-    return AuthResp2(access_token=access_token, refresh_token=refresh_token, user=PublicUser.model_validate(user))
+    return await auth_service.issue_login_response(
+        db,
+        user,
+        user_agent=request.headers.get("user-agent") if request else None,
+        ip_address=request.client.host if request and request.client else None,
+    )
 
 
 @router.post("/mfa/setup", response_model=MfaSetupResponse)

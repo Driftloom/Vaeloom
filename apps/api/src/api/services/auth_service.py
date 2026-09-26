@@ -9,7 +9,7 @@ import jwt
 from sqlalchemy import select, update, delete, func
 
 from ..config import settings
-from ..models.schema import AuthSession, EmailVerificationToken, OnboardingState, User, Workspace
+from ..models.schema import AuthSession, EmailVerificationToken, OnboardingState, PasswordResetToken, User, Workspace
 from ..schemas.auth import AuthResponse, PublicUser, SessionItemResponse, MfaSetupResponse
 from ..utils.sanitize import sanitize_text
 
@@ -22,6 +22,17 @@ _REVOKED_PREFIX = "jwt:revoked:"
 _CUTOFF_PREFIX = "jwt:cutoff:"
 _redis_client = None
 _redis_checked = False
+
+
+def _token_digest(raw_token: str) -> str:
+    """Digest used to look up a session row without storing the credential.
+
+    `auth_sessions.token` and `.refresh_token` hold this value rather than the
+    token, so a leaked dump or read-only DB access cannot be replayed. SHA-256
+    is the right primitive here: the input is already high-entropy random, so
+    there is nothing to brute-force and no need for a slow KDF.
+    """
+    return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
 
 def _get_revocation_redis():
@@ -553,14 +564,19 @@ class AuthService:
 
         session = AuthSession(
             user_id=uuid.UUID(user_id),
-            token=access_token,
-            refresh_token=refresh_token,
+            # Store digests, never the credentials themselves. A database dump, a
+            # backup, or read-only access to auth_sessions must not yield a usable
+            # access token or refresh token. `jti` remains the non-secret handle used
+            # for targeted revocation and for the sessions list.
+            token=_token_digest(access_token),
+            refresh_token=_token_digest(refresh_token),
             jti=jti,
             family_id=token_family,
             user_agent=user_agent,
             ip_address=ip_address,
             expires_at=now + timedelta(seconds=settings.jwt_refresh_token_ttl),
         )
+
         db.add(session)
         await db.flush()
 
@@ -584,7 +600,7 @@ class AuthService:
                 pass
 
         result = await db.execute(
-            select(AuthSession).where(AuthSession.refresh_token == refresh_token)
+            select(AuthSession).where(AuthSession.refresh_token == _token_digest(refresh_token))
         )
         session = result.scalar_one_or_none()
         if not session:
@@ -966,7 +982,7 @@ class AuthService:
                 if jti:
                     conds.append(AuthSession.jti == str(jti))
                 if raw_token:
-                    conds.append(AuthSession.token == raw_token)
+                    conds.append(AuthSession.token == _token_digest(raw_token))
                 res = await session.execute(
                     select(AuthSession.status).where(or_(*conds)).limit(1)
                 )
@@ -1025,6 +1041,13 @@ class AuthService:
         email = email.strip().lower()
 
         if db is not None:
+            # Pre-auth RLS context: lookup by email
+            try:
+                from sqlalchemy import text
+                await db.execute(text("SELECT set_config('app.lookup_email', :email, true)"), {"email": email})
+            except Exception:
+                pass
+
             result = await db.execute(select(User).where(User.email == email))
             user = result.scalar_one_or_none()
             if not user:
@@ -1034,17 +1057,43 @@ class AuthService:
             token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
             expires_at = datetime.now(UTC) + timedelta(minutes=15)
 
+            # Invalidate any prior unused reset tokens for this user
+            try:
+                await db.execute(
+                    delete(PasswordResetToken).where(
+                        PasswordResetToken.user_id == user.id,
+                        PasswordResetToken.used_at.is_(None),
+                    )
+                )
+            except Exception:
+                pass
+
+            # Pre-auth RLS context: token hash + user id
+            try:
+                from sqlalchemy import text
+                await db.execute(text("SELECT set_config('app.lookup_token_hash', :th, true)"), {"th": token_hash})
+                await db.execute(text("SELECT set_config('app.user_id', :uid, true)"), {"uid": str(user.id)})
+            except Exception:
+                pass
+
+            reset_record = PasswordResetToken(
+                user_id=user.id,
+                token_hash=token_hash,
+                expires_at=expires_at,
+            )
+            db.add(reset_record)
+            await db.commit()
+
+            # Mirror to in-memory fallback and Redis cache
             AuthService._password_resets[token_hash] = (str(user.id), expires_at)
             redis = _get_revocation_redis()
             if redis is not None:
                 try:
-                    redis.set(f"pwd_reset:{token_hash}", str(user.id), ex=900)
+                    redis.set(f"pwd_reset:{token_hash}", f"{user.id}:{int(expires_at.timestamp())}", ex=900)
                 except Exception as e:
                     logger.warning("Failed to store reset token in Redis: %s", e)
 
-            # SECURITY: never log the raw reset token. Anyone with read access to
-            # application logs could otherwise complete any password reset. Log
-            # only the user id and the token's expiry.
+            # SECURITY: never log the raw reset token.
             logger.info("Password reset issued for user %s, expires at %s", user.id, expires_at)
 
             # Dispatch transactional password reset email
@@ -1065,6 +1114,7 @@ class AuthService:
     async def reset_password_with_token(self, token: str, new_password: str, db=None) -> bool:
         """Verify password reset token and update user password."""
         import hashlib
+        import time
         from fastapi import HTTPException
 
         if not token or not new_password or len(new_password) < 8:
@@ -1072,53 +1122,94 @@ class AuthService:
 
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         user_id = None
+        now = datetime.now(UTC)
 
-        # Single-use invariant: a reset token must be consumed exactly once,
-        # across BOTH storage paths. The token is written to Redis *and* to the
-        # in-process dict, so whichever path answers first must also invalidate
-        # the other. Previously only the Redis key was deleted, which meant a
-        # token could be redeemed a second time via the in-process dict.
+        # 1. DB Truth check (durable across instances and reboots)
+        if db is not None:
+            try:
+                from sqlalchemy import text
+                await db.execute(text("SELECT set_config('app.lookup_token_hash', :th, true)"), {"th": token_hash})
+            except Exception:
+                pass
+
+            result = await db.execute(
+                select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash)
+            )
+            token_record = result.scalar_one_or_none()
+            if token_record:
+                if token_record.used_at is not None:
+                    raise HTTPException(status_code=400, detail="Password reset token has already been used")
+
+                exp = token_record.expires_at
+                if exp.tzinfo is None:
+                    exp = exp.replace(tzinfo=UTC)
+                if exp < now:
+                    raise HTTPException(status_code=400, detail="Password reset token has expired")
+
+                token_record.used_at = now
+                user_id = str(token_record.user_id)
+                await db.commit()
+
+        # 2. Redis atomic GETDEL and in-memory fallback
         in_memory = AuthService._password_resets.pop(token_hash, None)
-
         redis = _get_revocation_redis()
+        redis_val = None
         if redis is not None:
             try:
-                # GETDEL (Redis >= 6.2) is atomic; the pipelled GET+DEL fallback
-                # is not, so a burst of concurrent resets can still race.
                 getdel = getattr(redis, "getdel", None)
                 if callable(getdel):
-                    user_id = getdel(f"pwd_reset:{token_hash}")
+                    redis_val = getdel(f"pwd_reset:{token_hash}")
                 else:
                     pipe = redis.pipeline()
                     pipe.get(f"pwd_reset:{token_hash}")
                     pipe.delete(f"pwd_reset:{token_hash}")
                     results = pipe.execute()
-                    user_id = results[0]
+                    redis_val = results[0]
             except Exception:
                 pass
 
-        if not user_id and in_memory is not None:
-            uid, exp = in_memory
-            if datetime.now(UTC) <= exp:
-                user_id = uid
+        if not user_id:
+            now_ts = now.timestamp()
+            if redis_val:
+                val_str = redis_val.decode() if isinstance(redis_val, bytes) else str(redis_val)
+                if ":" in val_str:
+                    r_uid, r_exp = val_str.split(":", 1)
+                    if float(r_exp) >= now_ts:
+                        user_id = r_uid
+                    else:
+                        raise HTTPException(status_code=400, detail="Password reset token has expired")
+                else:
+                    user_id = val_str
+            elif in_memory is not None:
+                uid, exp = in_memory
+                if exp.tzinfo is None:
+                    exp = exp.replace(tzinfo=UTC)
+                if now <= exp:
+                    user_id = uid
+                else:
+                    raise HTTPException(status_code=400, detail="Password reset token has expired")
 
         if not user_id:
             raise HTTPException(status_code=400, detail="Invalid or expired password reset token")
 
         if db is not None:
+            # Set RLS context for user update
+            try:
+                from sqlalchemy import text
+                await db.execute(text("SELECT set_config('app.user_id', :uid, true)"), {"uid": str(user_id)})
+            except Exception:
+                pass
+
             result = await db.execute(select(User).where(User.id == uuid.UUID(str(user_id))))
             user = result.scalar_one_or_none()
             if not user:
                 raise HTTPException(status_code=404, detail="User not found")
 
             user.password_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
-            # A completed reset is proof of account control, so it also clears
-            # the failure counter and any active lockout. Without this, a user
-            # locked out by repeated failed logins has no self-service recovery:
-            # reset succeeds but the next login still returns 423.
+            # Proof of account control clears lockout & failed attempts
             user.failed_login_attempts = 0
             user.locked_until = None
-            # Explicitly revoke all active auth_sessions in DB (GAP-AUTH-03)
+            # Revoke all active auth_sessions in DB
             await db.execute(
                 update(AuthSession)
                 .where(AuthSession.user_id == user.id, AuthSession.status == "ACTIVE")
