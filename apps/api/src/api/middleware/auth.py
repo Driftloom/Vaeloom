@@ -134,8 +134,19 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 request.state.tenant_id = tenant_id
                 return await call_next(request)
 
+        # HttpOnly session cookie (GAP-AUTH-01). The browser client cannot read
+        # this cookie, so the Authorization header is absent for every web
+        # request; the cookie *is* the credential. A missing or malformed cookie
+        # must fail closed exactly like a missing header rather than falling
+        # through to "authenticated as nobody".
         if not auth_header.startswith("Bearer "):
-            return _denial(401, "Not authenticated", request)
+            from ..services.session_cookies import read_access_cookie
+
+            cookie_token = read_access_cookie(request)
+            if not cookie_token:
+                return _denial(401, "Not authenticated", request)
+            auth_header = f"Bearer {cookie_token}"
+            request.state.auth_via = "cookie"
 
         token = auth_header.removeprefix("Bearer ")
         try:

@@ -50,8 +50,29 @@ MUTATING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 # Bearer-header APIs are CSRF-immune by design; cookie-authenticated mutating
 # calls still require the double-submit token. /csrf-token itself must stay
 # skipped (it issues the token).
-SKIP_PATHS = frozenset({"/health", "/health/ready", "/docs", "/openapi.json", "/redoc", "/metrics", "/csrf-token", "/api/v1/gmail/webhook", "/api/v1/auth/signup", "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password"})
+#
+# /api/v1/auth/refresh used to be skipped unconditionally. That was correct when
+# refresh only accepted a body token. Now the browser client presents its refresh
+# credential as an ambient HttpOnly cookie, which makes the endpoint
+# CSRF-reachable: an attacker page could force a rotation, and because rotation
+# invalidates the previous token, repeatedly forcing it locks the victim out.
+# It is no longer skipped here; the cookie rule below decides, so bearer-based
+# SDK refreshes stay exempt while cookie-based browser refreshes are challenged.
+SKIP_PATHS = frozenset({"/health", "/health/ready", "/docs", "/openapi.json", "/redoc", "/metrics", "/csrf-token", "/api/v1/gmail/webhook", "/api/v1/auth/signup", "/api/v1/auth/login", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password"})
 SKIP_PREFIXES = frozenset({"/scim"})
+
+# /api/v1/auth/refresh used to be skipped outright. That was safe only while the
+# refresh credential arrived exclusively in the request body, because a body
+# field is one the browser will not populate on a cross-site request. The cookie
+# migration changes that: the browser now presents its refresh credential as an
+# ambient HttpOnly cookie, which an attacker page can cause the browser to send.
+# Rotation makes this materially worse than a plain read — it invalidates the
+# previous token, so forcing it repeatedly locks the victim out.
+#
+# Rather than re-adding a blanket skip, the exemption below is conditional on the
+# credential actually being explicit. An SDK or CLI caller sending a body token is
+# exempt exactly as before; a browser caller arriving on the cookie is challenged.
+REFRESH_PATH = "/api/v1/auth/refresh"
 
 
 def _sign_token(token: str, secret: str) -> str:
@@ -113,6 +134,17 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
         if request.method in MUTATING_METHODS:
             from .exception_handler import denial as _denial
+
+            # The posture for every endpoint is unchanged: a mutating request
+            # must present the double-submit token, whatever it authenticates
+            # with. The single exception is /auth/refresh, and only when the
+            # caller used the explicit body token rather than the ambient
+            # session cookie. Narrowing the exemption this way keeps the SDK
+            # working without re-opening a cross-site rotation path.
+            from ..services.session_cookies import reads_session_cookie
+
+            if path == REFRESH_PATH and not reads_session_cookie(request):
+                return await call_next(request)
 
             csrf_header = request.headers.get("X-CSRF-Token", "")
             csrf_cookie = request.cookies.get("csrf_token", "")

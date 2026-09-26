@@ -27,6 +27,12 @@ from ..schemas.auth import (
     VerifyEmailRequest,
 )
 from ..services.auth_service import auth_service
+from ..services.session_cookies import (
+    clear_auth_cookies,
+    read_refresh_cookie,
+    set_auth_cookies,
+    wants_cookie_only,
+)
 from ..services.sso import SSOConfig, get_sso_provider
 from ..services.workspace_service import workspace_service
 
@@ -37,44 +43,86 @@ router = APIRouter()
 _sso_states: dict[str, str] = {}
 
 
+def _deliver_credentials(
+    auth_response: AuthResponse, request: Request, response: Response
+) -> AuthResponse:
+    """Hand credentials to a browser client as HttpOnly cookies (GAP-AUTH-01).
+
+    A client that sends ``X-Auth-Mode: cookie`` gets the tokens in ``Set-Cookie``
+    only, and the response body fields are blanked so the web bundle never holds a
+    credential it could be tricked into leaking. Every other client (TypeScript
+    SDK, CLI, Playwright) is untouched and still reads the body, so one endpoint
+    serves both without a flag day.
+
+    An MFA challenge carries no credential yet, so it is passed through
+    unchanged and the real tokens are set once the code is verified.
+    """
+    if not wants_cookie_only(request):
+        return auth_response
+    if not auth_response.access_token:
+        return auth_response
+    set_auth_cookies(
+        response,
+        auth_response.access_token,
+        auth_response.refresh_token,
+        access_ttl=settings.jwt_token_ttl,
+        refresh_ttl=settings.jwt_refresh_token_ttl,
+    )
+    return auth_response.model_copy(update={"access_token": "", "refresh_token": ""})
+
+
 @router.post("/signup", response_model=AuthResponse, status_code=201)
 @rate_limit(max_requests=5, window_seconds=3600)
-async def signup(dto: SignupRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def signup(
+    dto: SignupRequest, request: Request, response: Response, db: AsyncSession = Depends(get_db)
+):
     ip_address = request.client.host if request.client else None
-    return await auth_service.signup(
+    result = await auth_service.signup(
         email=dto.email,
         password=dto.password,
         display_name=dto.display_name,
         ip_address=ip_address,
         db=db,
     )
+    return _deliver_credentials(result, request, response)
 
 
 @router.post("/login", response_model=AuthResponse)
 @rate_limit(max_requests=10, window_seconds=60)
-async def login(dto: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def login(
+    dto: LoginRequest, request: Request, response: Response, db: AsyncSession = Depends(get_db)
+):
     user_agent = request.headers.get("user-agent")
     ip_address = request.client.host if request.client else None
-    return await auth_service.login(
+    result = await auth_service.login(
         email=dto.email,
         password=dto.password,
         user_agent=user_agent,
         ip_address=ip_address,
         db=db,
     )
+    return _deliver_credentials(result, request, response)
 
 
 @router.post("/refresh", response_model=AuthResponse)
 @rate_limit(max_requests=20, window_seconds=60)
-async def refresh(dto: RefreshRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def refresh(
+    dto: RefreshRequest, request: Request, response: Response, db: AsyncSession = Depends(get_db)
+):
     user_agent = request.headers.get("user-agent")
     ip_address = request.client.host if request.client else None
-    return await auth_service.refresh_token(
-        refresh_token=dto.refresh_token,
+    # Cookie first, body second. The browser client cannot read its own cookie,
+    # so it sends no body token; the SDK sends no cookie, so it sends the body.
+    # Falling back rather than replacing keeps both callers working during the
+    # rollout instead of requiring a synchronized deploy.
+    token = read_refresh_cookie(request) or dto.refresh_token
+    result = await auth_service.refresh_token(
+        refresh_token=token,
         user_agent=user_agent,
         ip_address=ip_address,
         db=db,
     )
+    return _deliver_credentials(result, request, response)
 
 
 @router.post("/verify-email")
@@ -182,6 +230,8 @@ async def reset_password(dto: ResetPasswordRequest, db: AsyncSession = Depends(g
 
 @router.post("/logout", status_code=204)
 async def logout(
+    request: Request,
+    response: Response,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -191,7 +241,12 @@ async def logout(
     ACTIVE session for the user, so signing out on one device silently signed
     the user out of all of them. Bulk revocation belongs to
     `POST /auth/sessions/revoke-others`.
+
+    The cookies are cleared unconditionally, including when the session was
+    already expired. Otherwise a stale cookie would survive a "successful"
+    logout and the user would appear signed in until it aged out.
     """
+    clear_auth_cookies(response)
     jti = current_user.get("jti")
     if jti:
         auth_service.revoke_token(jti=jti)
@@ -298,6 +353,7 @@ class SSOTokenRequest(BaseModel):
 async def sso_token_login(
     provider: str,
     dto: SSOTokenRequest,
+    response: Response,
     db: AsyncSession = Depends(get_db),
     request: Request = None,
 ):
@@ -349,12 +405,13 @@ async def sso_token_login(
     # Federated login must not skip the MFA challenge: calling issue_token here
     # issued a full token pair to any TOTP-enrolled user who signed in with an
     # SSO assertion.
-    return await auth_service.issue_login_response(
+    result = await auth_service.issue_login_response(
         db,
         user,
         user_agent=request.headers.get("user-agent") if request else None,
         ip_address=request.client.host if request and request.client else None,
     )
+    return _deliver_credentials(result, request, response)
 
 
 @router.get("/sso/{provider}")
@@ -538,12 +595,13 @@ async def sso_callback(
     await db.commit()
 
     # Same reasoning as the SSO handler: SAML assertions must not bypass MFA.
-    return await auth_service.issue_login_response(
+    result = await auth_service.issue_login_response(
         db,
         user,
         user_agent=request.headers.get("user-agent") if request else None,
         ip_address=request.client.host if request and request.client else None,
     )
+    return _deliver_credentials(result, request, response)
 
 
 @router.get('/saml/metadata')
@@ -619,7 +677,9 @@ async def saml_login(request: Request, redirect_url: str | None = None):
 
 # SAML POST binding (ENT track, F-ENT-05 fix)
 @router.post('/saml/callback', response_model=AuthResponse)
-async def saml_callback_post(request: Request, db: AsyncSession = Depends(get_db)):
+async def saml_callback_post(
+    request: Request, response: Response, db: AsyncSession = Depends(get_db)
+):
     try:
         form = await request.form()
         saml_response = form.get('SAMLResponse')
@@ -713,17 +773,19 @@ async def enable_mfa(
 async def verify_mfa_login(
     dto: MfaVerifyRequest,
     request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ):
     if not dto.mfa_token:
         raise HTTPException(status_code=400, detail="mfa_token is required")
     user_agent = request.headers.get("user-agent")
     ip_address = request.client.host if request.client else None
-    return await auth_service.verify_mfa_login(
+    result = await auth_service.verify_mfa_login(
         mfa_token=dto.mfa_token,
         code=dto.code,
         user_agent=user_agent,
         ip_address=ip_address,
         db=db,
     )
+    return _deliver_credentials(result, request, response)
 
