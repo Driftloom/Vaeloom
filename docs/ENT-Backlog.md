@@ -31,7 +31,7 @@
 | ENT-P20 | Post-Deployment Validation                      | smoke 12/12 re-run, synthetic probes, SLO                                  | TBD   |
 | ENT-P21 | Maintenance and Continuous Improvement          | governance, backlog, quarterly review                                      | TBD   |
 
-> Pre-conditions (RED blockers): clean tree, OpenAPI regen (243 paths), single
+> Pre-conditions (RED blockers): clean tree, OpenAPI regen (254 paths), single
 > migration tree, curated `scripts/`, full-suite re-run
 > (`MASTER-CHECKLIST-2026-09-15.md`). Pre-prod re-measures (EXC-P14-01..03) and
 > chaos/fuzz TODO (`docs/testing/Test-Matrix.md`) carry into ENT-P13/P14.

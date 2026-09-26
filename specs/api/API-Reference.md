@@ -3,7 +3,7 @@
 > **Purpose:** Complete endpoint reference for the Vaeloom API, generated from
 > code truth **Status:** Complete **Owner:** Backend Team **Version:** 0.2.0
 > **Last Updated:** 2026-09-22 **Canonical source:**
-> [`./openapi.yaml`](./openapi.yaml) — **243 paths / 296 operations**,
+> [`./openapi.yaml`](./openapi.yaml) — **254 paths / 315 operations**,
 > regenerated 2026-09-21 via `scripts/gen_openapi.py`
 
 ## Base URLs
@@ -24,7 +24,7 @@ changing any route in `apps/api/src/api/routers/` or `apps/api/src/api/main.py`:
 
 1. Regen: `python scripts/gen_openapi.py` (sets mock env vars internally; safe
    to run offline)
-2. Verify: 243 paths expected — count `^  /` path keys in `openapi.yaml`
+2. Verify: 254 paths expected — count `^  /` path keys in `openapi.yaml`
 3. Update this file: add/remove the endpoint row in the matching router table
    below and bump the counts in the header
 
@@ -398,5 +398,5 @@ All errors carry a `request_id` / `X-Request-ID` for log correlation.
 - [Connectors](./Connectors.md) — connector + MCP-bridge details
 - [Local Development](./Local-Development.md) — running the API locally
 
-> _Last verified: 2026-09-22 — 243 paths / 296 ops from `openapi.yaml` (regen
+> _Last verified: 2026-09-22 — 254 paths / 315 ops from `openapi.yaml` (regen
 > `scripts/gen_openapi.py`)._

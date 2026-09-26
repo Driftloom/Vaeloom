@@ -19,7 +19,7 @@
 | `10-evaluation-framework.md`         | `mvp-p14/` (R01..R08, Test-Matrix)                                                         |
 | `11-guardrails-safety.md`            | `mvp-p13/`, safety `agentic-safety-w1..w5` (reports)                                       |
 | `12-observability-tracing.md`        | `mvp-p17/`                                                                                 |
-| `13-api-backend.md`                  | `mvp-p08/`, `mvp-p11/` (OpenAPI 243 paths current; 99/110 refs stale)                      |
+| `13-api-backend.md`                  | `mvp-p08/`, `mvp-p11/` (OpenAPI 254 paths current; 99/110 refs stale)                      |
 | `14-frontend-workspace.md`           | `mvp-p09/`, `mvp-p10/` (20 routes, transformKeys)                                          |
 | `15-security-compliance.md`          | `mvp-p13/` (95.4 APPROVED; 233/170, 42/42 RLS)                                             |
 | `16-deployment-infrastructure.md`    | `mvp-p16/`, `mvp-p19/`, `mvp-p20/`                                                         |

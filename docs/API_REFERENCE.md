@@ -3,7 +3,7 @@
 Base URL: `https://api.vaeloom.dev` (production) or `http://localhost:8000`
 (local)
 
-Version: `0.2.0` — **243 paths / 296 operations**
+Version: `0.2.0` — **254 paths / 315 operations**
 
 - **Machine-readable contract (SPEC):**
   [`specs/api/openapi.yaml`](../specs/api/openapi.yaml) (regen via

@@ -101,4 +101,4 @@ Enterprise-gated (`enterprise_routes_enabled=true`, default off — excluded fro
 `recommendations`, `webhooks`, `admin_console`, `scim`, `feature_flags`.
 
 Regen the spec after router changes: `python scripts/gen_openapi.py` (repo root)
-→ 243 paths expected.
+→ 254 paths expected.

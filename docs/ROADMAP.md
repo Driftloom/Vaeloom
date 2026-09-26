@@ -1,7 +1,7 @@
 # Vaeloom Roadmap
 
 > **Last updated:** 2026-09-15 — **Owner:** Product + Platform Current release:
-> **0.2.0** (OpenAPI 243 paths / 296 ops, 44 ADRs, RLS 42/42). MVP track P00–P21
+> **0.2.0** (OpenAPI 254 paths / 315 ops, 44 ADRs, RLS 42/42). MVP track P00–P21
 > complete; CONT track complete through P04; ENT track not started. Execution
 > status lives in the 66-phase prompts overlay
 > (`docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/EXECUTION-STATUS.md`).

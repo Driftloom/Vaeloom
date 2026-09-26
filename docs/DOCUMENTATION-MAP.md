@@ -17,7 +17,7 @@
 | Category                   | Directory                | Files | Owner       | Role                                                 |
 | :------------------------- | :----------------------- | :---- | :---------- | :--------------------------------------------------- |
 | **Phase Contracts**        | `specs/phase-contracts/` | 80    | Platform    | 🔒 Canonical Phase Specifications                    |
-| **API Specifications**     | `specs/api/`             | 4     | Backend     | 🔒 OpenAPI (243 paths / 296 ops) + API Reference     |
+| **API Specifications**     | `specs/api/`             | 4     | Backend     | 🔒 OpenAPI (254 paths / 315 ops) + API Reference     |
 | **Product Specifications** | `specs/product/`         | 20    | Product     | 🔒 Functional Requirements & 13 Feature Specs        |
 | **System Invariants**      | `specs/architecture/`    | 6     | Platform    | 🔒 C4 Architecture, LLD, Event Catalog               |
 | **Database Schemas**       | `specs/database/`        | 4     | Backend     | 🔒 67 Tables (Schema, Data Dict, Indexes, ERD)       |
@@ -69,7 +69,7 @@ graph LR
 **Note on stale numbers in phase docs:** Phase evidence files (`docs/phases/`)
 contain historical baselines that were accurate at the time of execution (e.g.,
 `2557` tests, `99` OpenAPI paths). These are frozen audit records and should NOT
-be modified. Current values: **2731 tests**, **243 OpenAPI paths / 296 ops**
+be modified. Current values: **2731 tests**, **254 OpenAPI paths / 315 ops**
 (v0.2.0, regen 2026-09-21 via `scripts/gen_openapi.py`), **44 ADRs** — see
 `AGENTS.md` and `docs/backend/openapi.yaml`.
 
