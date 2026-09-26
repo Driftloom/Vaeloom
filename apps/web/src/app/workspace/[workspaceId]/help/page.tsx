@@ -73,8 +73,8 @@ export default function HelpCenterPage() {
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
               Documentation & Help Center
             </h1>
-            <Badge variant="primary" size="sm">
-              KNOWLEDGE BASE
+            <Badge variant="mono" size="sm">
+              DOCUMENTATION (PREVIEW REFERENCE)
             </Badge>
           </div>
           <p className="text-xs sm:text-sm text-text-secondary">

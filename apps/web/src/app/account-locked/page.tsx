@@ -17,8 +17,8 @@ export default function AccountLockedPage() {
             Account Temporarily Locked
           </h1>
           <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
-            Your account was locked by zero-trust automated defenses following excessive failed
-            login attempts or an anomalous security challenge.
+            Sign-in is temporarily blocked on this account after too many failed attempts. This is
+            an automated defence against credential stuffing and token replay.
           </p>
         </div>
 
@@ -27,8 +27,8 @@ export default function AccountLockedPage() {
             <AlertTriangleIcon size={14} className="text-warning" /> Security Policy Reference
           </div>
           <p className="text-2xs">
-            To prevent brute-force attacks and token replay, workspace access is gated for 15
-            minutes or until unlocked via your verified recovery email.
+            To prevent brute-force attacks and token replay, sign-in is blocked on this account for
+            15 minutes. Completing a password reset also clears the lock immediately.
           </p>
           <div className="text-2xs text-text-muted pt-1">
             If you did not initiate these attempts, reset your password immediately or contact your

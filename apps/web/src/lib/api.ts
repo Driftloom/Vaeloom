@@ -351,10 +351,15 @@ export const api = {
   refresh(body: { refreshToken: string }): Promise<AuthResponse> {
     return request<AuthResponse>('/auth/refresh', { method: 'POST', body: JSON.stringify(body) });
   },
-  logout(): Promise<void> {
-    clearToken();
-    clearRefreshToken();
-    return Promise.resolve();
+  async logout(): Promise<void> {
+    try {
+      await request<void>('/auth/logout', { method: 'POST' });
+    } catch {
+      // non-fatal if backend unreachable
+    } finally {
+      clearToken();
+      clearRefreshToken();
+    }
   },
   listSessions(): Promise<SessionListResponse> {
     return request<SessionListResponse>('/auth/sessions');

@@ -210,11 +210,10 @@ export default function BillingPage() {
                 });
               }
             } else {
-              window.open('#');
               toast({
                 tone: 'info',
-                title: 'Mock invoice',
-                detail: 'No live invoice — enable ENTERPRISE_ROUTES_ENABLED',
+                title: 'Invoice download unavailable',
+                detail: 'No live billing records connected to this workspace.',
               });
             }
           }}

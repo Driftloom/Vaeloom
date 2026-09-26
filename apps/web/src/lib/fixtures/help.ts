@@ -88,9 +88,9 @@ export const DEMO_HELP_ARTICLES: HelpArticle[] = [
     summary:
       'How Vaeloom safeguards your private career data with cryptographic tenant isolation and signed deletion receipts.',
     readTime: '4 min read',
-    content: `Every piece of data stored in Vaeloom is scoped to your workspace via PostgreSQL Row-Level Security (RLS) enforced at the database layer.
-You have absolute sovereignty:
-- Export your full memory graph and documents at any time in standard JSON/ZIP formats.
-- Request cryptographic deletion with an immutable SHA-256 deletion receipt proving eradication across database and vector stores.`,
+    content: `Data stored in Vaeloom is scoped to your workspace via tenant isolation policies and PostgreSQL Row-Level Security (RLS) configured in production deployments.
+You have data sovereignty:
+- Export your memory graph and documents in standard JSON/ZIP formats.
+- Request account data deletion under standard privacy regulations.`,
   },
 ];

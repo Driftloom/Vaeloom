@@ -2,18 +2,11 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const PROTECTED_PREFIXES = ['/workspace'];
-const PUBLIC_PATHS = [
-  '/login',
-  '/signup',
-  '/',
-  '/forgot-password',
-  '/status',
-  '/terms',
-  '/privacy',
-  '/manifest.json',
-  '/favicon.ico',
-];
 
+/**
+ * Lightweight client-side expiration check for UX routing only.
+ * Cryptographic token verification is strictly enforced by the backend on every request.
+ */
 function isTokenValid(token: string | undefined): boolean {
   if (!token) return false;
   try {
@@ -43,7 +36,6 @@ export function middleware(request: NextRequest) {
 
   const isAuthenticated = isTokenValid(token);
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
-  const isPublicExact = PUBLIC_PATHS.some((p) => pathname === p);
 
   // If user arrives on /session-expired, clear session cookies cleanly and do not redirect
   if (pathname === '/session-expired') {
