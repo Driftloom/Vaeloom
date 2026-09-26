@@ -1,5 +1,7 @@
 import React from 'react';
 
+import { MIN_TOUCH_TARGET } from '../layout/touchTarget';
+
 export interface SwitchProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
@@ -29,7 +31,7 @@ export const Switch: React.FC<SwitchProps> = ({
         aria-checked={checked}
         disabled={disabled}
         onClick={() => !disabled && onChange(!checked)}
-        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-100 disabled:cursor-not-allowed disabled:opacity-50 ${
+        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-100 disabled:cursor-not-allowed disabled:opacity-50 ${MIN_TOUCH_TARGET} ${
           checked ? 'bg-action' : 'bg-border-subtle'
         }`}
       >

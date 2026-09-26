@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Modal } from './Modal';
+
 import { Button } from './Button';
+import { Modal } from './Modal';
 
 export interface ConfirmationDialogProps {
   isOpen: boolean;

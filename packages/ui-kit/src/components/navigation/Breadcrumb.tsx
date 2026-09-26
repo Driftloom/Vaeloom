@@ -1,5 +1,7 @@
 import React from 'react';
+
 import { ChevronRightIcon } from '../../icons';
+import { MIN_TOUCH_TARGET } from '../layout/touchTarget';
 
 export interface BreadcrumbItem {
   label: string;
@@ -38,7 +40,7 @@ export function Breadcrumb({ items, className = '' }: BreadcrumbProps) {
               ) : (
                 <a
                   href={item.href}
-                  className="text-text-secondary hover:text-text transition-colors truncate max-w-[150px]"
+                  className={`inline-flex items-center text-text-secondary hover:text-text transition-colors truncate max-w-[150px] ${MIN_TOUCH_TARGET}`}
                 >
                   {item.label}
                 </a>

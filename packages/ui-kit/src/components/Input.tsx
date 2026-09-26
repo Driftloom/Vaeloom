@@ -31,7 +31,7 @@ export const Input: React.FC<InputProps> = ({
       <input
         id={inputId}
         className={`${baseClasses} ${error ? errorClasses : normalClasses} ${className}`}
-        aria-invalid={!!error}
+        aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${inputId}-error` : undefined}
         {...props}
       />

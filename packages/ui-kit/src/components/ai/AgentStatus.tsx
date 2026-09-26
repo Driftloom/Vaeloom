@@ -1,6 +1,7 @@
 import React from 'react';
-import { CpuIcon, BrainIcon } from '../../icons';
-import { StatusDot, StatusDotType } from '../StatusDot';
+
+import type { StatusDotType } from '../StatusDot';
+import { StatusDot } from '../StatusDot';
 
 export interface AgentStatusProps {
   name: string;

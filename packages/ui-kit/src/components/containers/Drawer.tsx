@@ -1,7 +1,9 @@
 'use client';
 
 import React from 'react';
+
 import { XIcon } from '../../icons';
+import { MIN_TOUCH_TARGET } from '../layout/touchTarget';
 
 export interface DrawerProps {
   isOpen: boolean;
@@ -77,7 +79,7 @@ export const Drawer: React.FC<DrawerProps> = ({
             type="button"
             aria-label="Close drawer"
             onClick={onClose}
-            className="p-1.5 text-text-muted hover:text-text rounded-md hover:bg-surface-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className={`inline-flex items-center justify-center p-1.5 text-text-muted hover:text-text rounded-md hover:bg-surface-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
           >
             <XIcon size={18} />
           </button>

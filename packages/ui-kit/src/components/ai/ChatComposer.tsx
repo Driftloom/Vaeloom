@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useRef, useEffect } from 'react';
-import { Button } from '../Button';
+
 import { ArrowUpIcon } from '../../icons';
+import { Button } from '../Button';
 
 export interface ChatComposerProps {
   value: string;

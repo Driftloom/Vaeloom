@@ -1,6 +1,8 @@
 import React from 'react';
-import { ShieldIcon, CheckIcon, XIcon, AlertTriangleIcon } from '../../icons';
+
+import { ShieldIcon, AlertTriangleIcon } from '../../icons';
 import { Button } from '../Button';
+import { MIN_TOUCH_TARGET } from '../layout/touchTarget';
 
 export interface AgentProposalProps {
   id: string;
@@ -77,7 +79,7 @@ export const AgentProposal: React.FC<AgentProposalProps> = ({
             <button
               type="button"
               onClick={() => onInspect(id)}
-              className="text-xs text-text-muted hover:text-text underline"
+              className={`inline-flex items-center text-xs text-text-muted hover:text-text underline ${MIN_TOUCH_TARGET}`}
             >
               Inspect Telemetry
             </button>

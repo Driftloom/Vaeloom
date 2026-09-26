@@ -1,12 +1,16 @@
 import React from 'react';
+
+import { CpuIcon, UserIcon } from '../../icons';
+import { Badge } from '../Badge';
+
 import { ConfidenceIndicator } from './ConfidenceIndicator';
 import { SourceCitation } from './SourceCitation';
-import { Badge } from '../Badge';
-import { CpuIcon, UserIcon } from '../../icons';
 
 export interface AIMessageProps {
   role: 'user' | 'agent' | 'system';
-  content: React.ReactNode;
+  content?: React.ReactNode;
+  /** Alias for `content`; without it JSX children were silently discarded. */
+  children?: React.ReactNode;
   agentName?: string;
   confidence?: number;
   citations?: Array<{ title: string; uri?: string; score?: number }>;
@@ -20,6 +24,7 @@ export interface AIMessageProps {
 export function AIMessage({
   role,
   content,
+  children,
   agentName = 'Vaeloom Agent',
   confidence,
   citations,
@@ -30,6 +35,7 @@ export function AIMessage({
   className = '',
 }: AIMessageProps) {
   const isAgent = role === 'agent';
+  const body = content ?? children;
 
   return (
     <div
@@ -73,7 +79,7 @@ export function AIMessage({
         </div>
 
         <div className="text-sm text-text leading-relaxed break-words">
-          {content}
+          {body}
           {streaming && (
             <span
               className="inline-block w-1.5 h-4 ml-1 bg-primary animate-pulse"

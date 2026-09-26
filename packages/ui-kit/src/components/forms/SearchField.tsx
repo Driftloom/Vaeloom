@@ -1,5 +1,7 @@
 import React from 'react';
+
 import { SearchIcon, XIcon } from '../../icons';
+import { MIN_TOUCH_TARGET } from '../layout/touchTarget';
 
 export interface SearchFieldProps extends Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
@@ -36,7 +38,7 @@ export const SearchField = React.forwardRef<HTMLInputElement, SearchFieldProps>(
               onChange('');
               onClear?.();
             }}
-            className="absolute right-2.5 text-text-muted hover:text-text p-0.5 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+            className={`absolute right-1.5 inline-flex items-center justify-center text-text-muted hover:text-text rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
           >
             <XIcon size={14} />
           </button>

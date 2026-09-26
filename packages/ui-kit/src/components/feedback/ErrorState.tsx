@@ -1,6 +1,7 @@
 import React from 'react';
-import { Button } from '../Button';
+
 import { AlertCircleIcon } from '../../icons';
+import { Button } from '../Button';
 
 export interface ErrorStateProps {
   title?: string;

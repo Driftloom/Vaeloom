@@ -1,4 +1,5 @@
 import React from 'react';
+
 import { ChevronRightIcon } from '../../icons';
 
 export interface MemoryRelationshipProps {

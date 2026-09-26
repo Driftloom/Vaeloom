@@ -1,5 +1,7 @@
 import React from 'react';
+
 import { CheckIcon, AlertCircleIcon, InfoIcon, XIcon } from '../../icons';
+import { MIN_TOUCH_TARGET } from '../layout/touchTarget';
 
 export interface ToastProps {
   id: string;
@@ -45,7 +47,7 @@ export const Toast: React.FC<ToastProps> = ({
         type="button"
         aria-label="Dismiss notification"
         onClick={() => onDismiss(id)}
-        className="shrink-0 text-text-muted hover:text-text p-0.5 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+        className={`shrink-0 inline-flex items-center justify-center text-text-muted hover:text-text rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent -mr-1 ${MIN_TOUCH_TARGET}`}
       >
         <XIcon size={14} />
       </button>

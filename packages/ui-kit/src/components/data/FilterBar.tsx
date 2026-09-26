@@ -1,7 +1,9 @@
 import React from 'react';
-import { SearchField } from '../forms/SearchField';
-import { Badge } from '../Badge';
+
 import { XIcon } from '../../icons';
+import { Badge } from '../Badge';
+import { SearchField } from '../forms/SearchField';
+import { MIN_TOUCH_TARGET } from '../layout/touchTarget';
 
 export interface FilterOption {
   id: string;
@@ -59,17 +61,18 @@ export function FilterBar({
               <button
                 key={cat.id}
                 type="button"
+                aria-pressed={isActive}
                 onClick={() => onCategoryChange?.(cat.id)}
-                className={`px-2.5 py-1 rounded-full font-medium transition-colors shrink-0 ${
+                className={`px-2.5 py-1 rounded-full font-medium transition-colors shrink-0 ${MIN_TOUCH_TARGET} ${
                   isActive
-                    ? 'bg-primary text-primary-fg'
+                    ? 'bg-action text-action-fg'
                     : 'bg-surface-hover text-text-secondary hover:text-text border border-border'
                 }`}
               >
                 {cat.label}
                 {cat.count !== undefined && (
                   <span
-                    className={`ml-1.5 text-2xs ${isActive ? 'text-primary-fg/80' : 'text-text-dim'}`}
+                    className={`ml-1.5 text-2xs ${isActive ? 'text-action-fg/80' : 'text-text-dim'}`}
                   >
                     {cat.count}
                   </span>
@@ -90,7 +93,7 @@ export function FilterBar({
                 <button
                   type="button"
                   onClick={() => onRemoveTag(tag.id)}
-                  className="hover:text-text focus:outline-none"
+                  className={`inline-flex items-center justify-center rounded hover:text-text focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${MIN_TOUCH_TARGET} -mr-1`}
                   aria-label={`Remove filter ${tag.label}`}
                 >
                   <XIcon size={12} />
@@ -102,7 +105,7 @@ export function FilterBar({
             <button
               type="button"
               onClick={onClearAll}
-              className="text-xs text-primary hover:underline ml-1"
+              className={`inline-flex items-center text-xs text-primary hover:underline ml-1 ${MIN_TOUCH_TARGET}`}
             >
               Clear all
             </button>

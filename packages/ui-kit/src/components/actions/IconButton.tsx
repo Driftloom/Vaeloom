@@ -1,4 +1,5 @@
 import React from 'react';
+
 import { Spinner } from '../Spinner';
 
 export interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {

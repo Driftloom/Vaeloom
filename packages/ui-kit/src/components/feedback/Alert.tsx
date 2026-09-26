@@ -1,5 +1,7 @@
 import React from 'react';
+
 import { InfoIcon, CheckIcon, AlertTriangleIcon, AlertCircleIcon, XIcon } from '../../icons';
+import { MIN_TOUCH_TARGET } from '../layout/touchTarget';
 
 export interface AlertProps {
   variant?: 'info' | 'success' | 'warning' | 'danger';
@@ -62,7 +64,7 @@ export const Alert: React.FC<AlertProps> = ({
           type="button"
           aria-label="Dismiss alert"
           onClick={onClose}
-          className="shrink-0 p-1 text-current opacity-60 hover:opacity-100 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-current"
+          className={`inline-flex items-center justify-center shrink-0 text-current opacity-60 hover:opacity-100 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-current ${MIN_TOUCH_TARGET}`}
         >
           <XIcon size={14} />
         </button>

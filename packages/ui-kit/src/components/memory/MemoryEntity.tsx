@@ -1,4 +1,5 @@
 import React from 'react';
+
 import { UserIcon, BuildingIcon, BriefcaseIcon, DatabaseIcon } from '../../icons';
 
 export interface MemoryEntityProps {

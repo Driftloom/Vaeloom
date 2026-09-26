@@ -1,6 +1,8 @@
 import React from 'react';
-import { Card } from '../Card';
+
+import { ArrowDownIcon, ArrowUpIcon } from '../../icons';
 import { Badge } from '../Badge';
+import { Card } from '../Card';
 
 export interface StatCardProps {
   label: string;
@@ -28,6 +30,10 @@ export function StatCard({
   const deltaVariant =
     delta?.trend === 'up' ? 'success' : delta?.trend === 'down' ? 'error' : 'default';
 
+  const TrendIcon =
+    delta?.trend === 'up' ? ArrowUpIcon : delta?.trend === 'down' ? ArrowDownIcon : null;
+  const trendWord = delta?.trend === 'up' ? 'up' : delta?.trend === 'down' ? 'down' : 'no change';
+
   return (
     <Card
       hover={Boolean(onClick)}
@@ -53,7 +59,13 @@ export function StatCard({
         </span>
         {delta && (
           <Badge variant={deltaVariant} size="sm">
-            {delta.trend === 'up' ? '↑' : delta.trend === 'down' ? '↓' : '•'} {delta.value}
+            {/* The trend glyph is decorative; screen readers get the sentence
+                form instead of "up arrow 12%". */}
+            <span className="inline-flex items-center gap-0.5" aria-hidden="true">
+              {TrendIcon && <TrendIcon size={12} />}
+              {delta.value}
+            </span>
+            <span className="sr-only">{`${trendWord} ${delta.value}`}</span>
           </Badge>
         )}
       </div>

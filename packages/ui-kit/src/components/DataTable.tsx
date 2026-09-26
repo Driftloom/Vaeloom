@@ -1,7 +1,9 @@
 'use client';
 
 import React from 'react';
+
 import { Skeleton } from './Skeleton';
+import { MIN_TOUCH_TARGET } from './layout/touchTarget';
 
 export interface ColumnDef<T> {
   key: string;
@@ -9,6 +11,9 @@ export interface ColumnDef<T> {
   sortable?: boolean;
   className?: string;
   headerClassName?: string;
+  // `value` stays `any` on purpose: narrowing it to `unknown` breaks every
+  // existing `render: (val: string) => ...` call site under strictFunctionTypes.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   render?: (value: any, row: T, index: number) => React.ReactNode;
 }
 
@@ -56,21 +61,35 @@ export function DataTable<T>({
           <tr className="border-b border-border bg-surface-50/50">
             {columns.map((col) => {
               const isSorted = sortBy === col.key;
+              const ariaSort = !col.sortable
+                ? undefined
+                : !isSorted || !sortDir
+                  ? 'none'
+                  : sortDir === 'desc'
+                    ? 'descending'
+                    : 'ascending';
               return (
                 <th
                   key={col.key}
                   scope="col"
-                  onClick={() => handleHeaderClick(col)}
-                  className={`py-3 px-4 text-xs font-semibold uppercase tracking-wider text-text-muted ${
-                    col.sortable ? 'cursor-pointer select-none hover:text-text' : ''
-                  } ${col.headerClassName || ''}`}
+                  aria-sort={ariaSort}
+                  className={`py-3 px-4 text-xs font-semibold uppercase tracking-wider text-text-muted ${col.headerClassName || ''}`}
                 >
-                  <div className="flex items-center gap-1.5">
-                    <span>{col.header}</span>
-                    {col.sortable && (
-                      <span className="flex flex-col text-2xs leading-none">
+                  {col.sortable ? (
+                    // A <th> with only onClick is unreachable by keyboard and
+                    // exposes no sort state to assistive tech, so the control is
+                    // a real button and the state lives on aria-sort.
+                    <button
+                      type="button"
+                      onClick={() => handleHeaderClick(col)}
+                      className={`inline-flex items-center gap-1.5 uppercase tracking-wider text-left rounded hover:text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${MIN_TOUCH_TARGET}`}
+                    >
+                      <span>{col.header}</span>
+                      <span className="flex flex-col text-2xs leading-none" aria-hidden="true">
                         <svg
-                          className={`w-3 h-3 ${isSorted && sortDir === 'asc' ? 'text-action' : 'text-text-muted/40'}`}
+                          className={`w-3 h-3 ${
+                            isSorted && sortDir === 'asc' ? 'text-action' : 'text-text-muted/40'
+                          }`}
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -83,8 +102,12 @@ export function DataTable<T>({
                           />
                         </svg>
                       </span>
-                    )}
-                  </div>
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <span>{col.header}</span>
+                    </div>
+                  )}
                 </th>
               );
             })}
@@ -122,7 +145,7 @@ export function DataTable<T>({
                   }`}
                 >
                   {columns.map((col) => {
-                    const rawVal = (row as any)[col.key];
+                    const rawVal = (row as Record<string, React.ReactNode>)[col.key];
                     const content = col.render ? col.render(rawVal, row, rIdx) : rawVal;
                     return (
                       <td key={col.key} className={`py-3 px-4 text-text ${col.className || ''}`}>

@@ -1,5 +1,4 @@
 import React from 'react';
-import { BrainIcon, ClockIcon } from '../../icons';
 
 export interface MemoryTimelineItem {
   id: string;
@@ -45,7 +44,7 @@ export const MemoryTimeline: React.FC<MemoryTimelineProps> = ({ items, className
               </div>
               <div className="flex items-center gap-2 text-text-muted">
                 <span>{item.source}</span>
-                <span>•</span>
+                <span aria-hidden="true">•</span>
                 <span className="tabular-nums">{item.timestamp}</span>
               </div>
             </div>

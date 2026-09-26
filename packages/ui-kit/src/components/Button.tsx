@@ -1,4 +1,5 @@
 import React from 'react';
+
 import { Spinner } from './Spinner';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -46,6 +47,10 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <button
+      // Default to "button": inside a <form> a bare <button> submits, so a
+      // Button used for a dismiss/cancel/toggle action would submit the form by
+      // accident. An explicit type={props.type} still wins.
+      type={props.type ?? 'button'}
       className={classes}
       disabled={disabled || loading}
       aria-busy={loading || undefined}

@@ -3,6 +3,8 @@
 import React, { useEffect, useCallback, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
 
+import { MIN_TOUCH_TARGET } from './layout/touchTarget';
+
 export interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -90,7 +92,8 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
           </h2>
           <button
             onClick={onClose}
-            className="text-text-muted hover:text-text transition-colors"
+            type="button"
+            className={`inline-flex items-center justify-center rounded text-text-muted hover:text-text transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
             aria-label="Close"
           >
             <svg

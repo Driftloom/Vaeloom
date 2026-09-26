@@ -1,7 +1,9 @@
 import React from 'react';
-import { Card } from '../Card';
-import { Badge } from '../Badge';
+
 import { BrainIcon } from '../../icons';
+import { Badge } from '../Badge';
+import { Card } from '../Card';
+import { MIN_TOUCH_TARGET } from '../layout/touchTarget';
 
 export interface AIInsightProps {
   title: string;
@@ -59,7 +61,7 @@ export function AIInsight({
           <button
             type="button"
             onClick={onAction}
-            className="text-xs font-medium text-primary hover:underline focus:outline-none"
+            className={`inline-flex items-center text-xs font-medium text-primary hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
           >
             {actionText} →
           </button>

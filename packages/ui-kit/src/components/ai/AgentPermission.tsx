@@ -1,4 +1,5 @@
 import React from 'react';
+
 import { LockIcon } from '../../icons';
 
 export interface AgentPermissionProps {

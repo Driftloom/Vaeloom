@@ -1,4 +1,5 @@
 import React from 'react';
+
 import { FileTextIcon } from '../../icons';
 
 export interface MemoryEvidenceProps {
@@ -25,13 +26,24 @@ export const MemoryEvidence: React.FC<MemoryEvidenceProps> = ({
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-1.5 text-text-secondary font-medium">
           <FileTextIcon size={12} />
-          <span>{sourceTitle}</span>
+          {sourceUri ? (
+            <a
+              href={sourceUri}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-text"
+            >
+              {sourceTitle}
+            </a>
+          ) : (
+            <span>{sourceTitle}</span>
+          )}
         </div>
         <span className="text-2xs text-text-muted tabular-nums">{extractedAt}</span>
       </div>
 
       <p className="text-text-secondary leading-relaxed italic border-l-2 border-border-strong pl-2.5">
-        "{snippet}"
+        &ldquo;{snippet}&rdquo;
       </p>
 
       {highlight && (
