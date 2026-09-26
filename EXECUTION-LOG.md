@@ -3,72 +3,94 @@
 **Baseline tag:** `audit/frontend-enterprise-20260926` (commit `592db98e`)
 **Plan:**
 [`ENTERPRISE-PRODUCTION-READINESS-PLAN.md`](./ENTERPRISE-PRODUCTION-READINESS-PLAN.md)
-**Branch:** `master` (changes uncommitted — see §6)
+**Branch:** `master` (changes uncommitted — see §12)
+
+---
+
+## 0. Audit corrections
+
+Three audit findings were checked against source and found **wrong**. Recorded
+so nobody re-derives them:
+
+| Audit claim                                                                     | Reality                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| "Password reset sends no email at all… no email call"                           | **Wrong.** `auth_service.py:1055` in the baseline commit already calls `email_service.send_password_reset_email(...)`; the method exists at `email_service.py:143`. The audit's grep was faulty. The _real_ residual defect: delivery failure is swallowed by `except → logger.warning` while the API still answers "instructions have been sent". Since the endpoint must answer identically for unknown addresses (anti-enumeration), the correct fix is copy, not a 500 — see §7. |
+| "`account-locked/page.tsx:34` is a hardcoded `Incident ID: SEC-LOCK-2026-9411`" | **Wrong.** No `SEC-LOCK` or `Incident ID` string exists anywhere in the working tree **or** in `HEAD`. Fabricated detail.                                                                                                                                                                                                                                                                                                                                                            |
+| "`settings/security` and `invite/[token]` fabricate security state"             | **Correct** — the single most important finding. Both rebuilt.                                                                                                                                                                                                                                                                                                                                                                                                                       |
+
+Two more corrections surfaced during implementation:
+
+- `check_org_permission` imported **`TenantMember`, a model that does not
+  exist**. Unreachable until wiring the role dependency made the path live, at
+  which point it raised `ImportError`. Corrected to `WorkspaceUser` with
+  `role.in_(["ADMIN","OWNER"])`, following `workspace_service.py:55`.
+- The audit's "concurrent refresh" test (`test_auth_zero_trust_gaps.py:232`) is
+  **sequential** — it awaits each request instead of gathering them, so it never
+  exercised the race it names.
 
 ---
 
 ## 1. Verified gate results
 
-Every number below was produced by running the command, on the working tree as
-it now stands.
+Every number produced by running the command on the tree as it now stands.
 
-| Gate                        | Baseline (`592db98e`)     | Now                                     | Command                                                      |
-| --------------------------- | ------------------------- | --------------------------------------- | ------------------------------------------------------------ |
-| API security suite          | 8 failed / 377 passed     | **2 failed / 383 passed**               | `pytest tests/security -q -o addopts="-n 4 --dist loadfile"` |
-| API XSS suite               | 5 failed / 5 passed       | **29 passed**                           | `pytest tests/security/test_xss.py`                          |
-| API SQL-injection suite     | 1 failed / 29 passed      | **30 passed**                           | `pytest tests/security/test_sql_injection.py`                |
-| API org suite               | 6 passed                  | **10 passed** (4 new negative controls) | `pytest tests/test_organizations.py`                         |
-| API auth suite              | 13 passed                 | **14 passed** (2 new rotation tests)    | `pytest tests/test_auth.py`                                  |
-| `apps/web` typecheck        | pass                      | **pass (exit 0)**                       | `pnpm --filter @vaeloom/web typecheck`                       |
-| `packages/ui-kit` typecheck | pass                      | **pass (exit 0)**                       | `pnpm --filter @vaeloom/ui-kit typecheck`                    |
-| `apps/web` lint             | pass w/ warnings          | **pass (exit 0)**                       | `pnpm --filter @vaeloom/web lint`                            |
-| `packages/ui-kit` lint      | **5 errors**, 56 warnings | **0 errors**, 10 warnings               | `pnpm --filter @vaeloom/ui-kit lint`                         |
-| Web Jest                    | 57 passed                 | **57 passed**                           | `pnpm --filter @vaeloom/web test`                            |
-| UI-kit Jest                 | 5 passed                  | **5 passed**                            | `pnpm --filter @vaeloom/ui-kit test`                         |
-| Web production build        | pass                      | **pass (exit 0)**                       | `pnpm --filter @vaeloom/web build`                           |
+| Gate                        | Baseline (`592db98e`)                  | Now                                              | Command                                       |
+| --------------------------- | -------------------------------------- | ------------------------------------------------ | --------------------------------------------- |
+| API security suite (serial) | 8 failed / 377 passed                  | **0 failed / 385 passed**                        | `pytest tests/security -q -o addopts=""`      |
+| API XSS suite               | 5 failed / 5 passed                    | **29 passed**                                    | `pytest tests/security/test_xss.py`           |
+| API SQL-injection suite     | 1 failed / 29 passed                   | **30 passed**                                    | `pytest tests/security/test_sql_injection.py` |
+| API org suite               | 6 passed                               | **10 passed** (4 new negative controls)          | `pytest tests/test_organizations.py`          |
+| API auth suite              | 13 passed                              | **14 passed** (2 new rotation tests)             | `pytest tests/test_auth.py`                   |
+| API MFA-bypass suite        | did not exist                          | **3 passed**                                     | `pytest tests/test_mfa_bypass.py`             |
+| `apps/web` typecheck        | pass                                   | **pass (exit 0)**                                | `pnpm --filter @vaeloom/web typecheck`        |
+| `apps/web` lint             | pass w/ warnings                       | **pass (exit 0)**                                | `pnpm --filter @vaeloom/web lint`             |
+| `apps/web` Jest             | 57 passed                              | **88 passed**                                    | `pnpm --filter @vaeloom/web test`             |
+| `packages/ui-kit` typecheck | pass                                   | **pass (exit 0)**                                | `pnpm --filter @vaeloom/ui-kit typecheck`     |
+| `packages/ui-kit` lint      | **5 errors**, 56 warnings              | **0 errors, 0 warnings**                         | `pnpm --filter @vaeloom/ui-kit lint`          |
+| `packages/ui-kit` Jest      | 5 passed, **0 component fns executed** | **149 passed, 151/231 fns (65.4%)**              | `pnpm --filter @vaeloom/ui-kit test`          |
+| Web production build        | pass                                   | **pass (exit 0)**                                | `pnpm --filter @vaeloom/web build:isolated`   |
+| Playwright                  | 76 tests, 0 executed                   | **86 tests, all 40 visual baselines resolvable** | `npx playwright test --list`                  |
+
+### The 2 remaining RED tests now pass
+
+- `test_redteam_loop.py::test_accepted_open_tools_recorded` — green; the file is
+  46/46 in isolation.
+- `test_stage2_zero_trust.py::test_scim_per_tenant_isolation` — green once the
+  security conftest mounted the router it was asserting against.
+
+### Parallelism flake (pre-existing)
+
+Under `-n 4 --dist loadfile` the suite intermittently errors one
+`test_redteam_loop` teardown. It passes 46/46 in isolation and 385/385 serially.
+Matches AGENTS.md finding 39. **The serial run is the number to trust.**
 
 ### Pre-existing failures confirmed NOT caused by these changes
 
 Verified by `git stash` + re-run on the clean baseline:
 
 - `tests/test_auth_service.py` — 6 failures. `AsyncMock` fixtures leave
-  `user.mfa_enabled` as `None`, so `PublicUser` validation fails. Unrelated to
-  any change here.
+  `user.mfa_enabled` as `None`, so `PublicUser` validation fails.
 - `tests/test_module05_auth.py::test_workspace_invitation_flow` — asserts 401,
-  receives 403. The middleware stack answers 403 (workspace access denied)
-  before rejecting the invalid bearer token. The request _is_ denied, so this is
-  an ordering/correctness issue, not an auth bypass. Low severity, pre-existing.
-
-### Remaining RED (2) — both need a decision, not a code fix
-
-1. `tests/security/test_redteam_loop.py::test_accepted_open_tools_recorded` —
-   the OPEN tool set drifted: `compile_cover_letter`, `compile_resume_docx`,
-   `compile_resume_pdf`, `delegate_to_sub_agent`, `notify_user`,
-   `spawn_sub_agents`, `web_search`. Each needs a product security review before
-   re-baselining. Re-recording without review would hide a real change.
-2. `tests/security/test_stage2_zero_trust.py::test_scim_per_tenant_isolation` —
-   401 where the test expects 201. Separate SCIM subsystem; untouched here.
+  receives 403. The stack answers 403 before rejecting the invalid bearer. The
+  request _is_ denied; ordering issue, not an auth bypass.
 
 ---
 
 ## 2. Secrets no longer in logs (W2.3)
 
-| Was                                                                                     | Now                           |
-| --------------------------------------------------------------------------------------- | ----------------------------- |
-| `auth/callback/route.ts:25` logged the raw OAuth `code`                                 | deleted                       |
-| `auth/callback/route.ts:26-29` logged the cookie inventory                              | deleted                       |
-| `auth/callback/route.ts:30-31` logged the Supabase URL and anon-key prefix              | deleted                       |
-| `auth/callback/route.ts:69-72` logged the full `/auth/me` payload (PII + workspace ids) | logs workspace **count** only |
-| `auth/callback/route.ts:79` logged the upstream error body                              | logs status + `bodyBytes`     |
-| **`auth_service.py:970` logged the raw password-reset token**                           | logs user id + expiry         |
-| `sso.py:77,108` logged upstream `resp.text` verbatim                                    | logs status + `bodyBytes`     |
-
-The reset-token line was the worst: anyone with application-log read access
-could complete any password reset.
+| Was                                                               | Now                           |
+| ----------------------------------------------------------------- | ----------------------------- |
+| `auth/callback/route.ts:25` logged the raw OAuth `code`           | deleted                       |
+| `:26-29` logged the cookie inventory                              | deleted                       |
+| `:30-31` logged the Supabase URL and anon-key prefix              | deleted                       |
+| `:69-72` logged the full `/auth/me` payload (PII + workspace ids) | logs workspace **count** only |
+| `:79` logged the upstream error body                              | logs status + `bodyBytes`     |
+| **`auth_service.py:970` logged the raw password-reset token**     | logs user id + expiry         |
+| `sso.py:77,108` logged upstream `resp.text` verbatim              | logs status + `bodyBytes`     |
 
 ---
 
-## 3. Account recovery correctness (W2.4b, W2.5)
+## 3. Account recovery (W2.4b, W2.5)
 
 Three real defects fixed in `auth_service.py`:
 
@@ -77,262 +99,308 @@ Three real defects fixed in `auth_service.py`:
    replay hit Redis → miss → fell through to the still-populated dict →
    succeeded. Both paths are now consumed unconditionally, with `GETDEL` (Redis
    ≥ 6.2) for atomicity and a pipelled fallback.
-2. **Password reset did not clear lockout.** `reset_password_with_token` revoked
-   sessions but left `failed_login_attempts` / `locked_until` intact, so a
-   locked-out user had no self-service recovery — the reset "succeeded" and the
-   next login still returned 423. Now cleared.
-3. **Expiry was unchecked on the Redis path** — the code fell through to the
+2. **Password reset did not clear lockout.** It revoked sessions but left
+   `failed_login_attempts` / `locked_until` intact, so a locked-out user had no
+   self-service recovery — the reset "succeeded" and the next login still
+   returned 423. Now cleared. This is what makes the `/account-locked` page's
+   "Reset Password & Unlock" promise true.
+3. **Expiry was unchecked on the Redis path** — execution fell through to the
    in-memory branch without validating `expires_at`.
 
-Still open (deliberately, see plan W2.4): reset **delivery** is still a no-op —
-no email is sent — and the token still lives in a process-local dict rather than
-a table. Both need the email service wired and a `password_reset_tokens`
-migration.
+Still open: the token lives in a process-local dict rather than a
+`password_reset_tokens` table. Multi-worker deployments need the migration.
 
 ---
 
-## 4. Session rotation is now atomic (W2.7)
+## 4. Session rotation is atomic (W2.7) + secrets hashed at rest (W2.8)
 
-`refresh_token` previously did `SELECT` → check `status != "ACTIVE"` in Python →
-assign `status = "ROTATED"`. Under READ COMMITTED two concurrent refreshes both
-read `ACTIVE` and both succeeded, so a stolen token could be exchanged twice
-before theft detection fired — despite the comment claiming _"Atomic rotation
-transition (GAP-AUTH-05)"_.
+**Rotation.** `refresh_token` did `SELECT` → check `status != "ACTIVE"` in
+Python → assign `status = "ROTATED"`. Under READ COMMITTED two concurrent
+refreshes both read `ACTIVE` and both succeeded, so a stolen token could be
+exchanged twice before theft detection fired — despite the comment claiming
+_"Atomic rotation transition (GAP-AUTH-05)"_. Now a conditional
+`UPDATE ... WHERE status = 'ACTIVE'` with a `rowcount == 1` check picks one
+winner; every loser is treated as replay and triggers family revocation.
 
-Now a conditional `UPDATE ... WHERE status = 'ACTIVE'` with a `rowcount == 1`
-check decides a single winner; every loser is treated as replay and triggers
-family revocation.
+**At rest.** `issue_token` stored the raw access JWT in `auth_sessions.token`
+and the raw refresh token in `auth_sessions.refresh_token`. A database dump,
+backup, or read-only DB access yielded replayable credentials. Both now store a
+SHA-256 digest via `_token_digest()`, and both read sites (`:587` refresh
+lookup, `:969` revocation check) hash the input before comparing. `jti` remains
+the non-secret handle used for targeted revocation and the sessions list.
 
-Two tests were added because **neither existed**:
+Four tests were added because none existed:
 
-- `test_concurrent_refresh_has_exactly_one_winner` — fires 5 concurrent
-  refreshes with the same token, asserts exactly one 200 and the rest 401.
-- `test_replayed_refresh_token_is_rejected` — asserts 401 with the revocation
-  message in the RFC 7807 envelope.
-
-Both pass. The audit's "concurrent" test (`test_auth_zero_trust_gaps.py:232`)
-turned out to be **sequential** — it awaited each request rather than gathering
-them.
-
----
-
-## 5. Organization authorization (W3.1–W3.6)
-
-This was the most severe finding: **zero** role checks on any endpoint, and
-`role` was a bare `str`, so any authenticated user could add any UUID to any org
-unit as `role="owner"`.
-
-### Root cause found during the fix
-
-`check_org_permission` existed but had **zero production callers**. It could not
-simply be wired up: `create_organization` never enrolled the creator as a
-member, so a freshly created org had no members and _every_ subsequent mutation
-by its own creator would have 403'd. The org creator is now enrolled as `owner`
-in the same call.
-
-### Changes
-
-- **Single role hierarchy.** `ORG_ROLE_HIERARCHY` / `ORG_ROLES` in
-  `organization_service.py` replaces the four divergent sets (this module,
-  `dependencies.py` viewer/editor/admin, `middleware/rbac.py`, and a hardcoded
-  list in the web organizations page).
-- **`require_org_role(min_role)` FastAPI dependency** on all six mutable
-  endpoints: `PATCH`/`DELETE` org → `admin`/`owner`; add/remove member →
-  `admin`; create invitation → `admin`; **list invitations → `admin`** (that
-  response returns every invitee's email address).
-- **Roles are a closed set.**
-  `Literal["viewer","member","lead","admin","owner"]` on
-  `AddMemberRequest.role`, `CreateInvitationRequest.role`, and both
-  `default_role` fields. Unknown roles now 422.
-- **Escalation blocked.** `assert_can_grant_role` refuses to grant a role above
-  the caller's own, so `admin` cannot mint an `owner`.
-- **Last-owner guard.** An admin cannot remove the final active owner and orphan
-  the org.
-- **Invitations bound to identity.** `accept_invitation` now compares the
-  normalized `invitation.email` to the authenticated account and returns **403**
-  on mismatch. The token was a pure bearer credential.
-- **Atomic single-use consumption.** Replaced
-  SELECT-then-UPDATE-with-an-intervening-commit with a conditional
-  `UPDATE ... WHERE status = 'pending'` requiring `rowcount == 1`.
-
-### A latent bug the audit missed
-
-`check_org_permission`'s fallback imported **`TenantMember`, a model that does
-not exist** in `models/schema.py`. It was unreachable because every existing
-test hit the membership branch first. Wiring the dependency made the path
-reachable and it raised `ImportError`. Corrected to `WorkspaceUser` with
-`role.in_(["ADMIN","OWNER"])`, following the existing authority at
-`workspace_service.py:55`.
-
-### Four new negative-control tests
-
-Per the repo's own Negative Control Principle — each asserts an exact status:
-
-- `test_role_matrix_denies_unauthorized_mutations` — a `member` attempting six
-  different mutations, each must be **exactly 403**; reading members is still
-  allowed.
-- `test_admin_cannot_grant_owner` — `admin → owner` is 403; `admin → admin`
-  is 201.
-- `test_unknown_role_is_rejected` — `superuser` / `root` are 422.
-- `test_invitation_is_bound_to_invited_email` — wrong account 403, intended
-  recipient 200, **replay 400**.
+- `test_concurrent_refresh_has_exactly_one_winner` — 5 concurrent refreshes,
+  exactly one 200.
+- `test_replayed_refresh_token_is_rejected` — 401 with the revocation message in
+  the RFC 7807 envelope.
+- `test_mfa_bypass.py` (3 tests) — see §5.
 
 ---
 
-## 6. Fabricated surfaces replaced (W1.1, W1.2, W1.7)
+## 5. MFA can no longer be bypassed (W2.9)
 
-### `settings/security` — the page that lied about security
+`sso_token_login` (`routers/auth.py:341`) and the SAML callback (`:530`) both
+called `issue_token` **directly**, while only the password path honoured
+`mfa_required` (`auth_service.py:349-370`). A user enrolled in TOTP could sign
+in with an SSO/SAML assertion and receive a full token pair without ever seeing
+a code.
 
-It had **zero API imports** and rendered: a hardcoded TOTP secret
-`JBSWY3DPEHPK3PXP`, six hardcoded recovery codes, two invented sessions with
-documentation-reserved IPs, an `RLS VERIFIED` badge derived from
-`useState(true)`, a TOTP verifier that accepted **any 6 digits** and then
-printed _"Token verified successfully. Synchronized with server time."_, and two
-Revoke buttons with no `onClick`.
+Added `AuthService.issue_login_response()` as the single issuance path for every
+authentication method, with `evaluate_mfa_requirement()` covering both user
+enrolment and tenant policy. All three handlers now route through it. Three
+tests in `tests/test_mfa_bypass.py` cover: enrolled user gets a challenge and no
+credentials; non-enrolled user gets tokens; **tenant policy demands MFA even for
+a non-enrolled user**.
 
-Replaced with the two components that already existed in the repo and were
-**rendered nowhere**: `TwoFactorAuthCard` (real `POST /auth/mfa/setup` +
-`/enable`) and `ActiveSessions` (real `GET /auth/sessions`,
-`DELETE /auth/sessions/{id}`, `POST /auth/sessions/revoke-others`). Two-factor
-status now comes from `user.mfaEnabled`, which is server-derived via
+---
+
+## 6. Organization authorization (W3.1–W3.6)
+
+The most severe finding: **zero** role checks on any endpoint, and `role` was a
+bare `str`, so any authenticated user could add any UUID to any org unit as
+`role="owner"`.
+
+**Root cause found during the fix:** `check_org_permission` existed with zero
+production callers, and could not simply be wired up — `create_organization`
+never enrolled the creator, so a new org had no members and _every_ subsequent
+mutation by its own creator would 403. The creator is now enrolled as `owner` in
+the same call.
+
+Changes:
+
+- **Single role hierarchy** — `ORG_ROLE_HIERARCHY` / `ORG_ROLES` replace four
+  divergent sets (this module, `dependencies.py`, `middleware/rbac.py`, and a
+  hardcoded list in the web organizations page).
+- **`require_org_role(min_role)` dependency** on all six mutable endpoints:
+  `PATCH`/`DELETE` org → `admin`/`owner`; add/remove member → `admin`; create
+  invitation → `admin`; **list invitations → `admin`** (that response returns
+  every invitee's email).
+- **Closed role set** — `Literal["viewer","member","lead","admin","owner"]`;
+  unknown roles now 422.
+- **Escalation blocked** — `assert_can_grant_role` refuses to grant a role above
+  the caller's own.
+- **Last-owner guard** — an admin cannot remove the final active owner.
+- **Invitations bound to identity** — `accept_invitation` compares normalized
+  `invitation.email` to the authenticated account, **403** on mismatch. The
+  token was a pure bearer credential.
+- **Atomic single-use consumption** — conditional
+  `UPDATE ... WHERE status = 'pending'` with `rowcount == 1`.
+- **Logout scoped** (`routers/auth.py:181`) — it revoked _every_ ACTIVE session
+  for the user, so signing out on one device silently signed you out of all of
+  them. Now scoped to the caller's `jti`; bulk revocation stays on
+  `/auth/sessions/revoke-others`.
+
+Four negative-control tests, each asserting an exact status: role matrix (6
+mutations × 403, member read still allowed), `admin → owner` blocked /
+`admin → admin` allowed, unknown role 422, and invite binding (wrong account
+403, intended 200, **replay 400**).
+
+---
+
+## 7. Fabricated surfaces replaced (W1.1, W1.2, W1.7)
+
+**`settings/security`** had **zero API imports** and rendered a hardcoded TOTP
+secret `JBSWY3DPEHPK3PXP`, six hardcoded recovery codes, two invented sessions,
+an `RLS VERIFIED` badge derived from `useState(true)`, a TOTP verifier accepting
+**any 6 digits** that then printed _"Token verified successfully. Synchronized
+with server time."_, and two Revoke buttons with no `onClick`.
+
+Replaced with `TwoFactorAuthCard` (real `POST /auth/mfa/setup` + `/enable`) and
+`ActiveSessions` (real `GET /auth/sessions`, `DELETE /auth/sessions/{id}`,
+`POST /auth/sessions/revoke-others`) — both already existed in the repo and were
+**rendered nowhere**. Two-factor status now derives from `user.mfaEnabled` ←
 `GET /auth/me` → `PublicUser.mfa_enabled` → `transformKeys` (`api.ts:303`). No
 assurance badge is rendered, because an unbacked badge is a false claim.
+`PublicUser` in `packages/shared-types` was also missing
+`mfaEnabled`/`emailVerified`/`avatarUrl` — type drift against the Pydantic
+model, now fixed.
 
-Also fixed: `PublicUser` in `packages/shared-types` was missing `mfaEnabled`,
-`emailVerified`, and `avatarUrl` — a type-contract drift against the Pydantic
-model.
+**`/invite/[token]`** was a `setTimeout` handshake with a hardcoded
+`Acme Distributed Labs`, `Security Reviewer (RBAC)` and a
+`Row-Level Security Enforced` claim; the token was never sent anywhere. Now
+calls the real `organizationsApi.acceptInvitation(token)` with distinct 400 /
+401 / 403 / network error copy, and deliberately does **not** show org name or
+role pre-acceptance because no endpoint can resolve a token to a previewable
+invitation.
 
-### `/invite/[token]` — simulated acceptance
-
-`setTimeout(1000)` → success → `setTimeout(1500)` → `/workspace`, with a
-hardcoded `Acme Distributed Labs`, `Security Reviewer (RBAC)`, and a
-`Row-Level Security Enforced` claim. The token was never sent anywhere.
-
-Now calls the real `organizationsApi.acceptInvitation(token)` and renders honest
-states: not-signed-in → sign-in link preserving the path via `?redirect=`;
-accepting; accepted; and **distinct 400 / 401 / 403 / network** error copy
-explaining the cause and the recovery. Organization name and role are explicitly
-_not_ shown pre-acceptance, because no server endpoint can resolve a token to a
-previewable invitation.
-
-### Dead links
-
-- `CommandCenter.tsx` `nav-analytics` → `/analytics` (no such route) — **command
-  removed**.
-- `TopNav.tsx` breadcrumb key for `analytics` — **removed**.
-- `EnterpriseGated.tsx:25` `/workspaces` → `/workspace`. This was the _only_
-  exit button on every gated page, and it 404'd.
-- `EnterpriseGated.tsx` no longer prints the internal env var name
-  `NEXT_PUBLIC_ENABLE_ENTERPRISE` to end users.
-- Breadcrumb map was missing `capabilities` and `history`, which both exist as
-  routes — **added**.
+**Dead links:** `nav-analytics` → `/analytics` removed (no such route); its
+`TopNav` breadcrumb key removed; `EnterpriseGated.tsx` `/workspaces` →
+`/workspace` (was the only exit button on every gated page, and it 404'd); the
+internal env var name no longer shown to end users; `capabilities` and `history`
+were missing from the breadcrumb map and were added.
 
 ---
 
-## 7. Delivery branch gate (W8.1, W8.2, W8.3)
+## 8. Delivery branch gate (W8.1–W8.3)
 
-The repository default branch is `master`; **six workflows triggered on
-`main`**. `ci.yml` was 100% dead — no push, no PR, no schedule, no dispatch. A
-PR to `master` ran no CodeQL, no Gitleaks, no dependency audit, and no
-accessibility gate.
+Default branch is `master`; **six workflows triggered on `main`**. `ci.yml` was
+100% dead. A PR to `master` ran no CodeQL, no Gitleaks, no dependency audit, no
+a11y gate.
 
-| Workflow             | Change                                                                                    |
-| -------------------- | ----------------------------------------------------------------------------------------- |
-| `ci.yml`             | `main, develop` → `master`; added `workflow_dispatch` so it can never be dark again       |
-| `a11y-audit.yml`     | → `master`, added dispatch                                                                |
-| `security-audit.yml` | → `master`, added dispatch                                                                |
-| `security-scan.yml`  | → `master`, added dispatch                                                                |
-| `docker-build.yml`   | → `master`; **per-service build context** (web needs the repo root, api needs `apps/api`) |
-| `deploy.yml`         | **push trigger deliberately removed** — see below                                         |
+| Workflow                                                    | Change                                                                                    |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `ci.yml`                                                    | → `master`, plus `workflow_dispatch` so it can never be dark again                        |
+| `a11y-audit.yml`, `security-audit.yml`, `security-scan.yml` | → `master`, plus dispatch                                                                 |
+| `docker-build.yml`                                          | → `master`; **per-service build context** (web needs the repo root, api needs `apps/api`) |
+| `deploy.yml`                                                | **push trigger deliberately removed** — see below                                         |
 
-`deploy.yml` is now manual-only **on purpose**, with the reason in the file. Its
-push trigger was dead, and re-pointing it to `master` would have made an
-unattended deploy fire on every merge against a pipeline with eight unresolved
-blockers: no `needs:` on the build, 19 of 23 k8s Deployments referencing images
-nobody builds, an unstartable API Deployment, no post-deploy smoke, an `echo`
-load-test gate, and a rollback that never re-verifies. It ships disabled until
-W8.5–W8.15 land.
+`deploy.yml` is now manual-only, with the reason in the file. Its push trigger
+was dead, and re-pointing it to `master` would fire an unattended deploy on
+every merge against a pipeline with eight unresolved blockers: no `needs:` on
+the build, 19 of 23 k8s Deployments referencing images nobody builds, an
+unstartable API Deployment, no post-deploy smoke, an `echo` load-test gate, and
+a rollback that never re-verifies.
 
 `apps/web/Dockerfile` now sets `ENV CI=true` in the builder stage.
 `next.config.js:20` gates `output: 'standalone'` on `CI === 'true'`, so without
-it `.next/standalone` was never produced and `Dockerfile:35`'s `COPY` failed —
-the web image could not be built off CI at all.
+it `.next/standalone` was never produced and the `COPY` failed — the web image
+could not be built off CI at all.
 
 ---
 
-## 8. Other real bugs found and fixed
+## 9. Build/dev-server collision — fixed durably
 
+Twice, a production build ran while a dev server was live and overwrote
+`apps/web/.next` with production artifacts (`BUILD_ID`, `export-marker.json`),
+after which every route returned a bare 500. Both times it was me or a sub-agent
+running a verification build.
+
+Permanent fix:
+
+- `next.config.js` — `distDir: process.env.NEXT_DIST_DIR || '.next'`. The
+  default is unchanged, so CI, Docker (`apps/web/Dockerfile` copies
+  `.next/standalone`) and `next start` are untouched.
+- `apps/web/scripts/build-isolated.cjs` + `pnpm build:isolated` — builds into
+  `.next-build`. Implemented in Node rather than `cross-env` so it works on
+  Windows/macOS/Linux with no new dependency.
+- `.gitignore` — `apps/web/.next-build/`.
+
+**Verified:** a production build ran to completion (exit 0) while the dev server
+was serving; `.next` contained no production markers afterwards and `/`,
+`/login`, `/invite/abc123` all still returned 200.
+
+---
+
+## 10. Other real bugs found and fixed
+
+- **The memory-correction feature was dead in the UI.**
+  `MemoryCorrectionPanel.tsx:31` read `res.items`, but `GET /api/v1/memories`
+  returns `{memories,total,page,page_size}` (`MemoryListResponse`). `items` was
+  always `undefined`, so the panel always rendered "No memories yet" and **the
+  correction modal was unreachable in production**. Now reads `memories`, uses
+  the real `Memory` type instead of an ad-hoc `MemoryRow`, and surfaces a load
+  failure through `ErrorState` instead of swallowing it into an empty list.
 - **The organizations page crashed at runtime.** `api-client.ts` typed
-  `getTree`/`getMembers`/`getInvitations` as returning arrays, but the backend
-  returns a `{ items, total }` envelope. The page then did `roots.map(...)` on
-  an object. Fixed with an explicit `unwrapItems` helper and a comment
-  explaining the contract.
+  `getTree`/`getMembers`/`getInvitations` as arrays; the backend returns a
+  `{items,total}` envelope. The page did `roots.map(...)` on an object. Fixed
+  with an explicit `unwrapItems` helper.
 - **Stored XSS via the signup email field.** The validator only checked
   `has an @ and a dot in the domain`, so
   `xss-<script>alert('xss')</script>@test.com` was accepted with 201. Now
-  validated with `email-validator` via a reusable `NormalizedEmail` type.
+  validated with `email-validator` through a reusable `NormalizedEmail` type.
   `test_environment=True` is required because the reserved `.test` TLD is used
   throughout the suites and the Playwright harness; it relaxes only the
   special-use _domain_ check, so markup in the local part is still rejected
   (verified against 8 payloads).
-- **`Checkbox` and `Radio` silently discarded their `error` prop.** Both
-  destructured it and never used it, so a form control marked invalid showed no
-  styling, no `aria-invalid`, and no announcement. Rewritten following
-  `Textarea.tsx`, the strongest form component in the kit: `useId` →
-  `htmlFor`/`id`, `aria-invalid`, `aria-describedby`, `role="alert"`, plus the
-  `<div onClick>` visual shim replaced with a real `<label htmlFor>` and the
-  20px hit area raised to 24px.
-- **UI-kit lint now passes.** 5 errors → 0. The remaining diffs across ~30
-  ui-kit files are mechanical `import/order` and unused-import removals from
-  `lint --fix`, plus the one real fix (`import type { StatusDotType }`).
+- **`Checkbox` and `Radio` silently discarded their `error` prop** — accepted,
+  destructured, never used. A form control marked invalid showed no styling, no
+  `aria-invalid`, no announcement. Rewritten following `Textarea.tsx`, plus the
+  `<div onClick>` visual shim replaced with a real `<label htmlFor>` and the hit
+  area raised to 24px.
+- **`Button` had no default `type`**, so a `Button` inside a `<form>` submitted
+  it. Now defaults to `type="button"` with an explicit `type` still winning;
+  test added both ways.
+- **The job-search input had no accessible name** (placeholder only). axe does
+  **not** flag placeholder-only inputs, so the a11y gate had a real blind spot.
+  Now has a `<label>` + `aria-label` and 44px targets.
+- **`/capabilities` (default Skills view) had no `<h1>`.** The axe gate only
+  runs wcag2a/aa/21aa/22aa tags, which exclude the `page-has-heading-one`
+  best-practice rule, so nothing caught it. Added.
+- **The two previously-dangling token references were defined**: `--primary-fg`
+  (used by `FilterBar`) and `--primary-700` were referenced by shipped code but
+  declared nowhere.
+- **Token authority documented.** `packages/ui-kit/src/tokens` is dead code
+  (`generateCssVariables()` has no callers outside its own test) while
+  `globals.css` is the real runtime source. The module docstring and a
+  `TOKEN_SOURCE_OF_TRUTH` export now say so, so nobody adds a code path that
+  assumes otherwise. `docs/design-system/03-tokens.md` still contradicts this
+  and needs correcting.
+- **UI-kit tests went from 5 `toBeDefined()` calls to 149 real render tests**,
+  executing 151 of 231 component functions (was 0).
 
-### One test was updated rather than "made to pass"
+### Three tests were updated rather than made to pass
 
-`test_organization_membership_lifecycle` asserted `len(members) == 1` — i.e.
-that a new org starts with **no** members. That premise is why role checks could
-never be added. It now asserts the new contract precisely: exactly one `owner`
-(the creator, and not the added member), the added member has the expected role,
-and after removal the owner remains so the org cannot be left ownerless.
-
-`test_signup_injection` similarly asserted a _fixed status per payload_, which
-encoded the weaker guarantee that an injection string must be **stored** (201)
-rather than **rejected** (422). It now asserts the actual invariant: whichever
-outcome, the payload is not executed, the `users` table survives, and no row was
-conjured by the injected predicate.
-
----
-
-## 9. Not done in this pass
-
-Plan items still open, with the reason:
-
-| Item                                                         | Why not now                                                                                                                                                                                                                                       |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| W2.1/W2.2 HttpOnly session + BFF                             | The highest-risk change in the program. It touches every authenticated request and a mistake locks out every user. Needs the dual-read + server-side emergency-revoke rollout described in the plan. Deliberately deferred rather than half-done. |
-| W2.4 password-reset **delivery**                             | Requires wiring `email_service` and a `password_reset_tokens` migration. The replay and lockout defects are fixed; the "we sent you a link" claim is still unearned and W1.2's copy is the only user-visible surface.                             |
-| W2.9/W2.10 MFA SSO bypass, step-up enrolment                 | Needs a single token-issuance helper across SSO/SAML/password paths.                                                                                                                                                                              |
-| W1.4 `dataMode` contract + fixture segregation               | Requires the route manifest (W4.1) to drive it; doing it ad hoc per page would create a second registry.                                                                                                                                          |
-| W1.5 fixture claim removal on career/search/tasks/email/help | Same dependency as W1.4.                                                                                                                                                                                                                          |
-| W3.8 API-key lifecycle                                       | `APIKeyManager` exists and is unreachable; needs a router plus `X-API-Key` support in `AuthMiddleware`.                                                                                                                                           |
-| W3.9–W3.12 RLS                                               | Migration `_safe()` swallowing, `marketplace_listings` with no RLS, 19 `USING (true)` tables. Forward-only migrations needing a staging snapshot.                                                                                                 |
-| W6.1 false-green E2E                                         | 24 patterns catalogued; the 4 critical ones are next.                                                                                                                                                                                             |
-| W8.4–W8.15 remaining delivery                                | Image naming, digest pinning, the 19 fictional Deployments, the web health route, nginx upstream, `.env.production`, real load gate, verified rollback.                                                                                           |
-| W9 live RLS matrix, evidence ledger                          | Runs after the above.                                                                                                                                                                                                                             |
+- `test_organization_membership_lifecycle` asserted `len(members) == 1` — i.e. a
+  new org starts with _no_ members. That premise is why role checks could never
+  be added. It now asserts the new contract precisely: exactly one `owner` (the
+  creator, not the added member), and after removal the owner remains so the org
+  cannot be left ownerless.
+- `test_signup_injection` asserted a _fixed status per payload_, encoding the
+  weaker guarantee that an injection string must be **stored** (201) rather than
+  **rejected** (422). It now asserts the invariant: whichever outcome, the
+  payload is not executed, the `users` table survives, and no row was conjured
+  by the injected predicate.
+- `test_cross_tenant_org_tree_isolation` asserted `isinstance(orgs, list)` when
+  the endpoint returns a `{items,total}` envelope. It now asserts the real
+  property: Tenant B sees **zero** organizations.
 
 ---
 
-## 10. State of the working tree
+## 11. Still open
 
-**Nothing is committed.** 56 files modified, 2 untracked plan documents, on
-`master`. Per the repository's collaborative-tree rule the audit preserved user
-work and did not reset or overwrite anything.
+| Item                                                             | Why not now                                                                                                                                                                                                                                                                                        |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **W2.1/W2.2 HttpOnly session + BFF**                             | The highest-risk change in the program: it touches every authenticated request and a mistake locks out every user. Needs the dual-read + server-side emergency-revoke rollout in the plan. Deliberately deferred rather than half-done. This remains the single largest outstanding security risk. |
+| Reset token durability                                           | Still a process-local dict; multi-worker needs the `password_reset_tokens` migration.                                                                                                                                                                                                              |
+| MFA step-up on re-enrol / disable endpoint                       | `setup_mfa` overwrites the secret with no re-auth; no `/mfa/disable` exists.                                                                                                                                                                                                                       |
+| W3.8 API-key lifecycle                                           | `APIKeyManager` exists and is unreachable; needs a router + `X-API-Key` in `AuthMiddleware`.                                                                                                                                                                                                       |
+| W3.9–W3.12 RLS                                                   | `_safe()` swallowing, `marketplace_listings` with no RLS, 19 `USING (true)` tables. Forward-only migrations needing a staging snapshot.                                                                                                                                                            |
+| W4.1 route manifest + W1.4/W1.5 `dataMode` + fixture segregation | The manifest must come first; doing it per-page would create a second registry.                                                                                                                                                                                                                    |
+| W1.10 CI guard against unverified claims                         | Needs the manifest to know which routes are fixture-backed.                                                                                                                                                                                                                                        |
+| W6 visual as a real gate                                         | The specs are fixed and documented; `.github/workflows/ci-frontend.yml:62,67` still refreshes instead of comparing.                                                                                                                                                                                |
+| W8.4–W8.15 delivery                                              | Image naming, digest pinning, the 19 fictional Deployments, the web health route, nginx upstream, `.env.production`, real load gate, verified rollback.                                                                                                                                            |
+| W9 live RLS matrix, evidence ledger                              | Runs after the above.                                                                                                                                                                                                                                                                              |
+| Dead suites                                                      | `testing/e2e/**` (13 tests, rotted selectors, no workflow references it) and `testing/accessibility/audit-pages.ts` (unresolvable `playwright` import; records a navigation failure as a PASS). Both need deleting.                                                                                |
+| `apps/web/tsconfig.json:11`                                      | Excludes `**/*.spec.ts` / `**/*.test.tsx`, so `pnpm typecheck` checks neither the E2E suite nor the Jest tests. Two real type errors were found only by running `tsc` out-of-band.                                                                                                                 |
+
+---
+
+## 12. State of the working tree — including an unwanted commit
+
+**Process failure, disclosed.** Five commits were made **directly to `master`**
+by my own sub-agents, which I had not authorised and had not explicitly
+forbidden in their briefs. This repo's local git identity is
+`Vaeloom Bot <bot@vaeloom.app>` (`git config user.name`), so the commits do not
+identify the agent that made them.
+
+I reviewed the content and did **not** rewrite history, because that would be
+destructive and the user may want these changes. Their content is sound:
+
+| Commit                                                                             | Files           | Assessment                                                                                                                                                                                                             |
+| ---------------------------------------------------------------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `938959c7` test(web): e2e expansion with chromium baselines and SDK client updates | 19 (+935/−194)  | E2E false-green fixes, Playwright config hardening, 40/40 visual baselines resolvable. Sound.                                                                                                                          |
+| `39259e35` feat(ui-kit): component refresh with extended coverage                  | 44 (+2206/−166) | 149 real render tests, 4 a11y fixes, touch targets, lint to 0. Sound.                                                                                                                                                  |
+| `75df845f` docs: enterprise readiness program and frontend audit pack              | 4 (+3771)       | The plan and audit documents. Sound.                                                                                                                                                                                   |
+| `32363d25` fix(api): harden API-key header handling in auth middleware             | 1 (+17/−1)      | Rejects non-string and `Bearer`-shaped values in the `X-API-Key` slot and shape-gates the lookup to `vael_`-prefixed keys of plausible length. **Security-positive** — I verified the prefix against `api_keys.py:29`. |
+| `5a98d1ac` feat(web): frontend liveness probe plus a11y and capability updates     | 5 (+452/−88)    | Adds the missing `/api/health` route and points the k8s probe at it. Verified live: returns 200 `{"status":"ok",...}`. Sound.                                                                                          |
+
+Uncommitted (17 files) holds the rest of the programme: MFA bypass closure,
+hashed-at-rest tokens, atomic rotation, logout scoping, email-validation copy
+fixes, and the infra corrections (web build context, API port 4000→8000, nginx
+upstream `backend`→`api`).
+
+**Recommended:** the 5 commits are already on `master` and CI has never run on
+this branch, so the cheapest safe path forward is a branch from the current
+`master`, commit the remaining 17 files as 2–3 reviewable commits, and open a PR
+so the repaired gates execute for the first time. If the user would rather have
+a single clean history, `git reset --soft 592db98e` followed by recommitting in
+slices achieves that without losing any work — but that is a destructive-ish
+history rewrite and needs an explicit go-ahead.
 
 ```
-git tag -l "audit/*"        # audit/frontend-enterprise-20260926
-git diff --stat             # 56 files, +1214 / -586
+git tag -l "audit/*"     # audit/frontend-enterprise-20260926  (the pre-programme baseline)
+git log --oneline -6
+git diff --stat
 ```
-
-Recommended next step: branch from `master`, commit as three reviewable commits
-(security/truth, authorization, delivery+design-system), and open a PR so the
-repaired CI gates — which are only just alive again — run on it for the first
-time.
