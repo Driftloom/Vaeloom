@@ -353,6 +353,16 @@ paths:
       tags:
         - auth
       summary: Logout
+      description: "Revoke the caller's own session.
+
+
+        Scoped to this token's `jti`. The previous implementation revoked every
+
+        ACTIVE session for the user, so signing out on one device silently signed
+
+        the user out of all of them. Bulk revocation belongs to
+
+        `POST /auth/sessions/revoke-others`."
       operationId: logout_api_v1_auth_logout_post
       responses:
         '204':
@@ -1438,6 +1448,41 @@ paths:
                 type: object
                 additionalProperties: true
                 title: Response List Agents Api V1 Agents Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/agents/commands:
+    get:
+      tags:
+        - agents
+      summary: Get Agent Commands
+      description: Return dynamically discovered slash commands and UI metadata for
+        all active agents.
+      operationId: get_agent_commands_api_v1_agents_commands_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: Optional workspace ID
+            title: Workspace Id
+          description: Optional workspace ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Agent Commands Api V1 Agents Commands Get
         '422':
           description: Validation Error
           content:
@@ -6679,6 +6724,101 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429': *id001
+  /api/v1/api-keys:
+    get:
+      tags:
+        - api-keys
+      summary: List Api Keys
+      operationId: list_api_keys_api_v1_api_keys_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/APIKeyResponse'
+                type: array
+                title: Response List Api Keys Api V1 Api Keys Get
+        '429': *id001
+    post:
+      tags:
+        - api-keys
+      summary: Create Api Key
+      operationId: create_api_key_api_v1_api_keys_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAPIKeyRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedAPIKeyResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/api-keys/{key_id}/rotate:
+    post:
+      tags:
+        - api-keys
+      summary: Rotate Api Key
+      operationId: rotate_api_key_api_v1_api_keys__key_id__rotate_post
+      parameters:
+        - name: key_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Key Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RotatedAPIKeyResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/api-keys/{key_id}:
+    delete:
+      tags:
+        - api-keys
+      summary: Revoke Api Key
+      operationId: revoke_api_key_api_v1_api_keys__key_id__delete
+      parameters:
+        - name: key_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Key Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/temporal/workflows/{workflow_id}:
     get:
       tags:
@@ -9541,8 +9681,533 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429': *id001
+  /api/v1/registries/tools:
+    get:
+      tags:
+        - registries
+        - Registries
+      summary: List Tools
+      operationId: list_tools_api_v1_registries_tools_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+                format: uuid
+              - type: 'null'
+            title: Workspace Id
+        - name: is_active
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+            title: Is Active
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ToolRegistryResponse'
+                title: Response List Tools Api V1 Registries Tools Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+    post:
+      tags:
+        - registries
+        - Registries
+      summary: Register Tool
+      operationId: register_tool_api_v1_registries_tools_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ToolRegistryCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolRegistryResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/registries/tools/{tool_id}:
+    get:
+      tags:
+        - registries
+        - Registries
+      summary: Get Tool
+      operationId: get_tool_api_v1_registries_tools__tool_id__get
+      parameters:
+        - name: tool_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Tool Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolRegistryResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+    put:
+      tags:
+        - registries
+        - Registries
+      summary: Update Tool
+      operationId: update_tool_api_v1_registries_tools__tool_id__put
+      parameters:
+        - name: tool_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Tool Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ToolRegistryUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolRegistryResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/registries/models:
+    get:
+      tags:
+        - registries
+        - Registries
+      summary: List Models
+      operationId: list_models_api_v1_registries_models_get
+      parameters:
+        - name: tier
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Tier
+        - name: is_active
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+            title: Is Active
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ModelProviderResponse'
+                title: Response List Models Api V1 Registries Models Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+    post:
+      tags:
+        - registries
+        - Registries
+      summary: Register Model
+      operationId: register_model_api_v1_registries_models_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModelProviderCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelProviderResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/registries/models/{model_id}:
+    get:
+      tags:
+        - registries
+        - Registries
+      summary: Get Model
+      operationId: get_model_api_v1_registries_models__model_id__get
+      parameters:
+        - name: model_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Model Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelProviderResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+    put:
+      tags:
+        - registries
+        - Registries
+      summary: Update Model
+      operationId: update_model_api_v1_registries_models__model_id__put
+      parameters:
+        - name: model_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Model Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModelProviderUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelProviderResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/registries/policies:
+    get:
+      tags:
+        - registries
+        - Registries
+      summary: List Policies
+      operationId: list_policies_api_v1_registries_policies_get
+      parameters:
+        - name: scope
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Scope
+        - name: is_active
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+            title: Is Active
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PolicyResponse'
+                title: Response List Policies Api V1 Registries Policies Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+    post:
+      tags:
+        - registries
+        - Registries
+      summary: Create Policy
+      operationId: create_policy_api_v1_registries_policies_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PolicyCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/registries/prompts:
+    get:
+      tags:
+        - registries
+        - Registries
+      summary: List Prompts
+      operationId: list_prompts_api_v1_registries_prompts_get
+      parameters:
+        - name: agent_scope
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Agent Scope
+        - name: is_active
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+            title: Is Active
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PromptVersionResponse'
+                title: Response List Prompts Api V1 Registries Prompts Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+    post:
+      tags:
+        - registries
+        - Registries
+      summary: Create Prompt Version
+      operationId: create_prompt_version_api_v1_registries_prompts_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromptVersionCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptVersionResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/registries/evaluations:
+    get:
+      tags:
+        - registries
+        - Registries
+      summary: List Evaluations
+      operationId: list_evaluations_api_v1_registries_evaluations_get
+      parameters:
+        - name: agent_name
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Agent Name
+        - name: verdict
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Verdict
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 500
+            minimum: 1
+            default: 50
+            title: Limit
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EvaluationRecordResponse'
+                title: Response List Evaluations Api V1 Registries Evaluations Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+    post:
+      tags:
+        - registries
+        - Registries
+      summary: Record Evaluation
+      operationId: record_evaluation_api_v1_registries_evaluations_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvaluationRecordCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationRecordResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
 components:
   schemas:
+    APIKeyResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+        name:
+          type: string
+          title: Name
+        key_prefix:
+          type: string
+          title: Key Prefix
+        permissions:
+          items: {}
+          type: array
+          title: Permissions
+        tenant_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Tenant Id
+        user_id:
+          type: string
+          title: User Id
+        expires_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Expires At
+        last_used:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Last Used
+        enabled:
+          type: boolean
+          title: Enabled
+        version:
+          type: integer
+          title: Version
+        rotated_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Rotated At
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+        - id
+        - name
+        - key_prefix
+        - permissions
+        - user_id
+        - enabled
+        - version
+        - created_at
+      title: APIKeyResponse
     ATSReadinessResponse:
       properties:
         score:
@@ -9721,11 +10386,21 @@ components:
           title: User Id
         role:
           type: string
+          enum:
+            - viewer
+            - member
+            - lead
+            - admin
+            - owner
           title: Role
           description: admin | lead | member | viewer
           default: member
         status:
           type: string
+          enum:
+            - active
+            - invited
+            - suspended
           title: Status
           description: active | invited | suspended
           default: active
@@ -11166,6 +11841,29 @@ components:
         - encrypted_payload
         - created_at
       title: CrdtDeltaOutput
+    CreateAPIKeyRequest:
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          minLength: 1
+          title: Name
+        permissions:
+          items:
+            type: string
+          type: array
+          title: Permissions
+        expires_days:
+          anyOf:
+            - type: integer
+              maximum: 365.0
+              minimum: 1.0
+            - type: 'null'
+          title: Expires Days
+      type: object
+      required:
+        - name
+      title: CreateAPIKeyRequest
     CreateCapabilityRequest:
       properties:
         name:
@@ -11276,6 +11974,12 @@ components:
           title: Email
         role:
           type: string
+          enum:
+            - viewer
+            - member
+            - lead
+            - admin
+            - owner
           title: Role
           description: admin | lead | member | viewer
           default: member
@@ -11406,6 +12110,12 @@ components:
           description: Allowed email domains
         default_role:
           type: string
+          enum:
+            - viewer
+            - member
+            - lead
+            - admin
+            - owner
           title: Default Role
           description: Default role for new members
           default: member
@@ -11490,6 +12200,61 @@ components:
       required:
         - name
       title: CreateWorkspaceRequest
+    CreatedAPIKeyResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+        name:
+          type: string
+          title: Name
+        key:
+          type: string
+          title: Key
+        key_prefix:
+          type: string
+          title: Key Prefix
+        permissions:
+          items:
+            type: string
+          type: array
+          title: Permissions
+        tenant_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Tenant Id
+        user_id:
+          type: string
+          title: User Id
+        expires_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Expires At
+        enabled:
+          type: boolean
+          title: Enabled
+        version:
+          type: integer
+          title: Version
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+        - id
+        - name
+        - key
+        - key_prefix
+        - permissions
+        - user_id
+        - enabled
+        - version
+        - created_at
+      title: CreatedAPIKeyResponse
     DeliberatorCritique:
       properties:
         role:
@@ -12245,6 +13010,145 @@ components:
         - has_custom_key
         - source
       title: EffectiveKeyResponse
+    EvaluationRecordCreate:
+      properties:
+        eval_id:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: Eval Id
+        execution_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Execution Id
+        agent_name:
+          type: string
+          title: Agent Name
+        intent:
+          type: string
+          title: Intent
+        accuracy_score:
+          type: number
+          title: Accuracy Score
+          default: 1.0
+        groundedness_score:
+          type: number
+          title: Groundedness Score
+          default: 1.0
+        tool_selection_score:
+          type: number
+          title: Tool Selection Score
+          default: 1.0
+        latency_ms:
+          type: number
+          title: Latency Ms
+          default: 0.0
+        token_count:
+          type: integer
+          title: Token Count
+          default: 0
+        cost_usd:
+          type: number
+          title: Cost Usd
+          default: 0.0
+        verdict:
+          type: string
+          title: Verdict
+          default: PASS
+        metrics:
+          additionalProperties: true
+          type: object
+          title: Metrics
+        workspace_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Workspace Id
+      type: object
+      required:
+        - eval_id
+        - agent_name
+        - intent
+      title: EvaluationRecordCreate
+    EvaluationRecordResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        eval_id:
+          type: string
+          title: Eval Id
+        execution_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Execution Id
+        agent_name:
+          type: string
+          title: Agent Name
+        intent:
+          type: string
+          title: Intent
+        accuracy_score:
+          type: number
+          title: Accuracy Score
+        groundedness_score:
+          type: number
+          title: Groundedness Score
+        tool_selection_score:
+          type: number
+          title: Tool Selection Score
+        latency_ms:
+          type: number
+          title: Latency Ms
+        token_count:
+          type: integer
+          title: Token Count
+        cost_usd:
+          type: number
+          title: Cost Usd
+        verdict:
+          type: string
+          title: Verdict
+        metrics:
+          additionalProperties: true
+          type: object
+          title: Metrics
+        tenant_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Tenant Id
+        workspace_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Workspace Id
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+        - id
+        - eval_id
+        - agent_name
+        - intent
+        - accuracy_score
+        - groundedness_score
+        - tool_selection_score
+        - latency_ms
+        - token_count
+        - cost_usd
+        - verdict
+        - metrics
+        - created_at
+      title: EvaluationRecordResponse
     EventPublish:
       properties:
         type:
@@ -13644,6 +14548,209 @@ components:
         - concept
         - actionable_takeaway
       title: MicroLearningNudge
+    ModelProviderCreate:
+      properties:
+        model_id:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: Model Id
+        name:
+          type: string
+          maxLength: 255
+          minLength: 1
+          title: Name
+        provider:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: Provider
+        version:
+          type: string
+          maxLength: 50
+          title: Version
+          default: latest
+        tier:
+          type: string
+          maxLength: 50
+          title: Tier
+          default: balanced
+        context_window:
+          type: integer
+          title: Context Window
+          default: 128000
+        cost_per_1k_input:
+          type: number
+          title: Cost Per 1K Input
+          default: 0.001
+        cost_per_1k_output:
+          type: number
+          title: Cost Per 1K Output
+          default: 0.002
+        capabilities:
+          additionalProperties: true
+          type: object
+          title: Capabilities
+        is_active:
+          type: boolean
+          title: Is Active
+          default: true
+        is_default:
+          type: boolean
+          title: Is Default
+          default: false
+        health_status:
+          type: string
+          maxLength: 50
+          title: Health Status
+          default: healthy
+        latency_p95_ms:
+          anyOf:
+            - type: number
+            - type: 'null'
+          title: Latency P95 Ms
+        workspace_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Workspace Id
+      type: object
+      required:
+        - model_id
+        - name
+        - provider
+      title: ModelProviderCreate
+    ModelProviderResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        model_id:
+          type: string
+          title: Model Id
+        name:
+          type: string
+          title: Name
+        provider:
+          type: string
+          title: Provider
+        version:
+          type: string
+          title: Version
+        tier:
+          type: string
+          title: Tier
+        context_window:
+          type: integer
+          title: Context Window
+        cost_per_1k_input:
+          type: number
+          title: Cost Per 1K Input
+        cost_per_1k_output:
+          type: number
+          title: Cost Per 1K Output
+        capabilities:
+          additionalProperties: true
+          type: object
+          title: Capabilities
+        is_active:
+          type: boolean
+          title: Is Active
+        is_default:
+          type: boolean
+          title: Is Default
+        health_status:
+          type: string
+          title: Health Status
+        latency_p95_ms:
+          anyOf:
+            - type: number
+            - type: 'null'
+          title: Latency P95 Ms
+        tenant_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Tenant Id
+        workspace_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Workspace Id
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+        - id
+        - model_id
+        - name
+        - provider
+        - version
+        - tier
+        - context_window
+        - cost_per_1k_input
+        - cost_per_1k_output
+        - capabilities
+        - is_active
+        - is_default
+        - health_status
+        - created_at
+        - updated_at
+      title: ModelProviderResponse
+    ModelProviderUpdate:
+      properties:
+        name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Name
+        tier:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Tier
+        cost_per_1k_input:
+          anyOf:
+            - type: number
+            - type: 'null'
+          title: Cost Per 1K Input
+        cost_per_1k_output:
+          anyOf:
+            - type: number
+            - type: 'null'
+          title: Cost Per 1K Output
+        is_active:
+          anyOf:
+            - type: boolean
+            - type: 'null'
+          title: Is Active
+        is_default:
+          anyOf:
+            - type: boolean
+            - type: 'null'
+          title: Is Default
+        health_status:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Health Status
+        latency_p95_ms:
+          anyOf:
+            - type: number
+            - type: 'null'
+          title: Latency P95 Ms
+      type: object
+      title: ModelProviderUpdate
     MorningBriefing:
       properties:
         briefing_date:
@@ -13946,6 +15053,129 @@ components:
       required:
         - workspace_id
       title: OvernightCycleRequest
+    PolicyCreate:
+      properties:
+        policy_id:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: Policy Id
+        name:
+          type: string
+          maxLength: 255
+          minLength: 1
+          title: Name
+        scope:
+          type: string
+          maxLength: 50
+          title: Scope
+        target:
+          type: string
+          maxLength: 100
+          title: Target
+          default: '*'
+        rules:
+          additionalProperties: true
+          type: object
+          title: Rules
+        risk_threshold:
+          type: string
+          maxLength: 50
+          title: Risk Threshold
+          default: MEDIUM
+        requires_approval:
+          type: boolean
+          title: Requires Approval
+          default: false
+        is_active:
+          type: boolean
+          title: Is Active
+          default: true
+        version:
+          type: integer
+          title: Version
+          default: 1
+        workspace_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Workspace Id
+      type: object
+      required:
+        - policy_id
+        - name
+        - scope
+      title: PolicyCreate
+    PolicyResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        policy_id:
+          type: string
+          title: Policy Id
+        name:
+          type: string
+          title: Name
+        scope:
+          type: string
+          title: Scope
+        target:
+          type: string
+          title: Target
+        rules:
+          additionalProperties: true
+          type: object
+          title: Rules
+        risk_threshold:
+          type: string
+          title: Risk Threshold
+        requires_approval:
+          type: boolean
+          title: Requires Approval
+        is_active:
+          type: boolean
+          title: Is Active
+        version:
+          type: integer
+          title: Version
+        tenant_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Tenant Id
+        workspace_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Workspace Id
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+        - id
+        - policy_id
+        - name
+        - scope
+        - target
+        - rules
+        - risk_threshold
+        - requires_approval
+        - is_active
+        - version
+        - created_at
+        - updated_at
+      title: PolicyResponse
     ProfileActivityItem:
       properties:
         id:
@@ -14251,6 +15481,130 @@ components:
         - title
         - description
       title: ProjectEntry
+    PromptVersionCreate:
+      properties:
+        prompt_id:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: Prompt Id
+        version:
+          type: string
+          maxLength: 50
+          title: Version
+          default: 1.0.0
+        agent_scope:
+          type: string
+          maxLength: 100
+          title: Agent Scope
+          default: '*'
+        template:
+          type: string
+          title: Template
+        content_hash:
+          type: string
+          title: Content Hash
+        variables:
+          items:
+            type: string
+          type: array
+          title: Variables
+        is_active:
+          type: boolean
+          title: Is Active
+          default: true
+        canary_percentage:
+          type: integer
+          title: Canary Percentage
+          default: 100
+        author:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Author
+        workspace_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Workspace Id
+      type: object
+      required:
+        - prompt_id
+        - template
+        - content_hash
+      title: PromptVersionCreate
+    PromptVersionResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        prompt_id:
+          type: string
+          title: Prompt Id
+        version:
+          type: string
+          title: Version
+        agent_scope:
+          type: string
+          title: Agent Scope
+        template:
+          type: string
+          title: Template
+        content_hash:
+          type: string
+          title: Content Hash
+        variables:
+          items:
+            type: string
+          type: array
+          title: Variables
+        is_active:
+          type: boolean
+          title: Is Active
+        canary_percentage:
+          type: integer
+          title: Canary Percentage
+        author:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Author
+        tenant_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Tenant Id
+        workspace_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Workspace Id
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+        - id
+        - prompt_id
+        - version
+        - agent_scope
+        - template
+        - content_hash
+        - variables
+        - is_active
+        - canary_percentage
+        - created_at
+        - updated_at
+      title: PromptVersionResponse
     ProposalOutput:
       properties:
         id:
@@ -14734,8 +16088,6 @@ components:
       properties:
         email:
           type: string
-          maxLength: 255
-          minLength: 3
           title: Email
           description: User email address
       type: object
@@ -14998,6 +16350,33 @@ components:
         - period_end
         - workspace_id
       title: RollupRequest
+    RotatedAPIKeyResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+        key:
+          type: string
+          title: Key
+        key_prefix:
+          type: string
+          title: Key Prefix
+        version:
+          type: integer
+          title: Version
+        rotated_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Rotated At
+      type: object
+      required:
+        - id
+        - key
+        - key_prefix
+        - version
+      title: RotatedAPIKeyResponse
     SSOTokenRequest:
       properties:
         token:
@@ -15448,8 +16827,6 @@ components:
       properties:
         email:
           type: string
-          maxLength: 255
-          minLength: 3
           title: Email
           description: User email address
         password:
@@ -15760,6 +17137,254 @@ components:
         - status
         - latency_ms
       title: TestCapabilityResponse
+    ToolRegistryCreate:
+      properties:
+        tool_id:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: Tool Id
+        name:
+          type: string
+          maxLength: 255
+          minLength: 1
+          title: Name
+        version:
+          type: string
+          maxLength: 50
+          title: Version
+          default: 1.0.0
+        description:
+          type: string
+          title: Description
+        category:
+          type: string
+          maxLength: 100
+          title: Category
+          default: general
+        input_schema:
+          additionalProperties: true
+          type: object
+          title: Input Schema
+        output_schema:
+          additionalProperties: true
+          type: object
+          title: Output Schema
+        required_permissions:
+          items:
+            type: string
+          type: array
+          title: Required Permissions
+        data_scopes:
+          items:
+            type: string
+          type: array
+          title: Data Scopes
+        risk_level:
+          type: string
+          maxLength: 50
+          title: Risk Level
+          default: LOW
+        side_effects:
+          type: boolean
+          title: Side Effects
+          default: false
+        idempotent:
+          type: boolean
+          title: Idempotent
+          default: true
+        timeout_seconds:
+          type: integer
+          title: Timeout Seconds
+          default: 30
+        retry_policy:
+          additionalProperties: true
+          type: object
+          title: Retry Policy
+        is_active:
+          type: boolean
+          title: Is Active
+          default: true
+        tenant_scope:
+          type: boolean
+          title: Tenant Scope
+          default: false
+        workspace_scope:
+          type: boolean
+          title: Workspace Scope
+          default: false
+        workspace_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Workspace Id
+      type: object
+      required:
+        - tool_id
+        - name
+        - description
+      title: ToolRegistryCreate
+    ToolRegistryResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        tool_id:
+          type: string
+          title: Tool Id
+        name:
+          type: string
+          title: Name
+        version:
+          type: string
+          title: Version
+        description:
+          type: string
+          title: Description
+        category:
+          type: string
+          title: Category
+        input_schema:
+          additionalProperties: true
+          type: object
+          title: Input Schema
+        output_schema:
+          additionalProperties: true
+          type: object
+          title: Output Schema
+        required_permissions:
+          items:
+            type: string
+          type: array
+          title: Required Permissions
+        data_scopes:
+          items:
+            type: string
+          type: array
+          title: Data Scopes
+        risk_level:
+          type: string
+          title: Risk Level
+        side_effects:
+          type: boolean
+          title: Side Effects
+        idempotent:
+          type: boolean
+          title: Idempotent
+        timeout_seconds:
+          type: integer
+          title: Timeout Seconds
+        retry_policy:
+          additionalProperties: true
+          type: object
+          title: Retry Policy
+        is_active:
+          type: boolean
+          title: Is Active
+        tenant_scope:
+          type: boolean
+          title: Tenant Scope
+        workspace_scope:
+          type: boolean
+          title: Workspace Scope
+        tenant_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Tenant Id
+        workspace_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Workspace Id
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+        - id
+        - tool_id
+        - name
+        - version
+        - description
+        - category
+        - input_schema
+        - output_schema
+        - required_permissions
+        - data_scopes
+        - risk_level
+        - side_effects
+        - idempotent
+        - timeout_seconds
+        - retry_policy
+        - is_active
+        - tenant_scope
+        - workspace_scope
+        - created_at
+        - updated_at
+      title: ToolRegistryResponse
+    ToolRegistryUpdate:
+      properties:
+        name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Name
+        description:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Description
+        category:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Category
+        input_schema:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Input Schema
+        output_schema:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Output Schema
+        required_permissions:
+          anyOf:
+            - items:
+                type: string
+              type: array
+            - type: 'null'
+          title: Required Permissions
+        risk_level:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Risk Level
+        is_active:
+          anyOf:
+            - type: boolean
+            - type: 'null'
+          title: Is Active
+        timeout_seconds:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Timeout Seconds
+      type: object
+      title: ToolRegistryUpdate
     TraverseRequest:
       properties:
         start_id:
@@ -16192,6 +17817,12 @@ components:
         default_role:
           anyOf:
             - type: string
+              enum:
+                - viewer
+                - member
+                - lead
+                - admin
+                - owner
             - type: 'null'
           title: Default Role
       type: object
