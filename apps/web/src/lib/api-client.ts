@@ -96,7 +96,7 @@ class ApiClient {
 
 const apiClient = new ApiClient();
 
-// ─── Auth ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const authApi = {
   signup(body: SignupRequest): Promise<AuthResponse> {
@@ -114,8 +114,20 @@ export const authApi = {
   me(): Promise<MeResponse> {
     return apiClient.get<MeResponse>('/auth/me');
   },
-  refresh(body: { refresh_token: string }): Promise<AuthResponse> {
-    return apiClient.post<AuthResponse>('/auth/refresh', body);
+  /**
+   * Rotate the session.
+   *
+   * The `body` argument is retained in the signature so existing callers keep
+   * compiling, but it is no longer sent: the refresh credential is an HttpOnly
+   * cookie the browser attaches on its own and this bundle cannot read it.
+   * Sending a body token would also defeat the migration, since a token handed
+   * to JavaScript is readable by any script on the origin.
+   *
+   * An empty body is safe because the backend falls back to the cookie when the
+   * body field is absent (`token = cookie or body`).
+   */
+  refresh(_body?: { refresh_token?: string }): Promise<AuthResponse> {
+    return apiClient.post<AuthResponse>('/auth/refresh', {});
   },
   logout(): Promise<void> {
     if (typeof window !== 'undefined') {
@@ -126,7 +138,7 @@ export const authApi = {
   },
 };
 
-// ─── Workspace ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Workspace â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface CreateWorkspaceRequest {
   name?: string;
@@ -164,7 +176,7 @@ export const workspaceApi = {
   },
 };
 
-// ─── Memory ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Memory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface MemoryCreateRequest {
   type: string;
@@ -244,7 +256,7 @@ export const memoryApi = {
   },
 };
 
-// ─── Agent ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Agent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface AgentCreateRequest {
   name: string;
@@ -414,7 +426,7 @@ export const agentApi = {
   },
 };
 
-// ─── Knowledge Graph ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Knowledge Graph â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface KGCreateNodeRequest {
   label: string;
@@ -543,7 +555,7 @@ export const knowledgeGraphApi = {
   },
 };
 
-// ─── Document ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Document â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface DocumentResponse {
   id: string;
@@ -971,7 +983,7 @@ export interface AgentActionHistory {
   createdAt: string | null;
 }
 
-// ─── Resume ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Resume â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface ResumeResponse {
   id: string;
@@ -1163,7 +1175,7 @@ export const resumeApi = {
       workspace_id: workspaceId,
     });
   },
-  // ── Overleaf-style source (Typst/LaTeX) — hybrid WASM + Tectonic ──
+  // â”€â”€ Overleaf-style source (Typst/LaTeX) â€” hybrid WASM + Tectonic â”€â”€
   getSource(resumeId: string, workspaceId: string): Promise<ResumeSource> {
     return apiClient.get<ResumeSource>(`/resumes/${resumeId}/source`, {
       workspace_id: workspaceId,
@@ -1201,7 +1213,7 @@ export const resumeApi = {
   },
 };
 
-// ─── Application ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Application â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface ApplicationCreateRequest {
   job_external_id?: string;
@@ -1261,7 +1273,7 @@ export const applicationApi = {
   },
 };
 
-// ─── Connector ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Connector â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface ConnectorCreateRequest {
   name: string;
@@ -1329,7 +1341,7 @@ export const connectorApi = {
   },
 };
 
-// ─── Consent / Data rights (DPDP) ───────────────────────────────────────────
+// â”€â”€â”€ Consent / Data rights (DPDP) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface ConsentScope {
   scope: string;
@@ -1393,7 +1405,7 @@ export const gdprApi = {
   },
 };
 
-// ─── Approval ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Approval â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface ApprovalItem {
   id: string;
@@ -1440,7 +1452,7 @@ export const approvalApi = {
   },
 };
 
-// ─── Notification ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Notification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface SendNotificationRequest {
   channel: string;
@@ -1515,7 +1527,7 @@ export const notificationApi = {
   },
 };
 
-// ─── Scheduler ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Scheduler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface CreateJobRequest {
   name: string;
@@ -1607,7 +1619,7 @@ export const schedulerApi = {
   },
 };
 
-// ─── Search ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface SearchRequest {
   query: string;
@@ -1635,7 +1647,7 @@ export const searchApi = {
   },
 };
 
-// ─── Event ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Event â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface PublishEventRequest {
   type: string;
@@ -1669,7 +1681,7 @@ export const eventApi = {
   },
 };
 
-// ─── Integration ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Integration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface IntegrationCreateRequest {
   name: string;
@@ -1712,7 +1724,7 @@ export const integrationApi = {
   },
 };
 
-// ─── Analytics ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Analytics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface UsageTimePoint {
   date: string;
@@ -1771,7 +1783,7 @@ export const analyticsApi = {
   },
 };
 
-// ─── Audit ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Audit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface RecordAuditEventRequest {
   actor_id: string;
@@ -1834,7 +1846,7 @@ export const auditApi = {
   },
 };
 
-// ─── IAM ─────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ IAM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface IAMCreateUserRequest {
   email: string;
@@ -1934,7 +1946,7 @@ export const adminApi = {
   },
 };
 
-// ─── Plugin ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Plugin â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface RegisterPluginRequest {
   name: string;
@@ -2049,7 +2061,7 @@ export const pluginApi = {
   },
 };
 
-// ─── Chat ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Chat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const chatApi = {
   send(
@@ -2060,7 +2072,7 @@ export const chatApi = {
   },
 };
 
-// ─── Billing ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Billing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface UsageRecordResponse {
   id: string;
@@ -2121,7 +2133,7 @@ export interface InvoiceResponse {
   downloadUrl: string | null;
 }
 
-// ─── BYOK Provider Keys (Bring Your Own Key) ─────────────────────────────
+// â”€â”€â”€ BYOK Provider Keys (Bring Your Own Key) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface ProviderKeyResponse {
   id: string;
@@ -2194,7 +2206,7 @@ export const providerKeysApi = {
   },
 };
 
-// ─── Agents Catalog ───────────────────────────────────────────────────────
+// â”€â”€â”€ Agents Catalog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface CatalogToolDef {
   name: string;
@@ -2245,7 +2257,7 @@ export interface CapabilityTestResponse {
   result: unknown;
 }
 
-// ─── Memory Feed / Lineage ────────────────────────────────────────────────
+// â”€â”€â”€ Memory Feed / Lineage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface MemoryFeedItem {
   kind: string;
@@ -2300,7 +2312,7 @@ export const memoryFeedApi = {
   },
 };
 
-// ─── Temporal durable workflows ───────────────────────────────────────
+// â”€â”€â”€ Temporal durable workflows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface TemporalWorkflowStatus {
   workflow_id: string;
@@ -2481,7 +2493,7 @@ export const webhookApi = {
   },
 };
 
-// ── Profile ──────────────────────────────────────────────────────────
+// â”€â”€ Profile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export interface SkillItem {
   name: string;
   confidence: number;
@@ -2984,7 +2996,7 @@ export const profileApi = {
   },
 };
 
-// ── Opportunities (PIOS Opportunity Engine) ─────────────────────────
+// â”€â”€ Opportunities (PIOS Opportunity Engine) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export interface OpportunityDTO {
   id?: string;
   title: string;
@@ -3057,7 +3069,7 @@ export const opportunityApi = {
   },
 };
 
-// ── Agent Council (PIOS Adjudication Quality Gate) ───────────────────
+// â”€â”€ Agent Council (PIOS Adjudication Quality Gate) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export interface CouncilReviewRequest {
   artifact: string;
   artifactType?: string;
@@ -3133,7 +3145,7 @@ export const councilApi = {
   },
 };
 
-// ─── Organizations ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Organizations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface OrganizationNode {
   id: string;
@@ -3199,7 +3211,7 @@ export interface CreateInvitationRequest {
  * The organizations list endpoints return a `{ items, total }` envelope
  * (organizations.py get_organization_tree / list_organization_members /
  * list_organization_invitations). The previous client typed them as bare
- * arrays, so callers received an object where they expected an array —
+ * arrays, so callers received an object where they expected an array â€”
  * `organizations/page.tsx` then did `roots.map(...)` on `{items,total}` and
  * threw at runtime. Unwrap here so the caller's array contract holds, and keep
  * the envelope accessible for callers that need the count.
@@ -3266,7 +3278,7 @@ export const organizationsApi = {
   },
 };
 
-// ─── Marketplace ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Marketplace â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface MarketplaceListingItem {
   id: string;
@@ -3363,7 +3375,7 @@ export const marketplaceApi = {
   },
 };
 
-// ─── Capabilities API ───────────────────────────────────────────────────────
+// â”€â”€â”€ Capabilities API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface CapabilityItemRecord {
   id: string;
@@ -3451,7 +3463,7 @@ export const capabilitiesApi = {
   },
 };
 
-// ─── Connectors API ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Connectors API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface ConnectorItem {
   id: string;

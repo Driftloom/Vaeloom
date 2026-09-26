@@ -314,15 +314,14 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
 
   useEffect(() => {
     let active = true;
-    const token = typeof window !== 'undefined' ? getToken() : null;
-    const headers: Record<string, string> = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
+    // The session is an HttpOnly cookie, so there is no token to put in a header.
+    // `credentials: 'include'` is what makes the browser attach it. The old code
+    // used 'same-origin' with a Bearer header; the cookie still travels for a
+    // same-origin request, but 'include' is stated explicitly so the intent
+    // survives a future move to a cross-origin API.
     fetch(`/api/v1/agents/commands?workspace_id=${encodeURIComponent(workspaceId)}`, {
-      headers,
-      credentials: 'same-origin',
+      headers: { 'X-Auth-Mode': 'cookie' },
+      credentials: 'include',
     })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {

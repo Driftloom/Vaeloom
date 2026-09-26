@@ -467,7 +467,134 @@ just as happily against a JS-readable cookie:
 
 ---
 
-## 13. State of the working tree — including an unwanted commit
+## 14. WebSocket handshake tickets + frontend cutover (W2.1c / W2.2)
+
+**Status: code complete and green. NOT verified against a running API — see §15,
+which blocks that verification.**
+
+### The blocker this removed
+
+`realtime-client.ts:64` put the long-lived access JWT in the WebSocket query
+string. That is why the access token had to stay readable by JavaScript: the
+browser `WebSocket` constructor cannot set an `Authorization` header, so the
+credential had to travel in the URL. Query strings are additionally written to
+access logs, proxy logs and `Referer`.
+
+`POST /api/v1/realtime/ws-ticket` (`apps/api/src/api/services/ws_tickets.py`)
+mints a 256-bit opaque value, 60s TTL, destroyed on first redemption. No claims,
+no JWT, bound to the identity resolved at mint time. Redemption is a Redis
+`GET`+`DEL` in one script so two racing handshakes cannot both win. `?token=` is
+retained for SDK/CLI callers, which legitimately hold the token.
+
+The browser no longer puts a JWT in any URL. `?token=` remains server-side for
+non-browser clients.
+
+### Frontend cutover
+
+`lib/api.ts` no longer stores a credential anywhere JS-readable:
+
+- `setToken` records a non-secret `vaeloom.session` marker and dispatches the
+  existing event, so ~40 importing modules are unchanged
+- `getToken()` returns `null` so no `Authorization: Bearer <placeholder>` can be
+  built; callers that wanted "am I logged in" use the new `hasSession()`
+- the module **purges `vaeloom.accessToken` / `vaeloom.refreshToken` on load**.
+  Without this, anyone signed in before the change keeps a live token in
+  `localStorage` forever — the migration would have left the vulnerability in
+  place for the longest-signed-in users
+- every request sends `X-Auth-Mode: cookie`, so the backend blanks the token
+  fields and the web bundle never receives one
+- `refresh()` sends no body token and does send a CSRF token, since a cookie
+  _is_ attached to cross-site requests
+
+Both clients already used `credentials: 'include'`, so omitting the header was
+enough for the cookie to take over — the cutover did not need a new transport.
+
+Callers converted to `hasSession()`: `app/workspace/page.tsx`,
+`components/shared/AuthRedirectProbe.tsx`,
+`components/landing/sections/LandingNav.tsx`, `hooks/useAuth.tsx`.
+`ChatWindow.tsx` built its own `Authorization` header outside `request()` and
+now uses `credentials: 'include'`.
+
+### Evidence
+
+- `apps/web/src/__tests__/session-storage.security.test.ts` — 8 tests. Each
+  searches _every_ storage surface for the secret value itself, so a regression
+  is caught regardless of which key or API is used. Includes a positive control
+  (a marker is written) and a `localStorage`-throws case, because private
+  browsing must not break login.
+- `apps/api/tests/test_ws_tickets.py` — 14 tests, including one against real
+  Redis. That test initially passed "by accident": an unbackdated in-memory
+  entry had never reached Redis. The store is now pinned per test so behaviour
+  cannot depend on ambient `REDIS_URL`.
+- **web 96/96** (88 + 8 new), typecheck 0, lint 0 errors
+- **API security 404 passed / 0 failed**
+
+---
+
+## 15. BLOCKER — migration 0057 cannot be applied to PostgreSQL
+
+Found while trying to boot the API for an end-to-end cookie test. **This is
+deploy-blocking and is not fixed.**
+
+```
+asyncpg.exceptions.DatatypeMismatchError:
+  foreign key constraint "password_reset_tokens_user_id_fkey" cannot be implemented
+DETAIL: Key columns "user_id" and "id" are of incompatible types
+```
+
+`0057_password_reset_tokens` (added by a sub-agent, never reviewed) hard-codes
+`user_id` as `sa.UUID()` with an FK to `users.id`. `0001_initial_schema.py`
+declares `users.id` as `sa.UUID()` too, so on any database built by this chain
+the types match. The failure proves the target database's `users.id` is a
+different type — most likely `varchar`/`text`, meaning `public.users` was
+created outside the migration chain (SQL editor, or an earlier hand-written
+schema).
+
+**A fix was attempted and reverted.** Reflecting `users.id` via
+`sa.inspect(op.get_bind())` reported `character varying` while PostgreSQL
+reported `uuid` for what should be the same column, so the mismatch was not
+reproduced and the source of truth is still unconfirmed. Shipping a speculative
+migration fix would be worse than shipping none, so `0057` is back to its
+original definition with a loud `KNOWN BROKEN ON POSTGRESQL` comment.
+
+**Required before any deploy:** confirm the real type of `users.id` on the
+target instance, then type `user_id` from it. Note the ORM model in
+`models/schema.py` declares `UUID(as_uuid=True)`, so if the column really is
+`varchar` the ORM mapping is wrong too and both need to change together.
+
+### Why no test caught this
+
+The suite runs on SQLite with tables created from the SQLAlchemy **models**, not
+from **migrations**. SQLite also does not enforce foreign key column types. The
+migration chain has therefore never been validated against a real PostgreSQL
+instance, which is a much larger gap than this one migration.
+
+### Three "swallow and continue" paths found along the way
+
+All three let a broken system present as healthy:
+
+1. `main.py:182` — a failed `command.upgrade` is logged, then startup
+   **continues** into the custom migration runner. A half-applied schema is then
+   treated as a working one.
+2. `config.py:313` — the secret manager sets `database__url` from `DATABASE_URL`
+   **after** Pydantic has read the environment, via `object.__setattr__`. An
+   operator's explicit `DATABASE__URL` is silently discarded. This is what sent
+   my SQLite request to a real PostgreSQL.
+3. `main.py:164-169` — `VAELOOM_TARGET_URL` is overwritten from
+   `_migration_url()`, so migrations target a different database than the
+   runtime engine.
+
+### Operational hazard this exposed
+
+With `DATABASE__URL=sqlite+…` set, the app still ran migrations against a live
+PostgreSQL instance. **A local run can mutate a shared or production database.**
+Until (2) and (3) are fixed, a developer following the documented startup
+instructions in `AGENTS.md` may write to a database they were not targeting.
+This should be treated as the highest-priority item in this log.
+
+---
+
+## 16. State of the working tree — including an unwanted commit
 
 **Process failure, disclosed.** Five commits were made **directly to `master`**
 by my own sub-agents, which I had not authorised and had not explicitly
