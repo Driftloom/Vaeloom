@@ -1,4 +1,5 @@
 import hashlib
+import os
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -383,6 +384,64 @@ class AuthService:
             user=PublicUser.model_validate(user),
         )
 
+    @staticmethod
+    async def evaluate_mfa_requirement(db, user) -> bool:
+        """Whether this user must clear a TOTP challenge before receiving tokens.
+
+        True when the user has enrolled, or when their tenant policy demands MFA.
+        """
+        if getattr(user, "mfa_enabled", False):
+            return True
+        if not getattr(user, "tenant_id", None):
+            return False
+        from ..models.schema import Tenant
+        t_res = await db.execute(select(Tenant).where(Tenant.id == user.tenant_id))
+        tenant = t_res.scalar_one_or_none()
+        if tenant and isinstance(tenant.settings, dict):
+            return bool(tenant.settings.get("policies", {}).get("mfa_required", False))
+        return False
+
+    async def issue_login_response(
+        self,
+        db,
+        user,
+        user_agent: str | None = None,
+        ip_address: str | None = None,
+    ) -> AuthResponse:
+        """Single entry point for issuing tokens after ANY successful authentication.
+
+        Every login path — password, SSO/OIDC and SAML — must go through here.
+        Calling `issue_token` directly bypasses the multi-factor challenge, so a
+        user enrolled in TOTP could sign in with a federated token and never be
+        asked for a code. That is exactly what the SSO and SAML handlers did.
+        """
+        if await self.evaluate_mfa_requirement(db, user):
+            from .totp_service import totp_service
+            challenge_token = totp_service.create_mfa_challenge_token(str(user.id))
+            if db is not None:
+                await db.commit()
+            return AuthResponse(
+                access_token="",
+                refresh_token="",
+                mfa_required=True,
+                mfa_token=challenge_token,
+                user=PublicUser.model_validate(user),
+            )
+
+        access_token, refresh_token = await self.issue_token(
+            str(user.id),
+            user.email,
+            tenant_id=str(user.tenant_id) if user.tenant_id else None,
+            user_agent=user_agent,
+            ip_address=ip_address,
+            db=db,
+        )
+        return AuthResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            user=PublicUser.model_validate(user),
+        )
+
     async def setup_mfa(self, user_id: str, db=None) -> MfaSetupResponse:
         from fastapi import HTTPException
         from .totp_service import totp_service
@@ -531,23 +590,39 @@ class AuthService:
         if not session:
             raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-        # REFRESH TOKEN ROTATION & THEFT DETECTION:
-        # Atomic rotation transition (GAP-AUTH-05):
-        if session.status != "ACTIVE":
+        # REFRESH TOKEN ROTATION & THEFT DETECTION (GAP-AUTH-05):
+        #
+        # Rotation must be a single atomic state transition. The previous
+        # implementation read the row, checked `status != "ACTIVE"` in Python and
+        # then assigned `status = "ROTATED"`. Under READ COMMITTED two concurrent
+        # refreshes with the same token both read ACTIVE and both proceeded, so one
+        # stolen token could be exchanged twice before the theft was detected.
+        #
+        # A conditional UPDATE ... WHERE status = 'ACTIVE' with a rowcount check
+        # makes exactly one caller the winner; every other caller observes
+        # rowcount 0 and is treated as token reuse.
+        rotate = (
+            update(AuthSession)
+            .where(AuthSession.id == session.id, AuthSession.status == "ACTIVE")
+            .values(status="ROTATED")
+            .execution_options(synchronize_session=False)
+        )
+        rotate_result = await db.execute(rotate)
+        if rotate_result.rowcount != 1:
+            # Lost the race, or the session was already revoked/rotated. Either
+            # way this is a replay of a spent token, so revoke the whole family.
             if session.family_id:
                 await db.execute(
                     update(AuthSession)
                     .where(AuthSession.family_id == session.family_id)
                     .values(status="REVOKED")
                 )
-                await db.commit()
+            await db.commit()
             raise HTTPException(
                 status_code=401,
                 detail="Suspicious activity detected: refresh token reused. All related sessions have been revoked.",
             )
-
         session.status = "ROTATED"
-        await db.flush()
 
         now = datetime.now(UTC)
         expires_at = session.expires_at
@@ -967,7 +1042,24 @@ class AuthService:
                 except Exception as e:
                     logger.warning("Failed to store reset token in Redis: %s", e)
 
-            logger.info("Password reset token generated for user %s: %s", user.id, raw_token)
+            # SECURITY: never log the raw reset token. Anyone with read access to
+            # application logs could otherwise complete any password reset. Log
+            # only the user id and the token's expiry.
+            logger.info("Password reset issued for user %s, expires at %s", user.id, expires_at)
+
+            # Dispatch transactional password reset email
+            try:
+                from api.services.email_service import email_service
+                frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+                reset_url = f"{frontend_url}/reset-password?token={raw_token}"
+                await email_service.send_password_reset_email(
+                    to_email=user.email,
+                    reset_url=reset_url,
+                    expires_minutes=15,
+                )
+            except Exception as mail_exc:
+                logger.warning("Failed to dispatch password reset email: %s", mail_exc)
+
         return True
 
     async def reset_password_with_token(self, token: str, new_password: str, db=None) -> bool:
@@ -981,17 +1073,32 @@ class AuthService:
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         user_id = None
 
+        # Single-use invariant: a reset token must be consumed exactly once,
+        # across BOTH storage paths. The token is written to Redis *and* to the
+        # in-process dict, so whichever path answers first must also invalidate
+        # the other. Previously only the Redis key was deleted, which meant a
+        # token could be redeemed a second time via the in-process dict.
+        in_memory = AuthService._password_resets.pop(token_hash, None)
+
         redis = _get_revocation_redis()
         if redis is not None:
             try:
-                user_id = redis.get(f"pwd_reset:{token_hash}")
-                if user_id:
-                    redis.delete(f"pwd_reset:{token_hash}")
+                # GETDEL (Redis >= 6.2) is atomic; the pipelled GET+DEL fallback
+                # is not, so a burst of concurrent resets can still race.
+                getdel = getattr(redis, "getdel", None)
+                if callable(getdel):
+                    user_id = getdel(f"pwd_reset:{token_hash}")
+                else:
+                    pipe = redis.pipeline()
+                    pipe.get(f"pwd_reset:{token_hash}")
+                    pipe.delete(f"pwd_reset:{token_hash}")
+                    results = pipe.execute()
+                    user_id = results[0]
             except Exception:
                 pass
 
-        if not user_id and token_hash in AuthService._password_resets:
-            uid, exp = AuthService._password_resets.pop(token_hash)
+        if not user_id and in_memory is not None:
+            uid, exp = in_memory
             if datetime.now(UTC) <= exp:
                 user_id = uid
 
@@ -1005,6 +1112,12 @@ class AuthService:
                 raise HTTPException(status_code=404, detail="User not found")
 
             user.password_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+            # A completed reset is proof of account control, so it also clears
+            # the failure counter and any active lockout. Without this, a user
+            # locked out by repeated failed logins has no self-service recovery:
+            # reset succeeds but the next login still returns 423.
+            user.failed_login_attempts = 0
+            user.locked_until = None
             # Explicitly revoke all active auth_sessions in DB (GAP-AUTH-03)
             await db.execute(
                 update(AuthSession)

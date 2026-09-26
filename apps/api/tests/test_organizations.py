@@ -137,17 +137,25 @@ class TestOrganizations:
         assert add_res.json()["role"] == "lead"
         assert add_res.json()["user_id"] == member_uid
 
-        # List members
+        # List members.
+        # The creator is enrolled as `owner` at creation time, so the org is
+        # administrable from the moment it exists. A member-less org would make
+        # every subsequent mutation by its own creator a 403.
         members_res = await client.get(
             f"/api/v1/organizations/{org_id}/members",
             headers=auth_headers,
         )
         assert members_res.status_code == 200
         members = members_res.json()["items"]
-        assert len(members) == 1
-        assert members[0]["user_id"] == member_uid
+        assert len(members) == 2
+        by_user = {m["user_id"]: m for m in members}
+        assert by_user[member_uid]["role"] == "lead"
+        owners = [m for m in members if m["role"] == "owner"]
+        assert len(owners) == 1
+        creator_uid = owners[0]["user_id"]
+        assert creator_uid != member_uid
 
-        # Remove member
+        # Remove the added member
         del_res = await client.delete(
             f"/api/v1/organizations/{org_id}/members/{member_uid}",
             headers=auth_headers,
@@ -155,12 +163,15 @@ class TestOrganizations:
         assert del_res.status_code == 200
         assert del_res.json()["ok"] is True
 
-        # Verify empty members list
-        empty_res = await client.get(
+        # The creator/owner must remain: the org cannot be left ownerless.
+        after_res = await client.get(
             f"/api/v1/organizations/{org_id}/members",
             headers=auth_headers,
         )
-        assert len(empty_res.json()["items"]) == 0
+        remaining = after_res.json()["items"]
+        assert len(remaining) == 1
+        assert remaining[0]["user_id"] == creator_uid
+        assert remaining[0]["role"] == "owner"
 
     async def test_delete_organization(
         self, client: AsyncClient, auth_headers: dict
@@ -303,3 +314,198 @@ class TestOrganizations:
         assert await OrganizationService.check_org_permission(db_session, org_id, viewer_id, "viewer") is True
         assert await OrganizationService.check_org_permission(db_session, org_id, viewer_id, "admin") is False
 
+
+    async def test_role_matrix_denies_unauthorized_mutations(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        """Negative control: a low-privilege member must be refused, not silently ignored.
+
+        Before the role dependency existed every mutation depended only on
+        `get_current_user`, so a viewer could add members, invite users, patch the
+        org, and delete it. Each case below asserts the exact 403.
+        """
+        org_res = await client.post(
+            "/api/v1/organizations",
+            json={"name": "Guarded Dept", "type": "department"},
+            headers=auth_headers,
+        )
+        assert org_res.status_code == 201
+        org_id = org_res.json()["id"]
+
+        low = await client.post(
+            "/api/v1/auth/signup",
+            json={"email": "lowpriv@guarded.test", "password": "LowPriv1234!"},
+        )
+        assert low.status_code == 201
+        low_headers = {"Authorization": f"Bearer {low.json()['access_token']}"}
+        low_id = low.json()["user"]["id"]
+
+        # Enroll the low-privilege user as `member` (below the `admin` threshold).
+        add = await client.post(
+            f"/api/v1/organizations/{org_id}/members",
+            json={"user_id": low_id, "role": "member"},
+            headers=auth_headers,
+        )
+        assert add.status_code == 201
+
+        # Every mutation below must be refused with an exact 403.
+        denied = {
+            "patch_org": await client.patch(
+                f"/api/v1/organizations/{org_id}",
+                json={"name": "Renamed By Member"},
+                headers=low_headers,
+            ),
+            "add_member": await client.post(
+                f"/api/v1/organizations/{org_id}/members",
+                json={"user_id": str(uuid.uuid4()), "role": "viewer"},
+                headers=low_headers,
+            ),
+            "remove_member": await client.delete(
+                f"/api/v1/organizations/{org_id}/members/{low_id}",
+                headers=low_headers,
+            ),
+            "create_invitation": await client.post(
+                f"/api/v1/organizations/{org_id}/invitations",
+                json={"email": "victim@guarded.test", "role": "member"},
+                headers=low_headers,
+            ),
+            "list_invitations": await client.get(
+                f"/api/v1/organizations/{org_id}/invitations",
+                headers=low_headers,
+            ),
+            "delete_org": await client.delete(
+                f"/api/v1/organizations/{org_id}",
+                headers=low_headers,
+            ),
+        }
+        for name, response in denied.items():
+            assert response.status_code == 403, f"{name} returned {response.status_code}"
+
+        # A member may still read the member list (viewer threshold).
+        allowed = await client.get(
+            f"/api/v1/organizations/{org_id}/members",
+            headers=low_headers,
+        )
+        assert allowed.status_code == 200
+
+    async def test_admin_cannot_grant_owner(self, client: AsyncClient, auth_headers: dict):
+        """Negative control: `admin` must not be able to mint an `owner`.
+
+        The org creator holds `owner`, so it can grant owner. A separately
+        enrolled `admin` must be refused.
+        """
+        org_res = await client.post(
+            "/api/v1/organizations",
+            json={"name": "Escalation Dept", "type": "department"},
+            headers=auth_headers,
+        )
+        org_id = org_res.json()["id"]
+
+        admin_user = await client.post(
+            "/api/v1/auth/signup",
+            json={"email": "deptadmin@guarded.test", "password": "DeptAdmin1234!"},
+        )
+        admin_id = admin_user.json()["user"]["id"]
+        admin_headers = {"Authorization": f"Bearer {admin_user.json()['access_token']}"}
+
+        enrolled = await client.post(
+            f"/api/v1/organizations/{org_id}/members",
+            json={"user_id": admin_id, "role": "admin"},
+            headers=auth_headers,
+        )
+        assert enrolled.status_code == 201
+
+        target = await client.post(
+            "/api/v1/auth/signup",
+            json={"email": "escalation-target@guarded.test", "password": "Target1234!!"},
+        )
+        target_id = target.json()["user"]["id"]
+
+        # admin -> owner must be refused
+        escalate = await client.post(
+            f"/api/v1/organizations/{org_id}/members",
+            json={"user_id": target_id, "role": "owner"},
+            headers=admin_headers,
+        )
+        assert escalate.status_code == 403
+
+        # admin -> admin is allowed (equal rank)
+        peer = await client.post(
+            f"/api/v1/organizations/{org_id}/members",
+            json={"user_id": target_id, "role": "admin"},
+            headers=admin_headers,
+        )
+        assert peer.status_code == 201
+
+    async def test_unknown_role_is_rejected(self, client: AsyncClient, auth_headers: dict):
+        """Roles are a closed set; an unrecognised role must fail validation."""
+        org_res = await client.post(
+            "/api/v1/organizations",
+            json={"name": "Validation Dept", "type": "department"},
+            headers=auth_headers,
+        )
+        org_id = org_res.json()["id"]
+
+        bad = await client.post(
+            f"/api/v1/organizations/{org_id}/members",
+            json={"user_id": str(uuid.uuid4()), "role": "superuser"},
+            headers=auth_headers,
+        )
+        assert bad.status_code == 422
+
+        bad_invite = await client.post(
+            f"/api/v1/organizations/{org_id}/invitations",
+            json={"email": "x@guarded.test", "role": "root"},
+            headers=auth_headers,
+        )
+        assert bad_invite.status_code == 422
+
+    async def test_invitation_is_bound_to_invited_email(
+        self, client: AsyncClient, auth_headers: dict
+    ):
+        """Negative control: a token must not be redeemable by a different account."""
+        org_res = await client.post(
+            "/api/v1/organizations",
+            json={"name": "Bound Invite Dept", "type": "department"},
+            headers=auth_headers,
+        )
+        org_id = org_res.json()["id"]
+
+        invite = await client.post(
+            f"/api/v1/organizations/{org_id}/invitations",
+            json={"email": "intended@bound.test", "role": "member"},
+            headers=auth_headers,
+        )
+        assert invite.status_code == 201
+        token = invite.json()["token"]
+
+        # A different account holding the token must be refused with 403.
+        attacker = await client.post(
+            "/api/v1/auth/signup",
+            json={"email": "attacker@bound.test", "password": "Attacker1234!"},
+        )
+        attacker_headers = {"Authorization": f"Bearer {attacker.json()['access_token']}"}
+        wrong_account = await client.post(
+            f"/api/v1/organizations/invitations/{token}/accept",
+            headers=attacker_headers,
+        )
+        assert wrong_account.status_code == 403
+
+        # The intended recipient succeeds.
+        intended = await client.post(
+            "/api/v1/auth/signup",
+            json={"email": "intended@bound.test", "password": "Intended1234!"},
+        )
+        intended_headers = {"Authorization": f"Bearer {intended.json()['access_token']}"}
+        ok = await client.post(
+            f"/api/v1/organizations/invitations/{token}/accept",
+            headers=intended_headers,
+        )
+        assert ok.status_code == 200
+
+        # Replay of the same token must fail: single-use invariant.
+        replay = await client.post(
+            f"/api/v1/organizations/invitations/{token}/accept",
+            headers=intended_headers,
+        )
+        assert replay.status_code == 400

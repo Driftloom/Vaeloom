@@ -75,7 +75,7 @@ def _build_test_app(db_session, enable_rate_limit=False):
         health, auth, workspaces, memory, agents, events, search,
         integrations, billing, documents, resumes, applications,
         plugins, chat, notifications, connectors, scheduler,
-        analytics, audit, iam, knowledge_graph, recommendations,
+        analytics, audit, iam, knowledge_graph, recommendations, organizations,
     )
     from api.services.consent import router as consent_router
     from api.services.gdpr import router as gdpr_router
@@ -124,6 +124,10 @@ def _build_test_app(db_session, enable_rate_limit=False):
     test_app.include_router(chat.router, prefix="/api/v1/chat")
     test_app.include_router(knowledge_graph.router, prefix="/api/v1/knowledge-graph")
     test_app.include_router(recommendations.router, prefix="/api/v1/recommendations")
+    # The organizations router was previously omitted, so the whole tenant-isolation
+    # surface under test silently 404'd and the security suite validated a route
+    # table that does not match the production app (tests/conftest.py mounts it).
+    test_app.include_router(organizations.router, prefix="/api/v1/organizations")
     test_app.include_router(consent_router, prefix="/api/v1")
     test_app.include_router(gdpr_router, prefix="/api/v1")
     from api.routers import onboarding
@@ -147,7 +151,7 @@ def _build_csrf_test_app(db_session):
         health, auth, workspaces, memory, agents, events, search,
         integrations, billing, documents, resumes, applications,
         plugins, chat, notifications, connectors, scheduler,
-        analytics, audit, iam, knowledge_graph, recommendations,
+        analytics, audit, iam, knowledge_graph, recommendations, organizations,
     )
 
     test_app = FastAPI()

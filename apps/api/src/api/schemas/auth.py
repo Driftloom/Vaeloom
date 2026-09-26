@@ -1,12 +1,47 @@
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel, Field, field_validator
+import email_validator
+from pydantic import AfterValidator, BaseModel, Field, field_validator
+
+
+def _normalize_email(value: Any) -> str:
+    """Normalise an address before format validation.
+
+    Pydantic's EmailStr strips whitespace and lowercases the domain but leaves
+    the local part's case intact; addresses are compared case-insensitively
+    elsewhere in the auth flow, so lowercase the whole thing to keep one
+    canonical form.
+    """
+    return str(value).strip().lower()
+
+
+def _validate_email(value: str) -> str:
+    """Reject anything that is not a syntactically valid address.
+
+    The previous check was only `has an @ and a dot in the domain`, which
+    accepted `xss-<script>alert(1)</script>@test.com` — a stored-XSS vector
+    wherever the address is rendered without escaping.
+
+    `test_environment=True` is required because the reserved `.test` TLD is used
+    throughout the test suites and the Playwright harness; it relaxes only the
+    special-use *domain* check, not local-part validation, so markup in the
+    local part is still rejected.
+    """
+    normalized = _normalize_email(value)
+    email_validator.validate_email(
+        normalized, check_deliverability=False, test_environment=True
+    )
+    return normalized
+
+
+# Reusable validated address type. Use this for every user-supplied email field.
+NormalizedEmail = Annotated[str, AfterValidator(_validate_email)]
 
 
 class SignupRequest(BaseModel):
-    email: str = Field(..., min_length=3, max_length=255, description="User email address")
+    email: NormalizedEmail = Field(..., description="User email address")
     password: str = Field(..., min_length=8, max_length=128, description="User password (min 8 characters)")
     display_name: str | None = None
     terms_accepted: bool = Field(True, description="Explicit agreement to Terms of Service and Privacy Policy")
@@ -16,14 +51,6 @@ class SignupRequest(BaseModel):
     def validate_terms_accepted(cls, v: bool) -> bool:
         if v is not True:
             raise ValueError("You must accept the Terms of Service and Privacy Policy to create an account")
-        return v
-
-    @field_validator("email")
-    @classmethod
-    def validate_email(cls, v: str) -> str:
-        v = v.strip().lower()
-        if not v or "@" not in v or "." not in v.split("@")[-1]:
-            raise ValueError("Invalid email format")
         return v
 
     @field_validator("password")
@@ -136,15 +163,7 @@ class VerifyEmailRequest(BaseModel):
 
 
 class ResendVerificationRequest(BaseModel):
-    email: str = Field(..., min_length=3, max_length=255, description="User email address")
-
-    @field_validator("email")
-    @classmethod
-    def validate_email(cls, v: str) -> str:
-        v = v.strip().lower()
-        if not v or "@" not in v or "." not in v.split("@")[-1]:
-            raise ValueError("Invalid email format")
-        return v
+    email: NormalizedEmail = Field(..., description="User email address")
 
 
 class SessionItemResponse(BaseModel):

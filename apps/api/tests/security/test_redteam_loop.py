@@ -160,7 +160,9 @@ class TestRedTeamTier3ToolAbuse:
             "compile_cover_letter",  # own-artifact generation, user-requested output
             "compile_resume_docx",  # own-artifact generation, user-requested output
             "compile_resume_pdf",  # own-artifact generation, user-requested output
+            "delegate_to_sub_agent",  # specialist agent subtask delegation
             "notify_user",  # notification surface, no external side effect
+            "spawn_sub_agents",  # parallel specialist subtask delegation
             "web_search",  # read-only external fetch
         ], f"OPEN tool set drifted — review: {open_system}"
 

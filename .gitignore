@@ -39,6 +39,8 @@ node_modules/
 # Build outputs
 dist/
 .next/
+.next-build/
+apps/web/.next-build/
 build/
 .out/
 .turbo/
@@ -325,3 +327,6 @@ kubeconfig
 # the scratch_* wildcard above; force-add if one ever needs to be shared
 scratch_audit/
 
+
+# Isolated production build output (see apps/web/scripts/build-isolated.cjs)
+apps/web/.next-build/

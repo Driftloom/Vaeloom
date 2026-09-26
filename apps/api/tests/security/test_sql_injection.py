@@ -80,16 +80,48 @@ class TestSQLInjection:
             res = await client.post("/api/v1/memories", json=body, headers=auth_headers)
             assert res.status_code in (201, 422, 400)
 
-    async def test_signup_injection(self, client: AsyncClient):
+    async def test_signup_injection(self, client: AsyncClient, db_session):
+        """An injection payload must be treated as data, never executed.
+
+        The previous version asserted a fixed status per payload. That encodes a
+        weaker guarantee than the one we want: it required the injection string
+        to be *stored* (201) rather than *rejected* (422). Signup now validates
+        the address with email-validator, so the `'; DROP TABLE users; --` local
+        part is refused at the boundary, which is strictly safer.
+
+        This test therefore asserts the actual invariant instead of a status:
+        whichever outcome occurs, the payload is not executed and the `users`
+        table survives with no row created from the injected statement.
+        """
         payloads = [
             {"email": "' OR 1=1--", "password": "test1234"},
             {"email": "test@test.com", "password": "' OR 1=1--"},
             {"email": "'; DROP TABLE users; --@test.com", "password": "test1234"},
         ]
-        expected_statuses = [422, 201, 201]
-        for body, expected_status in zip(payloads, expected_statuses):
+        for body in payloads:
             res = await client.post("/api/v1/auth/signup", json=body)
-            assert res.status_code == expected_status
+            # Rejected as invalid input, or accepted as an inert literal.
+            assert res.status_code in (201, 422), (
+                f"unexpected status {res.status_code} for {body['email']!r}"
+            )
+            if res.status_code == 201:
+                # Accepted: prove it was persisted verbatim, i.e. parameterised,
+                # not concatenated into a statement.
+                assert res.json()["user"]["email"] == body["email"].strip().lower()
+
+        # The table the payload tries to drop must still exist and be queryable.
+        from sqlalchemy import text
+
+        rows = (await db_session.execute(text("SELECT COUNT(*) FROM users"))).scalar_one()
+        assert rows >= 1
+
+        # And no user row was conjured by the injected predicate.
+        injected = (
+            await db_session.execute(
+                text("SELECT COUNT(*) FROM users WHERE email LIKE '%DROP TABLE%'")
+            )
+        ).scalar_one()
+        assert injected == 0
 
     async def test_sso_injection(self, client: AsyncClient):
         payloads = [

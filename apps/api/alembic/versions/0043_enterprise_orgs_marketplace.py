@@ -92,7 +92,7 @@ def upgrade() -> None:
 
     # Enable RLS on PostgreSQL
     if not is_sqlite:
-        for tbl in ["organizations", "organization_members", "workspace_plugin_installs"]:
+        for tbl in ["organizations", "organization_members", "marketplace_listings", "workspace_plugin_installs"]:
             op.execute(f"ALTER TABLE {tbl} ENABLE ROW LEVEL SECURITY;")
             op.execute(f"ALTER TABLE {tbl} FORCE ROW LEVEL SECURITY;")
 

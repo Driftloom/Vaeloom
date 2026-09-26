@@ -91,6 +91,7 @@ def upgrade() -> None:
     if is_pg:
         run = lambda s: _safe(bind, s)
         run("ALTER TABLE workspace_capabilities ENABLE ROW LEVEL SECURITY")
+        run("ALTER TABLE workspace_capabilities FORCE ROW LEVEL SECURITY")
         run("""
             CREATE POLICY p_capabilities_workspace_isolation ON workspace_capabilities
             FOR ALL

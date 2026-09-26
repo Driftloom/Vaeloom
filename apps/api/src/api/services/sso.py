@@ -74,7 +74,13 @@ class GoogleSSOProvider(SSOProvider):
                         return None
                     return payload
                 else:
-                    logger.error("Google tokeninfo endpoint rejected token (HTTP %s): %s", resp.status_code, resp.text)
+                    # SECURITY: an upstream error body is uncontrolled input and
+                    # can echo back token material. Record the status only.
+                    logger.error(
+                        "Google tokeninfo endpoint rejected token (HTTP %s, bodyBytes: %s)",
+                        resp.status_code,
+                        len(resp.text or ""),
+                    )
         except Exception as e:
             logger.exception("Google tokeninfo fallback failed: %s", e)
         return None
@@ -105,7 +111,14 @@ class GoogleSSOProvider(SSOProvider):
                 },
             )
             if resp.status_code != 200:
-                logger.error("Google OAuth token exchange failed (HTTP %s): %s", resp.status_code, resp.text)
+                # SECURITY: do not log the provider's error body verbatim; it is
+                # uncontrolled input and may echo the authorization code or
+                # client identifiers. Status and size are enough to triage.
+                logger.error(
+                    "Google OAuth token exchange failed (HTTP %s, bodyBytes: %s)",
+                    resp.status_code,
+                    len(resp.text or ""),
+                )
                 return None
             return resp.json().get("id_token")
 

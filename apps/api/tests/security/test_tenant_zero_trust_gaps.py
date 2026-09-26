@@ -135,10 +135,15 @@ async def test_cross_tenant_org_tree_isolation(client: AsyncClient):
         "/api/v1/organizations/tree",
         headers={"Authorization": f"Bearer {token_b}"},
     )
-    # User with tenant gets 200 and sees own orgs
+    # User with tenant gets 200 and sees only their own orgs
     assert res_b_tree.status_code == 200
-    orgs = res_b_tree.json()
-    assert isinstance(orgs, list)
+    body = res_b_tree.json()
+    # The list endpoints return a {items, total} envelope, not a bare array.
+    assert isinstance(body, dict) and "items" in body
+    orgs = body["items"]
+    # Tenant B created no organizations, so nothing from Tenant A may appear.
+    assert orgs == [], f"Tenant B enumerated {len(orgs)} foreign organizations"
+    assert body["total"] == 0
 
 
 @pytest.mark.asyncio

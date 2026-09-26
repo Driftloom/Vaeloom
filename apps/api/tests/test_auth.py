@@ -193,3 +193,60 @@ class TestAuth:
         })
         assert old_login.status_code == 401
 
+
+
+class TestRefreshRotation:
+    """Refresh-token rotation must be a single atomic transition.
+
+    The previous implementation read the session, checked ``status != ACTIVE``
+    in Python, then assigned ``status = "ROTATED"``. Under READ COMMITTED two
+    concurrent refreshes with the same token both read ACTIVE and both succeeded,
+    so a stolen token could be exchanged twice before theft detection fired.
+    """
+
+    async def _signup_and_get_refresh(self, client: AsyncClient, email: str) -> str:
+        res = await client.post(
+            "/api/v1/auth/signup",
+            json={"email": email, "password": "Refresh1234!"},
+        )
+        assert res.status_code == 201, res.text
+        return res.json()["refresh_token"]
+
+    async def test_concurrent_refresh_has_exactly_one_winner(self, client: AsyncClient):
+        import asyncio
+
+        token = await self._signup_and_get_refresh(client, "rotate-once@test.com")
+
+        # Fire the same refresh token concurrently.
+        results = await asyncio.gather(
+            *[
+                client.post(
+                    "/api/v1/auth/refresh", json={"refresh_token": token}
+                )
+                for _ in range(5)
+            ],
+            return_exceptions=True,
+        )
+
+        statuses = [r.status_code for r in results if not isinstance(r, Exception)]
+        successes = [s for s in statuses if s == 200]
+        failures = [s for s in statuses if s == 401]
+
+        assert len(successes) == 1, f"expected exactly 1 winner, got {statuses}"
+        assert len(failures) == len(statuses) - 1, f"expected the rest to be 401, got {statuses}"
+
+    async def test_replayed_refresh_token_is_rejected(self, client: AsyncClient):
+        """A spent token must be refused and must revoke the family."""
+        token = await self._signup_and_get_refresh(client, "rotate-replay@test.com")
+
+        first = await client.post("/api/v1/auth/refresh", json={"refresh_token": token})
+        assert first.status_code == 200
+
+        second = await client.post("/api/v1/auth/refresh", json={"refresh_token": token})
+        assert second.status_code == 401
+        # Responses use the RFC 7807 superset envelope; the human-readable text
+        # lives at error.message (see middleware/exception_handler.problem_envelope).
+        body = second.json()
+        assert body["status"] == 401
+        assert "revoked" in str(body["error"]["message"]).lower()
+

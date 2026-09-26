@@ -32,6 +32,7 @@ PUBLIC_PATHS = frozenset({
 })
 PUBLIC_PREFIXES = frozenset({
     "/api/v1/auth/sso/",
+    "/scim",
 })
 
 # External webhook senders (GitHub/Stripe-style) authenticate with per-connector
@@ -72,7 +73,51 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if request.method == "OPTIONS":
             return await call_next(request)
 
+        # Check for X-API-Key header or Bearer vael_ key
+        api_key_raw = request.headers.get("X-API-Key")
         auth_header = request.headers.get("Authorization", "")
+        if not api_key_raw and auth_header.startswith("Bearer vael_"):
+            api_key_raw = auth_header.removeprefix("Bearer ").strip()
+
+        if api_key_raw:
+            from datetime import UTC, datetime
+            from sqlalchemy import select
+            from ..models.schema import ApiKey
+            from ..services.api_keys import api_key_manager
+
+            async with self._session_factory() as db:
+                prefix = api_key_raw[:10]
+                result = await db.execute(
+                    select(ApiKey).where(ApiKey.key_prefix == prefix, ApiKey.enabled == True)
+                )
+                keys = result.scalars().all()
+                matched_key = None
+                for k in keys:
+                    if k.expires_at and k.expires_at.replace(tzinfo=UTC) < datetime.now(UTC):
+                        continue
+                    if api_key_manager.validate_key(api_key_raw, k.key_hash):
+                        matched_key = k
+                        break
+
+                if not matched_key:
+                    return _denial(401, "Invalid or expired API key", request)
+
+                matched_key.last_used = datetime.now(UTC)
+                await db.commit()
+
+                user_id = str(matched_key.user_id)
+                tenant_id = str(matched_key.tenant_id) if matched_key.tenant_id else None
+                request.state.user = {
+                    "sub": user_id,
+                    "user_id": user_id,
+                    "tenant_id": tenant_id,
+                    "permissions": matched_key.permissions or [],
+                    "api_key_id": str(matched_key.id),
+                }
+                request.state.user_id = user_id
+                request.state.tenant_id = tenant_id
+                return await call_next(request)
+
         if not auth_header.startswith("Bearer "):
             return _denial(401, "Not authenticated", request)
 

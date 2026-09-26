@@ -76,6 +76,7 @@ from .routers import (
     agents,
     analytics,
     anticipation,
+    api_keys,
     applications,
     audit,
     auth,
@@ -452,6 +453,7 @@ _safe_include(approval_router, "/api/v1", ["approvals"])
 _safe_include(agent_costs_router, "/api/v1", ["agents"])
 _safe_include(gmail.router, "/api/v1", ["gmail"])
 _safe_include(provider_keys.router, "/api/v1/provider-keys", ["provider-keys"])
+_safe_include(api_keys.router, "/api/v1/api-keys", ["api-keys"])
 _safe_include(temporal_router.router, "/api/v1/temporal", ["temporal"])
 _safe_include(profile.router, "/api/v1/profile", ["profile"])
 _safe_include(opportunities.router, "/api/v1/opportunities", ["opportunities"])

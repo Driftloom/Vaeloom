@@ -140,5 +140,46 @@ class EmailService:
 
         return await self.send_email(to_email, subject, html_body, text_body)
 
+    async def send_password_reset_email(
+        self,
+        to_email: str,
+        reset_url: str,
+        expires_minutes: int = 15,
+    ) -> Dict[str, Any]:
+        """Dispatch a branded password reset email."""
+        subject = "Reset your Vaeloom password"
+
+        html_body = f"""
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; background: #ffffff; color: #111827; border: 1px solid #e5e7eb; border-radius: 8px;">
+            <div style="margin-bottom: 24px;">
+                <h2 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 600; color: #111827;">Reset your password</h2>
+                <p style="margin: 0; font-size: 14px; color: #4b5563;">
+                    We received a request to reset the password for your Vaeloom account. Click the button below to choose a new password.
+                </p>
+            </div>
+            <div style="margin: 32px 0;">
+                <a href="{reset_url}" style="display: inline-block; background-color: #2563eb; color: #ffffff; font-size: 14px; font-weight: 500; text-decoration: none; padding: 12px 24px; border-radius: 6px;">
+                    Reset Password
+                </a>
+            </div>
+            <div style="font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+                <p style="margin: 0 0 8px 0;">
+                    Or copy and paste this link in your browser:<br/>
+                    <a href="{reset_url}" style="color: #2563eb; word-break: break-all;">{reset_url}</a>
+                </p>
+                <p style="margin: 0;">This password reset link will expire in {expires_minutes} minutes. If you did not request this, you can safely ignore this email.</p>
+            </div>
+        </div>
+        """
+
+        text_body = (
+            f"Reset your Vaeloom password\n\n"
+            f"We received a request to reset the password for your Vaeloom account.\n\n"
+            f"Reset your password here:\n{reset_url}\n\n"
+            f"This link will expire in {expires_minutes} minutes. If you did not request this, you can safely ignore this email."
+        )
+
+        return await self.send_email(to_email, subject, html_body, text_body)
+
 
 email_service = EmailService()
