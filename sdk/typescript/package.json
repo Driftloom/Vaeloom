@@ -1,11 +1,14 @@
 {
   "name": "@vaeloom/sdk",
   "version": "0.1.0",
+  "private": true,
   "description": "Vaeloom TypeScript SDK — memory-first personal intelligence API client",
   "license": "MIT",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "lint": "eslint src/",
