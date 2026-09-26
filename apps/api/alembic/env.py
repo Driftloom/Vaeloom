@@ -31,10 +31,25 @@ target_metadata = Base.metadata
 
 
 def get_database_url() -> str:
+    """Resolve the DDL target.
+
+    Order matters and was previously wrong: `DATABASE_URL` was consulted before
+    `DATABASE__URL`, so the single-underscore alias won over the canonical name.
+    Both are set in the checked-in-but-ignored `.env` files, which meant an
+    operator who exported `DATABASE__URL=sqlite+aiosqlite:///./local.db` to keep
+    migrations off a shared instance still had Alembic connect to the managed
+    PostgreSQL from the `.env` alias. Migrations are DDL, so that is a
+    write to someone else's database.
+
+    `DATABASE__URL` is the field name Pydantic actually uses, so it is checked
+    first. `VAELOOM_TARGET_URL` stays ahead of both: it is the deliberate
+    override for the owner/migrator role (OP-RLS-01) and callers set it
+    explicitly when they mean it.
+    """
     url = (
         os.environ.get("VAELOOM_TARGET_URL")
-        or os.environ.get("DATABASE_URL")
         or os.environ.get("DATABASE__URL")
+        or os.environ.get("DATABASE_URL")
         or config.get_main_option("sqlalchemy.url")
     )
     if url and url.startswith("postgresql://"):

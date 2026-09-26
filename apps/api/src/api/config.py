@@ -305,6 +305,20 @@ class Settings(BaseSettings):
             self._resolve_from_secret_manager(secret_manager)
 
     def _resolve_from_secret_manager(self, sm: SecretManager) -> None:
+        """Fill gaps from the secret manager, never overrule the environment.
+
+        An explicitly supplied value is the operator stating an intent — most
+        often "run against this database, not the shared one". A secret manager
+        that silently replaces it is a data-safety bug, not a convenience: it
+        means a developer who sets `DATABASE__URL=sqlite+aiosqlite:///./local.db`
+        to avoid touching anything shared will instead have migrations applied to
+        the managed production instance at boot, because the override happens
+        after Pydantic has already read the environment.
+
+        `model_fields_set` is the authoritative record of what was provided
+        explicitly (init kwargs or environment variable), so it is used to decide
+        what the secret manager is still allowed to contribute.
+        """
         secret_keys = {
             "jwt_secret": sm.get_secret("JWT_SECRET"),
             "llm_api_key": sm.get_secret("LLM_API_KEY"),
@@ -313,9 +327,15 @@ class Settings(BaseSettings):
             "storage_secret_key": sm.get_secret("STORAGE_SECRET_KEY"),
             "database__url": sm.get_secret("DATABASE_URL"),
         }
+        explicitly_set = self.model_fields_set
         for attr, value in secret_keys.items():
-            if value is not None:
-                object.__setattr__(self, attr, value)
+            if value is None:
+                continue
+            if attr in explicitly_set:
+                # Operator (or .env) already decided. Log nothing secret; just
+                # leave it alone.
+                continue
+            object.__setattr__(self, attr, value)
 
 
 settings = Settings()
