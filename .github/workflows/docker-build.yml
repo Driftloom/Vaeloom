@@ -1,13 +1,27 @@
 name: Docker Build
 on:
   push:
-    branches: [main]
+    branches: [master]
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [web, api]
+        include:
+          # apps/web/Dockerfile COPYs root workspace files (pnpm-lock.yaml,
+          # pnpm-workspace.yaml, package.json, packages/*), so it requires the
+          # repository root as its build context. Passing ./apps/web made the
+          # build fail at `COPY pnpm-lock.yaml`.
+          - service: web
+            context: .
+            dockerfile: apps/web/Dockerfile
+          # apps/api/Dockerfile is self-contained (pyproject.toml, src/,
+          # alembic/ all live under apps/api) and COPYs paths relative to
+          # apps/api, so it must keep that context.
+          - service: api
+            context: ./apps/api
+            dockerfile: Dockerfile
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
@@ -16,6 +30,7 @@ jobs:
           registry: ${{ secrets.ECR_REGISTRY }}
       - uses: docker/build-push-action@v5
         with:
-          context: ./apps/${{ matrix.service }}
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: ${{ secrets.ECR_REGISTRY }}/vaeloom-${{ matrix.service }}:${{ github.sha }}

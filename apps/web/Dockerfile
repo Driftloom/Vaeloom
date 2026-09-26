@@ -19,6 +19,11 @@ COPY apps/web/ ./apps/web/
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+# next.config.js gates `output: 'standalone'` on `process.env.CI === 'true'`.
+# Without this, the builder never emits .next/standalone and the
+# `COPY --from=builder .../.next/standalone` below fails. Setting it here makes
+# the image build identically on CI and on a developer machine.
+ENV CI=true
 
 RUN cd apps/web && pnpm build
 

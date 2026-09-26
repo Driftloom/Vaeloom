@@ -1,8 +1,20 @@
 name: Deploy
 
+# NOTE: no `push` trigger on purpose.
+# The repository default branch is `master`, not `main`, so the previous
+# `push: branches: [main]` trigger could never fire.
+# It is intentionally NOT re-pointed to `master` yet: this pipeline has
+# unresolved blockers that would make an unattended deploy unsafe --
+#   1. `build-and-push` has no `needs:` (untested code would be built),
+#   2. 19 of 23 k8s Deployments reference images that are never built,
+#      so `kubectl wait` cannot succeed,
+#   3. the API Deployment is unstartable (port 4000 vs 8000, and
+#      `validate_settings()` fails against its own manifest env),
+#   4. no post-deploy smoke test; the load-test "gate" is an `echo`,
+#   5. rollback is a bare `kubectl rollout undo` with no re-verification.
+# Re-enable unattended deploy only after WAVE 8 (ENTERPRISE-PRODUCTION-
+# READINESS-PLAN.md) closes items W8.5-W8.15.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
