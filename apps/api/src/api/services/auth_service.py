@@ -152,6 +152,7 @@ class AuthService:
             email_verified=False,
             failed_login_attempts=0,
             locked_until=None,
+            mfa_enabled=False,
             consent_version="2026-v1",
             consent_granted_at=datetime.now(UTC),
         )
@@ -252,6 +253,10 @@ class AuthService:
         # bootstrap rows (tenant/user/workspace/session) durable before the
         # 201 is sent; the later get_db commit is then a harmless no-op.
         await db.commit()
+        # Refresh so DB-side column defaults (e.g. mfa_enabled=false from
+        # 0046) materialize on the ORM object before response validation.
+        # Without this, PublicUser sees None for never-assigned columns.
+        await db.refresh(user)
 
         return AuthResponse(
             access_token=access_token,

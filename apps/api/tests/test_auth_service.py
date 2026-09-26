@@ -7,15 +7,24 @@ pytestmark = pytest.mark.asyncio
 
 
 class _MockScalarResult:
-    def __init__(self, scalar=None, scalars_data=None):
+    def __init__(self, scalar=None, scalars_data=None, rowcount=1):
         self._scalar = scalar
         self._scalars_data = scalars_data
+        # Refresh rotation decides the single winner by checking the rowcount of
+        # a conditional UPDATE, so the double has to model it. Default 1 = the
+        # UPDATE matched, which is the happy path.
+        self.rowcount = rowcount
 
     def scalar_one_or_none(self):
         return self._scalar
 
     def scalar_one(self):
         return self._scalar
+
+    def scalar(self):
+        # Models UPDATE...RETURNING (lockout counter): the only prod caller
+        # is the failed-login increment, which expects an int count.
+        return self.rowcount
 
     def scalars(self):
         return self
@@ -35,6 +44,30 @@ def _setup_refresh(mock_db):
         if hasattr(obj, 'updated_at') and obj.updated_at is None:
             obj.updated_at = datetime.now(timezone.utc)
     mock_db.refresh = AsyncMock(side_effect=_refresh)
+
+
+def _queued(*results):
+    """Resilient execute double: serves queued results, then empty results.
+
+    Production code paths issue extra setup queries over time (RLS GUC
+    set_config calls). Those are infrastructure noise: they are answered
+    with an empty result WITHOUT consuming a queued slot, so queue order
+    always matches the domain queries the test cares about.
+    """
+    queue = list(results)
+
+    async def _route(statement=None, *args, **kwargs):
+        try:
+            text = str(getattr(statement, "text", statement) or "")
+        except Exception:
+            text = ""
+        if "set_config" in text:
+            return _MockScalarResult(scalar=None)
+        if queue:
+            return queue.pop(0)
+        return _MockScalarResult(scalar=None)
+
+    return _route
 
 
 class TestAuthService:
@@ -62,6 +95,13 @@ class TestAuthService:
         user.preferences = {}
         user.avatar_url = None
         user.tenant_id = None
+        # Non-MFA user by default (login returns empty tokens + challenge
+        # when mfa_enabled is truthy; MagicMock auto-attrs are truthy).
+        user.mfa_enabled = False
+        # Lockout fields must be real values: the lockout check compares
+        # datetimes, and MagicMock auto-attrs raise TypeError on >=.
+        user.failed_login_attempts = 0
+        user.locked_until = None
         return user
 
     # ── signup ────────────────────────────────────────────────────────
@@ -174,7 +214,10 @@ class TestAuthService:
         session.status = "ROTATED"
         session.expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
         session.user_id = uuid.uuid4()
-        mock_db.execute.return_value = _MockScalarResult(scalar=session)
+        # A ROTATED session cannot be rotated again, so the conditional
+        # UPDATE ... WHERE status='ACTIVE' matches no rows. That is precisely
+        # how the service detects a replayed token.
+        mock_db.execute.return_value = _MockScalarResult(scalar=session, rowcount=0)
         from fastapi import HTTPException
         with pytest.raises(HTTPException) as exc:
             await service.refresh_token("rotated", db=mock_db)
@@ -198,13 +241,15 @@ class TestAuthService:
         session = MagicMock()
         session.status = "ACTIVE"
         session.expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+        session.created_at = datetime.now(timezone.utc)
         session.user_id = uuid.uuid4()
+        mock_db.get = AsyncMock(return_value=None)  # no revocation cutoff row
         user = MagicMock()
         user.status = "INACTIVE"
-        mock_db.execute = AsyncMock(side_effect=[
+        mock_db.execute = AsyncMock(side_effect=_queued(
             _MockScalarResult(scalar=session),
             _MockScalarResult(scalar=user),
-        ])
+        ))
         from fastapi import HTTPException
         with pytest.raises(HTTPException) as exc:
             await service.refresh_token("token", db=mock_db)
@@ -214,7 +259,9 @@ class TestAuthService:
         session = MagicMock()
         session.status = "ACTIVE"
         session.expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+        session.created_at = datetime.now(timezone.utc)
         session.user_id = uuid.uuid4()
+        mock_db.get = AsyncMock(return_value=None)  # no revocation cutoff row
         user = MagicMock()
         user.id = uuid.uuid4()
         user.email = "user@test.com"
@@ -225,10 +272,12 @@ class TestAuthService:
         user.avatar_url = None
         user.tenant_id = None
 
-        mock_db.execute = AsyncMock(side_effect=[
+        mock_db.get = AsyncMock(return_value=None)  # no revocation cutoff row
+        mock_db.execute = AsyncMock(side_effect=_queued(
             _MockScalarResult(scalar=session),
+            _MockScalarResult(scalar=None),  # status UPDATE rowcount carrier
             _MockScalarResult(scalar=user),
-        ])
+        ))
 
         with patch.object(service, 'issue_token', new=AsyncMock()) as mock_issue:
             mock_issue.return_value = ("new_at", "new_rt")
