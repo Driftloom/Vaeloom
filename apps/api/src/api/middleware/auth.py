@@ -73,9 +73,25 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if request.method == "OPTIONS":
             return await call_next(request)
 
-        # Check for X-API-Key header or Bearer vael_ key
+        # Check for X-API-Key header or Bearer vael_ key. isinstance guards:
+        # header values must be str — anything else (mocks, ASGI edge cases)
+        # falls through to the standard Bearer path instead of hitting the DB.
         api_key_raw = request.headers.get("X-API-Key")
         auth_header = request.headers.get("Authorization", "")
+        if not isinstance(api_key_raw, str) or not api_key_raw.strip():
+            api_key_raw = None
+        if isinstance(api_key_raw, str) and api_key_raw.startswith("Bearer "):
+            # Wrong slot: Authorization values (incl. test mocks returning one
+            # string for every header) must not enter the API-key DB lookup.
+            api_key_raw = None
+        if isinstance(api_key_raw, str) and (
+            not api_key_raw.startswith("vael_") or len(api_key_raw) < 20
+        ):
+            # Shape gate: real keys are vael_<32B64> (len >= 40). Anything else
+            # cannot match a stored prefix — skip the DB round-trip entirely.
+            api_key_raw = None
+        if not isinstance(auth_header, str):
+            auth_header = ""
         if not api_key_raw and auth_header.startswith("Bearer vael_"):
             api_key_raw = auth_header.removeprefix("Bearer ").strip()
 
