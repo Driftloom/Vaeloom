@@ -62,7 +62,9 @@ services:
 
   # ─── Frontend ───
   web:
-    build: ./apps/web
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
     container_name: vaeloom-web
     environment:
       PORT: 3000

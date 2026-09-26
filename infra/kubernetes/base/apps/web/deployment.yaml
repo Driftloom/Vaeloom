@@ -21,8 +21,8 @@ spec:
       labels:
         app.kubernetes.io/name: web
       annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "3000"
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '3000'
     spec:
       containers:
         - name: web
@@ -38,7 +38,7 @@ spec:
                   name: vaeloom-config
                   key: NODE_ENV
             - name: NEXT_PUBLIC_API_URL
-              value: "https://api.vaeloom.dev"
+              value: 'https://api.vaeloom.dev'
           resources:
             requests:
               cpu: 100m
@@ -48,13 +48,13 @@ spec:
               memory: 512Mi
           livenessProbe:
             httpGet:
-              path: /health
+              path: /api/health
               port: 3000
             initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /health
+              path: /api/health
               port: 3000
             initialDelaySeconds: 5
             periodSeconds: 5
