@@ -165,6 +165,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    try {
+      await api.logout();
+    } catch {
+      // non-fatal
+    }
     if (process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']) {
       try {
         const { createClient } = await import('@/lib/supabase/client');

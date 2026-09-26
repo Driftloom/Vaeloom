@@ -58,8 +58,8 @@ function ResetPasswordForm() {
       setSent(true);
       toast({
         tone: 'success',
-        title: 'Reset email sent',
-        detail: 'Check your inbox for a password reset link.',
+        title: 'Request received',
+        detail: 'If an account exists for that address, a reset link is on its way.',
       });
     } catch (err) {
       const msg =
@@ -165,7 +165,7 @@ function ResetPasswordForm() {
             </div>
             <h1 className="text-4xl font-bold text-text leading-tight mt-8">Check your email</h1>
             <p className="text-lg text-text-muted mt-4 max-w-md">
-              We sent a password reset link to your inbox. The link expires in 15 minutes.
+              If we sent a password reset link, it expires in 15 minutes.
             </p>
           </div>
         </div>

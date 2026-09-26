@@ -27,8 +27,11 @@ export default function ForgotPasswordPage() {
       setSent(true);
       toast({
         tone: 'success',
-        title: 'Reset email sent',
-        detail: 'Check your inbox for a reset link.',
+        title: 'Request received',
+        // The endpoint answers identically whether or not an account exists, to
+        // avoid leaking which addresses are registered. Say so rather than
+        // promising a message we cannot confirm was delivered.
+        detail: 'If an account exists for that address, a reset link is on its way.',
       });
     } catch (err) {
       const msg =
