@@ -1,37 +1,44 @@
-'use client';
+﻿'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Modal } from '@vaeloom/ui-kit';
-import { memoryApi } from '@/lib/api-client';
+import { Modal, ErrorState } from '@vaeloom/ui-kit';
+import { memoryApi, ApiError } from '@/lib/api-client';
 import { DiffViewer } from '@/components/shared/DiffViewer';
 import { useToast } from '@/components/shared/Toast';
 import { EmptyState } from '@/components/shared/EmptyState';
-
-interface MemoryRow {
-  id: string;
-  title: string;
-  summary?: string;
-  type?: string;
-  status?: string;
-  [key: string]: unknown;
-}
+import type { Memory } from '@vaeloom/shared-types';
 
 export function MemoryCorrectionPanel() {
-  const [memories, setMemories] = useState<MemoryRow[]>([]);
+  const [memories, setMemories] = useState<Memory[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<MemoryRow | null>(null);
+  const [editing, setEditing] = useState<Memory | null>(null);
   const [draftText, setDraftText] = useState('');
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await memoryApi.list({ page_size: 25 });
-      const items = Array.isArray(res) ? res : ((res as { items?: MemoryRow[] }).items ?? []);
-      setMemories(items.filter((m) => m.status !== 'deleted'));
-    } catch {
+      // `GET /api/v1/memories` returns `{ memories, total, page, page_size }`
+      // (MemoryListResponse). This panel previously read `.items`, which is
+      // always undefined for that envelope, so it always rendered
+      // "No memories yet" and the correction modal was unreachable in
+      // production. Accept the array form too so a future envelope change
+      // degrades to a visible error rather than a silently empty list.
+      const rows = Array.isArray(res) ? res : ((res as { memories?: Memory[] }).memories ?? []);
+      setMemories(rows.filter((m) => m.status !== 'deleted'));
+    } catch (err) {
+      // Surfacing the failure matters: a swallowed error here is
+      // indistinguishable from "you have no memories".
       setMemories([]);
+      setLoadError(
+        err instanceof ApiError
+          ? `Could not load memories (HTTP ${err.status}).`
+          : 'Could not load memories. Check your connection and retry.',
+      );
     } finally {
       setLoading(false);
     }
@@ -41,7 +48,7 @@ export function MemoryCorrectionPanel() {
     void load();
   }, [load]);
 
-  const openEditor = (memory: MemoryRow) => {
+  const openEditor = (memory: Memory) => {
     setEditing(memory);
     setDraftText(typeof memory.summary === 'string' ? memory.summary : '');
   };
@@ -59,7 +66,7 @@ export function MemoryCorrectionPanel() {
       toast({
         tone: 'success',
         title: 'Memory corrected',
-        detail: `This replaces memory #${editing.id.slice(0, 8)} — the previous version is kept in History as superseded.`,
+        detail: `This replaces memory #${editing.id.slice(0, 8)} â€” the previous version is kept in History as superseded.`,
       });
       setEditing(null);
       await load();
@@ -79,7 +86,7 @@ export function MemoryCorrectionPanel() {
       <header className="mb-4">
         <h2 className="text-xl font-display font-medium text-text">Memory Corrections</h2>
         <p className="text-sm text-text-muted">
-          Correct a memory summary. Corrections supersede the old version — it stays visible in
+          Correct a memory summary. Corrections supersede the old version â€” it stays visible in
           History.
         </p>
       </header>
@@ -90,6 +97,8 @@ export function MemoryCorrectionPanel() {
             <div key={i} className="h-10 animate-pulse rounded bg-surface-hover" />
           ))}
         </div>
+      ) : loadError ? (
+        <ErrorState message={loadError} onRetry={() => void load()} />
       ) : memories.length === 0 ? (
         <EmptyState
           title="No memories yet"
