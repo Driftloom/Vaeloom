@@ -21,6 +21,30 @@ def upgrade() -> None:
     is_sqlite = bind.dialect.name == "sqlite"
 
     # 1. Create password_reset_tokens table
+    #
+    # KNOWN BROKEN ON POSTGRESQL — do not ship without fixing first.
+    #
+    # Applying this migration to a PostgreSQL database fails with:
+    #   asyncpg.exceptions.DatatypeMismatchError:
+    #   foreign key constraint "password_reset_tokens_user_id_fkey" cannot be implemented
+    #   DETAIL: Key columns "user_id" and "id" are of incompatible types
+    #
+    # `users.id` is declared sa.UUID() in 0001_initial_schema.py, so on any
+    # database built by this chain the types match. The failure means the target
+    # database's `users.id` is not the type this chain declares — most likely
+    # varchar/text, because `public.users` was created outside the chain (SQL
+    # editor, or an earlier hand-written schema).
+    #
+    # The fix is to type this column from the referenced one rather than
+    # assuming: reflect `users.id` through sa.inspect(op.get_bind()) and use the
+    # returned type for `user_id`. That was attempted and reverted — the
+    # reflection reported varchar while PostgreSQL reported uuid for the same
+    # column, so the mismatch was not reproduced and the correct source of truth
+    # is still unconfirmed. Do not "fix" this by hard-coding another type.
+    #
+    # SQLite does not enforce foreign key column types, which is why the
+    # security suite (SQLite, tables created from the ORM models rather than
+    # from migrations) never exercised this path.
     op.create_table(
         "password_reset_tokens",
         sa.Column("id", sa.UUID(), primary_key=True),

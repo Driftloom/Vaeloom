@@ -34,7 +34,7 @@ TARGET_DB_NAME = "vaeloom_staging_drill"
 
 #: Expected migration head (bump with each release; the smoke check fails
 #: closed when the target lags — a stale standby is a failed drill).
-EXPECTED_ALEMBIC_HEAD = "0054"
+EXPECTED_ALEMBIC_HEAD = "0057"
 
 #: Tables where the app role must NEVER match a USING (true) policy
 #: (RLS-SERVICE-POLICY-EXPOSURE.md §2, sharp set). Checked on the restored
@@ -351,7 +351,7 @@ async def scope_redis_persistence() -> dict:
     try:
         import redis.asyncio as aioredis
 
-        r = aioredis.from_url(url, socket_connect_timeout=2, socket_timeout=5)
+        r = aioredis.from_url(url, decode_responses=True, socket_connect_timeout=2, socket_timeout=5)
         key = f"vaeloom:drill:{uuid.uuid4().hex}"
         await r.set(key, "1", ex=300)
         try:
