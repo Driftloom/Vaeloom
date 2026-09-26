@@ -367,7 +367,107 @@ was serving; `.next` contained no production markers afterwards and `/`,
 
 ---
 
-## 12. State of the working tree — including an unwanted commit
+## 12. HttpOnly session cookies — backend foundation (W2.1 / W2.1a)
+
+**Status: backend done and verified. Frontend cutover NOT done — localStorage is
+still the live path.**
+
+### What was wrong
+
+`apps/web/src/lib/api.ts` persisted both credentials in `localStorage` **and**
+mirrored them into `document.cookie` **without `HttpOnly`**. Two JS-readable
+copies of a 30-day refresh token. Any XSS on the origin could exfiltrate a
+credential that survives the tab closing and cannot be revoked by clearing
+storage. The cookie mirror added nothing but a second exfiltration vector: a
+JS-readable cookie is no safer than localStorage, and `getToken()` even
+_promoted_ the cookie copy back into localStorage.
+
+### What was built
+
+`apps/api/src/api/services/session_cookies.py` — new module:
+
+- `vaeloom_at` / `vaeloom_rt`, `HttpOnly`, `SameSite=Lax`, `Path=/`
+- `Secure` derived from `service_environment`, overridable with
+  `AUTH_COOKIE_SECURE`. Omitted locally because browsers drop `Secure` cookies
+  on plain `http://`, which would make local login fail silently
+- `delete_cookie` reuses the same attributes — mismatched attributes are the
+  classic reason "logout" appears to do nothing
+
+Wiring: `signup`, `login`, `refresh`, `logout`, `mfa/verify`, `sso/{provider}`,
+`saml/callback`. `middleware/auth.py` now falls back to the cookie when there is
+no `Authorization` header and **fails closed** if neither is present.
+
+**Dual-read rollout.** The body still carries tokens, because the TypeScript
+SDK, the CLI and all 385 existing tests authenticate with
+`Authorization: Bearer` and have no cookie jar. A browser opts out of the body
+by sending `X-Auth-Mode: cookie`; the router then sets the cookies and blanks
+`access_token`/`refresh_token` in the response. One endpoint, two consumers, no
+flag day. `refresh` reads cookie-then-body so both callers work through the
+transition.
+
+### The CSRF finding that forced a design change
+
+`/api/v1/auth/refresh` was in an unconditional CSRF skip list. That was correct
+only while refresh took an **explicit body token**, which a browser will not
+populate on a cross-site request. The cookie migration changes that: the
+credential becomes **ambient**, so an attacker page can make the browser send it
+— and because rotation invalidates the previous token, forcing it repeatedly
+**locks the victim out**.
+
+First attempt exempted _any_ request carrying an `Authorization` or `X-API-Key`
+header, reasoning that a header is not ambient. That broke 8 existing tests, and
+the suite was right: `test_csrf.py` deliberately asserts that **every** mutating
+request needs a CSRF token regardless of credential type. My rule silently
+reduced coverage. Corrected to a narrow exemption scoped to the one endpoint the
+migration actually affects:
+
+- every mutation still needs the double-submit token, whatever it authenticates
+  with (**posture unchanged**)
+- `/auth/refresh` alone is exempt, and only when no session cookie is present —
+  i.e. the caller used the explicit body token
+
+### Evidence
+
+`apps/api/tests/security/test_session_cookies.py` — 19 tests. Written with
+negative controls, because a test that only asserts "a cookie was set" passes
+just as happily against a JS-readable cookie:
+
+- each cookie is independently `HttpOnly` (not just one, not just the joined
+  string)
+- the negative case that a middleware rejecting _every_ cookie request would
+  also pass, so the positive "valid CSRF token is allowed" case is required too
+- cookie-authenticated mutation without a CSRF token → 403
+- bearer mutation → still 403 (pins the exemption as narrow)
+- anonymous mutation → still 403
+- cookie-based refresh → 403; body-token refresh → 401 (passed CSRF, rejected on
+  credential)
+
+**Full security suite: 404 passed / 0 failed** (was 385; +19).
+
+### What is NOT done — do not read this as a completed migration
+
+- The web client still writes to and reads from `localStorage`. Nothing sends
+  `X-Auth-Mode: cookie` yet. **The vulnerability is still live.**
+- `apps/web/src/lib/realtime-client.ts:64` puts the long-lived access JWT in a
+  **WebSocket query string**. Query strings land in proxy and server logs and in
+  `Referer`, and a WS handshake cannot carry a CSRF-protected header. This is a
+  hard blocker for a naive cookie migration: the token must remain JS-readable,
+  or the WS must move to a short-lived single-use ticket.
+- `ChatWindow.tsx:317` builds its own `Authorization` header outside
+  `request()`, so it needs `credentials: 'include'` and cannot be fixed by
+  editing `api.ts` alone.
+- Two API clients coexist — `lib/api.ts` (41 importers) and `lib/api-client.ts`
+  (68). Both send CSRF correctly, but any cutover has to touch both.
+- `middleware/csrf.py` mounts _inside_ `AuthMiddleware` in the test fixture, so
+  an invalid token 401s before CSRF is consulted. Harmless today (no state
+  change) but it means CSRF failures are only observable with a valid
+  credential, which is why the focused `csrf_only_client` fixture exists.
+- The frontend needs a real auth-state signal once no token is readable. Today
+  `getToken()` doubles as "am I logged in" in 4 components.
+
+---
+
+## 13. State of the working tree — including an unwanted commit
 
 **Process failure, disclosed.** Five commits were made **directly to `master`**
 by my own sub-agents, which I had not authorised and had not explicitly
