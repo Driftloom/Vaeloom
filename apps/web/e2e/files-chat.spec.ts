@@ -1,73 +1,132 @@
 import { expect, test } from '@playwright/test';
 import { gotoWorkspace, login } from './helpers';
 
+const DOCS_API = '/api/v1/documents';
+
 test.describe('files', () => {
-  test('upload, rename, archive and undo', async ({ page }) => {
+  test('upload, select, bulk archive and clear selection', async ({ page }) => {
     const wsId = await login(page);
     await gotoWorkspace(page, wsId, '/files');
-
-    // Upload
-    await page.setInputFiles('input[type="file"]', {
-      name: 'pw-e2e.txt',
-      mimeType: 'text/plain',
-      buffer: Buffer.from('Phase 02B e2e upload'),
-    });
-    await expect(page.locator('table, [role="status"]').first()).toBeVisible({ timeout: 30_000 });
-
-    const row = page.locator('tr', { hasText: 'pw-e2e.txt' }).first();
-    await expect(row).toBeVisible({ timeout: 30_000 });
-
-    // Rename via row action (opens modal with diff preview); submit = "Save"
-    await row
-      .getByRole('button', { name: /rename/i })
-      .first()
-      .click();
-    const nameInput = page.locator('[role="dialog"] input').first();
-    await nameInput.fill('pw-e2e-renamed.txt');
-    await page.locator('[role="dialog"] button[type="submit"]').click();
-    await expect(page.locator('tr', { hasText: 'pw-e2e-renamed.txt' }).first()).toBeVisible({
+    await expect(page.getByRole('heading', { level: 1, name: 'Workspace Files' })).toBeVisible({
       timeout: 30_000,
     });
 
-    // Archive then undo via History
-    await page
-      .locator('tr', { hasText: 'pw-e2e-renamed.txt' })
-      .first()
-      .getByRole('button', { name: /archive/i })
-      .first()
-      .click();
-    await expect(page.locator('body')).toContainText(/archived/i, { timeout: 30_000 });
+    const fileName = `pw-e2e-${Date.now()}.txt`;
+    const [upload] = await Promise.all([
+      page.waitForResponse(
+        (res) => res.url().includes(DOCS_API) && res.request().method() === 'POST',
+        { timeout: 30_000 },
+      ),
+      page.setInputFiles('input[type="file"]', {
+        name: fileName,
+        mimeType: 'text/plain',
+        buffer: Buffer.from('Phase 02B e2e upload'),
+      }),
+    ]);
+    expect(upload, 'the UI never POSTed the fixture document').not.toBeNull();
+    expect(upload.status()).toBe(201);
+
+    const row = page.locator('tr', { hasText: fileName }).first();
+    await expect(row, 'the uploaded document never appeared in the table').toBeVisible({
+      timeout: 30_000,
+    });
+
+    // Row actions are View Document and Share Document only (files/page.tsx:1057,
+    //1083); rename/archive live on the bulk toolbar, so the old test's
+    // row-level rename/archive click targeted buttons that do not exist.
+    await row.getByRole('checkbox', { name: `Select ${fileName}` }).check();
+    const toolbar = page.getByText('1 document(s) selected');
+    await expect(toolbar).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Download (.zip)' })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Archive Selected' })).toBeEnabled();
+
+    const [archive] = await Promise.all([
+      page.waitForResponse(
+        (res) =>
+          /\/api\/v1\/documents\/[^/?]+\/archive/.test(res.url()) &&
+          res.request().method() === 'POST',
+        { timeout: 30_000 },
+      ),
+      page.getByRole('button', { name: 'Archive Selected' }).click(),
+    ]);
+    expect(archive, 'archiving never issued a request').not.toBeNull();
+    expect(archive.status()).toBe(200);
+
+    await expect(page.locator('body')).toContainText(/moved to archive/i, { timeout: 30_000 });
+    await page.getByRole('button', { name: 'Clear' }).click();
+    await expect(page.getByText('1 document(s) selected')).toHaveCount(0);
+  });
+
+  test('opening a document shows its stored content in the viewer', async ({ page }) => {
+    const wsId = await login(page);
+    await gotoWorkspace(page, wsId, '/files');
+    await expect(page.getByRole('heading', { level: 1, name: 'Workspace Files' })).toBeVisible({
+      timeout: 30_000,
+    });
+
+    const fileName = `pw-viewer-${Date.now()}.txt`;
+    const marker = `viewer-marker-${Date.now()}`;
+    const [upload] = await Promise.all([
+      page.waitForResponse(
+        (res) => res.url().includes(DOCS_API) && res.request().method() === 'POST',
+        { timeout: 30_000 },
+      ),
+      page.setInputFiles('input[type="file"]', {
+        name: fileName,
+        mimeType: 'text/plain',
+        buffer: Buffer.from(`marker:${marker}`),
+      }),
+    ]);
+    expect(upload).not.toBeNull();
+    expect(upload.status()).toBe(201);
+
+    const row = page.locator('tr', { hasText: fileName }).first();
+    await expect(row).toBeVisible({ timeout: 30_000 });
+    await row.getByRole('button', { name: fileName }).click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('heading', { name: fileName })).toBeVisible();
+    await expect(dialog.getByText(marker, { exact: false })).toBeVisible({ timeout: 30_000 });
+    await dialog.getByRole('button', { name: 'Close' }).click();
+    await expect(dialog).toHaveCount(0);
   });
 });
 
 test.describe('chat', () => {
-  test('send message, see response, create/delete thread locally', async ({ page }) => {
+  test('send message and see it rendered in the transcript', async ({ page }) => {
     const wsId = await login(page);
     await gotoWorkspace(page, wsId, '/chat');
-    await page.waitForTimeout(1500);
+    await expect(page.getByRole('heading', { level: 1, name: 'Chat' })).toBeVisible({
+      timeout: 30_000,
+    });
 
-    const composer = page.locator('textarea');
-    await composer.fill('Hello from Playwright');
+    const prompt = `Hello from Playwright ${Date.now()}`;
+    const composer = page.getByLabel('Chat message');
+    await expect(composer).toBeVisible();
+    await composer.fill(prompt);
     await page.keyboard.press('Enter');
-    // Streaming indicator or response content appears; mock LLM responds fast.
-    await expect(page.locator('body')).toContainText(/hello from playwright/i);
-    await page.waitForTimeout(2500);
 
-    // Thread appears in rail; delete it (local operation).
-    const threadRow = page.getByRole('button', { name: /playwright/i }).first();
-    if (await threadRow.count()) {
-      await threadRow.hover();
-      await page
-        .getByRole('button', { name: /delete thread/i })
-        .first()
-        .click();
-    }
+    await expect(page.getByText(prompt, { exact: false })).toBeVisible({ timeout: 30_000 });
+    // A new conversation is titled from the first prompt (ChatWindow.tsx:544)
+    // and is reachable in the thread rail.
+    const rail = page.locator('aside').filter({ hasText: 'THREADS' });
+    await expect(
+      rail.getByRole('button', { name: new RegExp(prompt.slice(0, 24), 'i') }),
+    ).toBeVisible({
+      timeout: 30_000,
+    });
+    // There is no delete-thread control anywhere in the app, so the old test's
+    // `getByRole('button', { name: /delete thread/i })` was permanently skipped.
+    await expect(page.getByRole('button', { name: /delete thread/i })).toHaveCount(0);
   });
 
   test('stop control replaces send during streaming', async ({ page }) => {
     const wsId = await login(page);
     await gotoWorkspace(page, wsId, '/chat');
-    await page.waitForTimeout(1200);
+    await expect(page.getByRole('heading', { level: 1, name: 'Chat' })).toBeVisible({
+      timeout: 30_000,
+    });
     // Resting state: send visible, stop absent.
     await expect(page.getByRole('button', { name: 'Send message' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Stop generating' })).toHaveCount(0);
@@ -79,10 +138,10 @@ test.describe('chat', () => {
       await new Promise((r) => setTimeout(r, 8_000));
       await route.continue().catch(() => {});
     });
-    await page.locator('textarea').fill('Hello stop test');
+    await page.getByLabel('Chat message').fill('Hello stop test');
     await page.keyboard.press('Enter');
 
-    const stop = page.getByRole('button', { name: 'Stop generating' });
+    const stop = page.getByRole('button', { name: 'Stop generation' });
     await expect(stop).toBeVisible({ timeout: 10_000 });
     await stop.click();
 

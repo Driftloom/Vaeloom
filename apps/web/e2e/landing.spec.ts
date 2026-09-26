@@ -10,6 +10,12 @@ import AxeBuilder from '@axe-core/playwright';
  * (canvas pixels vary per rAF, which would make baselines flaky).
  * The reduced-motion pass doubles as the WCAG fallback-mode check:
  * if the page stops telling its story without 3D, these snapshots show it.
+ *
+ * NOT A CI GATE: `.github/workflows/ci-frontend.yml:62` excludes the
+ * "visual baselines" grep from the blocking run and `:67` re-runs it with
+ * `--update-snapshots`, which rewrites every PNG and always exits 0. Required
+ * CI change: run `pnpm exec playwright test --grep "visual baselines"` WITHOUT
+ * `--update-snapshots` on a pinned image with committed `-linux` baselines.
  */
 
 test.describe('landing functional', () => {

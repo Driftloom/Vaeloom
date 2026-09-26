@@ -51,38 +51,38 @@ export class VaeloomClient {
 
   // Memory
   async createMemory(data: Partial<Memory>): Promise<Memory> {
-    const { data: response } = await this.client.post('/api/v1/memory', data);
-    return response;
+    const { data: response } = await this.client.post('/api/v1/memories', data);
+    return response.data ?? response;
   }
 
   async getMemory(id: string): Promise<Memory> {
-    const { data: response } = await this.client.get(`/api/v1/memory/${id}`);
-    return response.data;
+    const { data: response } = await this.client.get(`/api/v1/memories/${id}`);
+    return response.data ?? response;
   }
 
   async searchMemories(query: MemoryQuery): Promise<PaginatedResponse<Memory>> {
-    const { data: response } = await this.client.post('/api/v1/memory/search', query);
+    const { data: response } = await this.client.post('/api/v1/memories/search', query);
     return response;
   }
 
   async deleteMemory(id: string): Promise<void> {
-    await this.client.delete(`/api/v1/memory/${id}`);
+    await this.client.delete(`/api/v1/memories/${id}`);
   }
 
   // Agents
   async listAgents(): Promise<Agent[]> {
     const { data: response } = await this.client.get('/api/v1/agents');
-    return response.data;
+    return response.agents ?? response.data ?? response;
   }
 
   async executeAgent(agentId: string, input: Record<string, unknown>): Promise<AgentExecution> {
     const { data: response } = await this.client.post(`/api/v1/agents/${agentId}/execute`, input);
-    return response;
+    return response.data ?? response;
   }
 
   async getAgentStatus(agentId: string): Promise<Agent> {
     const { data: response } = await this.client.get(`/api/v1/agents/${agentId}`);
-    return response.data;
+    return response.data ?? response;
   }
 
   // Health

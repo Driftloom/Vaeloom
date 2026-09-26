@@ -12,7 +12,11 @@ export interface PublicUser {
   id: UUID;
   email: Email;
   displayName: string;
+  avatarUrl?: string | null;
   authProvider: string;
+  emailVerified?: boolean;
+  /** True when the user has completed TOTP enrolment. Server-authoritative. */
+  mfaEnabled?: boolean;
   createdAt: ISO8601;
 }
 

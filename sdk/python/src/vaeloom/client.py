@@ -35,20 +35,23 @@ class VaeloomClient:
         return response.json()
 
     def create_memory(self, data: dict) -> Memory:
-        result = self._request("POST", "/api/v1/memory", json=data)
-        return Memory(**result)
+        result = self._request("POST", "/api/v1/memories", json=data)
+        item = result.get("data", result)
+        return Memory(**item)
 
     def get_memory(self, memory_id: str) -> Memory:
-        result = self._request("GET", f"/api/v1/memory/{memory_id}")
-        return Memory(**result["data"])
+        result = self._request("GET", f"/api/v1/memories/{memory_id}")
+        item = result.get("data", result)
+        return Memory(**item)
 
     def search_memories(self, query: MemoryQuery) -> PaginatedResponse[Memory]:
-        result = self._request("POST", "/api/v1/memory/search", json=query.model_dump())
+        result = self._request("POST", "/api/v1/memories/search", json=query.model_dump())
         return PaginatedResponse(**result)
 
     def list_agents(self) -> list[Agent]:
         result = self._request("GET", "/api/v1/agents")
-        return [Agent(**a) for a in result["data"]]
+        items = result.get("agents", result.get("data", []))
+        return [Agent(**a) for a in items]
 
     def health_check(self) -> str:
         result = self._request("GET", "/health")
