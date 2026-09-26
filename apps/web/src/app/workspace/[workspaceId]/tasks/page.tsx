@@ -144,7 +144,7 @@ export default function TasksPage() {
           label="Completed Today"
           value={completedCount}
           icon={<CheckSquareIcon size={20} />}
-          caption="100% deterministic success rate"
+          caption="Successfully finished tasks"
         />
         <StatCard
           label="Avg Workflow Time"

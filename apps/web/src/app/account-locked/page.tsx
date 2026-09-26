@@ -30,8 +30,9 @@ export default function AccountLockedPage() {
             To prevent brute-force attacks and token replay, workspace access is gated for 15
             minutes or until unlocked via your verified recovery email.
           </p>
-          <div className="text-2xs font-mono text-text-muted pt-1">
-            Incident ID: <strong className="text-text">SEC-LOCK-2026-9411</strong>
+          <div className="text-2xs text-text-muted pt-1">
+            If you did not initiate these attempts, reset your password immediately or contact your
+            administrator.
           </div>
         </div>
 

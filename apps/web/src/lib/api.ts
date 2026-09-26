@@ -85,8 +85,11 @@ export function setToken(token: string): void {
 export function clearToken(): void {
   if (typeof window !== 'undefined') {
     window.localStorage.removeItem(TOKEN_KEY);
+    window.localStorage.removeItem(REFRESH_KEY);
     document.cookie =
       'vaeloom.accessToken=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+    document.cookie =
+      'vaeloom.refreshToken=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
     window.dispatchEvent(new Event('vaeloom.auth_token_cleared'));
   }
 }

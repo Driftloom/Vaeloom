@@ -26,11 +26,14 @@ import {
   LockIcon,
   UsersIcon,
 } from '@vaeloom/ui-kit';
+import { getNavigationGroups, type DataMode } from '@/lib/route-manifest';
 
 interface NavLink {
+  id: string;
   name: string;
   path: string;
   icon: React.ReactNode;
+  dataMode: DataMode;
 }
 
 interface NavGroup {
@@ -43,75 +46,54 @@ function isEnterpriseEnabled(): boolean {
   return process.env['NEXT_PUBLIC_ENABLE_ENTERPRISE'] === 'true';
 }
 
+const ROUTE_ICONS: Record<string, React.ReactNode> = {
+  dashboard: <CpuIcon size={16} />,
+  capabilities: <TerminalIcon size={16} />,
+  chat: <BrainIcon size={16} />,
+  agents: <UsersIcon size={16} />,
+  cognition: <CpuIcon size={16} />,
+  council: <UsersIcon size={16} />,
+  memory: <BrainIcon size={16} />,
+  search: <SearchIcon size={16} />,
+  files: <FileTextIcon size={16} />,
+  career: <BriefcaseIcon size={16} />,
+  resume: <FileTextIcon size={16} />,
+  jobs: <BriefcaseIcon size={16} />,
+  applications: <FileTextIcon size={16} />,
+  tasks: <CheckSquareIcon size={16} />,
+  history: <ClockIcon size={16} />,
+  schedule: <CalendarIcon size={16} />,
+  approvals: <ShieldIcon size={16} />,
+  connectors: <PlugIcon size={16} />,
+  email: <MailIcon size={16} />,
+  profile: <UsersIcon size={16} />,
+  settings: <SettingsIcon size={16} />,
+  security: <ShieldIcon size={16} />,
+  vault: <LockIcon size={16} />,
+  help: <HelpCircleIcon size={16} />,
+  billing: <DatabaseIcon size={16} />,
+  admin: <BuildingIcon size={16} />,
+  organizations: <BuildingIcon size={16} />,
+  marketplace: <BuildingIcon size={16} />,
+  developer: <TerminalIcon size={16} />,
+  'feature-flags': <SettingsIcon size={16} />,
+};
+
 function groupLinks(workspaceId: string): NavGroup[] {
-  const ws = (path: string) => `/workspace/${workspaceId}${path}`;
   const enableEnterprise = isEnterpriseEnabled();
+  const manifestGroups = getNavigationGroups(workspaceId, { enableEnterprise });
 
-  const allGroups: NavGroup[] = [
-    {
-      label: 'Assist',
-      links: [
-        { name: 'Dashboard', path: ws(''), icon: <CpuIcon size={16} /> },
-        { name: 'Capabilities', path: ws('/capabilities'), icon: <TerminalIcon size={16} /> },
-        { name: 'Chat', path: ws('/chat'), icon: <BrainIcon size={16} /> },
-        { name: 'Agents', path: ws('/agents'), icon: <UsersIcon size={16} /> },
-      ],
-    },
-    {
-      label: 'Memory',
-      links: [
-        { name: 'Memory Graph', path: ws('/memory'), icon: <BrainIcon size={16} /> },
-        { name: 'Search', path: ws('/search'), icon: <SearchIcon size={16} /> },
-        { name: 'Documents', path: ws('/files'), icon: <FileTextIcon size={16} /> },
-      ],
-    },
-    {
-      label: 'Career',
-      links: [
-        { name: 'Career Strategy', path: ws('/career'), icon: <BriefcaseIcon size={16} /> },
-        { name: 'Resumes', path: ws('/resume'), icon: <FileTextIcon size={16} /> },
-        { name: 'Jobs', path: ws('/jobs'), icon: <BriefcaseIcon size={16} /> },
-        { name: 'Applications', path: ws('/applications'), icon: <FileTextIcon size={16} /> },
-      ],
-    },
-    {
-      label: 'Operations',
-      links: [
-        { name: 'Tasks & DAGs', path: ws('/tasks'), icon: <CheckSquareIcon size={16} /> },
-        { name: 'Activity Log', path: ws('/history'), icon: <ClockIcon size={16} /> },
-        { name: 'Schedule', path: ws('/schedule'), icon: <CalendarIcon size={16} /> },
-        { name: 'Approvals', path: ws('/approvals'), icon: <ShieldIcon size={16} /> },
-        { name: 'Connectors', path: ws('/connectors'), icon: <PlugIcon size={16} /> },
-        { name: 'Email Intel', path: ws('/email'), icon: <MailIcon size={16} /> },
-      ],
-    },
-    {
-      label: 'Trust & Rights',
-      links: [
-        { name: 'Workspace Settings', path: ws('/settings'), icon: <SettingsIcon size={16} /> },
-        { name: 'Security & Keys', path: ws('/settings/security'), icon: <ShieldIcon size={16} /> },
-        { name: 'Secrets Vault', path: ws('/vault'), icon: <LockIcon size={16} /> },
-        { name: 'Billing & Plans', path: ws('/billing'), icon: <DatabaseIcon size={16} /> },
-        { name: 'Help & Guides', path: ws('/help'), icon: <HelpCircleIcon size={16} /> },
-      ],
-    },
-  ];
-
-  if (enableEnterprise) {
-    allGroups.push({
-      label: 'Enterprise',
-      enterprise: true,
-      links: [
-        { name: 'Admin', path: ws('/admin'), icon: <BuildingIcon size={16} /> },
-        { name: 'Organizations', path: ws('/organizations'), icon: <BuildingIcon size={16} /> },
-        { name: 'Marketplace', path: ws('/marketplace'), icon: <BuildingIcon size={16} /> },
-        { name: 'Developer', path: ws('/developer'), icon: <TerminalIcon size={16} /> },
-        { name: 'Feature Flags', path: ws('/feature-flags'), icon: <SettingsIcon size={16} /> },
-      ],
-    });
-  }
-
-  return allGroups;
+  return manifestGroups.map((g) => ({
+    label: g.label,
+    enterprise: g.enterprise,
+    links: g.links.map((link) => ({
+      id: link.id,
+      name: link.name,
+      path: link.path,
+      icon: ROUTE_ICONS[link.id] ?? <CpuIcon size={16} />,
+      dataMode: link.dataMode,
+    })),
+  }));
 }
 
 interface SidebarNavLinkProps {
@@ -136,9 +118,21 @@ function SidebarNavLink({ link, current, collapsed }: SidebarNavLinkProps) {
             : 'text-text-secondary hover:text-text hover:bg-surface-200'
         }`}
       >
-        <span className="shrink-0">{link.icon}</span>
+        <span className="shrink-0" aria-hidden="true">
+          {link.icon}
+        </span>
         {!collapsed ? (
-          <span className="truncate">{link.name}</span>
+          <>
+            <span className="truncate">{link.name}</span>
+            {link.dataMode === 'preview' && (
+              <span
+                aria-hidden="true"
+                className="ml-auto text-[9px] font-mono uppercase tracking-wider px-1 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+              >
+                preview
+              </span>
+            )}
+          </>
         ) : (
           <span className="sr-only">{link.name}</span>
         )}

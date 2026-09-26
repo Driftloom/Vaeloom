@@ -3195,12 +3195,33 @@ export interface CreateInvitationRequest {
   role?: 'admin' | 'lead' | 'member' | 'viewer';
 }
 
+/**
+ * The organizations list endpoints return a `{ items, total }` envelope
+ * (organizations.py get_organization_tree / list_organization_members /
+ * list_organization_invitations). The previous client typed them as bare
+ * arrays, so callers received an object where they expected an array —
+ * `organizations/page.tsx` then did `roots.map(...)` on `{items,total}` and
+ * threw at runtime. Unwrap here so the caller's array contract holds, and keep
+ * the envelope accessible for callers that need the count.
+ */
+interface ListEnvelope<T> {
+  items?: T[];
+  total?: number;
+}
+
+function unwrapItems<T>(payload: T[] | ListEnvelope<T> | null | undefined): T[] {
+  if (Array.isArray(payload)) return payload;
+  return payload?.items ?? [];
+}
+
 export const organizationsApi = {
   getTree(workspaceId?: string | null): Promise<OrganizationNode[]> {
-    return apiClient.get<OrganizationNode[]>(
-      '/organizations/tree',
-      workspaceId ? { workspace_id: workspaceId } : undefined,
-    );
+    return apiClient
+      .get<OrganizationNode[] | ListEnvelope<OrganizationNode>>(
+        '/organizations/tree',
+        workspaceId ? { workspace_id: workspaceId } : undefined,
+      )
+      .then(unwrapItems<OrganizationNode>);
   },
   create(body: CreateOrganizationRequest): Promise<OrganizationNode> {
     return apiClient.post<OrganizationNode>('/organizations', body);
@@ -3212,7 +3233,9 @@ export const organizationsApi = {
     return apiClient.delete<{ ok: boolean }>(`/organizations/${id}`);
   },
   getMembers(id: string): Promise<OrganizationMember[]> {
-    return apiClient.get<OrganizationMember[]>(`/organizations/${id}/members`);
+    return apiClient
+      .get<OrganizationMember[] | ListEnvelope<OrganizationMember>>(`/organizations/${id}/members`)
+      .then(unwrapItems<OrganizationMember>);
   },
   addMember(id: string, body: AddOrganizationMemberRequest): Promise<OrganizationMember> {
     return apiClient.post<OrganizationMember>(`/organizations/${id}/members`, body);
@@ -3224,7 +3247,11 @@ export const organizationsApi = {
     return apiClient.post<OrganizationInvitation>(`/organizations/${orgId}/invitations`, body);
   },
   getInvitations(orgId: string): Promise<OrganizationInvitation[]> {
-    return apiClient.get<OrganizationInvitation[]>(`/organizations/${orgId}/invitations`);
+    return apiClient
+      .get<OrganizationInvitation[] | ListEnvelope<OrganizationInvitation>>(
+        `/organizations/${orgId}/invitations`,
+      )
+      .then(unwrapItems<OrganizationInvitation>);
   },
   revokeInvitation(invitationId: string): Promise<{ ok: boolean }> {
     return apiClient.delete<{ ok: boolean }>(`/organizations/invitations/${invitationId}`);
@@ -3698,5 +3725,51 @@ export const cognitionApi = {
       period_start: periodStart,
       period_end: periodEnd,
     });
+  },
+};
+
+export interface ApiKeyItem {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  permissions: string[];
+  tenantId?: string;
+  userId: string;
+  expiresAt?: string;
+  lastUsed?: string;
+  enabled: boolean;
+  version: number;
+  rotatedAt?: string;
+  createdAt: string;
+}
+
+export interface CreatedApiKeyItem extends ApiKeyItem {
+  key: string;
+}
+
+export interface RotatedApiKeyItem {
+  id: string;
+  key: string;
+  keyPrefix: string;
+  version: number;
+  rotatedAt?: string;
+}
+
+export const apiKeysApi = {
+  list(): Promise<ApiKeyItem[]> {
+    return apiClient.get('/api-keys');
+  },
+  create(data: {
+    name: string;
+    permissions?: string[];
+    expires_days?: number;
+  }): Promise<CreatedApiKeyItem> {
+    return apiClient.post('/api-keys', data);
+  },
+  rotate(keyId: string): Promise<RotatedApiKeyItem> {
+    return apiClient.post(`/api-keys/${keyId}/rotate`);
+  },
+  revoke(keyId: string): Promise<{ status: string }> {
+    return apiClient.delete(`/api-keys/${keyId}`);
   },
 };

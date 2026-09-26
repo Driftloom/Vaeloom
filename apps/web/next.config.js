@@ -4,19 +4,19 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 });
 
 const nextConfig = {
+  // `next dev` and `next build` share `.next` by default, so running a
+  // production build while a dev server is up overwrites the dev server's
+  // output (BUILD_ID / export-marker.json replace the dev manifests) and every
+  // route then fails with a bare 500. Set NEXT_DIST_DIR to build somewhere else;
+  // `pnpm build:isolated` does this. The default stays `.next` so CI, Docker
+  // (apps/web/Dockerfile copies .next/standalone) and `next start` are unchanged.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   serverExternalPackages: [
     '@supabase/ssr',
     '@supabase/supabase-js',
     '@supabase/auth-js',
     '@opentelemetry/api',
   ],
-  webpack(config, { isServer, dev }) {
-    if (isServer && dev) {
-      config.optimization = config.optimization || {};
-      config.optimization.splitChunks = false;
-    }
-    return config;
-  },
   output: process.env.CI === 'true' && process.platform !== 'win32' ? 'standalone' : undefined,
   transpilePackages: ['@vaeloom/shared-types', '@vaeloom/ui-kit'],
   reactStrictMode: true,

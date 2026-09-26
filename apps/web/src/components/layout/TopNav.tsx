@@ -18,51 +18,7 @@ import {
   ChevronDownIcon,
 } from '@vaeloom/ui-kit';
 
-function resolveBreadcrumb(pathname: string): { section: string; title: string } {
-  const parts = pathname.split('/').filter(Boolean);
-  const subroute = parts[2] || '';
-
-  const routeMap: Record<string, { section: string; title: string }> = {
-    '': { section: 'Assist', title: 'Dashboard' },
-    profile: { section: 'Trust & Rights', title: 'Profile & Security' },
-    agents: { section: 'Assist', title: 'Agents' },
-    cognition: { section: 'Assist', title: 'Cognitive Engine' },
-    council: { section: 'Assist', title: 'Agent Council' },
-    chat: { section: 'Assist', title: 'Chat Assistant' },
-    memory: { section: 'Memory', title: 'Memory Graph' },
-    search: { section: 'Memory', title: 'Global Search' },
-    documents: { section: 'Operations', title: 'Files & Documents' },
-    career: { section: 'Career', title: 'Career Strategy' },
-    resume: { section: 'Career', title: 'Resume & Documents' },
-    resumes: { section: 'Career', title: 'Resume & Documents' },
-    applications: { section: 'Career', title: 'Job Applications' },
-    jobs: { section: 'Career', title: 'Job Tracker' },
-    tasks: { section: 'Operations', title: 'Tasks & DAGs' },
-    email: { section: 'Operations', title: 'Email Intelligence' },
-    files: { section: 'Operations', title: 'Files & Documents' },
-    connectors: { section: 'Operations', title: 'Integrations & Connectors' },
-    schedule: { section: 'Operations', title: 'Schedule & Crons' },
-    notifications: { section: 'Operations', title: 'Notifications & Approvals' },
-    approvals: { section: 'Operations', title: 'Pending Approvals' },
-    analytics: { section: 'Operations', title: 'Analytics & Usage' },
-    billing: { section: 'Operations', title: 'Billing & Plans' },
-    settings: { section: 'Operations', title: 'Workspace Settings' },
-    vault: { section: 'Trust & Rights', title: 'Secrets Vault' },
-    help: { section: 'Trust & Rights', title: 'Help & Shortcuts' },
-    admin: { section: 'Enterprise', title: 'Admin Console' },
-    marketplace: { section: 'Enterprise', title: 'Marketplace' },
-    organizations: { section: 'Enterprise', title: 'Organizations' },
-    developer: { section: 'Enterprise', title: 'Developer Portal' },
-    'feature-flags': { section: 'Enterprise', title: 'Feature Flags' },
-  };
-
-  return (
-    routeMap[subroute] || {
-      section: 'Workspace',
-      title: subroute ? subroute.charAt(0).toUpperCase() + subroute.slice(1) : 'Overview',
-    }
-  );
-}
+import { resolveBreadcrumb } from '@/lib/route-manifest';
 
 export function TopNav({
   onMenuClick,

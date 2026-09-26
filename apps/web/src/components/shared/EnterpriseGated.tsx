@@ -19,19 +19,16 @@ export function EnterpriseGated({
       </h1>
       <p className="text-text-muted max-w-lg">
         {description ??
-          'This area is not part of the MVP. It is hidden in production builds and will be enabled when the enterprise APIs are wired.'}
+          'This area is not part of the current release. It is hidden until the enterprise APIs are wired.'}
       </p>
-      <div className="mt-6 flex gap-3">
-        <Link href="/workspaces" className="btn-primary">
-          Back to workspaces
+      <div className="mt-6 flex flex-wrap justify-center gap-3">
+        <Link href="/workspace" className="btn-primary">
+          Back to your workspace
         </Link>
         <a href="mailto:enterprise@vaeloom.app" className="btn-secondary">
           Contact sales
         </a>
       </div>
-      <p className="text-xs text-text-dim mt-4 font-mono">
-        Set NEXT_PUBLIC_ENABLE_ENTERPRISE=true to preview.
-      </p>
     </div>
   );
 }

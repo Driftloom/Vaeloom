@@ -387,19 +387,29 @@ export default function JobsPage() {
       <TabPanel id="search" activeTab={active}>
         <div className="card mb-6">
           <div className="flex gap-2">
+            {/* A placeholder is not an accessible name (WCAG 3.3.2 / 4.1.2).
+                axe does not flag placeholder-only inputs, so this needs an
+                explicit label. */}
+            <label htmlFor="job-search-query" className="sr-only">
+              Search jobs
+            </label>
             <input
+              id="job-search-query"
+              type="search"
+              aria-label="Search jobs"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSearch();
               }}
               placeholder="e.g. Product Manager in Berlin, React frontend, ML engineer…"
-              className="flex-1 rounded-full border border-border bg-background px-4 py-2 text-sm outline-none focus:border-primary"
+              className="flex-1 min-h-11 rounded-full border border-border bg-background px-4 py-2 text-sm outline-none focus:border-primary"
             />
             <button
+              type="button"
               onClick={handleSearch}
               disabled={searching || !query.trim()}
-              className="rounded-full bg-white px-5 py-2 text-sm text-black disabled:opacity-40"
+              className="min-h-11 rounded-full bg-white px-5 py-2 text-sm text-black disabled:opacity-40"
             >
               {searching ? 'Searching…' : 'Search'}
             </button>

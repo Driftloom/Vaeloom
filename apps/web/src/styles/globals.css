@@ -71,8 +71,10 @@
   /* Primary = LINK/brand text color (theme-aware, AA on black surfaces).
      Action = solid button background (fixed indigo, white label). */
   --primary: 165 180 252;       /* #A5B4FC ≈ 10:1 on #000000 */
+  --primary-fg: 255 255 255;
   --primary-300: 165 180 252;
   --primary-400: 129 140 248;
+  --primary-700: 67 56 202;
   --action: 79 70 229;          /* #4F46E5 */
   --action-hover: 67 56 202;    /* #4338CA */
   --action-active: 55 48 163;   /* #3730A3 */
@@ -143,8 +145,10 @@
   --border-strong: 199 205 222;
 
   --primary: 67 56 202;         /* #4338CA ≈ 7.9:1 on white */
+  --primary-fg: 255 255 255;
   --primary-300: 79 70 229;
   --primary-400: 67 56 202;
+  --primary-700: 67 56 202;
   --action: 79 70 229;
   --action-hover: 67 56 202;
   --action-active: 55 48 163;
@@ -219,8 +223,10 @@ html.high-contrast,
 
   /* Primary & Action: high-luminance neon yellow / bright indigo */
   --primary: 255 255 0;         /* #FFFF00 */
+  --primary-fg: 0 0 0;          /* High contrast text on neon yellow */
   --primary-300: 255 255 100;
   --primary-400: 255 255 0;
+  --primary-700: 200 200 0;
   --action: 79 70 229;          /* #4F46E5 */
   --action-hover: 99 102 241;
   --action-active: 129 140 248;

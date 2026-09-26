@@ -21,15 +21,6 @@ export async function GET(request: Request) {
       process.env['NEXT_PUBLIC_SUPABASE_URL'] || 'https://yygakxcttyaeunvkeybx.supabase.co';
     const supabaseAnonKey = process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] || '';
 
-    const allCookies = cookieStore.getAll();
-    console.log('[Supabase Route Handler] Received code:', code);
-    console.log(
-      '[Supabase Route Handler] Available cookies in request:',
-      allCookies.map((c) => ({ name: c.name, size: c.value.length })),
-    );
-    console.log('[Supabase Route Handler] Supabase URL:', supabaseUrl);
-    console.log('[Supabase Route Handler] Supabase Anon Key prefix:', supabaseAnonKey.slice(0, 15));
-
     const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
       cookies: {
         getAll() {
@@ -59,27 +50,33 @@ export async function GET(request: Request) {
       } else {
         try {
           const backendUrl = process.env['NEXT_PUBLIC_API_URL'] || 'http://localhost:8000';
-          console.log('[Supabase Route Handler] Calling backend /api/v1/auth/me at:', backendUrl);
           const meRes = await fetch(`${backendUrl}/api/v1/auth/me`, {
             headers: { Authorization: `Bearer ${accessToken}` },
           });
-          console.log('[Supabase Route Handler] /api/v1/auth/me status:', meRes.status);
+          console.info('[auth/callback] /api/v1/auth/me status:', meRes.status);
           if (meRes.ok) {
             const meData = await meRes.json();
-            console.log(
-              '[Supabase Route Handler] /api/v1/auth/me response:',
-              JSON.stringify(meData),
-            );
+            // Log the shape of the response, never its contents. The body
+            // carries user PII and workspace identifiers.
             const ws = meData.workspaces;
-            if (Array.isArray(ws) && ws.length > 0 && ws[0]?.id) {
+            const workspaceCount = Array.isArray(ws) ? ws.length : 0;
+            console.info('[auth/callback] /api/v1/auth/me ok, workspace count:', workspaceCount);
+            if (workspaceCount > 0 && ws[0]?.id) {
               targetPath = `/workspace/${ws[0].id}`;
             }
           } else {
+            // Record the failure class and size only. The body is an
+            // upstream error payload and must not be logged verbatim.
             const errText = await meRes.text();
-            console.error('[Supabase Route Handler] /api/v1/auth/me error body:', errText);
+            console.error(
+              '[auth/callback] /api/v1/auth/me rejected:',
+              meRes.status,
+              'bodyBytes:',
+              errText.length,
+            );
           }
         } catch (fetchErr) {
-          console.error('[Supabase Route Handler] Failed to call /api/v1/auth/me:', fetchErr);
+          console.error('[auth/callback] /api/v1/auth/me call failed:', fetchErr);
         }
       }
 
@@ -108,7 +105,9 @@ export async function GET(request: Request) {
 
       return response;
     } else {
-      console.error('[Supabase Route Handler] exchangeCodeForSession failed:', error?.message);
+      // error?.message from the provider is a failure description, not a
+      // credential. It is logged without the code or any token material.
+      console.error('[auth/callback] exchangeCodeForSession failed:', error?.message);
     }
   }
 

@@ -83,8 +83,8 @@ export default function EmailIntelligencePage() {
 
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 text-2xs font-mono px-3 py-1.5 rounded-lg bg-surface-100 border border-border-subtle">
-            <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-            <span className="text-text-muted">{sync.provider}:</span>
+            <span className="w-2 h-2 rounded-full bg-warning" />
+            <span className="text-text-muted">Sample Preview:</span>
             <strong className="text-text">{sync.accountEmail}</strong>
           </div>
           <Link href={`/workspace/${workspaceId}/connectors`}>

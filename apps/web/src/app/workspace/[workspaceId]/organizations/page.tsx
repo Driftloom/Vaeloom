@@ -22,6 +22,7 @@ import {
   type OrganizationInvitation,
 } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
+import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
 
 interface Role {
   id: string;
@@ -178,6 +179,13 @@ function OrgTreeNode({
 }
 
 export default function OrganizationsPage() {
+  if (!isEnterpriseEnabled()) {
+    return <EnterpriseGated feature="Organizations" />;
+  }
+  return <OrganizationsContent />;
+}
+
+function OrganizationsContent() {
   const params = useParams();
   const workspaceId = (params?.['workspaceId'] as string | undefined) ?? null;
   const { toast } = useToast();

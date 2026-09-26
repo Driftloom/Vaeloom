@@ -22,6 +22,7 @@ import {
   type WorkspacePluginInstallItem,
 } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
+import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
 
 const CATEGORIES = ['All', 'AI', 'Analytics', 'Data', 'Integration', 'Productivity', 'Security'];
 const CATALOG_TYPES = ['All Catalog', 'Community Plugins', 'Composio SaaS', 'Native Core'] as const;
@@ -164,6 +165,13 @@ const NATIVE_CORE_CATALOG: Partial<MarketplaceListingItem>[] = [
 ];
 
 export default function MarketplacePage() {
+  if (!isEnterpriseEnabled()) {
+    return <EnterpriseGated feature="Marketplace" />;
+  }
+  return <MarketplaceContent />;
+}
+
+function MarketplaceContent() {
   const { toast } = useToast();
   const params = useParams();
   const workspaceId = (params?.['workspaceId'] as string | undefined) ?? '';

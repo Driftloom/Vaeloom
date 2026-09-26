@@ -108,9 +108,9 @@ export default function GlobalSearchPage() {
         </div>
 
         <div className="flex items-center gap-2 text-2xs font-mono text-text-muted">
-          <span>Partitions: 6</span>
-          <span>•</span>
-          <span>Indexed Entities: 142</span>
+          <Badge variant="default" size="sm">
+            Indexed Search
+          </Badge>
         </div>
       </div>
 
@@ -185,13 +185,11 @@ export default function GlobalSearchPage() {
         </div>
       </div>
 
-      {/* Results Count & Latency Telemetry */}
       <div className="flex items-center justify-between text-2xs text-text-muted px-1">
         <span>
           Found <strong>{filteredResults.length}</strong> result
           {filteredResults.length === 1 ? '' : 's'}
         </span>
-        <span className="font-mono">Traversal Latency: 14ms (System 1 Index)</span>
       </div>
 
       {/* Results List */}

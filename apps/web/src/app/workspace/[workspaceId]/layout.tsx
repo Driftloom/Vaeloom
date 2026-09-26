@@ -9,6 +9,7 @@ import { useAuth } from '../../../hooks/useAuth';
 import { LoadingSpinner } from '../../../components/common/LoadingSpinner';
 import { ErrorBoundary } from '../../../components/common/ErrorBoundary';
 import { RealtimeProvider } from '@/components/providers/RealtimeProvider';
+import { DataModeBanner } from '@/components/shared/DataModeBanner';
 
 export default function WorkspaceLayout({
   children,
@@ -154,7 +155,10 @@ export default function WorkspaceLayout({
             aria-hidden={sidebarOpen ? true : undefined}
             {...(sidebarOpen ? { inert: true } : {})}
           >
-            <ErrorBoundary>{children}</ErrorBoundary>
+            <ErrorBoundary>
+              <DataModeBanner />
+              {children}
+            </ErrorBoundary>
           </div>
         </div>
 
