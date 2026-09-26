@@ -24,7 +24,7 @@ import {
 import { useRouter } from 'next/navigation';
 import {
   api,
-  getToken,
+  hasSession,
   setToken,
   clearToken,
   setRefreshToken,
@@ -72,8 +72,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>(INITIAL_STATE);
   /** Guards against StrictMode double-invocation of the hydration effect. */
   const check = useCallback((attempt = 1) => {
-    const token = getToken();
-    if (!token) {
+    // The session marker is only a hint. It says "a session may exist", so the
+    // server still decides: the cookie can be expired or revoked while the
+    // marker remains, and treating the marker as truth would leave a signed-out
+    // user looking signed in. `/auth/me` is the only authority.
+    if (!hasSession()) {
       setState({ user: null, me: null, loading: false, error: null, isAuthenticated: false });
       return;
     }

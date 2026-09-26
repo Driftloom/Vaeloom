@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api, getToken } from '@/lib/api';
+import { api, hasSession } from '@/lib/api';
 
 export default function WorkspaceIndexPage() {
   const router = useRouter();
@@ -12,8 +12,8 @@ export default function WorkspaceIndexPage() {
     let isMounted = true;
 
     async function resolveWorkspace() {
-      const token = getToken();
-      if (!token) {
+      const mayHaveSession = hasSession();
+      if (!mayHaveSession) {
         router.replace('/login');
         return;
       }

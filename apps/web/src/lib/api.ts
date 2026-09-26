@@ -41,7 +41,38 @@ export const API_BASE = (function () {
 })();
 export const API_PREFIX = '/api/v1';
 
-const TOKEN_KEY = 'vaeloom.accessToken';
+/**
+ * Session storage (GAP-AUTH-01).
+ *
+ * The access and refresh credentials are HttpOnly cookies. This module no longer
+ * stores either of them: it cannot, because the browser does not expose them to
+ * JavaScript, and that is the point. A credential held in `localStorage` is
+ * readable by any script on the origin, so one XSS payload exfiltrates a session
+ * that outlives the tab and cannot be revoked by clearing storage.
+ *
+ * What remains here is a *marker* recording that a session probably exists. It
+ * contains no secret, and it is only ever used to decide whether it is worth
+ * asking the server who the user is. Every route that actually authenticates
+ * does so with the cookie the browser attaches automatically, and the server is
+ * the only authority on whether that cookie is still valid.
+ *
+ * The exported names are kept because ~40 modules import them, and because the
+ * SDK-style surface is part of this module's contract. `getToken()` deliberately
+ * returns `null` now: returning a placeholder would build an `Authorization:
+ * Bearer <placeholder>` header that fails closed but produces confusing 401s.
+ */
+const SESSION_MARKER_KEY = 'vaeloom.session';
+
+/** Legacy keys from before the HttpOnly migration, removed on first load. */
+const LEGACY_TOKEN_KEYS = ['vaeloom.accessToken', 'vaeloom.refreshToken'];
+
+/**
+ * Header that tells the API this caller wants credentials in cookies only, so
+ * the response body carries no token. Without it the backend would keep
+ * returning the tokens for the SDK's benefit and the web bundle would hold one
+ * again.
+ */
+const AUTH_MODE_HEADER = 'X-Auth-Mode';
 
 function toCamelCase(str: string): string {
   return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
@@ -61,37 +92,89 @@ export function transformKeys<T>(obj: unknown): T {
   return obj as T;
 }
 
-export function getToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  const ls = window.localStorage.getItem(TOKEN_KEY);
-  if (ls) return ls;
-  const match = document.cookie.match(/(?:^|; )vaeloom\.accessToken=([^;]*)/);
-  if (match && match[1]) {
-    const token = decodeURIComponent(match[1]);
-    window.localStorage.setItem(TOKEN_KEY, token);
-    return token;
+/**
+ * Purge tokens written by an older build.
+ *
+ * A user who signed in before this change still has a usable access and refresh
+ * token sitting in `localStorage`. Nothing would ever remove them, so the
+ * migration would silently leave the vulnerability in place for exactly the
+ * people who have been logged in longest. This runs once per page load.
+ */
+function purgeLegacyTokens(): void {
+  if (typeof window === 'undefined') return;
+  for (const key of LEGACY_TOKEN_KEYS) {
+    try {
+      if (window.localStorage.getItem(key) !== null) {
+        window.localStorage.removeItem(key);
+      }
+    } catch {
+      // Private browsing or a disabled storage partition. Not fatal: the cookie
+      // is what authenticates, and the stale value is unreachable by this build.
+    }
   }
+}
+
+purgeLegacyTokens();
+
+/**
+ * Whether a session marker is present.
+ *
+ * A hint, never an authorisation. Callers that gate UI on this must still treat
+ * a `true` as "ask the server", because the cookie can be expired or revoked
+ * while the marker remains.
+ */
+export function hasSession(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(SESSION_MARKER_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Always `null`.
+ *
+ * Retained so the ~40 modules that imported it keep compiling, and so no caller
+ * can accidentally build an `Authorization` header from a placeholder. Use
+ * `hasSession()` to ask whether a session might exist.
+ */
+export function getToken(): string | null {
   return null;
 }
 
-export function setToken(token: string): void {
-  if (typeof window !== 'undefined') {
-    window.localStorage.setItem(TOKEN_KEY, token);
-    document.cookie = `vaeloom.accessToken=${token}; path=/; max-age=86400; SameSite=Lax`;
-    window.dispatchEvent(new Event('vaeloom.auth_token_set'));
+export function getRefreshToken(): string | null {
+  return null;
+}
+
+export function setToken(_token?: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(SESSION_MARKER_KEY, '1');
+  } catch {
+    // Storage unavailable; the cookie still authenticates.
   }
+  window.dispatchEvent(new Event('vaeloom.auth_token_set'));
+}
+
+export function setRefreshToken(_token?: string): void {
+  // The refresh credential is a cookie. Nothing to persist. `setToken` already
+  // set the marker when the session was established.
 }
 
 export function clearToken(): void {
-  if (typeof window !== 'undefined') {
-    window.localStorage.removeItem(TOKEN_KEY);
-    window.localStorage.removeItem(REFRESH_KEY);
-    document.cookie =
-      'vaeloom.accessToken=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
-    document.cookie =
-      'vaeloom.refreshToken=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
-    window.dispatchEvent(new Event('vaeloom.auth_token_cleared'));
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(SESSION_MARKER_KEY);
+    for (const key of LEGACY_TOKEN_KEYS) window.localStorage.removeItem(key);
+  } catch {
+    // ignore
   }
+  window.dispatchEvent(new Event('vaeloom.auth_token_cleared'));
+}
+
+export function clearRefreshToken(): void {
+  // Nothing persisted to clear; `clearToken` removes the marker.
 }
 
 export class ApiError extends Error {
@@ -109,53 +192,46 @@ export class ApiError extends Error {
 
 let isRefreshing = false;
 let refreshQueue: Array<{ resolve: (token: string) => void; reject: (err: unknown) => void }> = [];
-const REFRESH_KEY = 'vaeloom.refreshToken';
 
-export function setRefreshToken(token: string): void {
-  if (typeof window !== 'undefined') {
-    window.localStorage.setItem(REFRESH_KEY, token);
-    document.cookie = `vaeloom.refreshToken=${token}; path=/; max-age=2592000; SameSite=Lax`;
-  }
-}
-
-export function getRefreshToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  const ls = window.localStorage.getItem(REFRESH_KEY);
-  if (ls) return ls;
-  const match = document.cookie.match(/(?:^|; )vaeloom\.refreshToken=([^;]*)/);
-  if (match && match[1]) {
-    const token = decodeURIComponent(match[1]);
-    window.localStorage.setItem(REFRESH_KEY, token);
-    return token;
-  }
-  return null;
-}
-
-export function clearRefreshToken(): void {
-  if (typeof window !== 'undefined') {
-    window.localStorage.removeItem(REFRESH_KEY);
-    document.cookie =
-      'vaeloom.refreshToken=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
-  }
-}
-
+/**
+ * Rotate the session.
+ *
+ * Sends no credential in the body: the refresh token is an HttpOnly cookie the
+ * browser attaches on its own, and this function cannot read it. The response
+ * therefore carries no new token either — the rotated cookies arrive in
+ * `Set-Cookie` — so the return value is a presence signal, not a credential.
+ *
+ * A CSRF token is required because, unlike a body field, a cookie *is* attached
+ * to cross-site requests. Without it an attacker page could force rotations,
+ * and since rotation invalidates the previous token, repeating that locks the
+ * user out.
+ */
 async function refreshToken(): Promise<string> {
-  const refresh = getRefreshToken();
-  if (!refresh) throw new ApiError(401, 'No refresh token available');
+  const csrf = await getCsrfToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    [AUTH_MODE_HEADER]: 'cookie',
+  };
+  if (csrf) headers['X-CSRF-Token'] = csrf;
+
   // Use fetch directly to avoid recursion through request()
   const res = await fetch(`${API_BASE}${API_PREFIX}/auth/refresh`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh_token: refresh }),
+    headers,
+    body: JSON.stringify({}),
     credentials: 'include',
   });
   if (!res.ok) {
+    if (res.status === 403) {
+      // The CSRF token expired or was never fetched. Drop it and let the caller
+      // retry once, matching the recovery path in request().
+      resetCsrfToken();
+    }
     throw new ApiError(res.status, 'Failed to refresh token');
   }
-  const data = transformKeys<{ accessToken: string; refreshToken?: string }>(await res.json());
-  setToken(data.accessToken);
-  if (data.refreshToken) setRefreshToken(data.refreshToken);
-  return data.accessToken;
+  // Re-establish the marker: the session rotated, so it still exists.
+  setToken();
+  return 'cookie-session';
 }
 
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -176,12 +252,16 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     'Content-Type': 'application/json',
     'X-Requested-With': 'XMLHttpRequest',
     'X-Request-ID': requestId,
+    // Ask for cookie-only credentials so the response body carries no token.
+    [AUTH_MODE_HEADER]: 'cookie',
     ...(init.headers as Record<string, string> | undefined),
   };
   if (typeof FormData !== 'undefined' && init.body instanceof FormData) {
     delete headers['Content-Type'];
   }
-  // Only attach Bearer token if not calling public auth endpoints (login/signup)
+  // No Authorization header: the session is the HttpOnly cookie the browser
+  // attaches on its own. The branch is retained only so a caller that somehow
+  // supplies a token cannot have it silently dropped.
   if (token && !isAuthEndpoint) headers['Authorization'] = `Bearer ${token}`;
   if (!headers['X-Workspace-ID']) {
     const urlParamsMatch = path.match(/[?&]workspace_?id=([a-f0-9-]+)/i);

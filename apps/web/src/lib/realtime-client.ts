@@ -1,4 +1,4 @@
-import { API_BASE, getToken } from './api';
+import { API_BASE } from './api';
 
 export type RealtimeMessageType =
   | 'AUTH'
@@ -61,8 +61,53 @@ export class RealtimeClient {
     }
 
     this.isExplicitlyClosed = false;
-    const token = getToken();
-    const connectUrl = token ? `${this.url}?token=${encodeURIComponent(token)}` : this.url;
+
+    // The socket authenticates with a single-use ticket, not the access JWT.
+    // The WebSocket constructor cannot set an Authorization header, so the
+    // credential has to travel in the URL — and putting a 30-day-capable token
+    // there both kept it readable by JavaScript and wrote it into every access
+    // and proxy log. A ticket is opaque, lives 60 seconds and is destroyed on
+    // first use.
+    //
+    // Because minting is async, the socket is opened in the continuation rather
+    // than synchronously here.
+    void this.openWithTicket();
+  }
+
+  private async csrfHeader(): Promise<Record<string, string>> {
+    // Mutating over HTTP needs the double-submit token; the WS handshake itself
+    // is protected by the ticket, not by CSRF.
+    try {
+      const { getCsrfToken, CSRF_HEADER } = await import('./csrf');
+      const token = await getCsrfToken();
+      return token ? { [CSRF_HEADER]: token } : {};
+    } catch {
+      return {};
+    }
+  }
+
+  private async openWithTicket(): Promise<void> {
+    let connectUrl: string;
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/realtime/ws-ticket`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(await this.csrfHeader()) },
+      });
+      if (!res.ok) {
+        throw new Error(`ws-ticket ${res.status}`);
+      }
+      const { ticket } = (await res.json()) as { ticket?: string };
+      if (!ticket) throw new Error('ws-ticket response had no ticket');
+      connectUrl = `${this.url}?ticket=${encodeURIComponent(ticket)}`;
+    } catch (err) {
+      this.emit('ERROR', {
+        type: 'ERROR',
+        message: err instanceof Error ? err.message : 'Failed to obtain a realtime ticket',
+      });
+      this.scheduleReconnect();
+      return;
+    }
 
     try {
       this.ws = new WebSocket(connectUrl);

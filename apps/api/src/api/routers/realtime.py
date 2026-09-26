@@ -2,6 +2,7 @@
 
 Endpoints:
 - WS   /api/v1/realtime/ws: Full-duplex WebSocket connection for workspace events.
+- POST /api/v1/realtime/ws-ticket: Mint a single-use handshake ticket.
 - POST /api/v1/realtime/broadcast: Broadcast events from internal workers or agent loops.
 - GET  /api/v1/realtime/status: Connection metrics and active channels.
 """
@@ -17,7 +18,9 @@ import jwt
 from pydantic import BaseModel, Field
 
 from ..config import settings
+from ..dependencies import get_current_user
 from ..infrastructure.websocket_manager import WebSocketConnection, ws_manager
+from ..services.ws_tickets import DEFAULT_TTL_SECONDS, issue_ticket, redeem_ticket
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +31,39 @@ class BroadcastRequest(BaseModel):
     channel: str = Field(..., description="Target channel (e.g. workspace:{id}, user:{id}, broadcast)")
     event: str = Field(..., description="Event name (e.g. AGENT_STEP, NOTIFICATION)")
     data: Dict[str, Any] = Field(default_factory=dict, description="Event payload")
+
+
+class WsTicketResponse(BaseModel):
+    ticket: str = Field(..., description="Opaque single-use ticket for the WS handshake")
+    expires_in: int = Field(..., description="Ticket lifetime in seconds")
+
+
+@router.post("/ws-ticket", response_model=WsTicketResponse)
+async def mint_ws_ticket(
+    current_user: dict = Depends(get_current_user),
+    workspace_id: Optional[str] = Query(None),
+):
+    """Mint a single-use ticket for the WebSocket handshake.
+
+    The browser `WebSocket` constructor cannot attach an `Authorization` header,
+    so the socket has to authenticate in the URL. Passing the long-lived access
+    JWT there kept that credential readable by JavaScript — which is exactly what
+    the HttpOnly migration removes — and wrote it into every access and proxy log
+    along the way.
+
+    A ticket is an opaque random value with a 60-second life that is destroyed
+    on first use. It carries no claims of its own, so it cannot be decoded,
+    forged or replayed.
+
+    The ticket is bound to the caller resolved here, so a ticket stolen from a log
+    cannot be redeemed as somebody else even before it expires.
+    """
+    user_id = current_user.get("user_id") or current_user.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    ticket, ttl = issue_ticket(str(user_id), workspace_id=workspace_id)
+    return WsTicketResponse(ticket=ticket, expires_in=ttl)
 
 
 async def _authenticate_token(token: str) -> Dict[str, Any]:
@@ -135,12 +171,38 @@ async def _authenticate_token(token: str) -> Dict[str, Any]:
 async def websocket_endpoint(
     websocket: WebSocket,
     token: Optional[str] = Query(None),
+    ticket: Optional[str] = Query(None),
     workspace_id: Optional[str] = Query(None),
 ):
-    """Full-duplex WebSocket connection for real-time workspace updates."""
+    """Full-duplex WebSocket connection for real-time workspace updates.
+
+    Authentication, in order of preference:
+
+    1. ``?ticket=`` — a single-use ticket from ``POST /realtime/ws-ticket``. This is
+       the path the browser uses, because it keeps the long-lived access JWT out
+       of JavaScript and out of the URL.
+    2. ``?token=`` — the access JWT. Retained for SDK and CLI callers, which
+       legitimately hold the token. Still a query parameter, so it still lands in
+       logs; browser callers should migrate to the ticket.
+    3. An ``AUTH`` message as the first frame.
+    """
     # 1. Handshake authentication
     payload = None
-    if token:
+    if ticket:
+        claims = redeem_ticket(ticket)
+        if not claims:
+            # Expired, already spent, or never existed. 1008 is the policy
+            # violation code; closing here avoids accepting the socket at all.
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+        payload = {
+            "sub": claims.get("sub"),
+            "workspace_id": claims.get("workspace_id"),
+        }
+        if claims.get("workspace_id"):
+            workspace_id = claims["workspace_id"]
+
+    if payload is None and token:
         try:
             payload = await _authenticate_token(token)
         except Exception:

@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { NAV_LINKS } from '@/lib/landing/copy';
 import { Container, LogoMark } from '@/components/landing/shared/LandingKit';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
-import { clearRefreshToken, clearToken, getToken } from '@/lib/api';
+import { clearRefreshToken, clearToken, hasSession } from '@/lib/api';
 
 export default function LandingNav() {
   const router = useRouter();
@@ -22,7 +22,7 @@ export default function LandingNav() {
 
     // Check auth status
     const updateAuth = () => {
-      setHasToken(Boolean(getToken()));
+      setHasToken(hasSession());
     };
     updateAuth();
     window.addEventListener('vaeloom.auth_token_set', updateAuth);
