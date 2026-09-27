@@ -237,8 +237,8 @@ export function Sidebar({
           className="flex-1 overflow-y-auto py-2.5 px-2 space-y-4"
           aria-label="Workspace navigation"
         >
-          {groups.map((group) => (
-            <div key={group.label}>
+          {groups.map((group, gIdx) => (
+            <div key={`group-${group.label || gIdx}`}>
               {!isCol ? (
                 <p className="px-2 py-1 text-2xs font-semibold uppercase tracking-widest text-text-dim">
                   {group.label}
@@ -252,9 +252,9 @@ export function Sidebar({
                 <div className="mx-2 my-1 border-t border-border-subtle" />
               )}
               <ul className="space-y-0.5">
-                {group.links.map((link) => (
+                {group.links.map((link, lIdx) => (
                   <SidebarNavLink
-                    key={link.name}
+                    key={`link-${group.label}-${link.id || link.path}-${lIdx}`}
                     link={link}
                     current={pathname === link.path}
                     collapsed={isCol}

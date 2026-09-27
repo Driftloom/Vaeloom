@@ -32,7 +32,8 @@ function isTokenValid(token: string | undefined): boolean {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const token = request.cookies.get('vaeloom.accessToken')?.value;
+  const token =
+    request.cookies.get('vaeloom_at')?.value || request.cookies.get('vaeloom.accessToken')?.value;
 
   const isAuthenticated = isTokenValid(token);
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
@@ -42,6 +43,8 @@ export function middleware(request: NextRequest) {
     const response = NextResponse.next();
     response.cookies.delete('vaeloom.accessToken');
     response.cookies.delete('vaeloom.refreshToken');
+    response.cookies.delete('vaeloom_at');
+    response.cookies.delete('vaeloom_rt');
     return response;
   }
 
@@ -49,10 +52,10 @@ export function middleware(request: NextRequest) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     const redirectResponse = NextResponse.redirect(loginUrl);
-    if (token) {
-      redirectResponse.cookies.delete('vaeloom.accessToken');
-      redirectResponse.cookies.delete('vaeloom.refreshToken');
-    }
+    redirectResponse.cookies.delete('vaeloom.accessToken');
+    redirectResponse.cookies.delete('vaeloom.refreshToken');
+    redirectResponse.cookies.delete('vaeloom_at');
+    redirectResponse.cookies.delete('vaeloom_rt');
     return redirectResponse;
   }
 
@@ -97,14 +100,14 @@ export function middleware(request: NextRequest) {
       scriptSrc,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: blob: https://vaeloom.app https://*.supabase.co https://**.googleusercontent.com https://**.githubusercontent.com https://**.slack.com",
-      `connect-src 'self' https://*.supabase.co https://accounts.google.com https://*.algolia.net https://*.algolianet.com${
+      "img-src 'self' data: blob: https://vaeloom.app https://*.supabase.co https://*.googleusercontent.com https://*.githubusercontent.com https://*.slack.com",
+      `connect-src 'self' https://*.supabase.co https://accounts.google.com https://*.algolia.net https://*.algolianet.com https://analytics.vaeloom.app https://vaeloom.app${
         process.env.NODE_ENV === 'development' ||
         process.env['ALLOW_LOCAL_API'] === 'true' ||
         request.nextUrl.hostname === 'localhost' ||
         request.nextUrl.hostname === '127.0.0.1'
           ? ' http://localhost:8000 ws://localhost:8000 http://127.0.0.1:8000 ws://127.0.0.1:8000'
-          : ' https://vaeloom.app'
+          : ''
       }`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
