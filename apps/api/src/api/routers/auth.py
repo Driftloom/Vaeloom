@@ -116,6 +116,12 @@ async def refresh(
     # Falling back rather than replacing keeps both callers working during the
     # rollout instead of requiring a synchronized deploy.
     token = read_refresh_cookie(request) or dto.refresh_token
+    if not token:
+        # `refresh_token` is optional so the cookie-only browser client can send
+        # an empty body, which means "neither credential" is now reachable and
+        # has to fail explicitly. 401 rather than 422, so a client can treat it
+        # the same as an expired session.
+        raise HTTPException(status_code=401, detail="No refresh credential provided")
     result = await auth_service.refresh_token(
         refresh_token=token,
         user_agent=user_agent,

@@ -101,7 +101,16 @@ class LoginRequest(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    # Optional so a browser client can refresh with the HttpOnly cookie alone and
+    # send an empty body. It was required, which meant Pydantic rejected the
+    # request with 422 before the handler ever reached its cookie fallback — the
+    # cookie path was unreachable and the frontend's `refresh()` (which sends
+    # `{}`) could only ever fail. Verified end to end: 422 before this change.
+    #
+    # The handler rejects the request with 401 when neither a cookie nor a body
+    # token is present, so making the field optional does not create an
+    # unauthenticated path.
+    refresh_token: str | None = None
 
 
 class ForgotPasswordRequest(BaseModel):
