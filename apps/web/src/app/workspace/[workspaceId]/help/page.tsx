@@ -176,12 +176,12 @@ export default function HelpCenterPage() {
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
               Documentation &amp; Help Center
             </h1>
-            <Badge variant="success" size="sm">
-              LIVE SYSTEM MANIFEST
+            <Badge variant="info" size="sm">
+              STATIC DOCS
             </Badge>
           </div>
           <p className="text-xs sm:text-sm text-text-secondary">
-            System architectural manuals, keyboard shortcuts, and agent execution guidelines.
+            Product documentation, keyboard shortcuts, and architecture guides.
           </p>
         </div>
 

@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
 import { Button, Card, Input, Modal } from '@vaeloom/ui-kit';
 import { Table, type Column } from '@/components/shared/Table';
-import { StatusBadge, type StatusVariant } from '@/components/shared/StatusBadge';
+import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
 import useSWR from 'swr';
 import {
@@ -15,6 +15,7 @@ import {
   type WebhookDeliveryItem,
 } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
+import { API_BASE, API_PREFIX } from '@/lib/api';
 
 interface WebhookDelivery {
   id: string;
@@ -26,10 +27,10 @@ interface WebhookDelivery {
 }
 
 const rateLimits = [
-  { name: 'REST API', limit: '1,000 / hour', current: 342, color: 'success' as StatusVariant },
-  { name: 'GraphQL API', limit: '500 / hour', current: 89, color: 'success' as StatusVariant },
-  { name: 'Streaming API', limit: '100 / min', current: 23, color: 'success' as StatusVariant },
-  { name: 'Webhook Delivery', limit: '500 / hour', current: 12, color: 'success' as StatusVariant },
+  { name: 'REST API', limit: '1,000 / hour' },
+  { name: 'GraphQL API', limit: '500 / hour' },
+  { name: 'Streaming API', limit: '100 / min' },
+  { name: 'Webhook Delivery', limit: '500 / hour' },
 ];
 
 const sdkItems = [
@@ -39,13 +40,15 @@ const sdkItems = [
   { name: 'REST API', version: 'v2', doc: '/api/v2/docs' },
 ];
 
+const API_DOCS_BASE = `${API_BASE}${API_PREFIX}/docs`;
+
 const apiDocLinks = [
-  { name: 'Authentication API', url: 'http://localhost:8000/docs#/Auth' },
-  { name: 'Agents & ReAct API', url: 'http://localhost:8000/docs#/Agents' },
-  { name: 'SCALE Cognition API', url: 'http://localhost:8000/docs#/Cognition' },
-  { name: 'Council Adjudication API', url: 'http://localhost:8000/docs#/Council' },
-  { name: 'Webhook Subscriptions API', url: 'http://localhost:8000/docs#/Webhooks' },
-  { name: 'Connectors & MCP API', url: 'http://localhost:8000/docs#/Connectors' },
+  { name: 'Authentication API', url: `${API_DOCS_BASE}#/Auth` },
+  { name: 'Agents & ReAct API', url: `${API_DOCS_BASE}#/Agents` },
+  { name: 'SCALE Cognition API', url: `${API_DOCS_BASE}#/Cognition` },
+  { name: 'Council Adjudication API', url: `${API_DOCS_BASE}#/Council` },
+  { name: 'Webhook Subscriptions API', url: `${API_DOCS_BASE}#/Webhooks` },
+  { name: 'Connectors & MCP API', url: `${API_DOCS_BASE}#/Connectors` },
 ];
 
 function DeveloperContent() {
@@ -343,21 +346,13 @@ function DeveloperContent() {
       </Card>
 
       <Card padding="lg">
-        <h2 className="text-lg font-display font-medium text-text mb-4">Rate Limit Status</h2>
+        <h2 className="text-lg font-display font-medium text-text mb-4">Rate Limit Policy</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {rateLimits.map((rl) => (
             <div key={rl.name} className="bg-background rounded-lg p-4 border border-border">
               <p className="text-sm text-text-muted">{rl.name}</p>
-              <p className="text-2xl font-display text-text mt-1">{rl.current}</p>
-              <p className="text-xs text-text-muted font-mono mt-1">Limit: {rl.limit}</p>
-              <div className="mt-2 h-1.5 bg-surface-active rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary rounded-full"
-                  style={{
-                    width: `${Math.min((rl.current / parseInt(rl.limit.replace(/,/g, '').split(' ')[0] ?? '1')) * 100, 100)}%`,
-                  }}
-                />
-              </div>
+              <p className="text-2xl font-display text-text mt-1">{rl.limit}</p>
+              <p className="text-xs text-text-muted font-mono mt-1">Documented limit</p>
             </div>
           ))}
         </div>

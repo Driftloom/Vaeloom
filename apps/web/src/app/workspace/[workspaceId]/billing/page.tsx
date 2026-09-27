@@ -247,16 +247,13 @@ export default function BillingPage() {
           <span className={isLive ? 'text-success' : 'text-text-dim'}>
             {isLive
               ? 'Live data from backend'
-              : '(mock data — backend unavailable, enable ENTERPRISE_ROUTES_ENABLED)'}
+              : 'Plan catalog (static) — connect backend for live subscription'}
           </span>
         </p>
         {!isLive && (
           <p className="mt-2 text-xs font-mono text-text-dim">
-            Data source: mock fallback — backend /billing/* not reachable. Set{' '}
-            <code className="rounded bg-surface px-1 py-0.5 border border-border">
-              ENTERPRISE_ROUTES_ENABLED=true
-            </code>{' '}
-            on the API.
+            Showing static plan catalog. Live subscription, usage, and invoices require the billing
+            API.
           </p>
         )}
         {isLive && (
@@ -275,6 +272,7 @@ export default function BillingPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card padding="lg">
           <h2 className="text-lg font-display font-medium text-text mb-2">Current Plan</h2>
+          <p className="text-xs text-text-muted">Plan catalog (static configuration)</p>
           <div className="text-3xl font-display text-primary mt-2">
             {plans.find((p) => p.id === selectedPlan)?.name}
           </div>

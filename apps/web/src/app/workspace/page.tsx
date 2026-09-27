@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api, clearToken, clearRefreshToken, setToken } from '@/lib/api';
+import { api, ApiError, clearToken, clearRefreshToken, setToken } from '@/lib/api';
 
 export default function WorkspaceIndexPage() {
   const router = useRouter();
@@ -20,10 +20,14 @@ export default function WorkspaceIndexPage() {
     function cleanupAndGoLogin() {
       clearToken();
       clearRefreshToken();
+      // Only the legacy, JavaScript-readable cookies can be cleared from here.
+      // `vaeloom_at` / `vaeloom_rt` are HttpOnly, so `document.cookie` cannot see
+      // or delete them - only a `Set-Cookie` from the server can. Attempting it
+      // here was a silent no-op that looked like it was cleaning up. The session
+      // is already invalidated server-side by `POST /auth/logout`, and an
+      // anonymous visitor never had one.
       try {
-        document.cookie = 'vaeloom_at=; Path=/; Max-Age=0;';
         document.cookie = 'vaeloom.accessToken=; Path=/; Max-Age=0;';
-        document.cookie = 'vaeloom_rt=; Path=/; Max-Age=0;';
         document.cookie = 'vaeloom.refreshToken=; Path=/; Max-Age=0;';
       } catch {}
       window.location.replace('/login');
@@ -54,6 +58,17 @@ export default function WorkspaceIndexPage() {
 
         cleanupAndGoLogin();
       } catch (err: unknown) {
+        // A 401 here is the *expected* state for this route, not a failure: an
+        // anonymous visitor, or a session that has just been revoked by signing
+        // out. It used to be logged as a console error and surfaced to the user
+        // as "Token has been revoked" for a second and a half before the
+        // redirect - alarming, and wrong for someone who never had a session.
+        // Redirect straight away and say nothing.
+        if (err instanceof ApiError && err.status === 401) {
+          cleanupAndGoLogin();
+          return;
+        }
+
         console.error('Failed to resolve workspace:', err);
         if (isMounted) {
           const msg = err instanceof Error ? err.message : 'Session verification failed';

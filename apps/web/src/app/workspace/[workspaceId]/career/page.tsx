@@ -20,7 +20,12 @@ import {
   FileTextIcon,
   RefreshCwIcon,
 } from '@vaeloom/ui-kit';
-import { careerApi, type CareerStrategyResponse } from '@/lib/api-client';
+import {
+  careerApi,
+  agentCatalogApi,
+  type CareerStrategyResponse,
+  type CatalogAgent,
+} from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 
 export default function CareerStrategyPage() {
@@ -43,6 +48,12 @@ export default function CareerStrategyPage() {
     { revalidateOnFocus: false },
   );
 
+  const { data: agentCatalog } = useSWR<{ agents: CatalogAgent[] }>(
+    'agent-catalog',
+    () => agentCatalogApi.get(),
+    { revalidateOnFocus: false },
+  );
+
   const categories = [
     'ALL',
     'Distributed Systems',
@@ -55,14 +66,7 @@ export default function CareerStrategyPage() {
   const filteredSkills =
     categoryFilter === 'ALL' ? skillGaps : skillGaps.filter((s) => s.category === categoryFilter);
 
-  const targetRole = strategy?.primaryTargetRole ?? {
-    title: 'Senior AI Systems Engineer',
-    level: 'Staff / Principal (L6-L7)',
-    overallMatchPercentage: 88,
-    readinessScore: 92,
-    benchmarkCompensation: '$380k - $480k Total Comp',
-    marketDemand: 'Very High (+34% YoY)',
-  };
+  const targetRole = strategy?.primaryTargetRole ?? null;
 
   const criticalGapsCount = skillGaps.filter((s) => s.gapSeverity === 'HIGH').length;
 
@@ -135,6 +139,18 @@ export default function CareerStrategyPage() {
           <p className="text-xs text-text-muted font-medium">
             Synthesizing competency graph and compensation radar…
           </p>
+        </Card>
+      ) : !targetRole ? (
+        <Card className="p-8 text-center border border-dashed border-border rounded-xl space-y-3">
+          <BriefcaseIcon size={28} className="mx-auto text-text-muted" />
+          <h2 className="text-lg font-display font-medium text-text">No target role configured</h2>
+          <p className="text-sm text-text-muted max-w-md mx-auto">
+            Set a target role to calibrate your competency radar, compensation benchmarks, and
+            market demand analysis.
+          </p>
+          <Button variant="primary" size="sm" onClick={() => setActiveTab('skills')}>
+            Configure in Skills Tab
+          </Button>
         </Card>
       ) : (
         <>
@@ -410,55 +426,42 @@ export default function CareerStrategyPage() {
           {/* TAB 4: Agent Directives */}
           <TabPanel activeTab={activeTab} id="directives">
             <div className="space-y-3">
-              {[
-                {
-                  id: 'dir-1',
-                  agent: 'JobSearchAgent',
-                  directive:
-                    'Scrape and rank frontier distributed systems roles matching target L7 compensation parameters.',
-                  active: true,
-                },
-                {
-                  id: 'dir-2',
-                  agent: 'ResumeBuilderAgent',
-                  directive:
-                    'Auto-compile LaTeX ATS resume artifacts emphasizing verified distributed consensus and RLS architecture metrics.',
-                  active: true,
-                },
-                {
-                  id: 'dir-3',
-                  agent: 'GmailAgent',
-                  directive:
-                    'Triage recruiter correspondence, schedule interview slots, and draft high-signal responses.',
-                  active: true,
-                },
-              ].map((directive) => (
-                <Card
-                  key={directive.id}
-                  className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="primary" size="sm">
-                        {directive.agent}
-                      </Badge>
-                      <span className="text-2xs text-text-muted font-mono">ID: {directive.id}</span>
-                    </div>
-                    <p className="text-xs text-text font-medium">{directive.directive}</p>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Badge variant={directive.active ? 'success' : 'default'} size="sm">
-                      {directive.active ? 'SCOUTING ACTIVE' : 'PAUSED'}
-                    </Badge>
-                    <Link href={`/workspace/${workspaceId}/agents`}>
-                      <Button variant="outline" size="sm">
-                        Configure Agent
-                      </Button>
-                    </Link>
-                  </div>
+              {!agentCatalog ? (
+                <Card className="p-8 text-center border border-dashed border-border rounded-xl">
+                  <p className="text-sm text-text-muted">Loading agent catalog…</p>
                 </Card>
-              ))}
+              ) : agentCatalog.agents.length === 0 ? (
+                <Card className="p-8 text-center border border-dashed border-border rounded-xl">
+                  <p className="text-sm text-text-muted">No agents available in the catalog.</p>
+                </Card>
+              ) : (
+                agentCatalog.agents.map((agent) => (
+                  <Card
+                    key={agent.name}
+                    className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="primary" size="sm">
+                          {agent.name}
+                        </Badge>
+                        <span className="text-2xs text-text-muted font-mono">
+                          {agent.category} · {agent.defaultAutonomy}
+                        </span>
+                      </div>
+                      <p className="text-xs text-text font-medium">{agent.mission}</p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Link href={`/workspace/${workspaceId}/agents`}>
+                        <Button variant="outline" size="sm">
+                          Configure Agent
+                        </Button>
+                      </Link>
+                    </div>
+                  </Card>
+                ))
+              )}
             </div>
           </TabPanel>
         </>

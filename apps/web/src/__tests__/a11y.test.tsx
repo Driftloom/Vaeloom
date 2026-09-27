@@ -12,7 +12,7 @@
  * keyboard operability, focus management). The engine-level axe scan lives in
  * e2e/quality.spec.ts, which runs real axe against real pages.
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import {
   Alert,
   Button,
@@ -101,10 +101,13 @@ describe('ui-kit Checkbox', () => {
   });
 
   it('exposes the indeterminate state to assistive tech, not only visually', () => {
-    const { rerender } = render(<Checkbox label="Select all" indeterminate />);
+    const onChange = jest.fn();
+    const { rerender } = render(
+      <Checkbox label="Select all" indeterminate checked={false} onChange={onChange} />,
+    );
     const box = screen.getByRole('checkbox', { name: 'Select all' });
     expect((box as HTMLInputElement).indeterminate).toBe(true);
-    rerender(<Checkbox label="Select all" checked />);
+    rerender(<Checkbox label="Select all" checked onChange={onChange} />);
     expect(screen.getByRole('checkbox', { name: 'Select all' })).toBeChecked();
   });
 
@@ -193,11 +196,13 @@ describe('ui-kit Modal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(onClose).toHaveBeenCalledTimes(2);
 
-    rerender(
-      <Modal isOpen={false} onClose={onClose} title="Archive documents">
-        <p>body</p>
-      </Modal>,
-    );
+    act(() => {
+      rerender(
+        <Modal isOpen={false} onClose={onClose} title="Archive documents">
+          <p>body</p>
+        </Modal>,
+      );
+    });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

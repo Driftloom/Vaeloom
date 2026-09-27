@@ -120,7 +120,6 @@ export default function WorkspaceLayout({
     <RealtimeProvider workspaceId={workspaceId}>
       <div className="flex h-screen overflow-hidden bg-background">
         <Sidebar
-          key="workspace-sidebar"
           workspaceId={workspaceId}
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
@@ -130,15 +129,13 @@ export default function WorkspaceLayout({
         />
         {sidebarOpen ? (
           <div
-            key="workspace-sidebar-backdrop"
             className="md:hidden fixed inset-0 z-30 bg-black/40"
             onClick={() => setSidebarOpen(false)}
             aria-hidden="true"
           />
         ) : null}
-        <div key="workspace-main-content" className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0">
           <TopNav
-            key="workspace-top-nav"
             onMenuClick={toggleSidebar}
             sidebarCollapsed={sidebarCollapsed}
             onOpenCommandCenter={() => setCommandCenterOpen(true)}
@@ -159,7 +156,7 @@ export default function WorkspaceLayout({
             {...(sidebarOpen ? { inert: true } : {})}
           >
             <ErrorBoundary>
-              <div key="workspace-content-wrapper">
+              <div>
                 <DataModeBanner />
                 {children}
               </div>
@@ -169,7 +166,6 @@ export default function WorkspaceLayout({
 
         {/* Global Command Center */}
         <CommandCenter
-          key="workspace-command-center"
           open={commandCenterOpen}
           onClose={() => setCommandCenterOpen(false)}
           onToggleSidebar={toggleSidebar}

@@ -25,144 +25,6 @@ import { useToast } from '@/components/shared/Toast';
 import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
 
 const CATEGORIES = ['All', 'AI', 'Analytics', 'Data', 'Integration', 'Productivity', 'Security'];
-const CATALOG_TYPES = ['All Catalog', 'Community Plugins', 'Composio SaaS', 'Native Core'] as const;
-type CatalogType = (typeof CATALOG_TYPES)[number];
-
-const COMPOSIO_CATALOG: Partial<MarketplaceListingItem>[] = [
-  {
-    id: 'composio-github',
-    name: 'GitHub (Composio)',
-    slug: 'composio-github',
-    category: 'Integration',
-    author: 'Composio',
-    description:
-      'Autonomous repository actions, PR review, issue management, and branch operations via Composio integration.',
-    version: '1.2.0',
-    rating: 4.9,
-    installCount: 3200,
-    tags: ['composio', 'github', 'git', 'saas'],
-  },
-  {
-    id: 'composio-slack',
-    name: 'Slack (Composio)',
-    slug: 'composio-slack',
-    category: 'Integration',
-    author: 'Composio',
-    description:
-      'Post messages, listen to channel events, upload documents, and manage threads in Slack workspaces.',
-    version: '1.1.0',
-    rating: 4.8,
-    installCount: 2800,
-    tags: ['composio', 'slack', 'chat', 'saas'],
-  },
-  {
-    id: 'composio-notion',
-    name: 'Notion (Composio)',
-    slug: 'composio-notion',
-    category: 'Productivity',
-    author: 'Composio',
-    description:
-      'Read and write databases, append notes, manage candidate pipelines, and sync documentation.',
-    version: '1.0.4',
-    rating: 4.7,
-    installCount: 1900,
-    tags: ['composio', 'notion', 'docs', 'saas'],
-  },
-  {
-    id: 'composio-jira',
-    name: 'Jira Software',
-    slug: 'composio-jira',
-    category: 'Productivity',
-    author: 'Composio',
-    description:
-      'Create sprints, track tickets, manage bug reports, and sync engineering work directly from agent loops.',
-    version: '1.0.2',
-    rating: 4.6,
-    installCount: 1450,
-    tags: ['composio', 'jira', 'tickets', 'saas'],
-  },
-  {
-    id: 'composio-linear',
-    name: 'Linear',
-    slug: 'composio-linear',
-    category: 'Productivity',
-    author: 'Composio',
-    description:
-      'High-speed issue tracking, cycle management, and roadmap synchronization for product teams.',
-    version: '1.0.0',
-    rating: 4.9,
-    installCount: 2100,
-    tags: ['composio', 'linear', 'issues', 'saas'],
-  },
-];
-
-const NATIVE_CORE_CATALOG: Partial<MarketplaceListingItem>[] = [
-  {
-    id: 'native-ats-mcp',
-    name: 'Public ATS Job Search MCP',
-    slug: 'native-ats-mcp',
-    category: 'AI',
-    author: 'Vaeloom Core',
-    description:
-      'Zero-key live job crawler across Greenhouse, Lever, and Ashby boards. Fully sandboxed with SSRF boundary protection.',
-    version: '1.0.0',
-    rating: 5.0,
-    installCount: 3100,
-    tags: ['native', 'mcp', 'ats', 'jobs', 'crawler'],
-  },
-  {
-    id: 'native-gmail',
-    name: 'Gmail Native',
-    slug: 'native-gmail',
-    category: 'Integration',
-    author: 'Vaeloom Core',
-    description:
-      'Direct OAuth2 integration for sending tailored interview follow-ups and candidate communications.',
-    version: '3.0.0',
-    rating: 5.0,
-    installCount: 5400,
-    tags: ['native', 'email', 'gmail', 'core'],
-  },
-  {
-    id: 'native-google-drive',
-    name: 'Google Drive Native',
-    slug: 'native-google-drive',
-    category: 'Data',
-    author: 'Vaeloom Core',
-    description:
-      'Secure enterprise cloud storage for resumes, portfolio artifacts, and PDF interview packets.',
-    version: '3.0.0',
-    rating: 4.9,
-    installCount: 4800,
-    tags: ['native', 'drive', 'storage', 'core'],
-  },
-  {
-    id: 'native-google-docs',
-    name: 'Google Docs Native',
-    slug: 'native-google-docs',
-    category: 'Productivity',
-    author: 'Vaeloom Core',
-    description:
-      'Live document generation, ATS resume compilation, and collaborative interview prep notes.',
-    version: '3.0.0',
-    rating: 4.9,
-    installCount: 4200,
-    tags: ['native', 'docs', 'editing', 'core'],
-  },
-  {
-    id: 'native-browser',
-    name: 'Browser Scraper (Playwright)',
-    slug: 'native-browser',
-    category: 'AI',
-    author: 'Vaeloom Core',
-    description:
-      'SSRF-guarded headless Chromium browser for live job posting verification and company insights.',
-    version: '3.1.0',
-    rating: 4.9,
-    installCount: 6100,
-    tags: ['native', 'browser', 'playwright', 'scraping'],
-  },
-];
 
 export default function MarketplacePage() {
   if (!isEnterpriseEnabled()) {
@@ -178,7 +40,6 @@ function MarketplaceContent() {
 
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
-  const [catalogType, setCatalogType] = useState<CatalogType>('All Catalog');
   const [selectedListing, setSelectedListing] = useState<MarketplaceListingItem | null>(null);
   const [view, setView] = useState<'browse' | 'installed'>('browse');
   const [sortBy, setSortBy] = useState<'popular' | 'rating' | 'name'>('popular');
@@ -454,23 +315,9 @@ function MarketplaceContent() {
       return true;
     };
 
-    const filteredComposio = (COMPOSIO_CATALOG as unknown as MarketplaceListingItem[]).filter(
-      filterCatalogItem,
-    );
-    const filteredNative = (NATIVE_CORE_CATALOG as unknown as MarketplaceListingItem[]).filter(
-      filterCatalogItem,
-    );
+    const filteredListings = listings.filter(filterCatalogItem);
 
-    let baseList: MarketplaceListingItem[] = [];
-    if (catalogType === 'All Catalog') {
-      baseList = [...listings, ...filteredComposio, ...filteredNative];
-    } else if (catalogType === 'Community Plugins') {
-      baseList = listings;
-    } else if (catalogType === 'Composio SaaS') {
-      baseList = filteredComposio;
-    } else if (catalogType === 'Native Core') {
-      baseList = filteredNative;
-    }
+    let baseList: MarketplaceListingItem[] = filteredListings;
 
     if (view === 'installed') {
       baseList = baseList.filter((l) => installedListingsMap.has(l.id));
@@ -489,7 +336,7 @@ function MarketplaceContent() {
     });
 
     return baseList;
-  }, [catalogType, listings, view, installedListingsMap, category, search, sortBy]);
+  }, [listings, view, installedListingsMap, category, search, sortBy]);
 
   return (
     <div className="space-y-6">
@@ -530,15 +377,6 @@ function MarketplaceContent() {
           </Button>
         </div>
       )}
-
-      {/* Catalog Type Bar */}
-      <Tabs
-        tabs={CATALOG_TYPES.map((t) => ({ id: t, label: t }))}
-        activeTab={catalogType}
-        onTabChange={(id) => setCatalogType(id as CatalogType)}
-        variant="underline"
-        size="sm"
-      />
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-stretch sm:items-center">

@@ -69,9 +69,27 @@ Prior to this hardening cycle:
 - **App Framework**: Next.js 15.5.20 App Router (`apps/web`).
 - **Runtime**: React 18.3.1, TypeScript 5.5.4, Tailwind CSS 3.4.1.
 - **Typecheck**: `pnpm --filter @vaeloom/web typecheck` (0 errors).
-- **Unit & Integration Tests**: `pnpm --filter @vaeloom/web test` (10 suites, 57
+- **Unit & Integration Tests**: `pnpm --filter @vaeloom/web test` (11 suites, 96
   tests passed).
-- **Design System Tests**: `pnpm --filter @vaeloom/ui-kit test` (2 suites, 5
+- **Design System Tests**: `pnpm --filter @vaeloom/ui-kit test` (3 suites, 149
   tests passed).
 - **Production Build**: `pnpm --filter @vaeloom/web build` (21 static pages
   emitted, 39 dynamic routes rendered, exit code 0).
+
+---
+
+## 4. Dynamic-ification Pass (2026-09-27)
+
+Removed static / fabricated content presented as live data across the frontend:
+
+| Page                 | Change                                                                                                                                                               |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/marketplace`       | Removed hardcoded `COMPOSIO_CATALOG` + `NATIVE_CORE_CATALOG` (fake ratings/installs). Now live `/listings` API only. Removed redundant Composio/Native catalog tabs. |
+| `/career`            | Removed fabricated `targetRole` fallback (fake comp data). Added proper empty state. Agent directives now sourced from live `agentCatalogApi`.                       |
+| `/developer`         | Removed fabricated rate-limit usage numbers (342/89/23/12). Changed `localhost:8000` doc links to use configured `API_BASE`.                                         |
+| `/help`              | Relabeled misleading "LIVE SYSTEM MANIFEST" badge to "STATIC DOCS".                                                                                                  |
+| `/billing`           | Relabeled plans as static plan catalog; clarified fallback text.                                                                                                     |
+| `/organizations`     | Verified ROLES already labeled as reference matrix (no change needed).                                                                                               |
+| `ConnectorsView.tsx` | Fixed React `act()` warning by wrapping post-await setState in `act()`.                                                                                              |
+
+Re-verified: typecheck 0 errors, 96/96 tests, build exit 0.

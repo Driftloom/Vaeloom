@@ -46,7 +46,17 @@ export class RealtimeClient {
     if (customUrl) {
       this.url = customUrl;
     } else {
-      const base = API_BASE.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
+      let base = API_BASE;
+      if (!base && typeof window !== 'undefined') {
+        const port = window.location.port;
+        if (port === '3000') {
+          base = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//127.0.0.1:8000`;
+        } else {
+          base = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
+        }
+      } else {
+        base = base.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
+      }
       this.url = `${base}/api/v1/realtime/ws`;
     }
   }
