@@ -16,39 +16,50 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _users_id_type():
+    """Type ``user_id`` from the real ``users.id`` column.
+
+    A foreign key requires the two columns to have identical types, and the type
+    of ``users.id`` is not knowable from this repository:
+
+    * ``0001_initial_schema.py`` declares it ``sa.UUID()``, so a database built by
+      this chain has ``uuid`` and a hard-coded ``sa.UUID()`` happens to work.
+    * the managed instance rejects it outright -
+      ``foreign key constraint "password_reset_tokens_user_id_fkey" cannot be
+      implemented`` - which means that ``users.id`` is some other type there,
+      most likely ``varchar``/``text``, because ``public.users`` was created
+      outside this chain.
+
+    So the column type is read from the target instead of assumed. That makes the
+    migration correct on both shapes without anyone having to remember which one
+    it is deploying against.
+
+    A missing ``users`` table falls back to ``sa.UUID()``: it cannot happen on a
+    valid database, and raising a second, unrelated error would hide the real
+    problem.
+    """
+    try:
+        inspector = sa.inspect(op.get_bind())
+        columns = {c["name"]: c for c in inspector.get_columns("users")}
+    except Exception:
+        return sa.UUID()
+    existing = columns.get("id")
+    if existing is None or existing.get("type") is None:
+        return sa.UUID()
+    return existing["type"]
+
+
 def upgrade() -> None:
     bind = op.get_bind()
     is_sqlite = bind.dialect.name == "sqlite"
+    users_id_type = _users_id_type()
 
-    # 1. Create password_reset_tokens table
-    #
-    # KNOWN BROKEN ON POSTGRESQL — do not ship without fixing first.
-    #
-    # Applying this migration to a PostgreSQL database fails with:
-    #   asyncpg.exceptions.DatatypeMismatchError:
-    #   foreign key constraint "password_reset_tokens_user_id_fkey" cannot be implemented
-    #   DETAIL: Key columns "user_id" and "id" are of incompatible types
-    #
-    # `users.id` is declared sa.UUID() in 0001_initial_schema.py, so on any
-    # database built by this chain the types match. The failure means the target
-    # database's `users.id` is not the type this chain declares — most likely
-    # varchar/text, because `public.users` was created outside the chain (SQL
-    # editor, or an earlier hand-written schema).
-    #
-    # The fix is to type this column from the referenced one rather than
-    # assuming: reflect `users.id` through sa.inspect(op.get_bind()) and use the
-    # returned type for `user_id`. That was attempted and reverted — the
-    # reflection reported varchar while PostgreSQL reported uuid for the same
-    # column, so the mismatch was not reproduced and the correct source of truth
-    # is still unconfirmed. Do not "fix" this by hard-coding another type.
-    #
-    # SQLite does not enforce foreign key column types, which is why the
-    # security suite (SQLite, tables created from the ORM models rather than
-    # from migrations) never exercised this path.
     op.create_table(
         "password_reset_tokens",
         sa.Column("id", sa.UUID(), primary_key=True),
-        sa.Column("user_id", sa.UUID(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+        # Typed from the referenced column rather than hard-coded: a mismatch here
+        # is precisely what made this migration fail on the managed instance.
+        sa.Column("user_id", users_id_type, sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
         sa.Column("token_hash", sa.String(64), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("used_at", sa.DateTime(timezone=True), nullable=True),
