@@ -17,7 +17,28 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _ensure_vector_extension() -> None:
+    """Install pgvector before anything uses the ``vector`` type.
+
+    This schema creates embedding columns as ``Vector(...)``, so without the
+    extension every one of them fails with
+    ``type "vector" does not exist`` and the whole migration aborts.
+
+    The chain never created the extension; it happened to work on Supabase, where
+    pgvector is already enabled, and failed on any other PostgreSQL. Creating it
+    here is idempotent and harmless where it already exists, so it removes an
+    undocumented prerequisite rather than adding one.
+
+    Skipped on SQLite, which has no extensions and does not use these columns.
+    """
+    bind = op.get_bind()
+    if bind.dialect.name == "sqlite":
+        return
+    op.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+
+
 def upgrade() -> None:
+    _ensure_vector_extension()
     op.create_table(
         "tenants",
         sa.Column("id", sa.UUID(), nullable=False),

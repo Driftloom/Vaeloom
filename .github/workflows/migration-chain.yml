@@ -1,0 +1,121 @@
+name: Migration Chain (PostgreSQL)
+
+# The SQLite suite cannot see this class of defect at all: it has no row-level
+# security, no pg_policies catalogue, and it does not enforce foreign key column
+# types. Every migration problem found in the 2026-09 audit — an un-appliable
+# FK in 0057, the missing pgvector extension, two tables no migration ever
+# created, and `document_actions` left with no RLS at all — was invisible until
+# the chain was run against a real PostgreSQL server.
+#
+# So this workflow runs `alembic upgrade head` against a throwaway PostgreSQL and
+# then asserts the end state, rather than trusting that the migrations "ran".
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'apps/api/alembic/**'
+      - 'apps/api/src/api/models/**'
+      - 'apps/api/tests/test_migration*'
+      - 'apps/api/src/api/main.py'
+      - 'apps/api/src/api/config.py'
+      - '.github/workflows/migration-chain.yml'
+  pull_request:
+    paths:
+      - 'apps/api/alembic/**'
+      - 'apps/api/src/api/models/**'
+      - 'apps/api/tests/test_migration*'
+      - 'apps/api/src/api/main.py'
+      - 'apps/api/src/api/config.py'
+      - '.github/workflows/migration-chain.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: migration-chain-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        # pgvector, not plain postgres: the chain uses the `vector` type for
+        # embedding columns. 0001 now creates the extension itself, but the
+        # server still has to have the extension files available.
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vaeloom_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/vaeloom_test
+      VAELOOM_TARGET_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/vaeloom_test
+      VAELOOM_TEST_PG_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/vaeloom_test
+      JWT_SECRET: ci-migration-chain-secret-at-least-32-chars
+      ENCRYPTION_KEY: Y2ktbWlncmF0aW9uLWNoYWluLWVuY3J5cHRpb24ta2V5MDA=
+      INFISICAL_ENABLED: 'false'
+      SERVICE_ENVIRONMENT: local
+      OTEL_SDK_DISABLED: 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install Python
+        run: uv python install 3.12
+
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: uv sync --frozen --all-extras
+
+      - name: Create the Supabase-compatible roles
+        # The chain grants and creates policies `TO service_role, authenticated,
+        # vaeloom_app`. Those roles pre-exist on Supabase, which is why the chain
+        # never had to create them and why it failed on any other PostgreSQL.
+        run: |
+          for role in service_role authenticated vaeloom_app; do
+            psql -v ON_ERROR_STOP=1 -U postgres -d vaeloom_test \
+              -c "CREATE ROLE $role NOLOGIN" || true
+          done
+
+      - name: Run the migration chain from empty
+        working-directory: apps/api
+        # Deliberately NOT `-x` on error: the workflow has to show the real error.
+        run: uv run alembic upgrade head
+
+      - name: Assert the database reached head
+        run: |
+          version=$(psql -U postgres -d vaeloom_test -tAc "SELECT version_num FROM alembic_version;")
+          echo "alembic_version = $version"
+          test -n "$version" || { echo "::error::alembic_version is empty"; exit 1; }
+
+      - name: Migration and RLS invariants
+        working-directory: apps/api
+        # Asserts the end state rather than re-running the migrations: every table
+        # has RLS enabled and at least one policy, pgvector exists, the webhook
+        # tables exist, 0057's foreign key is real, and no ORM model references a
+        # table the chain never creates.
+        run: uv run pytest tests/test_migration_chain_pg.py tests/test_migration_0057_pg.py -v -o addopts=""
+
+      - name: Upload migration log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-log
+          path: |
+            apps/api/.pytest_cache/
+          retention-days: 7

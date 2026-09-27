@@ -195,9 +195,24 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Alembic config not found, using custom runner: {e}")
         await _run_custom_migrations()
     except Exception as e:
-        logger.error(f"Alembic migration FAILED (not just skipped): {e}")
-        # For real migration errors, still try custom runner but log loudly
-        await _run_custom_migrations()
+        # A failed migration is fatal, and previously was not.
+        #
+        # On PostgreSQL a migration runs in one transaction, so a failure rolls
+        # the whole attempt back: the database is left at the last version that
+        # did apply, which may be far behind `head`. Continuing into the custom
+        # runner and then starting up means the process serves traffic against a
+        # schema that is silently out of date, and `alembic_version` claims a
+        # revision the database does not actually have.
+        #
+        # The concrete case this was found by: `0057` could not apply, and the
+        # chain skipped the RLS policies for two tables that no migration ever
+        # created - while the run still reported success.
+        #
+        # Refusing to start is the only outcome that cannot mislead. An operator
+        # sees the migration error and fixes the schema; a half-applied schema
+        # serving live requests is far worse than a container that will not boot.
+        logger.error("Alembic migration FAILED - refusing to start: %s", e, exc_info=True)
+        raise
     logger.info("Database tables verified and migrations applied")
     # OP-RLS-01 startup guard: the runtime role must not bypass RLS outside
     # local development. Local warns (devs may still use owner URLs); every
