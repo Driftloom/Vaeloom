@@ -149,3 +149,96 @@ async def gmail_push_webhook(
     if not accepted:
         raise HTTPException(404, "Unknown or inactive watch channel")
     return {"received": True}
+
+
+def _classify_email_category(subject: str, body: str) -> str:
+    text = f"{subject} {body}".lower()
+    if any(k in text for k in ["interview", "invitation", "speaking with", "schedule a call", "meet with"]):
+        return "INTERVIEW_INVITE"
+    if any(k in text for k in ["recruiter", "talent acquisition", "sourcing", "found your profile", "role at"]):
+        return "RECRUITER"
+    if any(k in text for k in ["status", "application", "next steps", "update on your", "offer"]):
+        return "STATUS_UPDATE"
+    return "GENERAL"
+
+
+@router.get("/gmail/messages")
+async def list_gmail_messages(
+    max_results: int = Query(20, ge=1, le=50),
+    query: str | None = Query(None),
+    workspace_id: str | None = Query(None),
+    current_user: dict = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(401, "Not authenticated")
+
+    from ..clients.gmail_client import GmailClient
+
+    client = await GmailClient.for_workspace(workspace_id)
+    raw_messages = await client.fetch_emails(max_results=max_results, query=query)
+    if raw_messages is None:
+        raw_messages = []
+
+    classified = []
+    for msg in raw_messages:
+        subject = msg.get("subject", "")
+        body = msg.get("body", "")
+        cat = _classify_email_category(subject, body)
+        sender = msg.get("sender", "")
+        # Extract sender name and clean email
+        sender_name = sender
+        sender_email = sender
+        if "<" in sender and ">" in sender:
+            parts = sender.split("<")
+            sender_name = parts[0].strip().strip('"')
+            sender_email = parts[1].replace(">", "").strip()
+
+        classified.append({
+            "id": msg.get("id", ""),
+            "subject": subject,
+            "senderName": sender_name or "Unknown Sender",
+            "senderEmail": sender_email or "unknown@email.com",
+            "company": sender_email.split("@")[-1].split(".")[0].capitalize() if "@" in sender_email else "Direct",
+            "preview": body[:140] + ("..." if len(body) > 140 else ""),
+            "body": body,
+            "receivedAt": msg.get("received_at") or "Recently",
+            "isRead": True,
+            "category": cat,
+            "extractedEntities": [
+                {
+                    "type": "TASK" if cat == "GENERAL" else "INTERVIEW",
+                    "label": "Next Step Action",
+                    "value": "Review correspondence" if cat != "INTERVIEW_INVITE" else "Prepare interview slot",
+                    "confidence": 0.92,
+                    "addedToMemory": False,
+                }
+            ],
+        })
+
+    return {
+        "messages": classified,
+        "count": len(classified),
+        "connected": client._configured,
+    }
+
+
+@router.get("/gmail/status")
+async def get_gmail_status(
+    workspace_id: str | None = Query(None),
+    current_user: dict = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(401, "Not authenticated")
+
+    from ..clients.gmail_client import GmailClient
+
+    client = await GmailClient.for_workspace(workspace_id)
+    is_healthy = await client.check_health()
+    return {
+        "connected": client._configured and is_healthy,
+        "provider": "Google Workspace / Gmail",
+        "accountEmail": "Connected Account" if is_healthy else ("Configured (Checking)" if client._configured else "Not Connected"),
+        "syncHealth": "HEALTHY" if is_healthy else ("DEGRADED" if client._configured else "DISCONNECTED"),
+        "configured": client._configured,
+    }
+

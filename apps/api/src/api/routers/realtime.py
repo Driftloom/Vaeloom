@@ -62,6 +62,17 @@ async def mint_ws_ticket(
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
+    # Validate the workspace up front. The handshake parses it with
+    # `uuid.UUID(...)`, so a malformed value does not fail here — it produces a
+    # ticket that redeems successfully and then closes the socket with 1008 on
+    # every attempt. That is a silent, hard-to-diagnose failure, so it is
+    # rejected at the point the caller can still see why.
+    if workspace_id:
+        try:
+            uuid.UUID(str(workspace_id))
+        except (ValueError, AttributeError, TypeError):
+            raise HTTPException(status_code=422, detail="workspace_id must be a UUID")
+
     ticket, ttl = issue_ticket(str(user_id), workspace_id=workspace_id)
     return WsTicketResponse(ticket=ticket, expires_in=ttl)
 
@@ -210,8 +221,19 @@ async def websocket_endpoint(
             return
 
     # If not provided in query param, wait for initial AUTH message
+    #
+    # `socket_accepted` tracks whether the ASGI handshake has already been
+    # completed. It matters because `ws_manager.connect()` calls
+    # `websocket.accept()` itself, and calling accept twice raises. The AUTH-frame
+    # path accepts here, so it must register directly; the query-token and
+    # ticket paths have not been accepted yet, so they must go through
+    # `ws_manager.connect()`. Deriving this from "was a token in the query string"
+    # was wrong and left the ticket path sending on an unaccepted socket, which
+    # closed every ticket connection immediately after a successful redemption.
+    socket_accepted = False
     if not payload:
         await websocket.accept()
+        socket_accepted = True
         try:
             init_msg = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
             data = json.loads(init_msg)
@@ -242,11 +264,12 @@ async def websocket_endpoint(
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
-    # If token was in query param, accept connection inside connect()
-    if token:
+    # The handshake still has to be accepted unless the AUTH-frame path above
+    # already did it. ws_manager.connect() performs the accept.
+    if not socket_accepted:
         conn = await ws_manager.connect(websocket, user_uuid, tenant_uuid, ws_uuid)
     else:
-        # Already accepted above, create connection directly
+        # Already accepted; register without accepting again.
         conn = WebSocketConnection(websocket, user_uuid, tenant_uuid, ws_uuid)
         async with ws_manager._lock:
             if user_uuid not in ws_manager._connections:
