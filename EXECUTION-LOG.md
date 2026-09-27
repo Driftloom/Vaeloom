@@ -718,7 +718,164 @@ continuously, because the migration chain does not create that table for SQLite.
 
 ---
 
-## 19. State of the working tree - including an unwanted commit
+## 18. Migration chain fixed and measured against real PostgreSQL
+
+Until this point the chain had **never been run against PostgreSQL**. The suite
+uses SQLite with tables built from the ORM models, and SQLite has no row-level
+security, no `pg_policies` catalogue, and does not enforce foreign key column
+types. An entire class of deploy-blocking and data-exposing failure was
+structurally invisible. A throwaway `pgvector/pgvector:pg16` container found all
+of it.
+
+### 18.1 The chain only worked on Supabase
+
+`alembic upgrade head` on a clean PostgreSQL 16 failed on
+`type "vector" does not exist`, then on `role "service_role" does not exist`.
+
+Neither the `vector` extension nor the roles `service_role`, `authenticated`,
+`vaeloom_app` was ever created by the chain - it assumed they pre-exist. On
+Supabase they do, which is why nobody hit it.
+
+`0001_initial_schema.py` now issues `CREATE EXTENSION IF NOT EXISTS vector`,
+which is idempotent and removes an undocumented prerequisite rather than adding
+one. The roles remain a documented precondition, because creating cluster-wide
+roles from a migration is a privilege escalation the chain should not attempt
+silently.
+
+### 18.2 Two tables were never created
+
+`webhooks` and `webhook_deliveries` are ORM models (`models/schema.py:1206`,
+`:1225`) with a live `webhooks` router, and **no migration created them**. Eight
+migrations across five files apply RLS policies to them; every one of those
+statements was silently skipped by `_safe()`, and the run still reported
+success.
+
+Migration `0058` creates both, with indexes and tenant-scoped policies.
+`webhook_deliveries` has no tenant column of its own, so its policy reaches the
+tenant through `webhooks` - a delivery log is exactly the kind of table that
+leaks cross-tenant rows when a policy is written against a column that does not
+exist.
+
+### 18.3 One table had no RLS at all - the real exposure
+
+Measured on a fully migrated database, `document_actions` was the **only** one
+of 90 tables with `rowsecurity = false` and zero policies.
+
+The cause is ordering, not a missing statement. `0028` and `0036` both apply RLS
+to `document_actions`, but `0048` is what creates the table. By the time `0036`
+ran, the table did not exist, the statement was skipped, and nothing re-applied
+it. The table was created _after_ the security policies aimed at it had gone
+past.
+
+`document_actions` is the audit trail for document moves and deletions, so on a
+fresh database any role able to reach the table could read every tenant's
+history.
+
+Migration `0059` enables and forces RLS with a policy keyed on `workspace_id`
+(non-nullable) and `tenant_id` as an additional allowance. It raises rather than
+silently recording itself applied if the table is missing.
+
+### 18.4 Migration 0057 fixed and verified
+
+`0057` hard-coded `user_id` as `sa.UUID()`; the managed instance rejected it
+with
+`foreign key constraint "password_reset_tokens_user_id_fkey" cannot be implemented`.
+`0001` declares `users.id` as `sa.UUID()` too, so a chain-built database matches
+and the hard-coded type looks correct. The managed instance failing proves its
+`users.id` is a different type, so it too was not built by this chain.
+
+`_users_id_type()` now reflects the real column. Verified on real PostgreSQL
+against **both** shapes.
+
+### 18.5 Startup no longer continues past a failed migration
+
+`main.py` logged a failed `command.upgrade` and then continued into the custom
+runner, then started serving. On PostgreSQL a migration is one transaction, so a
+failure rolls the whole attempt back and the database is left at whatever
+revision last applied - while `alembic_version` implies otherwise. It now
+re-raises. A container that will not boot is strictly better than one serving a
+silently stale schema.
+
+### 18.6 Result
+
+`alembic upgrade head` on a clean PostgreSQL 16, with no pre-created extension:
+
+```
+exit 0 | alembic_version = 0059 | 90 tables
+vector extension created by the chain
+tables without RLS        : 0
+tables with RLS but no policy : 0
+```
+
+### 18.7 Guards so this cannot regress
+
+`tests/test_migration_chain_pg.py` - 7 tests asserting the **end state**, not
+which migration did the work: chain reaches head, every table has RLS, every
+table has at least one policy, pgvector exists, the webhook tables exist, 0057's
+FK is real rather than skipped, and **no ORM model references a table the chain
+never creates** - the check that generalises the `webhooks` finding to future
+models.
+
+`tests/test_migration_0057_pg.py` - 4 tests, uuid and varchar `users.id`.
+
+Both are skipped unless `VAELOOM_TEST_PG_URL` is set, so the SQLite suite gains
+no database dependency.
+
+**Negative control:** disabling RLS on `api_keys` in the throwaway database
+makes `test_every_table_has_row_level_security` fail. The guard has teeth rather
+than merely passing.
+
+`.github/workflows/migration-chain.yml` runs the chain against a
+`pgvector/pgvector:pg16` service container and then runs these tests on every
+change to `alembic/`, `models/`, `main.py` or `config.py`. This is the first
+workflow that would have caught any of the four defects above.
+
+### 18.8 Container recipe
+
+```powershell
+docker run -d --name vaeloom-pg-test -e POSTGRES_PASSWORD=pw `
+  -e POSTGRES_DB=vaeloom_test -e POSTGRES_USER=postgres -p 55432:5432 pgvector/pgvector:pg16
+foreach ($r in @("service_role","authenticated","vaeloom_app")) {
+  docker exec vaeloom-pg-test psql -U postgres -d vaeloom_test -c "CREATE ROLE $r NOLOGIN" }
+$env:VAELOOM_TEST_PG_URL = "postgresql+asyncpg://postgres:pw@127.0.0.1:55432/vaeloom_test"
+```
+
+Note: `$env:X = ""` **deletes** the variable in PowerShell, so dotenv
+re-supplies the `.env` value. Set the local path explicitly; do not blank it.
+
+### 18.9 Still open
+
+- **28 statements are still silently skipped** by `_safe()`. They are now
+  benign - they reference `document_actions` and `feature_flags` before those
+  exist, and `webhook_deliveries` before `0058` - and every table ends up
+  correctly covered. But a skip is still a skip, and the wrapper is what turned
+  four real defects into green runs. It should log at ERROR and, for policy
+  statements, fail.
+- `feature_flags` and `schema_migrations` are referenced by migrations, have no
+  ORM model, and are never created. Either they are vestigial references that
+  should be removed or they are missing tables.
+- confirm the real type of `users.id` on the managed instance; the ORM declares
+  `UUID(as_uuid=True)`, which is wrong if the column is `varchar`.
+
+---
+
+## 19. Verified state at the end of this pass
+
+| Gate                                        | Result                              |
+| ------------------------------------------- | ----------------------------------- |
+| `alembic upgrade head`, clean PostgreSQL 16 | **exit 0**, head `0059`, 90 tables  |
+| tables without RLS / without policies       | **0 / 0**                           |
+| migration chain + 0057 invariants (real PG) | **11 passed**                       |
+| guard negative control                      | correctly fails when RLS is removed |
+| API security suite                          | **404 passed / 0 failed**           |
+| WS handshake, tickets, config precedence    | **32 passed**                       |
+| web typecheck / lint / Jest                 | 0 / 0 errors / **96**               |
+| ui-kit typecheck / lint / Jest              | 0 / 0 / **149**                     |
+| live cookie flow                            | 16/16 checks in section 16          |
+
+---
+
+## 20. State of the working tree - including an unwanted commit
 
 **Process failure, disclosed.** Five commits were made **directly to `master`**
 by my own sub-agents, which I had not authorised and had not explicitly
