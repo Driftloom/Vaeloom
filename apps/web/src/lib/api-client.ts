@@ -1626,6 +1626,7 @@ export interface SearchRequest {
   sources?: string[];
   limit?: number;
   offset?: number;
+  filters?: Record<string, unknown>;
 }
 
 export interface SearchResultItem {
@@ -1635,6 +1636,8 @@ export interface SearchResultItem {
   source: string;
   metadata: Record<string, unknown>;
 }
+
+export type SearchResult = SearchResultItem;
 
 export interface SearchResponse {
   results: SearchResultItem[];
@@ -3783,5 +3786,102 @@ export const apiKeysApi = {
   },
   revoke(keyId: string): Promise<{ status: string }> {
     return apiClient.delete(`/api-keys/${keyId}`);
+  },
+};
+
+export interface ExtractedEmailEntity {
+  type: string;
+  label: string;
+  value: string;
+  confidence: number;
+  addedToMemory: boolean;
+}
+
+export interface LiveEmailMessage {
+  id: string;
+  subject: string;
+  senderName: string;
+  senderEmail: string;
+  company: string;
+  preview: string;
+  body: string;
+  receivedAt: string;
+  isRead: boolean;
+  category: 'RECRUITER' | 'INTERVIEW_INVITE' | 'STATUS_UPDATE' | 'GENERAL';
+  extractedEntities: ExtractedEmailEntity[];
+}
+
+export interface GmailStatusResponse {
+  connected: boolean;
+  provider: string;
+  accountEmail: string;
+  syncHealth: 'HEALTHY' | 'DEGRADED' | 'DISCONNECTED';
+  configured: boolean;
+}
+
+export const gmailApi = {
+  listMessages(params?: {
+    workspaceId?: string;
+    maxResults?: number;
+    query?: string;
+  }): Promise<{ messages: LiveEmailMessage[]; count: number; connected: boolean }> {
+    return apiClient.get('/gmail/messages', {
+      workspace_id: params?.workspaceId,
+      max_results: params?.maxResults,
+      query: params?.query,
+    });
+  },
+  getStatus(workspaceId?: string): Promise<GmailStatusResponse> {
+    return apiClient.get('/gmail/status', {
+      workspace_id: workspaceId,
+    });
+  },
+  createDraft(data: { to: string; subject: string; body: string }): Promise<{ id: string }> {
+    return apiClient.post('/gmail/drafts', data);
+  },
+};
+
+export interface CareerStrategyResponse {
+  primaryTargetRole: {
+    title: string;
+    level: string;
+    overallMatchPercentage: number;
+    readinessScore: number;
+    benchmarkCompensation: string;
+    marketDemand: string;
+  };
+  skillGaps: Array<{
+    skill: string;
+    category: string;
+    currentLevel: string;
+    requiredLevel: string;
+    gapSeverity: 'LOW' | 'MEDIUM' | 'HIGH';
+    actionRequired: string;
+    recommendedResources: string[];
+  }>;
+  milestones: Array<{
+    id: string;
+    quarter: string;
+    title: string;
+    description: string;
+    progressPercentage: number;
+    status: 'COMPLETED' | 'IN_PROGRESS' | 'NOT_STARTED';
+    agentAssigned: string;
+  }>;
+  targetCompanies: Array<{
+    name: string;
+    tier: string;
+    matchPercentage: number;
+    openPositions: number;
+    activeContact: string;
+    stage: string;
+  }>;
+}
+
+export const careerApi = {
+  getStrategy(workspaceId: string): Promise<CareerStrategyResponse> {
+    return apiClient.get<CareerStrategyResponse>('/career/strategy', {
+      workspace_id: workspaceId,
+    });
   },
 };

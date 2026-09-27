@@ -390,7 +390,13 @@ export default function CapabilitiesPage() {
 
   // Delete Custom Skill
   const handleDeleteSkill = useCallback(
-    (id: string) => {
+    async (id: string) => {
+      try {
+        await capabilitiesApi.delete(id);
+        mutateCapabilities();
+      } catch {
+        // Fallback for custom local items
+      }
       const updated = deleteCustomCapability(workspaceId, id);
       setCapabilities(updated);
       toast({
@@ -399,7 +405,7 @@ export default function CapabilitiesPage() {
         detail: 'Removed from workspace capabilities.',
       });
     },
-    [workspaceId, toast],
+    [workspaceId, toast, mutateCapabilities],
   );
 
   // Toggle Item Enabled Status

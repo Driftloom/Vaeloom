@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import useSWR from 'swr';
 import {
   Card,
   Badge,
@@ -15,25 +16,83 @@ import {
   RefreshCwIcon,
   EmptyState,
 } from '@vaeloom/ui-kit';
-import { DEMO_EMAIL_SYNC_STATUS, DEMO_EMAIL_THREADS } from '@/lib/fixtures/email';
-import type { EmailThreadItem, ExtractedCareerEntity } from '@/lib/fixtures/email';
+import { gmailApi, type LiveEmailMessage, type ExtractedEmailEntity } from '@/lib/api-client';
+import { useToast } from '@/components/shared/Toast';
 
 export default function EmailIntelligencePage() {
   const params = useParams();
   const workspaceId = typeof params?.['workspaceId'] === 'string' ? params['workspaceId'] : '';
+  const { toast } = useToast();
 
-  const [selectedThreadId, setSelectedThreadId] = useState<string>(DEMO_EMAIL_THREADS[0]?.id || '');
+  const [selectedThreadId, setSelectedThreadId] = useState<string>('');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
-  const sync = DEMO_EMAIL_SYNC_STATUS;
-  const threads = DEMO_EMAIL_THREADS;
+  // 1. Live Gmail Status SWR
+  const { data: statusData, mutate: mutateStatus } = useSWR(
+    workspaceId ? `gmail-status-${workspaceId}` : null,
+    () => gmailApi.getStatus(workspaceId).catch(() => null),
+    { revalidateOnFocus: false },
+  );
 
-  const filteredThreads =
-    categoryFilter === 'ALL' ? threads : threads.filter((t) => t.category === categoryFilter);
+  // 2. Live Gmail Messages SWR
+  const {
+    data: messagesData,
+    error: messagesError,
+    isLoading: messagesLoading,
+    mutate: mutateMessages,
+  } = useSWR(
+    workspaceId ? `gmail-messages-${workspaceId}` : null,
+    () =>
+      gmailApi
+        .listMessages({ workspaceId, maxResults: 30 })
+        .catch(() => ({ messages: [], count: 0, connected: false })),
+    { revalidateOnFocus: false },
+  );
 
-  const selectedThread = threads.find((t) => t.id === selectedThreadId) || filteredThreads[0];
+  const rawThreads: LiveEmailMessage[] = messagesData?.messages ?? [];
+  const isConnected = statusData?.connected ?? messagesData?.connected ?? false;
 
-  const getCategoryBadge = (category: EmailThreadItem['category']) => {
+  // Filter threads by category and search
+  const filteredThreads = rawThreads.filter((t) => {
+    if (categoryFilter !== 'ALL' && t.category !== categoryFilter) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      return (
+        t.subject.toLowerCase().includes(q) ||
+        t.senderName.toLowerCase().includes(q) ||
+        t.company.toLowerCase().includes(q) ||
+        t.preview.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+
+  const selectedThread =
+    filteredThreads.find((t) => t.id === selectedThreadId) || filteredThreads[0] || null;
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      await Promise.all([mutateStatus(), mutateMessages()]);
+      toast({
+        tone: 'success',
+        title: 'Inbox Synchronized',
+        detail: 'Fetched latest email correspondence from Gmail.',
+      });
+    } catch {
+      toast({
+        tone: 'error',
+        title: 'Sync Failed',
+        detail: 'Unable to reach Gmail API. Check connector authorization.',
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const getCategoryBadge = (category: LiveEmailMessage['category']) => {
     switch (category) {
       case 'INTERVIEW_INVITE':
         return (
@@ -71,8 +130,8 @@ export default function EmailIntelligencePage() {
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
               Email Intelligence & Recruiter Triage
             </h1>
-            <Badge variant="warning" size="sm">
-              DEMO TRIAGE
+            <Badge variant={isConnected ? 'success' : 'warning'} size="sm">
+              {isConnected ? 'LIVE GMAIL' : 'CONNECTOR READY'}
             </Badge>
           </div>
           <p className="text-xs sm:text-sm text-text-secondary">
@@ -81,49 +140,94 @@ export default function EmailIntelligencePage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-2 text-2xs font-mono px-3 py-1.5 rounded-lg bg-surface-100 border border-border-subtle">
-            <span className="w-2 h-2 rounded-full bg-warning" />
-            <span className="text-text-muted">Sample Preview:</span>
-            <strong className="text-text">{sync.accountEmail}</strong>
+            <span
+              className={`w-2 h-2 rounded-full ${
+                isConnected ? 'bg-success' : 'bg-warning animate-pulse'
+              }`}
+            />
+            <span className="text-text-muted">Account:</span>
+            <strong className="text-text truncate max-w-[180px]">
+              {statusData?.accountEmail || (isConnected ? 'Google Workspace' : 'OAuth Configured')}
+            </strong>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSync}
+            disabled={isSyncing}
+            className="inline-flex items-center gap-1.5"
+          >
+            <RefreshCwIcon size={14} className={isSyncing ? 'animate-spin' : ''} />
+            <span>{isSyncing ? 'Syncing…' : 'Sync Inbox'}</span>
+          </Button>
           <Link href={`/workspace/${workspaceId}/connectors`}>
-            <Button variant="outline" size="sm">
-              <span className="flex items-center gap-1.5">
-                <RefreshCwIcon size={14} /> Connector Status
-              </span>
+            <Button variant="secondary" size="sm">
+              Manage Connectors
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* Category Filter Pills */}
-      <div className="flex flex-wrap items-center gap-1.5 pb-1">
-        {['ALL', 'INTERVIEW_INVITE', 'STATUS_UPDATE', 'RECRUITER', 'GENERAL'].map((cat) => (
-          <button
-            key={cat}
-            type="button"
-            onClick={() => setCategoryFilter(cat)}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              categoryFilter === cat
-                ? 'bg-action text-white'
-                : 'bg-surface-200 text-text-secondary hover:text-text'
-            }`}
-          >
-            {cat === 'ALL' ? 'All Correspondence' : cat.replace('_', ' ')}
-          </button>
-        ))}
+      {/* Search and Filters Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {['ALL', 'INTERVIEW_INVITE', 'STATUS_UPDATE', 'RECRUITER', 'GENERAL'].map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setCategoryFilter(cat)}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                categoryFilter === cat
+                  ? 'bg-action text-white shadow-xs'
+                  : 'bg-surface-200 text-text-secondary hover:text-text'
+              }`}
+            >
+              {cat === 'ALL' ? 'All Correspondence' : cat.replace('_', ' ')}
+            </button>
+          ))}
+        </div>
+        <div className="w-full sm:w-64">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search sender, subject..."
+            className="w-full px-3 py-1.5 text-xs rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary"
+          />
+        </div>
       </div>
 
-      {/* Two-Column Master/Detail Layout */}
-      {filteredThreads.length === 0 ? (
+      {/* Main Content Area */}
+      {messagesLoading ? (
+        <Card className="p-12 text-center space-y-3">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs text-text-muted font-medium">
+            Scanning Gmail messages & extracting career entities…
+          </p>
+        </Card>
+      ) : filteredThreads.length === 0 ? (
         <Card className="p-8">
           <EmptyState
-            title="No emails in this category"
-            description="No recruiter threads match the active category filter."
+            title={
+              rawThreads.length === 0 ? 'No emails found in connected inbox' : 'No matching emails'
+            }
+            description={
+              rawThreads.length === 0
+                ? 'Your Gmail integration is active. No recruiter threads or correspondence were found in the current inbox sweep.'
+                : 'No correspondence matches your current search or category filter.'
+            }
             action={{
-              label: 'View All Correspondence',
-              onClick: () => setCategoryFilter('ALL'),
+              label: rawThreads.length === 0 ? 'Trigger Sync' : 'Reset Filters',
+              onClick: () => {
+                if (rawThreads.length === 0) {
+                  handleSync();
+                } else {
+                  setCategoryFilter('ALL');
+                  setSearchQuery('');
+                }
+              },
             }}
           />
         </Card>
@@ -154,10 +258,7 @@ export default function EmailIntelligencePage() {
                       </span>
                     </div>
                     <span className="text-2xs font-mono text-text-muted shrink-0">
-                      {new Date(thread.receivedAt).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      {thread.receivedAt}
                     </span>
                   </div>
 
@@ -170,7 +271,7 @@ export default function EmailIntelligencePage() {
                   <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-border-subtle/50 text-2xs">
                     {getCategoryBadge(thread.category)}
                     <span className="text-text-muted font-mono">
-                      {thread.extractedEntities.length} entities extracted
+                      {thread.extractedEntities?.length || 0} entities
                     </span>
                   </div>
                 </div>
@@ -203,54 +304,54 @@ export default function EmailIntelligencePage() {
                   </h2>
 
                   <div className="text-2xs font-mono text-text-muted flex items-center gap-1">
-                    <ClockIcon size={12} /> Received:{' '}
-                    {new Date(selectedThread.receivedAt).toLocaleString()}
+                    <ClockIcon size={12} /> Received: {selectedThread.receivedAt}
                   </div>
                 </div>
 
                 {/* AI Intelligence Extraction Box */}
-                {selectedThread.extractedEntities.length > 0 && (
-                  <div className="p-3.5 rounded-lg bg-accent/5 border border-accent/20 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-accent">
-                        <SparklesIcon size={15} /> AI Extraction & Memory Ingestion
+                {selectedThread.extractedEntities &&
+                  selectedThread.extractedEntities.length > 0 && (
+                    <div className="p-3.5 rounded-lg bg-accent/5 border border-accent/20 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-accent">
+                          <SparklesIcon size={15} /> AI Extraction &amp; Memory Ingestion
+                        </div>
+                        <Link
+                          href={`/workspace/${workspaceId}/memory`}
+                          className="text-2xs text-action hover:underline flex items-center gap-1"
+                        >
+                          <BrainIcon size={12} /> View Memory Graph
+                        </Link>
                       </div>
-                      <Link
-                        href={`/workspace/${workspaceId}/memory`}
-                        className="text-2xs text-action hover:underline flex items-center gap-1"
-                      >
-                        <BrainIcon size={12} /> View Memory Graph
-                      </Link>
-                    </div>
 
-                    <div className="space-y-1.5">
-                      {selectedThread.extractedEntities.map(
-                        (ent: ExtractedCareerEntity, idx: number) => (
-                          <div
-                            key={idx}
-                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 p-2 rounded bg-surface border border-border-subtle text-xs"
-                          >
-                            <div>
-                              <span className="text-2xs font-mono uppercase text-text-muted mr-1.5">
-                                [{ent.type}]
-                              </span>
-                              <span className="font-medium text-text">{ent.label}:</span>{' '}
-                              <span className="text-text-secondary">{ent.value}</span>
+                      <div className="space-y-1.5">
+                        {selectedThread.extractedEntities.map(
+                          (ent: ExtractedEmailEntity, idx: number) => (
+                            <div
+                              key={idx}
+                              className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 p-2 rounded bg-surface border border-border-subtle text-xs"
+                            >
+                              <div>
+                                <span className="text-2xs font-mono uppercase text-text-muted mr-1.5">
+                                  [{ent.type}]
+                                </span>
+                                <span className="font-medium text-text">{ent.label}:</span>{' '}
+                                <span className="text-text-secondary">{ent.value}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-2xs shrink-0 font-mono">
+                                <span className="text-success flex items-center gap-0.5">
+                                  <CheckIcon size={12} /> Ingested
+                                </span>
+                                <span className="text-text-muted">
+                                  ({Math.round(ent.confidence * 100)}%)
+                                </span>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-1.5 text-2xs shrink-0 font-mono">
-                              <span className="text-success flex items-center gap-0.5">
-                                <CheckIcon size={12} /> Ingested
-                              </span>
-                              <span className="text-text-muted">
-                                ({Math.round(ent.confidence * 100)}%)
-                              </span>
-                            </div>
-                          </div>
-                        ),
-                      )}
+                          ),
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {/* Email Body */}
                 <div className="text-xs text-text leading-relaxed whitespace-pre-line bg-surface-100 p-4 rounded-lg font-sans border border-border-subtle">
@@ -260,10 +361,15 @@ export default function EmailIntelligencePage() {
                 {/* Bottom Actions */}
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border-subtle">
                   <div className="text-2xs text-text-muted">
-                    Scanned by <strong className="text-text">GmailAgent (System 1 Choice)</strong>
+                    Scanned by{' '}
+                    <strong className="text-text">GmailAgent (System 1 Decision Engine)</strong>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Link href={`/workspace/${workspaceId}/chat`}>
+                    <Link
+                      href={`/workspace/${workspaceId}/chat?prompt=${encodeURIComponent(
+                        `Draft a professional response to this email from ${selectedThread.senderName} (${selectedThread.company}) regarding '${selectedThread.subject}'.`,
+                      )}`}
+                    >
                       <Button variant="outline" size="sm">
                         <span className="flex items-center gap-1.5">
                           <SparklesIcon size={14} /> Draft AI Response

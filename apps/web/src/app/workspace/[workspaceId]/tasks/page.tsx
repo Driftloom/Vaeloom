@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import useSWR from 'swr';
 import {
   Card,
   Badge,
@@ -17,55 +18,129 @@ import {
   ChevronUpIcon,
   CheckIcon,
   RefreshCwIcon,
-  UsersIcon,
   EmptyState,
 } from '@vaeloom/ui-kit';
-import { DEMO_AUTONOMOUS_TASKS } from '@/lib/fixtures/tasks';
-import type { AutonomousTask, ExecutionSubtask } from '@/lib/fixtures/tasks';
+import { schedulerApi, approvalApi, type JobResponse, type ApprovalItem } from '@/lib/api-client';
+import { useToast } from '@/components/shared/Toast';
 
 export default function TasksPage() {
   const params = useParams();
   const workspaceId = typeof params?.['workspaceId'] === 'string' ? params['workspaceId'] : '';
+  const { toast } = useToast();
 
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({
-    'task-102': true, // Expand active running by default
-  });
+  const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({});
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
+
+  // 1. SWR: Scheduler Jobs
+  const {
+    data: jobs,
+    isLoading: jobsLoading,
+    error: jobsError,
+    mutate: mutateJobs,
+  } = useSWR<JobResponse[]>(
+    workspaceId ? `scheduler-jobs-${workspaceId}` : null,
+    () => schedulerApi.listJobs({ page_size: 50 }).catch(() => []),
+    { revalidateOnFocus: false },
+  );
+
+  // 2. SWR: Pending Approvals
+  const { data: approvalsRes, mutate: mutateApprovals } = useSWR(
+    workspaceId ? `approvals-${workspaceId}` : null,
+    () => approvalApi.list({ status: 'PENDING' }).catch(() => ({ items: [], total: 0 })),
+    { revalidateOnFocus: false },
+  );
+
+  const pendingApprovals: ApprovalItem[] = approvalsRes?.items ?? [];
+  const rawJobs = jobs ?? [];
 
   const toggleExpand = (taskId: string) => {
     setExpandedTasks((prev) => ({ ...prev, [taskId]: !prev[taskId] }));
   };
 
-  const tasks = DEMO_AUTONOMOUS_TASKS;
+  const filteredJobs = rawJobs.filter((job) => {
+    if (statusFilter === 'ALL') return true;
+    if (statusFilter === 'ACTIVE') return job.status === 'active';
+    if (statusFilter === 'PAUSED') return job.status === 'paused';
+    if (statusFilter === 'PENDING_APPROVAL') return false; // Handled separately
+    return job.status.toLowerCase() === statusFilter.toLowerCase();
+  });
 
-  const filteredTasks =
-    statusFilter === 'ALL' ? tasks : tasks.filter((t) => t.status === statusFilter);
+  const activeCount = rawJobs.filter((j) => j.status === 'active').length;
+  const pausedCount = rawJobs.filter((j) => j.status === 'paused').length;
 
-  const runningCount = tasks.filter((t) => t.status === 'RUNNING').length;
-  const pendingApprovalCount = tasks.filter((t) => t.status === 'PENDING_APPROVAL').length;
-  const completedCount = tasks.filter((t) => t.status === 'COMPLETED').length;
+  const handleTrigger = async (jobId: string, name: string) => {
+    setActionInProgress(jobId);
+    try {
+      await schedulerApi.triggerJob(jobId);
+      toast({
+        tone: 'success',
+        title: 'Task Execution Triggered',
+        detail: `Dispatched '${name}' to background worker pool.`,
+      });
+      await mutateJobs();
+    } catch {
+      toast({
+        tone: 'error',
+        title: 'Trigger Failed',
+        detail: 'Could not trigger background job execution.',
+      });
+    } finally {
+      setActionInProgress(null);
+    }
+  };
 
-  const getStatusBadge = (status: AutonomousTask['status']) => {
-    switch (status) {
-      case 'RUNNING':
+  const handleTogglePause = async (job: JobResponse) => {
+    setActionInProgress(job.id);
+    try {
+      if (job.status === 'active') {
+        await schedulerApi.pauseJob(job.id);
+        toast({
+          tone: 'success',
+          title: 'Task Paused',
+          detail: `Paused cron schedule for '${job.name}'.`,
+        });
+      } else {
+        await schedulerApi.resumeJob(job.id);
+        toast({
+          tone: 'success',
+          title: 'Task Resumed',
+          detail: `Resumed cron schedule for '${job.name}'.`,
+        });
+      }
+      await mutateJobs();
+    } catch {
+      toast({
+        tone: 'error',
+        title: 'Action Failed',
+        detail: 'Could not update task schedule status.',
+      });
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'active':
         return (
           <Badge variant="primary" size="sm">
-            RUNNING
+            ACTIVE SCHEDULE
           </Badge>
         );
-      case 'COMPLETED':
+      case 'completed':
         return (
           <Badge variant="success" size="sm">
             COMPLETED
           </Badge>
         );
-      case 'PENDING_APPROVAL':
+      case 'paused':
         return (
           <Badge variant="warning" size="sm">
-            APPROVAL REQUIRED
+            PAUSED
           </Badge>
         );
-      case 'FAILED':
+      case 'failed':
         return (
           <Badge variant="error" size="sm">
             FAILED
@@ -74,24 +149,9 @@ export default function TasksPage() {
       default:
         return (
           <Badge variant="default" size="sm">
-            {status}
+            {status.toUpperCase()}
           </Badge>
         );
-    }
-  };
-
-  const getSubtaskStatusIcon = (status: ExecutionSubtask['status']) => {
-    switch (status) {
-      case 'COMPLETED':
-        return <CheckIcon size={14} className="text-success" />;
-      case 'RUNNING':
-        return <RefreshCwIcon size={14} className="text-action animate-spin" />;
-      case 'APPROVAL_REQUIRED':
-        return <ShieldIcon size={14} className="text-warning" />;
-      case 'FAILED':
-        return <AlertTriangleIcon size={14} className="text-error" />;
-      default:
-        return <ClockIcon size={14} className="text-text-muted" />;
     }
   };
 
@@ -102,24 +162,24 @@ export default function TasksPage() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-              Autonomous Tasks & Workflow DAGs
+              Autonomous Tasks &amp; Workflow DAGs
             </h1>
-            <Badge variant="warning" size="sm">
-              DEMO TELEMETRY
+            <Badge variant="success" size="sm">
+              LIVE SCHEDULER
             </Badge>
           </div>
           <p className="text-xs sm:text-sm text-text-secondary">
-            Multi-agent execution graph, step-level traces, and human-in-the-loop decision
+            Multi-agent execution graph, background cron sweeps, and human-in-the-loop decision
             checkpoints.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5">
           <Link href={`/workspace/${workspaceId}/approvals`}>
-            <Button variant={pendingApprovalCount > 0 ? 'primary' : 'outline'} size="sm">
+            <Button variant={pendingApprovals.length > 0 ? 'primary' : 'outline'} size="sm">
               <span className="flex items-center gap-1.5">
                 <ShieldIcon size={14} /> Approvals Center{' '}
-                {pendingApprovalCount > 0 && `(${pendingApprovalCount})`}
+                {pendingApprovals.length > 0 && `(${pendingApprovals.length})`}
               </span>
             </Button>
           </Link>
@@ -129,187 +189,193 @@ export default function TasksPage() {
       {/* Execution Telemetry Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          label="Active Running DAGs"
-          value={runningCount}
+          label="Active Recurring Jobs"
+          value={activeCount}
           icon={<PlayIcon size={20} />}
-          caption="Autonomous agent execution loops"
+          caption="Autonomous background tasks"
         />
         <StatCard
           label="Pending Approvals"
-          value={pendingApprovalCount}
+          value={pendingApprovals.length}
           icon={<ShieldIcon size={20} />}
-          caption="Awaiting HITL user consent"
+          caption="Awaiting human consent"
         />
         <StatCard
-          label="Completed Today"
-          value={completedCount}
+          label="Paused Schedules"
+          value={pausedCount}
           icon={<CheckSquareIcon size={20} />}
-          caption="Successfully finished tasks"
+          caption="Inactive or suspended jobs"
         />
         <StatCard
-          label="Avg Workflow Time"
-          value="42.8s"
+          label="Execution Mode"
+          value="Async Worker"
           icon={<ClockIcon size={20} />}
-          caption="Across 18 multi-agent tasks"
+          caption="PostgreSQL Cron Runtime"
         />
       </div>
 
       {/* Filter Tabs */}
       <div className="flex flex-wrap items-center gap-1.5 pb-1">
-        {['ALL', 'RUNNING', 'PENDING_APPROVAL', 'COMPLETED', 'FAILED'].map((st) => (
+        {['ALL', 'ACTIVE', 'PAUSED'].map((st) => (
           <button
             key={st}
             type="button"
             onClick={() => setStatusFilter(st)}
             className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
               statusFilter === st
-                ? 'bg-action text-white'
+                ? 'bg-action text-white shadow-xs'
                 : 'bg-surface-200 text-text-secondary hover:text-text'
             }`}
           >
-            {st === 'ALL' ? 'All Executions' : st.replace('_', ' ')}
+            {st === 'ALL' ? 'All Tasks' : st}
           </button>
         ))}
       </div>
 
+      {/* Pending Approvals Section if any */}
+      {pendingApprovals.length > 0 && (
+        <Card className="p-4 border-warning/30 bg-warning/5 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-warning font-semibold text-xs">
+              <ShieldIcon size={16} /> Human-In-The-Loop: {pendingApprovals.length} Action(s)
+              Require Authorization
+            </div>
+            <Link
+              href={`/workspace/${workspaceId}/approvals`}
+              className="text-2xs text-action hover:underline font-medium"
+            >
+              Review in Approvals &rarr;
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {pendingApprovals.slice(0, 3).map((app) => (
+              <div
+                key={app.id}
+                className="flex items-center justify-between p-2.5 rounded-lg bg-surface border border-border-subtle text-xs"
+              >
+                <div>
+                  <span className="font-semibold text-text">{app.action_type}</span>
+                  <span className="text-text-muted ml-2">by {app.agent_name || 'Agent'}</span>
+                </div>
+                <Badge variant="warning" size="sm">
+                  PENDING
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {/* Tasks List */}
-      {filteredTasks.length === 0 ? (
+      {jobsLoading ? (
+        <Card className="p-12 text-center space-y-3">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs text-text-muted font-medium">
+            Loading autonomous execution schedules from database…
+          </p>
+        </Card>
+      ) : filteredJobs.length === 0 ? (
         <Card className="p-8">
           <EmptyState
-            title="No workflow executions found"
-            description="There are currently no tasks matching the selected execution state filter."
+            title="No scheduled tasks found"
+            description="There are currently no background tasks or cron executions configured in this workspace."
             action={{
-              label: 'Reset Filter',
-              onClick: () => setStatusFilter('ALL'),
+              label: 'Refresh Task List',
+              onClick: () => mutateJobs(),
             }}
           />
         </Card>
       ) : (
         <div className="space-y-4">
-          {filteredTasks.map((task: AutonomousTask) => {
-            const isExpanded = !!expandedTasks[task.id];
+          {filteredJobs.map((job) => {
+            const isExpanded = !!expandedTasks[job.id];
+            const isActing = actionInProgress === job.id;
 
             return (
-              <Card key={task.id} className="p-5 space-y-4 border-border-strong transition-all">
+              <Card key={job.id} className="p-5 space-y-4 border-border-strong transition-all">
                 {/* Task Header */}
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono text-2xs px-2 py-0.5 rounded bg-surface-200 text-text-muted">
-                        {task.workflowId}
+                        {job.id}
                       </span>
-                      {getStatusBadge(task.status)}
-                      <Badge variant={task.priority === 'CRITICAL' ? 'error' : 'default'} size="sm">
-                        {task.priority}
-                      </Badge>
-                      <span className="text-2xs text-text-muted font-mono">
-                        Initiator: {task.initiator}
+                      {getStatusBadge(job.status)}
+                      <span className="text-2xs font-mono text-text-muted">
+                        Cron: <code className="text-text">{job.cron}</code>
                       </span>
                     </div>
 
-                    <h2 className="text-base font-bold text-text pt-0.5">{task.title}</h2>
-                    <p className="text-xs text-text-secondary">{task.description}</p>
+                    <h2 className="text-base font-bold text-text pt-0.5">{job.name}</h2>
+                    <p className="text-xs text-text-secondary">
+                      Type: <strong className="text-text">{job.type}</strong>
+                      {job.method && <span> • HTTP {job.method}</span>}
+                    </p>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    {task.status === 'PENDING_APPROVAL' && (
-                      <Link href={`/workspace/${workspaceId}/approvals`}>
-                        <Button variant="primary" size="sm">
-                          <span className="flex items-center gap-1.5">
-                            <ShieldIcon size={14} /> Review Gate
-                          </span>
-                        </Button>
-                      </Link>
-                    )}
-                    <Button variant="outline" size="sm" onClick={() => toggleExpand(task.id)}>
-                      <span className="flex items-center gap-1.5">
-                        {isExpanded ? 'Hide Steps' : `View Steps (${task.subtasks.length})`}
-                        {isExpanded ? <ChevronUpIcon size={14} /> : <ChevronDownIcon size={14} />}
-                      </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isActing}
+                      onClick={() => handleTrigger(job.id, job.name)}
+                      className="inline-flex items-center gap-1.5"
+                    >
+                      <PlayIcon size={12} /> Run Now
                     </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={isActing}
+                      onClick={() => handleTogglePause(job)}
+                    >
+                      {job.status === 'active' ? 'Pause' : 'Resume'}
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => toggleExpand(job.id)}
+                      className="p-1.5 rounded-lg border border-border-subtle hover:bg-surface-100 text-text-muted hover:text-text transition-colors"
+                      title={isExpanded ? 'Collapse' : 'Expand'}
+                    >
+                      {isExpanded ? <ChevronUpIcon size={16} /> : <ChevronDownIcon size={16} />}
+                    </button>
                   </div>
                 </div>
 
-                {/* Progress bar */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-2xs text-text-secondary">
-                    <span className="flex items-center gap-1 font-mono">
-                      <UsersIcon size={12} /> Lead:{' '}
-                      <strong className="text-text">{task.assignedAgent}</strong>
-                    </span>
-                    <span className="font-mono font-semibold text-text">
-                      {task.progressPercentage}%
-                    </span>
-                  </div>
-                  <div className="h-2 rounded-full bg-surface-200 overflow-hidden">
-                    <div
-                      className={`h-full transition-all duration-300 ${
-                        task.status === 'COMPLETED'
-                          ? 'bg-success'
-                          : task.status === 'FAILED'
-                            ? 'bg-error'
-                            : 'bg-action'
-                      }`}
-                      style={{ width: `${task.progressPercentage}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Expanded Subtask DAG */}
+                {/* Expanded Details */}
                 {isExpanded && (
-                  <div className="pt-3 border-t border-border-subtle space-y-2.5">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-                      Execution Step DAG ({task.subtasks.length} Subtasks)
-                    </h3>
-
-                    <div className="space-y-2">
-                      {task.subtasks.map((st, idx) => (
-                        <div
-                          key={st.id}
-                          className="p-3 rounded-lg bg-surface-200/50 border border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
-                        >
-                          <div className="flex items-start gap-2.5">
-                            <span className="p-1 rounded bg-surface shrink-0 mt-0.5">
-                              {getSubtaskStatusIcon(st.status)}
-                            </span>
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-2xs text-text-muted">
-                                  #{idx + 1}
-                                </span>
-                                <span className="font-medium text-text">{st.title}</span>
-                              </div>
-                              {st.outputSummary && (
-                                <p className="text-2xs text-text-secondary font-mono">
-                                  Output: {st.outputSummary}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto text-2xs font-mono text-text-muted">
-                            <span className="px-1.5 py-0.5 rounded bg-surface border border-border-subtle text-text">
-                              {st.agent}
-                            </span>
-                            {st.durationMs && <span>{(st.durationMs / 1000).toFixed(1)}s</span>}
-                            <Badge
-                              variant={
-                                st.status === 'COMPLETED'
-                                  ? 'success'
-                                  : st.status === 'RUNNING'
-                                    ? 'primary'
-                                    : st.status === 'APPROVAL_REQUIRED'
-                                      ? 'warning'
-                                      : 'default'
-                              }
-                              size="sm"
-                            >
-                              {st.status.replace('_', ' ')}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
+                  <div className="space-y-3 pt-3 border-t border-border-subtle text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-lg bg-surface-100 border border-border-subtle font-mono text-2xs">
+                      <div>
+                        <span className="text-text-muted block">Last Run:</span>
+                        <span className="text-text font-semibold">
+                          {job.last_run_at ? new Date(job.last_run_at).toLocaleString() : 'Never'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-text-muted block">Next Run:</span>
+                        <span className="text-text font-semibold">
+                          {job.next_run_at ? new Date(job.next_run_at).toLocaleString() : 'Pending'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-text-muted block">Registered:</span>
+                        <span className="text-text">
+                          {new Date(job.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
                     </div>
+
+                    {job.payload && Object.keys(job.payload).length > 0 && (
+                      <div className="space-y-1">
+                        <span className="text-2xs font-semibold uppercase text-text-muted">
+                          Configured Payload
+                        </span>
+                        <pre className="p-3 rounded-lg bg-surface-200 border border-border-subtle font-mono text-2xs overflow-x-auto text-text">
+                          {JSON.stringify(job.payload, null, 2)}
+                        </pre>
+                      </div>
+                    )}
                   </div>
                 )}
               </Card>

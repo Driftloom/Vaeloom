@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import useSWR from 'swr';
 import {
   Card,
   Input,
@@ -18,64 +19,83 @@ import {
   ExternalLinkIcon,
   EmptyState,
 } from '@vaeloom/ui-kit';
-import { DEMO_SEARCH_RESULTS } from '@/lib/fixtures/search';
-import type { FacetedSearchResult } from '@/lib/fixtures/search';
+import { searchApi, type SearchResponse, type SearchResult } from '@/lib/api-client';
 
 export default function GlobalSearchPage() {
   const params = useParams();
   const workspaceId = typeof params?.['workspaceId'] === 'string' ? params['workspaceId'] : '';
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('score');
 
+  // Debounce input to reduce search load
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(searchQuery.trim());
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
   const categories = [
-    { id: 'all', label: 'All Results' },
-    { id: 'document', label: 'Documents' },
-    { id: 'memory', label: 'Memories' },
-    { id: 'resume', label: 'Resumes' },
-    { id: 'job', label: 'Jobs' },
-    { id: 'task', label: 'Tasks' },
-    { id: 'entity', label: 'Graph Entities' },
+    { id: 'all', label: 'All Sources', sourceKey: undefined },
+    { id: 'documents', label: 'Documents', sourceKey: 'documents' },
+    { id: 'memories', label: 'Memories', sourceKey: 'memories' },
+    { id: 'resumes', label: 'Resumes', sourceKey: 'resumes' },
+    { id: 'jobs', label: 'Jobs', sourceKey: 'jobs' },
+    { id: 'entities', label: 'Graph Entities', sourceKey: 'entities' },
   ];
 
-  const filteredResults = useMemo(() => {
-    let results = DEMO_SEARCH_RESULTS;
+  const activeSourceKey = useMemo(() => {
+    const found = categories.find((c) => c.id === selectedCategory);
+    return found?.sourceKey ? [found.sourceKey] : undefined;
+  }, [selectedCategory]);
 
-    if (selectedCategory !== 'all') {
-      results = results.filter((r) => r.category === selectedCategory);
+  // Live Vector / Hybrid Search SWR
+  const {
+    data: searchData,
+    isLoading,
+    error,
+  } = useSWR<SearchResponse>(
+    workspaceId && debouncedQuery
+      ? `search-${workspaceId}-${debouncedQuery}-${selectedCategory}`
+      : null,
+    () =>
+      searchApi.all({
+        query: debouncedQuery,
+        sources: activeSourceKey,
+        filters: { workspace_id: workspaceId },
+        limit: 30,
+      }),
+    { revalidateOnFocus: false },
+  );
+
+  const rawResults: SearchResult[] = searchData?.results ?? [];
+
+  const sortedResults = useMemo(() => {
+    const list = [...rawResults];
+    if (sortBy === 'score') {
+      list.sort((a, b) => b.score - a.score);
     }
+    return list;
+  }, [rawResults, sortBy]);
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      results = results.filter(
-        (r) =>
-          r.title.toLowerCase().includes(q) ||
-          r.snippet.toLowerCase().includes(q) ||
-          r.tags.some((t) => t.toLowerCase().includes(q)),
-      );
-    }
-
-    return [...results].sort((a, b) => {
-      if (sortBy === 'score') return b.matchScore - a.matchScore;
-      if (sortBy === 'date') return new Date(b.date).getTime() - new Date(a.date).getTime();
-      if (sortBy === 'title') return a.title.localeCompare(b.title);
-      return 0;
-    });
-  }, [searchQuery, selectedCategory, sortBy]);
-
-  const getCategoryIcon = (cat: FacetedSearchResult['category']) => {
-    switch (cat) {
+  const getCategoryIcon = (source: string) => {
+    switch (source.toLowerCase()) {
+      case 'documents':
       case 'document':
         return <FileTextIcon size={16} className="text-action" />;
+      case 'memories':
       case 'memory':
         return <BrainIcon size={16} className="text-accent" />;
+      case 'resumes':
       case 'resume':
         return <FileTextIcon size={16} className="text-success" />;
+      case 'jobs':
       case 'job':
         return <BriefcaseIcon size={16} className="text-warning" />;
-      case 'task':
-        return <CheckSquareIcon size={16} className="text-action" />;
+      case 'entities':
       case 'entity':
         return <DatabaseIcon size={16} className="text-accent" />;
       default:
@@ -83,9 +103,20 @@ export default function GlobalSearchPage() {
     }
   };
 
-  const resolveUri = (uri?: string) => {
-    if (!uri) return `/workspace/${workspaceId}`;
-    return uri.replace('{ws}', workspaceId);
+  const resolveTargetUri = (item: SearchResult): string => {
+    const src = item.source.toLowerCase();
+    if (src.includes('document')) return `/workspace/${workspaceId}/files`;
+    if (src.includes('memory') || src.includes('entit')) return `/workspace/${workspaceId}/memory`;
+    if (src.includes('resume')) return `/workspace/${workspaceId}/resume`;
+    if (src.includes('job')) return `/workspace/${workspaceId}/jobs`;
+    return `/workspace/${workspaceId}`;
+  };
+
+  const getResultTitle = (item: SearchResult): string => {
+    if (item.metadata?.['title']) return String(item.metadata['title']);
+    if (item.metadata?.['name']) return String(item.metadata['name']);
+    if (item.metadata?.['filename']) return String(item.metadata['filename']);
+    return item.text.slice(0, 60) + '...';
   };
 
   return (
@@ -97,19 +128,19 @@ export default function GlobalSearchPage() {
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
               Unified Enterprise Search
             </h1>
-            <Badge variant="warning" size="sm">
-              DEMO INDEX
+            <Badge variant="success" size="sm">
+              LIVE PGVECTOR
             </Badge>
           </div>
           <p className="text-xs sm:text-sm text-text-secondary">
-            Cross-partition semantic retrieval across memory traces, documents, resumes, and
-            autonomous task logs.
+            Cross-partition semantic vector retrieval across memory traces, documents, resumes, and
+            knowledge entities.
           </p>
         </div>
 
         <div className="flex items-center gap-2 text-2xs font-mono text-text-muted">
           <Badge variant="default" size="sm">
-            Indexed Search
+            Zero-Trust Filtered
           </Badge>
         </div>
       </div>
@@ -121,7 +152,7 @@ export default function GlobalSearchPage() {
         </div>
         <Input
           type="search"
-          placeholder="Search memories, documents, jobs, skills, or DAG executions..."
+          placeholder="Search across documents, memories, jobs, resumes, and skills..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="text-sm py-2.5 pl-10 shadow-sm"
@@ -130,7 +161,7 @@ export default function GlobalSearchPage() {
           <button
             type="button"
             onClick={() => setSearchQuery('')}
-            className="absolute right-3 text-xs text-text-muted hover:text-text"
+            className="absolute right-3 text-xs text-text-muted hover:text-text cursor-pointer"
           >
             Clear
           </button>
@@ -141,10 +172,6 @@ export default function GlobalSearchPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
         <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto pb-1">
           {categories.map((cat) => {
-            const count =
-              cat.id === 'all'
-                ? DEMO_SEARCH_RESULTS.length
-                : DEMO_SEARCH_RESULTS.filter((r) => r.category === cat.id).length;
             const isSelected = selectedCategory === cat.id;
 
             return (
@@ -154,18 +181,11 @@ export default function GlobalSearchPage() {
                 onClick={() => setSelectedCategory(cat.id)}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                   isSelected
-                    ? 'bg-action text-white'
+                    ? 'bg-action text-white shadow-xs'
                     : 'bg-surface-200 text-text-secondary hover:text-text'
                 }`}
               >
                 <span>{cat.label}</span>
-                <span
-                  className={`text-2xs px-1.5 py-0.2 rounded-full ${
-                    isSelected ? 'bg-white/20 text-white' : 'bg-surface-300 text-text-muted'
-                  }`}
-                >
-                  {count}
-                </span>
               </button>
             );
           })}
@@ -178,28 +198,45 @@ export default function GlobalSearchPage() {
             onChange={setSortBy}
             options={[
               { label: 'Sort: Relevance Score', value: 'score' },
-              { label: 'Sort: Date (Newest)', value: 'date' },
-              { label: 'Sort: Alphabetical', value: 'title' },
+              { label: 'Sort: Natural Index', value: 'default' },
             ]}
           />
         </div>
       </div>
 
+      {/* Results Summary Counter */}
       <div className="flex items-center justify-between text-2xs text-text-muted px-1">
         <span>
-          Found <strong>{filteredResults.length}</strong> result
-          {filteredResults.length === 1 ? '' : 's'}
+          Found <strong>{sortedResults.length}</strong> matching item
+          {sortedResults.length === 1 ? '' : 's'}
+          {debouncedQuery && <span> for &ldquo;{debouncedQuery}&rdquo;</span>}
         </span>
       </div>
 
-      {/* Results List */}
-      {filteredResults.length === 0 ? (
+      {/* Results Content State */}
+      {isLoading ? (
+        <Card className="p-12 text-center space-y-3">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs text-text-muted font-medium">
+            Executing hybrid vector search across workspace…
+          </p>
+        </Card>
+      ) : !debouncedQuery ? (
+        <Card className="p-12 text-center space-y-3">
+          <SearchIcon size={28} className="mx-auto text-text-muted" />
+          <h3 className="text-sm font-semibold text-text">Type to search your workspace</h3>
+          <p className="text-xs text-text-muted max-w-sm mx-auto">
+            Search for technical skills, job opportunities, document snippets, interview notes, or
+            knowledge graph relations.
+          </p>
+        </Card>
+      ) : sortedResults.length === 0 ? (
         <Card className="p-8">
           <EmptyState
             title="No matching items found"
-            description="No entities match your query in this category partition. Try adjusting your search query or selecting 'All Results'."
+            description="No entities match your query in this partition. Try searching for a different keyword or switching to 'All Sources'."
             action={{
-              label: 'Reset Search Filters',
+              label: 'Reset Filters',
               onClick: () => {
                 setSearchQuery('');
                 setSelectedCategory('all');
@@ -209,71 +246,63 @@ export default function GlobalSearchPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {filteredResults.map((result) => (
-            <Card
-              key={result.id}
-              className="p-4 transition-all hover:border-action/50 hover:shadow-sm group space-y-2.5"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                <div className="flex items-start gap-2.5">
-                  <div className="p-1.5 rounded-md bg-surface-200 shrink-0 mt-0.5">
-                    {getCategoryIcon(result.category)}
-                  </div>
-                  <div>
-                    <span className="text-2xs font-mono uppercase tracking-wider text-text-muted">
-                      {result.category}
-                    </span>
-                    <Link
-                      href={resolveUri(result.uri)}
-                      className="group-hover:text-action transition-colors block"
-                    >
-                      <h3 className="text-sm sm:text-base font-semibold text-text flex items-center gap-1.5">
-                        {result.title}
-                        <ExternalLinkIcon
-                          size={12}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        />
-                      </h3>
-                    </Link>
-                  </div>
-                </div>
+          {sortedResults.map((result) => {
+            const title = getResultTitle(result);
+            const targetUri = resolveTargetUri(result);
+            const scorePct = Math.min(100, Math.round(result.score * 100));
 
-                <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                  <Badge variant="primary" size="sm">
-                    {Math.round(result.matchScore * 100)}% match
-                  </Badge>
-                  <span className="text-2xs font-mono text-text-muted flex items-center gap-1">
-                    <ClockIcon size={12} /> {result.date}
-                  </span>
-                </div>
-              </div>
-
-              <p className="text-xs text-text-secondary leading-relaxed pl-8">{result.snippet}</p>
-
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border-subtle pl-8 text-2xs">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {result.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-2 py-0.5 rounded bg-surface-200 text-text font-mono text-2xs"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-
-                {result.metadata && (
-                  <div className="flex items-center gap-3 text-text-muted font-mono">
-                    {Object.entries(result.metadata).map(([k, v]) => (
-                      <span key={k}>
-                        {k}: <strong className="text-text">{v}</strong>
+            return (
+              <Card
+                key={result.id}
+                className="p-4 transition-all hover:border-action/50 hover:shadow-sm group space-y-2.5"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                  <div className="flex items-start gap-2.5">
+                    <div className="p-1.5 rounded-md bg-surface-200 shrink-0 mt-0.5">
+                      {getCategoryIcon(result.source)}
+                    </div>
+                    <div>
+                      <span className="text-2xs font-mono uppercase tracking-wider text-text-muted">
+                        {result.source}
                       </span>
-                    ))}
+                      <Link
+                        href={targetUri}
+                        className="group-hover:text-action transition-colors block"
+                      >
+                        <h3 className="text-sm sm:text-base font-semibold text-text flex items-center gap-1.5">
+                          {title}
+                          <ExternalLinkIcon
+                            size={12}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          />
+                        </h3>
+                      </Link>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                    <Badge variant={scorePct > 80 ? 'success' : 'primary'} size="sm">
+                      {scorePct}% match
+                    </Badge>
+                  </div>
+                </div>
+
+                <p className="text-xs text-text-secondary leading-relaxed pl-8">{result.text}</p>
+
+                {result.metadata && Object.keys(result.metadata).length > 0 && (
+                  <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-border-subtle pl-8 text-2xs font-mono text-text-muted">
+                    {Object.entries(result.metadata)
+                      .slice(0, 4)
+                      .map(([k, v]) => (
+                        <span key={k}>
+                          {k}: <strong className="text-text">{String(v)}</strong>
+                        </span>
+                      ))}
                   </div>
                 )}
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
