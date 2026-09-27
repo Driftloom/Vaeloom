@@ -43,9 +43,11 @@ Prior to this hardening cycle:
   verified under `next build` (Exit Code 0).
 - **Component System Health**: `@vaeloom/ui-kit` expanded with 9 canonical
   components and 4 new icons; 100% test coverage with Jest and TypeScript.
-- **Zero Mock Theater**: All preview surfaces consume deterministic, typed
-  fixtures from `@/lib/fixtures/` and are clearly labeled with `[DEMO MODE]` or
-  `[STATIC PREVIEW]` badges without fabricating fake API mutations.
+- **Zero Mock Theater**: Preview surfaces consume live SWR data fetches (career,
+  search, tasks, email) or inline typed constants (help page), with no
+  fabricated fake API mutations. Note: earlier revisions of this audit
+  referenced a `@/lib/fixtures/` layer and `[DEMO MODE]` badges that do not
+  exist in the codebase; the actual data layer is SWR-based live fetching.
 
 ---
 

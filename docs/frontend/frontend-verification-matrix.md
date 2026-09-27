@@ -13,9 +13,9 @@ logs.
 ========================================================================================
 Verification Gate                 Command                               Result   Status
 ========================================================================================
-UI Kit Tests                      pnpm --filter @vaeloom/ui-kit test    5/5      PASS
+UI Kit Tests                      pnpm --filter @vaeloom/ui-kit test    149/149  PASS
 UI Kit Typecheck                  pnpm --filter @vaeloom/ui-kit typecheck 0 err  PASS
-Web Unit & Integration Tests      pnpm --filter @vaeloom/web test       57/57    PASS
+Web Unit & Integration Tests      pnpm --filter @vaeloom/web test       96/96    PASS
 Web Typecheck                     pnpm --filter @vaeloom/web typecheck  0 err    PASS
 Next.js Production Build          pnpm --filter @vaeloom/web build      Exit 0   PASS
 Monorepo Route Coverage           60/60 routes compiled & mapped        100%     PASS
@@ -31,12 +31,13 @@ Monorepo Route Coverage           60/60 routes compiled & mapped        100%    
 - **Command**: `pnpm --filter @vaeloom/ui-kit test`
 - **Output**:
   ```
-  PASS src/__tests__/components.test.ts
   PASS src/__tests__/tokens.test.ts
-  Test Suites: 2 passed, 2 total
-  Tests:       5 passed, 5 total
+  PASS src/__tests__/components-extended.test.tsx
+  PASS src/__tests__/components.test.tsx
+  Test Suites: 3 passed, 3 total
+  Tests:       149 passed, 149 total
   Snapshots:   0 total
-  Time:        1.346 s
+  Time:        27.737 s
   ```
 
 ### 2.2 `@vaeloom/web` Test Execution
@@ -54,10 +55,10 @@ Monorepo Route Coverage           60/60 routes compiled & mapped        100%    
   PASS src/components/layout/Sidebar.spec.tsx
   PASS src/__tests__/landing.test.tsx
   PASS src/app/workspace/[workspaceId]/capabilities/page.spec.tsx
-  Test Suites: 10 passed, 10 total
-  Tests:       57 passed, 57 total
+  Test Suites: 11 passed, 11 total
+  Tests:       96 passed, 96 total
   Snapshots:   0 total
-  Time:        10.98 s
+  Time:        18.691 s
   ```
 
 ### 2.3 Next.js 15 App Router Production Build

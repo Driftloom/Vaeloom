@@ -37,8 +37,9 @@ tree:
   - `Empty`: Graceful fallback if no target role is configured.
   - `Error`: `CareerError` boundary with error-tracking telemetry and retry
     button.
-- **Fixture Source**: `@/lib/fixtures/career.ts` (`DEMO_CAREER_STRATEGY`).
-- **Demo Indicator**: Marked with `[DEMO PREVIEW]` badge.
+  - **Data Source**: Live SWR fetch (`useSWR` keyed by
+    `career-strategy-${workspaceId}`) with inline fallback defaults for
+    `primaryTargetRole`, `skillGaps`, `milestones`, and `targetCompanies`.
 
 ### 2.2 Unified Enterprise Search (`/workspace/[workspaceId]/search`)
 
@@ -51,9 +52,9 @@ tree:
     `Jobs`, `Tasks`, `Entities`).
   - Sort options (`Relevance Score`, `Date`, `Title`).
   - `EmptyState`: Renders clear search filters CTA when query returns 0 matches.
-- **Fixture Source**: `@/lib/fixtures/search.ts` (`DEMO_SEARCH_RESULTS`).
-- **Demo Indicator**: Marked with `[DEMO INDEX]` badge and 14ms traversal
-  telemetry.
+  - **Data Source**: Live SWR fetch (`useSWR` keyed by search workspace)
+    returning `SearchResponse.results`, with client-side category/sort
+    filtering.
 
 ### 2.3 Autonomous Tasks & Workflow DAGs (`/workspace/[workspaceId]/tasks`)
 
@@ -67,7 +68,8 @@ tree:
     agents, and step output summaries.
   - Direct deep link to `/approvals` for tasks gated on human-in-the-loop
     decisions.
-- **Fixture Source**: `@/lib/fixtures/tasks.ts` (`DEMO_AUTONOMOUS_TASKS`).
+  - **Data Source**: Live SWR fetches for scheduler jobs (`JobResponse[]`) and
+    pending approvals, merged into a unified task list.
 
 ### 2.4 Email Intelligence & Recruiter Triage (`/workspace/[workspaceId]/email`)
 
@@ -82,8 +84,8 @@ tree:
   - Unread indicators and sync connection status pill
     (`Google Workspace / Gmail: HEALTHY`).
   - Direct action: "Draft AI Response" linking to `/chat`.
-- **Fixture Source**: `@/lib/fixtures/email.ts` (`DEMO_EMAIL_THREADS`,
-  `DEMO_EMAIL_SYNC_STATUS`).
+  - **Data Source**: Live SWR fetches for Gmail sync status and message threads
+    (`LiveEmailMessage[]`).
 
 ### 2.5 Help Center & Shortcuts Cheatsheet (`/workspace/[workspaceId]/help`)
 
@@ -95,8 +97,8 @@ tree:
   - Expandable architectural guide accordion by category (`Getting Started`,
     `Agents & Autonomy`, `Connectors`, `Security & Privacy`).
   - Search filter across guides and shortcuts.
-- **Fixture Source**: `@/lib/fixtures/help.ts` (`DEMO_SHORTCUTS`,
-  `DEMO_HELP_ARTICLES`).
+  - **Data Source**: Inline typed constants (`SYSTEM_SHORTCUTS`, `coreGuides`)
+    defined in the page module.
 
 ### 2.6 Security Settings & MFA (`/workspace/[workspaceId]/settings/security`)
 

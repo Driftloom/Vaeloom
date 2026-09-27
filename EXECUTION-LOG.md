@@ -3,7 +3,7 @@
 **Baseline tag:** `audit/frontend-enterprise-20260926` (commit `592db98e`)
 **Plan:**
 [`ENTERPRISE-PRODUCTION-READINESS-PLAN.md`](./ENTERPRISE-PRODUCTION-READINESS-PLAN.md)
-**Branch:** `master` (changes uncommitted - see Â§12)
+**Branch:** `master` (changes uncommitted - see Ã‚Â§12)
 
 ---
 
@@ -12,11 +12,11 @@
 Three audit findings were checked against source and found **wrong**. Recorded
 so nobody re-derives them:
 
-| Audit claim                                                                     | Reality                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "Password reset sends no email at allâ€¦ no email call"                         | **Wrong.** `auth_service.py:1055` in the baseline commit already calls `email_service.send_password_reset_email(...)`; the method exists at `email_service.py:143`. The audit's grep was faulty. The _real_ residual defect: delivery failure is swallowed by `except â†’ logger.warning` while the API still answers "instructions have been sent". Since the endpoint must answer identically for unknown addresses (anti-enumeration), the correct fix is copy, not a 500 - see Â§7. |
-| "`account-locked/page.tsx:34` is a hardcoded `Incident ID: SEC-LOCK-2026-9411`" | **Wrong.** No `SEC-LOCK` or `Incident ID` string exists anywhere in the working tree **or** in `HEAD`. Fabricated detail.                                                                                                                                                                                                                                                                                                                                                               |
-| "`settings/security` and `invite/[token]` fabricate security state"             | **Correct** - the single most important finding. Both rebuilt.                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Audit claim                                                                     | Reality                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Password reset sends no email at allÃ¢â‚¬Â¦ no email call"                     | **Wrong.** `auth_service.py:1055` in the baseline commit already calls `email_service.send_password_reset_email(...)`; the method exists at `email_service.py:143`. The audit's grep was faulty. The _real_ residual defect: delivery failure is swallowed by `except Ã¢â€ â€™ logger.warning` while the API still answers "instructions have been sent". Since the endpoint must answer identically for unknown addresses (anti-enumeration), the correct fix is copy, not a 500 - see Ã‚Â§7. |
+| "`account-locked/page.tsx:34` is a hardcoded `Incident ID: SEC-LOCK-2026-9411`" | **Wrong.** No `SEC-LOCK` or `Incident ID` string exists anywhere in the working tree **or** in `HEAD`. Fabricated detail.                                                                                                                                                                                                                                                                                                                                                                      |
+| "`settings/security` and `invite/[token]` fabricate security state"             | **Correct** - the single most important finding. Both rebuilt.                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
 Two more corrections surfaced during implementation:
 
@@ -96,9 +96,9 @@ Three real defects fixed in `auth_service.py`:
 
 1. **A reset token could be redeemed twice.** Tokens were written to _both_
    Redis and a process-local dict, but only the Redis key was deleted on use. A
-   replay hit Redis â†’ miss â†’ fell through to the still-populated dict â†’
-   succeeded. Both paths are now consumed unconditionally, with `GETDEL` (Redis
-   â‰¥ 6.2) for atomicity and a pipelled fallback.
+   replay hit Redis Ã¢â€ â€™ miss Ã¢â€ â€™ fell through to the still-populated
+   dict Ã¢â€ â€™ succeeded. Both paths are now consumed unconditionally, with
+   `GETDEL` (Redis Ã¢â€°Â¥ 6.2) for atomicity and a pipelled fallback.
 2. **Password reset did not clear lockout.** It revoked sessions but left
    `failed_login_attempts` / `locked_until` intact, so a locked-out user had no
    self-service recovery - the reset "succeeded" and the next login still
@@ -114,11 +114,11 @@ Still open: the token lives in a process-local dict rather than a
 
 ## 4. Session rotation is atomic (W2.7) + secrets hashed at rest (W2.8)
 
-**Rotation.** `refresh_token` did `SELECT` â†’ check `status != "ACTIVE"` in
-Python â†’ assign `status = "ROTATED"`. Under READ COMMITTED two concurrent
-refreshes both read `ACTIVE` and both succeeded, so a stolen token could be
-exchanged twice before theft detection fired - despite the comment claiming
-_"Atomic rotation transition (GAP-AUTH-05)"_. Now a conditional
+**Rotation.** `refresh_token` did `SELECT` Ã¢â€ â€™ check `status != "ACTIVE"`
+in Python Ã¢â€ â€™ assign `status = "ROTATED"`. Under READ COMMITTED two
+concurrent refreshes both read `ACTIVE` and both succeeded, so a stolen token
+could be exchanged twice before theft detection fired - despite the comment
+claiming _"Atomic rotation transition (GAP-AUTH-05)"_. Now a conditional
 `UPDATE ... WHERE status = 'ACTIVE'` with a `rowcount == 1` check picks one
 winner; every loser is treated as replay and triggers family revocation.
 
@@ -135,7 +135,7 @@ Four tests were added because none existed:
   exactly one 200.
 - `test_replayed_refresh_token_is_rejected` - 401 with the revocation message in
   the RFC 7807 envelope.
-- `test_mfa_bypass.py` (3 tests) - see Â§5.
+- `test_mfa_bypass.py` (3 tests) - see Ã‚Â§5.
 
 ---
 
@@ -156,7 +156,7 @@ a non-enrolled user**.
 
 ---
 
-## 6. Organization authorization (W3.1â€“W3.6)
+## 6. Organization authorization (W3.1Ã¢â‚¬â€œW3.6)
 
 The most severe finding: **zero** role checks on any endpoint, and `role` was a
 bare `str`, so any authenticated user could add any UUID to any org unit as
@@ -174,9 +174,9 @@ Changes:
   divergent sets (this module, `dependencies.py`, `middleware/rbac.py`, and a
   hardcoded list in the web organizations page).
 - **`require_org_role(min_role)` dependency** on all six mutable endpoints:
-  `PATCH`/`DELETE` org â†’ `admin`/`owner`; add/remove member â†’ `admin`;
-  create invitation â†’ `admin`; **list invitations â†’ `admin`** (that response
-  returns every invitee's email).
+  `PATCH`/`DELETE` org Ã¢â€ â€™ `admin`/`owner`; add/remove member Ã¢â€ â€™
+  `admin`; create invitation Ã¢â€ â€™ `admin`; **list invitations Ã¢â€ â€™
+  `admin`** (that response returns every invitee's email).
 - **Closed role set** - `Literal["viewer","member","lead","admin","owner"]`;
   unknown roles now 422.
 - **Escalation blocked** - `assert_can_grant_role` refuses to grant a role above
@@ -193,9 +193,9 @@ Changes:
   `/auth/sessions/revoke-others`.
 
 Four negative-control tests, each asserting an exact status: role matrix (6
-mutations Ã— 403, member read still allowed), `admin â†’ owner` blocked /
-`admin â†’ admin` allowed, unknown role 422, and invite binding (wrong account
-403, intended 200, **replay 400**).
+mutations Ãƒâ€” 403, member read still allowed), `admin Ã¢â€ â€™ owner` blocked
+/ `admin Ã¢â€ â€™ admin` allowed, unknown role 422, and invite binding (wrong
+account 403, intended 200, **replay 400**).
 
 ---
 
@@ -210,10 +210,10 @@ with server time."_, and two Revoke buttons with no `onClick`.
 Replaced with `TwoFactorAuthCard` (real `POST /auth/mfa/setup` + `/enable`) and
 `ActiveSessions` (real `GET /auth/sessions`, `DELETE /auth/sessions/{id}`,
 `POST /auth/sessions/revoke-others`) - both already existed in the repo and were
-**rendered nowhere**. Two-factor status now derives from `user.mfaEnabled` â†
-`GET /auth/me` â†’ `PublicUser.mfa_enabled` â†’ `transformKeys` (`api.ts:303`).
-No assurance badge is rendered, because an unbacked badge is a false claim.
-`PublicUser` in `packages/shared-types` was also missing
+**rendered nowhere**. Two-factor status now derives from `user.mfaEnabled`
+Ã¢â€ Â `GET /auth/me` Ã¢â€ â€™ `PublicUser.mfa_enabled` Ã¢â€ â€™ `transformKeys`
+(`api.ts:303`). No assurance badge is rendered, because an unbacked badge is a
+false claim. `PublicUser` in `packages/shared-types` was also missing
 `mfaEnabled`/`emailVerified`/`avatarUrl` - type drift against the Pydantic
 model, now fixed.
 
@@ -225,26 +225,26 @@ calls the real `organizationsApi.acceptInvitation(token)` with distinct 400 /
 role pre-acceptance because no endpoint can resolve a token to a previewable
 invitation.
 
-**Dead links:** `nav-analytics` â†’ `/analytics` removed (no such route); its
-`TopNav` breadcrumb key removed; `EnterpriseGated.tsx` `/workspaces` â†’
-`/workspace` (was the only exit button on every gated page, and it 404'd); the
-internal env var name no longer shown to end users; `capabilities` and `history`
-were missing from the breadcrumb map and were added.
+**Dead links:** `nav-analytics` Ã¢â€ â€™ `/analytics` removed (no such route);
+its `TopNav` breadcrumb key removed; `EnterpriseGated.tsx` `/workspaces`
+Ã¢â€ â€™ `/workspace` (was the only exit button on every gated page, and it
+404'd); the internal env var name no longer shown to end users; `capabilities`
+and `history` were missing from the breadcrumb map and were added.
 
 ---
 
-## 8. Delivery branch gate (W8.1â€“W8.3)
+## 8. Delivery branch gate (W8.1Ã¢â‚¬â€œW8.3)
 
 Default branch is `master`; **six workflows triggered on `main`**. `ci.yml` was
 100% dead. A PR to `master` ran no CodeQL, no Gitleaks, no dependency audit, no
 a11y gate.
 
-| Workflow                                                    | Change                                                                                      |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `ci.yml`                                                    | â†’ `master`, plus `workflow_dispatch` so it can never be dark again                        |
-| `a11y-audit.yml`, `security-audit.yml`, `security-scan.yml` | â†’ `master`, plus dispatch                                                                 |
-| `docker-build.yml`                                          | â†’ `master`; **per-service build context** (web needs the repo root, api needs `apps/api`) |
-| `deploy.yml`                                                | **push trigger deliberately removed** - see below                                           |
+| Workflow                                                    | Change                                                                                           |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `ci.yml`                                                    | Ã¢â€ â€™ `master`, plus `workflow_dispatch` so it can never be dark again                        |
+| `a11y-audit.yml`, `security-audit.yml`, `security-scan.yml` | Ã¢â€ â€™ `master`, plus dispatch                                                                 |
+| `docker-build.yml`                                          | Ã¢â€ â€™ `master`; **per-service build context** (web needs the repo root, api needs `apps/api`) |
+| `deploy.yml`                                                | **push trigger deliberately removed** - see below                                                |
 
 `deploy.yml` is now manual-only, with the reason in the file. Its push trigger
 was dead, and re-pointing it to `master` would fire an unattended deploy on
@@ -356,11 +356,11 @@ was serving; `.next` contained no production markers afterwards and `/`,
 | Reset token durability                                           | Still a process-local dict; multi-worker needs the `password_reset_tokens` migration.                                                                                                                                                                                                              |
 | MFA step-up on re-enrol / disable endpoint                       | `setup_mfa` overwrites the secret with no re-auth; no `/mfa/disable` exists.                                                                                                                                                                                                                       |
 | W3.8 API-key lifecycle                                           | `APIKeyManager` exists and is unreachable; needs a router + `X-API-Key` in `AuthMiddleware`.                                                                                                                                                                                                       |
-| W3.9â€“W3.12 RLS                                                 | `_safe()` swallowing, `marketplace_listings` with no RLS, 19 `USING (true)` tables. Forward-only migrations needing a staging snapshot.                                                                                                                                                            |
+| W3.9Ã¢â‚¬â€œW3.12 RLS                                            | `_safe()` swallowing, `marketplace_listings` with no RLS, 19 `USING (true)` tables. Forward-only migrations needing a staging snapshot.                                                                                                                                                            |
 | W4.1 route manifest + W1.4/W1.5 `dataMode` + fixture segregation | The manifest must come first; doing it per-page would create a second registry.                                                                                                                                                                                                                    |
 | W1.10 CI guard against unverified claims                         | Needs the manifest to know which routes are fixture-backed.                                                                                                                                                                                                                                        |
 | W6 visual as a real gate                                         | The specs are fixed and documented; `.github/workflows/ci-frontend.yml:62,67` still refreshes instead of comparing.                                                                                                                                                                                |
-| W8.4â€“W8.15 delivery                                            | Image naming, digest pinning, the 19 fictional Deployments, the web health route, nginx upstream, `.env.production`, real load gate, verified rollback.                                                                                                                                            |
+| W8.4Ã¢â‚¬â€œW8.15 delivery                                       | Image naming, digest pinning, the 19 fictional Deployments, the web health route, nginx upstream, `.env.production`, real load gate, verified rollback.                                                                                                                                            |
 | W9 live RLS matrix, evidence ledger                              | Runs after the above.                                                                                                                                                                                                                                                                              |
 | Dead suites                                                      | `testing/e2e/**` (13 tests, rotted selectors, no workflow references it) and `testing/accessibility/audit-pages.ts` (unresolvable `playwright` import; records a navigation failure as a PASS). Both need deleting.                                                                                |
 | `apps/web/tsconfig.json:11`                                      | Excludes `**/*.spec.ts` / `**/*.test.tsx`, so `pnpm typecheck` checks neither the E2E suite nor the Jest tests. Two real type errors were found only by running `tsc` out-of-band.                                                                                                                 |
@@ -437,11 +437,11 @@ just as happily against a JS-readable cookie:
   string)
 - the negative case that a middleware rejecting _every_ cookie request would
   also pass, so the positive "valid CSRF token is allowed" case is required too
-- cookie-authenticated mutation without a CSRF token â†’ 403
-- bearer mutation â†’ still 403 (pins the exemption as narrow)
-- anonymous mutation â†’ still 403
-- cookie-based refresh â†’ 403; body-token refresh â†’ 401 (passed CSRF,
-  rejected on credential)
+- cookie-authenticated mutation without a CSRF token Ã¢â€ â€™ 403
+- bearer mutation Ã¢â€ â€™ still 403 (pins the exemption as narrow)
+- anonymous mutation Ã¢â€ â€™ still 403
+- cookie-based refresh Ã¢â€ â€™ 403; body-token refresh Ã¢â€ â€™ 401 (passed
+  CSRF, rejected on credential)
 
 **Full security suite: 404 passed / 0 failed** (was 385; +19).
 
@@ -471,7 +471,7 @@ just as happily against a JS-readable cookie:
 ## 14. WebSocket handshake tickets + frontend cutover (W2.1c / W2.2)
 
 **Status: code complete and green. NOT verified against a running API - see
-Â§15, which blocks that verification.**
+Ã‚Â§15, which blocks that verification.**
 
 ### The blocker this removed
 
@@ -673,52 +673,7 @@ mint endpoint now validates and returns 422.
 
 ---
 
-## 18. Still open
-
-**Migration 0057 cannot be applied to PostgreSQL.** Deploy-blocking, not fixed.
-
-```
-asyncpg.exceptions.DatatypeMismatchError:
-  foreign key constraint "password_reset_tokens_user_id_fkey" cannot be implemented
-DETAIL: Key columns "user_id" and "id" are of incompatible types
-```
-
-`0057_password_reset_tokens` hard-codes `user_id` as `sa.UUID()` with an FK to
-`users.id`. `0001_initial_schema.py` declares `users.id` as `sa.UUID()` too, so
-on any database built by this chain the types match. The failure proves the
-target instance's `users.id` is a different type - most likely `varchar`/`text`,
-meaning `public.users` was created outside the migration chain.
-
-**A fix was attempted and reverted.** Reflecting `users.id` via
-`sa.inspect(op.get_bind())` reported `character varying` while PostgreSQL
-reported `uuid` for what should be the same column, so the mismatch was not
-reproduced and the source of truth is unconfirmed. Shipping a speculative
-migration fix would be worse than shipping none, so `0057` keeps its original
-definition with a loud `KNOWN BROKEN ON POSTGRESQL` comment.
-
-**Required before any deploy:** confirm the real type of `users.id`, then type
-`user_id` from it. If the column really is `varchar`, the ORM mapping in
-`models/schema.py` (`UUID(as_uuid=True)`) is wrong too and both must change
-together.
-
-**Why no test caught it:** the suite runs on SQLite with tables created from the
-ORM **models**, not from **migrations**, and SQLite does not enforce foreign key
-column types. The migration chain has never been validated against a real
-PostgreSQL instance. That is a larger gap than this one migration, and closing
-it needs a throwaway PostgreSQL in CI.
-
-**Two more swallow-and-continue paths**, both still present:
-
-- `main.py` logs a failed `command.upgrade` and then continues startup into the
-  custom migration runner, so a half-applied schema reads as healthy.
-- `_safe_include` wraps every router mount in a bare `except`.
-
-**Minor:** on SQLite the background daemon logs `no such table: scheduled_jobs`
-continuously, because the migration chain does not create that table for SQLite.
-
----
-
-## 18. Migration chain fixed and measured against real PostgreSQL
+## 18. Migration chain fixed, guarded, and measured against real PostgreSQL
 
 Until this point the chain had **never been run against PostgreSQL**. The suite
 uses SQLite with tables built from the ORM models, and SQLite has no row-level
@@ -726,6 +681,51 @@ security, no `pg_policies` catalogue, and does not enforce foreign key column
 types. An entire class of deploy-blocking and data-exposing failure was
 structurally invisible. A throwaway `pgvector/pgvector:pg16` container found all
 of it.
+
+### 18.0 The root cause: sixteen copies of a swallow-everything helper
+
+`0033` through `0056` each carry a private savepoint helper that catches every
+exception, rolls back to the savepoint, and `print`s a line. On a clean database
+those copies silently skipped **28 statements and the run still reported
+`exit 0`**.
+
+That single behaviour is the direct cause of every migration defect in this
+audit: `document_actions` ended up with `rowsecurity = false`, `webhooks` and
+`webhook_deliveries` had no table, `0057` could not apply, and the undeclared
+pgvector dependency surfaced only by accident.
+
+The copies are **not uniform** - `0033` executes directly on SQLite, `0036` runs
+everywhere, `0053` and `0056` return early on non-PostgreSQL - so rewriting
+sixteen already-applied migrations is a larger risk than the problem it solves.
+They are left intact and the outcome is verified instead.
+
+### 18.0.1 The skip can no longer hide a defect
+
+`alembic/_strict_exec.py` is the helper new migrations use. It classifies
+failures on the **message** rather than the exception class, because asyncpg
+raises `UndefinedTableError`, psycopg raises `ProgrammingError`, and SQLite
+raises `OperationalError` - gating on the class made the same forward reference
+fatal under one driver and tolerated under another. Only a missing relation is
+tolerated and recorded; a syntax error, missing function or permission problem
+is re-raised.
+
+`0060_verify_rls_coverage.py` is the real safety net. Being last, it sees the
+final schema and **raises** if any table lacks RLS or a policy, which fails the
+deploy, which makes `main.py` refuse to start. So a statement skipped by a
+legacy helper can no longer yield a green run.
+
+**Negative control:** rolled back to `0059`, disabled RLS on `memories`,
+ran`upgrade head`:
+
+`` exit 1 RuntimeError: Migration chain finished with incomplete RLS coverage.
+
+- row-level security NOT enabled on 1 table(s): ['memories'] alembic_version:
+  0059 (not falsely advanced) ``
+
+`main.py` also no longer continues past a failed migration. It used to log the
+error, run the custom runner, and start serving - but on PostgreSQL a migration
+is one transaction, so a failure leaves the database at an older revision
+while`alembic_version` implies otherwise. It now re-raises.
 
 ### 18.1 The chain only worked on Supabase
 
@@ -787,7 +787,7 @@ and the hard-coded type looks correct. The managed instance failing proves its
 `_users_id_type()` now reflects the real column. Verified on real PostgreSQL
 against **both** shapes.
 
-### 18.5 Startup no longer continues past a failed migration
+### 18.7 Startup no longer continues past a failed migration
 
 `main.py` logged a failed `command.upgrade` and then continued into the custom
 runner, then started serving. On PostgreSQL a migration is one transaction, so a
@@ -796,7 +796,7 @@ revision last applied - while `alembic_version` implies otherwise. It now
 re-raises. A container that will not boot is strictly better than one serving a
 silently stale schema.
 
-### 18.6 Result
+### 18.8 Result
 
 `alembic upgrade head` on a clean PostgreSQL 16, with no pre-created extension:
 
@@ -807,7 +807,7 @@ tables without RLS        : 0
 tables with RLS but no policy : 0
 ```
 
-### 18.7 Guards so this cannot regress
+### 18.9 Guards so this cannot regress
 
 `tests/test_migration_chain_pg.py` - 7 tests asserting the **end state**, not
 which migration did the work: chain reaches head, every table has RLS, every
@@ -830,7 +830,7 @@ than merely passing.
 change to `alembic/`, `models/`, `main.py` or `config.py`. This is the first
 workflow that would have caught any of the four defects above.
 
-### 18.8 Container recipe
+### 18.10 Container recipe
 
 ```powershell
 docker run -d --name vaeloom-pg-test -e POSTGRES_PASSWORD=pw `
@@ -843,7 +843,7 @@ $env:VAELOOM_TEST_PG_URL = "postgresql+asyncpg://postgres:pw@127.0.0.1:55432/vae
 Note: `$env:X = ""` **deletes** the variable in PowerShell, so dotenv
 re-supplies the `.env` value. Set the local path explicitly; do not blank it.
 
-### 18.9 Still open
+### 18.11 Still open
 
 - **28 statements are still silently skipped** by `_safe()`. They are now
   benign - they reference `document_actions` and `feature_flags` before those
@@ -861,17 +861,18 @@ re-supplies the `.env` value. Set the local path explicitly; do not blank it.
 
 ## 19. Verified state at the end of this pass
 
-| Gate                                        | Result                              |
-| ------------------------------------------- | ----------------------------------- |
-| `alembic upgrade head`, clean PostgreSQL 16 | **exit 0**, head `0059`, 90 tables  |
-| tables without RLS / without policies       | **0 / 0**                           |
-| migration chain + 0057 invariants (real PG) | **11 passed**                       |
-| guard negative control                      | correctly fails when RLS is removed |
-| API security suite                          | **404 passed / 0 failed**           |
-| WS handshake, tickets, config precedence    | **32 passed**                       |
-| web typecheck / lint / Jest                 | 0 / 0 errors / **96**               |
-| ui-kit typecheck / lint / Jest              | 0 / 0 / **149**                     |
-| live cookie flow                            | 16/16 checks in section 16          |
+| Gate                                        | Result                                    |
+| ------------------------------------------- | ----------------------------------------- |
+| `alembic upgrade head`, clean PostgreSQL 16 | **exit 0**, head `0060`, 90 tables        |
+| tables without RLS / without policies       | **0 / 0**                                 |
+| `0060` negative control                     | **exit 1**, names the table, version held |
+| migration chain + 0057 invariants (real PG) | **13 passed**                             |
+| PG suites with no PG available              | **13 skipped** in 0.23s                   |
+| API security suite                          | **404 passed / 0 failed**                 |
+| auth, org, config, WS suites                | **52 passed**                             |
+| web typecheck / lint / Jest                 | 0 / 0 errors / **96**                     |
+| ui-kit typecheck / lint / Jest              | 0 / 0 / **149**                           |
+| live cookie flow                            | 16/16 checks in section 16                |
 
 ---
 
@@ -886,24 +887,24 @@ identify the agent that made them.
 I reviewed the content and did **not** rewrite history, because that would be
 destructive and the user may want these changes. Their content is sound:
 
-| Commit                                                                             | Files             | Assessment                                                                                                                                                                                                             |
-| ---------------------------------------------------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `938959c7` test(web): e2e expansion with chromium baselines and SDK client updates | 19 (+935/âˆ’194)  | E2E false-green fixes, Playwright config hardening, 40/40 visual baselines resolvable. Sound.                                                                                                                          |
-| `39259e35` feat(ui-kit): component refresh with extended coverage                  | 44 (+2206/âˆ’166) | 149 real render tests, 4 a11y fixes, touch targets, lint to 0. Sound.                                                                                                                                                  |
-| `75df845f` docs: enterprise readiness program and frontend audit pack              | 4 (+3771)         | The plan and audit documents. Sound.                                                                                                                                                                                   |
-| `32363d25` fix(api): harden API-key header handling in auth middleware             | 1 (+17/âˆ’1)      | Rejects non-string and `Bearer`-shaped values in the `X-API-Key` slot and shape-gates the lookup to `vael_`-prefixed keys of plausible length. **Security-positive** - I verified the prefix against `api_keys.py:29`. |
-| `5a98d1ac` feat(web): frontend liveness probe plus a11y and capability updates     | 5 (+452/âˆ’88)    | Adds the missing `/api/health` route and points the k8s probe at it. Verified live: returns 200 `{"status":"ok",...}`. Sound.                                                                                          |
+| Commit                                                                             | Files                 | Assessment                                                                                                                                                                                                             |
+| ---------------------------------------------------------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `938959c7` test(web): e2e expansion with chromium baselines and SDK client updates | 19 (+935/Ã¢Ë†â€™194)  | E2E false-green fixes, Playwright config hardening, 40/40 visual baselines resolvable. Sound.                                                                                                                          |
+| `39259e35` feat(ui-kit): component refresh with extended coverage                  | 44 (+2206/Ã¢Ë†â€™166) | 149 real render tests, 4 a11y fixes, touch targets, lint to 0. Sound.                                                                                                                                                  |
+| `75df845f` docs: enterprise readiness program and frontend audit pack              | 4 (+3771)             | The plan and audit documents. Sound.                                                                                                                                                                                   |
+| `32363d25` fix(api): harden API-key header handling in auth middleware             | 1 (+17/Ã¢Ë†â€™1)      | Rejects non-string and `Bearer`-shaped values in the `X-API-Key` slot and shape-gates the lookup to `vael_`-prefixed keys of plausible length. **Security-positive** - I verified the prefix against `api_keys.py:29`. |
+| `5a98d1ac` feat(web): frontend liveness probe plus a11y and capability updates     | 5 (+452/Ã¢Ë†â€™88)    | Adds the missing `/api/health` route and points the k8s probe at it. Verified live: returns 200 `{"status":"ok",...}`. Sound.                                                                                          |
 
 Uncommitted (17 files) holds the rest of the programme: MFA bypass closure,
 hashed-at-rest tokens, atomic rotation, logout scoping, email-validation copy
-fixes, and the infra corrections (web build context, API port 4000â†’8000, nginx
-upstream `backend`â†’`api`).
+fixes, and the infra corrections (web build context, API port 4000Ã¢â€ â€™8000,
+nginx upstream `backend`Ã¢â€ â€™`api`).
 
 **Recommended:** the 5 commits are already on `master` and CI has never run on
 this branch, so the cheapest safe path forward is a branch from the current
-`master`, commit the remaining 17 files as 2â€“3 reviewable commits, and open a
-PR so the repaired gates execute for the first time. If the user would rather
-have a single clean history, `git reset --soft 592db98e` followed by
+`master`, commit the remaining 17 files as 2Ã¢â‚¬â€œ3 reviewable commits, and
+open a PR so the repaired gates execute for the first time. If the user would
+rather have a single clean history, `git reset --soft 592db98e` followed by
 recommitting in slices achieves that without losing any work - but that is a
 destructive-ish history rewrite and needs an explicit go-ahead.
 

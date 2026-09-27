@@ -63,7 +63,7 @@ const nextConfig = {
               scriptSrc,
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: blob: https://vaeloom.app https://*.supabase.co https://**.googleusercontent.com https://**.githubusercontent.com https://**.slack.com",
+              "img-src 'self' data: blob: https://vaeloom.app https://*.supabase.co https://*.googleusercontent.com https://*.githubusercontent.com https://*.slack.com",
               `connect-src ${connectSrc}`,
               "frame-ancestors 'none'",
               "base-uri 'self'",
