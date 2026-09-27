@@ -142,15 +142,17 @@ def clear_auth_cookies(response: Response) -> None:
     }
     response.delete_cookie(ACCESS_COOKIE, **common)
     response.delete_cookie(REFRESH_COOKIE, **common)
+    response.delete_cookie("vaeloom.accessToken", **common)
+    response.delete_cookie("vaeloom.refreshToken", **common)
 
 
 def read_access_cookie(request: Request) -> str | None:
-    value = request.cookies.get(ACCESS_COOKIE)
+    value = request.cookies.get(ACCESS_COOKIE) or request.cookies.get("vaeloom.accessToken")
     return value if value else None
 
 
 def read_refresh_cookie(request: Request) -> str | None:
-    value = request.cookies.get(REFRESH_COOKIE)
+    value = request.cookies.get(REFRESH_COOKIE) or request.cookies.get("vaeloom.refreshToken")
     return value if value else None
 
 

@@ -112,12 +112,15 @@ def test_clear_auth_cookies_expires_both():
     response = Response()
     clear_auth_cookies(response)
     headers = _set_cookie_headers(response)
-    assert len(headers) == 2
+    # Both cookie generations must die on logout: current short names plus
+    # legacy dotted names, otherwise an old cookie survives session end.
+    assert len(headers) == 4
     joined = " | ".join(headers)
     # The attributes must match the ones used when setting, otherwise the
     # browser keeps the original cookie and "logout" does nothing.
     assert "HttpOnly" in joined
     assert ACCESS_COOKIE in joined and REFRESH_COOKIE in joined
+    assert "vaeloom.accessToken" in joined and "vaeloom.refreshToken" in joined
     assert "Max-Age=0" in joined or "expires=Thu, 01 Jan 1970" in joined
 
 

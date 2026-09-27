@@ -54,20 +54,21 @@ def upgrade() -> None:
     is_sqlite = bind.dialect.name == "sqlite"
     users_id_type = _users_id_type()
 
-    op.create_table(
-        "password_reset_tokens",
-        sa.Column("id", sa.UUID(), primary_key=True),
-        # Typed from the referenced column rather than hard-coded: a mismatch here
-        # is precisely what made this migration fail on the managed instance.
-        sa.Column("user_id", users_id_type, sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("token_hash", sa.String(64), nullable=False),
-        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("used_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("attempts", sa.Integer(), nullable=False, server_default=sa.text("0")),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-    )
-    op.create_index("idx_pwd_reset_token_hash", "password_reset_tokens", ["token_hash"], unique=True)
-    op.create_index("idx_pwd_reset_user_id", "password_reset_tokens", ["user_id"])
+    if not sa.inspect(bind).has_table("password_reset_tokens"):
+        op.create_table(
+            "password_reset_tokens",
+            sa.Column("id", sa.UUID(), primary_key=True),
+            # Typed from the referenced column rather than hard-coded: a mismatch here
+            # is precisely what made this migration fail on the managed instance.
+            sa.Column("user_id", users_id_type, sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+            sa.Column("token_hash", sa.String(64), nullable=False),
+            sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
+            sa.Column("used_at", sa.DateTime(timezone=True), nullable=True),
+            sa.Column("attempts", sa.Integer(), nullable=False, server_default=sa.text("0")),
+            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        )
+        op.create_index("idx_pwd_reset_token_hash", "password_reset_tokens", ["token_hash"], unique=True)
+        op.create_index("idx_pwd_reset_user_id", "password_reset_tokens", ["user_id"])
 
     # 2. RLS policies on PostgreSQL
     if not is_sqlite:
