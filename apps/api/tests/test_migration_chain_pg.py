@@ -188,35 +188,30 @@ async def test_head_includes_the_rls_coverage_guard():
     Rewriting them is riskier than verifying the outcome, so `0060` is what turns
     "a statement was skipped" into "the deploy fails". If a future migration is
     appended after it, the guard stops being last and stops guarding.
+
+    Alembic's own script directory is used rather than parsing the revision
+    strings: a regex over the files reported a second head that does not exist,
+    because `down_revision` is annotated in several different forms across the
+    sixty files.
     """
-    import re
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
 
-    versions = pathlib.Path(__file__).resolve().parents[1] / "alembic" / "versions"
-    revisions: dict[str, str | None] = {}
-    for path in versions.glob("*.py"):
-        text = path.read_text(encoding="utf-8")
-        rev = re.search(r'^revision:\s*str\s*=\s*"([^"]+)"', text, re.M)
-        if not rev:
-            continue
-        down = re.search(
-            r'^down_revision:[^=\n]*=\s*(?:Union\[[^\]]*\])?\s*("?)([^"\n]*?)\1\s*$',
-            text,
-            re.M,
-        )
-        value = down.group(2) if down else None
-        revisions[rev.group(1)] = None if value in (None, "", "None") else value
+    api_root = pathlib.Path(__file__).resolve().parents[1]
+    cfg = Config(str(api_root / "alembic.ini"))
+    cfg.set_main_option("script_location", str(api_root / "alembic"))
+    script = ScriptDirectory.from_config(cfg)
 
-    # The head is the revision no other migration points at. (Not the reverse:
-    # the head's own `down_revision` is of course another revision.)
-    pointed_at = {d for d in revisions.values() if d}
-    heads = [r for r in revisions if r not in pointed_at]
-
-    assert len(heads) == 1, f"expected a single head, found {heads} in {len(revisions)} files"
+    heads = script.get_heads()
+    assert len(heads) == 1, (
+        f"expected a single migration head, found {heads}. A forked graph means "
+        "`upgrade head` is ambiguous."
+    )
     assert heads[0] == "0060", (
         f"head is {heads[0]}, so the RLS coverage guard is not the last migration. "
         "A later migration could skip a statement with nothing after it to notice."
     )
-    assert (versions / "0060_verify_rls_coverage.py").exists()
+    assert (api_root / "alembic" / "versions" / "0060_verify_rls_coverage.py").exists()
 
 
 async def test_strict_exec_reraises_unexpected_errors():
