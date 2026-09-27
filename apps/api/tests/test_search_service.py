@@ -48,6 +48,16 @@ def mock_entity(**kwargs):
     return type("Entity", (), defaults)()
 
 
+def mock_document(**kwargs):
+    defaults = dict(
+        id=uuid.uuid4(), path="/docs/hello_world.pdf",
+        summary="A hello document", type="pdf", status="ACTIVE",
+        workspace_id=WS, created_at=None,
+    )
+    defaults.update(kwargs)
+    return type("Document", (), defaults)()
+
+
 class TestSearchAll:
     async def test_search_all_sources(self, svc):
         mem_result = MagicMock()
@@ -62,7 +72,11 @@ class TestSearchAll:
         ent_result.scalars.return_value.all.return_value = [
             mock_entity(canonical_name="Hello Entity"),
         ]
-        results = [mem_result, rec_result, ent_result]
+        doc_result = MagicMock()
+        doc_result.scalars.return_value.all.return_value = [
+            mock_document(path="/docs/hello.pdf"),
+        ]
+        results = [mem_result, rec_result, ent_result, doc_result]
         db = MagicMock()
 
         async def execute(stmt):
@@ -70,7 +84,7 @@ class TestSearchAll:
 
         db.execute = execute
         result = await svc.search_all("Hello", tenant_id="t-1", workspace_id=WS, sources=None, limit=20, offset=0, db=db)
-        assert result["total"] == 3
+        assert result["total"] == 4
         assert result["results"][0]["score"] == 2.0
 
     async def test_search_only_memory(self, svc):
@@ -118,6 +132,21 @@ class TestSearchAll:
         assert result["total"] == 1
         assert result["results"][0]["source"] == "entity"
 
+    async def test_search_only_document(self, svc):
+        doc_result = MagicMock()
+        doc_result.scalars.return_value.all.return_value = [
+            mock_document(path="/docs/resume.pdf"),
+        ]
+        db = MagicMock()
+
+        async def execute(stmt):
+            return doc_result
+
+        db.execute = execute
+        result = await svc.search_all("resume", tenant_id="t-1", workspace_id=WS, sources=["document"], limit=20, offset=0, db=db)
+        assert result["total"] == 1
+        assert result["results"][0]["source"] == "document"
+
     async def test_search_with_tenant_filter(self, svc):
         mem_result = MagicMock()
         mem_result.scalars.return_value.all.return_value = [
@@ -143,7 +172,9 @@ class TestSearchAll:
         rec_result.scalars.return_value.all.return_value = []
         ent_result = MagicMock()
         ent_result.scalars.return_value.all.return_value = []
-        results = [mem_result, rec_result, ent_result]
+        doc_result = MagicMock()
+        doc_result.scalars.return_value.all.return_value = []
+        results = [mem_result, rec_result, ent_result, doc_result]
         db = MagicMock()
 
         async def execute(stmt):
@@ -157,7 +188,7 @@ class TestSearchAll:
     async def test_search_empty_results(self, svc):
         empty = MagicMock()
         empty.scalars.return_value.all.return_value = []
-        results = [empty, empty, empty]
+        results = [empty, empty, empty, empty]
         db = MagicMock()
 
         async def execute(stmt):

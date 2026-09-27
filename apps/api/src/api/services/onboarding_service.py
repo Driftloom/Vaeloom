@@ -93,6 +93,12 @@ class OnboardingService:
             select(OnboardingState).where(OnboardingState.user_id == user_id)
         )
         state = result.scalar_one_or_none()
+        if not state:
+            await self.get_or_create_state(user_id=user_id, db=db)
+            result = await db.execute(
+                select(OnboardingState).where(OnboardingState.user_id == user_id)
+            )
+            state = result.scalar_one_or_none()
 
         # Zero-Trust Immutability Guard (GAP-ONB-02)
         if state and state.is_completed:
@@ -106,6 +112,7 @@ class OnboardingService:
         completed_set = set(state.completed_steps or []) if state else set()
         if state and state.workspace_id:
             completed_set.add("WORKSPACE")
+            completed_set.add("PROFILE")
 
         target_idx = STEP_SEQUENCE.index(step)
         current_idx = STEP_SEQUENCE.index(state.current_step) if (state and state.current_step in STEP_SEQUENCE) else 0

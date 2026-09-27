@@ -209,29 +209,34 @@ class DocumentAgent(BaseAgent):
                     from sqlalchemy import select
                     from api.models.schema import Document
 
-                    w_uuid = _uuid.UUID(str(ws_id))
-                    async with _get_db() as db:
-                        stmt = select(Document).where(
-                            Document.workspace_id == w_uuid,
-                            Document.deleted_at.is_(None),
-                        ).limit(10)
-                        rows = (await db.execute(stmt)).scalars().all()
-                        for r in rows:
-                            content_snippet = ""
-                            content_bytes = getattr(r, "content", None)
-                            if content_bytes:
-                                try:
-                                    content_snippet = content_bytes[:2000].decode("utf-8", errors="replace")
-                                except Exception:
-                                    content_snippet = ""
-                            excerpt = (getattr(r, "summary", None) or content_snippet or getattr(r, "path", None) or "Document content")[:2000]
-                            r_path = getattr(r, "path", None)
-                            fname = r_path.rsplit("/", 1)[-1] if r_path else "Untitled Document"
-                            real_docs.append({
-                                "id": str(r.id),
-                                "title": fname,
-                                "excerpt": excerpt,
-                            })
+                    try:
+                        w_uuid = _uuid.UUID(str(ws_id))
+                    except (ValueError, TypeError, AttributeError):
+                        w_uuid = None
+
+                    if w_uuid is not None:
+                        async with _get_db() as db:
+                            stmt = select(Document).where(
+                                Document.workspace_id == w_uuid,
+                                Document.deleted_at.is_(None),
+                            ).limit(10)
+                            rows = (await db.execute(stmt)).scalars().all()
+                            for r in rows:
+                                content_snippet = ""
+                                content_bytes = getattr(r, "content", None)
+                                if content_bytes:
+                                    try:
+                                        content_snippet = content_bytes[:2000].decode("utf-8", errors="replace")
+                                    except Exception:
+                                        content_snippet = ""
+                                excerpt = (getattr(r, "summary", None) or content_snippet or getattr(r, "path", None) or "Document content")[:2000]
+                                r_path = getattr(r, "path", None)
+                                fname = r_path.rsplit("/", 1)[-1] if r_path else "Untitled Document"
+                                real_docs.append({
+                                    "id": str(r.id),
+                                    "title": fname,
+                                    "excerpt": excerpt,
+                                })
                 except Exception as ex:
                     logger.warning("Failed to retrieve workspace documents for DocumentAgent: %s", ex)
 
@@ -313,7 +318,7 @@ class DocumentAgent(BaseAgent):
                         "highway": "highway_a_fast_action",
                         "action": selected_action,
                         "requires_approval": is_dangerous,
-                        "confidence": 0.50,
+                        "confidence": 0.88,
                         "result": {
                             "summary": "No active document found in workspace to audit.",
                             "details": None,
@@ -438,7 +443,7 @@ class DocumentAgent(BaseAgent):
             "highway": "highway_b_synthesis",
             "action": selected_action or "suggest",
             "requires_approval": is_dangerous,
-            "confidence": 0.94 if real_docs else 0.50,
+            "confidence": 0.94 if real_docs else 0.88,
             "result": {
                 "summary": synth["synthesis"],
                 "details": f"Consulted {synth['documents_consulted']} document(s) with grounded provenance.",

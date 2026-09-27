@@ -17,8 +17,8 @@ from .card_registry import get_agent_card, list_agent_cards
 logger = logging.getLogger(__name__)
 
 # Known naming overrides where directory or class name doesn't match standard camelcase
+# 28 Canonical Enterprise Specialist Agents
 AGENT_MODULE_MAP: dict[str, tuple[str, str]] = {
-    "conversation": ("api.agents.conversation_agent.handler", "ConversationAgent"),
     "organization": ("api.agents.organization_agent.handler", "OrganizationAgent"),
     "memory": ("api.agents.memory_agent.handler", "MemoryAgentHandler"),
     "resume": ("api.agents.resume_agent.handler", "ResumeAgent"),
@@ -27,7 +27,7 @@ AGENT_MODULE_MAP: dict[str, tuple[str, str]] = {
     "application": ("api.agents.application_agent.handler", "ApplicationAgent"),
     "gmail": ("api.agents.gmail_agent.handler", "GmailAgent"),
     "scheduler": ("api.agents.scheduler_agent.handler", "SchedulerAgent"),
-    "planning": ("api.agents.planning_agent.handler", "PlanningAgent"),
+    "planning": ("api.agents.memory.planning_agent", "PlanningAgent"),
     "research": ("api.agents.research_agent.handler", "ResearchAgent"),
     "career": ("api.agents.career_agent.handler", "CareerAgent"),
     "learning": ("api.agents.learning_agent.handler", "LearningAgent"),
@@ -47,8 +47,12 @@ AGENT_MODULE_MAP: dict[str, tuple[str, str]] = {
     "document": ("api.agents.document_agent.handler", "DocumentAgent"),
     "pdf": ("api.agents.pdf_agent.handler", "PDFAgent"),
     "self_improvement": ("api.agents.self_improvement_agent.handler", "SelfImprovementAgent"),
+}
+
+# Auxiliary agents (companion, quality gate) and routing aliases
+AUXILIARY_AGENT_MAP: dict[str, tuple[str, str]] = {
+    "conversation": ("api.agents.conversation_agent.handler", "ConversationAgent"),
     "qa": ("api.agents.qa_agent.handler", "QAAgent"),
-    # Aliases
     "interview": ("api.agents.career_agent.handler", "CareerAgent"),
     "market_intelligence": ("api.agents.career_agent.handler", "CareerAgent"),
     "network": ("api.agents.career_agent.handler", "CareerAgent"),
@@ -78,7 +82,7 @@ class DynamicAgentRegistry(MutableMapping[str, type]):
             if item.is_dir() and (item / "handler.py").exists():
                 folder_name = item.name
                 agent_name = folder_name.removesuffix("_agent")
-                if agent_name not in AGENT_MODULE_MAP:
+                if agent_name not in AGENT_MODULE_MAP and agent_name not in AUXILIARY_AGENT_MAP:
                     module_path = f"api.agents.{folder_name}.handler"
                     # Default class name assumption
                     class_name = "".join(part.capitalize() for part in folder_name.split("_"))
@@ -89,10 +93,11 @@ class DynamicAgentRegistry(MutableMapping[str, type]):
         if key in self._custom_registered:
             return self._custom_registered[key]
 
-        if key not in AGENT_MODULE_MAP:
+        source_map = AGENT_MODULE_MAP if key in AGENT_MODULE_MAP else (AUXILIARY_AGENT_MAP if key in AUXILIARY_AGENT_MAP else None)
+        if source_map is None:
             return None
 
-        module_path, class_name = AGENT_MODULE_MAP[key]
+        module_path, class_name = source_map[key]
         try:
             mod = importlib.import_module(module_path)
             cls = getattr(mod, class_name, None)
@@ -127,10 +132,22 @@ class DynamicAgentRegistry(MutableMapping[str, type]):
         self._cache.pop(key, None)
         self._custom_registered.pop(key, None)
         AGENT_MODULE_MAP.pop(key, None)
+        AUXILIARY_AGENT_MAP.pop(key, None)
 
     def __iter__(self):
         all_keys = set(AGENT_MODULE_MAP.keys()) | set(self._custom_registered.keys())
-        return iter(all_keys)
+        return iter(sorted(all_keys))
+
+    def items(self):
+        result = []
+        for key in list(self.__iter__()):
+            cls = self.get(key)
+            if cls is not None:
+                result.append((key, cls))
+        return result
+
+    def values(self):
+        return [cls for _, cls in self.items()]
 
     def __len__(self) -> int:
         all_keys = set(AGENT_MODULE_MAP.keys()) | set(self._custom_registered.keys())
@@ -139,7 +156,12 @@ class DynamicAgentRegistry(MutableMapping[str, type]):
     def __contains__(self, key: object) -> bool:
         if not isinstance(key, str):
             return False
-        return key in AGENT_MODULE_MAP or key in self._custom_registered or key in self._cache
+        return (
+            key in AGENT_MODULE_MAP
+            or key in self._custom_registered
+            or key in self._cache
+            or key in AUXILIARY_AGENT_MAP
+        )
 
     def get_agent_card_info(self, key: str) -> dict[str, Any]:
         """Return rich metadata from AgentCard and Capability Registry."""

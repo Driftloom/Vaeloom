@@ -447,11 +447,14 @@ CANONICAL_CAPABILITIES: list[AgentCapabilityManifest] = [
     AgentCapabilityManifest(
         capability_id="workspace.management.health",
         agent_id="workspace",
-        display_name="Workspace Resource & Quota Health Diagnostics",
-        description="Monitor workspace storage usage, member quotas, connector status, and system health.",
+        display_name="Workspace Resource, Hierarchy & Quota Health Diagnostics",
+        description="Analyze workspace hierarchy, detect sprawl, identify redundant duplicate files, monitor workspace storage usage, member quotas, and maintain organizational hygiene.",
         semantic_exemplars=[
+            "identify redundant duplicate files in workspace hierarchy",
+            "detect workspace sprawl and directory hierarchy issues",
             "check my workspace storage quota",
             "diagnose connector health and sync status",
+            "audit workspace hierarchy and folder structure",
         ],
         required_tools=[],
         optional_tools=["search_documents"],

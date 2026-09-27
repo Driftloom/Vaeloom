@@ -128,16 +128,21 @@ class WorkspaceAgent(BaseAgent):
                 from api.database import async_session_factory
                 from api.models.schema import Document
 
-                w_uuid = _uuid.UUID(str(ws_id))
-                async with async_session_factory() as db:
-                    stmt = select(Document).where(Document.workspace_id == w_uuid, Document.deleted_at.is_(None))
-                    rows = (await db.execute(stmt)).scalars().all()
-                    for r in rows:
-                        workspace_files.append({
-                            "id": str(r.id),
-                            "filename": r.path.rsplit("/", 1)[-1] if r.path else "untitled",
-                            "path": r.path,
-                        })
+                try:
+                    w_uuid = _uuid.UUID(str(ws_id))
+                except (ValueError, TypeError, AttributeError):
+                    w_uuid = None
+
+                if w_uuid is not None:
+                    async with async_session_factory() as db:
+                        stmt = select(Document).where(Document.workspace_id == w_uuid, Document.deleted_at.is_(None))
+                        rows = (await db.execute(stmt)).scalars().all()
+                        for r in rows:
+                            workspace_files.append({
+                                "id": str(r.id),
+                                "filename": r.path.rsplit("/", 1)[-1] if r.path else "untitled",
+                                "path": r.path,
+                            })
             except Exception as ex:
                 logger.warning("Failed to retrieve workspace files for WorkspaceAgent: %s", ex)
 

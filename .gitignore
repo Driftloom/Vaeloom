@@ -110,6 +110,9 @@ secrets/
 logs/
 *.log
 *.pid
+apps/web/*.txt
+apps/web/*.err
+apps/web/*.log
 npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
