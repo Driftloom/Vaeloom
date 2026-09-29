@@ -333,3 +333,13 @@ scratch_audit/
 
 # Isolated production build output (see apps/web/scripts/build-isolated.cjs)
 apps/web/.next-build/
+
+# User-uploaded documents. These are tenant content, not source: they can carry
+# PII and, for the documents pipeline, deliberately hostile HTML/SVG. Committing
+# them would both leak customer data and reintroduce the stored-XSS payload the
+# upload validator rejects. Storage belongs in S3/MinIO, not the repo.
+apps/web/public/upload/
+apps/web/public/uploads/
+
+# Python coverage HTML report (the .coverage data file is ignored above)
+apps/api/htmlcov/
