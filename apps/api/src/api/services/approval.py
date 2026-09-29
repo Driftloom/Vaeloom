@@ -7,7 +7,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..dependencies import get_current_user
+from ..dependencies import get_current_user, get_tenant_id, get_workspace_id
 from ..models.schema import Workspace, WorkspaceUser
 from ..schemas.approval import (
     ApprovalDecision,
@@ -53,7 +53,16 @@ class ApprovalManager:
         requested_by: str,
         expires_in_minutes: int | None,
         db: AsyncSession,
+        tenant_id: str | None = None,
     ) -> ApprovalResponse:
+        from ..middleware.tenant import set_rls_session_vars
+        if db is not None and workspace_id:
+            await set_rls_session_vars(
+                db,
+                tenant_id=tenant_id,
+                workspace_id=workspace_id,
+                user_id=requested_by,
+            )
         approval_id = uuid.uuid4()
         now = datetime.now(UTC)
         expires_at = now + timedelta(minutes=expires_in_minutes or 60)
@@ -70,6 +79,7 @@ class ApprovalManager:
             payload_sig = None
         # Store sig as prefix in reason if needed, otherwise ignore (backward compat)
         stored_reason = f"[hmac:{payload_sig}] {reason}" if payload_sig and reason else (f"[hmac:{payload_sig}]" if payload_sig else reason)
+        serialized_payload = json.dumps(payload) if isinstance(payload, (dict, list)) else (payload or "{}")
         await db.execute(
             text("""
                 INSERT INTO agent_approvals
@@ -84,7 +94,7 @@ class ApprovalManager:
                 "workspace_id": workspace_id,
                 "agent_name": agent_name,
                 "action_type": action_type,
-                "payload": payload if payload is not None else {},
+                "payload": serialized_payload,
                 "reason": stored_reason,
                 "requested_by": requested_by,
                 "expires_at": expires_at,
@@ -128,6 +138,7 @@ class ApprovalManager:
         )
 
     async def get_approval(self, approval_id: str, db: AsyncSession, user_workspaces: list[str] | None = None) -> ApprovalResponse:
+        from ..middleware.tenant import set_rls_session_vars
         await self._expire_stale(db)
         result = await db.execute(
             text("""
@@ -138,6 +149,20 @@ class ApprovalManager:
             {"id": approval_id},
         )
         row = result.fetchone()
+        if not row and user_workspaces:
+            for ws in user_workspaces:
+                await set_rls_session_vars(db, workspace_id=ws)
+                result = await db.execute(
+                    text("""
+                        SELECT id, workspace_id, agent_name, action_type, payload, reason, status,
+                               requested_by, decided_by, decision_note, expires_at, created_at, updated_at, decided_at
+                        FROM agent_approvals WHERE id = :id
+                    """),
+                    {"id": approval_id},
+                )
+                row = result.fetchone()
+                if row:
+                    break
         if not row:
             raise HTTPException(status_code=404, detail="Approval not found")
         # Workspace isolation: verify user belongs to the approval's workspace.
@@ -164,17 +189,28 @@ class ApprovalManager:
             conditions.append("status = :status")
             params["status"] = status
         if workspace_id:
+            from ..middleware.tenant import set_rls_session_vars
+            await set_rls_session_vars(db, workspace_id=str(workspace_id))
             # Zero-trust fix (FINAL-02): a caller-supplied workspace_id must
             # itself be within the caller's accessible set. Previously the
             # explicit filter SKIPPED the membership predicate, leaking
             # foreign-workspace approval rows to any authenticated caller.
             if user_workspaces is not None and str(workspace_id) not in user_workspaces:
                 return ApprovalListResponse(items=[], total=0, page=page, page_size=page_size)
-            conditions.append("workspace_id = :workspace_id")
+            # Unscoped (NULL workspace) rows stay visible alongside workspace
+            # rows, matching get_approval's convention. Membership was verified
+            # above, so this cannot leak foreign rows.
+            conditions.append("(workspace_id = :workspace_id OR workspace_id IS NULL)")
             params["workspace_id"] = workspace_id
         elif user_workspaces is not None:
             if not user_workspaces:
-                return ApprovalListResponse(items=[], total=0, page=page, page_size=page_size)
+                # No accessible workspaces: only unscoped (NULL workspace) rows
+                # stay visible, matching get_approval's convention. Foreign
+                # rows remain hidden — fail-closed, not blind.
+                conditions.append("workspace_id IS NULL")
+            if len(user_workspaces) == 1:
+                from ..middleware.tenant import set_rls_session_vars
+                await set_rls_session_vars(db, workspace_id=str(user_workspaces[0]))
             ws_params = {f"ws_{i}": ws for i, ws in enumerate(user_workspaces)}
             ws_placeholders = ", ".join(f":ws_{i}" for i in range(len(user_workspaces)))
             conditions.append(f"(workspace_id IN ({ws_placeholders}) OR workspace_id IS NULL)")
@@ -235,6 +271,9 @@ class ApprovalManager:
         except Exception:
             pass
         now = datetime.now(UTC)
+        if current.workspace_id:
+            from ..middleware.tenant import set_rls_session_vars
+            await set_rls_session_vars(db, workspace_id=str(current.workspace_id), user_id=decided_by)
         # Zero-trust fix (FINAL-03): guard the transition itself against
         # concurrent deciders (TOCTOU). Previously two simultaneous approves
         # both passed the PENDING read-check and both UPDATEed.
@@ -285,90 +324,93 @@ async def _ingest_feedback_preference(
     if not workspace_id:
         return
     try:
-        import uuid
+        async with db.begin_nested():
+            import asyncio
+            import uuid
 
-        from api.models.schema import Entity
+            from api.models.schema import Entity
 
-        polarity = "approved" if decision == "APPROVED" else "rejected"
-        base_name = note.strip()[:120] if note and note.strip() else f"User {polarity} {agent_name}:{action_type}"
-        canonical_name = base_name if base_name else f"Preference {polarity} {action_type}"
-        metadata = {
-            "agent_name": agent_name,
-            "action_type": action_type,
-            "decision": decision,
-            "note": note,
-            "requested_by": requested_by,
-            "decided_by": decided_by,
-            "polarity": polarity,
-            "source": "approval_feedback",
-        }
-        # Dedup by (workspace, name, action_type, decision) to avoid collisions — e.g., same note "Objective" for resume vs different agent
-        try:
-            existing = await db.execute(
-                text("SELECT id FROM entities WHERE workspace_id = :wid AND type = 'preference' AND canonical_name = :name AND metadata ->> 'action_type' = :action AND metadata ->> 'decision' = :decision LIMIT 1"),
-                {"wid": workspace_id, "name": canonical_name, "action": action_type, "decision": decision},
+            wid_uuid = uuid.UUID(workspace_id) if isinstance(workspace_id, str) else workspace_id
+            polarity = "approved" if decision == "APPROVED" else "rejected"
+            base_name = note.strip()[:120] if note and note.strip() else f"User {polarity} {agent_name}:{action_type}"
+            canonical_name = base_name if base_name else f"Preference {polarity} {action_type}"
+            metadata = {
+                "agent_name": agent_name,
+                "action_type": action_type,
+                "decision": decision,
+                "note": note,
+                "requested_by": requested_by,
+                "decided_by": decided_by,
+                "polarity": polarity,
+                "source": "approval_feedback",
+            }
+            # Dedup by (workspace, name, action_type, decision) to avoid collisions — e.g., same note "Objective" for resume vs different agent
+            try:
+                existing = await db.execute(
+                    text("SELECT id FROM entities WHERE workspace_id = :wid AND type = 'preference' AND canonical_name = :name AND metadata ->> 'action_type' = :action AND metadata ->> 'decision' = :decision LIMIT 1"),
+                    {"wid": wid_uuid, "name": canonical_name, "action": action_type, "decision": decision},
+                )
+                if existing.fetchone():
+                    return
+            except Exception:
+                # SQLite fallback: metadata is TEXT, JSONB query fails — fallback to name-only
+                existing2 = await db.execute(
+                    text("SELECT id FROM entities WHERE workspace_id = :wid AND type = 'preference' AND canonical_name = :name LIMIT 1"),
+                    {"wid": wid_uuid, "name": canonical_name},
+                )
+                if existing2.fetchone():
+                    return
+            entity = Entity(
+                id=uuid.uuid4(),
+                workspace_id=wid_uuid,
+                type="preference",
+                canonical_name=canonical_name,
+                aliases=[],
+                metadata_=metadata,
             )
-            if existing.fetchone():
-                return
-        except Exception:
-            # SQLite fallback: metadata is TEXT, JSONB query fails — fallback to name-only
-            existing2 = await db.execute(
-                text("SELECT id FROM entities WHERE workspace_id = :wid AND type = 'preference' AND canonical_name = :name LIMIT 1"),
-                {"wid": workspace_id, "name": canonical_name},
-            )
-            if existing2.fetchone():
-                return
-        entity = Entity(
-            id=uuid.uuid4(),
-            workspace_id=uuid.UUID(workspace_id) if isinstance(workspace_id, str) else workspace_id,
-            type="preference",
-            canonical_name=canonical_name,
-            aliases=[],
-            metadata_=metadata,
-        )
-        db.add(entity)
-        try:
-            from api.config import settings
-            if settings.llm_api_key:
-                from api.services.llm_service import llm_service
-                pref_user_id = decided_by or requested_by
-                if pref_user_id:
-                    tenant_id = workspace_id
-                    try:
-                        ws_row = await db.execute(text("SELECT tenant_id FROM workspaces WHERE id = :wid"), {"wid": workspace_id})
-                        r = ws_row.fetchone()
-                        if r and r[0]:
-                            tenant_id = str(r[0])
-                    except Exception:
-                        pass
-                    text_for_vec = f"{canonical_name} {note or ''} {agent_name} {action_type}".strip()[:2000]
-                    vec = await llm_service.generate_embedding(text_for_vec)
-                    vec_str = "[" + ",".join(f"{v:.6f}" for v in vec) + "]"
-                    try:
-                        await db.execute(
-                            text("""
-                                INSERT INTO user_preference_vectors (user_id, tenant_id, preference_vector, updated_at)
-                                VALUES (:uid, :tid, :vec::vector, now())
-                                ON CONFLICT (user_id, tenant_id) DO UPDATE
-                                SET preference_vector = :vec::vector, updated_at = now()
-                            """),
-                            {"uid": pref_user_id, "tid": tenant_id, "vec": vec_str},
-                        )
-                    except Exception:
+            db.add(entity)
+            try:
+                from api.config import settings
+                if settings.llm_api_key:
+                    from api.services.llm_service import llm_service
+                    pref_user_id = decided_by or requested_by
+                    if pref_user_id:
+                        tenant_id = workspace_id
+                        try:
+                            ws_row = await db.execute(text("SELECT tenant_id FROM workspaces WHERE id = :wid"), {"wid": wid_uuid})
+                            r = ws_row.fetchone()
+                            if r and r[0]:
+                                tenant_id = str(r[0])
+                        except Exception:
+                            pass
+                        text_for_vec = f"{canonical_name} {note or ''} {agent_name} {action_type}".strip()[:2000]
+                        vec = await asyncio.wait_for(llm_service.generate_embedding(text_for_vec), timeout=3.0)
+                        vec_str = "[" + ",".join(f"{v:.6f}" for v in vec) + "]"
                         try:
                             await db.execute(
                                 text("""
                                     INSERT INTO user_preference_vectors (user_id, tenant_id, preference_vector, updated_at)
-                                    VALUES (:uid, :tid, :vec, :now)
-                                    ON CONFLICT(user_id, tenant_id) DO UPDATE SET preference_vector=:vec, updated_at=:now
+                                    VALUES (:uid, :tid, CAST(:vec AS vector), now())
+                                    ON CONFLICT (user_id, tenant_id) DO UPDATE
+                                    SET preference_vector = CAST(:vec AS vector), updated_at = now()
                                 """),
-                                {"uid": pref_user_id, "tid": tenant_id, "vec": vec_str, "now": datetime.now(UTC)},
+                                {"uid": pref_user_id, "tid": tenant_id, "vec": vec_str},
                             )
                         except Exception:
-                            pass
-        except Exception as ve:
-            import logging
-            logging.getLogger(__name__).debug(f"Preference vector upsert skipped (non-blocking): {ve}")
+                            try:
+                                await db.execute(
+                                    text("""
+                                        INSERT INTO user_preference_vectors (user_id, tenant_id, preference_vector, updated_at)
+                                        VALUES (:uid, :tid, :vec, :now)
+                                        ON CONFLICT(user_id, tenant_id) DO UPDATE SET preference_vector=:vec, updated_at=:now
+                                    """),
+                                    {"uid": pref_user_id, "tid": tenant_id, "vec": vec_str, "now": datetime.now(UTC)},
+                                )
+                            except Exception:
+                                pass
+            except Exception as ve:
+                import logging
+                logging.getLogger(__name__).debug(f"Preference vector upsert skipped (non-blocking): {ve}")
     except Exception as e:
         import logging
         logging.getLogger(__name__).warning(f"Preference ingestion failed (non-blocking): {e}")
@@ -460,10 +502,12 @@ async def request_approval(
     dto: ApprovalRequest,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_tenant_id),
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     actor = str(current_user.get("sub"))
+    tid = tenant_id or current_user.get("tenant_id")
     # Zero-trust fix (FINAL-02b): the requested workspace must belong to the
     # actor. Previously an arbitrary workspace_id could be attached at create.
     if dto.workspace_id:
@@ -479,6 +523,7 @@ async def request_approval(
         requested_by=actor,
         expires_in_minutes=dto.expires_in_minutes,
         db=db,
+        tenant_id=tid,
     )
     await audit_service.record_event(
         actor_id=actor,
@@ -519,13 +564,15 @@ async def request_approval(
 @router.get("/approvals", response_model=ApprovalListResponse)
 async def list_approvals(
     status: str | None = Query(default=None, pattern="^(PENDING|APPROVED|REJECTED|EXPIRED)$"),
-    workspace_id: str | None = None,
+    workspace_id: str | None = Depends(get_workspace_id),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
     user_ws = await _get_user_workspace_ids(current_user.get("sub", ""), db)
+    if not workspace_id and user_ws and len(user_ws) == 1:
+        workspace_id = user_ws[0]
     return await approval_manager.list_approvals(
         db=db,
         status=status,
@@ -565,6 +612,7 @@ async def approve_approval(
         metadata={"agent_name": approval.agent_name, "action_type": approval.action_type},
         db=db,
     )
+    await db.commit()
     try:
         await _ingest_feedback_preference(
             workspace_id=str(approval.workspace_id) if approval.workspace_id else None,
@@ -576,9 +624,9 @@ async def approve_approval(
             db=db,
             decided_by=actor,
         )
+        await db.commit()
     except Exception:
         pass
-    await db.commit()
     try:
         import asyncio as _aio2
         _aio2.create_task(_maybe_signal_approval_workflow(str(approval.id), str(approval.workspace_id) if approval.workspace_id else None, "APPROVED", actor, dto.note if dto else None))
@@ -606,6 +654,7 @@ async def reject_approval(
         metadata={"agent_name": approval.agent_name, "action_type": approval.action_type},
         db=db,
     )
+    await db.commit()
     try:
         await _ingest_feedback_preference(
             workspace_id=str(approval.workspace_id) if approval.workspace_id else None,
@@ -617,9 +666,9 @@ async def reject_approval(
             db=db,
             decided_by=actor,
         )
+        await db.commit()
     except Exception:
         pass
-    await db.commit()
     try:
         import asyncio as _aio3
         _aio3.create_task(_maybe_signal_approval_workflow(str(approval.id), str(approval.workspace_id) if approval.workspace_id else None, "REJECTED", actor, dto.note if dto else None))
