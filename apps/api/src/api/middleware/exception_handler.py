@@ -66,9 +66,16 @@ def problem_envelope(
 
 
 async def unified_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+    # Preserve the legacy top-level ``detail`` key. ``denial()`` and
+    # ``validation_exception_handler()`` both do this, and the web client parses
+    # ``detail``; omitting it here made every HTTPException 4xx/5xx report
+    # ``detail: undefined`` even though the envelope carried ``error.message``.
     return JSONResponse(
         status_code=exc.status_code,
-        content=problem_envelope(exc.status_code, exc.detail, None, request),
+        content={
+            **problem_envelope(exc.status_code, exc.detail, None, request),
+            "detail": exc.detail,
+        },
         media_type=PROBLEM_MEDIA_TYPE,
     )
 

@@ -18,7 +18,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         if path in ("/docs", "/redoc"):
             response.headers["Content-Security-Policy"] = SWAGGER_CSP
-        else:
+        elif "content-security-policy" not in {k.lower() for k in response.headers}:
+            # Only supply a default. A route that sets its own policy means it:
+            # routers/documents.py serves user-uploaded bytes with
+            # "default-src 'none'; sandbox" so stored HTML/SVG cannot execute in
+            # the app origin. Overwriting that here re-enabled stored XSS.
             response.headers["Content-Security-Policy"] = "default-src 'self'"
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
