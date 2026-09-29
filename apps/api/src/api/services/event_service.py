@@ -134,13 +134,36 @@ async def publish_event_from_outbox(outbox_event) -> None:
 
 
 class EventService:
-    async def publish(self, dto, user_id: str, db: AsyncSession = None):
-        # Extract workspace_id from DTO or payload (back-compat)
-        ws_id = getattr(dto, "workspace_id", None) or dto.payload.get("workspaceId") or dto.payload.get("workspace_id")
+    async def publish(self, dto, user_id: str, db: AsyncSession = None, tenant_id: str | None = None, workspace_id: str | None = None):
+        from ..middleware.tenant import set_rls_session_vars
+
+        # Extract workspace_id from parameter, DTO or payload (back-compat)
+        ws_id = workspace_id or getattr(dto, "workspace_id", None) or (dto.payload.get("workspaceId") if isinstance(getattr(dto, "payload", None), dict) else None) or (dto.payload.get("workspace_id") if isinstance(getattr(dto, "payload", None), dict) else None)
         try:
-            ws_uuid = uuid.UUID(ws_id) if ws_id else None
+            ws_uuid = uuid.UUID(str(ws_id)) if ws_id else None
         except (ValueError, TypeError):
             ws_uuid = None
+
+        resolved_tenant_id = tenant_id or getattr(dto, "tenant_id", None)
+        if not resolved_tenant_id and user_id and db is not None:
+            try:
+                from sqlalchemy import text as _t_sql
+                uid_t = uuid.UUID(str(user_id))
+                u_row = await db.execute(_t_sql("SELECT tenant_id FROM users WHERE id = :uid"), {"uid": str(uid_t)})
+                u_res = u_row.fetchone()
+                if u_res and u_res[0]:
+                    resolved_tenant_id = str(u_res[0])
+            except Exception:
+                pass
+
+        if db is not None:
+            await set_rls_session_vars(
+                db,
+                tenant_id=str(resolved_tenant_id) if resolved_tenant_id else None,
+                workspace_id=str(ws_uuid) if ws_uuid else None,
+                user_id=str(user_id) if user_id else None,
+            )
+
         # T-002: verify workspace ownership — fail closed
         if ws_uuid and user_id and db is not None:
             try:
@@ -178,6 +201,7 @@ class EventService:
             correlation_id=uuid.UUID(dto.correlation_id) if dto.correlation_id else uuid.uuid4(),
             payload=dto.payload,
             priority=dto.priority,
+            tenant_id=uuid.UUID(str(resolved_tenant_id)) if resolved_tenant_id else None,
             user_id=uuid.UUID(user_id) if user_id else None,
             workspace_id=ws_uuid,
             status="PUBLISHED",
@@ -223,7 +247,15 @@ class EventService:
             pass
         return event
 
-    async def find_all(self, user_id: str, db: AsyncSession = None, workspace_id: str | None = None):
+    async def find_all(self, user_id: str, db: AsyncSession = None, workspace_id: str | None = None, tenant_id: str | None = None):
+        if db is not None:
+            from ..middleware.tenant import set_rls_session_vars
+            await set_rls_session_vars(
+                db,
+                tenant_id=str(tenant_id) if tenant_id else None,
+                workspace_id=str(workspace_id) if workspace_id else None,
+                user_id=str(user_id) if user_id else None,
+            )
         stmt = select(Event)
         if user_id:
             stmt = stmt.where(Event.user_id == uuid.UUID(user_id))

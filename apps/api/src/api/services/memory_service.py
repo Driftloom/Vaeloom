@@ -1,3 +1,4 @@
+import asyncio
 import contextlib
 import logging
 import os
@@ -43,17 +44,29 @@ class MemoryService:
                 resolved_ws_id = uuid.UUID(resolved_ws_id)
             except (ValueError, TypeError):
                 pass
+        if db is not None:
+            from ..middleware.tenant import set_rls_session_vars
+            await set_rls_session_vars(
+                db,
+                tenant_id=tenant_id,
+                workspace_id=str(resolved_ws_id) if resolved_ws_id else None,
+                user_id=user_id,
+            )
+
         content_for_embedding = dto.content or dto.title or dto.summary or ""
         embedding = None
         if content_for_embedding.strip():
             try:
-                embedding = await llm_service.generate_embedding(
-                    content_for_embedding,
-                    user_id=user_id,
-                    workspace_id=str(resolved_ws_id) if resolved_ws_id else None,
-                    db=db,
+                embedding = await asyncio.wait_for(
+                    llm_service.generate_embedding(
+                        content_for_embedding,
+                        user_id=user_id,
+                        workspace_id=str(resolved_ws_id) if resolved_ws_id else None,
+                        db=db,
+                    ),
+                    timeout=3.0,
                 )
-            except LLMProviderError:
+            except Exception:
                 embedding = None
 
         # CONT-P12 expand-contract: taxonomy_version 1 (legacy 6) vs 2 (expanded 22) — no guess
@@ -67,6 +80,7 @@ class MemoryService:
             id=uuid.uuid4(),
             type=dto.type,
             domain=dto.domain,
+            status="active",
             title=sanitize_text(dto.title),
             summary=sanitize_text(dto.summary),
             content=sanitize_text(dto.content),
@@ -142,7 +156,7 @@ class MemoryService:
         elif query.status == "all":
             pass
         else:
-            conditions.append(Memory.status == (query.status or "active"))
+            conditions.append(Memory.status.in_(["active", "READY", "PROCESSING"]))
 
         if query.type:
             conditions.append(Memory.type == query.type)
@@ -159,6 +173,8 @@ class MemoryService:
             ws_uuid = _to_uuid(enforced_ws)
             if ws_uuid is not None:
                 conditions.append(Memory.workspace_id == ws_uuid)
+                from ..middleware.tenant import set_rls_session_vars
+                await set_rls_session_vars(db, workspace_id=str(ws_uuid))
         if query.tags:
             conditions.append(Memory.tags.overlap(query.tags))
 

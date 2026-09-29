@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..dependencies import get_current_user
+from ..dependencies import get_current_user, get_tenant_id, get_workspace_id
 from ..schemas.event import EventPublish, EventResponse, SubscriptionCreate, SubscriptionResponse
 from ..services.event_service import event_service
 
@@ -20,11 +20,14 @@ async def publish_event(
     dto: EventPublish,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_tenant_id),
+    workspace_id: str | None = Depends(get_workspace_id),
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = _get_user_id(current_user)
-    event = await event_service.publish(dto, user_id, db)
+    tid = tenant_id or current_user.get("tenant_id")
+    event = await event_service.publish(dto, user_id, db, tenant_id=tid, workspace_id=workspace_id)
     return EventResponse.model_validate(event)
 
 
@@ -33,11 +36,15 @@ async def list_events(
     workspace_id: str | None = Query(None, description="Filter by workspace"),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_tenant_id),
+    auth_workspace_id: str | None = Depends(get_workspace_id),
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = _get_user_id(current_user)
-    events = await event_service.find_all(user_id, db, workspace_id=workspace_id)
+    tid = tenant_id or current_user.get("tenant_id")
+    effective_ws = workspace_id or auth_workspace_id
+    events = await event_service.find_all(user_id, db, workspace_id=effective_ws, tenant_id=tid)
     return [EventResponse.model_validate(e) for e in events]
 
 
