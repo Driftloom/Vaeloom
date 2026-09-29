@@ -77,7 +77,7 @@ export const Tabs: React.FC<TabsProps> = ({
 
     if (variant === 'underline') {
       return isActive
-        ? 'text-action border-b-2 border-action font-semibold'
+        ? 'text-primary border-b-2 border-primary font-semibold'
         : 'text-text-muted hover:text-text border-b-2 border-transparent hover:border-border';
     }
 

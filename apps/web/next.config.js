@@ -79,10 +79,14 @@ const nextConfig = {
     ];
   },
   async rewrites() {
-    const apiTarget =
+    // No port-specific special-casing here. An earlier revision ignored
+    // INTERNAL_API_URL whenever it contained "8020", which silently sent API
+    // traffic somewhere the operator had not chosen for anyone running on that
+    // port. Whatever port the operator sets is the port that gets used.
+    const rawTarget =
       process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-    const target = apiTarget.replace('localhost', '127.0.0.1');
-    return [
+    const target = rawTarget.replace('localhost', '127.0.0.1');
+    const rules = [
       {
         source: '/api/v1/:path*',
         destination: `${target}/api/v1/:path*`,
@@ -96,6 +100,11 @@ const nextConfig = {
         destination: `${target}/health/:path*`,
       },
     ];
+    return {
+      beforeFiles: rules,
+      afterFiles: rules,
+      fallback: rules,
+    };
   },
   async redirects() {
     return [];
