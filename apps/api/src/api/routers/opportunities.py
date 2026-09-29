@@ -62,17 +62,51 @@ async def match_single_opportunity(
         connected_entities_count=body.connected_entities_count,
     )
 
+    why_you_text = result.why_you_rationale or result.why_you_headline
     return {
         "opportunity_id": result.opportunity_id,
         "title": result.title,
+        "company": result.company_or_host,
         "company_or_host": result.company_or_host,
+        "type": result.opportunity_type,
         "match_score": result.match_score,
+        "why_you": why_you_text,
+        "whyYou": why_you_text,
         "metrics": {
             "cosine_similarity": result.cosine_similarity,
+            "cosineSimilarity": result.cosine_similarity,
             "graph_proximity_score": result.graph_proximity_score,
+            "network_proximity": result.graph_proximity_score,
+            "networkProximity": result.graph_proximity_score,
             "recency_decay": result.recency_decay,
+            "decay_weighted_confidence": result.recency_decay,
+            "decayWeightedConfidence": result.recency_decay,
             "gap_penalty": result.gap_penalty,
+            "skill_gap_penalty": result.gap_penalty,
+            "skillGapPenalty": result.gap_penalty,
         },
+        "matched_skills": [
+            {
+                "name": m.skill_name,
+                "tier": m.user_tier,
+                "validation_tier": m.user_tier,
+                "confidence": m.effective_confidence,
+                "effective_confidence": m.effective_confidence,
+                "decay_status": m.decay_status,
+            }
+            for m in result.matching_skills
+        ],
+        "matchedSkills": [
+            {
+                "name": m.skill_name,
+                "tier": m.user_tier,
+                "validationTier": m.user_tier,
+                "confidence": m.effective_confidence,
+                "effectiveConfidence": m.effective_confidence,
+                "decayStatus": m.decay_status,
+            }
+            for m in result.matching_skills
+        ],
         "matching_skills": [
             {
                 "name": m.skill_name,
@@ -83,13 +117,21 @@ async def match_single_opportunity(
             for m in result.matching_skills
         ],
         "missing_skills": [
+            m.skill_name
+            for m in result.missing_skills
+        ],
+        "missingSkills": [
+            m.skill_name
+            for m in result.missing_skills
+        ],
+        "missing_skills_details": [
             {
                 "name": m.skill_name,
                 "remediation_path": m.remediation_path,
             }
             for m in result.missing_skills
         ],
-        "why_you": {
+        "why_you_details": {
             "headline": result.why_you_headline,
             "rationale": result.why_you_rationale,
             "development_action": result.development_action,
@@ -122,10 +164,40 @@ async def rank_opportunities(
         {
             "opportunity_id": r.opportunity_id,
             "title": r.title,
+            "company": r.company_or_host,
             "company_or_host": r.company_or_host,
+            "type": r.opportunity_type,
             "match_score": r.match_score,
+            "why_you": r.why_you_rationale or r.why_you_headline,
             "why_you_headline": r.why_you_headline,
             "missing_skills_count": len(r.missing_skills),
+            "metrics": {
+                "cosine_similarity": r.cosine_similarity,
+                "cosineSimilarity": r.cosine_similarity,
+                "graph_proximity_score": r.graph_proximity_score,
+                "network_proximity": r.graph_proximity_score,
+                "networkProximity": r.graph_proximity_score,
+                "recency_decay": r.recency_decay,
+                "decay_weighted_confidence": r.recency_decay,
+                "decayWeightedConfidence": r.recency_decay,
+                "gap_penalty": r.gap_penalty,
+                "skill_gap_penalty": r.gap_penalty,
+                "skillGapPenalty": r.gap_penalty,
+            },
+            "matched_skills": [
+                {
+                    "name": m.skill_name,
+                    "tier": m.user_tier,
+                    "validation_tier": m.user_tier,
+                    "confidence": m.effective_confidence,
+                    "decay_status": m.decay_status,
+                }
+                for m in r.matching_skills
+            ],
+            "missing_skills": [
+                m.skill_name
+                for m in r.missing_skills
+            ],
         }
         for r in results
     ]

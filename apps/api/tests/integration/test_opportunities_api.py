@@ -39,7 +39,16 @@ class TestOpportunitiesApi:
         assert data["title"] == "Backend AI Engineer"
         assert "match_score" in data
         assert "why_you" in data
+        assert isinstance(data["why_you"], str)
+        assert "why_you_details" in data
         assert "metrics" in data
+        # Contract guarantees for both camelCase (frontend) and snake_case (legacy/SDK)
+        assert "cosineSimilarity" in data["metrics"]
+        assert "networkProximity" in data["metrics"]
+        assert "decayWeightedConfidence" in data["metrics"]
+        assert "skillGapPenalty" in data["metrics"]
+        assert "cosine_similarity" in data["metrics"]
+        assert "graph_proximity_score" in data["metrics"]
 
     async def test_opportunities_rank_authenticated(self, client: AsyncClient, auth_headers: dict):
         resp = await client.post(
