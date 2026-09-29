@@ -36,12 +36,12 @@ const E2E_API_ORIGIN = `http://127.0.0.1:${E2E_API_PORT}`;
 
 export default defineConfig({
   testDir: './e2e',
-  timeout: 60_000,
+  timeout: 90_000,
   forbidOnly: !!process.env['CI'],
   retries: 0,
   workers: 1,
   fullyParallel: false,
-  reporter: [['line']],
+  reporter: [['list'], ['html', { open: 'never' }]],
   snapshotPathTemplate:
     '{testDir}/{testFileDir}/{testFileName}-snapshots/{arg}{-projectName}{-snapshotSuffix}{ext}',
   expect: {

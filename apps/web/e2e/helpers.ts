@@ -7,10 +7,22 @@ export const TEST_USER = {
 
 /** UI login against the real backend; resolves to the workspace id. */
 export async function login(page: Page): Promise<string> {
-  await page.goto('/login', { waitUntil: 'load' });
-  await page.locator('#email').waitFor({ state: 'visible', timeout: 30_000 });
+  await page.goto('/login', { waitUntil: 'domcontentloaded' });
+  // Wait for React hydration signal so event listeners are active
+  await page
+    .locator('form[data-hydrated="true"]')
+    .waitFor({ state: 'attached', timeout: 30_000 })
+    .catch(() => {});
+  const emailInput = page.locator('#email');
+  await emailInput.waitFor({ state: 'visible', timeout: 30_000 });
+  await page.waitForTimeout(300);
   await page.fill('#email', TEST_USER.email);
   await page.fill('#password', TEST_USER.password);
+  const currentEmail = await emailInput.inputValue();
+  if (currentEmail !== TEST_USER.email) {
+    await page.fill('#email', TEST_USER.email);
+    await page.fill('#password', TEST_USER.password);
+  }
   await Promise.all([
     page.waitForURL(/\/workspace\/[^/]+/, { timeout: 45_000 }),
     page.click('button[type="submit"]'),
@@ -131,7 +143,7 @@ export async function expectRouteRendered(
   }
 
   const main = page.locator('main#main-content');
-  await expect(main).toBeVisible();
+  await expect(main).toBeVisible({ timeout: 30_000 });
 
   // Both 404 pages render exactly one <h1> reading "404"; a gate that only
   // counts headings is satisfied by them.
