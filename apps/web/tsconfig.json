@@ -3,6 +3,7 @@
   "compilerOptions": {
     "rootDir": ".",
     "baseUrl": ".",
+    "noPropertyAccessFromIndexSignature": true,
     "paths": {
       "@/*": ["./src/*"]
     }
