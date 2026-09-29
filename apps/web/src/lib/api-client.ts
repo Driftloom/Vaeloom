@@ -1409,19 +1409,29 @@ export const gdprApi = {
 
 export interface ApprovalItem {
   id: string;
-  workspace_id: string | null;
-  agent_name: string;
-  action_type: string;
+  workspace_id?: string | null;
+  workspaceId?: string | null;
+  agent_name?: string;
+  agentName?: string;
+  action_type?: string;
+  actionType?: string;
   payload: Record<string, unknown>;
   reason: string | null;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
-  requested_by: string | null;
-  decided_by: string | null;
-  decision_note: string | null;
-  expires_at: string | null;
-  created_at: string;
-  updated_at: string;
-  decided_at: string | null;
+  requested_by?: string | null;
+  requestedBy?: string | null;
+  decided_by?: string | null;
+  decidedBy?: string | null;
+  decision_note?: string | null;
+  decisionNote?: string | null;
+  expires_at?: string | null;
+  expiresAt?: string | null;
+  created_at?: string;
+  createdAt?: string;
+  updated_at?: string;
+  updatedAt?: string;
+  decided_at?: string | null;
+  decidedAt?: string | null;
 }
 
 export interface ApprovalListResponse {

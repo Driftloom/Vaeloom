@@ -142,11 +142,11 @@ export default function NotificationsPage() {
                   <ApprovalCard
                     key={approval.id}
                     id={approval.id}
-                    agentName={approval.agent_name}
-                    actionType={approval.action_type}
+                    agentName={approval.agentName ?? approval.agent_name ?? 'Unknown agent'}
+                    actionType={approval.actionType ?? approval.action_type ?? 'action'}
                     description={
                       approval.reason ||
-                      `${approval.agent_name} requests approval for ${approval.action_type}`
+                      `${approval.agentName ?? approval.agent_name ?? 'An agent'} requests approval for ${approval.actionType ?? approval.action_type ?? 'an action'}`
                     }
                     expiresAt={approval.expires_at ?? undefined}
                     onApprove={handleApprove}

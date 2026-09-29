@@ -157,7 +157,7 @@ export default function CognitionPage() {
             type="button"
             disabled={isTriggeringOvernight}
             onClick={handleTriggerOvernight}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-action text-action-fg text-xs font-medium hover:bg-action/90 disabled:opacity-50 transition-colors shadow-sm"
           >
             {isTriggeringOvernight ? (
               <div className="w-3.5 h-3.5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
@@ -570,7 +570,7 @@ export default function CognitionPage() {
               <div className="flex justify-end gap-2">
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
+                  className="px-4 py-1.5 rounded bg-action text-action-fg text-xs font-medium hover:bg-action/90 transition-colors"
                 >
                   Save Node
                 </button>

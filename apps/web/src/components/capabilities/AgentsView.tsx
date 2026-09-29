@@ -626,7 +626,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                   <div className="flex items-center gap-2.5 flex-wrap shrink-0">
                     <Link
                       href={`/workspace/${workspaceId}/chat?agent=${selectedAgent.name}`}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-white font-medium text-xs transition-colors shadow-xs"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-action hover:bg-action/90 text-action-fg font-medium text-xs transition-colors shadow-xs"
                       aria-label={`Chat with ${visual.readableTitle}`}
                     >
                       <span>Chat with Agent</span>

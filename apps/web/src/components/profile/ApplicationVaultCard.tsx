@@ -103,7 +103,7 @@ export default function ApplicationVaultCard({
           <h2 className="text-xl font-semibold text-text flex items-center gap-2">
             <span>Application & EEO Vault</span>
             <span className="text-xs font-mono font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-              <span>🔒</span> Zero-Trust Encrypted
+              <span>ðŸ”’</span> Zero-Trust Encrypted
             </span>
           </h2>
           <p className="text-xs text-text-dim mt-0.5">
@@ -121,7 +121,7 @@ export default function ApplicationVaultCard({
 
       {success && (
         <div className="mb-4 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400">
-          ✓ Application credentials and demographic vault updated successfully!
+          âœ“ Application credentials and demographic vault updated successfully!
         </div>
       )}
 
@@ -238,7 +238,7 @@ export default function ApplicationVaultCard({
                       <span
                         className={`text-2xs font-medium px-2 py-0.5 rounded-full ${
                           selected
-                            ? 'bg-primary text-primary-foreground'
+                            ? 'bg-primary text-primary-fg'
                             : 'bg-surface-200 text-text-muted border border-border'
                         }`}
                       >
@@ -337,7 +337,7 @@ export default function ApplicationVaultCard({
           <button
             type="submit"
             disabled={saving}
-            className="px-5 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-sm"
+            className="px-5 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-fg hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-sm"
           >
             {saving ? 'Encrypting & Saving...' : 'Save Application Vault'}
           </button>

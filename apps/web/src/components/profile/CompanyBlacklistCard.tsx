@@ -177,7 +177,7 @@ export default function CompanyBlacklistCard({
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-50 transition-colors"
+              className="px-4 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-fg hover:bg-primary-hover disabled:opacity-50 transition-colors"
             >
               {loading ? 'Adding...' : 'Protect & Exclude'}
             </button>
@@ -194,7 +194,7 @@ export default function CompanyBlacklistCard({
           {workspaceId && (
             <button
               onClick={() => setIsAdding(true)}
-              className="px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-lg hover:bg-primary-hover transition-colors inline-flex items-center gap-1.5"
+              className="px-3 py-1.5 bg-primary text-primary-fg text-xs font-medium rounded-lg hover:bg-primary-hover transition-colors inline-flex items-center gap-1.5"
             >
               <svg
                 className="w-3.5 h-3.5"
@@ -229,7 +229,7 @@ export default function CompanyBlacklistCard({
                 </div>
                 <div className="flex items-center gap-2 text-xs text-text-dim mt-0.5">
                   <span>{item.reason}</span>
-                  {item.domain && <span>• {item.domain}</span>}
+                  {item.domain && <span>â€¢ {item.domain}</span>}
                 </div>
               </div>
 

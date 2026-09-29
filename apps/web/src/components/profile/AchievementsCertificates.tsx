@@ -102,7 +102,7 @@ export function AchievementsCertificates({
           {workspaceId && (
             <Link
               href={`/workspace/${workspaceId}/documents`}
-              className="inline-block px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary-hover transition-colors"
+              className="inline-block px-4 py-2 bg-primary text-primary-fg text-sm font-medium rounded-lg hover:bg-primary-hover transition-colors"
             >
               Upload Document
             </Link>

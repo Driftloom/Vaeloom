@@ -24,7 +24,7 @@ function getFileName(path: string): string {
 }
 
 function formatDate(iso?: string | null): string {
-  if (!iso) return '—';
+  if (!iso) return 'â€”';
   try {
     return new Date(iso).toLocaleDateString('en-US', {
       month: 'short',
@@ -32,13 +32,13 @@ function formatDate(iso?: string | null): string {
       year: 'numeric',
     });
   } catch {
-    return '—';
+    return 'â€”';
   }
 }
 
 function formatSize(bytes: unknown): string {
   const n = typeof bytes === 'number' ? bytes : Number(bytes ?? 0);
-  if (!n) return '—';
+  if (!n) return 'â€”';
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
@@ -629,7 +629,7 @@ export default function WorkspaceFilesPage() {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-action text-action-fg hover:bg-action/90 transition-colors shadow-sm"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
@@ -742,12 +742,12 @@ export default function WorkspaceFilesPage() {
                   )}
                   {item.status === 'clean' && (
                     <span className="inline-flex items-center gap-1 text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full font-medium">
-                      ✓ Clean
+                      âœ“ Clean
                     </span>
                   )}
                   {item.status === 'quarantined' && (
                     <span className="inline-flex items-center gap-1 text-red-600 bg-red-500/10 px-2 py-0.5 rounded-full font-medium">
-                      ⚠ Quarantined
+                      âš  Quarantined
                     </span>
                   )}
                   {item.status === 'error' && (
@@ -841,7 +841,7 @@ export default function WorkspaceFilesPage() {
                   onClick={() => handleDeleteFolder(f.id, f.name)}
                   className="opacity-0 group-hover:opacity-100 text-text-muted hover:text-red-500 p-1 transition-opacity"
                 >
-                  ✕
+                  âœ•
                 </button>
               </div>
             ))}
@@ -1023,17 +1023,17 @@ export default function WorkspaceFilesPage() {
                         <td className="p-3">
                           {scanStatus === 'CLEAN' && (
                             <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full font-medium">
-                              ✓ Clean
+                              âœ“ Clean
                             </span>
                           )}
                           {scanStatus === 'PENDING' && (
                             <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full font-medium">
-                              ◌ Scanning
+                              â—Œ Scanning
                             </span>
                           )}
                           {scanStatus === 'MALICIOUS' && (
                             <span className="inline-flex items-center gap-1 text-[11px] text-red-600 bg-red-500/10 px-2 py-0.5 rounded-full font-medium">
-                              ⚠ Quarantined
+                              âš  Quarantined
                             </span>
                           )}
                         </td>
@@ -1148,7 +1148,7 @@ export default function WorkspaceFilesPage() {
                 type="button"
                 disabled={folderBusy || !newFolderName.trim()}
                 onClick={handleCreateFolder}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-action text-action-fg hover:bg-action/90 disabled:opacity-50"
               >
                 Create Folder
               </button>
@@ -1171,7 +1171,7 @@ export default function WorkspaceFilesPage() {
                 type="button"
                 onClick={() => versionFileInputRef.current?.click()}
                 disabled={versionBusy}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
+                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-action text-action-fg hover:bg-action/90"
               >
                 Upload Revision
               </button>
@@ -1197,7 +1197,7 @@ export default function WorkspaceFilesPage() {
                     <div>
                       <div className="font-semibold text-text">Version {v.version_number}</div>
                       <div className="text-text-muted">
-                        {formatDate(v.created_at)} • {formatSize(v.size_bytes)}
+                        {formatDate(v.created_at)} â€¢ {formatSize(v.size_bytes)}
                       </div>
                     </div>
                     <button
@@ -1221,7 +1221,7 @@ export default function WorkspaceFilesPage() {
         <Modal
           isOpen={Boolean(shareDoc)}
           onClose={() => setShareDoc(null)}
-          title={`Share Document — ${getFileName(shareDoc.path)}`}
+          title={`Share Document â€” ${getFileName(shareDoc.path)}`}
         >
           <div className="space-y-4 pt-2">
             <div>
@@ -1279,7 +1279,7 @@ export default function WorkspaceFilesPage() {
                 type="button"
                 disabled={shareBusy || !targetWorkspaceId.trim()}
                 onClick={handleCreateShare}
-                className="px-4 py-2 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                className="px-4 py-2 text-xs font-medium rounded-lg bg-action text-action-fg hover:bg-action/90 disabled:opacity-50"
               >
                 Grant Access
               </button>
@@ -1354,7 +1354,7 @@ export default function WorkspaceFilesPage() {
                   <a
                     href={viewerContent.url}
                     download={getFileName(viewer.path)}
-                    className="inline-block px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground"
+                    className="inline-block px-4 py-2 text-sm font-medium rounded-lg bg-action text-action-fg hover:bg-action/90"
                   >
                     Download File
                   </a>

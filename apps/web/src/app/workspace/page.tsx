@@ -38,7 +38,7 @@ export default function WorkspaceIndexPage() {
         const me = await api.me();
         if (!isMounted) return;
 
-        setToken('active-session');
+        setToken();
 
         if (me?.workspaces && me.workspaces.length > 0 && me.workspaces[0]?.id) {
           router.replace(`/workspace/${me.workspaces[0].id}`);

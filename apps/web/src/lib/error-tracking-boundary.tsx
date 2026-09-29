@@ -21,7 +21,7 @@ export class ErrorTrackingBoundary extends React.Component<
   }
 
   override componentDidMount(): void {
-    // W-13: surface unhandled errors/rejections through the tracker façade.
+    // W-13: surface unhandled errors/rejections through the tracker faÃ§ade.
     window.addEventListener('unhandledrejection', (e) => {
       const reason = e.reason instanceof Error ? e.reason : new Error(String(e.reason));
       ErrorTracker.captureError(reason, { kind: 'unhandledrejection' });
@@ -44,7 +44,7 @@ export class ErrorTrackingBoundary extends React.Component<
       return (
         <div className="flex flex-col items-center justify-center min-h-[200px] p-8 text-center">
           <h3 className="text-lg font-semibold text-surface-900">Application Error</h3>
-          <p className="mt-1 text-sm text-surface-500">
+          <p className="mt-1 text-sm text-text-muted">
             An unexpected error occurred. Our team has been notified.
           </p>
           <button

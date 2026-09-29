@@ -10,7 +10,7 @@ import type { JobResponse, OpportunityMatchResult } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 
 function formatDate(iso?: string): string {
-  if (!iso) return '—';
+  if (!iso) return 'â€”';
   return new Date(iso).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -249,7 +249,7 @@ export default function JobsPage() {
         toast({
           tone: 'success',
           title: 'Application started',
-          detail: `${title} — check Approvals for approval or Applications for status`,
+          detail: `${title} â€” check Approvals for approval or Applications for status`,
         });
       } catch (err) {
         toast({
@@ -315,10 +315,11 @@ export default function JobsPage() {
         matcherNetworkCount,
       );
       setMatchResult(res);
+      const score = res.matchScore ?? (res as any).match_score ?? 0;
       toast({
         tone: 'success',
         title: 'Match Analyzed',
-        detail: `PIOS Match Score: ${Math.round(res.matchScore * 100)}%`,
+        detail: `PIOS Match Score: ${Math.round(score * 100)}%`,
       });
     } catch (err) {
       toast({
@@ -402,7 +403,7 @@ export default function JobsPage() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSearch();
               }}
-              placeholder="e.g. Product Manager in Berlin, React frontend, ML engineer…"
+              placeholder="e.g. Product Manager in Berlin, React frontend, ML engineerâ€¦"
               className="flex-1 min-h-11 rounded-full border border-border bg-background px-4 py-2 text-sm outline-none focus:border-primary"
             />
             <button
@@ -411,21 +412,21 @@ export default function JobsPage() {
               disabled={searching || !query.trim()}
               className="min-h-11 rounded-full bg-white px-5 py-2 text-sm text-black disabled:opacity-40"
             >
-              {searching ? 'Searching…' : 'Search'}
+              {searching ? 'Searchingâ€¦' : 'Search'}
             </button>
           </div>
           <p className="text-xs text-text-dim mt-2">
-            Powered by the Job Search agent — results include match explanation and fit summary.
+            Powered by the Job Search agent â€” results include match explanation and fit summary.
           </p>
         </div>
 
-        {searching && <LoadingSpinner text="Searching jobs…" />}
+        {searching && <LoadingSpinner text="Searching jobsâ€¦" />}
         {!searching && searchResult && (
           <div className="space-y-4">
             <div className="card">
               <h3 className="font-medium text-text mb-2">Results</h3>
               <p className="text-sm text-text-muted whitespace-pre-wrap">
-                {searchResult.summary || 'No summary returned — try a different query.'}
+                {searchResult.summary || 'No summary returned â€” try a different query.'}
               </p>
               {searchResult.questions && searchResult.questions.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -454,25 +455,31 @@ export default function JobsPage() {
                         <div className="flex items-start justify-between gap-2">
                           <h4 className="font-medium text-text">{p.title}</h4>
                           {piosMatch ? (
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded-full font-mono font-medium border ${
-                                piosMatch.matchScore >= 0.75
-                                  ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                                  : piosMatch.matchScore >= 0.5
-                                    ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
-                                    : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
-                              }`}
-                              title="PIOS matcher_core score"
-                            >
-                              {Math.round(piosMatch.matchScore * 100)}% Fit
-                            </span>
+                            (() => {
+                              const pScore =
+                                piosMatch.matchScore ?? (piosMatch as any).match_score ?? 0;
+                              return (
+                                <span
+                                  className={`text-xs px-2 py-0.5 rounded-full font-mono font-medium border ${
+                                    pScore >= 0.75
+                                      ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                      : pScore >= 0.5
+                                        ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                                        : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                                  }`}
+                                  title="PIOS matcher_core score"
+                                >
+                                  {Math.round(pScore * 100)}% Fit
+                                </span>
+                              );
+                            })()
                           ) : (
                             <button
                               onClick={() => handleMatchProposal(p.title, p.detail)}
                               disabled={isMatching}
                               className="text-xs px-2 py-0.5 rounded-full bg-surface-200 hover:bg-surface-hover text-text-muted hover:text-text border border-border transition-colors shrink-0"
                             >
-                              {isMatching ? 'Matching…' : '⚡ PIOS Fit'}
+                              {isMatching ? 'Matchingâ€¦' : 'âš¡ PIOS Fit'}
                             </button>
                           )}
                         </div>
@@ -484,32 +491,64 @@ export default function JobsPage() {
                           <div className="mt-3 p-2.5 rounded-lg bg-surface-200/70 border border-border text-xs space-y-2">
                             <p className="text-text-dim leading-relaxed">
                               <span className="font-medium text-text">Why You:</span>{' '}
-                              {piosMatch.whyYou}
+                              {typeof piosMatch.whyYou === 'string'
+                                ? piosMatch.whyYou
+                                : (piosMatch.whyYou as any)?.rationale ||
+                                  (piosMatch.whyYou as any)?.headline ||
+                                  ''}
                             </p>
-                            {piosMatch.matchedSkills.length > 0 && (
+                            {(
+                              piosMatch.matchedSkills ||
+                              (piosMatch as any).matchingSkills ||
+                              (piosMatch as any).matching_skills ||
+                              []
+                            ).length > 0 && (
                               <div className="flex flex-wrap gap-1 items-center">
                                 <span className="text-2xs text-text-muted">Matched:</span>
-                                {piosMatch.matchedSkills.map((ms, idx) => (
-                                  <span
-                                    key={idx}
-                                    className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-2xs"
-                                  >
-                                    {ms.name} ({ms.validationTier || 'V1'})
-                                  </span>
-                                ))}
+                                {(
+                                  piosMatch.matchedSkills ||
+                                  (piosMatch as any).matchingSkills ||
+                                  (piosMatch as any).matching_skills ||
+                                  []
+                                ).map((ms: any, idx: number) => {
+                                  const name = typeof ms === 'string' ? ms : ms?.name || 'Skill';
+                                  const tier =
+                                    typeof ms === 'object'
+                                      ? ms?.validationTier || ms?.tier || 'V1'
+                                      : 'V1';
+                                  return (
+                                    <span
+                                      key={idx}
+                                      className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-2xs"
+                                    >
+                                      {name} ({tier})
+                                    </span>
+                                  );
+                                })}
                               </div>
                             )}
-                            {piosMatch.missingSkills.length > 0 && (
+                            {(piosMatch.missingSkills || (piosMatch as any).missing_skills || [])
+                              .length > 0 && (
                               <div className="flex flex-wrap gap-1 items-center">
                                 <span className="text-2xs text-text-muted">Gaps:</span>
-                                {piosMatch.missingSkills.map((gs, idx) => (
-                                  <span
-                                    key={idx}
-                                    className="px-1.5 py-0.5 rounded bg-surface-300/30 text-text-muted border border-border text-2xs"
-                                  >
-                                    {gs}
-                                  </span>
-                                ))}
+                                {(
+                                  piosMatch.missingSkills ||
+                                  (piosMatch as any).missing_skills ||
+                                  []
+                                ).map((gs: any, idx: number) => {
+                                  const gapName =
+                                    typeof gs === 'string'
+                                      ? gs
+                                      : gs?.name || gs?.skill_name || 'Skill Gap';
+                                  return (
+                                    <span
+                                      key={idx}
+                                      className="px-1.5 py-0.5 rounded bg-surface-300/30 text-text-muted border border-border text-2xs"
+                                    >
+                                      {gapName}
+                                    </span>
+                                  );
+                                })}
                               </div>
                             )}
                           </div>
@@ -543,7 +582,7 @@ export default function JobsPage() {
               </div>
             ) : (
               <p className="text-sm text-text-muted">
-                No structured proposals returned — the summary above contains the ranked matches.
+                No structured proposals returned â€” the summary above contains the ranked matches.
                 Save interesting roles from the summary and use Apply to start an approval-gated
                 application (you will get a deep link after approval).
               </p>
@@ -707,15 +746,15 @@ export default function JobsPage() {
                 <button
                   onClick={handleRunMatch}
                   disabled={matching || !matcherTitle.trim()}
-                  className="w-full py-2.5 px-4 rounded-xl font-medium text-xs bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-50 transition-all flex items-center justify-center gap-2 mt-2"
+                  className="w-full py-2.5 px-4 rounded-xl font-medium text-xs bg-action text-action-fg hover:bg-action/90 disabled:opacity-50 transition-all flex items-center justify-center gap-2 mt-2"
                 >
                   {matching ? (
                     <>
                       <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Evaluating Capability Graph…
+                      Evaluating Capability Graphâ€¦
                     </>
                   ) : (
-                    '⚡ Run PIOS Capability Match'
+                    'âš¡ Run PIOS Capability Match'
                   )}
                 </button>
               </div>
@@ -735,37 +774,51 @@ export default function JobsPage() {
                       </span>
                       <h3 className="text-2xl font-bold text-text mt-0.5">{matchResult.title}</h3>
                       <p className="text-xs text-text-muted">
-                        {matchResult.company} • {matchResult.type}
+                        {matchResult.company} â€¢ {matchResult.type}
                       </p>
                     </div>
                     <div className="text-right">
-                      <div
-                        className={`text-3xl font-extrabold font-mono ${
-                          matchResult.matchScore >= 0.75
-                            ? 'text-emerald-400'
-                            : matchResult.matchScore >= 0.5
-                              ? 'text-amber-400'
-                              : 'text-rose-400'
-                        }`}
-                      >
-                        {Math.round(matchResult.matchScore * 100)}%
-                      </div>
-                      <span className="text-2xs text-text-dim">
-                        {matchResult.matchScore >= 0.75
-                          ? 'High Demonstrated Fit'
-                          : matchResult.matchScore >= 0.5
-                            ? 'Emerging Capability Alignment'
-                            : 'Skill Gap Exceeds Threshold'}
-                      </span>
+                      {(() => {
+                        const mScore =
+                          matchResult.matchScore ?? (matchResult as any).match_score ?? 0;
+                        return (
+                          <>
+                            <div
+                              className={`text-3xl font-extrabold font-mono ${
+                                mScore >= 0.75
+                                  ? 'text-emerald-400'
+                                  : mScore >= 0.5
+                                    ? 'text-amber-400'
+                                    : 'text-rose-400'
+                              }`}
+                            >
+                              {Math.round(mScore * 100)}%
+                            </div>
+                            <span className="text-2xs text-text-dim">
+                              {mScore >= 0.75
+                                ? 'High Demonstrated Fit'
+                                : mScore >= 0.5
+                                  ? 'Emerging Capability Alignment'
+                                  : 'Skill Gap Exceeds Threshold'}
+                            </span>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
 
                   {/* Why You Narrative */}
                   <div className="mt-4 p-3 rounded-lg bg-background/80 border border-border">
                     <h4 className="text-xs font-semibold text-text flex items-center gap-1.5 mb-1.5">
-                      <span>💡</span> Why You (Natural Language Grounding)
+                      <span>ðŸ’¡</span> Why You (Natural Language Grounding)
                     </h4>
-                    <p className="text-xs text-text-muted leading-relaxed">{matchResult.whyYou}</p>
+                    <p className="text-xs text-text-muted leading-relaxed">
+                      {typeof matchResult.whyYou === 'string'
+                        ? matchResult.whyYou
+                        : (matchResult.whyYou as any)?.rationale ||
+                          (matchResult.whyYou as any)?.headline ||
+                          'Match grounded in demonstrated workspace capabilities.'}
+                    </p>
                   </div>
                 </div>
 
@@ -774,28 +827,58 @@ export default function JobsPage() {
                   <div className="card p-3 text-center">
                     <span className="text-2xs text-text-dim block mb-1">Cosine Similarity</span>
                     <span className="text-base font-mono font-bold text-text">
-                      {(matchResult.metrics.cosineSimilarity * 100).toFixed(1)}%
+                      {(
+                        Number(
+                          matchResult.metrics?.cosineSimilarity ??
+                            (matchResult.metrics as any)?.cosine_similarity ??
+                            0,
+                        ) * 100
+                      ).toFixed(1)}
+                      %
                     </span>
                     <span className="text-[9px] text-text-muted block mt-0.5">Semantic Fit</span>
                   </div>
                   <div className="card p-3 text-center">
                     <span className="text-2xs text-text-dim block mb-1">Recency Decay</span>
                     <span className="text-base font-mono font-bold text-emerald-400">
-                      {(matchResult.metrics.decayWeightedConfidence * 100).toFixed(1)}%
+                      {(
+                        Number(
+                          matchResult.metrics?.decayWeightedConfidence ??
+                            (matchResult.metrics as any)?.decay_weighted_confidence ??
+                            (matchResult.metrics as any)?.recency_decay ??
+                            0.85,
+                        ) * 100
+                      ).toFixed(1)}
+                      %
                     </span>
                     <span className="text-[9px] text-text-muted block mt-0.5">Half-Life Model</span>
                   </div>
                   <div className="card p-3 text-center">
                     <span className="text-2xs text-text-dim block mb-1">Network Proximity</span>
                     <span className="text-base font-mono font-bold text-primary">
-                      {matchResult.metrics.networkProximity.toFixed(2)}x
+                      {Number(
+                        matchResult.metrics?.networkProximity ??
+                          (matchResult.metrics as any)?.network_proximity ??
+                          (matchResult.metrics as any)?.graph_proximity_score ??
+                          1.0,
+                      ).toFixed(2)}
+                      x
                     </span>
                     <span className="text-[9px] text-text-muted block mt-0.5">Graph Boost</span>
                   </div>
                   <div className="card p-3 text-center">
                     <span className="text-2xs text-text-dim block mb-1">Skill Gap Penalty</span>
                     <span className="text-base font-mono font-bold text-rose-400">
-                      -{(matchResult.metrics.skillGapPenalty * 100).toFixed(1)}%
+                      -
+                      {(
+                        Number(
+                          matchResult.metrics?.skillGapPenalty ??
+                            (matchResult.metrics as any)?.skill_gap_penalty ??
+                            (matchResult.metrics as any)?.gap_penalty ??
+                            0,
+                        ) * 100
+                      ).toFixed(1)}
+                      %
                     </span>
                     <span className="text-[9px] text-text-muted block mt-0.5">Missing Bounds</span>
                   </div>
@@ -807,27 +890,53 @@ export default function JobsPage() {
                     Demonstrated Capability Mapping
                   </h4>
 
-                  {matchResult.matchedSkills.length > 0 ? (
+                  {(
+                    matchResult.matchedSkills ||
+                    (matchResult as any).matchingSkills ||
+                    (matchResult as any).matching_skills ||
+                    []
+                  ).length > 0 ? (
                     <div>
                       <span className="text-xs font-medium text-text-muted block mb-1.5">
-                        Matched Capabilities ({matchResult.matchedSkills.length})
+                        Matched Capabilities (
+                        {
+                          (
+                            matchResult.matchedSkills ||
+                            (matchResult as any).matchingSkills ||
+                            (matchResult as any).matching_skills ||
+                            []
+                          ).length
+                        }
+                        )
                       </span>
                       <div className="flex flex-wrap gap-2">
-                        {matchResult.matchedSkills.map((ms, idx) => (
-                          <div
-                            key={idx}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-200 border border-border text-xs"
-                          >
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                            <span className="font-medium text-text">{ms.name}</span>
-                            <span className="text-[9px] font-mono px-1 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
-                              {ms.validationTier || 'V1'}
-                            </span>
-                            <span className="text-[9px] text-text-dim">
-                              {ms.decayStatus || 'fresh'}
-                            </span>
-                          </div>
-                        ))}
+                        {(
+                          matchResult.matchedSkills ||
+                          (matchResult as any).matchingSkills ||
+                          (matchResult as any).matching_skills ||
+                          []
+                        ).map((ms: any, idx: number) => {
+                          const name = typeof ms === 'string' ? ms : ms?.name || 'Skill';
+                          const tier =
+                            typeof ms === 'object' ? ms?.validationTier || ms?.tier || 'V1' : 'V1';
+                          const decay =
+                            typeof ms === 'object'
+                              ? ms?.decayStatus || ms?.decay_status || 'fresh'
+                              : 'fresh';
+                          return (
+                            <div
+                              key={idx}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-200 border border-border text-xs"
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                              <span className="font-medium text-text">{name}</span>
+                              <span className="text-[9px] font-mono px-1 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                                {tier}
+                              </span>
+                              <span className="text-[9px] text-text-dim">{decay}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   ) : (
@@ -836,20 +945,34 @@ export default function JobsPage() {
                     </p>
                   )}
 
-                  {matchResult.missingSkills.length > 0 && (
+                  {(matchResult.missingSkills || (matchResult as any).missing_skills || []).length >
+                    0 && (
                     <div className="pt-2 border-t border-border">
                       <span className="text-xs font-medium text-text-muted block mb-1.5">
-                        Skill Gaps ({matchResult.missingSkills.length})
+                        Skill Gaps (
+                        {
+                          (matchResult.missingSkills || (matchResult as any).missing_skills || [])
+                            .length
+                        }
+                        )
                       </span>
                       <div className="flex flex-wrap gap-1.5">
-                        {matchResult.missingSkills.map((gs, idx) => (
-                          <span
-                            key={idx}
-                            className="px-2 py-0.5 rounded bg-surface-300/40 text-text-muted border border-border text-xs"
-                          >
-                            {gs}
-                          </span>
-                        ))}
+                        {(
+                          matchResult.missingSkills ||
+                          (matchResult as any).missing_skills ||
+                          []
+                        ).map((gs: any, idx: number) => {
+                          const gapName =
+                            typeof gs === 'string' ? gs : gs?.name || gs?.skill_name || 'Skill Gap';
+                          return (
+                            <span
+                              key={idx}
+                              className="px-2 py-0.5 rounded bg-surface-300/40 text-text-muted border border-border text-xs"
+                            >
+                              {gapName}
+                            </span>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -858,15 +981,23 @@ export default function JobsPage() {
                   <div className="pt-3 flex gap-2">
                     <button
                       onClick={() =>
-                        handleSave({ title: matchResult.title, detail: matchResult.whyYou })
+                        handleSave({
+                          title: matchResult.title || 'Role',
+                          detail:
+                            typeof matchResult.whyYou === 'string'
+                              ? matchResult.whyYou
+                              : (matchResult.whyYou as any)?.rationale ||
+                                (matchResult.whyYou as any)?.headline ||
+                                '',
+                        })
                       }
                       className="flex-1 py-2 rounded-lg text-xs font-medium bg-surface-200 hover:bg-surface-hover text-text border border-border transition-colors"
                     >
                       Save to Opportunities
                     </button>
                     <button
-                      onClick={() => handleApply(matchResult.title)}
-                      className="flex-1 py-2 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary-hover transition-colors"
+                      onClick={() => handleApply(matchResult.title || 'Role')}
+                      className="flex-1 py-2 rounded-lg text-xs font-medium bg-action text-action-fg hover:bg-action/90 transition-colors"
                     >
                       Apply with Agent
                     </button>
@@ -876,16 +1007,16 @@ export default function JobsPage() {
             ) : (
               <div className="card h-full min-h-[380px] flex flex-col items-center justify-center text-center p-8 border-dashed">
                 <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-2xl mb-3">
-                  ⚡
+                  âš¡
                 </div>
                 <h3 className="text-base font-semibold text-text mb-1">PIOS Opportunity Engine</h3>
                 <p className="text-xs text-text-muted max-w-sm mb-4 leading-relaxed">
                   Instead of generic job searches, PIOS reverse-matches your demonstrated
-                  capabilities, validation tiers (V0–V4), and memory recency half-life against
+                  capabilities, validation tiers (V0â€“V4), and memory recency half-life against
                   external roles.
                 </p>
                 <div className="text-xs font-mono text-text-dim bg-surface-200 px-3 py-1.5 rounded-lg border border-border">
-                  matcher_core = cosine × proximity × decay − gap_penalty
+                  matcher_core = cosine Ã— proximity Ã— decay âˆ’ gap_penalty
                 </div>
               </div>
             )}
@@ -985,7 +1116,7 @@ export default function JobsPage() {
         {saved.length === 0 ? (
           <EmptyState
             title="No saved jobs"
-            description="Save roles from the Job Search tab — they persist here. Apply requires approval and will give you a deep link to the application."
+            description="Save roles from the Job Search tab â€” they persist here. Apply requires approval and will give you a deep link to the application."
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

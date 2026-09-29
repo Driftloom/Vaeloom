@@ -836,7 +836,7 @@ export default function CapabilitiesPage() {
                 setCreateModalOpen(true);
               }}
               aria-label="New Capability"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:bg-primary-hover active:scale-[0.98] text-xs font-semibold text-white transition-all shadow-sm shrink-0 cursor-pointer whitespace-nowrap"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-action hover:bg-action/90 active:scale-[0.98] text-xs font-semibold text-action-fg transition-all shadow-sm shrink-0 cursor-pointer whitespace-nowrap"
             >
               <svg
                 className="w-3.5 h-3.5"

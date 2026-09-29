@@ -812,7 +812,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, search
                   onClick={() => handleSelectTool(toolName)}
                   className={`px-2.5 py-1 rounded-md text-xs font-mono font-medium transition-all shrink-0 cursor-pointer ${
                     isActive
-                      ? 'bg-primary text-white shadow-xs font-semibold'
+                      ? 'bg-action text-action-fg shadow-xs font-semibold'
                       : 'bg-surface-elevated text-text-secondary hover:text-text hover:bg-surface-hover border border-border'
                   }`}
                 >

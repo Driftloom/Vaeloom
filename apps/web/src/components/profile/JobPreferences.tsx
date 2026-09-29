@@ -78,7 +78,7 @@ export default function JobPreferences({
           {workspaceId && (
             <button
               onClick={() => setIsEditing(true)}
-              className="px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-lg hover:bg-primary-hover transition-colors"
+              className="px-3 py-1.5 bg-primary text-primary-fg text-xs font-medium rounded-lg hover:bg-primary-hover transition-colors"
             >
               Configure Preferences
             </button>
@@ -180,7 +180,7 @@ export default function JobPreferences({
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary-hover disabled:opacity-50 transition-colors"
+              className="px-4 py-1.5 text-xs font-medium bg-primary text-primary-fg rounded-lg hover:bg-primary-hover disabled:opacity-50 transition-colors"
             >
               {loading ? 'Saving...' : 'Save Preferences'}
             </button>

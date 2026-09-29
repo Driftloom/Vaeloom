@@ -29,10 +29,11 @@ export default function ApprovalsPage() {
   );
 
   const items = useMemo(() => data?.items ?? [], [data]);
-  const agents = useMemo(() => Array.from(new Set(items.map((i) => i.agent_name))), [items]);
+  const getAgentName = (i: ApprovalItem) => i.agentName ?? i.agent_name ?? '';
+  const agents = useMemo(() => Array.from(new Set(items.map(getAgentName))), [items]);
   const filtered = useMemo(() => {
     if (filterAgent === 'all') return items;
-    return items.filter((i) => i.agent_name === filterAgent);
+    return items.filter((i) => getAgentName(i) === filterAgent);
   }, [items, filterAgent]);
 
   const handleApprove = useCallback(
@@ -41,7 +42,17 @@ export default function ApprovalsPage() {
       try {
         await approvalApi.approve(id);
         toast({ tone: 'success', title: 'Approved' });
-        await mutate();
+        await mutate(
+          (current) =>
+            current
+              ? {
+                  ...current,
+                  items: current.items.filter((i) => i.id !== id),
+                  total: Math.max(0, current.total - 1),
+                }
+              : current,
+          { revalidate: true },
+        );
       } catch (err) {
         toast({
           tone: 'error',
@@ -61,7 +72,17 @@ export default function ApprovalsPage() {
       try {
         await approvalApi.reject(id);
         toast({ tone: 'success', title: 'Rejected' });
-        await mutate();
+        await mutate(
+          (current) =>
+            current
+              ? {
+                  ...current,
+                  items: current.items.filter((i) => i.id !== id),
+                  total: Math.max(0, current.total - 1),
+                }
+              : current,
+          { revalidate: true },
+        );
       } catch (err) {
         toast({
           tone: 'error',
@@ -99,6 +120,7 @@ export default function ApprovalsPage() {
         </div>
         <div className="flex items-center gap-2">
           <select
+            aria-label="Filter approvals by agent"
             value={filterAgent}
             onChange={(e) => setFilterAgent(e.target.value)}
             className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm"
@@ -142,10 +164,11 @@ export default function ApprovalsPage() {
               <div key={ap.id} className={busyId === ap.id ? 'opacity-60 pointer-events-none' : ''}>
                 <ApprovalCard
                   id={ap.id}
-                  agentName={ap.agent_name}
-                  actionType={ap.action_type}
+                  agentName={ap.agentName ?? ap.agent_name ?? ''}
+                  actionType={ap.actionType ?? ap.action_type ?? ''}
                   description={
-                    ap.reason || `${ap.agent_name} requests approval for ${ap.action_type}`
+                    ap.reason ||
+                    `${ap.agentName ?? ap.agent_name} requests approval for ${ap.actionType ?? ap.action_type}`
                   }
                   diff={
                     ap.payload
@@ -165,14 +188,18 @@ export default function ApprovalsPage() {
                       ? ((ap.payload as Record<string, unknown>)['scopes'] as string[])
                       : []
                   }
-                  expiresAt={ap.expires_at ?? undefined}
+                  expiresAt={ap.expiresAt ?? ap.expires_at ?? undefined}
                   onApprove={handleApprove}
                   onReject={handleReject}
                 />
                 <div className="mt-1 flex flex-wrap gap-2 text-xs font-mono text-text-dim px-1">
-                  <span>{new Date(ap.created_at).toLocaleString()}</span>
+                  <span>
+                    {new Date(ap.createdAt ?? ap.created_at ?? Date.now()).toLocaleString()}
+                  </span>
                   <span>· {ap.status}</span>
-                  {ap.requested_by && <span>· requested {ap.requested_by.slice(0, 8)}</span>}
+                  {(ap.requestedBy ?? ap.requested_by) && (
+                    <span>· requested {(ap.requestedBy ?? ap.requested_by)!.slice(0, 8)}</span>
+                  )}
                 </div>
               </div>
             ))}

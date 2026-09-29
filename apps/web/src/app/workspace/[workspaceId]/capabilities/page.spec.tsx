@@ -113,11 +113,19 @@ describe('CapabilitiesPage', () => {
     expect(screen.getByRole('tab', { name: /Agents/i })).toBeInTheDocument();
   });
 
-  it('switches to Connectors tab and displays canonical connectors and studio link', () => {
+  it('switches to Connectors tab and displays canonical connectors and studio link', async () => {
     render(<CapabilitiesPage />);
 
     const connectorsTab = screen.getByRole('tab', { name: /Connectors/i });
-    fireEvent.click(connectorsTab);
+    // Clicking the tab mounts ConnectorsView, which kicks off a four-request
+    // data load (workspace connectors, Composio status, Composio apps, built-in
+    // MCP servers) inside a useEffect. A plain fireEvent only opens a synchronous
+    // act scope, so that load would resolve after the test body returned and its
+    // state updates would escape as "not wrapped in act" warnings. An async act
+    // drains the load inside the act scope so the updates stay batched.
+    await act(async () => {
+      fireEvent.click(connectorsTab);
+    });
 
     expect(screen.getByText('Google Drive')).toBeInTheDocument();
     expect(screen.getByText(/Custom Protocols/i)).toBeInTheDocument();

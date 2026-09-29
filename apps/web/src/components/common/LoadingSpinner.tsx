@@ -7,11 +7,15 @@ interface LoadingSpinnerProps {
   text?: string;
 }
 
-export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ size = 'md', className = '', text }) => {
+export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
+  size = 'md',
+  className = '',
+  text,
+}) => {
   return (
     <div className={`flex flex-col items-center justify-center gap-3 ${className}`}>
       <Spinner size={size} />
-      {text && <p className="text-sm text-surface-500">{text}</p>}
+      {text && <p className="text-sm text-text-muted">{text}</p>}
     </div>
   );
 };

@@ -271,7 +271,7 @@ Expected ROI: 75% reduction in API token spend, deterministic human-in-the-loop 
                   type="button"
                   disabled={isDeliberating || !artifact.trim()}
                   onClick={handleReview}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors shadow-sm"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-action text-action-fg text-sm font-medium hover:bg-action/90 disabled:opacity-50 transition-colors shadow-sm"
                 >
                   {isDeliberating ? (
                     <>

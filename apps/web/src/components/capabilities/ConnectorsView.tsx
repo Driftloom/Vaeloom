@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { useWorkspaceConnectors } from '../../hooks/useWorkspace';
 import { api } from '../../lib/api';
@@ -142,6 +142,14 @@ export function ConnectorsView({
   // Combine top-level search query and local search input
   const effectiveQuery = (searchQuery || internalSearch).trim().toLowerCase();
 
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   // Load Real Backend Data
   const loadDynamicData = useCallback(async () => {
     if (!workspaceId) return;
@@ -171,6 +179,7 @@ export function ConnectorsView({
           : Promise.resolve<{ builtin_servers: BuiltinMcpServer[] }>({ builtin_servers: [] }),
       ]);
 
+      if (!isMountedRef.current) return;
       if (conns.status === 'fulfilled' && Array.isArray(conns.value)) {
         setDynamicConnectors(conns.value);
       }
@@ -839,19 +848,33 @@ export function ConnectorsView({
 
   if (workspaceLoading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <LoadingSpinner text="Loading connectors..." />
+      <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-background text-text antialiased overflow-hidden">
+        <div className="border-b border-border bg-surface px-4 sm:px-6 py-2.5 shrink-0 shadow-xs">
+          <div className="flex items-center gap-3">
+            <h1 className="text-base sm:text-lg font-semibold text-text tracking-tight">
+              Connectors Studio
+            </h1>
+          </div>
+        </div>
+        <div className="flex h-64 items-center justify-center">
+          <LoadingSpinner text="Loading connectors..." />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-background text-text antialiased overflow-hidden">
-      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {/* Subheader Bar: Segmented Modes + SaaS Sync Action Buttons                  */}
-      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="border-b border-border bg-surface px-4 sm:px-6 py-2.5 shrink-0 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 min-w-0">
+          <div className="flex items-center gap-3">
+            <h1 className="text-base sm:text-lg font-semibold text-text tracking-tight">
+              Connectors Studio
+            </h1>
+          </div>
           {/* Sub-nav Segmented Switcher */}
           <div className="flex items-center gap-1 p-0.5 rounded-lg bg-surface-elevated border border-border overflow-x-auto no-scrollbar shrink-0">
             <button
@@ -859,7 +882,7 @@ export function ConnectorsView({
               onClick={() => setActiveSubTab('discover')}
               className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer whitespace-nowrap ${
                 activeSubTab === 'discover'
-                  ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
+                  ? 'bg-action text-action-fg font-semibold shadow-xs'
                   : 'text-text-muted hover:text-text'
               }`}
             >
@@ -875,7 +898,7 @@ export function ConnectorsView({
               onClick={() => setActiveSubTab('yours')}
               className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer whitespace-nowrap ${
                 activeSubTab === 'yours'
-                  ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
+                  ? 'bg-action text-action-fg font-semibold shadow-xs'
                   : 'text-text-muted hover:text-text'
               }`}
             >
@@ -891,13 +914,13 @@ export function ConnectorsView({
               onClick={() => setActiveSubTab('studio')}
               className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                 activeSubTab === 'studio'
-                  ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
+                  ? 'bg-action text-action-fg font-semibold shadow-xs'
                   : 'text-text-muted hover:text-text'
               }`}
             >
               <span>Custom Protocols</span>
               <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-semibold bg-primary/15 text-primary border border-primary/30">
-                MCP • REST • GraphQL
+                MCP â€¢ REST â€¢ GraphQL
               </span>
             </button>
           </div>
@@ -935,7 +958,7 @@ export function ConnectorsView({
                   setIsAddModalOpen(true);
                 }
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary hover:bg-primary-hover text-primary-foreground shadow-xs transition-all cursor-pointer active:scale-[0.98] whitespace-nowrap"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-action hover:bg-action/90 text-action-fg shadow-xs transition-all cursor-pointer active:scale-[0.98] whitespace-nowrap"
             >
               <PlusIcon />
               <span>Add Custom Connector</span>
@@ -944,9 +967,9 @@ export function ConnectorsView({
         </div>
       </div>
 
-      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {/* Main Content Area                                                          */}
-      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-5 min-h-0 min-w-0 bg-background">
         {activeSubTab === 'discover' ? (
           <div className="max-w-7xl mx-auto space-y-6 min-w-0">
@@ -956,7 +979,7 @@ export function ConnectorsView({
                 <span className="text-xs font-mono uppercase tracking-wider text-text-muted">
                   Filter By Sector
                 </span>
-                <span className="text-border">•</span>
+                <span className="text-border">â€¢</span>
                 <span className="text-xs text-text-secondary">
                   Showing {filteredCatalog.length} of {fullCatalogList.length} verified connectors
                 </span>
@@ -1221,14 +1244,12 @@ export function ConnectorsView({
                   onClick={() => setSelectedFilter(pill.id as ConnectorCategory)}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 whitespace-nowrap cursor-pointer ${
                     selectedFilter === pill.id
-                      ? 'bg-primary text-primary-foreground shadow-xs font-semibold'
+                      ? 'bg-action text-action-fg shadow-xs font-semibold'
                       : 'bg-surface-elevated hover:bg-surface-hover text-text-secondary hover:text-text border border-border'
                   }`}
                 >
                   <span
-                    className={
-                      selectedFilter === pill.id ? 'text-primary-foreground' : 'text-text-muted'
-                    }
+                    className={selectedFilter === pill.id ? 'text-action-fg' : 'text-text-muted'}
                   >
                     {pill.icon}
                   </span>
@@ -1250,7 +1271,7 @@ export function ConnectorsView({
                           : `All connectors (${filteredCatalog.length})`}
                     </h2>
                     <span className="text-xs text-text-muted">
-                      • {fullCatalogList.length.toLocaleString()} total available
+                      â€¢ {fullCatalogList.length.toLocaleString()} total available
                     </span>
                   </div>
                   <button
@@ -1262,7 +1283,7 @@ export function ConnectorsView({
                     }}
                     className="text-xs text-primary hover:text-primary-hover transition-colors cursor-pointer"
                   >
-                    ← Back to featured
+                    â† Back to featured
                   </button>
                 </div>
 
@@ -1321,7 +1342,7 @@ export function ConnectorsView({
                                   type="button"
                                   onClick={() => handleInitiateConnect(item)}
                                   disabled={busyAction === `connect-${item.provider}`}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-elevated hover:bg-primary hover:text-primary-foreground border border-border hover:border-primary text-text-secondary text-xs font-medium transition-all duration-150 cursor-pointer shadow-xs active:scale-[0.97]"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-elevated hover:bg-action hover:text-action-fg border border-border hover:border-action text-text-secondary text-xs font-medium transition-all duration-150 cursor-pointer shadow-xs active:scale-[0.97]"
                                   title={`Connect ${item.name}`}
                                 >
                                   <PlusIcon />
@@ -1358,7 +1379,7 @@ export function ConnectorsView({
                         Top connectors ({topConnectors.length})
                       </h2>
                       <span className="text-xs text-text-muted">
-                        • {fullCatalogList.length} available
+                        â€¢ {fullCatalogList.length} available
                       </span>
                     </div>
                     <button
@@ -1367,7 +1388,7 @@ export function ConnectorsView({
                       className="text-xs text-primary hover:text-primary-hover font-medium flex items-center gap-1 transition-colors cursor-pointer"
                     >
                       <span>Show all ({fullCatalogList.length})</span>
-                      <span>›</span>
+                      <span>â€º</span>
                     </button>
                   </div>
 
@@ -1415,7 +1436,7 @@ export function ConnectorsView({
                                     type="button"
                                     onClick={() => handleInitiateConnect(item)}
                                     disabled={busyAction === `connect-${item.provider}`}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-elevated hover:bg-primary hover:text-primary-foreground border border-border hover:border-primary text-text-secondary text-xs font-medium transition-all duration-150 cursor-pointer shadow-xs active:scale-[0.97]"
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-elevated hover:bg-action hover:text-action-fg border border-border hover:border-action text-text-secondary text-xs font-medium transition-all duration-150 cursor-pointer shadow-xs active:scale-[0.97]"
                                     title={`Connect ${item.name}`}
                                   >
                                     <PlusIcon />
@@ -1451,7 +1472,7 @@ export function ConnectorsView({
                           More Integrations & Dynamic Toolkits
                         </h2>
                         <span className="text-xs text-text-muted">
-                          • {otherConnectors.length} available
+                          â€¢ {otherConnectors.length} available
                         </span>
                       </div>
                     </div>
@@ -1500,7 +1521,7 @@ export function ConnectorsView({
                                       type="button"
                                       onClick={() => handleInitiateConnect(item)}
                                       disabled={busyAction === `connect-${item.provider}`}
-                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-elevated hover:bg-primary hover:text-primary-foreground border border-border hover:border-primary text-text-secondary text-xs font-medium transition-all duration-150 cursor-pointer shadow-xs active:scale-[0.97]"
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-elevated hover:bg-action hover:text-action-fg border border-border hover:border-action text-text-secondary text-xs font-medium transition-all duration-150 cursor-pointer shadow-xs active:scale-[0.97]"
                                       title={`Connect ${item.name}`}
                                     >
                                       <PlusIcon />
@@ -1531,9 +1552,9 @@ export function ConnectorsView({
             )}
           </div>
         ) : activeSubTab === 'studio' ? (
-          /* ────────────────────────────────────────────────────────────────────────── */
+          /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
           /* Full Connectors Studio View: MCP, REST, and GraphQL Custom Connectors     */
-          /* ────────────────────────────────────────────────────────────────────────── */
+          /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
           <div className="max-w-6xl mx-auto space-y-6">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
@@ -1546,9 +1567,9 @@ export function ConnectorsView({
                     Enterprise Protocol Builder
                   </span>
                 </div>
-                <h1 className="text-base font-semibold text-text tracking-tight">
+                <h2 className="text-base font-semibold text-text tracking-tight">
                   Connectors Studio & Protocol Orchestrator
-                </h1>
+                </h2>
                 <p className="text-xs text-text-secondary max-w-2xl mt-1 leading-relaxed">
                   Build, test, and register custom Model Context Protocol (stdio/HTTP) servers,
                   enterprise REST APIs, and GraphQL endpoints with sandboxed execution and live
@@ -1560,7 +1581,7 @@ export function ConnectorsView({
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary hover:bg-primary-hover text-primary-foreground shadow-xs transition-all cursor-pointer active:scale-[0.98]"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-action hover:bg-action/90 text-action-fg shadow-xs transition-all cursor-pointer active:scale-[0.98]"
                 >
                   <PlusIcon />
                   <span>Add Custom Connector</span>
@@ -1797,7 +1818,7 @@ export function ConnectorsView({
                   <button
                     type="button"
                     onClick={() => setIsAddModalOpen(true)}
-                    className="mt-3 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary-hover transition-colors cursor-pointer"
+                    className="mt-3 px-3 py-1.5 text-xs font-semibold rounded-lg bg-action text-action-fg hover:bg-action/90 transition-colors cursor-pointer"
                   >
                     + Add First Custom Connector
                   </button>
@@ -1860,9 +1881,9 @@ export function ConnectorsView({
             </div>
           </div>
         ) : (
-          /* ────────────────────────────────────────────────────────────────────────── */
+          /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
           /* Yours View: Active & Configured Workspace Connectors                       */
-          /* ────────────────────────────────────────────────────────────────────────── */
+          /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
           <div className="max-w-7xl mx-auto space-y-5">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2 text-xs font-mono text-text-muted">
@@ -1910,7 +1931,7 @@ export function ConnectorsView({
                 <button
                   type="button"
                   onClick={() => setActiveSubTab('discover')}
-                  className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary-hover transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+                  className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-action text-action-fg hover:bg-action/90 transition-all cursor-pointer shadow-xs active:scale-[0.98]"
                 >
                   <PlusIcon />
                   <span>Discover Connectors</span>
@@ -2125,9 +2146,9 @@ export function ConnectorsView({
         )}
       </div>
 
-      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {/* Modal 1: Connector Detail & OAuth Authorization Modal                      */}
-      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {selectedItemDetails && (
         <Modal
           isOpen={true}
@@ -2200,7 +2221,7 @@ export function ConnectorsView({
                     setSelectedItemDetails(null);
                     handleInitiateConnect(selectedItemDetails);
                   }}
-                  className="px-3 py-1.5 rounded text-xs font-semibold bg-primary hover:bg-primary-hover text-primary-foreground transition-colors"
+                  className="px-3 py-1.5 rounded text-xs font-semibold bg-action hover:bg-action/90 text-action-fg transition-colors"
                 >
                   Connect
                 </button>
@@ -2210,9 +2231,9 @@ export function ConnectorsView({
         </Modal>
       )}
 
-      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {/* Modal 2: OAuth Connect Confirmation Modal                                 */}
-      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {pendingProvider && (
         <Modal
           isOpen={true}
@@ -2231,7 +2252,7 @@ export function ConnectorsView({
               </span>
               {PROVIDER_META[pendingProvider]?.scopes?.map((scope, idx) => (
                 <div key={idx} className="text-[11px] font-mono text-text-muted">
-                  • {scope}
+                  â€¢ {scope}
                 </div>
               ))}
             </div>
@@ -2247,7 +2268,7 @@ export function ConnectorsView({
                 type="button"
                 disabled={busyAction === `connect-${pendingProvider}`}
                 onClick={() => handleExecuteConnect(pendingProvider)}
-                className="px-3 py-1.5 rounded text-xs font-semibold bg-primary hover:bg-primary-hover text-primary-foreground transition-colors"
+                className="px-3 py-1.5 rounded text-xs font-semibold bg-action hover:bg-action/90 text-action-fg transition-colors"
               >
                 {busyAction === `connect-${pendingProvider}`
                   ? 'Connecting...'
@@ -2258,9 +2279,9 @@ export function ConnectorsView({
         </Modal>
       )}
 
-      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {/* Modal 3: Add Custom Connector (MCP, REST, GraphQL)                        */}
-      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {isAddModalOpen && (
         <Modal
           isOpen={true}
@@ -2424,7 +2445,7 @@ export function ConnectorsView({
               <button
                 type="submit"
                 disabled={submittingCustom}
-                className="px-4 py-1.5 rounded text-xs font-semibold bg-primary hover:bg-primary-hover text-primary-foreground transition-colors"
+                className="px-4 py-1.5 rounded text-xs font-semibold bg-action hover:bg-action/90 text-action-fg transition-colors"
               >
                 {submittingCustom ? 'Registering...' : 'Register Connector'}
               </button>
@@ -2433,9 +2454,9 @@ export function ConnectorsView({
         </Modal>
       )}
 
-      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {/* Modal 4: MCP Tools Dynamic Inspector Modal                                */}
-      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {toolsModalTarget && (
         <Modal
           isOpen={true}

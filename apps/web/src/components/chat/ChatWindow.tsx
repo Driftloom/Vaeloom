@@ -469,6 +469,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   }, [catalog]);
 
   const isThreadsLoadedRef = useRef(false);
+  const attachInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     try {
@@ -1934,16 +1935,25 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                 if (f) setAttached(f);
               }}
             >
-              <label
+              {/* A real button, not a <label>: the native file input is
+                  display:none, so a wrapping <label> exposes no accessible name
+                  at all and an aria-label on it is prohibited (WCAG 4.1.2).
+                  The button carries the name and drives the hidden input, which
+                  keeps both pointer and keyboard users in the tab order. */}
+              <input
+                ref={attachInputRef}
+                type="file"
+                tabIndex={-1}
+                aria-hidden="true"
+                className="hidden"
+                onChange={(e) => setAttached(e.target.files?.[0] || null)}
+              />
+              <button
+                type="button"
+                onClick={() => attachInputRef.current?.click()}
                 className="w-8 h-8 rounded-full hover:bg-background border border-transparent hover:border-border/50 flex items-center justify-center shrink-0 cursor-pointer text-text-dim hover:text-text transition-colors"
                 aria-label="Attach file"
               >
-                <input
-                  type="file"
-                  aria-label="Attach file"
-                  className="hidden"
-                  onChange={(e) => setAttached(e.target.files?.[0] || null)}
-                />
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
                     strokeLinecap="round"
@@ -1952,7 +1962,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                     d="M12 4v16m8-8H4"
                   />
                 </svg>
-              </label>
+              </button>
               <textarea
                 ref={inputRef}
                 aria-label="Chat message"

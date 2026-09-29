@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { Modal, ErrorState } from '@vaeloom/ui-kit';
@@ -28,7 +28,11 @@ export function MemoryCorrectionPanel() {
       // "No memories yet" and the correction modal was unreachable in
       // production. Accept the array form too so a future envelope change
       // degrades to a visible error rather than a silently empty list.
-      const rows = Array.isArray(res) ? res : ((res as { memories?: Memory[] }).memories ?? []);
+      const rows = Array.isArray(res)
+        ? res
+        : ((res as { memories?: Memory[]; items?: Memory[] }).memories ??
+          (res as { memories?: Memory[]; items?: Memory[] }).items ??
+          []);
       setMemories(rows.filter((m) => m.status !== 'deleted'));
     } catch (err) {
       // Surfacing the failure matters: a swallowed error here is

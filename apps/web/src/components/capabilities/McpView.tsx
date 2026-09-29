@@ -620,9 +620,9 @@ export const McpView: React.FC<McpViewProps> = ({
 
   return (
     <div className="flex-1 flex flex-col lg:flex-row min-h-0 min-w-0 bg-background text-text overflow-hidden">
-      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {/* Left Column: Servers + Catalog (Pixel-Matched to Design System)          */}
-      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="w-full lg:w-[320px] xl:w-[360px] 2xl:w-[400px] shrink-0 border-r border-border bg-surface flex flex-col min-h-0">
         {/* Section 1: Installed Servers Header */}
         <div className="border-b border-border flex flex-col shrink-0">
@@ -821,7 +821,7 @@ export const McpView: React.FC<McpViewProps> = ({
                     className={`px-2.5 py-1 rounded text-xs font-sans font-medium transition-colors shrink-0 ${
                       isInstalled
                         ? 'bg-surface-elevated text-text-muted border border-border cursor-default'
-                        : 'bg-primary hover:bg-primary-hover text-primary-foreground border border-primary/40 shadow-xs'
+                        : 'bg-action hover:bg-action/90 text-action-fg border border-action/40 shadow-xs'
                     }`}
                   >
                     {isInstalled ? 'Installed' : 'Install'}
@@ -833,9 +833,9 @@ export const McpView: React.FC<McpViewProps> = ({
         </div>
       </div>
 
-      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {/* Right Column: Server Inspector & Tools OR mcp.json Manifest Editor         */}
-      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-background text-text overflow-hidden">
         {/* Sub-navigation Tabs */}
         <div className="border-b border-border bg-surface px-4 py-2 flex items-center justify-between shrink-0">
@@ -907,7 +907,7 @@ export const McpView: React.FC<McpViewProps> = ({
                 type="button"
                 onClick={handleSaveConfig}
                 disabled={savingConfig}
-                className="px-3 py-1 rounded bg-primary hover:bg-primary-hover text-xs font-sans font-semibold text-primary-foreground transition-colors shadow-xs flex items-center gap-1.5"
+                className="px-3 py-1 rounded bg-action hover:bg-action/90 text-xs font-sans font-semibold text-action-fg transition-colors shadow-xs flex items-center gap-1.5"
               >
                 {savingConfig ? (
                   <>
@@ -962,7 +962,7 @@ export const McpView: React.FC<McpViewProps> = ({
                 type="button"
                 onClick={() => handleSyncBridge(selectedServer)}
                 disabled={syncingServerId === selectedServer.id}
-                className="px-3 py-1 rounded bg-primary hover:bg-primary-hover text-xs font-sans font-semibold text-primary-foreground transition-colors shadow-xs flex items-center gap-1.5"
+                className="px-3 py-1 rounded bg-action hover:bg-action/90 text-xs font-sans font-semibold text-action-fg transition-colors shadow-xs flex items-center gap-1.5"
                 title="Register discovered tools into agent executor"
               >
                 <svg
@@ -1049,7 +1049,7 @@ export const McpView: React.FC<McpViewProps> = ({
                           <button
                             type="button"
                             onClick={() => handleInstallCatalogServer(template)}
-                            className="px-3 py-1 text-xs font-medium rounded-lg bg-primary hover:bg-primary-hover text-primary-foreground transition-colors cursor-pointer"
+                            className="px-3 py-1 text-xs font-medium rounded-lg bg-action hover:bg-action/90 text-action-fg transition-colors cursor-pointer"
                           >
                             Install Protocol
                           </button>
@@ -1078,7 +1078,7 @@ export const McpView: React.FC<McpViewProps> = ({
                         </span>
                       </div>
                       <p className="text-xs text-text-muted mt-1 font-mono">
-                        ID: {selectedServer.id} • Last synced:{' '}
+                        ID: {selectedServer.id} â€¢ Last synced:{' '}
                         {selectedServer.lastSync
                           ? new Date(selectedServer.lastSync).toLocaleTimeString()
                           : 'Just now'}
@@ -1151,7 +1151,7 @@ export const McpView: React.FC<McpViewProps> = ({
                       <button
                         type="button"
                         onClick={() => handleSyncBridge(selectedServer)}
-                        className="mt-2 px-3 py-1 rounded bg-primary text-primary-foreground text-xs font-medium hover:bg-primary-hover"
+                        className="mt-2 px-3 py-1 rounded bg-action text-action-fg text-xs font-medium hover:bg-action/90"
                       >
                         Sync Bridge Now
                       </button>
@@ -1207,7 +1207,7 @@ export const McpView: React.FC<McpViewProps> = ({
                                 }}
                                 className={`px-2.5 py-1 rounded text-xs font-sans font-medium transition-colors shrink-0 ${
                                   isTestingThis
-                                    ? 'bg-primary text-primary-foreground'
+                                    ? 'bg-action text-action-fg'
                                     : 'bg-surface-elevated hover:bg-surface-hover text-text-secondary hover:text-text border border-border'
                                 }`}
                               >
@@ -1245,7 +1245,7 @@ export const McpView: React.FC<McpViewProps> = ({
                                     type="button"
                                     onClick={handleExecuteToolCall}
                                     disabled={testCalling}
-                                    className="px-3 py-1.5 rounded bg-primary hover:bg-primary-hover text-primary-foreground font-medium text-xs flex items-center gap-1.5 shadow-xs"
+                                    className="px-3 py-1.5 rounded bg-action hover:bg-action/90 text-action-fg font-medium text-xs flex items-center gap-1.5 shadow-xs"
                                   >
                                     {testCalling ? (
                                       <>

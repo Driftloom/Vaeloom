@@ -93,6 +93,8 @@ export default function SchedulePage() {
   const [createDate, setCreateDate] = useState('');
   const [createCategory, setCreateCategory] = useState('user');
   const [createPriority, setCreatePriority] = useState('normal');
+  const [createTitleError, setCreateTitleError] = useState<string | null>(null);
+  const [createDateError, setCreateDateError] = useState<string | null>(null);
   const [busyApprove, setBusyApprove] = useState<string | null>(null);
   const [calMonth, setCalMonth] = useState(() => {
     const d = new Date();
@@ -136,7 +138,14 @@ export default function SchedulePage() {
   }, [events, filterSource, filterCategory, search]);
 
   const handleCreate = useCallback(async () => {
-    if (!createTitle.trim() || !createDate) {
+    const titleError = createTitle.trim() ? null : 'Title is required.';
+    const dateError = createDate ? null : 'Date and time are required.';
+    setCreateTitleError(titleError);
+    setCreateDateError(dateError);
+    if (titleError || dateError) {
+      // Keep the toast for parity, but do not rely on it alone: a transient
+      // toast is not programmatically associated with the field, so it fails
+      // WCAG 3.3.1 (Error Identification) and 3.3.3 for screen-reader users.
       toast({ tone: 'error', title: 'Missing fields', detail: 'Title and date are required.' });
       return;
     }
@@ -573,20 +582,48 @@ export default function SchedulePage() {
           <label className="block text-sm">
             Title
             <input
+              id="ev-title"
+              name="title"
               value={createTitle}
-              onChange={(e) => setCreateTitle(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              onChange={(e) => {
+                setCreateTitle(e.target.value);
+                if (createTitleError) setCreateTitleError(null);
+              }}
+              aria-invalid={createTitleError ? true : undefined}
+              aria-describedby={createTitleError ? 'ev-title-error' : undefined}
+              className={`mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary ${
+                createTitleError ? 'border-error' : 'border-border'
+              }`}
               placeholder="Interview with Acme"
             />
+            {createTitleError && (
+              <p id="ev-title-error" role="alert" className="mt-1 text-xs text-error">
+                {createTitleError}
+              </p>
+            )}
           </label>
           <label className="block text-sm">
             Date & time
             <input
+              id="ev-date"
+              name="date"
               type="datetime-local"
               value={createDate}
-              onChange={(e) => setCreateDate(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              onChange={(e) => {
+                setCreateDate(e.target.value);
+                if (createDateError) setCreateDateError(null);
+              }}
+              aria-invalid={createDateError ? true : undefined}
+              aria-describedby={createDateError ? 'ev-date-error' : undefined}
+              className={`mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary ${
+                createDateError ? 'border-error' : 'border-border'
+              }`}
             />
+            {createDateError && (
+              <p id="ev-date-error" role="alert" className="mt-1 text-xs text-error">
+                {createDateError}
+              </p>
+            )}
           </label>
           <div className="grid grid-cols-2 gap-3">
             <label className="block text-sm">

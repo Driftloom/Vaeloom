@@ -508,9 +508,9 @@ function MarketplaceContent() {
                     <span className="text-xs bg-surface-100 border border-border/60 px-2 py-0.5 rounded text-text-muted">
                       {listing.category}
                     </span>
-                    {listing.rating !== undefined && (
+                    {listing.rating != null && (
                       <span className="text-xs flex items-center gap-1 text-warning font-mono ml-auto">
-                        ★ {listing.rating.toFixed(1)}
+                        ★ {Number(listing.rating).toFixed(1)}
                       </span>
                     )}
                   </div>

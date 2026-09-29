@@ -145,7 +145,7 @@ export default function ScreeningQuestionsCard({
 
       {success && (
         <div className="mb-4 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400">
-          ✓ Screening question answers saved successfully!
+          âœ“ Screening question answers saved successfully!
         </div>
       )}
 
@@ -219,7 +219,7 @@ export default function ScreeningQuestionsCard({
             </button>
             <button
               type="submit"
-              className="px-4 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary-hover transition-colors"
+              className="px-4 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-fg hover:bg-primary-hover transition-colors"
             >
               Add to Bank
             </button>
@@ -279,7 +279,7 @@ export default function ScreeningQuestionsCard({
         <button
           onClick={handleSaveAll}
           disabled={saving}
-          className="px-5 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-sm"
+          className="px-5 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-fg hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-sm"
         >
           {saving ? 'Saving Answers...' : 'Save Question Bank'}
         </button>
