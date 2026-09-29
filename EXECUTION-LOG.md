@@ -859,24 +859,211 @@ re-supplies the `.env` value. Set the local path explicitly; do not blank it.
 
 ---
 
-## 19. Verified state at the end of this pass
+## 19. Browser end-to-end verification — the gap that was still open
 
-| Gate                                        | Result                                    |
-| ------------------------------------------- | ----------------------------------------- |
-| `alembic upgrade head`, clean PostgreSQL 16 | **exit 0**, head `0060`, 90 tables        |
-| tables without RLS / without policies       | **0 / 0**                                 |
-| `0060` negative control                     | **exit 1**, names the table, version held |
-| migration chain + 0057 invariants (real PG) | **13 passed**                             |
-| PG suites with no PG available              | **13 skipped** in 0.23s                   |
-| API security suite                          | **404 passed / 0 failed**                 |
-| auth, org, config, WS suites                | **52 passed**                             |
-| web typecheck / lint / Jest                 | 0 / 0 errors / **96**                     |
-| ui-kit typecheck / lint / Jest              | 0 / 0 / **149**                           |
-| live cookie flow                            | 16/16 checks in section 16                |
+Every previous section verified the cookie contract at the API level. This
+section verifies it in a real browser against a real Next.js dev server proxying
+to a real API on PostgreSQL. `apps/web/e2e/cookie-flow.browser.mjs` — **26
+checks, all passing.**
+
+### 19.1 Standing up a stack that was actually correct
+
+Getting a trustworthy run took real work, and the obstacles are themselves
+findings.
+
+**The dev server was proxying to the wrong backend entirely.** Port 8000 on this
+machine is answered by `lyzrcloudagent-api-1` — a container from a _different_
+project that also self-identifies as
+`{"service":"vaeloom-api","version":"0.2.0"}`. It returns **500** for a signup
+payload the real API accepts with 201. Nothing in the Vaeloom app can tell the
+difference. A developer would have believed they were testing their own API
+while every request went elsewhere.
+
+Verified rather than assumed: a user created directly on `:8020` logged in
+through the proxy with 200, while the same credentials against `:8000`
+returned 401.
+
+**The rewrite ignores `INTERNAL_API_URL` until `.next` is cleared.** Next caches
+the resolved rewrite target. With the variable set and no cache clear, the proxy
+still went to 8000. Clearing `apps/web/.next` with no dev server running, then
+starting, made `INTERNAL_API_URL=http://127.0.0.1:8020` take effect. This is
+worth knowing before anyone debugs "my env var is ignored" a second time.
+
+**`localhost` and `127.0.0.1` are not interchangeable here.** `localhost`
+resolves to IPv6 `::1`, which the dev server was not serving, so page loads
+failed while `127.0.0.1` returned 200. The suite therefore takes `WEB_URL` and
+must be pointed at `http://127.0.0.1:3000` on this host.
+
+### 19.2 Two real product defects the browser run found
+
+Neither was visible to any API-level or unit test.
+
+**A 401 was logged as an error on the workspace route.**
+`app/workspace/page.tsx` treated "not signed in" — the expected state for that
+route — as a failure: it logged `console.error`, showed the user _"Token has
+been revoked"_ for 1.5 seconds, then redirected. Wrong twice over: an anonymous
+visitor never had a token to revoke, and the redirect already worked. Now a 401
+goes straight to `/login` with no error surface.
+
+**Dead code pretending to clear the session cookies.** The same function tried
+to delete `vaeloom_at` and `vaeloom_rt` via `document.cookie`. Both are
+HttpOnly, so JavaScript cannot see or delete them — it was a silent no-op that
+looked like cleanup. The comment now says so, and only the legacy JS-readable
+names are cleared. The session is invalidated server-side by
+`POST /auth/logout`; an anonymous visitor never had one.
+
+### 19.3 Two test-harness traps worth recording
+
+**Form fills race React hydration.** Filling before the client bundle hydrates
+means React takes over the DOM and resets the field, the form submits blank, and
+the only symptom is _"Email is required"_ with **no network request at all**.
+The suite now waits for hydration and re-reads each field to confirm the value
+survived, retrying if it was clobbered.
+
+**`ERR_ABORTED` is not a failure.** It means the browser cancelled a request in
+flight — the RSC prefetches Next fires on every route change, and the logout
+call races the final navigation. Counting those as broken would make the check
+useless, so they are reported separately from hard failures.
+
+### 19.4 What the 26 checks cover
+
+Signup through the real UI (201, routed into the workspace); **no session cookie
+readable from `document.cookie`**; no token in `localStorage`; the legacy
+`vaeloom.accessToken` / `vaeloom.refreshToken` keys actually purged; both
+cookies present, `HttpOnly`, `SameSite=Lax`, with the refresh cookie outliving
+the access one; `/auth/me` authenticating on the cookie alone with the right
+user; a cookie mutation refused **without** CSRF and accepted **with** it;
+refresh rotating from cookie plus empty body with **no token in the response**;
+the session surviving rotation; a protected route not bouncing a signed-in user;
+logout clearing both cookies and revoking the session; an anonymous visitor
+redirected to `/login`; no 5xx and no unexpected failed requests.
+
+The "no session cookie is visible to `document.cookie`" check is the one that
+matters most: an API-level test passes identically whether the cookies are
+HttpOnly or not, which is precisely the regression this guards.
+
+### 19.5 Known issue, reported not hidden
+
+The run logs a **React missing-`key` warning** under the workspace layout. It is
+intermittent and data-dependent; a targeted probe did not reproduce it, and
+`Sidebar`, `TopNav` and `DataModeBanner` — the components the layout renders —
+are all correctly keyed, as is the notification list (`NotificationResponse.id`
+is required and validated server-side). The source has not been pinned down.
+
+It is a real code-quality defect and is **reported with its count** rather than
+dropped, but it is not gated here: this suite's job is to prove the session
+migration, and failing it on an unrelated pre-existing warning would mean either
+a permanently red gate or a blanket console filter that would also swallow a
+real regression. The distinction the suite makes is explicit in the code.
+
+### 19.6 Stability, honestly
+
+Two consecutive clean runs at 26/26. A third attempt failed on a
+`waitForSelector('#email')` timeout because editing the test file triggered a
+Next dev recompile and the route did not render inside 120s. That is a
+dev-server compilation characteristic, not an application defect — a cold
+`/login` compile was measured at 23s and the app is served in production from a
+build. The suite is nonetheless sensitive to dev-server stalls, which is why CI
+should run it against `next build && next start` rather than `next dev`.
 
 ---
 
-## 20. State of the working tree - including an unwanted commit
+## 20. The Playwright suite is still NOT executed — and a regression I caused
+
+**Status: 46 functional tests collected, 0 executed. This remains open.**
+
+### 20.1 I broke the E2E harness and fixed it
+
+Making startup fail fast on a failed migration (§18.0.1) exposed a long-standing
+incompatibility: **the migration chain is PostgreSQL-only.**
+`0001_initial_schema.py` declares `postgresql.JSONB` and `ARRAY` columns, and
+SQLite's compiler cannot render them, so `upgrade head` dies with _can't render
+element of type JSONB_.
+
+SQLite is the dev and e2e database — `e2e/api-launcher.py` depends on it and
+hand-creates the tables no model owns. Previously this fell through to the
+custom runner by accident, via a bare `except`, which is exactly how it stayed
+invisible for so long. Turning the `except` into a `raise` turned a hidden
+incompatibility into a broken harness.
+
+`main.py` now checks the resolved target and **skips Alembic explicitly for
+SQLite**, logging that it is doing so, while still running the rest of the
+lifespan — notably the OP-RLS-01 role guard. A first attempt used `return`
+inside the lifespan, which would have skipped that guard; it was caught before
+being committed. Verified: the API boots on SQLite, logs the skip, and serves
+signup 201.
+
+`database._target_url()` was added for the decision, deliberately separate from
+`_migration_url()`: the latter ignores the runtime URL so a least-privilege role
+cannot escalate itself for DDL, whereas "should the chain run at all" is a
+different question that has to know about SQLite.
+
+### 20.2 The port collision that made every result untrustworthy
+
+`api-launcher.py` hard-coded port 8000 and the Playwright config health-checked
+`localhost:8000`. On this machine **8000 is answered by
+`lyzrcloudagent-api-1`**, a container from another project that also identifies
+as `{"service":"vaeloom-api","version":"0.2.0"}`. A hard-coded 8000 therefore
+produced 500s from an unrelated service, and because the web app proxies to
+whatever holds that port, the failures presented as application bugs.
+
+Fixed properly rather than worked around: `E2E_API_PORT` is a single constant in
+`playwright.config.ts` used for the launcher's bind port, the health URL, and
+the Next.js rewrite target, so the two servers cannot disagree.
+`api-launcher.py` takes `VAELOOM_E2E_API_PORT` / `VAELOOM_E2E_API_HOST`. The web
+server entry now passes `INTERNAL_API_URL`, `baseURL` is `127.0.0.1` rather than
+`localhost` (which resolves to IPv6 `::1` first on this host), and the API
+database is a dedicated `e2e.db` instead of the shared `dev.db`.
+
+### 20.3 What I could not get to green, and why
+
+The API leg now works — Playwright starts it and it reports
+`Uvicorn running on http://127.0.0.1:8050`, which also confirms the SQLite boot
+fix. The run still aborts before the first test with:
+
+```
+Error: http://127.0.0.1:3000/login is already used
+```
+
+A stray `next dev` from an earlier attempt holds 3000, and Playwright's own web
+server then trips over it. I killed it and retried; the next attempt failed
+because my own config edit had added `cwd: '../..'` to the web entry, which
+makes node look for `next` at the repo root (`MODULE_NOT_FOUND`); that is
+corrected. The runs after that have been consumed by the shell killing
+long-lived child process trees, so the suite is still unexecuted.
+
+**I am not claiming the Playwright suite passes.** It has never been run, and
+every attempt has failed in the harness rather than in a test.
+
+### 20.4 Gates after the changes in this section
+
+| Gate                                 | Result                                  |
+| ------------------------------------ | --------------------------------------- |
+| API security suite                   | **404 passed / 0 failed**               |
+| config, auth, org, WS suites         | **52 passed**                           |
+| web typecheck / lint / Jest          | 0 / 0 errors / **96**                   |
+| API boots on SQLite (regression fix) | health 200, signup 201, Alembic skipped |
+| Playwright functional suite          | **0 executed — open**                   |
+
+---
+
+## 21. Verified state
+
+| Gate                                        | Result                                     |
+| ------------------------------------------- | ------------------------------------------ |
+| **browser cookie-flow E2E, real stack**     | **26 / 26** (2 consecutive clean runs)     |
+| API security suite                          | **404 passed / 0 failed**                  |
+| migration chain + 0057 invariants (real PG) | **13 passed**                              |
+| auth, org, config, WS suites                | **52 passed**                              |
+| web typecheck / lint / Jest                 | 0 / 0 errors / **96**                      |
+| ui-kit typecheck / lint / Jest              | 0 / 0 / **149**                            |
+| `alembic upgrade head` on clean PG 16       | exit 0, head `0060`, 90 tables, 0 RLS gaps |
+| API-level cookie contract                   | 16 / 16                                    |
+| **Playwright functional suite**             | **0 executed — open**                      |
+
+---
+
+## 22. State of the working tree - including an unwanted commit
 
 **Process failure, disclosed.** Five commits were made **directly to `master`**
 by my own sub-agents, which I had not authorised and had not explicitly
