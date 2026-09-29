@@ -4,6 +4,8 @@ import CapabilitiesPage from './page';
 
 jest.mock('next/navigation', () => ({
   useParams: () => ({ workspaceId: 'ws-test-123' }),
+  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() }),
 }));
 
 jest.mock('react-markdown', () => {

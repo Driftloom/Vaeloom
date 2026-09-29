@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import useSWR from 'swr';
@@ -76,8 +76,9 @@ function getSamplePayloadForCapability(item: CapabilityItem | null): string {
   return JSON.stringify({ task: `Evaluate rules for ${item.name}`, dryRun: true }, null, 2);
 }
 
-export default function CapabilitiesPage() {
+function CapabilitiesContent() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const workspaceId = (params?.['workspaceId'] as string) || 'default-workspace';
   const { toast } = useToast();
 
@@ -85,27 +86,26 @@ export default function CapabilitiesPage() {
   const [capabilities, setCapabilities] = useState<CapabilityItem[]>(() =>
     getStoredCapabilities(workspaceId),
   );
-  // Check URL parameters for category or agent deep links
-  const [initialCategory] = useState<CapabilityCategory>(() => {
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const cat = urlParams.get('category') || urlParams.get('tab');
-      if (cat && ['skills', 'connectors', 'agents', 'tools', 'mcp', 'plugins'].includes(cat)) {
-        return cat as CapabilityCategory;
-      }
-    }
-    return 'skills';
-  });
 
-  const [initialAgentParam] = useState<string | undefined>(() => {
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      return urlParams.get('agent') || undefined;
-    }
-    return undefined;
-  });
+  const urlCategory = searchParams?.get('category') || searchParams?.get('tab');
+  const validUrlCategory =
+    urlCategory &&
+    ['skills', 'connectors', 'agents', 'tools', 'mcp', 'plugins'].includes(urlCategory)
+      ? (urlCategory as CapabilityCategory)
+      : null;
 
-  const [selectedCategory, setSelectedCategory] = useState<CapabilityCategory>(initialCategory);
+  const initialAgentParam = searchParams?.get('agent') || undefined;
+
+  const [selectedCategory, setSelectedCategory] = useState<CapabilityCategory>(
+    validUrlCategory || 'skills',
+  );
+
+  useEffect(() => {
+    if (validUrlCategory && validUrlCategory !== selectedCategory) {
+      setSelectedCategory(validUrlCategory);
+    }
+  }, [validUrlCategory, selectedCategory]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [tabView, setTabView] = useState<TabView>('installed');
   const [selectedTag, setSelectedTag] = useState<string>('All');
@@ -1060,5 +1060,20 @@ export default function CapabilitiesPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function CapabilitiesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-6 max-w-6xl mx-auto space-y-6 animate-pulse">
+          <div className="h-12 bg-surface rounded-xl border border-border w-96" />
+          <div className="h-64 bg-surface rounded-2xl border border-border" />
+        </div>
+      }
+    >
+      <CapabilitiesContent />
+    </Suspense>
   );
 }

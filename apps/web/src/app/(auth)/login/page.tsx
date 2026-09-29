@@ -1,8 +1,8 @@
 'use client';
 
-import React, { Suspense, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../hooks/useAuth';
 import { ApiError, api as apiClient } from '../../../lib/api';
 import { useToast } from '@/components/shared/Toast';
@@ -10,15 +10,20 @@ import { isSupabaseConfigured } from '@/lib/supabase/client';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function getRedirectFromWindow(): string | null {
+  if (typeof window === 'undefined') return null;
+  return new URLSearchParams(window.location.search).get('redirect');
+}
+
 function LoginForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirect = searchParams?.get('redirect') ?? null;
+  const [redirect, setRedirect] = useState<string | null>(null);
   const { login, verifyMfa } = useAuth();
   const { toast } = useToast();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [hydrated, setHydrated] = useState(false);
   const [mfaChallenge, setMfaChallenge] = useState<{ required: boolean; token: string } | null>(
     null,
   );
@@ -26,6 +31,11 @@ function LoginForm() {
   const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
   const [submitting, setSubmitting] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  useEffect(() => {
+    setRedirect(getRedirectFromWindow());
+    setHydrated(true);
+  }, []);
 
   async function handleSSO(provider: 'google' | 'microsoft') {
     // 1. If Supabase Auth is configured, use standard Supabase OAuth flow
@@ -93,11 +103,11 @@ function LoginForm() {
     }
   }
 
-  function validate(): boolean {
+  function validate(inputEmail = email, inputPassword = password): boolean {
     const e: typeof errors = {};
-    if (!email) e.email = 'Email is required';
-    else if (!EMAIL_RE.test(email)) e.email = 'Enter a valid email';
-    if (!password) e.password = 'Password is required';
+    if (!inputEmail) e.email = 'Email is required';
+    else if (!EMAIL_RE.test(inputEmail)) e.email = 'Enter a valid email';
+    if (!inputPassword) e.password = 'Password is required';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -126,13 +136,19 @@ function LoginForm() {
     router.push('/');
   }
 
-  async function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!validate()) return;
+    const form = e.currentTarget;
+    const formEmail =
+      (form.elements.namedItem('email') as HTMLInputElement | null)?.value?.trim() || email.trim();
+    const formPassword =
+      (form.elements.namedItem('password') as HTMLInputElement | null)?.value || password;
+
+    if (!validate(formEmail, formPassword)) return;
     setSubmitting(true);
     setErrors({});
     try {
-      const loginRes = await login(email, password);
+      const loginRes = await login(formEmail, formPassword);
       if (loginRes && (loginRes as any).mfaRequired && (loginRes as any).mfaToken) {
         setMfaChallenge({ required: true, token: (loginRes as any).mfaToken });
         return;
@@ -286,7 +302,14 @@ function LoginForm() {
               </form>
             ) : (
               <>
-                <form onSubmit={onSubmit} className="space-y-5" suppressHydrationWarning>
+                <form
+                  onSubmit={onSubmit}
+                  action="#"
+                  method="post"
+                  data-hydrated={hydrated ? 'true' : 'false'}
+                  className="space-y-5"
+                  suppressHydrationWarning
+                >
                   {/* Email field */}
                   <div className="space-y-2">
                     <label htmlFor="email" className="input-label">
@@ -295,6 +318,7 @@ function LoginForm() {
                     <div className="relative">
                       <input
                         id="email"
+                        name="email"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -346,6 +370,7 @@ function LoginForm() {
                     <div className="relative">
                       <input
                         id="password"
+                        name="password"
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -520,20 +545,5 @@ function LoginForm() {
 }
 
 export default function LoginPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center bg-black">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-400 flex items-center justify-center animate-pulse">
-              <span className="text-white font-bold text-lg">V</span>
-            </div>
-            <p className="text-text-muted text-sm">Loading...</p>
-          </div>
-        </div>
-      }
-    >
-      <LoginForm />
-    </Suspense>
-  );
+  return <LoginForm />;
 }
