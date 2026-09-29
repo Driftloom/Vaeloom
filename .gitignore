@@ -35,6 +35,11 @@ node_modules/
 .yarn/cache/
 .yarn/install-state.gz
 .node_repl_history
+# Lockfiles from accidental non-pnpm installs (pnpm-lock.yaml is canonical)
+package-lock.json
+yarn.lock
+bun.lockb
+bun.lock
 
 # Build outputs
 dist/
@@ -155,6 +160,12 @@ testing/e2e/test-results.json
 .agents/skills/
 .agents/cache/
 .agents/scratch/
+.agents/sessions/
+.agents/tmp/
+.agents/telemetry/
+.agents/transcripts/
+.cursorindexing/
+.gemini-shell/
 .agent/
 .claude/
 .cursor/
@@ -309,6 +320,12 @@ allure-report/
 .terraform/
 *.tfstate
 *.tfstate.*
+
+# Docker compose local overrides
+docker-compose.override.yml
+docker-compose.override.yaml
+compose.override.yml
+compose.override.yaml
 
 # Kubernetes local access (deploy uses kubectl; kubeconfigs hold cluster creds)
 kubeconfig
