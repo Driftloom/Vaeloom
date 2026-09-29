@@ -14,7 +14,9 @@ from urllib.parse import urlsplit, urlunsplit
 import asyncpg
 import pytest
 
-PG_URL = os.environ.get("VAELOOM_TEST_PG_URL", "")
+PG_URL = os.environ.get("VAELOOM_TEST_PG_URL", "").replace(
+    "postgresql+asyncpg://", "postgresql://"
+)
 APP_USER = "vaeloom_app"
 APP_PASSWORD = "vaeloom_app_proof_pw"
 

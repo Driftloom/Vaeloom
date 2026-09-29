@@ -1,7 +1,7 @@
 """Assert RLS coverage at the end of the chain.
 
 Revision ID: 0060
-Revises: 0059
+Revises: 0061
 Create Date: 2026-09-27
 
 Why this exists
@@ -38,7 +38,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision: str = "0060"
-down_revision: Union[str, None] = "0059"
+down_revision: Union[str, None] = "0061"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
