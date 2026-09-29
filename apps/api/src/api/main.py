@@ -160,37 +160,64 @@ async def lifespan(app: FastAPI):
         alembic_cfg = Config(alembic_ini)
         alembic_dir = os.path.dirname(os.path.abspath(alembic_ini))
         alembic_cfg.set_main_option("script_location", os.path.join(alembic_dir, "alembic"))
-        # Point alembic at the migration (owner) URL when configured; env.py
-        # prefers VAELOOM_TARGET_URL over everything else.
-        #
-        # An operator-supplied VAELOOM_TARGET_URL must win. The previous code
-        # assigned unconditionally, so because `DATABASE_MIGRATION__URL` is
-        # present in the local `.env`, it overwrote an explicit
-        # VAELOOM_TARGET_URL and migrations ran against the managed instance
-        # even when DATABASE__URL had been pointed at a local SQLite file. That
-        # is DDL against a database the developer did not select.
-        from .database import _migration_url
 
-        _murl = _migration_url()
-        _prev_target = os.environ.get("VAELOOM_TARGET_URL")
-        _explicit_target = _prev_target is not None and _prev_target.strip() != ""
-        if _murl and not _explicit_target:
-            os.environ["VAELOOM_TARGET_URL"] = _murl
-        elif _murl and _explicit_target:
+        # The migration chain is PostgreSQL-only, and that is a long-standing
+        # property rather than a bug: `0001_initial_schema.py` declares
+        # `postgresql.JSONB` and `ARRAY` columns, which SQLite's compiler cannot
+        # render, so `upgrade head` fails on any SQLite database with
+        # "can't render element of type JSONB".
+        #
+        # SQLite is the dev and e2e database - `e2e/api-launcher.py` relies on it
+        # and hand-creates the tables no model owns - and the schema comes from
+        # `Base.metadata.create_all` above. So skip Alembic explicitly instead of
+        # letting it fail: previously this path fell through to the custom runner
+        # by accident, via a bare `except`, which is how the incompatibility stayed
+        # invisible for so long.
+        from .database import _migration_url, _target_url
+
+        _turl = _target_url() or ""
+        _is_sqlite = _turl.startswith("sqlite")
+
+        if _is_sqlite:
+            # Skipping Alembic, NOT startup. The rest of this lifespan still has
+            # to run - notably the OP-RLS-01 role guard - so this deliberately
+            # does not return.
             logger.info(
-                "VAELOOM_TARGET_URL is set explicitly; not overriding it with "
-                "DATABASE_MIGRATION__URL. Migrations will run against the "
-                "explicit target."
+                "Migration target is SQLite; skipping Alembic (the chain is "
+                "PostgreSQL-only) and relying on create_all + the custom runner."
             )
-        try:
-            command.upgrade(alembic_cfg, "head")
-        finally:
-            if _murl:
-                if _prev_target is None:
-                    os.environ.pop("VAELOOM_TARGET_URL", None)
-                else:
-                    os.environ["VAELOOM_TARGET_URL"] = _prev_target
-        logger.info("Alembic migrations applied successfully")
+            await _run_custom_migrations()
+            logger.info("Database tables verified and migrations applied")
+        else:
+            # Point alembic at the migration (owner) URL when configured; env.py
+            # prefers VAELOOM_TARGET_URL over everything else.
+            #
+            # An operator-supplied VAELOOM_TARGET_URL must win. The previous code
+            # assigned unconditionally, so because `DATABASE_MIGRATION__URL` is
+            # present in the local `.env`, it overwrote an explicit
+            # VAELOOM_TARGET_URL and migrations ran against the managed instance
+            # even when DATABASE__URL had been pointed at a local SQLite file.
+            # That is DDL against a database the developer did not select.
+            _murl = _migration_url()
+            _prev_target = os.environ.get("VAELOOM_TARGET_URL")
+            _explicit_target = _prev_target is not None and _prev_target.strip() != ""
+            if _murl and not _explicit_target:
+                os.environ["VAELOOM_TARGET_URL"] = _murl
+            elif _murl and _explicit_target:
+                logger.info(
+                    "VAELOOM_TARGET_URL is set explicitly; not overriding it with "
+                    "DATABASE_MIGRATION__URL. Migrations will run against the "
+                    "explicit target."
+                )
+            try:
+                command.upgrade(alembic_cfg, "head")
+            finally:
+                if _murl:
+                    if _prev_target is None:
+                        os.environ.pop("VAELOOM_TARGET_URL", None)
+                    else:
+                        os.environ["VAELOOM_TARGET_URL"] = _prev_target
+            logger.info("Alembic migrations applied successfully")
     except FileNotFoundError as e:
         logger.warning(f"Alembic config not found, using custom runner: {e}")
         await _run_custom_migrations()

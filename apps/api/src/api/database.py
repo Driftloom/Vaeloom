@@ -18,6 +18,7 @@ if "postgresql" in settings.database__url:
 
 engine_kwargs = {
     "pool_pre_ping": True,
+    "pool_recycle": 300,
     "echo": settings.service_environment == "local",
     "connect_args": connect_args,
 }
@@ -67,6 +68,34 @@ def _migration_url() -> str | None:
     if not url:
         url = (_os.environ.get("VAELOOM_TARGET_URL", "") or "").strip()
     return url or None
+
+
+def _target_url() -> str | None:
+    """The URL boot migrations will actually run against.
+
+    Same resolution Alembic uses, in the same precedence order, so callers can
+    decide what to do based on the real target rather than guessing:
+
+    1. ``VAELOOM_TARGET_URL`` - the explicit migrator override
+    2. ``DATABASE_MIGRATION__URL`` - the owner/migrator setting
+    3. the runtime ``database__url``
+
+    Kept separate from `_migration_url()` on purpose: that one deliberately
+    ignores the runtime URL so a least-privilege role cannot escalate itself for
+    DDL. Deciding whether to run the chain at all is a different question, and
+    needs to know about SQLite, which is the dev and e2e database.
+    """
+    import os as _os
+
+    for candidate in (
+        _os.environ.get("VAELOOM_TARGET_URL", ""),
+        getattr(settings, "database_migration__url", ""),
+        getattr(settings, "database__url", ""),
+    ):
+        url = (candidate or "").strip()
+        if url:
+            return url
+    return None
 
 
 _migration_engine: AsyncEngine | None = None
