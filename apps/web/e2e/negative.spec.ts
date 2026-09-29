@@ -18,11 +18,15 @@ test.describe('negative paths', () => {
       waitUntil: 'domcontentloaded',
     });
 
-    await expect(page.getByRole('heading', { level: 1, name: '404' })).toBeVisible();
-    await expect(
-      page.getByRole('heading', { level: 2, name: 'Workspace not found' }),
-    ).toBeVisible();
-    await expect(page.getByText(/does not exist or you do not have access/i)).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: '404' })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByRole('heading', { level: 2, name: 'Workspace not found' })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByText(/does not exist or you do not have access/i)).toBeVisible({
+      timeout: 30_000,
+    });
     // A recovery affordance, so this is a rendered page and not a bare heading.
     await expect(page.getByRole('link', { name: 'Go Home' })).toHaveAttribute('href', '/');
     // A blank/error shell has no such explanation copy; a real 404 always does.
@@ -69,12 +73,26 @@ test.describe('negative paths', () => {
       timeout: 30_000,
     });
 
+    // The session lives in HttpOnly cookies (vaeloom_at / vaeloom_rt). Script
+    // must not be able to read them, and must hold no token in storage. Asserting
+    // the ABSENCE of a readable token is the security property; logout is then
+    // verified behaviourally, because an HttpOnly cookie cannot be read to
+    // confirm its deletion from script.
     const before = await page.evaluate(() => ({
       token: window.localStorage.getItem('vaeloom.accessToken'),
-      cookie: document.cookie,
+      refresh: window.localStorage.getItem('vaeloom.refreshToken'),
+      readable: document.cookie,
     }));
-    expect(before.token, 'login left no access token to clear').toBeTruthy();
-    expect(before.cookie).toContain('vaeloom.accessToken=');
+    expect(before.token, 'login wrote an access token into localStorage').toBeNull();
+    expect(before.refresh, 'login wrote a refresh token into localStorage').toBeNull();
+    expect(
+      before.readable,
+      'the session cookie is readable by script; it must be HttpOnly',
+    ).not.toContain('vaeloom_at=');
+    expect(
+      before.readable,
+      'the refresh cookie is readable by script; it must be HttpOnly',
+    ).not.toContain('vaeloom_rt=');
 
     await page.getByRole('button', { name: 'User account menu' }).click();
     await page.getByRole('button', { name: 'Log out' }).click();
@@ -82,12 +100,10 @@ test.describe('negative paths', () => {
 
     const after = await page.evaluate(() => ({
       token: window.localStorage.getItem('vaeloom.accessToken'),
-      cookie: document.cookie,
+      readable: document.cookie,
     }));
     expect(after.token, 'logout left the access token in storage').toBeNull();
-    expect(after.cookie, 'logout left the access token cookie behind').not.toContain(
-      'vaeloom.accessToken=',
-    );
+    expect(after.readable, 'logout exposed a token to script').not.toContain('vaeloom_at=');
 
     // A hard navigation re-runs the layout's auth check, so the old URL must
     // bounce back to login rather than restoring the shell from cache.

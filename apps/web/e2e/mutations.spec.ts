@@ -3,9 +3,15 @@ import { apiRequest, gotoWorkspace, login } from './helpers';
 
 test.describe('critical mutations', () => {
   test('schedule create validates inline then creates', async ({ page }) => {
+    test.setTimeout(120_000);
     const wsId = await login(page);
     await gotoWorkspace(page, wsId, '/schedule');
-    await page.getByRole('button', { name: 'New event' }).first().click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Schedule' })).toBeVisible({
+      timeout: 30_000,
+    });
+    const newBtn = page.getByRole('button', { name: 'New event' }).first();
+    await expect(newBtn).toBeVisible({ timeout: 30_000 });
+    await newBtn.click();
     // Empty submit → inline errors, no toast-only validation.
     await page.locator('[role="dialog"] button', { hasText: 'Create' }).last().click();
     await expect(page.locator('#ev-title-error')).toBeVisible();
@@ -38,6 +44,14 @@ test.describe('critical mutations', () => {
     });
     expect(created.status, `memory seed failed: ${created.text}`).toBe(201);
 
+    // The panel fetches on mount, and the page was already mounted before the
+    // seed existed. Reload so the UI observes the seeded row instead of the
+    // pre-seed snapshot.
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { level: 1, name: 'Memory' })).toBeVisible({
+      timeout: 30_000,
+    });
+
     await page.getByRole('tab', { name: /Corrections/ }).click();
     const panel = page.getByRole('region', { name: 'Memory corrections' });
     await expect(panel).toBeVisible();
@@ -60,7 +74,9 @@ test.describe('critical mutations', () => {
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText(`Correct memory: ${title}`);
     // The diff flow: the old summary is shown, and the draft is editable.
-    await expect(dialog.getByText('Original summary that will be superseded')).toBeVisible();
+    await expect(
+      dialog.getByText('Original summary that will be superseded').first(),
+    ).toBeVisible();
     await dialog.locator('#memory-summary').fill('Corrected summary from the e2e suite');
     await expect(dialog.locator('#memory-summary')).toHaveValue(
       'Corrected summary from the e2e suite',
@@ -158,6 +174,7 @@ test.describe('critical mutations', () => {
   });
 
   test('approvals keyboard A/R works on focused card', async ({ page }) => {
+    test.setTimeout(120_000);
     const wsId = await login(page);
     await gotoWorkspace(page, wsId, '/approvals');
     await expect(page.getByRole('heading', { level: 1, name: 'Approvals' })).toBeVisible({
@@ -209,6 +226,13 @@ test.describe('critical mutations', () => {
     // 401/404 here would surface only as a poll timeout.
     expect((await readStatus(approveId as string)).http).toBe(200);
 
+    // The approvals list fetches on mount and the page mounted before the seeds
+    // existed, so reload to make the UI observe the seeded pending cards.
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { level: 1, name: 'Approvals' })).toBeVisible({
+      timeout: 30_000,
+    });
+
     const card = page
       .getByRole('region', { name: 'e2e-approver e2e_keyboard_approve approval' })
       .first();
@@ -221,6 +245,7 @@ test.describe('critical mutations', () => {
     await expect
       .poll(async () => (await readStatus(approveId as string)).decision, {
         message: 'pressing "a" on the focused card did not approve it',
+        timeout: 30_000,
       })
       .toBe('APPROVED');
 
@@ -229,19 +254,21 @@ test.describe('critical mutations', () => {
       .first();
     await expect(rejectCard).toBeVisible({ timeout: 30_000 });
     await rejectCard.focus();
+    await expect(rejectCard).toBeFocused();
     await page.keyboard.press('r');
     await expect
       .poll(async () => (await readStatus(rejectId as string)).decision, {
         message: 'pressing "r" on the focused card did not reject it',
+        timeout: 30_000,
       })
       .toBe('REJECTED');
 
     // Both hotkeyed cards leave the pending panel (approvals/page.tsx:130).
     await expect(
       page.getByRole('region', { name: 'e2e-approver e2e_keyboard_approve approval' }),
-    ).toHaveCount(0);
+    ).toHaveCount(0, { timeout: 30_000 });
     await expect(
       page.getByRole('region', { name: 'e2e-approver e2e_keyboard_reject approval' }),
-    ).toHaveCount(0);
+    ).toHaveCount(0, { timeout: 30_000 });
   });
 });

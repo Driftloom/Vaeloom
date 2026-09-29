@@ -8,6 +8,7 @@ export const TEST_USER = {
 /** UI login against the real backend; resolves to the workspace id. */
 export async function login(page: Page): Promise<string> {
   await page.goto('/login', { waitUntil: 'load' });
+  await page.locator('#email').waitFor({ state: 'visible', timeout: 30_000 });
   await page.fill('#email', TEST_USER.email);
   await page.fill('#password', TEST_USER.password);
   await Promise.all([
@@ -61,7 +62,27 @@ export async function apiRequest<T = unknown>(
         headers['Content-Type'] = 'application/json';
       }
 
-      const res = await fetch(o.path, {
+      if (!headers['X-Workspace-ID']) {
+        const urlParamsMatch = o.path.match(/[?&]workspace_?id=([a-f0-9-]+)/i);
+        if (urlParamsMatch && urlParamsMatch[1]) {
+          headers['X-Workspace-ID'] = urlParamsMatch[1];
+        } else if (typeof window !== 'undefined') {
+          const locMatch = window.location.pathname.match(/\/workspace\/([a-f0-9-]+)/i);
+          if (locMatch && locMatch[1]) {
+            headers['X-Workspace-ID'] = locMatch[1];
+          }
+        }
+        if (!headers['X-Workspace-ID'] && o.body && typeof o.body === 'object') {
+          const b = o.body as Record<string, unknown>;
+          if (b['workspace_id']) headers['X-Workspace-ID'] = String(b['workspace_id']);
+          else if (b['workspaceId']) headers['X-Workspace-ID'] = String(b['workspaceId']);
+        }
+      }
+
+      const url = o.path.startsWith('/api/')
+        ? o.path
+        : `/api/v1${o.path.startsWith('/') ? '' : '/'}${o.path}`;
+      const res = await fetch(url, {
         method: o.method,
         headers,
         credentials: 'include',

@@ -143,7 +143,17 @@ def main() -> None:
 
     _wrap_lifespan_with_seeding(app)
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Port is configurable because 8000 is not reliably free. On a machine where
+    # another stack already answers there - a Docker container publishing 8000,
+    # for instance - a hard-coded port makes this launcher fail with EADDRINUSE,
+    # and the resulting Playwright failures look like application bugs because
+    # the web app quietly proxies to whatever *is* on 8000.
+    #
+    # VAELOOM_E2E_API_PORT must match whatever the Next.js rewrite targets
+    # (INTERNAL_API_URL, or NEXT_PUBLIC_API_URL in apps/web/.env.local).
+    port = int(os.environ.get("VAELOOM_E2E_API_PORT", "8000"))
+    host = os.environ.get("VAELOOM_E2E_API_HOST", "127.0.0.1")
+    uvicorn.run(app, host=host, port=port)
 
 
 if __name__ == "__main__":

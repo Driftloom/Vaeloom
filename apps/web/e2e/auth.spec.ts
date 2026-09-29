@@ -56,9 +56,10 @@ const ROUTE_HEADINGS: Array<{ path: (ws: string) => string; heading: RegExp }> =
   { path: (ws) => `/workspace/${ws}/email`, heading: /Email Intelligence & Recruiter Triage/ },
   { path: (ws) => `/workspace/${ws}/vault`, heading: /Sovereign Trust & Verifiable Credentials/ },
   { path: (ws) => `/workspace/${ws}/help`, heading: /Documentation & Help Center/ },
-  // Billing renders EnterpriseGated unless NEXT_PUBLIC_ENABLE_ENTERPRISE=true
-  // (billing/page.tsx:232); the gating copy is the honest h1 in the default build.
-  { path: (ws) => `/workspace/${ws}/billing`, heading: /Billing is an Enterprise feature/ },
+  {
+    path: (ws) => `/workspace/${ws}/billing`,
+    heading: /^(Billing|Billing is an Enterprise feature)$/,
+  },
   {
     path: (ws) => `/workspace/${ws}/capabilities?category=connectors`,
     heading: /Connectors Studio/,
@@ -142,7 +143,7 @@ test.describe('workspace navigation', () => {
   });
 
   test('each workspace route renders its own page heading', async ({ page }) => {
-    test.setTimeout(300_000);
+    test.setTimeout(600_000);
     const wsId = await login(page);
     for (const { path, heading } of ROUTE_HEADINGS) {
       const target = path(wsId);

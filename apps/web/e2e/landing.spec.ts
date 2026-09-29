@@ -1,5 +1,30 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+
+/**
+ * Wait for webfonts, but never block forever.
+ *
+ * `page.evaluate(() => document.fonts.ready)` returns a promise that only settles
+ * once every font request has finished. In an environment with no outbound
+ * network those requests never finish, the promise never resolves, and because
+ * `page.evaluate` has no timeout of its own the test hangs indefinitely - which
+ * is what stalled the whole suite rather than failing one test.
+ *
+ * Racing it against a bounded timer keeps a missing font a non-event: the page is
+ * still asserted on, just with fallback fonts, which is what a user without
+ * webfonts sees anyway.
+ */
+async function waitForFonts(page: Page, timeout = 5_000): Promise<void> {
+  await page
+    .evaluate(
+      (ms) =>
+        Promise.race([document.fonts.ready, new Promise((resolve) => setTimeout(resolve, ms))]),
+      timeout,
+    )
+    .catch(() => {
+      /* fonts are advisory here; never fail the run on them */
+    });
+}
 
 /**
  * Landing (/) — the marketing surface.
@@ -20,9 +45,13 @@ import AxeBuilder from '@axe-core/playwright';
 
 test.describe('landing functional', () => {
   test('renders product truth with working CTAs and anchors', async ({ page }) => {
-    await page.goto('http://localhost:3000/', { waitUntil: 'domcontentloaded' });
+    // Relative URL so the configured `baseURL` applies. A hard-coded
+    // `localhost:3000` silently ignores it, and `localhost` resolves to IPv6
+    // ::1 on some hosts where the dev server only listens on IPv4 - which turns
+    // the navigation into a hang rather than a clear connection error.
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(1500);
-    await page.evaluate(() => document.fonts.ready);
+    await waitForFonts(page);
 
     await expect(page.getByRole('heading', { level: 1 })).toContainText('second brain');
 
@@ -54,7 +83,7 @@ for (const theme of ['dark', 'light'] as const) {
     test.use({ colorScheme: theme });
     test('axe: zero serious/critical', async ({ page }) => {
       await page.addInitScript((t) => localStorage.setItem('theme', t), theme);
-      await page.goto('http://localhost:3000/', { waitUntil: 'domcontentloaded' });
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
       await page.waitForTimeout(1500);
       await page.evaluate(async () => {
         const h = document.body.scrollHeight;
@@ -84,9 +113,12 @@ test.describe('landing visual baselines (reduced motion — static fallbacks)', 
         await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
         await page.setViewportSize({ width: vp, height: 850 });
         await page.addInitScript((t) => localStorage.setItem('theme', t), theme);
-        await page.goto('http://localhost:3000/', { waitUntil: 'networkidle' });
+        // `networkidle` is not used: the landing page opens a realtime client, and
+        // a long-lived connection means the network never goes idle, so the wait
+        // blocks until the test timeout instead of reporting why.
+        await page.goto('/', { waitUntil: 'domcontentloaded' });
         await page.waitForTimeout(1500);
-        await page.evaluate(() => document.fonts.ready);
+        await waitForFonts(page);
         await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
         await expect(page).toHaveScreenshot(`landing-${theme}-${vp}.png`, {
           fullPage: true,

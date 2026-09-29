@@ -140,10 +140,20 @@ test.describe('a11y — real pages, both themes', () => {
         const bad = results.violations.filter(
           (v) => v.impact === 'serious' || v.impact === 'critical',
         );
+        // Report the offending selector and the WCAG rule, not just the rule id.
+        // A bare "color-contrast(2)" tells the reader nothing about what to fix;
+        // axe already knows the node and the failing data, so surface it.
+        const report = bad
+          .flatMap((v) =>
+            v.nodes.map(
+              (n) => `[${v.id}] ${n.target.join(' ')} :: ${n.failureSummary ?? n.any.join(' ')}`,
+            ),
+          )
+          .join('\n');
         expect(
-          bad.map((v) => `${v.id}(${v.nodes.length})`),
+          report,
           `serious/critical violations on ${route.seg || '(dashboard)'} (${theme})`,
-        ).toEqual([]);
+        ).toBe('');
       }
     });
   }

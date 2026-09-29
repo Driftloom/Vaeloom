@@ -70,12 +70,16 @@ test.describe('Module 05 — Documents & Security Workflow', () => {
       'a rejected active-content upload was persisted to the document table',
     ).toHaveCount(0);
 
-    const list = await apiRequest<{ items?: Array<{ path?: string }> }>(page, {
+    const list = await apiRequest<{
+      items?: Array<{ path?: string }>;
+      documents?: Array<{ path?: string }>;
+    }>(page, {
       method: 'GET',
       path: `${DOCS_API}?workspace_id=${encodeURIComponent(wsId)}`,
     });
     expect(list.status, `document list failed: ${list.text}`).toBe(200);
-    const paths = (list.json?.items ?? []).map((d) => d.path ?? '');
+    const docs = list.json?.documents ?? list.json?.items ?? [];
+    const paths = docs.map((d) => d.path ?? '');
     expect(paths.filter((p) => p.endsWith(maliciousName))).toEqual([]);
     expect(paths.filter((p) => p.endsWith(controlName))).toHaveLength(1);
   });

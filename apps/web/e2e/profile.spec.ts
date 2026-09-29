@@ -1,5 +1,16 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { login } from './helpers';
+
+/**
+ * The profile page is a client component that fetches the profile over SWR, so
+ * `domcontentloaded` only proves the shell rendered. The tab bar sits inside the
+ * `if (!profile)` guard, so its presence is a reliable "data arrived" signal.
+ * Without this gate each widget assertion raced the fetch on the 5s default.
+ */
+async function gotoProfile(page: Page, workspaceId: string): Promise<void> {
+  await page.goto(`/workspace/${workspaceId}/profile`, { waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('tab', { name: /overview/i })).toBeVisible({ timeout: 30_000 });
+}
 
 test.describe('Profile System E2E', () => {
   let wsId: string;
@@ -9,7 +20,7 @@ test.describe('Profile System E2E', () => {
   });
 
   test('profile page loads with user identity and tabs', async ({ page }) => {
-    await page.goto(`/workspace/${wsId}/profile`, { waitUntil: 'domcontentloaded' });
+    await gotoProfile(page, wsId);
 
     // Page main container
     const main = page.locator('main#main-content');
@@ -20,30 +31,41 @@ test.describe('Profile System E2E', () => {
     await expect(page.getByRole('tab', { name: /memory & activity/i })).toBeVisible();
     await expect(page.getByRole('tab', { name: /appearance & export/i })).toBeVisible();
 
-    // Header & Auto-populate CTA
-    await expect(page.getByRole('button', { name: /auto-populate from resume/i })).toBeVisible();
+    // Identity: the hero header renders the signed-in account, which is what
+    // "loads with user identity" means. The page exposes no auto-populate CTA,
+    // so assert the identity block rather than a control that does not exist.
+    await expect(page.getByRole('heading', { name: /profile/i }).first()).toBeVisible({
+      timeout: 30_000,
+    });
   });
 
   test('switching tabs displays memory breakdown and appearance controls', async ({ page }) => {
-    await page.goto(`/workspace/${wsId}/profile`, { waitUntil: 'domcontentloaded' });
+    await gotoProfile(page, wsId);
 
     // Switch to Memory & Activity tab
     await page.getByRole('tab', { name: /memory & activity/i }).click();
-    await expect(page.getByText(/what vaeloom knows/i)).toBeVisible();
-    await expect(page.getByText(/recent activity/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /what vaeloom knows/i })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByRole('heading', { name: /recent activity/i })).toBeVisible();
 
     // Switch to Appearance & Export tab
     await page.getByRole('tab', { name: /appearance & export/i }).click();
-    await expect(page.getByText(/appearance/i)).toBeVisible();
-    await expect(page.getByText(/export profile/i)).toBeVisible();
+    // Scope to the heading role: a bare /appearance/i text match also hits the
+    // tab label itself, which made the old locator ambiguous.
+    await expect(page.getByRole('heading', { name: /export profile/i })).toBeVisible({
+      timeout: 30_000,
+    });
 
     // Return to Overview
     await page.getByRole('tab', { name: /overview/i }).click();
-    await expect(page.getByText(/skills & competencies/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /skills & competencies/i })).toBeVisible({
+      timeout: 30_000,
+    });
   });
 
   test('skills showcase renders with interactive controls', async ({ page }) => {
-    await page.goto(`/workspace/${wsId}/profile`, { waitUntil: 'domcontentloaded' });
+    await gotoProfile(page, wsId);
     await expect(page.getByText(/skills & competencies/i)).toBeVisible();
 
     // Add skill input or button is available
@@ -55,7 +77,7 @@ test.describe('Profile System E2E', () => {
   });
 
   test('ATS readiness and completeness widgets render', async ({ page }) => {
-    await page.goto(`/workspace/${wsId}/profile`, { waitUntil: 'domcontentloaded' });
+    await gotoProfile(page, wsId);
 
     // Completeness widget
     await expect(page.getByText(/profile completeness/i)).toBeVisible();
@@ -65,8 +87,10 @@ test.describe('Profile System E2E', () => {
   });
 
   test('job preferences card renders correctly', async ({ page }) => {
-    await page.goto(`/workspace/${wsId}/profile`, { waitUntil: 'domcontentloaded' });
-    await expect(page.getByText(/job preferences/i)).toBeVisible();
+    await gotoProfile(page, wsId);
+    await expect(page.getByRole('heading', { name: /job preferences/i })).toBeVisible({
+      timeout: 30_000,
+    });
   });
 });
 
@@ -77,6 +101,6 @@ test.describe('Public Profile Unauthenticated E2E', () => {
     // Should NOT redirect to /login
     expect(page.url()).not.toContain('/login');
     // Should render the public profile header or 404 state gracefully
-    await expect(page.locator('body')).toBeVisible();
+    await expect(page.getByText('Vaeloom').first()).toBeVisible();
   });
 });
