@@ -321,3 +321,139 @@ class TestDocumentStorageMirror:
         ws_id = await self._create_workspace(client, headers)
         body = await self._upload(client, headers, ws_id)
         assert body["raw_storage_key"] is None
+
+
+class TestDocumentAutoOrganizeAndMemorySync:
+    async def _auth_header(self, client: AsyncClient) -> dict[str, str]:
+        email = f"autoorg-{uuid.uuid4().hex[:8]}@test.com"
+        res = await client.post("/api/v1/auth/signup", json={
+            "email": email, "password": "TestPassword123!",
+        })
+        token = res.json()["access_token"]
+        return {"Authorization": f"Bearer {token}"}
+
+    async def _create_workspace(self, client: AsyncClient, headers: dict[str, str]) -> str:
+        res = await client.post(
+            "/api/v1/workspaces",
+            json={"name": "Org Workspace"},
+            headers=headers,
+        )
+        return res.json()["id"]
+
+    async def test_upload_syncs_with_memory(self, client: AsyncClient):
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+
+        # Upload a document
+        files = {
+            "file": (
+                "Bappadala_Rohith_Kumar_Naidu_Resume.pdf",
+                io.BytesIO(b"%PDF-1.4 sample resume content with Python and React skills"),
+                "application/pdf",
+            )
+        }
+        res = await client.post(f"/api/v1/documents?workspace_id={ws_id}", files=files, headers=headers)
+        assert res.status_code == 201
+        doc_data = res.json()
+
+        # Verify Memory row was dynamically created and is retrievable via memory API
+        mem_res = await client.get(f"/api/v1/memories?workspace_id={ws_id}", headers=headers)
+        assert mem_res.status_code == 200
+        items = mem_res.json().get("memories") or mem_res.json().get("items") or []
+        doc_mems = [m for m in items if m.get("type") == "document"]
+        assert len(doc_mems) >= 1
+        assert any("Resume" in (m.get("title") or "") or "Resume" in (m.get("summary") or "") for m in doc_mems)
+
+    async def test_auto_organize_documents(self, client: AsyncClient):
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+
+        # Upload 3 unorganized documents
+        doc1 = {"file": ("Candidate_Resume.pdf", io.BytesIO(b"%PDF-1.4 resume text"), "application/pdf")}
+        doc2 = {"file": ("OSCI_Badge_Certificate.pdf", io.BytesIO(b"%PDF-1.4 badge text"), "application/pdf")}
+        doc3 = {"file": ("tech_architecture_spec.json", io.BytesIO(b'{"service": "pipeline"}'), "application/json")}
+
+        for d in (doc1, doc2, doc3):
+            r = await client.post(f"/api/v1/documents?workspace_id={ws_id}", files=d, headers=headers)
+            assert r.status_code == 201
+
+        # Run auto-organize
+        org_res = await client.post(f"/api/v1/documents/auto-organize?workspace_id={ws_id}", headers=headers)
+        assert org_res.status_code == 200
+        data = org_res.json()
+        assert data["organized_count"] == 3
+        assert "Resumes & Career" in data["folders_created"]
+        assert "Certificates & Credentials" in data["folders_created"]
+        assert "Technical & Code" in data["folders_created"]
+
+        # Verify folders exist in workspace
+        folders_res = await client.get(f"/api/v1/documents/folders?workspace_id={ws_id}", headers=headers)
+        assert folders_res.status_code == 200
+        folder_names = [f["name"] for f in folders_res.json()]
+        assert "Resumes & Career" in folder_names
+        assert "Certificates & Credentials" in folder_names
+        assert "Technical & Code" in folder_names
+
+
+class TestDocumentDelete:
+    """Tests for single document deletion and bulk deletion."""
+
+    async def _auth_header(self, client: AsyncClient) -> dict[str, str]:
+        email = f"doc_del_{uuid.uuid4().hex[:8]}@example.com"
+        res = await client.post("/api/v1/auth/signup", json={"email": email, "password": "TestPassword123!"})
+        token = res.json()["access_token"]
+        return {"Authorization": f"Bearer {token}"}
+
+    async def _create_workspace(self, client: AsyncClient, headers: dict[str, str]) -> str:
+        res = await client.post(
+            "/api/v1/workspaces",
+            json={"name": "Delete Test Workspace"},
+            headers=headers,
+        )
+        assert res.status_code == 201
+        return res.json()["id"]
+
+    async def _upload(self, client: AsyncClient, headers: dict[str, str], ws_id: str, path: str = "to_delete.txt") -> str:
+        files = {"file": (path, io.BytesIO(b"content to be deleted"), "text/plain")}
+        res = await client.post(
+            f"/api/v1/documents?workspace_id={ws_id}",
+            files=files,
+            headers=headers,
+        )
+        assert res.status_code == 201
+        return res.json()["id"]
+
+    async def test_delete_document_success(self, client: AsyncClient):
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+        doc_id = await self._upload(client, headers, ws_id)
+
+        # Permanent Delete
+        delete_res = await client.delete(f"/api/v1/documents/{doc_id}?workspace_id={ws_id}", headers=headers)
+        assert delete_res.status_code == 204
+
+        # Verify document is no longer in database
+        get_res = await client.get(f"/api/v1/documents/{doc_id}?workspace_id={ws_id}", headers=headers)
+        assert get_res.status_code == 404
+
+    async def test_bulk_delete_documents(self, client: AsyncClient):
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+        doc1_id = await self._upload(client, headers, ws_id, "bulk1.txt")
+        doc2_id = await self._upload(client, headers, ws_id, "bulk2.txt")
+
+        # Bulk delete
+        del_res = await client.post(
+            f"/api/v1/documents/bulk/delete?workspace_id={ws_id}",
+            json={"document_ids": [doc1_id, doc2_id]},
+            headers=headers,
+        )
+        assert del_res.status_code == 200
+        assert del_res.json()["deleted_count"] == 2
+
+        # Verify neither document exists
+        for d_id in (doc1_id, doc2_id):
+            r = await client.get(f"/api/v1/documents/{d_id}?workspace_id={ws_id}", headers=headers)
+            assert r.status_code == 404
+
+

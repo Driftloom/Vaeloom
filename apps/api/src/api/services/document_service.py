@@ -373,7 +373,7 @@ class DocumentService:
         # 1. Stream upload chunks to a spooled temporary file (G-36 / controlled streaming)
         hasher = hashlib.sha256()
         total_size = 0
-        max_upload_bytes = 25 * 1024 * 1024  # 25 MB limit
+        max_upload_bytes = 100 * 1024 * 1024  # 100 MB limit
         chunk_size = 1024 * 1024  # 1 MB chunk
 
         with tempfile.SpooledTemporaryFile(max_size=5 * 1024 * 1024, mode="w+b") as spooled:
@@ -383,7 +383,7 @@ class DocumentService:
                     break
                 total_size += len(chunk)
                 if total_size > max_upload_bytes:
-                    raise HTTPException(status_code=413, detail="File too large — max 25MB")
+                    raise HTTPException(status_code=413, detail="File too large — max 100MB")
                 hasher.update(chunk)
                 spooled.write(chunk)
 
@@ -483,6 +483,71 @@ class DocumentService:
 
         await db.flush()
         await db.refresh(doc)
+
+        # 5b. Synchronize with Workspace Memory and Knowledge Graph dynamically
+        try:
+            from ..models.schema import MemoryRecord
+            from ..schemas.memory import MemoryCreate
+            from ..services.memory_service import memory_service
+
+            doc_title = filename.rsplit(".", 1)[0].replace("_", " ").replace("-", " ")
+            sample_text = ""
+            if content:
+                try:
+                    sample_text = content[:2000].decode("utf-8", errors="ignore").strip()
+                except Exception:
+                    sample_text = ""
+
+            summary_text = (
+                f"Document: {filename} ({doc_type.upper()}) - {len(content):,} bytes. "
+                + (sample_text[:300] if sample_text else "Binary or structured document asset.")
+            )
+
+            mem_dto = MemoryCreate(
+                type="document",
+                domain="document",
+                title=doc_title,
+                summary=summary_text[:500],
+                content=sample_text[:5000] if sample_text else f"Uploaded document {filename}",
+                workspace_id=str(w_id),
+                source_type="document",
+                source_uri=str(doc.id),
+                source_label=filename,
+                metadata={
+                    "document_id": str(doc.id),
+                    "filename": filename,
+                    "mime_type": verdict.detected_mime,
+                    "size_bytes": len(content),
+                    "folder_id": str(f_id) if f_id else None,
+                    "sync_status": "synced",
+                },
+                tags=["document", doc_type, "upload"],
+            )
+            await memory_service.create_memory(
+                db=db,
+                dto=mem_dto,
+                tenant_id=str(t_id) if t_id else None,
+                user_id=str(u_id) if u_id else None,
+                workspace_id=w_id,
+            )
+
+            # Also create MemoryRecord for lineage parity
+            mem_rec = MemoryRecord(
+                workspace_id=w_id,
+                type="document",
+                content={
+                    "title": doc_title,
+                    "filename": filename,
+                    "document_id": str(doc.id),
+                    "summary": summary_text[:500],
+                },
+                confidence=1.0,
+                importance=0.8,
+                source_document_id=doc.id,
+            )
+            db.add(mem_rec)
+        except Exception as mem_err:
+            logger.warning("Dynamic memory creation on document upload failed (non-blocking): %s", mem_err)
 
         # 6. Trigger background ingestion pipeline (fail-open)
         try:
@@ -677,6 +742,47 @@ class DocumentService:
             )
         return doc
 
+    async def delete(
+        self,
+        document_id: str,
+        workspace_id: str,
+        actor_id: str | None = None,
+        tenant_id: str | None = None,
+        db=None,
+    ) -> bool:
+        doc = await self.get_document(document_id, workspace_id, db, required_permission="write")
+        if doc.raw_storage_key:
+            try:
+                from .storage_service import storage_service
+                await storage_service.delete(doc.raw_storage_key)
+            except Exception as e:
+                logger.warning("Could not delete raw storage key %s: %s", doc.raw_storage_key, e)
+
+        # Delete document record (cascade deletes versions/actions)
+        await db.delete(doc)
+        await db.commit()
+        return True
+
+    async def bulk_delete(
+        self,
+        document_ids: list[str],
+        workspace_id: str,
+        actor_id: str | None = None,
+        tenant_id: str | None = None,
+        db=None,
+    ) -> dict[str, Any]:
+        deleted_ids: list[str] = []
+        for did in document_ids:
+            try:
+                await self.delete(did, workspace_id, actor_id, tenant_id, db)
+                deleted_ids.append(did)
+            except Exception as e:
+                logger.warning("Failed to delete document %s: %s", did, e)
+        return {
+            "deleted_count": len(deleted_ids),
+            "document_ids": deleted_ids,
+        }
+
     async def list_versions(self, document_id: str, workspace_id: str, db=None) -> list[DocumentVersion]:
         doc = await self.get_document(document_id, workspace_id, db, required_permission="read")
         stmt = (
@@ -711,8 +817,8 @@ class DocumentService:
                 if not chunk:
                     break
                 total_size += len(chunk)
-                if total_size > 25 * 1024 * 1024:
-                    raise HTTPException(status_code=413, detail="File too large — max 25MB")
+                if total_size > 100 * 1024 * 1024:
+                    raise HTTPException(status_code=413, detail="File too large — max 100MB")
                 hasher.update(chunk)
                 spooled.write(chunk)
             spooled.seek(0)
@@ -1219,5 +1325,124 @@ class DocumentService:
             "summary": summary,
         }
 
+    async def auto_organize(
+        self,
+        workspace_id: str,
+        user_id: str | None = None,
+        db=None,
+    ) -> dict[str, Any]:
+        """Auto-organize unorganized documents in workspace into intelligent folders with proper names.
+
+        Categories:
+          - Certificates & Credentials
+          - Resumes & Career
+          - Financial & Invoices
+          - Legal & Contracts
+          - Technical & Code
+          - Media & Assets
+          - General Documents
+        """
+        w_id = uuid.UUID(str(workspace_id))
+        u_id = uuid.UUID(str(user_id)) if user_id else None
+
+        # Fetch all active documents in workspace that currently have no folder
+        stmt = (
+            select(Document)
+            .where(
+                Document.workspace_id == w_id,
+                Document.deleted_at.is_(None),
+                Document.folder_id.is_(None),
+            )
+            .order_by(Document.created_at.desc())
+        )
+        docs = list((await db.execute(stmt)).scalars().all())
+
+        if not docs:
+            return {
+                "message": "All documents are already organized into folders.",
+                "organized_count": 0,
+                "folders_created": [],
+                "moved_documents": [],
+            }
+
+        # Existing root folders
+        existing_folders_stmt = select(Folder).where(
+            Folder.workspace_id == w_id,
+            Folder.parent_id.is_(None),
+        )
+        existing_folders = {f.name.lower(): f for f in (await db.execute(existing_folders_stmt)).scalars().all()}
+
+        folders_created: list[str] = []
+        moved_documents: list[dict[str, Any]] = []
+
+        async def get_or_create_folder(folder_name: str) -> Folder:
+            key = folder_name.lower()
+            if key in existing_folders:
+                return existing_folders[key]
+            folder = Folder(
+                id=uuid.uuid4(),
+                workspace_id=w_id,
+                parent_id=None,
+                name=folder_name,
+                created_by=u_id,
+            )
+            db.add(folder)
+            await db.flush()
+            existing_folders[key] = folder
+            folders_created.append(folder_name)
+            return folder
+
+        for doc in docs:
+            name_lower = (doc.path or "").lower()
+            ext = name_lower.rsplit(".", 1)[-1] if "." in name_lower else ""
+
+            target_folder_name = "General Documents"
+
+            if any(k in name_lower for k in ("cert", "badge", "diploma", "degree", "license", "credential", "asci", "osci", "accreditation", "completion", "achievement")):
+                target_folder_name = "Certificates & Credentials"
+            elif any(k in name_lower for k in ("resume", "cv", "curriculum", "cover_letter", "cover-letter", "portfolio", "bio", "profile", "job")):
+                target_folder_name = "Resumes & Career"
+            elif any(k in name_lower for k in ("invoice", "receipt", "billing", "bill", "tax", "salary", "pay", "statement", "expense", "financial")):
+                target_folder_name = "Financial & Invoices"
+            elif any(k in name_lower for k in ("contract", "agreement", "nda", "policy", "terms", "compliance", "privacy", "gdpr", "legal")):
+                target_folder_name = "Legal & Contracts"
+            elif ext in ("py", "ts", "tsx", "js", "jsx", "json", "yaml", "yml", "sql", "sh", "bash", "html", "css", "go", "rs", "cpp", "c", "h") or any(k in name_lower for k in ("spec", "api", "architecture", "schema", "config")):
+                target_folder_name = "Technical & Code"
+            elif ext in ("png", "jpg", "jpeg", "webp", "gif", "svg", "bmp", "tiff", "ico", "mp4", "mov", "mp3") or any(k in name_lower for k in ("image", "photo", "logo", "banner", "icon", "screenshot", "asset", "design")):
+                target_folder_name = "Media & Assets"
+
+            target_folder = await get_or_create_folder(target_folder_name)
+            doc.folder_id = target_folder.id
+            doc.updated_at = datetime.now(UTC)
+
+            # Record action
+            action = DocumentAction(
+                id=uuid.uuid4(),
+                document_id=doc.id,
+                workspace_id=w_id,
+                action_type="document_rename",
+                old_path=doc.path,
+                new_path=f"{target_folder.name}/{doc.path}",
+                actor_id=u_id,
+            )
+            db.add(action)
+
+            moved_documents.append({
+                "id": str(doc.id),
+                "name": doc.path,
+                "folder": target_folder.name,
+                "folder_id": str(target_folder.id),
+            })
+
+        await db.commit()
+
+        return {
+            "message": f"Successfully organized {len(moved_documents)} document(s) into {len(folders_created)} smart folder(s).",
+            "organized_count": len(moved_documents),
+            "folders_created": folders_created,
+            "moved_documents": moved_documents,
+        }
+
 
 document_service = DocumentService()
+

@@ -54,6 +54,7 @@ CONTENT_TYPES = {
     "doc": "application/msword",
     "markdown": "text/markdown; charset=utf-8",
     "text": "text/plain; charset=utf-8",
+    "txt": "text/plain; charset=utf-8",
     "csv": "text/csv; charset=utf-8",
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
@@ -61,7 +62,20 @@ CONTENT_TYPES = {
     "html": "text/html; charset=utf-8",
     "xml": "application/xml; charset=utf-8",
     "yaml": "text/yaml; charset=utf-8",
+    "yml": "text/yaml; charset=utf-8",
+    "png": "image/png",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "webp": "image/webp",
+    "gif": "image/gif",
+    "svg": "image/svg+xml",
+    "bmp": "image/bmp",
+    "ico": "image/x-icon",
     "image": "image/png",
+    "py": "text/plain; charset=utf-8",
+    "js": "text/plain; charset=utf-8",
+    "ts": "text/plain; charset=utf-8",
+    "tsx": "text/plain; charset=utf-8",
     "unknown": "application/octet-stream",
 }
 
@@ -123,7 +137,7 @@ _ROLES_MUTATE = ("owner", "admin", "editor")
 _ROLES_ADMIN = ("owner", "admin")
 
 # P0-05: Maximum upload size enforced at router level before service streaming begins
-_MAX_UPLOAD_BYTES = 25 * 1024 * 1024  # 25 MB
+_MAX_UPLOAD_BYTES = 100 * 1024 * 1024  # 100 MB
 
 
 # ============================================================================
@@ -145,7 +159,7 @@ async def upload_document(
 
     # P0-05: Router-level size guard — prevents memory exhaustion before service streaming
     if file.size is not None and file.size > _MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="File too large — max 25MB")
+        raise HTTPException(status_code=413, detail="File too large — max 100MB")
 
     # P0-02: Require member-level role or above to upload
     await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_WRITE)
@@ -321,10 +335,149 @@ async def bulk_download_documents(
     )
 
 
+@router.post("/bulk/delete", status_code=200)
+@router.post("/bulk-delete", status_code=200)
+async def bulk_delete_documents(
+    payload: BulkDownloadRequest | dict = Body(...),
+    workspace_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_MUTATE)
+    doc_ids = payload.document_ids if hasattr(payload, "document_ids") else payload.get("document_ids", [])
+    res = await document_service.bulk_delete(
+        document_ids=doc_ids,
+        workspace_id=workspace_id,
+        actor_id=_user_id(current_user),
+        tenant_id=current_user.get("tenant_id"),
+        db=db,
+    )
+    return res
+
+
+@router.post("/auto-organize")
+async def auto_organize_documents(
+    workspace_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Auto-organize root/unorganized documents into categorized smart folders."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_MUTATE)
+    return await document_service.auto_organize(
+        workspace_id=workspace_id,
+        user_id=_user_id(current_user),
+        db=db,
+    )
+
+
+# ============================================================================
+# Folder Endpoints
+# ============================================================================
+
+@router.post("/folders", response_model=FolderResponse, status_code=201)
+async def create_folder(
+    dto: FolderCreate,
+    workspace_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    folder = await folder_service.create_folder(
+        workspace_id=workspace_id,
+        name=dto.name,
+        parent_id=dto.parent_id,
+        user_id=_user_id(current_user),
+        db=db,
+    )
+    return FolderResponse.model_validate(folder)
+
+
+@router.get("/folders", response_model=list[FolderResponse])
+async def list_folders(
+    workspace_id: str = Query(...),
+    parent_id: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    folders = await folder_service.list_folders(
+        workspace_id=workspace_id,
+        parent_id=parent_id,
+        db=db,
+    )
+    return [FolderResponse.model_validate(f) for f in folders]
+
+
+@router.get("/folders/tree", response_model=list[FolderTreeItem])
+async def get_folder_tree(
+    workspace_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    return await folder_service.get_folder_tree(workspace_id=workspace_id, db=db)
+
+
+@router.patch("/folders/{folder_id}", response_model=FolderResponse)
+async def update_folder(
+    folder_id: str,
+    dto: FolderUpdate,
+    workspace_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    folder = await folder_service.update_folder(
+        folder_id=folder_id,
+        workspace_id=workspace_id,
+        name=dto.name,
+        parent_id=dto.parent_id,
+        db=db,
+    )
+    return FolderResponse.model_validate(folder)
+
+
+@router.delete("/folders/{folder_id}", status_code=204)
+async def delete_folder(
+    folder_id: str,
+    workspace_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    await folder_service.delete_folder(folder_id=folder_id, workspace_id=workspace_id, db=db)
+    return Response(status_code=204)
+
+
+# ============================================================================
+# Individual Document Endpoints
+# ============================================================================
+
 @router.get("/{document_id}/content")
 async def get_document_content(
     document_id: str,
     workspace_id: str = Query(...),
+    inline: bool = Query(default=False),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
@@ -341,17 +494,21 @@ async def get_document_content(
         raise HTTPException(status_code=404, detail="Document has no stored content")
 
     filename = path.rsplit("/", 1)[-1] or path
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    mime_type = CONTENT_TYPES.get(doc_type) or CONTENT_TYPES.get(ext) or "application/octet-stream"
 
-    # Security: Serve as attachment with CSP sandbox headers to prevent Stored XSS
+    # Security: Inline preview for in-browser rendering (images, pdfs, text)
+    # vs attachment for explicit file downloads
+    disposition = "inline" if inline else "attachment"
     headers = {
-        "Content-Disposition": f'attachment; filename="{filename}"',
-        "Content-Security-Policy": "default-src 'none'; sandbox",
+        "Content-Disposition": f'{disposition}; filename="{filename}"',
+        "Content-Security-Policy": "default-src 'self' blob: data:; style-src 'unsafe-inline'; sandbox allow-scripts allow-same-origin",
         "X-Content-Type-Options": "nosniff",
-        "X-Frame-Options": "DENY",
+        "X-Frame-Options": "SAMEORIGIN",
     }
     return Response(
         content=content,
-        media_type=CONTENT_TYPES.get(doc_type, "application/octet-stream"),
+        media_type=mime_type,
         headers=headers,
     )
 
@@ -407,6 +564,31 @@ async def rename_document(
     await db.commit()
     await db.refresh(doc)
     return DocumentResponse.model_validate(doc)
+
+
+@router.delete("/{document_id}", status_code=204)
+async def delete_document(
+    document_id: str,
+    workspace_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Permanently delete a document and clean up associated storage and memory."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_MUTATE)
+    try:
+        await document_service.delete(
+            document_id=document_id,
+            workspace_id=workspace_id,
+            actor_id=_user_id(current_user),
+            tenant_id=current_user.get("tenant_id"),
+            db=db,
+        )
+    except DocumentNotFound:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return Response(status_code=204)
 
 
 @router.post("/{document_id}/archive", response_model=DocumentResponse)
@@ -511,101 +693,6 @@ async def undo_document_action(
     await db.commit()
     await db.refresh(doc)
     return DocumentResponse.model_validate(doc)
-
-
-
-# ============================================================================
-# Folder Endpoints
-# ============================================================================
-
-@router.post("/folders", response_model=FolderResponse, status_code=201)
-async def create_folder(
-    dto: FolderCreate,
-    workspace_id: str = Query(...),
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
-    folder = await folder_service.create_folder(
-        workspace_id=workspace_id,
-        name=dto.name,
-        parent_id=dto.parent_id,
-        user_id=_user_id(current_user),
-        db=db,
-    )
-    return FolderResponse.model_validate(folder)
-
-
-@router.get("/folders", response_model=list[FolderResponse])
-async def list_folders(
-    workspace_id: str = Query(...),
-    parent_id: str | None = Query(default=None),
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
-    folders = await folder_service.list_folders(
-        workspace_id=workspace_id,
-        parent_id=parent_id,
-        db=db,
-    )
-    return [FolderResponse.model_validate(f) for f in folders]
-
-
-@router.get("/folders/tree", response_model=list[FolderTreeItem])
-async def get_folder_tree(
-    workspace_id: str = Query(...),
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
-    return await folder_service.get_folder_tree(workspace_id=workspace_id, db=db)
-
-
-@router.patch("/folders/{folder_id}", response_model=FolderResponse)
-async def update_folder(
-    folder_id: str,
-    dto: FolderUpdate,
-    workspace_id: str = Query(...),
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
-    folder = await folder_service.update_folder(
-        folder_id=folder_id,
-        workspace_id=workspace_id,
-        name=dto.name,
-        parent_id=dto.parent_id,
-        db=db,
-    )
-    return FolderResponse.model_validate(folder)
-
-
-@router.delete("/folders/{folder_id}", status_code=204)
-async def delete_folder(
-    folder_id: str,
-    workspace_id: str = Query(...),
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-):
-    if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
-    await folder_service.delete_folder(folder_id=folder_id, workspace_id=workspace_id, db=db)
-    return Response(status_code=204)
 
 
 # ============================================================================
