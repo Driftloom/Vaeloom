@@ -299,6 +299,9 @@ class WorkspaceCapability(Base):
     type: Mapped[str] = mapped_column(String(50), default="custom")
     runtime: Mapped[str] = mapped_column(String(50), default="system")
     config: Mapped[dict] = mapped_column(JSON, default=dict)
+    usage_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0", default=0)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    installed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -306,6 +309,7 @@ class WorkspaceCapability(Base):
 
     __table_args__ = (
         Index("idx_capabilities_workspace_id", "workspace_id"),
+        Index("idx_capabilities_workspace_category", "workspace_id", "category"),
         UniqueConstraint("workspace_id", "name", "category", name="uq_capabilities_workspace_name_category"),
     )
 
