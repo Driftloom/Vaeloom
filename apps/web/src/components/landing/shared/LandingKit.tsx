@@ -100,6 +100,22 @@ export function SectionHeading({
 /* Reveal — scroll entrance (motion, reduced-motion aware)             */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Scroll-entrance reveal.
+ *
+ * Degrades to plain visible content before hydration, and that is the whole
+ * point. `initial={{ opacity: 0 }}` used to be emitted straight into the SSR
+ * HTML and only cleared once an IntersectionObserver fired — so with JS
+ * disabled, blocked, or slow, everything wrapped in a `Reveal` stayed at
+ * `opacity: 0` forever. On `FinalCTA` that meant the section heading AND both
+ * conversion buttons were permanently invisible: the page's primary CTA
+ * depended on JavaScript to exist. Reference content and conversion paths
+ * must never be gated on an observer.
+ *
+ * The cost is one frame: after mount the element takes its hidden initial
+ * state and then animates in as before. That is the right trade against
+ * content that cannot be read at all without JS.
+ */
 export function Reveal({
   children,
   delay = 0,
@@ -112,10 +128,20 @@ export function Reveal({
   className?: string;
 }) {
   const reduce = useReducedMotion();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  // `mounted` is tested before `reduce` deliberately: useReducedMotion has no
+  // server answer, so gating on it first would make the first client render
+  // disagree with the server for reduced-motion users — a hydration mismatch
+  // in the exact code path that exists to prevent one.
+  const hidden = mounted && !reduce;
+
   return (
     <motion.div
       className={className}
-      initial={reduce ? false : { opacity: 0, y }}
+      initial={hidden ? { opacity: 0, y } : false}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-80px' }}
       transition={{ duration: 0.6, delay, ease: [0.16, 1, 0.3, 1] }}

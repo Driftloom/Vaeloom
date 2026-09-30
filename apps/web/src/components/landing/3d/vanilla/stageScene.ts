@@ -28,6 +28,7 @@ export interface Beat {
   hasPath?: boolean;
   cameraFor: (localProgress: number) => CameraState;
   tick: (t: number, dt: number, pointer: Pointer, rm: boolean, localProgress: number) => void;
+  setSelected?: (id: string | number) => void;
   dispose: () => void;
 }
 
@@ -79,7 +80,12 @@ export interface BuildStageResult {
 export function buildStage(opts: BuildStageOptions, world: THREE.Group): BuildStageResult {
   const { theme, density, tier } = opts;
 
-  type Real = { object: THREE.Object3D; tick: Beat['tick']; dispose: () => void };
+  type Real = {
+    object: THREE.Object3D;
+    tick: Beat['tick'];
+    setSelected?: (id: string | number) => void;
+    dispose: () => void;
+  };
 
   // Per-beat factory. Heavy scene graphs are built LAZILY — only when a beat
   // scrolls near the viewport — so the first paint isn't blocked building all
@@ -173,7 +179,12 @@ export function buildStage(opts: BuildStageOptions, world: THREE.Group): BuildSt
         cameraFor: cf('memory'),
         build: () => {
           const s = createKnowledgeGraph(th);
-          return { object: s.group, tick: (t) => s.update(t), dispose: s.dispose };
+          return {
+            object: s.group,
+            tick: (t) => s.update(t),
+            setSelected: s.setSelected,
+            dispose: s.dispose,
+          };
         },
       },
       {
@@ -201,7 +212,12 @@ export function buildStage(opts: BuildStageOptions, world: THREE.Group): BuildSt
             'gmail',
             'scheduler',
           ]);
-          return { object: s.group, tick: (t, dt) => s.update(t, dt), dispose: s.dispose };
+          return {
+            object: s.group,
+            tick: (t, dt) => s.update(t, dt),
+            setSelected: s.setSelected,
+            dispose: s.dispose,
+          };
         },
       },
       {
@@ -335,6 +351,7 @@ export function buildStage(opts: BuildStageOptions, world: THREE.Group): BuildSt
     b.object.position.z = b.z;
     world.add(b.object);
     b.tick = real.tick;
+    b.setSelected = real.setSelected;
     b.dispose = real.dispose;
     builtReal[i] = real;
   }
@@ -354,6 +371,7 @@ export function buildStage(opts: BuildStageOptions, world: THREE.Group): BuildSt
 export interface StageHandle {
   attachTo: (el: HTMLElement) => void;
   setActiveBeat: (name: string, getProgress?: () => number) => void;
+  setSelected?: (beatName: string, id: string | number) => void;
   /** Recolor scenes for a new theme WITHOUT disposing the renderer/canvas. */
   setTheme: (theme: ThemeName) => void;
   start: () => void;
@@ -465,9 +483,14 @@ export function createStage(opts: CreateStageOptions): StageHandle {
   function frame(now: number): void {
     raf = requestAnimationFrame(frame);
     if (!last) last = now;
-    const dt = Math.min(0.05, (now - last) / 1000);
+    const rawDt = Math.min(0.05, (now - last) / 1000);
     last = now;
-    elapsed += dt;
+    // Reduced motion freezes time rather than stopping the loop, so the scene
+    // still composes and renders exactly one stable frame. Previously this was
+    // the only lever and it was dead: `rm` could never be true, because the
+    // stage was gated behind `!reduced` upstream.
+    const dt = rm ? 0 : rawDt;
+    if (!rm) elapsed += dt;
 
     const beat: Beat = beats[activeIndex]!;
     const progress = Math.min(1, Math.max(0, getProgress()));
@@ -562,9 +585,17 @@ export function createStage(opts: CreateStageOptions): StageHandle {
   if (typeof window !== 'undefined')
     window.addEventListener('pointermove', onPointer, { passive: true });
 
+  function setSelected(beatName: string, id: string | number): void {
+    const idx = beats.findIndex((b) => b.name === beatName);
+    if (idx < 0) return;
+    builtStage.ensureBuilt(idx);
+    beats[idx]?.setSelected?.(id);
+  }
+
   return {
     attachTo,
     setActiveBeat,
+    setSelected,
     setTheme: (t: ThemeName) => rebuild(t),
     start,
     stop,

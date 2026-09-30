@@ -9,22 +9,28 @@ import {
   Section,
   SectionHeading,
 } from '@/components/landing/shared/LandingKit';
-import { StageSlot } from '@/components/landing/3d/SceneShell';
+import { StageSlot, useStageSelection } from '@/components/landing/3d/SceneShell';
 
-/** Keyboard-operable curated nodes — indices match the canvas graph. */
+/**
+ * Keyboard-operable curated nodes — `index` is the curated id the WebGL
+ * graph resolves (see `CURATED` in knowledgeGraphScene), `row` indexes
+ * MEMORY.interactions for the read-out.
+ */
 const CURATED_NODES = [
   { index: 0, label: 'React', row: 0 },
   { index: 8, label: 'Campus Placement Portal', row: 1 },
   { index: 14, label: 'Infosys', row: 2 },
 ] as const;
 
-type TooltipState =
-  | { kind: 'curated'; row: number }
-  | { kind: 'node'; label: string; typeName: string; connections: number }
-  | null;
-
 export default function MemorySection() {
-  const [tooltip, setTooltip] = useState<TooltipState>(null);
+  /** Index into MEMORY.interactions, or null when nothing is inspected. */
+  const [inspected, setInspected] = useState<number | null>(null);
+  const selectNode = useStageSelection('memory');
+
+  const inspect = (index: number, row: number): void => {
+    setInspected(row);
+    selectNode(String(index));
+  };
 
   return (
     <Section id="memory" labelledBy="memory-title">
@@ -38,18 +44,30 @@ export default function MemorySection() {
 
         {/* Interactive memory surface */}
         <Reveal className="mt-12">
-          <div className="landing-panel relative overflow-hidden rounded-3xl p-4 sm:p-6">
+          {/*
+            The width cap is a framing fix, not a layout preference. The node
+            cloud projects to roughly 1.8:1 (landscape) under the memory beat
+            camera, but an uncapped panel at max-w-7xl hands the slot a
+            1166x500 frame — 2.33:1 — so the graph filled ~36% of the width
+            against ~47% of the height and read as an island adrift in dead
+            space. Narrowing the panel to 960px gives the slot 912x500, 1.82:1,
+            which matches the subject instead of boxing it. Capping the panel
+            rather than trimming the height keeps the section's vertical
+            rhythm, and it only binds above 1024px — every smaller breakpoint
+            was already narrower than the cap and is untouched.
+          */}
+          <div className="landing-panel relative mx-auto w-full max-w-[960px] overflow-hidden rounded-3xl p-4 sm:p-6">
             <div className="relative h-[360px] sm:h-[440px] lg:h-[500px]">
               <StageSlot beat="memory" className="absolute inset-0" />
-              {/* hover/read-out card */}
-              {tooltip ? (
+              {/* selected-node read-out card */}
+              {inspected !== null ? (
                 <div className="pointer-events-none absolute bottom-3 left-3 right-3 sm:left-auto sm:right-4 sm:w-80">
                   <div className="rounded-xl border border-border-subtle bg-background/90 p-4 shadow-elevated backdrop-blur-md">
-                    {tooltip.kind === 'curated' ? (
-                      (() => {
-                        const r = MEMORY.interactions[tooltip.row]!;
+                    <dl className="space-y-2 text-xs leading-relaxed">
+                      {(() => {
+                        const r = MEMORY.interactions[inspected]!;
                         return (
-                          <dl className="space-y-2 text-xs leading-relaxed">
+                          <>
                             <div className="flex items-center justify-between gap-3">
                               <dt className="font-mono uppercase tracking-wider text-text-muted">
                                 Node
@@ -79,31 +97,10 @@ export default function MemorySection() {
                             <div className="border-t border-border-subtle pt-2 text-text-secondary">
                               {r.output}
                             </div>
-                          </dl>
+                          </>
                         );
-                      })()
-                    ) : (
-                      <dl className="space-y-2 text-xs leading-relaxed">
-                        <div className="flex items-center justify-between gap-3">
-                          <dt className="font-mono uppercase tracking-wider text-text-muted">
-                            Node
-                          </dt>
-                          <dd className="font-semibold text-text">{tooltip.label}</dd>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <dt className="font-mono uppercase tracking-wider text-text-muted">
-                            Type
-                          </dt>
-                          <dd className="capitalize text-text-secondary">{tooltip.typeName}</dd>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <dt className="font-mono uppercase tracking-wider text-text-muted">
-                            Linked memories
-                          </dt>
-                          <dd className="font-semibold text-primary-300">{tooltip.connections}</dd>
-                        </div>
-                      </dl>
-                    )}
+                      })()}
+                    </dl>
                   </div>
                 </div>
               ) : null}
@@ -111,8 +108,10 @@ export default function MemorySection() {
               {/* sr-only narrative so the story never depends on 3D */}
               <p className="sr-only">
                 Interactive knowledge graph. Nodes represent people, skills, projects,
-                organizations, certificates, and events connected by typed relationships. Hover or
-                focus a node to see its relationship, source, and confidence.
+                organizations, certificates, and events, connected by typed relationships. The graph
+                itself is not directly operable — it has no pointer picking. Use the three Inspect
+                buttons below to select a node, which highlights it in the graph and reports its
+                relationship, source, and confidence.
               </p>
             </div>
 
@@ -124,9 +123,10 @@ export default function MemorySection() {
                   <button
                     key={c.index}
                     type="button"
-                    onClick={() => setTooltip({ kind: 'curated', row: c.row })}
+                    aria-pressed={inspected === c.row}
+                    onClick={() => inspect(c.index, c.row)}
                     className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                      tooltip?.kind === 'curated' && tooltip.row === c.row
+                      inspected === c.row
                         ? 'border-primary-400 bg-surface-active text-text'
                         : 'border-border-subtle text-text-secondary hover:border-primary-500/40 hover:text-text'
                     }`}

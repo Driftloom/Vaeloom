@@ -170,9 +170,14 @@ export function mulberry32(seed: number): () => number {
 }
 
 /**
- * Per-agent hues shared between the WebGL orbit and DOM legends.
+ * Per-agent hues, shared between the WebGL orbit and the DOM legend.
  * Lives here (not in the canvas chunk) so sections never pull
  * three.js into their bundles just for a color map.
+ *
+ * `dark` is the canonical set. `light` exists because these dots and octahedra
+ * are small, high-count marks: on white, the dark fuchsia/amber values read as
+ * confetti — the exact failure LIGHT above was designed to prevent. The light
+ * values are pulled toward indigo, matching the palette rule.
  */
 export const AGENT_HUES: Record<string, string> = {
   orchestrator: '#818cf8',
@@ -184,3 +189,22 @@ export const AGENT_HUES: Record<string, string> = {
   gmail: '#f87171',
   scheduler: '#38bdf8',
 };
+
+export const AGENT_HUES_BY_THEME: Record<'dark' | 'light', Record<string, string>> = {
+  dark: AGENT_HUES,
+  light: {
+    orchestrator: '#4f46e5',
+    organization: '#0e7490',
+    memory: '#6d28d9',
+    resume: '#047857',
+    ats: '#a16207',
+    jobsearch: '#c2410c',
+    gmail: '#be185d',
+    scheduler: '#1d4ed8',
+  },
+};
+
+/** Resolved agent hue for a theme, falling back to the canonical indigo. */
+export function agentHue(theme: 'dark' | 'light', id: string): string {
+  return AGENT_HUES_BY_THEME[theme][id] ?? AGENT_HUES['orchestrator'] ?? '#818cf8';
+}

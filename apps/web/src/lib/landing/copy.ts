@@ -40,27 +40,27 @@ export const PROBLEM = {
   eyebrow: 'The problem',
   title: 'Your knowledge is scattered, so it keeps starting from zero.',
   intro:
-    'The work that defines your education and career lives in a dozen places — and almost none of it is connected, reusable, or remembered.',
+    'The work that defines your education and career lives across your tools — and almost none of it is connected, reusable, or remembered.',
   steps: [
     {
       title: 'Fragmented information',
-      body: 'Files in Drive, code on GitHub, deadlines in mail, certificates on your desktop. Nothing speaks to the rest.',
+      body: 'Files in Drive, code on GitHub, deadlines in mail, certificates in a local folder. Nothing speaks to the rest.',
     },
     {
       title: 'Lost context',
-      body: 'Every tool forgets what you did elsewhere. You re-explain yourself to each one, repeatedly.',
+      body: 'Every tool forgets what you did elsewhere, so you re-explain yourself to each one.',
     },
     {
       title: 'Repeated work',
-      body: 'Resumes get rebuilt from memory, projects get re-described, evidence gets re-hunted before every application.',
+      body: 'Resumes get rewritten, projects get re-described, evidence gets re-hunted before every application.',
     },
     {
       title: 'Missed opportunities',
-      body: 'Roles that fit pass by because nothing ranked them against what you actually know and did.',
+      body: 'Roles that fit pass by because nothing ranks them against what you actually know and did.',
     },
   ],
   resolution:
-    'Vaeloom turns that scattered work into one living memory — so every next step starts smarter.',
+    'Vaeloom turns that scattered work into one living memory, so the next step starts from what you already did.',
 } as const;
 
 export const PRINCIPLES = [
@@ -97,7 +97,7 @@ export const DIFFERENCE = {
   chatbot: {
     label: 'Chatbots',
     steps: ['You ask', 'It answers', 'Context forgotten'],
-    verdict: 'Every conversation starts from zero. Your history lives nowhere.',
+    verdict: 'Every conversation starts from zero — nothing carries over.',
   },
   vaeloom: {
     label: 'Vaeloom',
@@ -108,7 +108,7 @@ export const DIFFERENCE = {
       'Actions improve memory',
       'Next answer starts smarter',
     ],
-    verdict: 'One memory under everything you do. It never forgets, so you never re-explain.',
+    verdict: 'One memory under everything you do, so you never re-explain yourself.',
   },
 } as const;
 
@@ -343,12 +343,20 @@ export const CONNECTORS = {
   eyebrow: 'Sources',
   title: 'Connect only what you choose.',
   intro:
-    'Each connector is an explicit, scoped grant — read-only by default, revocable anytime. No unrestricted access, ever.',
+    'Each connector is an explicit, scoped grant — read-only by default, revocable at any time. No unrestricted access.',
   items: [
     { name: 'Gmail', scope: 'Read & classify · drafts only, never sends', icon: 'mail' },
     { name: 'GitHub', scope: 'Repositories & commit metadata', icon: 'github' },
     { name: 'Google Drive', scope: 'Docs & files you grant', icon: 'drive' },
-    { name: 'Local folder', scope: 'One folder you pick — via desktop companion', icon: 'folder' },
+    // Was "One folder you pick — via desktop companion". The companion is
+    // Phase 2 roadmap and does not exist, so the scope claimed a surface the
+    // product cannot deliver. Replaced with the boundary that IS enforced:
+    // one directory, never the whole disk (docs/security/README.md).
+    {
+      name: 'Local folder',
+      scope: 'One directory you pick — never your whole disk',
+      icon: 'folder',
+    },
     { name: 'VS Code', scope: 'Workspace activity & diffs, not whole repos', icon: 'code' },
     { name: 'MCP servers', scope: 'Bring external tools in under approval gates', icon: 'plug' },
   ],
@@ -401,7 +409,9 @@ export const RESUME = {
 
 export const CAREER = {
   eyebrow: 'Career intelligence',
-  title: 'From memory to offer — a pipeline, not a lottery.',
+  // "To offer" promised an outcome no ranker can deliver — a pipeline ends at
+  // an application, and the last stage is recalibration from what came back.
+  title: 'From memory to application — a pipeline, not a lottery.',
   stages: [
     {
       name: 'Radar',
@@ -414,11 +424,13 @@ export const CAREER = {
     { name: 'Triage', body: 'Approve, reject, or defer. You control what enters the pipeline.' },
     {
       name: 'Tailor',
-      body: 'Resume variant and cover letter generated within a minute of approval.',
+      // Dropped "within a minute": a generation-time claim with nothing behind
+      // it, and the slowest step here is Chromium PDF rendering, not the copy.
+      body: 'A resume variant and cover letter, assembled from memory with the sources linked.',
     },
     {
       name: 'Apply',
-      body: 'Submitted via platform API where possible, or handed off with a deep-link package.',
+      body: 'Submitted through a platform API where one exists, or handed off as a deep-link package.',
     },
     {
       name: 'Recalibrate',
@@ -465,7 +477,7 @@ export const TRUST = {
   eyebrow: 'Control',
   title: 'Intelligence without giving up control.',
   intro:
-    'Every connector, agent, and action passes through one permission model along three axes — who acts, what kind of action, on which source.',
+    'One permission model covers every connector, agent, and action. Read, write, and act are granted separately, autonomy is earned, and every one of them is logged.',
   rows: [
     {
       axis: 'Read access',
@@ -484,7 +496,7 @@ export const TRUST = {
     },
     {
       axis: 'Earned autonomy',
-      mvp: 'Autonomy unlocks per agent, per action type, from your approval history — revocable anytime.',
+      mvp: 'Earned per agent and per action type from your approval history — revocable at any time.',
       state: 'earned',
     },
     {
@@ -522,14 +534,18 @@ export const TRUST = {
 export const COMPOUNDING = {
   eyebrow: 'The compounding advantage',
   title: 'Day one it helps. A year later, it knows.',
+  // "The value curve bends" is unfalsifiable, and the moat line was a third
+  // rendering of a sentence the section already prints on its own.
   intro:
-    'Every connection, correction, and outcome deepens the same memory. The value curve bends because context compounds — the moat isn’t the model, it’s your graph.',
+    'Every connection, correction, and outcome deepens the same memory — so context compounds instead of resetting.',
+  // No density figures. The growth beat is scrubbed by the scene's own scroll
+  // progress, and a static number here would be a metric nothing measures.
   milestones: [
-    { when: 'Day 1', state: 'Connected sources, first documents parsed', density: 18 },
-    { when: 'Week 1', state: 'Knowledge graph taking shape, workspace filed', density: 34 },
-    { when: 'Month 1', state: 'Accurate master resume, ranked matches arriving', density: 56 },
-    { when: 'Month 6', state: 'Outcome-calibrated rankings, proactive digests', density: 78 },
-    { when: 'Year 1', state: 'Deep personal intelligence across your career', density: 96 },
+    { when: 'Day 1', state: 'Sources connected, first files parsed' },
+    { when: 'Week 1', state: 'Graph taking shape, workspace filed' },
+    { when: 'Month 1', state: 'Master resume assembled, ranked matches' },
+    { when: 'Month 6', state: 'Rankings calibrated by outcomes, daily digests' },
+    { when: 'Year 1', state: 'A graph of your whole career' },
   ],
 } as const;
 
@@ -559,7 +575,7 @@ export const FAQ = {
   items: [
     {
       q: 'What exactly is Vaeloom?',
-      a: 'Vaeloom is a memory-first personal intelligence system for education and career. You connect your files, email, and code; it builds a knowledge graph of your work and uses specialized agents to keep a living master resume, surface matched roles, and organize your workspace — with your approval.',
+      a: 'Vaeloom is a memory-first personal intelligence system for education and career. You connect your files, email, and code; it builds a knowledge graph of your work, and specialist agents use that graph to keep a master resume, match roles, and organize your workspace. Every action waits for your approval.',
     },
     {
       q: 'Is Vaeloom a chatbot?',
@@ -567,7 +583,7 @@ export const FAQ = {
     },
     {
       q: 'What does the memory system remember?',
-      a: 'Documents, skills, projects, organizations, certificates, jobs, and events — linked in a knowledge graph with vector search. Today’s sources include Gmail, GitHub, Google Drive, a local folder, and VS Code, plus MCP servers you choose to bring in.',
+      a: 'Documents, skills, projects, organizations, certificates, jobs, and events — linked in a knowledge graph with vector search. Sources available today: Gmail, GitHub, Google Drive, a local folder, and VS Code, plus any MCP server you choose to bring in.',
     },
     {
       q: 'Can agents act without my approval?',
@@ -583,22 +599,24 @@ export const FAQ = {
     },
     {
       q: 'What happens to my data?',
-      a: 'Connectors start read-only and scoped per source. Tokens are stored encrypted in a secrets manager, and workspaces are isolated with row-level security. Nothing is shared without your grant.',
+      a: 'Connectors start read-only and scoped per source. Tokens are stored encrypted in a secrets manager, and workspaces are isolated with row-level security.',
     },
     {
       q: 'Is Vaeloom free?',
-      a: 'Vaeloom is in active MVP and free to start building your second brain. We’ll be transparent about any future plans as the product matures.',
+      a: 'Vaeloom is in active MVP and free to start building your second brain. Any future plans get announced here first.',
     },
     {
       q: 'Who is Vaeloom for?',
-      a: 'Students, early-career professionals, and anyone managing their education, projects, and job search across scattered tools who wants that work to accumulate into one living memory.',
+      a: 'Students and early-career professionals running their education, projects, and job search across scattered tools, who want that work to accumulate into one living memory.',
     },
   ],
 } as const;
 
 export const FOOTER = {
-  blurb:
-    'Vaeloom turns scattered work into persistent memory — a second brain for education and career.',
+  // Was "…persistent memory — a second brain for education and career", which
+  // is HERO.titleB verbatim. The footer is the last thing read; it should add
+  // something rather than echo the headline.
+  blurb: 'Your education and career work, held in one memory that compounds instead of resetting.',
   columns: [
     {
       title: 'Product',

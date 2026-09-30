@@ -3,7 +3,7 @@
  * Self-contained polyfills so the global jest.setup stays untouched.
  */
 import { render, screen } from '@testing-library/react';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { ThemeProvider } from '@/hooks/useTheme';
 
@@ -161,6 +161,45 @@ describe('landing 3D stage wiring', () => {
     const beatIds = [...stageSource.matchAll(/id: '([a-z]+)',/g)].map((m) => m[1]);
     const orphans = beatIds.filter((id) => !used.has(id));
     expect(orphans).toEqual([]);
+  });
+
+  /**
+   * Every beat needs a real captured poster. `StageSlot` renders
+   * `/landing/beats/<beat>.png` whenever WebGL is unavailable, and only 7 of
+   * 16 existed — so a visitor without WebGL got a broken image over the brand
+   * gradient on 9 sections. A missing poster renders fine in jsdom and in CI,
+   * because an `<img>` with a missing src is not a test failure; only the
+   * filesystem knows.
+   */
+  it('has a captured poster for every beat', () => {
+    const dir = join(process.cwd(), 'public/landing/beats');
+    const beatIds = [...stageSource.matchAll(/id: '([a-z]+)',/g)].map((m) => m[1]);
+    const missing = beatIds.filter((b) => !existsSync(join(dir, `${b}.png`)));
+    expect(missing).toEqual([]);
+  });
+
+  /**
+   * Scenes must read colour from `scenePalette()`, not from a private
+   * `theme === 'dark' ? … : …` literal. Six scenes kept their own copies, so
+   * they silently missed the light-theme redesign and their light values
+   * drifted below the palette's own contrast floor. Opacity ternaries are
+   * fine and expected; only colour literals are banned here.
+   */
+  it('has no scene bypassing the shared colour palette', () => {
+    const dir = join(process.cwd(), 'src/components/landing/3d/vanilla');
+    const offenders: string[] = [];
+    readdirSync(dir)
+      .filter((f) => f.endsWith('.ts'))
+      .forEach((f) => {
+        const src = readFileSync(join(dir, f), 'utf8');
+        // A colour literal assigned to a `const` inside a theme ternary.
+        src.split('\n').forEach((line, i) => {
+          if (/theme\s*===\s*'dark'\s*\?/.test(line) && /#[0-9a-fA-F]{3,8}/.test(line)) {
+            offenders.push(`${f}:${i + 1}`);
+          }
+        });
+      });
+    expect(offenders).toEqual([]);
   });
 });
 

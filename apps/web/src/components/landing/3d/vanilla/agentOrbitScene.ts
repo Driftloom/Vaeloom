@@ -6,7 +6,7 @@
 
 import * as THREE from 'three';
 import { createRenderer, runLoop, pickAt, type SceneHandle } from './engine';
-import { AGENT_HUES, glowTexture, scenePalette } from '../scene-utils';
+import { agentHue, glowTexture, scenePalette } from '../scene-utils';
 
 const ORBIT_RADIUS = 2.6;
 const RING_TILT = 0.32;
@@ -157,7 +157,7 @@ export function mountAgentOrbit({
           dummy.position.set(Math.cos(a) * ORBIT_RADIUS, bob, Math.sin(a) * ORBIT_RADIUS);
           dummy.updateMatrix();
           mesh.setMatrixAt(i, dummy.matrix);
-          mesh.setColorAt(i, new THREE.Color(AGENT_HUES[id] ?? '#818cf8'));
+          mesh.setColorAt(i, new THREE.Color(agentHue(theme, id)));
         });
         if (mesh.instanceMatrix) mesh.instanceMatrix.needsUpdate = true;
         if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
@@ -186,6 +186,14 @@ export function createAgentOrbit(
 ): {
   group: THREE.Group;
   update: (t: number, dt: number) => void;
+  /**
+   * Swing the ring so `id` faces the camera and light up its link into the
+   * core. Same contract as mountAgentOrbit's setSelected — the swing itself
+   * lives in `update`, which eases `currentRotation` toward the selected
+   * agent's angle, so this only records the target and repaints the links.
+   */
+  setSelected: (id: string) => void;
+  /** Historical name for setSelected, kept so existing callers keep working. */
   focus: (id: string) => void;
   dispose: () => void;
 } {
@@ -279,12 +287,12 @@ export function createAgentOrbit(
       dummy.position.set(Math.cos(a) * ORBIT_RADIUS, bob, Math.sin(a) * ORBIT_RADIUS);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
-      mesh.setColorAt(i, new THREE.Color(AGENT_HUES[id] ?? '#818cf8'));
+      mesh.setColorAt(i, new THREE.Color(agentHue(theme, id)));
     });
     if (mesh.instanceMatrix) mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   }
-  function focus(id: string): void {
+  function setSelected(id: string): void {
     targetId = id;
     updateLinks();
   }
@@ -303,5 +311,5 @@ export function createAgentOrbit(
       }
     });
   }
-  return { group, update, focus, dispose };
+  return { group, update, setSelected, focus: setSelected, dispose };
 }

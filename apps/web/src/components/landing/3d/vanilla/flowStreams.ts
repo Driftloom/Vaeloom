@@ -23,6 +23,28 @@ const IN_RIGHT_RATIO = 1.0; // right not reduced; left is the stronger inlet (se
 const OUT_START_R = 0.5;
 const OUT_END_R = 3.0;
 
+/**
+ * Light-mode weight for the corner inlets. Dark is untouched.
+ *
+ * These are the hero's most legible design element — two dotted jets that
+ * describe where the data comes from and give the composition a direction — so
+ * they get the LIGHTEST touch of any light-mode reduction. Measured against the
+ * hero camera (fov 42, canvas occupying the lower 62% of the viewport in light
+ * mode) the inlet spawn points project to viewport y ~890 and converge on the
+ * core at y ~648: the whole layer lives BELOW the copy block and never touches
+ * the subtitle band. It therefore has no legibility job to do, and an earlier
+ * pass that thinned it anyway deleted the signature of the scene and left the
+ * hero reading as an empty box.
+ *
+ * So light mode keeps the count and the alpha close to dark and only softens
+ * enough to stop the jets reading as hard punctuation on white: a modest alpha
+ * trim plus a smaller point, and nothing else.
+ */
+const LIGHT_COUNT_SCALE = 0.95;
+const LIGHT_ALPHA = 0.72;
+const LIGHT_SIZE = 0.85;
+const LIGHT_UOPACITY = 0.8;
+
 // corner spawn points (world space) — JUST outside frustum so lower
 // inlets streak from screen edge like upper streams. Hero cam 0,0.9,7.4
 // fov42 => half-w 5.05 half-h 2.84 at z0. Prev -4.3/-1.6 inside → mid-screen pop.
@@ -45,6 +67,14 @@ function perpUnit(sx: number, sy: number): [number, number] {
 
 export function createFlowStreams(theme: 'dark' | 'light', density: number): FlowStreamsHandle {
   const palette = scenePalette(theme);
+  const light = theme === 'light';
+  const inScale = light ? LIGHT_COUNT_SCALE : 1;
+  const sizeScale = light ? LIGHT_SIZE : 1;
+  // `aScale` is NOT applied to the OUT subset: those marks are the smallest,
+  // dimmest and shortest-lived in the scene, and the one that says what the
+  // core is FOR, so they keep their authored alpha in both themes. Their count
+  // still follows the shared density scale like everything else.
+  const aScale = light ? LIGHT_ALPHA : 1;
 
   const cStream = new THREE.Color(palette.streamA);
   const cLink = new THREE.Color(palette.link ?? palette.structure);
@@ -52,8 +82,8 @@ export function createFlowStreams(theme: 'dark' | 'light', density: number): Flo
   const cCore = new THREE.Color(palette.core);
   const cDust = new THREE.Color(palette.dust);
 
-  const inLeft = Math.max(40, Math.round(170 * density));
-  const inRight = Math.max(36, Math.round(110 * density * IN_RIGHT_RATIO));
+  const inLeft = Math.max(40, Math.round(170 * density * inScale));
+  const inRight = Math.max(36, Math.round(110 * density * IN_RIGHT_RATIO * inScale));
   const outCount = Math.max(10, Math.round(inLeft * OUT_RATIO));
   const count = inLeft + inRight + outCount;
 
@@ -122,7 +152,7 @@ export function createFlowStreams(theme: 'dark' | 'light', density: number): Flo
     spawnZ[i] = SL.z + (Math.random() - 0.5) * 0.25;
     pickColor(i, 'in');
     const sr = Math.random();
-    sizes[i] = sr < 0.6 ? 0.09 + Math.random() * 0.03 : 0.12 + Math.random() * 0.04;
+    sizes[i] = (sr < 0.6 ? 0.09 + Math.random() * 0.03 : 0.12 + Math.random() * 0.04) * sizeScale;
   }
   // ---- IN_RIGHT ---- matching jet, slightly faster
   for (let n = 0; n < inRight; n++, i++) {
@@ -143,7 +173,8 @@ export function createFlowStreams(theme: 'dark' | 'light', density: number): Flo
     spawnZ[i] = SR.z + (Math.random() - 0.5) * 0.25;
     pickColor(i, 'in');
     const sr = Math.random();
-    sizes[i] = sr < 0.75 ? 0.05 + Math.random() * 0.025 : 0.08 + Math.random() * 0.025;
+    sizes[i] =
+      (sr < 0.75 ? 0.05 + Math.random() * 0.025 : 0.08 + Math.random() * 0.025) * sizeScale;
   }
   // ---- OUT (processed output leaves subtly) ----
   for (let n = 0; n < outCount; n++, i++) {
@@ -165,7 +196,7 @@ export function createFlowStreams(theme: 'dark' | 'light', density: number): Flo
     prog[i] = Math.random();
     isOut[i] = 1;
     pickColor(i, 'out');
-    sizes[i] = 0.03 + Math.random() * 0.014;
+    sizes[i] = (0.03 + Math.random() * 0.014) * sizeScale;
   }
 
   const geo = new THREE.BufferGeometry();
@@ -176,7 +207,7 @@ export function createFlowStreams(theme: 'dark' | 'light', density: number): Flo
 
   const mat = new THREE.ShaderMaterial({
     uniforms: {
-      uOpacity: { value: theme === 'light' ? 0.7 : 0.85 },
+      uOpacity: { value: light ? LIGHT_UOPACITY : 0.85 },
     },
     vertexShader: `
       attribute float aSize;
@@ -205,7 +236,11 @@ export function createFlowStreams(theme: 'dark' | 'light', density: number): Flo
     `,
     transparent: true,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
+    // See the blending note in particleField.ts. Dark keeps additive because the
+    // inlets are drawn overlapping and the accumulation is the glow; on white
+    // that same accumulation is a colourless smudge, so light normal-blends
+    // and lets the tint show.
+    blending: light ? THREE.NormalBlending : THREE.AdditiveBlending,
   });
 
   const points = new THREE.Points(geo, mat);
@@ -251,7 +286,8 @@ export function createFlowStreams(theme: 'dark' | 'light', density: number): Flo
           posData[i * 3 + 2] = bz + z;
           // Visible from the corner along the whole path, merging only into
           // the core glow at the very end (reads as a directed inbound streak).
-          alphaData[i] = baseAlpha[i]! * smoothstep(0, 0.03, np) * (1 - smoothstep(0.82, 1.0, np));
+          alphaData[i] =
+            baseAlpha[i]! * smoothstep(0, 0.03, np) * (1 - smoothstep(0.82, 1.0, np)) * aScale;
         }
       }
 

@@ -22,12 +22,29 @@ type Dir = 'in' | 'out';
 
 const STREAM_RADIUS = 5.2;
 
+/**
+ * Light-mode weight for the data streams. Dark is untouched.
+ *
+ * These are the hero's loudest marks: 180 points per stream across twelve
+ * streams at alpha 0.95 is 2,160 near-opaque dots, and on white every one of
+ * them survives as a discrete speck. Unlike the flow inlets, this layer DOES
+ * reach the copy: the stream envelope is `sin(tilt + a) · r · 0.4` on a radius
+ * of 5.2, so it climbs to world y 2.35 — viewport y ~361, straight through the
+ * subtitle band (world y 2.11-2.80 on the z=0 plane). Light mode therefore
+ * thins it hard enough to matter while keeping the radial burst readable as
+ * structure below the copy.
+ */
+const LIGHT_COUNT_SCALE = 0.85;
+const LIGHT_OPACITY = 0.42;
+const LIGHT_SIZE = 0.036;
+
 export function createStreams(
   theme: 'dark' | 'light',
   density: number,
   opts: { outward?: boolean } = {},
 ): StreamsHandle {
   const palette = scenePalette(theme);
+  const light = theme === 'light';
   // brand accents, theme-adaptive (cyan streamA, indigo core, pink link)
   const INWARD = [
     { angle: -0.5, tilt: 0.35, color: palette.streamA },
@@ -47,7 +64,14 @@ export function createStreams(
     { angle: 5.2, tilt: -0.15, color: palette.structure },
   ];
 
-  const perStream = Math.round(180 * density);
+  const perStream = Math.round(180 * density * (light ? LIGHT_COUNT_SCALE : 1));
+  const pointSize = light ? LIGHT_SIZE : 0.045;
+  const pointOpacity = light ? LIGHT_OPACITY : 0.95;
+  // See the blending note in particleField.ts: on a transparent canvas additive
+  // and normal agree until marks overlap, and where they overlap additive
+  // accumulates to a colourless white smudge. Dark keeps the glow; light keeps
+  // the tint.
+  const blending = light ? THREE.NormalBlending : THREE.AdditiveBlending;
 
   const objects: THREE.Object3D[] = [];
 
@@ -75,13 +99,13 @@ export function createStreams(
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(perStream * 3), 3));
       const mat = new THREE.PointsMaterial({
-        size: 0.045,
+        size: pointSize,
         color: cfg.color,
         transparent: true,
-        opacity: 0.95,
+        opacity: pointOpacity,
         sizeAttenuation: true,
         depthWrite: false,
-        blending: THREE.AdditiveBlending,
+        blending,
       });
       const pts = new THREE.Points(geo, mat);
       pts.frustumCulled = false;

@@ -108,14 +108,12 @@ export function createResumeScene(theme: ThemeName): ResumeScene {
     });
   }
 
-  // ─── Provenance links (dashed lines from fragments to doc) ───
-  const linkMat = new THREE.LineDashedMaterial({
-    color: lineColor,
-    transparent: true,
-    opacity: 0.2,
-    dashSize: 0.1,
-    gapSize: 0.05,
-  });
+  // Provenance links (dashed lines from fragments to doc) are NOT drawn here.
+  // A `LineDashedMaterial` used to be constructed for them and disposed, but
+  // no geometry was ever attached, so the material was pure fiction: the
+  // comment above it described a visual the beat never rendered. Removed
+  // rather than left as a claim the scene does not make. The section's
+  // provenance claim is carried by the DOM, not by this canvas.
 
   function update(t: number, dt: number, localProgress: number): void {
     // Document gently breathes
@@ -143,7 +141,6 @@ export function createResumeScene(theme: ThemeName): ResumeScene {
     docMat.dispose();
     contentMat.dispose();
     contentGeos.forEach((g) => g.dispose());
-    linkMat.dispose();
     fragments.forEach((f) => {
       f.mesh.geometry.dispose();
       (f.mesh.material as THREE.Material).dispose();

@@ -18,6 +18,26 @@ import type { Object3D } from 'three';
 export type Pointer = { x: number; y: number };
 
 /**
+ * Light mode pays a DENSITY tax; dark mode pays none.
+ *
+ * This is the single place the hero's mark budget is decided, so the field, the
+ * data streams and the flow streams all thin together and cannot drift apart.
+ *
+ * Why a tax at all, when `scenePalette` already desaturated the light hues:
+ * hue was never the problem. On a white page a mark survives on COUNT and
+ * ALPHA, not on colour — a 2px dot at 0.5 alpha is a legible speck whatever
+ * hue it wears, and ~5,100 of them (2,600 field + 2,160 stream + 341 flow at
+ * density 1.0) turn the hero into confetti. Dark mode gets away with the same
+ * count because additive marks there read as glow BEHIND the type; the same
+ * marks on white read as ink ON TOP of it.
+ *
+ * 0.55 keeps the composition — the radial burst, the two corner inlets, the
+ * core cluster are all still plainly there — while removing roughly half the
+ * individual marks, which is what actually crosses the copy.
+ */
+const LIGHT_DENSITY_SCALE = 0.55;
+
+/**
  * Builds the Memory Core sub-objects into one reusable assembly. It creates NO
  * renderer and NO loop — both the hero canvas and the persistent landing `Stage`
  * mount this, so the core geometry stays defined in exactly one place.
@@ -29,10 +49,13 @@ export function createMemoryCore(
   pointer?: Pointer,
   streams = true,
 ) {
+  const light = theme === 'light';
+  const effDensity = density * (light ? LIGHT_DENSITY_SCALE : 1);
+
   const intelligenceCore = createIntelligenceCore(theme, { reducedMotion: false });
-  const particleField = createParticleField(theme, density);
-  const dataStreams = createStreams(theme, density, { outward: streams });
-  const flowStreams = streams ? createFlowStreams(theme, density) : null;
+  const particleField = createParticleField(theme, effDensity);
+  const dataStreams = createStreams(theme, effDensity, { outward: streams });
+  const flowStreams = streams ? createFlowStreams(theme, effDensity) : null;
 
   const smooth = { x: 0, y: 0 };
 

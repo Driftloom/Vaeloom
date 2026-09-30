@@ -48,10 +48,13 @@ export function FinalCTA() {
 
 export function LandingFooter() {
   return (
-    <footer
-      className="border-t border-border-subtle bg-surface-50/40"
-      aria-labelledby="footer-heading"
-    >
+    // No aria-labelledby: the root layout wraps every page in
+    // <main id="main-content">, and a <footer> that is a descendant of <main>
+    // resolves to `generic`, not `contentinfo`. Labelling a role-less element
+    // exposes nothing. The sr-only heading below is kept — with no contentinfo
+    // landmark to jump to, it is the only stop heading navigation gives a
+    // keyboard user at the end of the page.
+    <footer className="border-t border-border-subtle bg-surface-50/40">
       <h2 id="footer-heading" className="sr-only">
         Footer
       </h2>

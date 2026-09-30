@@ -109,22 +109,44 @@ export default function HeroSection() {
           className="relative z-10 flex flex-1 flex-col items-center justify-start px-4 pt-[6vh] text-center will-change-transform sm:pt-[8vh] lg:pt-[9vh]"
         >
           {/*
-            Light mode gets a soft copy plate. A stronger wash gradient was
-            tried first and is not enough: the hero scene scatters thousands
-            of discrete particles across the whole viewport, and on white each
-            one survives a 60%-white overlay as a visible mark. Dark mode
-            needs no plate because the scene glows BEHIND the type instead of
-            sitting on top of it. The plate is a legibility guarantee, not
-            decoration — it is why the two themes read at different weights.
+            Light mode gets a soft copy plate — a knockout that guarantees the
+            type is legible no matter what the scene is doing. Dark mode needs
+            none: there the scene glows BEHIND the type, which is the whole
+            reason the dark hero works.
 
-            Built as a radial gradient rather than a flat fill so it has no
-            visible edge. A solid panel showed its rectangle against the
-            particle field and read as an accidental box.
+            Three earlier shapes were wrong, and the reason they were wrong is
+            worth keeping, because it is a geometry constraint rather than a
+            taste call:
+
+              - a flat white fill showed its rectangle against the field;
+              - a radial gradient on this element still showed one, and the
+                culprit is not the gradient but the BOX. `radial-gradient
+                (ellipse A B at 50% 38%)` reaches transparent 38% of the box
+                height above the centre but the box only starts 38% down, so the
+                gradient was still ~0.8 opaque where the element's top edge
+                cut it to zero. A visible hard line, straight across the h1;
+              - adding `backdrop-blur-md` made it worse, not better. A backdrop
+                filter is clipped to the border box with NO falloff, so the
+                blur ran to the very edge and stopped dead there.
+
+            An element-sized background cannot fix this: to cover a copy block
+            that nearly fills its own box, the ellipse has to be larger than the
+            box, and any ellipse larger than its box is clipped by it. So the
+            knockout is painted by a PSEUDO-ELEMENT that is deliberately much
+            larger than the copy (`inset: -13rem -20rem`) and sized with
+            `closest-side`, which puts the gradient's transparent stop exactly
+            at that element's own edge in every direction. The visible ellipse
+            is then far larger than the copy and the paint reaches zero before
+            its own bounds, so there is no edge left to see.
+
+            The scene's own density does the rest — see the light-mode weight in
+            3d/vanilla/particleField.ts. The plate only has to finish the job on
+            the last few marks, not fight several thousand of them.
           */}
           <div
             className={
               isLight
-                ? 'flex flex-col items-center bg-[radial-gradient(ellipse_64%_52%_at_50%_33%,rgba(255,255,255,0.96)_0%,rgba(255,255,255,0.92)_52%,rgba(255,255,255,0.62)_78%,rgba(255,255,255,0)_100%)] px-6 py-8 backdrop-blur-md sm:px-12 sm:py-10'
+                ? "relative isolate flex flex-col items-center px-6 py-8 before:absolute before:-inset-x-80 before:-top-52 before:-bottom-40 before:-z-10 before:pointer-events-none before:rounded-[50%] before:bg-[radial-gradient(closest-side_at_50%_50%,rgba(255,255,255,0.97)_0%,rgba(255,255,255,0.95)_34%,rgba(255,255,255,0.83)_58%,rgba(255,255,255,0.52)_78%,rgba(255,255,255,0)_100%)] before:content-[''] sm:px-12 sm:py-10"
                 : 'flex flex-col items-center'
             }
           >

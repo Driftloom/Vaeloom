@@ -17,7 +17,7 @@ const STATE_STYLE: Record<string, { label: string; cls: string }> = {
 
 export function TrustSection() {
   return (
-    <Section id="trust" labelledBy="trust-title" className="relative bg-surface-50/60">
+    <Section id="trust" labelledBy="trust-title" className="relative landing-band">
       <StageSlot beat="trust" className="absolute inset-0 opacity-30" />
       <Container>
         <SectionHeading
@@ -50,11 +50,21 @@ export function TrustSection() {
           “{TRUST.quote}”
         </p>
         <Reveal className="mx-auto mt-12 max-w-4xl">
+          {/*
+            Five facts in a 3-column grid leaves 3 + 2, so the last row's hole
+            reads as a missing sixth card — the cells are equal-height bordered
+            panels, exactly like the principles strip had. The 5th spans the
+            remaining two columns and centres, rather than leaving a void.
+          */}
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {TRUST.facts.map((f) => (
+            {TRUST.facts.map((f, i) => (
               <li
                 key={f.title}
-                className="rounded-2xl border border-border-subtle bg-background/60 p-5"
+                className={
+                  i === TRUST.facts.length - 1
+                    ? 'rounded-2xl border border-border-subtle bg-background/60 p-5 sm:col-span-2 lg:col-span-2'
+                    : 'rounded-2xl border border-border-subtle bg-background/60 p-5'
+                }
               >
                 <p className="text-sm font-semibold text-text">{f.title}</p>
                 <p className="mt-1.5 text-xs leading-relaxed text-text-muted">{f.body}</p>

@@ -1,6 +1,44 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
 import { FAQ } from '@/lib/landing/copy';
-import { Container, Reveal, Section, SectionHeading } from '@/components/landing/shared/LandingKit';
+import { Container, Section, SectionHeading } from '@/components/landing/shared/LandingKit';
 import { StageSlot } from '@/components/landing/3d/SceneShell';
+
+/**
+ * Scroll entrance that survives a missing observer.
+ *
+ * `LandingKit.Reveal` serialises `initial={{ opacity: 0, y: 24 }}` into the SSR
+ * HTML and only clears it from `whileInView`. Wrapping the FAQ in it meant all
+ * nine answers shipped at `opacity: 0` and stayed there until an
+ * IntersectionObserver fired — so with JS disabled, blocked by an extension, or
+ * just slow, the entire FAQ was permanently invisible. Reference content has to
+ * be readable without JS, so this variant renders the children untouched on
+ * the server and through the first client render, and only opts into the
+ * animation once mounted. The first render matches the server's HTML exactly,
+ * so there is no hydration mismatch to warn about — note the order of the
+ * guard: `mounted` is tested first, so `useReducedMotion` (which reads
+ * matchMedia, and therefore has no server answer) can never influence the
+ * first client render. Swapping the two conditions reintroduces the mismatch.
+ */
+function RevealRow({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const [mounted, setMounted] = useState(false);
+  const reduce = useReducedMotion();
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted || reduce) return <>{children}</>;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-80px' }}
+      transition={{ duration: 0.6, delay, ease: [0.16, 1, 0.3, 1] }}
+    >
+      {children}
+    </motion.div>
+  );
+}
 
 export default function FAQSection() {
   return (
@@ -9,18 +47,28 @@ export default function FAQSection() {
           scene stays a faint horizon and nothing competes with the answers. */}
       <StageSlot beat="faq" className="absolute inset-0 opacity-40" />
       <Container>
-        <SectionHeading id="faq-title" eyebrow={FAQ.eyebrow} title={FAQ.title} />
+        {/* Left-aligned on purpose: nine stacked Q&As are a reading column, and
+            a centred heading over them reads as a template. `align="left"`
+            drops SectionHeading's implicit `mx-auto`, so the centred measure
+            is restored here at the same width as the list below. */}
+        <div className="mx-auto max-w-3xl">
+          <SectionHeading id="faq-title" align="left" eyebrow={FAQ.eyebrow} title={FAQ.title} />
+        </div>
         <div className="mx-auto mt-12 max-w-3xl divide-y divide-border-subtle">
-          {FAQ.items.map((item) => (
-            <Reveal key={item.q}>
+          {FAQ.items.map((item, i) => (
+            <RevealRow key={item.q} delay={Math.min(i * 0.04, 0.24)}>
+              {/*
+                <details>/<summary> is native disclosure and already carries
+                expanded/collapsed semantics — adding aria-expanded here would
+                only duplicate state the browser owns, and can drift from it.
+
+                Padding belongs on the <summary>, not the <details>. With it
+                on the wrapper the pressable area was only the summary's own
+                content height — the 7px icon — about 28px, with 20px of dead
+                space above and below that ignored taps. The bottom padding
+                moves to the answer so the open state keeps its rhythm.
+              */}
               <details className="group">
-                {/*
-                  Padding belongs on the <summary>, not the <details>. With it
-                  on the wrapper the pressable area was only the summary's own
-                  content height — the 7px icon — about 28px, with 20px of dead
-                  space above and below that ignored taps. The bottom padding
-                  moves to the answer so the open state keeps its rhythm.
-                */}
                 <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-4 py-5 text-left">
                   <span className="text-sm font-semibold text-text sm:text-base">{item.q}</span>
                   <span
@@ -40,7 +88,7 @@ export default function FAQSection() {
                 </summary>
                 <p className="mt-3 pb-5 text-sm leading-relaxed text-text-secondary">{item.a}</p>
               </details>
-            </Reveal>
+            </RevealRow>
           ))}
         </div>
       </Container>

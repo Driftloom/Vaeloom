@@ -75,7 +75,12 @@ export function ConnectorSection() {
                   failure that axe never saw, because `role="img"` makes every
                   descendant presentational. Decoration that lies about the
                   3D is worse than no decoration. */}
-              <p className="pointer-events-none absolute bottom-3 left-0 right-0 text-center font-mono text-2xs uppercase tracking-widest text-white/45">
+              {/*
+                  `text-white/45` was too faint here: 10px over this dark
+                  frame measured 3.61:1, below the 4.5:1 floor for normal
+                  text. /70 measures ~6.3:1.
+                */}
+              <p className="pointer-events-none absolute bottom-3 left-0 right-0 text-center font-mono text-2xs uppercase tracking-widest text-white/70">
                 six sources, one ingestion core
               </p>
             </div>
@@ -122,7 +127,7 @@ export function ConnectorSection() {
 
 export function OrganizationSection() {
   return (
-    <Section labelledBy="org-title" className="relative bg-surface-50/60">
+    <Section labelledBy="org-title" className="relative landing-band">
       <StageSlot beat="organization" className="absolute inset-0 opacity-30" />
       <Container>
         <SectionHeading
@@ -139,7 +144,7 @@ export function OrganizationSection() {
                   <span className="font-mono text-xs font-semibold text-primary-400">
                     {String(i + 1).padStart(2, '0')}
                   </span>
-                  <p className="mt-2 text-sm font-bold text-text">{f.step}</p>
+                  <h3 className="mt-2 text-sm font-bold text-text">{f.step}</h3>
                   <p className="mt-1 font-mono text-xs leading-relaxed text-text-muted">
                     {f.detail}
                   </p>
@@ -180,7 +185,11 @@ export function ResumeSection() {
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="1.8"
-                    className="mt-0.5 h-4 w-4 shrink-0 text-success"
+                    // Accent, not success. These bullets assert that a feature
+                    // exists; none of them reports a state that completed. Green
+                    // is reserved in this file for a grounded source citation,
+                    // and reusing it for marketing claims spent the signal.
+                    className="mt-0.5 h-4 w-4 shrink-0 text-primary-400"
                     aria-hidden="true"
                   >
                     <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
@@ -290,18 +299,36 @@ export function ResumeSection() {
 
 export function CareerSection() {
   return (
-    <Section id="career" labelledBy="career-title" className="relative bg-surface-50/60">
-      {/* 45% rather than the usual 30%: the pipeline is thin lines and small
-          cards, and in light mode the lighter palette drops below the
-          visibility floor at 30% — the section just looked empty. */}
-      <StageSlot beat="career" className="absolute inset-0 opacity-45" />
+    <Section id="career" labelledBy="career-title" className="relative landing-band">
+      {/* Was 45%, compensating for scene-side opacities that are now fixed:
+          careerScene floors its cards at 0.4 base and its presence at
+          `0.55 + lp * 0.45`, so the wash no longer has to carry visibility.
+          At 45% this section read measurably brighter than its opacity-30
+          neighbours on both passes, and the mismatch was the only thing the
+          eye caught scrolling through. */}
+      <StageSlot beat="career" className="absolute inset-0 opacity-30" />
       <Container>
-        <SectionHeading id="career-title" eyebrow={CAREER.eyebrow} title={CAREER.title} />
+        {/* `align="left"` drops SectionHeading's implicit `mx-auto`, so the
+            measure column is supplied here — at the same width as the list
+            below, or a left-aligned heading and a centred list disagree about
+            where the left edge is. */}
+        <div className="mx-auto max-w-5xl">
+          <SectionHeading
+            id="career-title"
+            align="left"
+            eyebrow={CAREER.eyebrow}
+            title={CAREER.title}
+          />
+        </div>
         <ol className="mx-auto mt-12 max-w-5xl space-y-2">
           {CAREER.stages.map((s, i) => (
             <li key={s.name}>
               <Reveal delay={i * 0.05}>
-                <div className="group relative flex items-start gap-4 rounded-2xl border border-border-subtle bg-background/70 p-4 transition-colors hover:border-primary-500/30 sm:p-5">
+                {/* No hover border and no `group`: there is no destination to
+                    go to, and nothing in here was going to respond to a
+                    `group-hover:` either. The lift on hover announced a
+                    click that does not exist. */}
+                <div className="relative flex items-start gap-4 rounded-2xl border border-border-subtle bg-background/70 p-4 sm:p-5">
                   <div className="flex flex-col items-center self-stretch" aria-hidden="true">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary-500/30 bg-surface-elevated font-mono text-xs font-bold text-primary-300">
                       {String(i + 1).padStart(2, '0')}
@@ -311,7 +338,7 @@ export function CareerSection() {
                     ) : null}
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-text">{s.name}</p>
+                    <h3 className="text-sm font-bold text-text">{s.name}</h3>
                     <p className="mt-1 text-sm leading-relaxed text-text-secondary">{s.body}</p>
                   </div>
                 </div>
@@ -319,7 +346,14 @@ export function CareerSection() {
             </li>
           ))}
         </ol>
-        <p className="mt-8 text-center text-xs font-medium text-success">{CAREER.note}</p>
+        {/* Not `text-success`. This is a standing privacy guarantee, not an OK
+            state, and the same file uses green for a verified source citation —
+            two different meanings on one page. A lock reads as the guarantee
+            it is, and matches how CONNECTORS.note is set. */}
+        <p className="mx-auto mt-8 flex max-w-5xl items-start gap-2 text-xs leading-relaxed text-text-secondary">
+          <Icon name="lock" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          {CAREER.note}
+        </p>
       </Container>
     </Section>
   );

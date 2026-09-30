@@ -38,7 +38,7 @@ export default function HowItWorks() {
     <Section
       id="how-it-works"
       labelledBy="hiw-title"
-      className="bg-surface-50/60"
+      className="landing-band landing-band-first"
       // section ref for scroll math
       innerRef={sectionRef}
     >

@@ -1,7 +1,9 @@
 /**
  * Memory — interactive knowledge graph (vanilla three).
- * Six entity types clustered by affinity; hover/tap highlights
- * relationships and reports them to the DOM overlay.
+ * Six entity types clustered by affinity; relationships can be highlighted
+ * either by pointer hover (the standalone `mountKnowledgeGraph` path) or by
+ * an id handed down from the section's curated buttons (the shared-stage
+ * `createKnowledgeGraph` path, which is what the landing page actually runs).
  */
 
 import * as THREE from 'three';
@@ -213,7 +215,15 @@ export function mountKnowledgeGraph({
 export function createKnowledgeGraph(theme: 'dark' | 'light'): {
   group: THREE.Group;
   update: (t: number) => void;
-  setSelected: (i: number) => void;
+  /**
+   * Highlight the node with this id and dim the rest.
+   *
+   * Accepts either the curated numeric id the Memory section passes (see
+   * `CURATED` — the graph index of each hub node) or a node label, so callers
+   * that only know what a node is called can still select it. An id that
+   * matches nothing clears the highlight rather than leaving a stale one.
+   */
+  setSelected: (id: string | number) => void;
   dispose: () => void;
 } {
   const palette = scenePalette(theme);
@@ -225,14 +235,28 @@ export function createKnowledgeGraph(theme: 'dark' | 'light'): {
   mesh.frustumCulled = false;
   const dummy = new THREE.Object3D();
   const color = new THREE.Color();
-  nodes.forEach((n, i) => {
-    dummy.position.copy(n.pos);
-    dummy.scale.setScalar(n.type === 'project' || n.type === 'org' ? 1.35 : 1);
+  // Base appearance is cached so repainting on selection is a pure read of
+  // these arrays — otherwise every deselect would have to re-derive colours
+  // from the palette, and a palette tweak could quietly change the resting
+  // state instead of the highlighted one.
+  const baseColors = nodes.map((n) => new THREE.Color(palette.nodes[n.type] ?? palette.core));
+  const baseScales = nodes.map((n) => (n.type === 'project' || n.type === 'org' ? 1.35 : 1));
+  const writeNode = (i: number, scale: number): void => {
+    dummy.position.copy(nodes[i]!.pos);
+    dummy.scale.setScalar(scale);
     dummy.updateMatrix();
     mesh.setMatrixAt(i, dummy.matrix);
-    mesh.setColorAt(i, color.set(palette.nodes[n.type] ?? palette.core));
-  });
+  };
   group.add(mesh);
+
+  const adjacency = new Map<number, number[]>();
+  edges.forEach(([a, b]) => {
+    if (!adjacency.has(a)) adjacency.set(a, []);
+    if (!adjacency.has(b)) adjacency.set(b, []);
+    adjacency.get(a)!.push(b);
+    adjacency.get(b)!.push(a);
+  });
+
   const edgePos = new Float32Array(edges.length * 6);
   const edgeCol = new Float32Array(edges.length * 6);
   edges.forEach(([a, b], i) => {
@@ -243,16 +267,26 @@ export function createKnowledgeGraph(theme: 'dark' | 'light'): {
   const edgeGeo = new THREE.BufferGeometry();
   edgeGeo.setAttribute('position', new THREE.BufferAttribute(edgePos, 3));
   edgeGeo.setAttribute('color', new THREE.BufferAttribute(edgeCol, 3));
-  const lines = new THREE.LineSegments(
-    edgeGeo,
-    new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.85 }),
-  );
+  const REST_OPACITY = 0.85;
+  const edgeMat = new THREE.LineBasicMaterial({
+    vertexColors: true,
+    transparent: true,
+    opacity: REST_OPACITY,
+  });
+  const lines = new THREE.LineSegments(edgeGeo, edgeMat);
   lines.frustumCulled = false;
   group.add(lines);
+
+  // Colour roles, resolved once. `edge` doubles as the dim target for nodes:
+  // it is the one palette entry that sits on the same side of every node hue
+  // as the panel behind them in both themes, so lerping toward it reads as
+  // "receding" rather than as a different kind of node.
+  const cDim = new THREE.Color(palette.edge);
+  const cHot = new THREE.Color(palette.edgeHot);
+  const cLink = new THREE.Color(palette.link);
+  const scratch = new THREE.Color();
+
   function paintEdges(active: number): void {
-    const cDim = new THREE.Color(palette.edge);
-    const cHot = new THREE.Color(palette.edgeHot);
-    const cLink = new THREE.Color(palette.link);
     edges.forEach(([a, b], i) => {
       const hot = active >= 0 && (a === active || b === active);
       const col = hot ? (a === active ? cHot : cLink) : cDim;
@@ -261,20 +295,66 @@ export function createKnowledgeGraph(theme: 'dark' | 'light'): {
     });
     (edgeGeo.getAttribute('color') as THREE.BufferAttribute).needsUpdate = true;
   }
+
+  /**
+   * Emphasis is carried by colour, scale and link opacity rather than by
+   * `linewidth`: WebGL clamps line width to 1px on every mainstream
+   * implementation, so asking LineBasicMaterial for 3px silently does nothing
+   * and the highlight would look identical to the resting state.
+   */
+  function paintNodes(active: number): void {
+    const near = active >= 0 ? new Set(adjacency.get(active) ?? []) : null;
+    nodes.forEach((_, i) => {
+      let col = baseColors[i]!;
+      let scale = baseScales[i]!;
+      if (active >= 0) {
+        if (i === active) {
+          col = cHot;
+          scale *= 1.5;
+        } else if (near!.has(i)) {
+          scale *= 1.12;
+        } else {
+          col = scratch.copy(baseColors[i]!).lerp(cDim, 0.6);
+        }
+      }
+      writeNode(i, scale);
+      mesh.setColorAt(i, color.copy(col));
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  }
+
+  function resolveId(id: string | number): number {
+    const raw = String(id).trim();
+    if (raw !== '') {
+      const asIndex = Number(raw);
+      if (Number.isInteger(asIndex) && asIndex >= 0 && asIndex < nodes.length) return asIndex;
+    }
+    const want = raw.toLowerCase();
+    return nodes.findIndex((n) => n.label.toLowerCase() === want);
+  }
+
+  // Resting state is painted through the same path as a highlighted one, so
+  // "nothing selected" can never diverge from "selected, then deselected".
   paintEdges(-1);
+  paintNodes(-1);
+
   function update(t: number): void {
     mesh.rotation.y = t * 0.05;
     mesh.rotation.x = 0.18;
     lines.rotation.copy(mesh.rotation);
   }
-  function setSelected(i: number): void {
-    paintEdges(i);
+  function setSelected(id: string | number): void {
+    const active = resolveId(id);
+    paintEdges(active);
+    paintNodes(active);
+    edgeMat.opacity = active >= 0 ? 1 : REST_OPACITY;
   }
   function dispose(): void {
     nodeGeo.dispose();
     nodeMat.dispose();
     edgeGeo.dispose();
-    (lines.material as THREE.Material).dispose();
+    edgeMat.dispose();
   }
   return { group, update, setSelected, dispose };
 }

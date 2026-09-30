@@ -697,6 +697,29 @@ html.high-contrast,
   :root:not(.dark) .landing-aurora::after { background: rgb(var(--landing-glow-b) / 0.08); }
 
   /* Glass panel tuned per theme (app .glass is dark-tuned). */
+/*
+   * Section banding.
+   *
+   * The rhythm was `bg-surface-50/60`, which measures 1.011:1 in light and
+   * 1.037:1 in dark — below one sRGB step, so no section boundary was visible
+   * in any theme and the alternation was purely decorative intent. A tint that
+   * a theme change can erase is not a boundary.
+   *
+   * So the separation is carried by a hairline rule, which reads in all three
+   * themes, and the tint only reinforces it. `--surface-200` is used rather
+   * than `--surface-50` because it clears ~1.09:1 against the page in light
+   * and ~1.14:1 in dark — the first token strong enough to be perceived.
+   */
+  .landing-band {
+    background: rgb(var(--surface-200));
+    box-shadow: inset 0 1px 0 rgb(var(--border));
+  }
+  /* The first band needs no top rule — there is nothing above it to separate
+     from, and a rule under the sticky nav reads as a stray line. */
+  .landing-band-first {
+    box-shadow: none;
+  }
+
   .landing-panel {
     background: rgb(var(--surface-elevated) / 0.55);
     border: 1px solid rgb(var(--border-subtle));
@@ -738,12 +761,6 @@ html.high-contrast,
     animation: flowDash 1.4s linear infinite;
   }
 
-  /* Compounding density bars. */
-  .landing-density-bar {
-    background: linear-gradient(to top,
-      rgb(var(--landing-glow-a) / 0.25),
-      rgb(var(--landing-glow-a) / 0.9));
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

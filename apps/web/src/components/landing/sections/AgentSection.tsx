@@ -1,19 +1,35 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AGENTS } from '@/lib/landing/copy';
 import { Container, Reveal, Section, SectionHeading } from '@/components/landing/shared/LandingKit';
-import { AGENT_HUES } from '@/components/landing/3d/scene-utils';
-import { StageSlot } from '@/components/landing/3d/SceneShell';
+import { AGENT_HUES_BY_THEME } from '@/components/landing/3d/scene-utils';
+import { StageSlot, useStageSelection } from '@/components/landing/3d/SceneShell';
+import { useTheme } from '@/hooks/useTheme';
+
+/**
+ * Per-agent dot colours, per theme — now the SAME map the WebGL orbit reads
+ * via `agentHue()`. This used to be a local copy of the hexes, which is how
+ * the DOM dots and the orbiting octahedra ended up disagreeing: the dots were
+ * fixed for light mode while the canvas still painted dark hues. One map,
+ * resolved per theme, is the only way two renderers can stay in agreement.
+ */
 
 export default function AgentSection() {
+  const { theme } = useTheme();
+  // high-contrast shares the dark surface, so it takes the dark hues.
+  const dots = AGENT_HUES_BY_THEME[theme === 'light' ? 'light' : 'dark'];
   const [selectedId, setSelectedId] = useState(AGENTS.list[0]!.id);
   const selected = AGENTS.list.find((a) => a.id === selectedId) ?? AGENTS.list[0]!;
-  const activeIndex = Math.max(
-    0,
-    AGENTS.list.findIndex((a) => a.id === selectedId),
-  );
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const selectAgent = useStageSelection('agents');
+
+  // The orbit only ever heard about selection through mountAgentOrbit, which
+  // the shared stage does not use — so the tablist moved a dossier card while
+  // the 3D ring stood still. Push every selection change into the stage.
+  useEffect(() => {
+    selectAgent(selectedId);
+  }, [selectAgent, selectedId]);
 
   const onTabKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
     const idx = AGENTS.list.findIndex((a) => a.id === selectedId);
@@ -31,7 +47,7 @@ export default function AgentSection() {
   };
 
   return (
-    <Section id="agents" labelledBy="agents-title" className="bg-surface-50/60">
+    <Section id="agents" labelledBy="agents-title" className="landing-band">
       <Container>
         <SectionHeading
           id="agents-title"
@@ -47,7 +63,7 @@ export default function AgentSection() {
               <div
                 className="relative mx-auto aspect-square w-full max-w-[480px]"
                 role="img"
-                aria-label={`${selected.name} selected. Eight specialist agents orbiting the shared memory core.`}
+                aria-label={`${selected.name} selected. ${AGENTS.list.length} specialist agents orbiting the shared memory core.`}
               >
                 <StageSlot beat="agents" className="absolute inset-0" />
               </div>
@@ -79,7 +95,7 @@ export default function AgentSection() {
                   >
                     <span
                       className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle"
-                      style={{ background: AGENT_HUES[a.id] }}
+                      style={{ background: dots[a.id] ?? 'currentColor' }}
                       aria-hidden="true"
                     />
                     {a.name.replace(' Agent', '')}
@@ -100,7 +116,7 @@ export default function AgentSection() {
               <div className="flex items-center gap-3">
                 <span
                   className="h-3 w-3 rounded-full"
-                  style={{ background: AGENT_HUES[selected.id] }}
+                  style={{ background: dots[selected.id] ?? 'currentColor' }}
                   aria-hidden="true"
                 />
                 <p className="font-mono text-xs uppercase tracking-widest text-text-muted">

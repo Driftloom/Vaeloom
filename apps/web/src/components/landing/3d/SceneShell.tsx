@@ -26,7 +26,6 @@ import {
   type ReactNode,
 } from 'react';
 import {
-  useInView,
   useQualityTier,
   densityForTier,
   useReducedMotionPref,
@@ -42,32 +41,26 @@ function useThemeValue(): Theme {
   return theme === 'light' ? 'light' : 'dark';
 }
 
-const MemoryCoreCanvas = dynamic(() => import('./MemoryCoreCanvas'), { ssr: false });
-const KnowledgeGraphCanvas = dynamic(() => import('./KnowledgeGraphCanvas'), { ssr: false });
-const AgentOrbitCanvas = dynamic(() => import('./AgentOrbitCanvas'), { ssr: false });
 const DustFieldCanvas = dynamic(() => import('./DustFieldCanvas'), { ssr: false });
-const JourneyCanvas = dynamic(() => import('./JourneyCanvas'), { ssr: false });
-const ConnectorCanvas = dynamic(() => import('./ConnectorCanvas'), { ssr: false });
-const GrowthCanvas = dynamic(() => import('./GrowthCanvas'), { ssr: false });
-const CtaCoreCanvas = dynamic(() => import('./CtaCoreCanvas'), { ssr: false });
 
 type Theme = 'dark' | 'light';
 
-function useSceneGate() {
-  const supported = useWebGLSupport();
-  const reduced = useReducedMotionPref();
-  const tier = useQualityTier();
-  const view = useInView<HTMLDivElement>('240px');
-  const webglReady = Boolean(supported) && !reduced;
-  return { ...view, webglReady, active: view.inView && !reduced, tier };
-}
-
-/** Whether rich 3D is available at all (support + motion + tier). */
+/**
+ * Whether the live WebGL stage can run at all: WebGL support plus a tier
+ * above low.
+ *
+ * Reduced motion is deliberately NOT part of this. It used to be, which meant
+ * a reduced-motion visitor got a captured poster instead of the scene -- and
+ * since only 7 of 16 beats have a poster, 9 of them rendered a broken image.
+ * Stripping the page of its own composition is a worse accessibility outcome
+ * than showing that composition motionless. Reduced motion is now honoured
+ * INSIDE the renderer: the scene composes and renders, but time does not
+ * advance.
+ */
 export function useSceneAvailable(): boolean {
   const supported = useWebGLSupport();
-  const reduced = useReducedMotionPref();
   const tier = useQualityTier();
-  return Boolean(supported) && !reduced && tier !== 'low';
+  return Boolean(supported) && tier !== 'low';
 }
 
 /**
@@ -99,10 +92,34 @@ export function useLandingTheme(themeClass?: string): Theme {
 
 interface StageCtxValue {
   register: (beat: string, el: HTMLElement | null, getProgress: () => number) => void;
+  select: (beat: string, id: string | number) => void;
   ready: boolean;
 }
 
 const StageCtx = createContext<StageCtxValue | null>(null);
+
+/**
+ * Tell the shared stage which item this beat's section has selected.
+ *
+ * One canvas hosts every scene, so a section cannot reach its own scene
+ * directly — it asks the stage, which routes to whichever beat is active.
+ * The stage keeps the selection per beat, so a section may set it before
+ * scrolling into view and its scene is already correct when the beat
+ * activates.
+ *
+ * Returns a stable callback, safe to call from an effect on selection
+ * change, and a no-op when WebGL is unavailable or the beat's scene has no
+ * selection channel.
+ */
+export function useStageSelection(beat: string): (id: string | number) => void {
+  const ctx = useContext(StageCtx);
+  return useCallback(
+    (id: string | number) => {
+      ctx?.select(beat, id);
+    },
+    [ctx, beat],
+  );
+}
 
 /**
  * StageProvider owns ONE WebGL context for the whole page. As each section's
@@ -246,7 +263,11 @@ export function StageProvider({ children }: { children: ReactNode }): ReactEleme
     stage.setTheme(theme);
   }, [theme]);
 
-  return <StageCtx.Provider value={{ register, ready }}>{children}</StageCtx.Provider>;
+  const select = useCallback((beat: string, id: string | number) => {
+    stageRef.current?.setSelected?.(beat, id);
+  }, []);
+
+  return <StageCtx.Provider value={{ register, select, ready }}>{children}</StageCtx.Provider>;
 }
 
 export function StageSlot({

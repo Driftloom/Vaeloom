@@ -28,14 +28,42 @@ const T_FLYBY = 4;
 
 const BOX = { x: 13, y: 9, zBack: 11, zFront: 8 };
 
+/**
+ * Light-mode weight. Dark mode is untouched by every constant in this block.
+ *
+ * The hero's legibility problem in light mode is DENSITY and SCALE, not hue —
+ * the palette was already redesigned for light (`scenePalette`), and the marks
+ * that survive it are the small, faint, high-count ones. So light mode gets:
+ *
+ *  - `ALPHA` well under half. A speck only has to clear ~3/255 against white to
+ *    be visible, so cutting alpha is what actually removes marks; cutting hue
+ *    contrast does not.
+ *  - `SIZE` down, because a 3px dot is a dot while a 1.5px one is grain.
+ *  - `SINK` to bias the box fill DOWNWARD, away from the top of the frustum.
+ *    In light mode the copy block is the top of the frame, and the drift
+ *    population is uniform in Y, so the marks most likely to land on the
+ *    subtitle are exactly the ones that can be pushed off it without thinning
+ *    the composition that sits below.
+ *  - `NormalBlending`, for the reason documented at the material below.
+ */
+const LIGHT_ALPHA = 0.56;
+const LIGHT_SIZE = 0.82;
+const LIGHT_UOPACITY = 0.6;
+/** Exponent < 1 biases the uniform box fill toward its lower half. */
+const LIGHT_SINK = 0.72;
+
 function rand(min: number, max: number): number {
   return min + Math.random() * (max - min);
 }
 
 export function createParticleField(theme: 'dark' | 'light', density: number): ParticleFieldHandle {
   const palette = scenePalette(theme);
+  const light = theme === 'light';
   const baseCount = 2600;
-  const count = Math.max(400, Math.round(baseCount * density));
+  // The floor exists so a low tier still gets a field. In light mode a low tier
+  // is exactly the case where legibility is tightest, so its floor moves down
+  // with the theme scale instead of pinning light mode back to dark density.
+  const count = Math.max(light ? 260 : 400, Math.round(baseCount * density));
 
   const positions = new Float32Array(count * 3); // final (with parallax)
   const base = new Float32Array(count * 3); // simulated positions
@@ -55,6 +83,16 @@ export function createParticleField(theme: 'dark' | 'light', density: number): P
   const cStream = new THREE.Color(palette.streamA);
   const cStruct = new THREE.Color(palette.structure);
   const cLink = new THREE.Color(palette.link ?? palette.structure);
+
+  /**
+   * Y sample for the box fill. Dark keeps the uniform distribution; light
+   * sinks it toward the bottom of the box so the upper frustum — where the
+   * hero's copy lives in light mode — carries less of the population.
+   */
+  function boxY(): number {
+    if (!light) return rand(-BOX.y, BOX.y);
+    return BOX.y - Math.pow(Math.random(), LIGHT_SINK) * 2 * BOX.y;
+  }
 
   function respawnShell(i: number, rMin: number, rMax: number) {
     const r = rand(rMin, rMax);
@@ -88,7 +126,10 @@ export function createParticleField(theme: 'dark' | 'light', density: number): P
 
     if (type === T_FLYBY) {
       base[i * 3] = rand(-8, 8);
-      base[i * 3 + 1] = rand(-5, 5);
+      // Same ±5 vertical band as before, sunk in light mode. Flybys are the
+      // largest, nearest marks in the field, so they are the ones that land on
+      // the copy most visibly.
+      base[i * 3 + 1] = light ? boxY() * 0.55 : rand(-5, 5);
       base[i * 3 + 2] = rand(-BOX.zBack, BOX.zFront);
       pdir[i * 3] = rand(-0.15, 0.15);
       pdir[i * 3 + 1] = rand(-0.1, 0.1);
@@ -116,7 +157,7 @@ export function createParticleField(theme: 'dark' | 'light', density: number): P
     } else {
       // drift — fill the whole box
       base[i * 3] = rand(-BOX.x, BOX.x);
-      base[i * 3 + 1] = rand(-BOX.y, BOX.y);
+      base[i * 3 + 1] = boxY();
       base[i * 3 + 2] = rand(-BOX.zBack, BOX.zFront);
     }
 
@@ -138,7 +179,10 @@ export function createParticleField(theme: 'dark' | 'light', density: number): P
     else if (sr < 0.98) s = 0.08 + Math.random() * 0.016;
     else s = 0.11 + Math.random() * 0.02;
     if (type === T_FLYBY) s *= 1.15; // foreground slightly brighter/larger
+    if (light) s *= LIGHT_SIZE;
     sizes[i] = s;
+    // Base alpha stays UNSCALED here; the live scale is applied once per frame
+    // in `update`, so the per-behavior overrides below cannot bypass it.
     alphas[i] = type === T_FLYBY ? 0.55 : 0.42 + Math.random() * 0.18;
   }
 
@@ -150,7 +194,7 @@ export function createParticleField(theme: 'dark' | 'light', density: number): P
 
   const mat = new THREE.ShaderMaterial({
     uniforms: {
-      uOpacity: { value: theme === 'light' ? 0.7 : 0.85 },
+      uOpacity: { value: light ? LIGHT_UOPACITY : 0.85 },
     },
     vertexShader: `
       attribute float aSize;
@@ -179,7 +223,24 @@ export function createParticleField(theme: 'dark' | 'light', density: number): P
     `,
     transparent: true,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
+    // Additive is a real, load-bearing choice on DARK: `dst + src·a` is what
+    // turns overlapping marks into glow, and it is why the type sits in front
+    // of a lit field rather than on top of confetti.
+    //
+    // It is the wrong choice on LIGHT, for a reason that is easy to get
+    // backwards. The hero canvas is transparent and composited over the page,
+    // so for a mark that overlaps nothing, additive and normal are identical —
+    // both give `C·a + (1-a)·page`. They diverge only where marks OVERLAP:
+    // additive accumulates toward `#FEFDFF`, normal converges to the tint. So
+    // additive does not tint the dense centre of the light field, it erases it
+    // and leaves a colourless white smudge — and it makes the marks that DO
+    // survive (the isolated ones) the only coloured things on the page, which
+    // is precisely the "confetti" read. The light palette is also already
+    // normally blended at its core (`intelligenceCoreScene`), so additive
+    // particles over a normal-blended core mixed two compositing models in one
+    // canvas for no gain. Light mode therefore normal-blends, and pays for the
+    // lost glow with the alpha and count reductions above.
+    blending: light ? THREE.NormalBlending : THREE.AdditiveBlending,
   });
 
   const points = new THREE.Points(geo, mat);
@@ -197,6 +258,12 @@ export function createParticleField(theme: 'dark' | 'light', density: number): P
       const motion = rm ? 0.18 : 1;
       const useMouse = rm ? 0 : 1;
       const d = Math.min(dt, 0.05);
+      // Single per-frame alpha scale, applied on EVERY branch. The behaviors
+      // below override alpha per frame (fade in/out, distance clamps), so
+      // scaling only the static base would let those overrides restore the
+      // full-strength marks — the flyby branch, which reaches alpha 0.8, most of
+      // all. One scale here is what makes the light-mode reduction total.
+      const aScale = light ? LIGHT_ALPHA : 1;
 
       for (let i = 0; i < count; i++) {
         const type = ptype[i]!;
@@ -213,7 +280,7 @@ export function createParticleField(theme: 'dark' | 'light', density: number): P
           else if (base[i * 3 + 1]! < -BOX.y) base[i * 3 + 1] = BOX.y;
           if (base[i * 3 + 2]! > BOX.zFront) base[i * 3 + 2] = -BOX.zBack;
           else if (base[i * 3 + 2]! < -BOX.zBack) base[i * 3 + 2] = BOX.zFront;
-          alphaData[i] = alphas[i]!;
+          alphaData[i] = alphas[i]! * aScale;
         } else if (type === T_ATTRACT) {
           const x = base[i * 3]!;
           const y = base[i * 3 + 1]!;
@@ -224,7 +291,7 @@ export function createParticleField(theme: 'dark' | 'light', density: number): P
           base[i * 3 + 1] = y - (y / len) * step;
           base[i * 3 + 2] = z - (z / len) * step;
           if (len < 0.95) respawnShell(i, 3.5, 7.5);
-          alphaData[i] = Math.min(0.6, len * 0.1);
+          alphaData[i] = Math.min(0.6, len * 0.1) * aScale;
         } else if (type === T_EMIT) {
           const x = base[i * 3]!;
           const y = base[i * 3 + 1]!;
@@ -244,7 +311,7 @@ export function createParticleField(theme: 'dark' | 'light', density: number): P
           }
           const fadeIn = Math.min(1, (len - 0.9) / 0.8);
           const fadeOut = 1 - Math.min(1, Math.max(0, (len - 5) / 1.5));
-          alphaData[i] = Math.min(0.6, 0.5 * fadeIn * fadeOut + 0.08);
+          alphaData[i] = Math.min(0.6, 0.5 * fadeIn * fadeOut + 0.08) * aScale;
         } else if (type === T_ORBIT) {
           const ang = pangle[i]! + t * 0.18 * sp * motion;
           const rad = pradius[i]!;
@@ -252,7 +319,7 @@ export function createParticleField(theme: 'dark' | 'light', density: number): P
           base[i * 3] = Math.cos(ang) * rad;
           base[i * 3 + 2] = Math.sin(ang) * rad;
           base[i * 3 + 1] = Math.sin(ang) * rad * tilt;
-          alphaData[i] = alphas[i]!;
+          alphaData[i] = alphas[i]! * aScale;
         } else {
           // FLYBY — travel toward the camera (+Z), respawn far back
           base[i * 3] = base[i * 3]! + pdir[i * 3]! * 0.01 * motion;
@@ -261,10 +328,13 @@ export function createParticleField(theme: 'dark' | 'light', density: number): P
             base[i * 3 + 2]! + (0.9 + 0.4 * Math.sin(t * 0.3 + pseed[i]!)) * sp * d * motion;
           if (base[i * 3 + 2]! > BOX.zFront) {
             base[i * 3] = rand(-8, 8);
-            base[i * 3 + 1] = rand(-5, 5);
+            // Respawn low in light mode for the same reason the initial fill is
+            // sunk: a flyby that reappears at the top of the frustum lands on
+            // the copy, and these are the largest marks in the field.
+            base[i * 3 + 1] = boxY() * 0.55;
             base[i * 3 + 2] = -BOX.zBack;
           }
-          alphaData[i] = 0.3 + Math.min(0.5, Math.max(0, (base[i * 3 + 2]! + 2) / 12));
+          alphaData[i] = (0.3 + Math.min(0.5, Math.max(0, (base[i * 3 + 2]! + 2) / 12))) * aScale;
         }
 
         // parallax: near particles move more with the mouse than far ones

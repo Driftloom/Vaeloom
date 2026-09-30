@@ -105,12 +105,10 @@ export function createSchedulerScene(theme: ThemeName): SchedulerScene {
   const particles = new THREE.Points(particleGeo, particleMat);
   group.add(particles);
 
-  // ─── Conflict indicators (warning lines between close particles) ──
-  const conflictMat = new THREE.LineBasicMaterial({
-    color: warningColor,
-    transparent: true,
-    opacity: 0.15,
-  });
+  // Conflict indicators (warning lines between close particles) are NOT drawn
+  // here. A material was constructed for them and disposed, but no geometry
+  // was ever attached. Removed rather than left describing a visual the beat
+  // does not render — the conflict claim is carried by the DOM card beside it.
 
   function update(t: number, dt: number, localProgress: number): void {
     const posAttr = particleGeo.attributes['position'] as THREE.BufferAttribute;
@@ -133,11 +131,9 @@ export function createSchedulerScene(theme: ThemeName): SchedulerScene {
   }
 
   function dispose(): void {
-    axisGeo.dispose();
     axisMat.dispose();
     particleGeo.dispose();
     particleMat.dispose();
-    conflictMat.dispose();
     group.traverse((c) => {
       if (c instanceof THREE.Line) {
         c.geometry.dispose();
