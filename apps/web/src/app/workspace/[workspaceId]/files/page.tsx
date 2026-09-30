@@ -94,6 +94,20 @@ function queueStatusForScan(scanStatus: DocumentResponse['scan_status']): QueueI
 
 const NOT_REPORTED = 'Not reported';
 
+/**
+ * The document's current revision, or null when the payload never carried one.
+ * `DocumentResponse` has no version field, so a hardcoded "v1" on every row
+ * asserted a revision the server had not reported.
+ */
+function documentVersionOf(doc: DocumentResponse): string | null {
+  const raw =
+    doc.metadata?.['version'] ??
+    doc.metadata?.['version_number'] ??
+    doc.metadata?.['versionNumber'];
+  if (raw === undefined || raw === null || raw === '') return null;
+  return String(raw);
+}
+
 const TEXT_TYPES = new Set(['text', 'markdown', 'csv', 'json', 'html', 'xml', 'yaml']);
 const IMAGE_TYPES = new Set(['image', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'svg']);
 
@@ -742,8 +756,7 @@ export default function WorkspaceFilesPage() {
         <div className="bg-surface border border-border/70 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-              Upload Queue ({uploadQueue.filter((q) => q.status === 'clean').length}/
-              {uploadQueue.length} completed)
+              Upload Queue ({uploadQueue.filter((q) => q.doc).length}/{uploadQueue.length} uploaded)
             </h3>
             <button
               type="button"
@@ -996,8 +1009,11 @@ export default function WorkspaceFilesPage() {
               }
             />
           ) : (
-            <div className="bg-surface border border-border/60 rounded-xl overflow-hidden shadow-sm">
-              <table className="w-full text-left border-collapse text-sm">
+            // overflow-x-auto, not overflow-hidden: seven columns cannot fit a
+            // 375px viewport, and `hidden` clipped the table with no way to reach
+            // the right-hand columns.
+            <div className="bg-surface border border-border/60 rounded-xl overflow-x-auto shadow-sm">
+              <table className="w-full min-w-[48rem] text-left border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-border/50 bg-surface-hover/30 text-text-muted text-xs uppercase tracking-wider">
                     <th scope="col" className="p-3 w-10 text-center">
@@ -1035,7 +1051,9 @@ export default function WorkspaceFilesPage() {
                 <tbody className="divide-y divide-border/30">
                   {filteredDocuments.map((doc) => {
                     const isSelected = selectedDocIds.has(doc.id);
-                    const scanStatus = doc.scan_status || 'CLEAN';
+                    // No default: an absent verdict is "not reported", never a pass.
+                    const scanState = scanStateOf(doc.scan_status);
+                    const docVersion = documentVersionOf(doc);
 
                     return (
                       <tr
@@ -1065,19 +1083,24 @@ export default function WorkspaceFilesPage() {
                           </div>
                         </td>
                         <td className="p-3">
-                          {scanStatus === 'CLEAN' && (
-                            <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full font-medium">
-                              ✓ Clean
+                          {scanState === 'clean' && (
+                            <span className="inline-flex items-center gap-1 text-xs text-success bg-success/10 border border-success/30 px-2 py-0.5 rounded-full font-medium">
+                              <span aria-hidden="true">✓</span> Clean
                             </span>
                           )}
-                          {scanStatus === 'PENDING' && (
-                            <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full font-medium">
-                              ◌ Scanning
+                          {scanState === 'scanning' && (
+                            <span className="inline-flex items-center gap-1 text-xs text-warning bg-warning/10 border border-warning/30 px-2 py-0.5 rounded-full font-medium">
+                              <span aria-hidden="true">◌</span> Scanning
                             </span>
                           )}
-                          {scanStatus === 'MALICIOUS' && (
-                            <span className="inline-flex items-center gap-1 text-[11px] text-red-600 bg-red-500/10 px-2 py-0.5 rounded-full font-medium">
-                              ⚠ Quarantined
+                          {scanState === 'quarantined' && (
+                            <span className="inline-flex items-center gap-1 text-xs text-error bg-error/10 border border-error/30 px-2 py-0.5 rounded-full font-medium">
+                              <span aria-hidden="true">⚠</span> Quarantined
+                            </span>
+                          )}
+                          {scanState === 'unknown' && (
+                            <span className="inline-flex items-center gap-1 text-xs text-text-muted bg-surface-elevated border border-border px-2 py-0.5 rounded-full font-medium">
+                              Scan {NOT_REPORTED}
                             </span>
                           )}
                         </td>
@@ -1086,8 +1109,9 @@ export default function WorkspaceFilesPage() {
                             type="button"
                             onClick={() => openVersions(doc)}
                             className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-mono"
+                            aria-label={`Version history for ${getFileName(doc.path)}`}
                           >
-                            v1
+                            {docVersion === null ? 'History' : `v${docVersion}`}
                           </button>
                         </td>
                         <td className="p-3 text-xs text-text-muted">
@@ -1103,12 +1127,14 @@ export default function WorkspaceFilesPage() {
                               onClick={() => openViewer(doc)}
                               className="p-1 text-text-muted hover:text-text rounded"
                               title="View Document"
+                              aria-label={`View ${getFileName(doc.path)}`}
                             >
                               <svg
                                 className="w-4 h-4"
                                 fill="none"
                                 viewBox="0 0 24 24"
                                 stroke="currentColor"
+                                aria-hidden="true"
                               >
                                 <path
                                   strokeLinecap="round"
@@ -1129,12 +1155,14 @@ export default function WorkspaceFilesPage() {
                               onClick={() => openShareModal(doc)}
                               className="p-1 text-text-muted hover:text-text rounded"
                               title="Share Document"
+                              aria-label={`Share ${getFileName(doc.path)}`}
                             >
                               <svg
                                 className="w-4 h-4"
                                 fill="none"
                                 viewBox="0 0 24 24"
                                 stroke="currentColor"
+                                aria-hidden="true"
                               >
                                 <path
                                   strokeLinecap="round"
@@ -1247,7 +1275,9 @@ export default function WorkspaceFilesPage() {
                     <button
                       type="button"
                       disabled={versionBusy}
-                      onClick={() => handleRestoreVersion(v.version_number)}
+                      onClick={() =>
+                        setPendingConfirm({ kind: 'restore-version', version: v.version_number })
+                      }
                       className="px-2.5 py-1 text-xs font-medium rounded border border-border hover:bg-surface-hover"
                     >
                       Restore
@@ -1408,6 +1438,37 @@ export default function WorkspaceFilesPage() {
           </div>
         </Modal>
       )}
+
+      <ConfirmDialog
+        isOpen={pendingConfirm !== null}
+        onClose={() => setPendingConfirm(null)}
+        onConfirm={() => {
+          if (pendingConfirm?.kind === 'delete-folder') {
+            void handleDeleteFolder(pendingConfirm.folderId, pendingConfirm.name);
+          } else if (pendingConfirm?.kind === 'restore-version') {
+            void handleRestoreVersion(pendingConfirm.version);
+          } else {
+            setPendingConfirm(null);
+          }
+        }}
+        title={
+          pendingConfirm?.kind === 'delete-folder'
+            ? 'Delete folder'
+            : pendingConfirm?.kind === 'restore-version'
+              ? 'Restore version'
+              : 'Confirm'
+        }
+        message={
+          pendingConfirm?.kind === 'delete-folder'
+            ? `Delete folder "${pendingConfirm.name}"? Documents inside it move to the workspace root.`
+            : pendingConfirm?.kind === 'restore-version'
+              ? `Make Version ${pendingConfirm.version} the active content of this document?`
+              : ''
+        }
+        confirmLabel={pendingConfirm?.kind === 'restore-version' ? 'Restore' : 'Delete'}
+        variant="danger"
+        loading={versionBusy || folderBusy}
+      />
     </div>
   );
 }

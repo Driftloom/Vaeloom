@@ -7,6 +7,7 @@ import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { PageHeader } from '@/components/shared/Page';
 import { ApprovalCard } from '@/components/shared/ApprovalCard';
+import { useToast } from '@/components/shared/Toast';
 import { notificationApi, approvalApi } from '@/lib/api-client';
 import type { NotificationResponse, ApprovalItem } from '@/lib/api-client';
 
@@ -28,7 +29,7 @@ const channelStyles: Record<string, string> = {
   email: 'border-primary/50 text-primary bg-primary/10',
   webhook: 'border-border text-text-muted bg-surface',
   slack: 'border-success/50 text-success bg-success/10',
-  push: 'border-blue-500/50 text-info bg-blue-950/20',
+  push: 'border-info/50 text-info bg-info/10',
 };
 
 const statusStyles: Record<string, string> = {
@@ -40,6 +41,7 @@ const statusStyles: Record<string, string> = {
 export default function NotificationsPage() {
   const params = useParams();
   const workspaceId = params?.['workspaceId'] as string | undefined;
+  const { toast } = useToast();
 
   const {
     data: notifications,
@@ -59,18 +61,36 @@ export default function NotificationsPage() {
 
   const handleApprove = useCallback(
     async (id: string) => {
-      await approvalApi.approve(id);
-      mutateApprovals();
+      try {
+        await approvalApi.approve(id);
+        toast({ tone: 'success', title: 'Approved' });
+        await mutateApprovals();
+      } catch (err) {
+        toast({
+          tone: 'error',
+          title: 'Approve failed',
+          detail: err instanceof Error ? err.message : 'Please try again.',
+        });
+      }
     },
-    [mutateApprovals],
+    [mutateApprovals, toast],
   );
 
   const handleReject = useCallback(
     async (id: string) => {
-      await approvalApi.reject(id);
-      mutateApprovals();
+      try {
+        await approvalApi.reject(id);
+        toast({ tone: 'success', title: 'Rejected' });
+        await mutateApprovals();
+      } catch (err) {
+        toast({
+          tone: 'error',
+          title: 'Reject failed',
+          detail: err instanceof Error ? err.message : 'Please try again.',
+        });
+      }
     },
-    [mutateApprovals],
+    [mutateApprovals, toast],
   );
 
   const handleExport = useCallback(() => {
@@ -80,7 +100,11 @@ export default function NotificationsPage() {
     const a = document.createElement('a');
     a.href = url;
     a.download = `notifications-${workspaceId}-${new Date().toISOString().split('T')[0]}.json`;
+    // Firefox drops a synthetic click on a detached anchor, so the revoke below
+    // can run before the download begins. Attach, click, then release.
+    document.body.appendChild(a);
     a.click();
+    a.remove();
     URL.revokeObjectURL(url);
   }, [notifications, workspaceId]);
 
@@ -169,8 +193,8 @@ export default function NotificationsPage() {
                 description="System notifications will appear here once events are triggered."
               />
             ) : (
-              <div className="card">
-                <table className="w-full text-left">
+              <div className="card overflow-x-auto">
+                <table className="w-full min-w-[36rem] text-left">
                   <thead>
                     <tr className="border-b border-border text-text-muted font-mono text-sm uppercase">
                       <th scope="col" className="pb-3 font-normal">
