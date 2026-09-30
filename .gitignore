@@ -100,8 +100,19 @@ $RECYCLE.BIN/
 infra/kubernetes/secrets/*.yaml
 *.pem
 *.key
-*.p12
-*.pfx
+# SSH private keys (id_rsa etc. and their .pub siblings - the secret is the bare
+# name; *.pem/*.key above only catch the certificate-style extensions)
+id_rsa
+id_rsa2
+id_dsa
+id_ecdsa
+id_ed25519
+id_ed25519_sk
+# netrc files hold plain-text login passwords and API tokens for third parties
+.netrc
+_netrc
+.p12
+.pfx
 *.crt
 *.cer
 *.csr
@@ -114,6 +125,10 @@ secrets/
 # Logs
 logs/
 *.log
+# Rotated logs (*.log.1, *.log.2.gz). `*.log` alone does not match these because
+# the suffix is the rotation index, so a long-running API leaves them visible.
+*.log.[0-9]*
+*.log.[0-9]*.gz
 *.pid
 apps/web/*.txt
 apps/web/*.err
@@ -191,6 +206,11 @@ testing/e2e/test-results.json
 .augment/
 .codex/
 .system_generated/
+# gstack local browser daemon state (logs, session screenshots). It carries its
+# own nested .gitignore containing `*`, but that self-ignore disappears the
+# moment the directory is cleaned out, and *.log alone does not cover the
+# screenshot/state files it writes.
+.gstack/
 
 # Vaeloom local orchestrator checkpoints (home ~/.vaeloom is outside repo, but repo-local .vaeloom/ if ever created)
 .vaeloom/
@@ -286,6 +306,22 @@ seed_output/
 *.rej
 *.tmp
 
+# Generated deliverable at the repo root. The document pipeline emits a compiled
+# project report here; it is an export of tracked content, not source, and it is
+# 1.5 MB of binary that no code path reads.
+#
+# Scoped to the root filename on purpose. test-data/ deliberately tracks .docx,
+# .xlsx, .pptx and .pdf fixtures whose DATA-MANIFEST.json SHA256 must stay valid,
+# so a blanket office-document rule would quietly break corpus validation.
+/VAELOOM_Project_Report.docx
+
+# SQLite MCP sandbox. api/mcp_servers/sqlite_mcp.py calls
+# _ALLOWED_DIR.mkdir(parents=True, exist_ok=True) at import time, so merely
+# importing the module materialises the directory. It is recreated on demand and
+# never holds anything the repo needs.
+data/sqlite_mcp/
+apps/api/data/sqlite_mcp/
+
 # SQLite WAL sidecar files
 *.db-wal
 *.db-shm
@@ -293,6 +329,11 @@ seed_output/
 *.sqlite-shm
 *.db-journal
 *.sqlite-journal
+# ...and the same three sidecars for the *.sqlite3 spelling, which is matched by
+# the *.sqlite3 rule above but was not covered by any of the six patterns here.
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite3-journal
 
 # Next.js generated declaration
 next-env.d.ts
@@ -360,6 +401,12 @@ apps/web/public/uploads/
 
 # Python coverage HTML report (the .coverage data file is ignored above)
 apps/api/htmlcov/
+
+# gstack tooling state. It ships its own .gitignore containing `*`, which only
+# works because that file is already tracked-adjacent to the checkout; listing it
+# here keeps the intent visible in one place and covers a fresh clone where the
+# nested file has not been created yet.
+.gstack/
 
 # ---------------------------------------------------------------------------
 # Ad-hoc browser verification artifacts
