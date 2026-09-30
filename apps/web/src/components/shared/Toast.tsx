@@ -31,7 +31,7 @@ export function useToast() {
 
 const TONE_STYLES: Record<ToastTone, string> = {
   success: 'border-success/50 text-success-muted',
-  error: 'border-accent/50 text-accent-hover',
+  error: 'border-error/50 text-error-muted',
   info: 'border-info/50 text-info-muted',
   warning: 'border-warning/50 text-warning-muted',
 };

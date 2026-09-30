@@ -44,7 +44,7 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
   const previewTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Why edit/see matters: high-stakes document needs WYSIWYG control + source audit + 50ms feedback.
-  // Visual form for non-tech, source for power users, both synced via JSONâ†”Typst. Overleaf way = trust + speed.
+  // Visual form for non-tech, source for power users, both synced via JSON↔Typst. Overleaf way = trust + speed.
 
   const fetchData = useCallback(async () => {
     try {
@@ -77,7 +77,7 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
     fetchData();
   }, [fetchData]);
 
-  // Live preview â€” client Typst â†’ HTML in <5ms, debounced 150ms (Overleaf 50ms WASM)
+  // Live preview — client Typst → HTML in <5ms, debounced 150ms (Overleaf 50ms WASM)
   const handleEditorChange = useCallback(
     (v: string) => {
       setEditorValue(v);
@@ -100,7 +100,7 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
         }
       }, 150);
 
-      // Debounced save to backend PUT /source (30/min rate) â€” 800ms
+      // Debounced save to backend PUT /source (30/min rate) — 800ms
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
       saveTimeout.current = setTimeout(async () => {
         setSaving(true);
@@ -112,7 +112,7 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
           });
           setSource(updated);
         } catch (e: any) {
-          // soft fail â€” local preview still works offline
+          // soft fail — local preview still works offline
           console.debug('autosave failed', e?.message);
         } finally {
           setSaving(false);
@@ -155,7 +155,7 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
         }
         if (res.ats_score && (res.ats_score as any).score)
           setAtsScore(Math.round((res.ats_score as any).score));
-        toast({ tone: 'success', title: `AI ${intent} â€” ${res.diff.length} change(s)` });
+        toast({ tone: 'success', title: `AI ${intent} — ${res.diff.length} change(s)` });
       } catch (e: any) {
         toast({ tone: 'error', title: e?.message ?? 'Inline AI failed' });
       }
@@ -175,7 +175,7 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
     setHtmlPreview(toHtmlPreview(next));
     setShowDiff(false);
     setDiffOps([]);
-    toast({ tone: 'success', title: 'Changes applied â€” live preview updated' });
+    toast({ tone: 'success', title: 'Changes applied — live preview updated' });
   }, [diffOps, editorValue, toast]);
 
   const handleCompilePdf = useCallback(async () => {
@@ -189,7 +189,7 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
       // Use existing download helper
       const { downloadArtifact } = await import('@/lib/api-client');
       await downloadArtifact(workspaceId, artifact as any);
-      toast({ tone: 'success', title: `PDF exported â€” ${selectedSlug}` });
+      toast({ tone: 'success', title: `PDF exported — ${selectedSlug}` });
     } catch (e: any) {
       toast({ tone: 'error', title: e?.message ?? 'PDF compile failed' });
     } finally {
@@ -198,7 +198,7 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
   }, [resumeId, workspaceId, selectedSlug, editorValue, toast]);
 
   if (!resume) {
-    return <div className="p-8 text-sm text-muted">Loading resumeâ€¦</div>;
+    return <div className="p-8 text-sm text-muted">Loading resume…</div>;
   }
 
   return (
@@ -208,12 +208,12 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold">Vaeloom Resume Studio</h2>
           <span className="text-xs text-muted hidden sm:inline">
-            â€” Overleaf way Â· split-pane live
+            — Overleaf way · split-pane live
           </span>
           <span
             className={`text-2xs px-1.5 py-0.5 rounded border ${saving ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}
           >
-            {saving ? 'Savingâ€¦' : 'Saved'}
+            {saving ? 'Saving…' : 'Saved'}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -224,7 +224,7 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
           >
             {templates.map((t) => (
               <option key={t.slug} value={t.slug}>
-                {t.name} Â· ATS {t.atsCompatibility}%
+                {t.name} · ATS {t.atsCompatibility}%
               </option>
             ))}
           </select>
@@ -233,7 +233,7 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
             disabled={compiling}
             className="px-3 py-1.5 rounded bg-action text-action-fg text-xs font-medium hover:bg-action/90 disabled:opacity-50"
           >
-            {compiling ? 'Compilingâ€¦' : 'Export PDF'}
+            {compiling ? 'Compiling…' : 'Export PDF'}
           </button>
         </div>
       </div>
@@ -250,11 +250,11 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
           </button>
         ))}
         <span className="ml-auto text-xs text-muted">
-          Monaco {selectedSlug} Â· Typst WASM 50ms live â†’ Playwright PDF
+          Monaco {selectedSlug} · Typst WASM 50ms live → Playwright PDF
         </span>
       </div>
 
-      {/* Split pane â€” resizable via flex, no external dep for MVP (react-resizable-panels v3 API drift) */}
+      {/* Split pane — resizable via flex, no external dep for MVP (react-resizable-panels v3 API drift) */}
       <div className="flex-1 min-h-0 flex">
         <div className="flex-1 min-w-0 border-r border-border flex flex-col">
           {tab === 'source' && (
@@ -291,30 +291,30 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
                   onClick={() =>
                     handleInlineAi(
                       'tailor',
-                      'Senior Backend Engineer at Stripe â€” payments, Redis, 99.999% uptime',
+                      'Senior Backend Engineer at Stripe — payments, Redis, 99.999% uptime',
                     )
                   }
                   className="px-3 py-2 rounded border border-border hover:bg-surface-50 text-xs text-left"
                 >
-                  âœ¨ Tailor to JD (XYZ)
+                  ✨ Tailor to JD (XYZ)
                 </button>
                 <button
                   onClick={() => handleInlineAi('condense')}
                   className="px-3 py-2 rounded border border-border hover:bg-surface-50 text-xs text-left"
                 >
-                  âœ‚ï¸ Condense to 1 line
+                  ✂️ Condense to 1 line
                 </button>
                 <button
                   onClick={() => handleInlineAi('ats_fix')}
                   className="px-3 py-2 rounded border border-border hover:bg-surface-50 text-xs text-left"
                 >
-                  ðŸ” ATS Fix
+                  🔍 ATS Fix
                 </button>
                 <button
                   onClick={() => handleInlineAi('xyz')}
                   className="px-3 py-2 rounded border border-border hover:bg-surface-50 text-xs text-left"
                 >
-                  ðŸ”„ Google XYZ
+                  🔄 Google XYZ
                 </button>
               </div>
               {selection && (
@@ -326,7 +326,7 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
               {showDiff && diffOps.length > 0 && (
                 <div className="border border-border rounded overflow-hidden">
                   <div className="px-3 py-2 bg-surface-50 text-xs font-medium flex items-center justify-between">
-                    Agent diff â€” {diffOps.length} change(s){' '}
+                    Agent diff — {diffOps.length} change(s){' '}
                     <span className="text-emerald-600">provenance kept</span>
                   </div>
                   {diffOps.map((d, i) => (
@@ -363,18 +363,16 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
           <PreviewPane
             htmlPreview={htmlPreview}
             atsScore={atsScore}
-            title={`Live Â· ${selectedSlug}`}
+            title={`Live · ${selectedSlug}`}
             onDownloadPdf={handleCompilePdf}
           />
         </div>
       </div>
 
-      {/* Log panel â€” tectonic/PDF errors */}
+      {/* Log panel — tectonic/PDF errors */}
       {markers.length > 0 && (
         <div className="border-t border-border bg-amber-50/50 px-3 py-2 text-xs max-h-24 overflow-auto">
-          <div className="font-medium text-amber-800">
-            Compile log â€” {markers.length} issue(s)
-          </div>
+          <div className="font-medium text-amber-800">Compile log — {markers.length} issue(s)</div>
           {markers.map((m, i) => (
             <div key={i} className={m.severity === 'error' ? 'text-red-600' : 'text-amber-700'}>
               L{m.line}: {m.message}
@@ -391,7 +389,7 @@ function VisualForm({ resume, onUpdate }: { resume: ResumeResponse; onUpdate: (c
   useEffect(() => setForm(resume.content), [resume.content]);
   return (
     <div className="p-4 space-y-4 overflow-auto h-full bg-surface-50">
-      <div className="text-xs font-medium">Visual Form â†” Source (bidirectional)</div>
+      <div className="text-xs font-medium">Visual Form ↔ Source (bidirectional)</div>
       <div className="text-xs text-muted">
         Edits here sync to Monaco source via Typst transpiler. Non-tech users stay here; power users
         edit source.
@@ -441,11 +439,11 @@ function VisualForm({ resume, onUpdate }: { resume: ResumeResponse; onUpdate: (c
         onClick={() => onUpdate(form)}
         className="w-full py-2 rounded bg-action text-action-fg text-xs font-medium hover:bg-action/90"
       >
-        Sync â†’ Source (Transpile to Typst)
+        Sync → Source (Transpile to Typst)
       </button>
       <div className="text-xs text-muted">
         Why edit/see: you see both JSON form and live Typst source + PDF. Control for high-stakes
-        ATS, provenance for trust, 50ms feedback for speed â€” Overleaf way.
+        ATS, provenance for trust, 50ms feedback for speed — Overleaf way.
       </div>
     </div>
   );

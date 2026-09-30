@@ -6,11 +6,12 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useToast } from '@/components/shared/Toast';
-import { documentApi, agentApi, temporalApi } from '@/lib/api-client';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { ProgressBar } from '@/components/shared/ProgressBar';
+import { documentApi } from '@/lib/api-client';
 import type {
   DocumentResponse,
   DocumentAction,
-  TemporalWorkflowStatus,
   FolderResponse,
   FolderTreeItem,
   DocumentVersionResponse,
@@ -24,7 +25,7 @@ function getFileName(path: string): string {
 }
 
 function formatDate(iso?: string | null): string {
-  if (!iso) return 'â€”';
+  if (!iso) return '—';
   try {
     return new Date(iso).toLocaleDateString('en-US', {
       month: 'short',
@@ -32,13 +33,13 @@ function formatDate(iso?: string | null): string {
       year: 'numeric',
     });
   } catch {
-    return 'â€”';
+    return '—';
   }
 }
 
 function formatSize(bytes: unknown): string {
   const n = typeof bytes === 'number' ? bytes : Number(bytes ?? 0);
-  if (!n) return 'â€”';
+  if (!n) return '—';
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
@@ -52,16 +53,46 @@ function docWorkspaceId(d: DocumentResponse): string {
   );
 }
 
+/**
+ * What the malware scanner has actually told us about a document.
+ *
+ * `scanning` and `unknown` are deliberately distinct from `clean`: an absent or
+ * still-pending verdict means the scanner has not reported yet, and rendering
+ * that as a pass would claim a safety result the backend never returned.
+ */
+type ScanState = 'clean' | 'quarantined' | 'scanning' | 'unknown';
+
+function scanStateOf(scanStatus: DocumentResponse['scan_status']): ScanState {
+  if (scanStatus === 'CLEAN') return 'clean';
+  if (scanStatus === 'MALICIOUS' || scanStatus === 'REJECTED') return 'quarantined';
+  if (scanStatus === 'PENDING') return 'scanning';
+  return 'unknown';
+}
+
 interface QueueItem {
   id: string;
   file: File;
   name: string;
   size: number;
   progress: number;
-  status: 'queued' | 'uploading' | 'processing' | 'clean' | 'quarantined' | 'error';
+  status: 'queued' | 'uploading' | 'scanning' | 'clean' | 'quarantined' | 'error';
   error?: string;
   doc?: DocumentResponse;
 }
+
+/** Only a real CLEAN verdict may be labelled a pass. */
+function queueStatusForScan(scanStatus: DocumentResponse['scan_status']): QueueItem['status'] {
+  switch (scanStateOf(scanStatus)) {
+    case 'clean':
+      return 'clean';
+    case 'quarantined':
+      return 'quarantined';
+    default:
+      return 'scanning';
+  }
+}
+
+const NOT_REPORTED = 'Not reported';
 
 const TEXT_TYPES = new Set(['text', 'markdown', 'csv', 'json', 'html', 'xml', 'yaml']);
 const IMAGE_TYPES = new Set(['image', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'svg']);
@@ -136,11 +167,12 @@ export default function WorkspaceFilesPage() {
   const [actionsLoading, setActionsLoading] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
 
-  // Ingestion tracking
-  const [ingestMap, setIngestMap] = useState<
-    Record<string, TemporalWorkflowStatus | { status: string; error?: string }>
-  >({});
-  const [ingestBusy, setIngestBusy] = useState<string | null>(null);
+  // Destructive-action confirmation, replacing window.confirm().
+  const [pendingConfirm, setPendingConfirm] = useState<
+    | { kind: 'delete-folder'; folderId: string; name: string }
+    | { kind: 'restore-version'; version: number }
+    | null
+  >(null);
 
   useEffect(() => {
     return () => {
@@ -251,7 +283,9 @@ export default function WorkspaceFilesPage() {
           );
         });
 
-        const scanStatus = doc.scan_status === 'MALICIOUS' ? 'quarantined' : 'clean';
+        // The upload response may carry no scan verdict at all. Report that as
+        // "still scanning" rather than treating the absence as a pass.
+        const scanStatus = queueStatusForScan(doc.scan_status);
         setUploadQueue((prev) =>
           prev.map((q) =>
             q.id === nextItem.id ? { ...q, status: scanStatus, progress: 100, doc } : q,
@@ -370,7 +404,7 @@ export default function WorkspaceFilesPage() {
 
   const handleDeleteFolder = useCallback(
     async (folderId: string, name: string) => {
-      if (!workspaceId || !confirm(`Are you sure you want to delete folder "${name}"?`)) return;
+      if (!workspaceId) return;
       try {
         await documentApi.deleteFolder(folderId, workspaceId);
         toast({ tone: 'success', title: 'Folder deleted', detail: name });
@@ -383,9 +417,38 @@ export default function WorkspaceFilesPage() {
           title: 'Delete folder failed',
           detail: err instanceof Error ? err.message : 'Error deleting folder',
         });
+      } finally {
+        setPendingConfirm(null);
       }
     },
     [workspaceId, selectedFolderId, fetchFolders, fetchDocuments, toast],
+  );
+
+  const handleRestoreVersion = useCallback(
+    async (vNum: number) => {
+      if (!versionDoc || !workspaceId) return;
+      setVersionBusy(true);
+      try {
+        const updated = await documentApi.restoreVersion(versionDoc.id, vNum, workspaceId);
+        toast({
+          tone: 'success',
+          title: 'Version restored',
+          detail: `Active document now at revision ${vNum}`,
+        });
+        setVersionDoc(updated);
+        void fetchDocuments();
+      } catch (err) {
+        toast({
+          tone: 'error',
+          title: 'Restore version failed',
+          detail: err instanceof Error ? err.message : 'Error restoring version',
+        });
+      } finally {
+        setVersionBusy(false);
+        setPendingConfirm(null);
+      }
+    },
+    [versionDoc, workspaceId, fetchDocuments, toast],
   );
 
   // Version Operations
@@ -434,33 +497,6 @@ export default function WorkspaceFilesPage() {
       } finally {
         setVersionBusy(false);
         if (versionFileInputRef.current) versionFileInputRef.current.value = '';
-      }
-    },
-    [versionDoc, workspaceId, fetchDocuments, toast],
-  );
-
-  const handleRestoreVersion = useCallback(
-    async (vNum: number) => {
-      if (!versionDoc || !workspaceId) return;
-      if (!confirm(`Restore document to Version ${vNum}?`)) return;
-      setVersionBusy(true);
-      try {
-        const updated = await documentApi.restoreVersion(versionDoc.id, vNum, workspaceId);
-        toast({
-          tone: 'success',
-          title: 'Version restored',
-          detail: `Active document now at revision ${vNum}`,
-        });
-        setVersionDoc(updated);
-        void fetchDocuments();
-      } catch (err) {
-        toast({
-          tone: 'error',
-          title: 'Restore version failed',
-          detail: err instanceof Error ? err.message : 'Error restoring version',
-        });
-      } finally {
-        setVersionBusy(false);
       }
     },
     [versionDoc, workspaceId, fetchDocuments, toast],
@@ -727,12 +763,12 @@ export default function WorkspaceFilesPage() {
                   <span className="font-mono text-text truncate max-w-[200px]">{item.name}</span>
                   <span className="text-text-muted shrink-0">({formatSize(item.size)})</span>
                   {item.status === 'uploading' && (
-                    <div className="w-24 bg-border/40 rounded-full h-1.5 overflow-hidden">
-                      <div
-                        className="bg-primary h-1.5 transition-all duration-200"
-                        style={{ width: `${item.progress}%` }}
-                      />
-                    </div>
+                    <ProgressBar
+                      value={item.progress}
+                      max={100}
+                      showValue={false}
+                      className="w-24 shrink-0"
+                    />
                   )}
                 </div>
                 <div>
@@ -741,17 +777,22 @@ export default function WorkspaceFilesPage() {
                     <span className="text-primary font-medium">{item.progress}%</span>
                   )}
                   {item.status === 'clean' && (
-                    <span className="inline-flex items-center gap-1 text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full font-medium">
-                      âœ“ Clean
+                    <span className="inline-flex items-center gap-1 text-success bg-success/10 border border-success/30 px-2 py-0.5 rounded-full font-medium">
+                      <span aria-hidden="true">✓</span> Clean
                     </span>
                   )}
                   {item.status === 'quarantined' && (
-                    <span className="inline-flex items-center gap-1 text-red-600 bg-red-500/10 px-2 py-0.5 rounded-full font-medium">
-                      âš  Quarantined
+                    <span className="inline-flex items-center gap-1 text-error bg-error/10 border border-error/30 px-2 py-0.5 rounded-full font-medium">
+                      <span aria-hidden="true">⚠</span> Quarantined
+                    </span>
+                  )}
+                  {item.status === 'scanning' && (
+                    <span className="inline-flex items-center gap-1 text-warning bg-warning/10 border border-warning/30 px-2 py-0.5 rounded-full font-medium">
+                      <span aria-hidden="true">◌</span> Scanning
                     </span>
                   )}
                   {item.status === 'error' && (
-                    <span className="inline-flex items-center gap-1 text-red-600 font-medium">
+                    <span className="inline-flex items-center gap-1 text-error font-medium">
                       Error: {item.error}
                     </span>
                   )}
@@ -838,10 +879,13 @@ export default function WorkspaceFilesPage() {
                 <button
                   type="button"
                   title="Delete Folder"
-                  onClick={() => handleDeleteFolder(f.id, f.name)}
-                  className="opacity-0 group-hover:opacity-100 text-text-muted hover:text-red-500 p-1 transition-opacity"
+                  aria-label={`Delete folder ${f.name}`}
+                  onClick={() =>
+                    setPendingConfirm({ kind: 'delete-folder', folderId: f.id, name: f.name })
+                  }
+                  className="[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 focus-visible:opacity-100 text-text-muted hover:text-error p-1 transition-opacity"
                 >
-                  âœ•
+                  <span aria-hidden="true">✕</span>
                 </button>
               </div>
             ))}
@@ -1023,17 +1067,17 @@ export default function WorkspaceFilesPage() {
                         <td className="p-3">
                           {scanStatus === 'CLEAN' && (
                             <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full font-medium">
-                              âœ“ Clean
+                              ✓ Clean
                             </span>
                           )}
                           {scanStatus === 'PENDING' && (
                             <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full font-medium">
-                              â—Œ Scanning
+                              ◌ Scanning
                             </span>
                           )}
                           {scanStatus === 'MALICIOUS' && (
                             <span className="inline-flex items-center gap-1 text-[11px] text-red-600 bg-red-500/10 px-2 py-0.5 rounded-full font-medium">
-                              âš  Quarantined
+                              ⚠ Quarantined
                             </span>
                           )}
                         </td>
@@ -1197,7 +1241,7 @@ export default function WorkspaceFilesPage() {
                     <div>
                       <div className="font-semibold text-text">Version {v.version_number}</div>
                       <div className="text-text-muted">
-                        {formatDate(v.created_at)} â€¢ {formatSize(v.size_bytes)}
+                        {formatDate(v.created_at)} • {formatSize(v.size_bytes)}
                       </div>
                     </div>
                     <button
@@ -1221,7 +1265,7 @@ export default function WorkspaceFilesPage() {
         <Modal
           isOpen={Boolean(shareDoc)}
           onClose={() => setShareDoc(null)}
-          title={`Share Document â€” ${getFileName(shareDoc.path)}`}
+          title={`Share Document — ${getFileName(shareDoc.path)}`}
         >
           <div className="space-y-4 pt-2">
             <div>

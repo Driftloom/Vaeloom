@@ -10,7 +10,7 @@ import type { JobResponse, OpportunityMatchResult } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 
 function formatDate(iso?: string): string {
-  if (!iso) return 'â€”';
+  if (!iso) return '—';
   return new Date(iso).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -19,10 +19,10 @@ function formatDate(iso?: string): string {
 }
 
 const statusStyles: Record<string, string> = {
-  active: 'border-green-500/50 text-green-400 bg-green-950/20',
-  paused: 'border-yellow-500/50 text-yellow-400 bg-yellow-950/20',
-  completed: 'border-primary/50 text-primary bg-primary/10',
-  failed: 'border-red-500/50 text-red-400 bg-red-950/20',
+  active: 'border-success/30 text-success bg-success/10',
+  paused: 'border-warning/30 text-warning bg-warning/10',
+  completed: 'border-primary/30 text-primary bg-primary/10',
+  failed: 'border-error/30 text-error bg-error/10',
 };
 
 export default function JobsPage() {
@@ -249,7 +249,7 @@ export default function JobsPage() {
         toast({
           tone: 'success',
           title: 'Application started',
-          detail: `${title} â€” check Approvals for approval or Applications for status`,
+          detail: `${title} — check Approvals for approval or Applications for status`,
         });
       } catch (err) {
         toast({
@@ -403,7 +403,7 @@ export default function JobsPage() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSearch();
               }}
-              placeholder="e.g. Product Manager in Berlin, React frontend, ML engineerâ€¦"
+              placeholder="e.g. Product Manager in Berlin, React frontend, ML engineer…"
               className="flex-1 min-h-11 rounded-full border border-border bg-background px-4 py-2 text-sm outline-none focus:border-primary"
             />
             <button
@@ -412,21 +412,21 @@ export default function JobsPage() {
               disabled={searching || !query.trim()}
               className="min-h-11 rounded-full bg-white px-5 py-2 text-sm text-black disabled:opacity-40"
             >
-              {searching ? 'Searchingâ€¦' : 'Search'}
+              {searching ? 'Searching…' : 'Search'}
             </button>
           </div>
           <p className="text-xs text-text-dim mt-2">
-            Powered by the Job Search agent â€” results include match explanation and fit summary.
+            Powered by the Job Search agent — results include match explanation and fit summary.
           </p>
         </div>
 
-        {searching && <LoadingSpinner text="Searching jobsâ€¦" />}
+        {searching && <LoadingSpinner text="Searching jobs…" />}
         {!searching && searchResult && (
           <div className="space-y-4">
             <div className="card">
               <h3 className="font-medium text-text mb-2">Results</h3>
               <p className="text-sm text-text-muted whitespace-pre-wrap">
-                {searchResult.summary || 'No summary returned â€” try a different query.'}
+                {searchResult.summary || 'No summary returned — try a different query.'}
               </p>
               {searchResult.questions && searchResult.questions.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -479,7 +479,7 @@ export default function JobsPage() {
                               disabled={isMatching}
                               className="text-xs px-2 py-0.5 rounded-full bg-surface-200 hover:bg-surface-hover text-text-muted hover:text-text border border-border transition-colors shrink-0"
                             >
-                              {isMatching ? 'Matchingâ€¦' : 'âš¡ PIOS Fit'}
+                              {isMatching ? 'Matching…' : '⚡ PIOS Fit'}
                             </button>
                           )}
                         </div>
@@ -582,7 +582,7 @@ export default function JobsPage() {
               </div>
             ) : (
               <p className="text-sm text-text-muted">
-                No structured proposals returned â€” the summary above contains the ranked matches.
+                No structured proposals returned — the summary above contains the ranked matches.
                 Save interesting roles from the summary and use Apply to start an approval-gated
                 application (you will get a deep link after approval).
               </p>
@@ -751,10 +751,10 @@ export default function JobsPage() {
                   {matching ? (
                     <>
                       <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Evaluating Capability Graphâ€¦
+                      Evaluating Capability Graph…
                     </>
                   ) : (
-                    'âš¡ Run PIOS Capability Match'
+                    '⚡ Run PIOS Capability Match'
                   )}
                 </button>
               </div>
@@ -774,7 +774,7 @@ export default function JobsPage() {
                       </span>
                       <h3 className="text-2xl font-bold text-text mt-0.5">{matchResult.title}</h3>
                       <p className="text-xs text-text-muted">
-                        {matchResult.company} â€¢ {matchResult.type}
+                        {matchResult.company} • {matchResult.type}
                       </p>
                     </div>
                     <div className="text-right">
@@ -810,7 +810,7 @@ export default function JobsPage() {
                   {/* Why You Narrative */}
                   <div className="mt-4 p-3 rounded-lg bg-background/80 border border-border">
                     <h4 className="text-xs font-semibold text-text flex items-center gap-1.5 mb-1.5">
-                      <span>ðŸ’¡</span> Why You (Natural Language Grounding)
+                      <span>💡</span> Why You (Natural Language Grounding)
                     </h4>
                     <p className="text-xs text-text-muted leading-relaxed">
                       {typeof matchResult.whyYou === 'string'
@@ -1007,16 +1007,16 @@ export default function JobsPage() {
             ) : (
               <div className="card h-full min-h-[380px] flex flex-col items-center justify-center text-center p-8 border-dashed">
                 <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-2xl mb-3">
-                  âš¡
+                  ⚡
                 </div>
                 <h3 className="text-base font-semibold text-text mb-1">PIOS Opportunity Engine</h3>
                 <p className="text-xs text-text-muted max-w-sm mb-4 leading-relaxed">
                   Instead of generic job searches, PIOS reverse-matches your demonstrated
-                  capabilities, validation tiers (V0â€“V4), and memory recency half-life against
+                  capabilities, validation tiers (V0–V4), and memory recency half-life against
                   external roles.
                 </p>
                 <div className="text-xs font-mono text-text-dim bg-surface-200 px-3 py-1.5 rounded-lg border border-border">
-                  matcher_core = cosine Ã— proximity Ã— decay âˆ’ gap_penalty
+                  matcher_core = cosine × proximity × decay − gap_penalty
                 </div>
               </div>
             )}
@@ -1116,7 +1116,7 @@ export default function JobsPage() {
         {saved.length === 0 ? (
           <EmptyState
             title="No saved jobs"
-            description="Save roles from the Job Search tab â€” they persist here. Apply requires approval and will give you a deep link to the application."
+            description="Save roles from the Job Search tab — they persist here. Apply requires approval and will give you a deep link to the application."
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

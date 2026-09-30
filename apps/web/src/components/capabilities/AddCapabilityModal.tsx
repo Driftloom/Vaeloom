@@ -925,7 +925,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
       aria-modal="true"
       aria-labelledby="add-capability-modal-title"
       aria-describedby="add-capability-modal-desc"
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
     >
       <div className="w-full max-w-5xl h-[670px] max-h-[90vh] bg-surface border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden text-text antialiased">
         {/* ── 1. Top Header: Title, Category Badge, and Mode Navigation ──────── */}
@@ -1403,7 +1403,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                         className="w-full flex-1 p-2.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary font-mono text-xs leading-relaxed resize-none"
                       />
                     ) : (
-                      <div className="w-full flex-1 p-3 rounded-lg bg-surface border border-border text-text overflow-y-auto max-h-[290px] prose dark:prose-invert prose-xs max-w-none">
+                      <div className="markdown-body w-full flex-1 p-3 rounded-lg bg-surface border border-border text-text overflow-y-auto max-h-[290px]">
                         {capDoc ? (
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>{capDoc}</ReactMarkdown>
                         ) : (

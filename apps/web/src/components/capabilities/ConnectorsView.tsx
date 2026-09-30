@@ -865,9 +865,9 @@ export function ConnectorsView({
 
   return (
     <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-background text-text antialiased overflow-hidden">
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Subheader Bar: Segmented Modes + SaaS Sync Action Buttons                  */}
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ────────────────────────────────────────────────────────────────────────── */}
       <div className="border-b border-border bg-surface px-4 sm:px-6 py-2.5 shrink-0 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 min-w-0">
           <div className="flex items-center gap-3">
@@ -920,7 +920,7 @@ export function ConnectorsView({
             >
               <span>Custom Protocols</span>
               <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-semibold bg-primary/15 text-primary border border-primary/30">
-                MCP â€¢ REST â€¢ GraphQL
+                MCP • REST • GraphQL
               </span>
             </button>
           </div>
@@ -967,9 +967,9 @@ export function ConnectorsView({
         </div>
       </div>
 
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Main Content Area                                                          */}
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ────────────────────────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-5 min-h-0 min-w-0 bg-background">
         {activeSubTab === 'discover' ? (
           <div className="max-w-7xl mx-auto space-y-6 min-w-0">
@@ -979,7 +979,7 @@ export function ConnectorsView({
                 <span className="text-xs font-mono uppercase tracking-wider text-text-muted">
                   Filter By Sector
                 </span>
-                <span className="text-border">â€¢</span>
+                <span className="text-border">•</span>
                 <span className="text-xs text-text-secondary">
                   Showing {filteredCatalog.length} of {fullCatalogList.length} verified connectors
                 </span>
@@ -1271,7 +1271,7 @@ export function ConnectorsView({
                           : `All connectors (${filteredCatalog.length})`}
                     </h2>
                     <span className="text-xs text-text-muted">
-                      â€¢ {fullCatalogList.length.toLocaleString()} total available
+                      • {fullCatalogList.length.toLocaleString()} total available
                     </span>
                   </div>
                   <button
@@ -1283,7 +1283,7 @@ export function ConnectorsView({
                     }}
                     className="text-xs text-primary hover:text-primary-hover transition-colors cursor-pointer"
                   >
-                    â† Back to featured
+                    ← Back to featured
                   </button>
                 </div>
 
@@ -1379,7 +1379,7 @@ export function ConnectorsView({
                         Top connectors ({topConnectors.length})
                       </h2>
                       <span className="text-xs text-text-muted">
-                        â€¢ {fullCatalogList.length} available
+                        • {fullCatalogList.length} available
                       </span>
                     </div>
                     <button
@@ -1388,7 +1388,7 @@ export function ConnectorsView({
                       className="text-xs text-primary hover:text-primary-hover font-medium flex items-center gap-1 transition-colors cursor-pointer"
                     >
                       <span>Show all ({fullCatalogList.length})</span>
-                      <span>â€º</span>
+                      <span>›</span>
                     </button>
                   </div>
 
@@ -1472,7 +1472,7 @@ export function ConnectorsView({
                           More Integrations & Dynamic Toolkits
                         </h2>
                         <span className="text-xs text-text-muted">
-                          â€¢ {otherConnectors.length} available
+                          • {otherConnectors.length} available
                         </span>
                       </div>
                     </div>
@@ -1552,9 +1552,9 @@ export function ConnectorsView({
             )}
           </div>
         ) : activeSubTab === 'studio' ? (
-          /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+          /* ────────────────────────────────────────────────────────────────────────── */
           /* Full Connectors Studio View: MCP, REST, and GraphQL Custom Connectors     */
-          /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+          /* ────────────────────────────────────────────────────────────────────────── */
           <div className="max-w-6xl mx-auto space-y-6">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
@@ -1881,9 +1881,9 @@ export function ConnectorsView({
             </div>
           </div>
         ) : (
-          /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+          /* ────────────────────────────────────────────────────────────────────────── */
           /* Yours View: Active & Configured Workspace Connectors                       */
-          /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+          /* ────────────────────────────────────────────────────────────────────────── */
           <div className="max-w-7xl mx-auto space-y-5">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2 text-xs font-mono text-text-muted">
@@ -2146,9 +2146,9 @@ export function ConnectorsView({
         )}
       </div>
 
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Modal 1: Connector Detail & OAuth Authorization Modal                      */}
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ────────────────────────────────────────────────────────────────────────── */}
       {selectedItemDetails && (
         <Modal
           isOpen={true}
@@ -2231,9 +2231,9 @@ export function ConnectorsView({
         </Modal>
       )}
 
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Modal 2: OAuth Connect Confirmation Modal                                 */}
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ────────────────────────────────────────────────────────────────────────── */}
       {pendingProvider && (
         <Modal
           isOpen={true}
@@ -2252,7 +2252,7 @@ export function ConnectorsView({
               </span>
               {PROVIDER_META[pendingProvider]?.scopes?.map((scope, idx) => (
                 <div key={idx} className="text-[11px] font-mono text-text-muted">
-                  â€¢ {scope}
+                  • {scope}
                 </div>
               ))}
             </div>
@@ -2279,9 +2279,9 @@ export function ConnectorsView({
         </Modal>
       )}
 
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Modal 3: Add Custom Connector (MCP, REST, GraphQL)                        */}
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ────────────────────────────────────────────────────────────────────────── */}
       {isAddModalOpen && (
         <Modal
           isOpen={true}
@@ -2454,9 +2454,9 @@ export function ConnectorsView({
         </Modal>
       )}
 
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Modal 4: MCP Tools Dynamic Inspector Modal                                */}
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ────────────────────────────────────────────────────────────────────────── */}
       {toolsModalTarget && (
         <Modal
           isOpen={true}

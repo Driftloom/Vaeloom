@@ -35,9 +35,10 @@ export default function SessionExpiredPage() {
           />
         </svg>
       </div>
-      <h1 className="text-4xl font-display font-bold text-text mb-4">Session Expired</h1>
-      <h2 className="text-xl font-display font-medium text-text mb-2">Your session has ended</h2>
-      <p className="text-text-muted max-w-sm mb-8">
+      <h1 className="text-3xl sm:text-4xl font-display font-bold text-text mb-3">
+        Session Expired
+      </h1>
+      <p className="text-sm sm:text-base text-text-muted max-w-md mb-8">
         For your security, your session has expired. Please sign in again to continue.
       </p>
       <div className="flex flex-col items-center gap-4">

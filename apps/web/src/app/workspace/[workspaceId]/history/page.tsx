@@ -2,6 +2,7 @@
 import React, { useCallback, useState } from 'react';
 import { useParams } from 'next/navigation';
 import useSWR from 'swr';
+import { Pagination } from '@vaeloom/ui-kit';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -59,6 +60,7 @@ export default function HistoryPage() {
     data: agentActions,
     error: agentError,
     isLoading: agentLoading,
+    mutate: mutateAgents,
   } = useSWR(workspaceId ? `agent-actions-${workspaceId}` : null, () =>
     documentApi.workspaceAgentActions(workspaceId!),
   );
@@ -109,12 +111,23 @@ export default function HistoryPage() {
     const a = document.createElement('a');
     a.href = url;
     a.download = `history-${workspaceId?.slice(0, 8)}-${new Date().toISOString().split('T')[0]}.json`;
+    // Firefox ignores a synthetic click on a detached anchor, so the revoke below
+    // can run before the download starts. Attach, click, then release.
+    document.body.appendChild(a);
     a.click();
+    a.remove();
     URL.revokeObjectURL(url);
   }, [workspaceId, docActionsRes, agentActions, notifications]);
 
   const docActions = docActionsRes?.actions ?? [];
-  // derived pagination slices (virtualization hint — only visible slice rendered)
+  // Client-side paging: the full array is already resident, so only the visible
+  // slice is rendered. This bounds DOM size; it does NOT virtualise and it is
+  // not server paging.
+  const docTotalPages = Math.max(1, Math.ceil(docActions.length / PAGE_SIZE));
+  const agentTotal = agentActions?.length ?? 0;
+  const agentTotalPages = Math.max(1, Math.ceil(agentTotal / PAGE_SIZE));
+  const notifTotal = notifications?.length ?? 0;
+  const notifTotalPages = Math.max(1, Math.ceil(notifTotal / PAGE_SIZE));
   const pagedDocs = docActions.slice((docPage - 1) * PAGE_SIZE, docPage * PAGE_SIZE);
   const pagedAgents = (agentActions ?? []).slice(
     (agentPage - 1) * PAGE_SIZE,
@@ -182,7 +195,7 @@ export default function HistoryPage() {
                   <div key={a.id} className={`card ${undone ? 'opacity-60 border-border/40' : ''}`}>
                     <div className="flex flex-wrap items-center gap-2 text-xs">
                       <span
-                        className={`rounded-full border px-2 py-0.5 font-mono ${undone ? 'bg-surface-hover text-text-dim border-border' : actionType === 'document_archive' ? 'bg-amber-500/10 text-amber-700 border-amber-500/20' : actionType === 'document_restore' ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' : 'bg-primary/10 text-primary border-primary/20'}`}
+                        className={`rounded-full border px-2 py-0.5 font-mono ${undone ? 'bg-surface-hover text-text-dim border-border' : actionType === 'document_archive' ? 'bg-warning/10 text-warning border-warning/20' : actionType === 'document_restore' ? 'bg-success/10 text-success border-success/20' : 'bg-primary/10 text-primary border-primary/20'}`}
                       >
                         {actionType}
                       </span>
@@ -225,28 +238,14 @@ export default function HistoryPage() {
               })}
             </div>
             {docActions.length > PAGE_SIZE && (
-              <div className="flex items-center justify-between mt-4 text-xs font-mono text-text-muted border-t border-border pt-3">
-                <span>
-                  Showing {(docPage - 1) * PAGE_SIZE + 1}-
-                  {Math.min(docPage * PAGE_SIZE, docActions.length)} of {docActions.length}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    disabled={docPage <= 1}
-                    onClick={() => setDocPage((p) => Math.max(1, p - 1))}
-                    className="rounded-full border border-border px-3 py-1 disabled:opacity-40 hover:bg-surface-hover"
-                  >
-                    Prev
-                  </button>
-                  <button
-                    disabled={docPage * PAGE_SIZE >= docActions.length}
-                    onClick={() => setDocPage((p) => p + 1)}
-                    className="rounded-full border border-border px-3 py-1 disabled:opacity-40 hover:bg-surface-hover"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
+              <Pagination
+                className="mt-4 border-t border-border pt-3 font-mono"
+                currentPage={docPage}
+                totalPages={docTotalPages}
+                totalRecords={docActions.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={(p) => setDocPage(Math.max(1, Math.min(p, docTotalPages)))}
+              />
             )}
           </>
         )}
@@ -259,7 +258,7 @@ export default function HistoryPage() {
           <ErrorState
             title="Failed to load agent history"
             message={String((agentError as Error).message ?? agentError)}
-            onRetry={() => window.location.reload()}
+            onRetry={() => mutateAgents()}
           />
         ) : !agentActions || agentActions.length === 0 ? (
           <EmptyState
@@ -272,19 +271,19 @@ export default function HistoryPage() {
               {pagedAgents.map((a) => (
                 <div key={a.id} className="card">
                   <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span className="rounded-full bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 font-mono text-violet-700">
+                    <span className="rounded-full bg-ai-proposed/10 border border-ai-proposed/20 px-2 py-0.5 font-mono text-ai-proposed">
                       {a.agentName}
                     </span>
                     <span className="rounded-full bg-surface-hover border border-border px-2 py-0.5 font-mono text-text-muted">
                       {a.actionType}
                     </span>
                     <span
-                      className={`rounded-full border px-2 py-0.5 ${a.status === 'completed' || a.status === 'success' ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' : a.status?.toLowerCase().includes('fail') || a.error ? 'bg-red-500/10 text-red-700 border-red-500/20' : 'bg-surface-hover text-text-muted border-border'}`}
+                      className={`rounded-full border px-2 py-0.5 ${a.status === 'completed' || a.status === 'success' ? 'bg-ai-verified/10 text-ai-verified border-ai-verified/20' : a.status?.toLowerCase().includes('fail') || a.error ? 'bg-error/10 text-error border-error/20' : 'bg-surface-hover text-text-muted border-border'}`}
                     >
                       {a.status}
                     </span>
                     {a.approvalRequestId && (
-                      <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-amber-700">
+                      <span className="rounded-full bg-warning/10 border border-warning/20 px-2 py-0.5 text-warning">
                         approval {a.approvalRequestId.slice(0, 8)}
                       </span>
                     )}
@@ -316,29 +315,14 @@ export default function HistoryPage() {
               ))}
             </div>
             {(agentActions?.length ?? 0) > PAGE_SIZE && (
-              <div className="flex items-center justify-between mt-4 text-xs font-mono text-text-muted border-t border-border pt-3">
-                <span>
-                  Showing {(agentPage - 1) * PAGE_SIZE + 1}-
-                  {Math.min(agentPage * PAGE_SIZE, agentActions?.length ?? 0)} of{' '}
-                  {agentActions?.length ?? 0}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    disabled={agentPage <= 1}
-                    onClick={() => setAgentPage((p) => Math.max(1, p - 1))}
-                    className="rounded-full border border-border px-3 py-1 disabled:opacity-40 hover:bg-surface-hover"
-                  >
-                    Prev
-                  </button>
-                  <button
-                    disabled={agentPage * PAGE_SIZE >= (agentActions?.length ?? 0)}
-                    onClick={() => setAgentPage((p) => p + 1)}
-                    className="rounded-full border border-border px-3 py-1 disabled:opacity-40 hover:bg-surface-hover"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
+              <Pagination
+                className="mt-4 border-t border-border pt-3 font-mono"
+                currentPage={agentPage}
+                totalPages={agentTotalPages}
+                totalRecords={agentTotal}
+                pageSize={PAGE_SIZE}
+                onPageChange={(p) => setAgentPage(Math.max(1, Math.min(p, agentTotalPages)))}
+              />
             )}
           </>
         )}
@@ -359,8 +343,8 @@ export default function HistoryPage() {
             description="Notifications and system events will appear here once you start using the workspace."
           />
         ) : (
-          <div className="card">
-            <table className="w-full text-left">
+          <div className="card overflow-x-auto">
+            <table className="w-full min-w-[36rem] text-left">
               <thead>
                 <tr className="border-b border-border text-text-muted font-mono text-sm uppercase">
                   <th scope="col" className="pb-3 font-normal">
@@ -405,29 +389,13 @@ export default function HistoryPage() {
           </div>
         )}
         {(notifications?.length ?? 0) > PAGE_SIZE && (
-          <div className="flex items-center justify-between mt-3 text-xs font-mono text-text-muted">
-            <span>
-              Showing {(notifPage - 1) * PAGE_SIZE + 1}-
-              {Math.min(notifPage * PAGE_SIZE, notifications?.length ?? 0)} of{' '}
-              {notifications?.length ?? 0}
-            </span>
-            <div className="flex gap-2">
-              <button
-                disabled={notifPage <= 1}
-                onClick={() => setNotifPage((p) => Math.max(1, p - 1))}
-                className="rounded-full border border-border px-3 py-1 disabled:opacity-40 hover:bg-surface-hover"
-              >
-                Prev
-              </button>
-              <button
-                disabled={notifPage * PAGE_SIZE >= (notifications?.length ?? 0)}
-                onClick={() => setNotifPage((p) => p + 1)}
-                className="rounded-full border border-border px-3 py-1 disabled:opacity-40 hover:bg-surface-hover"
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          <Pagination
+            currentPage={notifPage}
+            totalPages={notifTotalPages}
+            totalRecords={notifTotal}
+            pageSize={PAGE_SIZE}
+            onPageChange={(p) => setNotifPage(Math.max(1, Math.min(p, notifTotalPages)))}
+          />
         )}
       </TabPanel>
     </div>

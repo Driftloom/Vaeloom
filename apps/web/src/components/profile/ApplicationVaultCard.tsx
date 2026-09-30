@@ -103,7 +103,7 @@ export default function ApplicationVaultCard({
           <h2 className="text-xl font-semibold text-text flex items-center gap-2">
             <span>Application & EEO Vault</span>
             <span className="text-xs font-mono font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-              <span>ðŸ”’</span> Zero-Trust Encrypted
+              <span>🔒</span> Zero-Trust Encrypted
             </span>
           </h2>
           <p className="text-xs text-text-dim mt-0.5">
@@ -121,7 +121,7 @@ export default function ApplicationVaultCard({
 
       {success && (
         <div className="mb-4 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400">
-          âœ“ Application credentials and demographic vault updated successfully!
+          ✓ Application credentials and demographic vault updated successfully!
         </div>
       )}
 
@@ -253,7 +253,7 @@ export default function ApplicationVaultCard({
           </div>
 
           {demographicsPolicy === 'autofill' && (
-            <div className="pt-3 border-t border-border grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in duration-200">
+            <div className="pt-3 border-t border-border grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in">
               <div>
                 <label className="block text-xs font-medium text-text-muted mb-1">
                   Gender Identity

@@ -17,11 +17,11 @@ export default function ConnectorsPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
       <LoadingSpinner text="Redirecting to Connectors Directory..." />
-      <p className="mt-4 text-xs text-[#71717a]">
+      <p className="mt-4 text-xs text-text-muted">
         Connectors are now unified under Capabilities.{' '}
         <Link
           href={`/workspace/${workspaceId}/capabilities?category=connectors`}
-          className="text-[#3b82f6] hover:underline"
+          className="text-primary hover:underline"
         >
           Click here if not redirected automatically.
         </Link>

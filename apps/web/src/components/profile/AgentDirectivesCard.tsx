@@ -80,15 +80,15 @@ export default function AgentDirectivesCard({
       badge: 'Recommended',
       description:
         'Agent searches, evaluates, and fills applications, but requires your 1-click review before final submission.',
-      icon: 'ðŸ›¡ï¸',
+      icon: '🛡️',
     },
     {
       id: 'semi_autonomous',
       label: 'Semi-Autonomous',
       badge: 'High Match',
       description:
-        'Agent auto-applies only when ATS match score is â‰¥ 85%, holding applications with salary questions or essays for review.',
-      icon: 'âš¡',
+        'Agent auto-applies only when ATS match score is ≥ 85%, holding applications with salary questions or essays for review.',
+      icon: '⚡',
     },
     {
       id: 'full_autopilot',
@@ -96,18 +96,18 @@ export default function AgentDirectivesCard({
       badge: 'Autonomous',
       description:
         'Agent operates end-to-end within pre-approved parameters up to your daily quota, logging full receipts.',
-      icon: 'ðŸš€',
+      icon: '🚀',
     },
   ];
 
   const currencies = [
-    { code: 'USD', label: 'USD ($) â€” US Dollar' },
-    { code: 'INR', label: 'INR (â‚¹) â€” Indian Rupee' },
-    { code: 'EUR', label: 'EUR (â‚¬) â€” Euro' },
-    { code: 'GBP', label: 'GBP (Â£) â€” British Pound' },
-    { code: 'CAD', label: 'CAD ($) â€” Canadian Dollar' },
-    { code: 'AUD', label: 'AUD ($) â€” Australian Dollar' },
-    { code: 'SGD', label: 'SGD ($) â€” Singapore Dollar' },
+    { code: 'USD', label: 'USD ($) — US Dollar' },
+    { code: 'INR', label: 'INR (₹) — Indian Rupee' },
+    { code: 'EUR', label: 'EUR (€) — Euro' },
+    { code: 'GBP', label: 'GBP (£) — British Pound' },
+    { code: 'CAD', label: 'CAD ($) — Canadian Dollar' },
+    { code: 'AUD', label: 'AUD ($) — Australian Dollar' },
+    { code: 'SGD', label: 'SGD ($) — Singapore Dollar' },
   ];
 
   return (
@@ -135,7 +135,7 @@ export default function AgentDirectivesCard({
 
       {success && (
         <div className="mb-4 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400">
-          âœ“ Agent directives and guardrails updated successfully!
+          ✓ Agent directives and guardrails updated successfully!
         </div>
       )}
 

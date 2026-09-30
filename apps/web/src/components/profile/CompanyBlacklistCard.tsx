@@ -229,7 +229,7 @@ export default function CompanyBlacklistCard({
                 </div>
                 <div className="flex items-center gap-2 text-xs text-text-dim mt-0.5">
                   <span>{item.reason}</span>
-                  {item.domain && <span>â€¢ {item.domain}</span>}
+                  {item.domain && <span>• {item.domain}</span>}
                 </div>
               </div>
 

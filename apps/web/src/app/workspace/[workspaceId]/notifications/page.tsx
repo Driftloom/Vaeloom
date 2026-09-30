@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { PageHeader } from '@/components/shared/Page';
 import { ApprovalCard } from '@/components/shared/ApprovalCard';
 import { notificationApi, approvalApi } from '@/lib/api-client';
 import type { NotificationResponse, ApprovalItem } from '@/lib/api-client';
@@ -83,13 +84,27 @@ export default function NotificationsPage() {
     URL.revokeObjectURL(url);
   }, [notifications, workspaceId]);
 
+  const items = notifications ?? [];
+
+  // Rendered once, above the state branches. Previously copy-pasted into the
+  // error, loading and success returns, giving this file three <h1>s and three
+  // chances for the title to drift.
+  const header = (
+    <PageHeader
+      title="Notifications"
+      description="Notification history and delivery status."
+      actions={
+        <button className="btn-secondary" onClick={handleExport} disabled={items.length === 0}>
+          Export
+        </button>
+      }
+    />
+  );
+
   if (error) {
     return (
       <div className="flex flex-col h-full">
-        <header className="mb-6">
-          <h1 className="text-3xl font-display font-medium text-text mb-2">Notifications</h1>
-          <p className="text-text-muted">Notification history and delivery status.</p>
-        </header>
+        {header}
         <ErrorState
           title="Failed to load notifications"
           message={error.message || 'An unexpected error occurred.'}
@@ -102,28 +117,15 @@ export default function NotificationsPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col h-full">
-        <header className="mb-6">
-          <h1 className="text-3xl font-display font-medium text-text mb-2">Notifications</h1>
-          <p className="text-text-muted">Notification history and delivery status.</p>
-        </header>
+        {header}
         <LoadingSpinner text="Loading notifications..." />
       </div>
     );
   }
 
-  const items = notifications ?? [];
-
   return (
     <div className="flex flex-col h-full">
-      <header className="mb-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-display font-medium text-text mb-2">Notifications</h1>
-          <p className="text-text-muted">Notification history and delivery status.</p>
-        </div>
-        <button className="btn-secondary" onClick={handleExport} disabled={items.length === 0}>
-          Export
-        </button>
-      </header>
+      {header}
 
       {items.length === 0 && pendingApprovals.length === 0 ? (
         <EmptyState

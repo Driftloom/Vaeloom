@@ -620,9 +620,9 @@ export const McpView: React.FC<McpViewProps> = ({
 
   return (
     <div className="flex-1 flex flex-col lg:flex-row min-h-0 min-w-0 bg-background text-text overflow-hidden">
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Left Column: Servers + Catalog (Pixel-Matched to Design System)          */}
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ────────────────────────────────────────────────────────────────────────── */}
       <div className="w-full lg:w-[320px] xl:w-[360px] 2xl:w-[400px] shrink-0 border-r border-border bg-surface flex flex-col min-h-0">
         {/* Section 1: Installed Servers Header */}
         <div className="border-b border-border flex flex-col shrink-0">
@@ -833,9 +833,9 @@ export const McpView: React.FC<McpViewProps> = ({
         </div>
       </div>
 
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Right Column: Server Inspector & Tools OR mcp.json Manifest Editor         */}
-      {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ────────────────────────────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-background text-text overflow-hidden">
         {/* Sub-navigation Tabs */}
         <div className="border-b border-border bg-surface px-4 py-2 flex items-center justify-between shrink-0">
@@ -1078,7 +1078,7 @@ export const McpView: React.FC<McpViewProps> = ({
                         </span>
                       </div>
                       <p className="text-xs text-text-muted mt-1 font-mono">
-                        ID: {selectedServer.id} â€¢ Last synced:{' '}
+                        ID: {selectedServer.id} • Last synced:{' '}
                         {selectedServer.lastSync
                           ? new Date(selectedServer.lastSync).toLocaleTimeString()
                           : 'Just now'}

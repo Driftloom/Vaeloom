@@ -13,6 +13,44 @@ export type DataMode = 'live' | 'preview' | 'stub' | 'dead';
 export type NavSection =
   'Assist' | 'Memory' | 'Career' | 'Operations' | 'Trust & Rights' | 'Enterprise';
 
+export type AppPortalMode = 'workspace' | 'admin' | 'developer';
+
+export interface PortalModeConfig {
+  id: AppPortalMode;
+  label: string;
+  shortLabel: string;
+  badge: string;
+  description: string;
+  defaultSubpath: string;
+}
+
+export const PORTAL_MODES: Record<AppPortalMode, PortalModeConfig> = {
+  workspace: {
+    id: 'workspace',
+    label: 'Personal Workspace',
+    shortLabel: 'Workspace',
+    badge: 'User App',
+    description: 'Autonomous copilot, memory graph, career strategy, and personal tools.',
+    defaultSubpath: '',
+  },
+  admin: {
+    id: 'admin',
+    label: 'Admin Console',
+    shortLabel: 'Admin',
+    badge: 'Governance',
+    description: 'Organization management, billing, compliance audit, and enterprise security.',
+    defaultSubpath: 'admin',
+  },
+  developer: {
+    id: 'developer',
+    label: 'Developer Studio',
+    shortLabel: 'Developer',
+    badge: 'AI Systems',
+    description: 'Cognitive engine (S1/S2), Agent Council, MCP connectors, and API consoles.',
+    defaultSubpath: 'developer',
+  },
+};
+
 export interface RouteDefinition {
   id: string;
   /** Subroute relative to /workspace/[workspaceId] (empty string represents the workspace root/dashboard) */
@@ -411,18 +449,112 @@ export function resolveRoute(pathname: string): RouteDefinition | undefined {
   return WORKSPACE_ROUTES.find((r) => r.subpath === baseSub || r.aliases?.includes(baseSub));
 }
 
+export interface NavigationGroup {
+  label: string;
+  enterprise?: boolean;
+  links: Array<{ id: string; name: string; path: string; dataMode: DataMode }>;
+}
+
+export interface NavigationOptions {
+  enableEnterprise?: boolean;
+  portalMode?: AppPortalMode | 'all';
+}
+
+function buildLinks(
+  routeIds: readonly string[],
+  workspaceId: string,
+): Array<{ id: string; name: string; path: string; dataMode: DataMode }> {
+  return routeIds
+    .map((id) => WORKSPACE_ROUTES.find((r) => r.id === id))
+    .filter((r): r is RouteDefinition => Boolean(r))
+    .map((r) => ({
+      id: r.id,
+      name: r.label,
+      path: r.subpath ? `/workspace/${workspaceId}/${r.subpath}` : `/workspace/${workspaceId}`,
+      dataMode: r.dataMode,
+    }));
+}
+
 /**
- * Returns all accessible workspace navigation routes grouped by section.
+ * Returns accessible workspace navigation routes grouped by section,
+ * optionally filtered to a specific AppPortalMode ('workspace', 'admin', 'developer').
  */
 export function getNavigationGroups(
   workspaceId: string,
-  options?: { enableEnterprise?: boolean },
-): Array<{
-  label: NavSection;
-  enterprise?: boolean;
-  links: Array<{ id: string; name: string; path: string; dataMode: DataMode }>;
-}> {
+  options?: NavigationOptions,
+): NavigationGroup[] {
+  const portalMode = options?.portalMode;
   const enableEnterprise = options?.enableEnterprise ?? false;
+
+  if (portalMode === 'workspace') {
+    const groups: NavigationGroup[] = [
+      {
+        label: 'Assist',
+        links: buildLinks(
+          ['dashboard', 'chat', 'agents', 'capabilities', 'approvals'],
+          workspaceId,
+        ),
+      },
+      {
+        label: 'Memory',
+        links: buildLinks(['memory', 'search', 'files'], workspaceId),
+      },
+      {
+        label: 'Career',
+        links: buildLinks(['career', 'resume', 'jobs', 'applications'], workspaceId),
+      },
+      {
+        label: 'Operations',
+        links: buildLinks(['tasks', 'history', 'email'], workspaceId),
+      },
+      {
+        label: 'Trust & Rights',
+        links: buildLinks(['profile', 'settings', 'security', 'help'], workspaceId),
+      },
+    ];
+
+    return groups;
+  }
+
+  if (portalMode === 'admin') {
+    return [
+      {
+        label: 'Governance',
+        enterprise: true,
+        links: buildLinks(['admin', 'organizations', 'history', 'approvals'], workspaceId),
+      },
+      {
+        label: 'Security & Access',
+        enterprise: true,
+        links: buildLinks(['settings', 'security', 'vault'], workspaceId),
+      },
+      {
+        label: 'Billing & Operations',
+        enterprise: true,
+        links: buildLinks(['billing', 'feature-flags'], workspaceId),
+      },
+    ];
+  }
+
+  if (portalMode === 'developer') {
+    return [
+      {
+        label: 'AI Systems',
+        links: buildLinks(['cognition', 'council', 'capabilities', 'tasks'], workspaceId),
+      },
+      {
+        label: 'Integrations & MCP',
+        links: buildLinks(['connectors', 'marketplace', 'schedule'], workspaceId),
+      },
+      {
+        label: 'Developer Platform',
+        enterprise: true,
+        links: buildLinks(['developer', 'vault'], workspaceId),
+      },
+    ];
+  }
+
+  // Fallback: all sections (for legacy or unfiltered view)
   const sections: NavSection[] = ['Assist', 'Memory', 'Career', 'Operations', 'Trust & Rights'];
 
   if (enableEnterprise) {

@@ -346,7 +346,7 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
             {[1, 2].map((i) => (
               <div
                 key={i}
-                className="h-18 animate-pulse rounded-xl bg-surface border border-border"
+                className="h-20 animate-pulse rounded-xl bg-surface border border-border"
               />
             ))}
           </div>

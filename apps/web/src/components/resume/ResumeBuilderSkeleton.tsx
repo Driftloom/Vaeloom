@@ -128,7 +128,7 @@ export function ResumeBuilderSkeleton() {
               <div className="h-6 w-16 bg-surface-200 rounded-md" />
               <div className="h-6 w-28 bg-surface-200 rounded-md" />
               <div className="h-6 w-20 bg-surface-200 rounded-md" />
-              <div className="h-6 w-18 bg-surface-200 rounded-md" />
+              <div className="h-6 w-20 bg-surface-200 rounded-md" />
             </div>
           </div>
         </div>

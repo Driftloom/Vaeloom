@@ -511,7 +511,7 @@ export function CommandCenter({
       role="dialog"
       aria-modal="true"
       aria-labelledby={searchInputId}
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] sm:pt-[15vh] p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] sm:pt-[15vh] p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}

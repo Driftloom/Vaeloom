@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { PageHeader } from '@/components/shared/Page';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Modal } from '@vaeloom/ui-kit';
 import { applicationApi } from '@/lib/api-client';
@@ -119,15 +120,20 @@ export default function ApplicationsPage() {
     }
   }, [workspaceId, selected, editStatus, editOutcome, toast]);
 
+  // The header is rendered exactly once, above the state branches. It used to be
+  // copy-pasted into the loading, error, empty and success returns, which meant
+  // four <h1>s in one file and a title that could drift out of sync per branch.
+  const header = (
+    <PageHeader
+      title="Applications"
+      description="Track your progress and let the Application Agent handle submissions."
+    />
+  );
+
   if (loading) {
     return (
       <div className="flex flex-col h-full">
-        <header className="mb-6">
-          <h1 className="text-3xl font-display font-medium text-text mb-2">Applications</h1>
-          <p className="text-text-muted">
-            Track your progress and let the Application Agent handle submissions.
-          </p>
-        </header>
+        {header}
         <LoadingSpinner text="Loading applications..." />
       </div>
     );
@@ -136,12 +142,7 @@ export default function ApplicationsPage() {
   if (error) {
     return (
       <div className="flex flex-col h-full">
-        <header className="mb-6">
-          <h1 className="text-3xl font-display font-medium text-text mb-2">Applications</h1>
-          <p className="text-text-muted">
-            Track your progress and let the Application Agent handle submissions.
-          </p>
-        </header>
+        {header}
         <ErrorState
           title="Failed to load applications"
           message={error}
@@ -154,12 +155,7 @@ export default function ApplicationsPage() {
   if (applications.length === 0) {
     return (
       <div className="flex flex-col h-full">
-        <header className="mb-6">
-          <h1 className="text-3xl font-display font-medium text-text mb-2">Applications</h1>
-          <p className="text-text-muted">
-            Track your progress and let the Application Agent handle submissions.
-          </p>
-        </header>
+        {header}
         <EmptyState
           title="No active applications"
           description="Shortlist jobs to start tracking your application pipeline."
@@ -170,12 +166,7 @@ export default function ApplicationsPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <header className="mb-6">
-        <h1 className="text-3xl font-display font-medium text-text mb-2">Applications</h1>
-        <p className="text-text-muted">
-          Track your progress and let the Application Agent handle submissions.
-        </p>
-      </header>
+      {header}
 
       <div
         className="flex gap-4 overflow-x-auto pb-4 flex-1"

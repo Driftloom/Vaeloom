@@ -12,6 +12,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "jest --passWithNoTests",
+    "tokens:check": "python ../../scripts/gen_tokens.py --check",
+    "tokens:gen": "python ../../scripts/gen_tokens.py",
     "trigger:dev": "npx trigger.dev@latest dev",
     "trigger:deploy": "npx trigger.dev@latest deploy"
   },

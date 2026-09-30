@@ -145,7 +145,7 @@ export default function ScreeningQuestionsCard({
 
       {success && (
         <div className="mb-4 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400">
-          âœ“ Screening question answers saved successfully!
+          ✓ Screening question answers saved successfully!
         </div>
       )}
 

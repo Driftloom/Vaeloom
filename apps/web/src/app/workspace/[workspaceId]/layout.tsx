@@ -10,6 +10,7 @@ import { LoadingSpinner } from '../../../components/common/LoadingSpinner';
 import { ErrorBoundary } from '../../../components/common/ErrorBoundary';
 import { RealtimeProvider } from '@/components/providers/RealtimeProvider';
 import { DataModeBanner } from '@/components/shared/DataModeBanner';
+import { AppModeProvider } from '@/hooks/useAppMode';
 
 export default function WorkspaceLayout({
   children,
@@ -118,59 +119,65 @@ export default function WorkspaceLayout({
 
   return (
     <RealtimeProvider workspaceId={workspaceId}>
-      <div className="flex h-screen overflow-hidden bg-background">
-        <Sidebar
-          workspaceId={workspaceId}
-          open={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-          collapsed={sidebarCollapsed}
-          onToggleCollapse={toggleSidebar}
-          onOpenCommandCenter={() => setCommandCenterOpen(true)}
-        />
-        {sidebarOpen ? (
-          <div
-            className="md:hidden fixed inset-0 z-30 bg-black/40"
-            onClick={() => setSidebarOpen(false)}
-            aria-hidden="true"
-          />
-        ) : null}
-        <div className="flex-1 flex flex-col min-w-0">
-          <TopNav
-            onMenuClick={toggleSidebar}
-            sidebarCollapsed={sidebarCollapsed}
+      <AppModeProvider>
+        <div className="flex h-screen overflow-hidden bg-background">
+          <Sidebar
+            key="workspace-sidebar"
+            workspaceId={workspaceId}
+            open={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={toggleSidebar}
             onOpenCommandCenter={() => setCommandCenterOpen(true)}
           />
-          {/* F-08: the root layout owns the single <main id="main-content">
-                landmark; this wrapper stays a plain div to avoid nested/duplicate
-                main landmarks on every workspace route. */}
-          <div
-            tabIndex={-1}
-            className={`flex-1 focus:outline-none ${
-              pathname?.endsWith('/chat') ||
-              pathname?.includes('/chat/') ||
-              pathname?.includes('/capabilities')
-                ? 'flex flex-col min-h-0 overflow-hidden p-0'
-                : 'overflow-y-auto p-4 sm:p-6'
-            }`}
-            aria-hidden={sidebarOpen ? true : undefined}
-            {...(sidebarOpen ? { inert: true } : {})}
-          >
-            <ErrorBoundary>
-              <div>
-                <DataModeBanner />
-                {children}
-              </div>
-            </ErrorBoundary>
+          {sidebarOpen ? (
+            <div
+              key="workspace-sidebar-backdrop"
+              className="md:hidden fixed inset-0 z-30 bg-black/40"
+              onClick={() => setSidebarOpen(false)}
+              aria-hidden="true"
+            />
+          ) : null}
+          <div key="workspace-main-content" className="flex-1 flex flex-col min-w-0">
+            <TopNav
+              key="workspace-top-nav"
+              onMenuClick={toggleSidebar}
+              sidebarCollapsed={sidebarCollapsed}
+              onOpenCommandCenter={() => setCommandCenterOpen(true)}
+            />
+            {/* F-08: the root layout owns the single <main id="main-content">
+                  landmark; this wrapper stays a plain div to avoid nested/duplicate
+                  main landmarks on every workspace route. */}
+            <div
+              tabIndex={-1}
+              className={`flex-1 focus:outline-none ${
+                pathname?.endsWith('/chat') ||
+                pathname?.includes('/chat/') ||
+                pathname?.includes('/capabilities')
+                  ? 'flex flex-col min-h-0 overflow-hidden p-0'
+                  : 'overflow-y-auto p-4 sm:p-6'
+              }`}
+              aria-hidden={sidebarOpen ? true : undefined}
+              {...(sidebarOpen ? { inert: true } : {})}
+            >
+              <ErrorBoundary>
+                <div key="workspace-content-wrapper">
+                  <DataModeBanner key="workspace-data-mode-banner" />
+                  {React.Children.toArray(children)}
+                </div>
+              </ErrorBoundary>
+            </div>
           </div>
-        </div>
 
-        {/* Global Command Center */}
-        <CommandCenter
-          open={commandCenterOpen}
-          onClose={() => setCommandCenterOpen(false)}
-          onToggleSidebar={toggleSidebar}
-        />
-      </div>
+          {/* Global Command Center */}
+          <CommandCenter
+            key="workspace-command-center"
+            open={commandCenterOpen}
+            onClose={() => setCommandCenterOpen(false)}
+            onToggleSidebar={toggleSidebar}
+          />
+        </div>
+      </AppModeProvider>
     </RealtimeProvider>
   );
 }

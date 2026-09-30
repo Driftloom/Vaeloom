@@ -402,3 +402,68 @@ describe('apps/web ApprovalCard', () => {
     expect(screen.queryByRole('button', { name: /^Reject/ })).not.toBeInTheDocument();
   });
 });
+
+/**
+ * The canonical page header, asserted at runtime.
+ *
+ * The static scan in `design-system-guardrails.test.ts` can prove a page has at
+ * most one <h1> in SOURCE, but not that exactly one RENDERS: it cannot see
+ * through mutually exclusive state branches. These render the component and
+ * check the DOM, which is the only place that distinction is real.
+ */
+describe('canonical PageHeader', () => {
+  it('renders exactly one h1 carrying the page title as its accessible name', () => {
+    render(<PageHeader title="Applications" description="Track your progress." />);
+    const headings = screen.getAllByRole('heading', { level: 1 });
+    expect(headings).toHaveLength(1);
+    expect(headings[0]).toHaveTextContent('Applications');
+  });
+
+  it('exposes the description and the title as a landmark + heading pair', () => {
+    render(<PageHeader title="Files" description="Every document in the workspace." />);
+    expect(screen.getByRole('banner')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Files' })).toBeInTheDocument();
+    expect(screen.getByText('Every document in the workspace.')).toBeInTheDocument();
+  });
+
+  it('applies the canonical type scale to the h1', () => {
+    // The standard the app converged on: text-3xl + font-display + font-medium.
+    render(<PageHeader title="Agents" />);
+    const h1 = screen.getByRole('heading', { level: 1 });
+    const cls = h1.className.split(/\s+/);
+    expect(cls).toContain('text-3xl');
+    expect(cls).toContain('font-display');
+    expect(cls).toContain('font-medium');
+    expect(cls).toContain('text-text');
+  });
+
+  it('gives the h1 a stable id so aria-labelledby can target it', () => {
+    render(<PageHeader title="Memory" />);
+    const h1 = screen.getByRole('heading', { level: 1 });
+    expect(h1.id).toBeTruthy();
+  });
+
+  it('honours an explicit titleId for pages that reference the heading', () => {
+    render(<PageHeader title="Billing" titleId="billing-heading" />);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveAttribute('id', 'billing-heading');
+  });
+
+  it('renders an eyebrow and actions without adding a second heading', () => {
+    render(
+      <PageHeader
+        title="Connectors"
+        eyebrow="Integrations"
+        description="Wire Vaeloom to your stack."
+        actions={<button type="button">Add connector</button>}
+      />,
+    );
+    expect(screen.getByText('Integrations')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add connector' })).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+  });
+
+  it('still renders exactly one h1 when actions are omitted', () => {
+    render(<PageHeader title="Council" />);
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+  });
+});

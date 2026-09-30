@@ -18,7 +18,7 @@ export function PreviewPane({
   const [zoom, setZoom] = useState(100);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Synced scroll: not full Overleaf Synctex yet â€” placeholder for future
+  // Synced scroll: not full Overleaf Synctex yet — placeholder for future
   useEffect(() => {
     // Could add postMessage sync between Monaco and iframe scroll
   }, [htmlPreview]);
@@ -47,7 +47,7 @@ export function PreviewPane({
             onClick={() => setZoom((z) => Math.max(50, z - 10))}
             className="px-2 py-1 rounded hover:bg-surface-100 border border-transparent hover:border-border"
           >
-            âˆ’
+            −
           </button>
           <span className="w-12 text-center">{zoom}%</span>
           <button
@@ -82,17 +82,13 @@ export function PreviewPane({
             />
           </div>
         ) : (
-          <div className="text-white/70 text-sm self-center">
-            Start typing to see live previewâ€¦
-          </div>
+          <div className="text-white/70 text-sm self-center">Start typing to see live preview…</div>
         )}
       </div>
 
       <div className="px-3 py-1 border-t border-border bg-white text-xs text-muted flex items-center justify-between">
-        <span>Page 1 of 1 Â· A4 Â· {zoom}%</span>
-        <span className="opacity-70">
-          Hybrid: Typst WASM 50ms live â†’ Playwright PDF for export
-        </span>
+        <span>Page 1 of 1 · A4 · {zoom}%</span>
+        <span className="opacity-70">Hybrid: Typst WASM 50ms live → Playwright PDF for export</span>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { PageHeader } from '@/components/shared/Page';
 import { Modal } from '@vaeloom/ui-kit';
 import { eventApi, approvalApi } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
@@ -260,13 +261,25 @@ export default function SchedulePage() {
     return cells;
   }, [calMonth, filtered]);
 
+  // Rendered once, above the state branches. Previously copy-pasted into the
+  // loading, error and success returns, giving this file three <h1>s and three
+  // chances for the title to drift.
+  const header = (
+    <PageHeader
+      title="Schedule"
+      description="Workspace-scoped · calendar + list · Gmail vs agent vs you · proposed events need approval"
+      actions={
+        <button onClick={() => setShowCreate(true)} className="btn-primary">
+          New event
+        </button>
+      }
+    />
+  );
+
   if (loading) {
     return (
       <div className="flex flex-col h-full">
-        <header className="mb-6">
-          <h1 className="text-3xl font-display font-medium text-text mb-2">Schedule</h1>
-          <p className="text-text-muted">Calendar, deadlines and proposed events.</p>
-        </header>
+        {header}
         <LoadingSpinner text="Loading schedule..." />
       </div>
     );
@@ -274,10 +287,7 @@ export default function SchedulePage() {
   if (error) {
     return (
       <div className="flex flex-col h-full">
-        <header className="mb-6">
-          <h1 className="text-3xl font-display font-medium text-text mb-2">Schedule</h1>
-          <p className="text-text-muted">Calendar, deadlines and proposed events.</p>
-        </header>
+        {header}
         <ErrorState title="Failed to load schedule" message={error} onRetry={fetchEvents} />
       </div>
     );
@@ -285,21 +295,7 @@ export default function SchedulePage() {
 
   return (
     <div className="flex flex-col h-full">
-      <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-display font-medium text-text mb-1">Schedule</h1>
-          <p className="text-text-muted text-sm">
-            Workspace-scoped · calendar + list · Gmail vs agent vs you · proposed events need
-            approval
-          </p>
-        </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="rounded-full bg-white px-4 py-2 text-sm text-black"
-        >
-          New event
-        </button>
-      </header>
+      {header}
 
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <div className="flex rounded-full border border-border p-1">

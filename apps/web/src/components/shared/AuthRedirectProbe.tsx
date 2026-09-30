@@ -17,7 +17,7 @@ export function AuthRedirectProbe() {
   const router = useRouter();
 
   useEffect(() => {
-    // Only bother if a token is stored ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â avoids any network call for logged-out users.
+    // Only bother if a token is stored — avoids any network call for logged-out users.
     const mayHaveSession = hasSession();
     if (!mayHaveSession) return;
 
@@ -56,7 +56,7 @@ export function AuthRedirectProbe() {
             router.replace(`/workspace/${workspaces[0].id}`);
           }
         } catch {
-          // not authenticated or no workspace yet ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â stay on landing
+          // not authenticated or no workspace yet — stay on landing
         }
       })();
     });

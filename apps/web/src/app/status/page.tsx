@@ -143,27 +143,29 @@ export default function StatusPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-2xl mx-auto px-4 py-16">
-        <div className="text-center mb-12">
+      <div className="max-w-2xl mx-auto px-4 py-8 sm:py-16">
+        <div className="text-center mb-8 sm:mb-12">
           <div className="flex items-center justify-center gap-3 mb-4">
             <div
               className={`w-4 h-4 rounded-full ${indicatorColors[overallStatus]} ${overallStatus === 'ok' ? 'animate-pulse' : ''}`}
             />
-            <h1 className="text-4xl font-display font-bold text-text">Vaeloom Status</h1>
+            <h1 className="text-2xl sm:text-4xl font-display font-bold text-text">
+              Vaeloom Status
+            </h1>
           </div>
-          <p className="text-text-muted text-lg">
+          <p className="text-text-muted text-base sm:text-lg">
             {overallStatus === 'ok'
               ? 'All systems operational'
               : 'Some systems experiencing issues'}
           </p>
           {overall?.timestamp && (
-            <p className="text-text-muted text-sm mt-2 font-mono">
+            <p className="text-text-muted text-xs sm:text-sm mt-2 font-mono">
               Last checked: {new Date(overall.timestamp).toLocaleString()}
             </p>
           )}
         </div>
 
-        <div className="card p-6 mb-8">
+        <div className="card p-4 sm:p-6 mb-8">
           <h2 className="text-lg font-display font-medium text-text mb-2">Services</h2>
           <div className="divide-y divide-border/50">
             {services.map((s) => (
@@ -177,9 +179,9 @@ export default function StatusPage() {
           </div>
         </div>
 
-        <div className="card p-6 mb-8">
+        <div className="card p-4 sm:p-6 mb-8">
           <h2 className="text-lg font-display font-medium text-text mb-2">Service Information</h2>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-text-muted">Service</span>
               <p className="text-text font-mono">{overall?.service ?? 'vaeloom-api'}</p>

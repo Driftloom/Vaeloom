@@ -191,7 +191,7 @@ export default function AdminPage() {
       {toast && (
         <div
           role="alert"
-          className="fixed top-4 right-4 z-50 bg-surface border border-border rounded-lg px-4 py-3 shadow-xl text-text text-sm animate-in"
+          className="fixed top-4 right-4 z-50 bg-surface border border-border rounded-lg px-4 py-3 shadow-xl text-text text-sm animate-fade-in"
         >
           {toast}
         </div>

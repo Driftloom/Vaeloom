@@ -25,15 +25,42 @@ describe('Sidebar', () => {
     expect(screen.queryByText('Enterprise')).not.toBeInTheDocument();
   });
 
-  it('shows enterprise group when NEXT_PUBLIC_ENABLE_ENTERPRISE=true', () => {
+  it('shows enterprise group when portalMode="all" and NEXT_PUBLIC_ENABLE_ENTERPRISE=true', () => {
     const prev = process.env['NEXT_PUBLIC_ENABLE_ENTERPRISE'];
     process.env['NEXT_PUBLIC_ENABLE_ENTERPRISE'] = 'true';
-    render(<Sidebar workspaceId="ws-1" open={false} onClose={jest.fn()} />);
+    render(<Sidebar workspaceId="ws-1" portalMode="all" open={false} onClose={jest.fn()} />);
     expect(screen.getByText('Enterprise')).toBeInTheDocument();
     expect(screen.getByText('gated')).toBeInTheDocument();
-    expect(screen.getByText('Admin')).toBeInTheDocument();
-    expect(screen.getByText('Marketplace')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Admin' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Marketplace' })).toBeInTheDocument();
     process.env['NEXT_PUBLIC_ENABLE_ENTERPRISE'] = prev;
+  });
+
+  it('renders mode switcher tabs and allows switching modes', () => {
+    const { rerender } = render(<Sidebar workspaceId="ws-1" open={false} onClose={jest.fn()} />);
+    expect(screen.getByRole('tab', { name: /User/ })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Admin/ })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Dev/ })).toBeInTheDocument();
+
+    // In Workspace mode, personal spaces are rendered
+    expect(screen.getByText('Assist')).toBeInTheDocument();
+    expect(screen.queryByText('Governance')).not.toBeInTheDocument();
+
+    // In Admin mode
+    rerender(<Sidebar workspaceId="ws-1" portalMode="admin" open={false} onClose={jest.fn()} />);
+    expect(screen.getByText('Governance')).toBeInTheDocument();
+    expect(screen.getByText('Security & Access')).toBeInTheDocument();
+    expect(screen.getByText('Billing & Operations')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Admin' })).toBeInTheDocument();
+
+    // In Developer mode
+    rerender(
+      <Sidebar workspaceId="ws-1" portalMode="developer" open={false} onClose={jest.fn()} />,
+    );
+    expect(screen.getByText('AI Systems')).toBeInTheDocument();
+    expect(screen.getByText('Integrations & MCP')).toBeInTheDocument();
+    expect(screen.getByText('Developer Platform')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Cognitive Engine' })).toBeInTheDocument();
   });
 
   it('marks the active route with aria-current', () => {

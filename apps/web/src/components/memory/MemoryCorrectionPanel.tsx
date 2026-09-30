@@ -70,7 +70,7 @@ export function MemoryCorrectionPanel() {
       toast({
         tone: 'success',
         title: 'Memory corrected',
-        detail: `This replaces memory #${editing.id.slice(0, 8)} â€” the previous version is kept in History as superseded.`,
+        detail: `This replaces memory #${editing.id.slice(0, 8)} — the previous version is kept in History as superseded.`,
       });
       setEditing(null);
       await load();
@@ -90,7 +90,7 @@ export function MemoryCorrectionPanel() {
       <header className="mb-4">
         <h2 className="text-xl font-display font-medium text-text">Memory Corrections</h2>
         <p className="text-sm text-text-muted">
-          Correct a memory summary. Corrections supersede the old version â€” it stays visible in
+          Correct a memory summary. Corrections supersede the old version — it stays visible in
           History.
         </p>
       </header>

@@ -16,9 +16,13 @@ import {
   LogOutIcon,
   StatusDot,
   ChevronDownIcon,
+  BrainIcon,
+  BuildingIcon,
+  TerminalIcon,
 } from '@vaeloom/ui-kit';
 
 import { resolveBreadcrumb } from '@/lib/route-manifest';
+import { useAppMode } from '@/hooks/useAppMode';
 
 export function TopNav({
   onMenuClick,
@@ -32,8 +36,10 @@ export function TopNav({
   const router = useRouter();
   const pathname = usePathname();
   const { user, me, logout } = useAuth();
+  const { mode, setMode, currentModeMeta } = useAppMode();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [modeMenuOpen, setModeMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
   const [loadingNotifs, setLoadingNotifs] = useState(false);
 
@@ -74,6 +80,7 @@ export function TopNav({
   useEffect(() => {
     setDropdownOpen(false);
     setNotifOpen(false);
+    setModeMenuOpen(false);
   }, [pathname]);
 
   const userInitials = user?.displayName
@@ -129,6 +136,100 @@ export function TopNav({
         <span className="sm:hidden text-sm font-semibold text-text truncate">
           {breadcrumb.title}
         </span>
+
+        {/* Mode Switcher Dropdown */}
+        <div className="relative hidden lg:block ml-1">
+          <button
+            type="button"
+            onClick={() => setModeMenuOpen(!modeMenuOpen)}
+            aria-expanded={modeMenuOpen}
+            aria-label={`Current Mode: ${currentModeMeta.label}. Click to switch mode.`}
+            className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium border border-border-subtle bg-surface-100 hover:bg-surface-200 transition-colors text-text shadow-xs"
+          >
+            {mode === 'workspace' && <BrainIcon size={13} className="text-primary shrink-0" />}
+            {mode === 'admin' && <BuildingIcon size={13} className="text-amber-500 shrink-0" />}
+            {mode === 'developer' && (
+              <TerminalIcon size={13} className="text-emerald-500 shrink-0" />
+            )}
+            <span className="font-semibold text-2xs uppercase tracking-wide">
+              {currentModeMeta.shortLabel}
+            </span>
+            <ChevronDownIcon size={12} className="text-text-muted" />
+          </button>
+
+          {modeMenuOpen && (
+            <>
+              <button
+                type="button"
+                className="fixed inset-0 z-40 cursor-default"
+                onClick={() => setModeMenuOpen(false)}
+                aria-label="Close mode menu"
+              />
+              <div className="absolute left-0 top-full mt-1.5 z-50 w-64 rounded-xl border border-border-strong bg-surface shadow-2xl p-1.5 space-y-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('workspace');
+                    setModeMenuOpen(false);
+                  }}
+                  className={`w-full text-left p-2 rounded-lg flex items-start gap-2.5 transition-colors ${
+                    mode === 'workspace'
+                      ? 'bg-primary/10 text-primary font-semibold'
+                      : 'hover:bg-surface-200 text-text'
+                  }`}
+                >
+                  <BrainIcon size={16} className="mt-0.5 shrink-0" />
+                  <div>
+                    <div className="text-xs font-semibold">Personal Workspace</div>
+                    <div className="text-[11px] text-text-muted leading-tight">
+                      Copilot, memory, resume, and career
+                    </div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('admin');
+                    setModeMenuOpen(false);
+                  }}
+                  className={`w-full text-left p-2 rounded-lg flex items-start gap-2.5 transition-colors ${
+                    mode === 'admin'
+                      ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold'
+                      : 'hover:bg-surface-200 text-text'
+                  }`}
+                >
+                  <BuildingIcon size={16} className="mt-0.5 shrink-0" />
+                  <div>
+                    <div className="text-xs font-semibold">Admin Console</div>
+                    <div className="text-[11px] text-text-muted leading-tight">
+                      Governance, billing, and organizations
+                    </div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('developer');
+                    setModeMenuOpen(false);
+                  }}
+                  className={`w-full text-left p-2 rounded-lg flex items-start gap-2.5 transition-colors ${
+                    mode === 'developer'
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold'
+                      : 'hover:bg-surface-200 text-text'
+                  }`}
+                >
+                  <TerminalIcon size={16} className="mt-0.5 shrink-0" />
+                  <div>
+                    <div className="text-xs font-semibold">Developer Studio</div>
+                    <div className="text-[11px] text-text-muted leading-tight">
+                      Cognition S1/S2, Council, and MCP tools
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Center: Command Center Search Pill Trigger */}
@@ -194,7 +295,7 @@ export function TopNav({
                 onClick={() => setNotifOpen(false)}
                 aria-label="Close notifications menu"
               />
-              <div className="absolute right-0 top-full mt-1.5 z-50 w-80 rounded-xl border border-border-strong bg-surface shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute right-0 top-full mt-1.5 z-50 w-80 rounded-xl border border-border-strong bg-surface shadow-2xl overflow-hidden animate-scale-in">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle bg-surface-200">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-text">Notifications</span>
@@ -288,7 +389,7 @@ export function TopNav({
                 onClick={() => setDropdownOpen(false)}
                 aria-label="Close user menu"
               />
-              <div className="absolute right-0 top-full mt-1.5 z-50 w-64 rounded-xl border border-border-strong bg-surface shadow-2xl py-2 animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute right-0 top-full mt-1.5 z-50 w-64 rounded-xl border border-border-strong bg-surface shadow-2xl py-2 animate-scale-in">
                 <div className="px-3.5 pb-3 pt-1 border-b border-border-subtle">
                   <div className="flex items-center gap-2.5 mb-2">
                     <div className="w-9 h-9 rounded-full bg-surface-100 border border-border-subtle flex items-center justify-center text-text font-mono text-sm font-semibold shrink-0 shadow-xs">

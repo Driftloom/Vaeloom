@@ -26,7 +26,13 @@ import {
   LockIcon,
   UsersIcon,
 } from '@vaeloom/ui-kit';
-import { getNavigationGroups, type DataMode } from '@/lib/route-manifest';
+import {
+  getNavigationGroups,
+  PORTAL_MODES,
+  type DataMode,
+  type AppPortalMode,
+} from '@/lib/route-manifest';
+import { useAppMode } from '@/hooks/useAppMode';
 
 interface NavLink {
   id: string;
@@ -79,9 +85,12 @@ const ROUTE_ICONS: Record<string, React.ReactNode> = {
   'feature-flags': <SettingsIcon size={16} />,
 };
 
-function groupLinks(workspaceId: string): NavGroup[] {
+function groupLinks(workspaceId: string, portalMode?: AppPortalMode | 'all'): NavGroup[] {
   const enableEnterprise = isEnterpriseEnabled();
-  const manifestGroups = getNavigationGroups(workspaceId, { enableEnterprise });
+  const manifestGroups = getNavigationGroups(workspaceId, {
+    enableEnterprise,
+    portalMode,
+  });
 
   return manifestGroups.map((g) => ({
     label: g.label,
@@ -146,6 +155,7 @@ export interface SidebarProps {
   isCollapsed?: boolean;
   collapsed?: boolean;
   open?: boolean;
+  portalMode?: AppPortalMode | 'all';
   onClose?: () => void;
   onToggleCollapse?: () => void;
   onOpenCommandCenter?: () => void;
@@ -156,15 +166,22 @@ export function Sidebar({
   isCollapsed = false,
   collapsed,
   open = false,
+  portalMode,
   onClose,
   onToggleCollapse,
   onOpenCommandCenter,
 }: SidebarProps) {
   const pathname = usePathname();
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+  const { mode: contextMode, setMode, cycleMode, currentModeMeta } = useAppMode();
+  const effectiveMode = portalMode ?? contextMode;
 
   const isCol = collapsed !== undefined ? collapsed : isCollapsed;
-  const groups = groupLinks(workspaceId);
+  const groups = groupLinks(workspaceId, effectiveMode);
+
+  const handleModeChange = (targetMode: AppPortalMode) => {
+    setMode(targetMode, true);
+  };
 
   // Global Keyboard Shortcuts
   useEffect(() => {
@@ -191,7 +208,7 @@ export function Sidebar({
         } ${isCol ? 'md:w-16' : 'md:w-64'}`}
       >
         {/* Brand & Workspace Header */}
-        <div className="flex items-center justify-between h-14 px-3 border-b border-border-subtle">
+        <div className="flex items-center justify-between h-14 px-3 border-b border-border-subtle shrink-0">
           {!isCol && (
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-7 h-7 rounded-lg bg-action flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm">
@@ -231,6 +248,88 @@ export function Sidebar({
             </button>
           )}
         </div>
+
+        {/* App Mode Switcher (User Workspace / Admin Console / Developer Studio) */}
+        {!isCol ? (
+          <div className="px-2.5 pt-2.5 pb-2 border-b border-border-subtle bg-surface-100/60 shrink-0">
+            <div className="flex items-center justify-between mb-1.5 px-0.5">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-text-muted font-semibold">
+                Mode
+              </span>
+              <span className="text-[10px] font-medium text-primary px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20">
+                {currentModeMeta.shortLabel}
+              </span>
+            </div>
+            <div
+              role="tablist"
+              aria-label="Application Mode Switcher"
+              className="grid grid-cols-3 gap-1 p-0.5 rounded-lg bg-surface-200 border border-border-subtle"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={effectiveMode === 'workspace'}
+                onClick={() => handleModeChange('workspace')}
+                className={`flex items-center justify-center gap-1.5 py-1.5 px-1 rounded-md text-2xs font-medium transition-all ${
+                  effectiveMode === 'workspace'
+                    ? 'bg-surface text-text shadow-sm font-semibold border border-border-subtle'
+                    : 'text-text-secondary hover:text-text hover:bg-surface-300/60'
+                }`}
+                title="Personal Workspace — daily assistant, memory, career"
+              >
+                <BrainIcon size={12} className="shrink-0" />
+                <span>User</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={effectiveMode === 'admin'}
+                onClick={() => handleModeChange('admin')}
+                className={`flex items-center justify-center gap-1.5 py-1.5 px-1 rounded-md text-2xs font-medium transition-all ${
+                  effectiveMode === 'admin'
+                    ? 'bg-surface text-text shadow-sm font-semibold border border-border-subtle'
+                    : 'text-text-secondary hover:text-text hover:bg-surface-300/60'
+                }`}
+                title="Admin Console — tenant governance, billing, security"
+              >
+                <BuildingIcon size={12} className="shrink-0" />
+                <span>Admin</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={effectiveMode === 'developer'}
+                onClick={() => handleModeChange('developer')}
+                className={`flex items-center justify-center gap-1.5 py-1.5 px-1 rounded-md text-2xs font-medium transition-all ${
+                  effectiveMode === 'developer'
+                    ? 'bg-surface text-text shadow-sm font-semibold border border-border-subtle'
+                    : 'text-text-secondary hover:text-text hover:bg-surface-300/60'
+                }`}
+                title="Developer Studio — cognition S1/S2, agent council, connectors"
+              >
+                <TerminalIcon size={12} className="shrink-0" />
+                <span>Dev</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center py-2 border-b border-border-subtle gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={cycleMode}
+              title={`Active Mode: ${currentModeMeta.label} (Click to switch)`}
+              aria-label={`Active Mode: ${currentModeMeta.label}. Click to switch mode.`}
+              className="w-8 h-8 rounded-lg flex items-center justify-center bg-surface-200 text-text hover:bg-surface-300 transition-colors border border-border-subtle shadow-sm"
+            >
+              {effectiveMode === 'workspace' && <BrainIcon size={14} />}
+              {effectiveMode === 'admin' && <BuildingIcon size={14} />}
+              {effectiveMode === 'developer' && <TerminalIcon size={14} />}
+            </button>
+            <span className="text-[8px] font-mono uppercase text-text-muted">
+              {effectiveMode === 'workspace' ? 'User' : effectiveMode === 'admin' ? 'Adm' : 'Dev'}
+            </span>
+          </div>
+        )}
 
         {/* Nav Links */}
         <nav
@@ -317,7 +416,7 @@ export function Sidebar({
           role="dialog"
           aria-modal="true"
           aria-label="Keyboard Shortcuts"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
           onClick={() => setShowShortcutsModal(false)}
         >
           <div

@@ -21,7 +21,7 @@ export class ErrorTrackingBoundary extends React.Component<
   }
 
   override componentDidMount(): void {
-    // W-13: surface unhandled errors/rejections through the tracker faÃ§ade.
+    // W-13: surface unhandled errors/rejections through the tracker façade.
     window.addEventListener('unhandledrejection', (e) => {
       const reason = e.reason instanceof Error ? e.reason : new Error(String(e.reason));
       ErrorTracker.captureError(reason, { kind: 'unhandledrejection' });
