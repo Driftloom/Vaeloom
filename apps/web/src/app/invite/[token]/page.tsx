@@ -76,8 +76,8 @@ export default function WorkspaceInvitePage() {
   const signInHref = `/login?redirect=${encodeURIComponent(`/invite/${token}`)}`;
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-background px-4 py-12">
-      <Card className="w-full max-w-lg p-8 text-center space-y-6 border-border-strong shadow-xl">
+    <div className="min-h-screen min-h-[100dvh] flex flex-col items-center justify-center bg-background px-4 py-12 overflow-y-auto overscroll-y-contain">
+      <Card className="w-full max-w-lg p-8 text-center space-y-6 border-border-strong shadow-xl my-auto">
         <div className="mx-auto w-16 h-16 rounded-full bg-action/10 flex items-center justify-center text-action">
           <BuildingIcon size={32} />
         </div>
@@ -169,6 +169,6 @@ export default function WorkspaceInvitePage() {
           </code>
         </div>
       </Card>
-    </main>
+    </div>
   );
 }

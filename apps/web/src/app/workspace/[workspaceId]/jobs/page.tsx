@@ -429,7 +429,7 @@ export default function JobsPage() {
   ];
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col min-h-full space-y-6">
       <PageHeader
         title="Jobs"
         description="Search ranked roles (via Job Search agent), save/reject, and apply with approval. Scheduled automations are below."

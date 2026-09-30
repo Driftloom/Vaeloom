@@ -109,7 +109,7 @@ export default function ApprovalsPage() {
   ];
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col min-h-full space-y-6">
       <PageHeader
         title="Approvals"
         description="Unified inbox for all agent suggestions requiring approval. Least-privilege — review scopes, risk, and expiry before acting."

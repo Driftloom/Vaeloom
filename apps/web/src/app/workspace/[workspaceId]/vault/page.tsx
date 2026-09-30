@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { Tabs, TabPanel } from '@/components/shared/Tabs';
 import { PageHeader } from '@/components/shared/Page';
 import { useToast } from '@/components/shared/Toast';
+import { useScrollLock } from '@/hooks/useScrollLock';
 
 export default function SovereignVaultPage() {
   const params = useParams();
@@ -22,6 +23,8 @@ export default function SovereignVaultPage() {
   const [selectedCred, setSelectedCred] = useState<Record<string, unknown> | null>(null);
   const [inspectModalOpen, setInspectModalOpen] = useState(false);
   const [didModalOpen, setDidModalOpen] = useState(false);
+
+  useScrollLock(inspectModalOpen || didModalOpen);
 
   // Issue capability form state
   const [capabilityTag, setCapabilityTag] = useState('');
@@ -771,8 +774,8 @@ export default function SovereignVaultPage() {
                 </svg>
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 font-mono text-xs">
-              <pre className="rounded-xl bg-background p-4 text-success overflow-x-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 font-mono text-xs">
+              <pre className="rounded-xl bg-background p-4 text-success overflow-x-auto overscroll-x-contain">
                 {JSON.stringify(selectedCred, null, 2)}
               </pre>
             </div>
@@ -826,8 +829,8 @@ export default function SovereignVaultPage() {
                 </svg>
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 font-mono text-xs">
-              <pre className="rounded-xl bg-background p-4 text-info overflow-x-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 font-mono text-xs">
+              <pre className="rounded-xl bg-background p-4 text-info overflow-x-auto overscroll-x-contain">
                 {JSON.stringify(identity.didDocument, null, 2)}
               </pre>
             </div>

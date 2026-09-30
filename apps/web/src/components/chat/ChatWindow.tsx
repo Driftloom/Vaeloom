@@ -499,15 +499,28 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
     if (activeThread) setMessages(activeThread.messages);
     else setMessages([]);
   }, [activeThread]);
+
+  const [showNewMessages, setShowNewMessages] = useState(false);
+
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-    isNearBottomRef.current = scrollHeight - scrollTop - clientHeight < 120;
+    const nearBottom = scrollHeight - scrollTop - clientHeight < 120;
+    isNearBottomRef.current = nearBottom;
+    if (nearBottom) {
+      setShowNewMessages(false);
+    }
   }, []);
 
   useEffect(() => {
     if (isNearBottomRef.current) {
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+      const isStreaming = messages.some((m) => m.streaming);
+      scrollRef.current?.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: isStreaming ? 'instant' : 'smooth',
+      });
+    } else if (messages.length > 0) {
+      setShowNewMessages(true);
     }
   }, [messages, loading]);
   useEffect(() => {
@@ -1325,7 +1338,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             specialists behind the scenes.
           </p>
         </div>
-        <div className="flex-1 overflow-y-auto p-2">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-2">
           {threads.length === 0 ? (
             <p className="px-3 py-6 text-sm text-text-dim text-center">No conversations yet</p>
           ) : (
@@ -1412,7 +1425,11 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           </div>
         </div>
 
-        <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto">
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain relative"
+        >
           <div className="max-w-[768px] w-full mx-auto px-4 md:px-6 py-8">
             {durableWorkflowId && (
               <div className="mb-6">
@@ -1918,6 +1935,26 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                       d="M6 18L18 6M6 6l12 12"
                     />
                   </svg>
+                </button>
+              </div>
+            )}
+            {showNewMessages && (
+              <div className="flex justify-center mb-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    scrollRef.current?.scrollTo({
+                      top: scrollRef.current.scrollHeight,
+                      behavior: 'smooth',
+                    });
+                    isNearBottomRef.current = true;
+                    setShowNewMessages(false);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-elevated border border-border shadow-md text-xs text-text hover:bg-surface-200 transition-colors cursor-pointer"
+                  aria-label="Scroll to new messages"
+                >
+                  <span>New messages</span>
+                  <span aria-hidden="true">↓</span>
                 </button>
               </div>
             )}

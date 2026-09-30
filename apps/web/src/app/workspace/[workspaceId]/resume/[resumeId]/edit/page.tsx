@@ -25,9 +25,9 @@ export default function ResumeEditPage() {
   }
 
   return (
-    <div className="p-2 md:p-3">
+    <div className="flex-1 min-h-0 flex flex-col p-2 md:p-3">
       <OverleafEditor workspaceId={workspaceId} resumeId={resumeId} />
-      <div className="mt-2 text-xs text-muted px-1">
+      <div className="mt-2 text-xs text-muted px-1 shrink-0">
         Why edit/see? Resume is high-stakes — you need <b>control</b> (source + visual),{' '}
         <b>trust</b> (provenance % + ATS heatmap per bullet), and <b>speed</b> (50ms WASM live vs
         300ms server). Overleaf way gives non-tech the form, power users the Typst/LaTeX, both

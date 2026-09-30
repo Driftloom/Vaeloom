@@ -5,7 +5,7 @@ export default function ChatLoading() {
     <div
       role="status"
       aria-label="Loading chat"
-      className="flex flex-col h-[calc(100vh-8rem)] w-full max-w-4xl mx-auto p-4 animate-pulse space-y-6"
+      className="flex flex-col h-full w-full max-w-4xl mx-auto p-4 animate-pulse space-y-6"
     >
       {/* Top Thread Bar */}
       <div className="flex items-center justify-between pb-3 border-b border-border">

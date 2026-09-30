@@ -105,7 +105,7 @@ export function TopNav({
   return (
     <header className="h-14 border-b border-border-subtle bg-surface flex items-center justify-between px-3 sm:px-5 shrink-0 z-20">
       {/* Left section: Sidebar toggle & Dynamic Breadcrumb */}
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
         <button
           type="button"
           onClick={onMenuClick}
@@ -123,9 +123,18 @@ export function TopNav({
             {
               label: currentWorkspace?.name || 'Workspace',
               href: workspaceId ? `/workspace/${workspaceId}` : '/workspace',
+              className: 'max-w-[80px] sm:max-w-[110px] xl:max-w-[150px]',
             },
-            { label: breadcrumb.section },
-            { label: breadcrumb.title, current: true },
+            {
+              label: breadcrumb.section,
+              itemClassName: 'hidden xl:flex',
+              className: 'max-w-[100px] xl:max-w-[140px]',
+            },
+            {
+              label: breadcrumb.title,
+              current: true,
+              className: 'max-w-[110px] sm:max-w-[150px] xl:max-w-[200px]',
+            },
           ]}
         />
         <span className="sm:hidden text-sm font-semibold text-text truncate">
@@ -133,7 +142,7 @@ export function TopNav({
         </span>
 
         {/* Mode Switcher Dropdown */}
-        <div className="relative hidden lg:block ml-1">
+        <div className="relative hidden lg:block shrink-0 ml-1">
           <button
             type="button"
             onClick={() => setModeMenuOpen(!modeMenuOpen)}
@@ -146,10 +155,10 @@ export function TopNav({
             {mode === 'developer' && (
               <TerminalIcon size={13} className="text-emerald-500 shrink-0" />
             )}
-            <span className="font-semibold text-2xs uppercase tracking-wide">
+            <span className="font-semibold text-2xs uppercase tracking-wide hidden xl:inline">
               {currentModeMeta.shortLabel}
             </span>
-            <ChevronDownIcon size={12} className="text-text-muted" />
+            <ChevronDownIcon size={12} className="text-text-muted shrink-0" />
           </button>
 
           {modeMenuOpen && (
@@ -160,7 +169,7 @@ export function TopNav({
                 onClick={() => setModeMenuOpen(false)}
                 aria-label="Close mode menu"
               />
-              <div className="absolute left-0 top-full mt-1.5 z-50 w-64 rounded-xl border border-border-strong bg-surface shadow-2xl p-1.5 space-y-1">
+              <div className="absolute left-0 top-full mt-1.5 z-50 w-64 max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain rounded-xl border border-border-strong bg-surface shadow-2xl p-1.5 space-y-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -228,16 +237,16 @@ export function TopNav({
       </div>
 
       {/* Center: Command Center Search Pill Trigger */}
-      <div className="flex-1 max-w-md mx-4 hidden md:block">
+      <div className="flex-1 min-w-0 max-w-xs md:max-w-sm lg:max-w-md mx-2 lg:mx-4 hidden md:block">
         <button
           type="button"
           onClick={onOpenCommandCenter}
-          className="w-full flex items-center justify-between gap-3 px-3 py-1.5 rounded-md border border-border-subtle bg-surface-100 hover:border-border-strong text-xs text-text-muted hover:text-text-secondary transition-all shadow-sm group"
+          className="w-full min-w-0 flex items-center justify-between gap-2 sm:gap-3 px-3 py-1.5 rounded-md border border-border-subtle bg-surface-100 hover:border-border-strong text-xs text-text-muted hover:text-text-secondary transition-all shadow-sm group"
           aria-label="Open Command Center (⌘K)"
         >
-          <div className="flex items-center gap-2">
-            <SearchIcon size={14} className="text-text-muted group-hover:text-primary" />
-            <span className="truncate">Search files, memories, agents, commands…</span>
+          <div className="flex items-center gap-2 min-w-0">
+            <SearchIcon size={14} className="text-text-muted shrink-0 group-hover:text-primary" />
+            <span className="truncate min-w-0">Search files, memories, agents, commands…</span>
           </div>
           <kbd className="font-mono text-2xs text-text-muted border border-border-subtle rounded px-1.5 py-0.5 bg-surface shrink-0">
             ⌘K
@@ -308,7 +317,7 @@ export function TopNav({
                     View all
                   </Link>
                 </div>
-                <div className="max-h-72 overflow-y-auto divide-y divide-border-subtle">
+                <div className="max-h-72 overflow-y-auto overscroll-y-contain divide-y divide-border-subtle">
                   {loadingNotifs ? (
                     <div className="p-4 text-center text-xs text-text-muted">
                       Loading notifications…
@@ -384,7 +393,7 @@ export function TopNav({
                 onClick={() => setDropdownOpen(false)}
                 aria-label="Close user menu"
               />
-              <div className="absolute right-0 top-full mt-1.5 z-50 w-64 rounded-xl border border-border-strong bg-surface shadow-2xl py-2 animate-scale-in">
+              <div className="absolute right-0 top-full mt-1.5 z-50 w-64 max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain rounded-xl border border-border-strong bg-surface shadow-2xl py-2 animate-scale-in">
                 <div className="px-3.5 pb-3 pt-1 border-b border-border-subtle">
                   <div className="flex items-center gap-2.5 mb-2">
                     <div className="w-9 h-9 rounded-full bg-surface-100 border border-border-subtle flex items-center justify-center text-text font-mono text-sm font-semibold shrink-0 shadow-xs">

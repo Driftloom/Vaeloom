@@ -3,8 +3,8 @@ import { PageHeader } from '@/components/shared/Page';
 
 export default function Forbidden() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-background text-center px-4">
-      <div className="w-full max-w-md mb-6">
+    <div className="min-h-screen min-h-[100dvh] flex flex-col items-center justify-center bg-background text-center px-4 py-8 overflow-y-auto overscroll-y-contain">
+      <div className="w-full max-w-md mb-6 my-auto">
         {/* The status code is a label, not the page title, so it is not the h1. */}
         <p className="text-6xl font-display font-bold text-primary">403</p>
         <PageHeader
@@ -21,6 +21,6 @@ export default function Forbidden() {
           Go Home
         </Link>
       </div>
-    </main>
+    </div>
   );
 }

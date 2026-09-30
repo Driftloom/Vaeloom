@@ -18,6 +18,7 @@ import {
   LockIcon,
   SparklesIcon,
   UploadIcon,
+  useScrollLock,
 } from '@vaeloom/ui-kit';
 
 // ------------------------------------------------------------------
@@ -30,6 +31,7 @@ interface ImportProfileModalProps {
 }
 
 function ImportProfileModal({ workspaceId, onImported, onClose }: ImportProfileModalProps) {
+  useScrollLock(true);
   const [tab, setTab] = useState<'resume' | 'linkedin' | 'workspace'>('resume');
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [dragOver, setDragOver] = useState(false);
@@ -131,9 +133,9 @@ function ImportProfileModal({ workspaceId, onImported, onClose }: ImportProfileM
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       {/* Modal */}
-      <div className="relative w-full max-w-lg bg-surface rounded-2xl shadow-2xl border border-border overflow-hidden animate-fadeIn">
+      <div className="relative w-full max-w-lg max-h-[90dvh] flex flex-col bg-surface rounded-2xl shadow-2xl border border-border overflow-hidden animate-fadeIn">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
             <SparklesIcon size={18} className="text-primary" />
             <h2 className="text-base font-semibold text-text">Import Your Profile</h2>
@@ -148,7 +150,7 @@ function ImportProfileModal({ workspaceId, onImported, onClose }: ImportProfileM
         </div>
 
         {/* Tab bar */}
-        <div className="flex border-b border-border px-6 bg-background/50">
+        <div className="flex border-b border-border px-6 bg-background/50 shrink-0">
           {tabs.map((t) => (
             <button
               key={t.key}
@@ -168,7 +170,7 @@ function ImportProfileModal({ workspaceId, onImported, onClose }: ImportProfileM
         </div>
 
         {/* Tab content */}
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 flex-1 min-h-0 overflow-y-auto overscroll-y-contain">
           {/* Error */}
           {error && (
             <div className="p-3 rounded-lg bg-error/10 border border-error/30 text-error text-sm">

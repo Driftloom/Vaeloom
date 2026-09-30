@@ -127,7 +127,7 @@ export default function NotificationsPage() {
 
   if (error) {
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col min-h-full space-y-6">
         {header}
         <ErrorState
           title="Failed to load notifications"
@@ -140,7 +140,7 @@ export default function NotificationsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col min-h-full space-y-6">
         {header}
         <LoadingSpinner text="Loading notifications..." />
       </div>
@@ -148,7 +148,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col min-h-full space-y-6">
       {header}
 
       {items.length === 0 && pendingApprovals.length === 0 ? (

@@ -148,7 +148,7 @@ export default function HistoryPage() {
   ];
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col min-h-full space-y-6">
       <PageHeader
         title="History"
         description="Agent actions, document changes and system events — with diffs and undo."

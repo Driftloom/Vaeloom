@@ -67,7 +67,7 @@ export function PreviewPane({
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto bg-[#525659] p-4 flex justify-center">
+      <div className="flex-1 min-h-0 overflow-auto overscroll-contain bg-[#525659] p-4 flex justify-center">
         {htmlPreview ? (
           <div
             className="bg-white shadow-lg w-full max-w-[794px] min-h-[1100px] overflow-hidden"

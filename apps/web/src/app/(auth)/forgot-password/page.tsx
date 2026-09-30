@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen min-h-[100dvh] flex">
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="relative z-10 flex flex-col justify-center px-16 lg:px-20">
           <div className="flex items-center gap-3 mb-2">
@@ -74,8 +74,8 @@ export default function ForgotPasswordPage() {
           </p>
         </div>
       </div>
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-[400px]">
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-8 relative min-h-0 overflow-y-auto overscroll-y-contain">
+        <div className="w-full max-w-[400px] my-auto">
           <div className="mb-8">
             {/* Narrow auth card: single h1 at the app type scale. */}
             <h1 className="text-2xl sm:text-3xl font-display font-medium text-text">

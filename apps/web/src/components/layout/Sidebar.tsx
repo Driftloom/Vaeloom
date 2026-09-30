@@ -25,6 +25,7 @@ import {
   CheckSquareIcon,
   LockIcon,
   UsersIcon,
+  useScrollLock,
 } from '@vaeloom/ui-kit';
 import {
   getNavigationGroups,
@@ -173,6 +174,7 @@ export function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+  useScrollLock(showShortcutsModal);
   const { mode: contextMode, setMode, cycleMode, currentModeMeta } = useAppMode();
   const effectiveMode = portalMode ?? contextMode;
 
@@ -203,7 +205,7 @@ export function Sidebar({
     <>
       <aside
         aria-label="Sidebar navigation"
-        className={`h-screen border-r border-border-subtle bg-surface flex flex-col transition-all duration-200 select-none ${
+        className={`h-screen h-[100dvh] border-r border-border-subtle bg-surface flex flex-col transition-all duration-200 select-none ${
           open ? 'fixed inset-y-0 left-0 z-40 w-64' : 'hidden md:flex'
         } ${isCol ? 'md:w-16' : 'md:w-64'}`}
       >
@@ -333,7 +335,7 @@ export function Sidebar({
 
         {/* Nav Links */}
         <nav
-          className="flex-1 overflow-y-auto py-2.5 px-2 space-y-4"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain py-2.5 px-2 space-y-4"
           aria-label="Workspace navigation"
         >
           {groups.map((group, gIdx) => (
@@ -416,12 +418,16 @@ export function Sidebar({
           role="dialog"
           aria-modal="true"
           aria-label="Keyboard Shortcuts"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overscroll-contain"
           onClick={() => setShowShortcutsModal(false)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setShowShortcutsModal(false);
+          }}
         >
           <div
-            className="w-full max-w-md rounded-xl bg-surface border border-border-strong shadow-2xl p-5 space-y-4"
+            className="w-full max-w-md max-h-[85dvh] overflow-y-auto overscroll-contain rounded-xl bg-surface border border-border-strong shadow-2xl p-5 space-y-4"
             onClick={(e) => e.stopPropagation()}
+            tabIndex={-1}
           >
             <div className="flex items-center justify-between pb-3 border-b border-border-subtle">
               <h3 className="text-sm font-semibold text-text">Keyboard Shortcuts</h3>

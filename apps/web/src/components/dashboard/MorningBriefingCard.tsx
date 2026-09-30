@@ -93,7 +93,13 @@ export function MorningBriefingCard({ workspaceId }: MorningBriefingCardProps) {
     );
   }
 
-  if (error || !briefing) {
+  if (
+    error ||
+    !briefing ||
+    typeof briefing !== 'object' ||
+    Array.isArray(briefing) ||
+    !briefing.briefingDate
+  ) {
     return (
       <div className="rounded-xl border border-dashed border-border bg-surface/50 p-6 text-center">
         <div className="text-sm font-medium text-text-secondary mb-3">
@@ -110,6 +116,7 @@ export function MorningBriefingCard({ workspaceId }: MorningBriefingCardProps) {
     );
   }
 
+  const topPriorities = Array.isArray(briefing.topPriorities) ? briefing.topPriorities : [];
   const alignmentPct = Math.round((briefing.realityGap?.alignmentScore ?? 1.0) * 100);
   const isHealthy = alignmentPct >= 75;
   const isModerate = alignmentPct >= 50 && alignmentPct < 75;
@@ -158,12 +165,12 @@ export function MorningBriefingCard({ workspaceId }: MorningBriefingCardProps) {
               </span>
               <span className="text-xs text-primary font-medium">
                 {Object.values(completedPriorities).filter(Boolean).length} of{' '}
-                {briefing.topPriorities.length} checked
+                {topPriorities.length} checked
               </span>
             </div>
 
             <div className="space-y-2">
-              {briefing.topPriorities.map((priority, idx) => {
+              {topPriorities.map((priority, idx) => {
                 const checked = !!completedPriorities[idx];
                 return (
                   <label
@@ -256,16 +263,17 @@ export function MorningBriefingCard({ workspaceId }: MorningBriefingCardProps) {
               {briefing.realityGap?.frictionRecommendation}
             </p>
 
-            {briefing.realityGap?.totalCommitments > 0 && (
+            {(briefing.realityGap?.totalCommitments ?? 0) > 0 && (
               <div className="text-xs text-text-muted border-t border-border pt-2">
-                Fulfilled {briefing.realityGap.fulfilledCount} of{' '}
-                {briefing.realityGap.totalCommitments} stated commitments
+                Fulfilled {briefing.realityGap?.fulfilledCount ?? 0} of{' '}
+                {briefing.realityGap?.totalCommitments} stated commitments
               </div>
             )}
           </div>
 
           {/* Friction & Bottlenecks */}
-          {(briefing.openFriction?.length > 0 || briefing.resolvedFriction?.length > 0) && (
+          {((briefing.openFriction?.length ?? 0) > 0 ||
+            (briefing.resolvedFriction?.length ?? 0) > 0) && (
             <div className="rounded-xl border border-border bg-surface-100 p-4 shadow-sm">
               <span className="text-xs font-semibold uppercase tracking-wider text-text-muted block mb-2">
                 Friction Points & Conquered Blockers

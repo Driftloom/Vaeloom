@@ -143,7 +143,7 @@ function ResetPasswordForm() {
 
   if (resetComplete) {
     return (
-      <div className="min-h-screen flex">
+      <div className="min-h-screen min-h-[100dvh] flex">
         <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
           <div className="relative z-10 flex flex-col justify-center px-16 lg:px-20">
             <div className="flex items-center gap-3 mb-2">
@@ -159,8 +159,8 @@ function ResetPasswordForm() {
             </p>
           </div>
         </div>
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="w-full max-w-[400px]">
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-8 relative min-h-0 overflow-y-auto overscroll-y-contain">
+          <div className="w-full max-w-[400px] my-auto">
             <AuthCardHeading
               title="Password successfully reset"
               detail="Sign in with your new password to continue."
@@ -182,7 +182,7 @@ function ResetPasswordForm() {
 
   if (sent) {
     return (
-      <div className="min-h-screen flex">
+      <div className="min-h-screen min-h-[100dvh] flex">
         <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
           <div className="relative z-10 flex flex-col justify-center px-16 lg:px-20">
             <div className="flex items-center gap-3 mb-2">
@@ -197,8 +197,8 @@ function ResetPasswordForm() {
             </p>
           </div>
         </div>
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="w-full max-w-[400px]">
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-8 relative min-h-0 overflow-y-auto overscroll-y-contain">
+          <div className="w-full max-w-[400px] my-auto">
             <AuthCardHeading
               title="Check your email"
               detail="We will email you a reset link if an account exists for that address."
@@ -223,7 +223,7 @@ function ResetPasswordForm() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen min-h-[100dvh] flex">
       {/* Left Panel - Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="relative z-10 flex flex-col justify-center px-16 lg:px-20">
@@ -247,8 +247,8 @@ function ResetPasswordForm() {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="flex-1 flex items-center justify-center p-8 relative overflow-hidden">
-        <div className="w-full max-w-[400px] relative z-10">
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-8 relative min-h-0 overflow-y-auto overscroll-y-contain">
+        <div className="w-full max-w-[400px] relative z-10 my-auto">
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-10">
             <div className="inline-flex items-center gap-2 mb-4">

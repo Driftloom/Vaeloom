@@ -167,7 +167,7 @@ export default function FileDetailPage() {
       {activeTab === 'preview' ? (
         <div className="flex-1 overflow-auto rounded-xl border border-border/50 bg-background/40 min-h-[50vh]">
           {text != null ? (
-            <pre className="whitespace-pre-wrap p-5 font-mono text-sm leading-relaxed text-text">
+            <pre className="whitespace-pre-wrap break-words p-5 font-mono text-sm leading-relaxed text-text">
               {text}
             </pre>
           ) : isImage && blobUrl ? (

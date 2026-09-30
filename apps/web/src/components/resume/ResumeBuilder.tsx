@@ -498,7 +498,7 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
                       </Link>
                     </div>
                   </div>
-                  <pre className="flex-1 bg-transparent text-text p-6 overflow-y-auto font-sans text-sm leading-relaxed whitespace-pre-wrap">
+                  <pre className="flex-1 min-h-0 bg-transparent text-text p-6 overflow-y-auto overscroll-y-contain font-sans text-sm leading-relaxed whitespace-pre-wrap">
                     {renderContent(masterResume.content as Record<string, unknown>) || 'No content'}
                   </pre>
                   <p className="px-6 pb-3 text-xs text-text-dim">

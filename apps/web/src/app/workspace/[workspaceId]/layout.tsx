@@ -11,6 +11,8 @@ import { ErrorBoundary } from '../../../components/common/ErrorBoundary';
 import { RealtimeProvider } from '@/components/providers/RealtimeProvider';
 import { DataModeBanner } from '@/components/shared/DataModeBanner';
 import { AppModeProvider } from '@/hooks/useAppMode';
+import { useScrollLock } from '@/hooks/useScrollLock';
+import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 
 export default function WorkspaceLayout({
   children,
@@ -26,6 +28,10 @@ export default function WorkspaceLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [commandCenterOpen, setCommandCenterOpen] = useState(false);
+  const contentRef = React.useRef<HTMLDivElement>(null);
+
+  useScrollLock(sidebarOpen);
+  useScrollRestoration(contentRef);
 
   useEffect(() => {
     void params.then((p) => setWorkspaceId(p.workspaceId));
@@ -120,7 +126,7 @@ export default function WorkspaceLayout({
   return (
     <RealtimeProvider workspaceId={workspaceId}>
       <AppModeProvider>
-        <div className="flex h-screen overflow-hidden bg-background">
+        <div className="flex h-screen h-[100dvh] overflow-hidden bg-background">
           <Sidebar
             key="workspace-sidebar"
             workspaceId={workspaceId}
@@ -133,8 +139,9 @@ export default function WorkspaceLayout({
           {sidebarOpen ? (
             <div
               key="workspace-sidebar-backdrop"
-              className="md:hidden fixed inset-0 z-30 bg-black/40"
+              className="md:hidden fixed inset-0 z-30 bg-black/40 backdrop-blur-[1px]"
               onClick={() => setSidebarOpen(false)}
+              onTouchMove={(e) => e.preventDefault()}
               aria-hidden="true"
             />
           ) : null}
@@ -148,25 +155,41 @@ export default function WorkspaceLayout({
             {/* F-08: the root layout owns the single <main id="main-content">
                   landmark; this wrapper stays a plain div to avoid nested/duplicate
                   main landmarks on every workspace route. */}
-            <div
-              tabIndex={-1}
-              className={`flex-1 focus:outline-none ${
+            {(() => {
+              const isFullBleed = Boolean(
                 pathname?.endsWith('/chat') ||
                 pathname?.includes('/chat/') ||
-                pathname?.includes('/capabilities')
-                  ? 'flex flex-col min-h-0 overflow-hidden p-0'
-                  : 'overflow-y-auto p-4 sm:p-6'
-              }`}
-              aria-hidden={sidebarOpen ? true : undefined}
-              {...(sidebarOpen ? { inert: true } : {})}
-            >
-              <ErrorBoundary>
-                <div key="workspace-content-wrapper">
-                  <DataModeBanner key="workspace-data-mode-banner" />
-                  {React.Children.toArray(children)}
+                pathname?.includes('/capabilities') ||
+                (pathname?.includes('/resume/') && pathname?.includes('/edit')) ||
+                pathname?.includes('/files/') ||
+                pathname?.includes('/applications'),
+              );
+              return (
+                <div
+                  ref={contentRef}
+                  tabIndex={-1}
+                  className={`flex-1 focus:outline-none min-h-0 ${
+                    isFullBleed
+                      ? 'flex flex-col overflow-hidden p-0'
+                      : 'overflow-y-auto overscroll-y-contain p-4 sm:p-6'
+                  }`}
+                  aria-hidden={sidebarOpen ? true : undefined}
+                  {...(sidebarOpen ? { inert: true } : {})}
+                >
+                  <ErrorBoundary>
+                    <div
+                      key="workspace-content-wrapper"
+                      className={`flex flex-col min-h-0 ${
+                        isFullBleed ? 'flex-1 h-full' : 'min-h-full'
+                      }`}
+                    >
+                      <DataModeBanner key="workspace-data-mode-banner" />
+                      {React.Children.toArray(children)}
+                    </div>
+                  </ErrorBoundary>
                 </div>
-              </ErrorBoundary>
-            </div>
+              );
+            })()}
           </div>
 
           {/* Global Command Center */}

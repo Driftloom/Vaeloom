@@ -774,7 +774,7 @@ export const McpView: React.FC<McpViewProps> = ({
             <span className="text-2xs font-mono text-primary font-medium">1-Click Install</span>
           </div>
 
-          <div className="flex-1 overflow-y-auto divide-y divide-border-subtle p-2 space-y-1">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain divide-y divide-border-subtle p-2 space-y-1">
             {filteredCatalog.map((template) => {
               const isInstalled = installedServers.some(
                 (s) =>
@@ -1347,7 +1347,7 @@ export const McpView: React.FC<McpViewProps> = ({
                   setIsEditorDirty(true);
                 }}
                 spellCheck={false}
-                className="flex-1 p-3 bg-transparent text-text focus:outline-none resize-none leading-5 overflow-auto selection:bg-primary/20"
+                className="flex-1 min-h-0 p-3 bg-transparent text-text focus:outline-none resize-none leading-5 overflow-auto overscroll-contain selection:bg-primary/20"
               />
             </div>
           </div>
@@ -1399,7 +1399,7 @@ export const McpView: React.FC<McpViewProps> = ({
             </div>
           </div>
 
-          <div className="flex-1 p-3 overflow-y-auto font-mono text-xs leading-5 space-y-1 bg-surface">
+          <div className="flex-1 min-h-0 p-3 overflow-y-auto overscroll-y-contain font-mono text-xs leading-5 space-y-1 bg-surface">
             {filteredLogs.length === 0 ? (
               <div className="text-text-muted italic text-xs">No activity logged yet.</div>
             ) : (

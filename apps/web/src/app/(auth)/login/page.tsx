@@ -225,11 +225,11 @@ function LoginForm() {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="flex-1 flex items-center justify-center p-8 relative overflow-hidden">
-        <div className="w-full max-w-[400px] relative z-10">
+      <div className="flex-1 flex items-center justify-center py-4 sm:py-6 lg:py-8 px-4 sm:px-8 relative min-h-0 overflow-y-auto overscroll-y-contain">
+        <div className="w-full max-w-[400px] relative z-10 my-auto">
           {/* Mobile logo */}
-          <div className="lg:hidden text-center mb-10">
-            <div className="inline-flex items-center gap-2 mb-4">
+          <div className="lg:hidden text-center mb-6">
+            <div className="inline-flex items-center gap-2 mb-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-400 flex items-center justify-center">
                 <span className="text-white font-bold text-lg">V</span>
               </div>
@@ -238,13 +238,13 @@ function LoginForm() {
           </div>
 
           {/* Welcome text */}
-          <div className="mb-8">
+          <div className="mb-4 sm:mb-6">
             {/* Narrow auth card: the page keeps its own heading block rather than
                 a full-width PageHeader, but the type scale is the app scale. */}
-            <h1 className="text-2xl sm:text-3xl font-display font-medium text-text mb-2">
+            <h1 className="text-2xl sm:text-3xl font-display font-medium text-text mb-1.5">
               {mfaChallenge ? 'Two-Factor Verification' : 'Welcome back'}
             </h1>
-            <p className="text-text-muted">
+            <p className="text-sm text-text-muted">
               {mfaChallenge
                 ? 'Enter the 6-digit code from your authenticator app or an emergency recovery code'
                 : 'Sign in to continue to your workspace'}
@@ -252,9 +252,9 @@ function LoginForm() {
           </div>
 
           {/* Form card */}
-          <div className="bg-surface-50 border border-border rounded-2xl p-8 shadow-card">
+          <div className="bg-surface-50 border border-border rounded-2xl p-5 sm:p-6 lg:p-7 shadow-card">
             {mfaChallenge ? (
-              <form onSubmit={onMfaSubmit} className="space-y-5" suppressHydrationWarning>
+              <form onSubmit={onMfaSubmit} className="space-y-4" suppressHydrationWarning>
                 <div className="space-y-2">
                   <label htmlFor="mfaCode" className="input-label">
                     Authentication Code
@@ -309,7 +309,7 @@ function LoginForm() {
                   action="#"
                   method="post"
                   data-hydrated={hydrated ? 'true' : 'false'}
-                  className="space-y-5"
+                  className="space-y-4"
                   suppressHydrationWarning
                 >
                   {/* Email field */}
@@ -480,12 +480,12 @@ function LoginForm() {
                 </form>
 
                 {/* Divider */}
-                <div className="relative my-8">
+                <div className="relative my-4 sm:my-5">
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-border" />
                   </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-4 bg-surface-50 text-text-dim">or continue with</span>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="px-3 bg-surface-50 text-text-dim">or continue with</span>
                   </div>
                 </div>
 
@@ -495,11 +495,11 @@ function LoginForm() {
                     type="button"
                     onClick={() => handleSSO('google')}
                     suppressHydrationWarning
-                    className="btn-secondary flex items-center justify-center gap-2 py-2.5"
+                    className="btn-secondary flex items-center justify-center gap-2 py-2"
                     aria-label="Continue with Google"
                   >
                     <svg
-                      className="w-5 h-5"
+                      className="w-4 h-4"
                       viewBox="0 0 24 24"
                       fill="currentColor"
                       aria-hidden="true"
@@ -527,11 +527,11 @@ function LoginForm() {
                     type="button"
                     onClick={() => handleSSO('microsoft')}
                     suppressHydrationWarning
-                    className="btn-secondary flex items-center justify-center gap-2 py-2.5"
+                    className="btn-secondary flex items-center justify-center gap-2 py-2"
                     aria-label="Continue with Microsoft"
                   >
                     <svg
-                      className="w-5 h-5"
+                      className="w-4 h-4"
                       viewBox="0 0 24 24"
                       fill="currentColor"
                       aria-hidden="true"
@@ -541,7 +541,7 @@ function LoginForm() {
                     Microsoft
                   </button>
                 </div>
-                <p className="text-xs text-text-dim text-center mt-2">
+                <p className="text-[11px] text-text-dim text-center mt-2">
                   Enterprise Single Sign-On (Google, Microsoft & SAML 2.0).
                 </p>
               </>
@@ -549,7 +549,7 @@ function LoginForm() {
           </div>
 
           {/* Sign up link */}
-          <p className="mt-8 text-center text-text-muted">
+          <p className="mt-4 sm:mt-5 text-center text-sm text-text-muted">
             Don&apos;t have an account?{' '}
             <Link
               href="/signup"
@@ -560,7 +560,7 @@ function LoginForm() {
           </p>
 
           {/* Footer */}
-          <p className="mt-8 text-center text-xs text-text-dim">
+          <p className="mt-3 text-center text-xs text-text-dim">
             By signing in, you agree to our{' '}
             <Link href="/terms" className="hover:text-text-muted transition-colors">
               Terms

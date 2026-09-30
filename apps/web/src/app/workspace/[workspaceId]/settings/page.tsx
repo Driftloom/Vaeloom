@@ -275,7 +275,7 @@ export default function SettingsPage() {
 
   if (agentsError) {
     return (
-      <div className="flex flex-col h-full max-w-6xl mx-auto py-6 px-4 space-y-6">
+      <div className="flex flex-col min-h-full max-w-6xl mx-auto py-6 px-4 space-y-6">
         {header}
         <ErrorState
           title="Failed to load workspace settings"
@@ -287,7 +287,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex flex-col h-full max-w-6xl mx-auto py-6 px-4 sm:px-6 space-y-6">
+    <div className="flex flex-col min-h-full max-w-6xl mx-auto py-6 px-4 sm:px-6 space-y-6">
       {header}
 
       {/* Global Save Error Banner */}

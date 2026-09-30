@@ -502,7 +502,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
         </div>
 
         {/* Scrollable Agent Items List */}
-        <div className="flex-1 overflow-y-auto divide-y divide-border p-1.5 space-y-0.5">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain divide-y divide-border p-1.5 space-y-0.5">
           {filteredAgents.map((agent) => {
             const isSelected = agent.id === selectedAgent?.id;
             const meta = getAgentVisualMeta(agent.name);

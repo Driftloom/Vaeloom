@@ -141,7 +141,7 @@ export default function ApplicationsPage() {
 
   if (error) {
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full p-4 sm:p-6">
         {header}
         <ErrorState
           title="Failed to load applications"
@@ -154,7 +154,7 @@ export default function ApplicationsPage() {
 
   if (applications.length === 0) {
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full p-4 sm:p-6">
         {header}
         <EmptyState
           title="No active applications"
@@ -165,11 +165,11 @@ export default function ApplicationsPage() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0 p-4 sm:p-6">
       {header}
 
       <div
-        className="flex gap-4 overflow-x-auto pb-4 flex-1"
+        className="flex gap-4 overflow-x-auto overscroll-x-contain pb-4 flex-1 min-h-0"
         role="region"
         aria-label="Application pipeline"
       >
@@ -190,7 +190,7 @@ export default function ApplicationsPage() {
                 </span>
               </h2>
 
-              <div className="flex-1 space-y-3 overflow-y-auto">
+              <div className="flex-1 min-h-0 space-y-3 overflow-y-auto overscroll-y-contain">
                 {colApps.map((app) => (
                   <button
                     key={app.id}

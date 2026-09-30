@@ -188,7 +188,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
         </div>
 
         {/* Scrollable Capability Items */}
-        <div className="flex-1 overflow-y-auto divide-y divide-border p-1.5 space-y-0.5">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain divide-y divide-border p-1.5 space-y-0.5">
           {sortedSkills.length === 0 ? (
             <div className="p-8">
               <EmptyState

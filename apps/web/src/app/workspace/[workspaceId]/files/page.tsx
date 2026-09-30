@@ -643,7 +643,7 @@ export default function WorkspaceFilesPage() {
   }, [folders, selectedFolderId]);
 
   return (
-    <div className="flex flex-col h-full space-y-6">
+    <div className="flex flex-col min-h-full space-y-6">
       {/* Screen Reader ARIA Live Region */}
       <div aria-live="polite" className="sr-only">
         {ariaAnnouncement}

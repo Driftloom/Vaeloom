@@ -218,7 +218,7 @@ export default function DashboardPage() {
             tabIndex={0}
             role="region"
             aria-label="Recent Activity feed"
-            className="flex-1 overflow-y-auto space-y-4 focus:outline-none focus:ring-1 focus:ring-primary/40 rounded"
+            className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain space-y-4 focus:outline-none focus:ring-1 focus:ring-primary/40 rounded"
           >
             {eventsLoading && (
               <div className="space-y-4">
@@ -279,7 +279,7 @@ export default function DashboardPage() {
             tabIndex={0}
             role="region"
             aria-label="Upcoming Deadlines feed"
-            className="flex-1 overflow-y-auto space-y-3 focus:outline-none focus:ring-1 focus:ring-primary/40 rounded"
+            className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain space-y-3 focus:outline-none focus:ring-1 focus:ring-primary/40 rounded"
           >
             {eventsLoading && (
               <div className="space-y-3">

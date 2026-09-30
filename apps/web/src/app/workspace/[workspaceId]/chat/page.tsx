@@ -10,9 +10,7 @@ export default function ChatPage() {
 
   if (!workspaceId) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-8rem)] text-text-muted">
-        Loading...
-      </div>
+      <div className="flex items-center justify-center h-full text-text-muted">Loading...</div>
     );
   }
 

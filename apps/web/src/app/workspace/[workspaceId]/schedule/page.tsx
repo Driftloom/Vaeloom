@@ -278,7 +278,7 @@ export default function SchedulePage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col min-h-full space-y-6">
         {header}
         <LoadingSpinner text="Loading schedule..." />
       </div>
@@ -286,7 +286,7 @@ export default function SchedulePage() {
   }
   if (error) {
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col min-h-full space-y-6">
         {header}
         <ErrorState title="Failed to load schedule" message={error} onRetry={fetchEvents} />
       </div>
@@ -294,7 +294,7 @@ export default function SchedulePage() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col min-h-full space-y-6">
       {header}
 
       <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -378,48 +378,50 @@ export default function SchedulePage() {
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-7 gap-px rounded-lg overflow-hidden border border-border bg-border">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-              <div
-                key={d}
-                className="bg-surface-hover p-2 text-center font-mono text-xs uppercase text-text-dim"
-              >
-                {d}
-              </div>
-            ))}
-            {calDays.map((cell, i) => (
-              <div
-                key={i}
-                className={`min-h-[84px] bg-surface p-1 ${!cell.date ? 'bg-surface-hover/50' : ''}`}
-              >
-                {cell.date && (
-                  <>
-                    <p className="text-xs font-mono text-text-dim">{cell.date.getDate()}</p>
-                    <div className="mt-1 space-y-1">
-                      {cell.events.slice(0, 3).map((e) => {
-                        const title = String(
-                          (e.payload as Record<string, unknown>)?.['title'] ?? e.type,
-                        );
-                        const badge = getSourceBadge(e);
-                        const proposed = isProposed(e);
-                        return (
-                          <button
-                            key={e.id}
-                            onClick={() => setSelected(e)}
-                            className={`w-full truncate rounded px-1 py-0.5 text-left text-xs border ${proposed ? 'border-amber-500/30 bg-amber-500/10 text-amber-700' : 'border-border bg-background text-text'} ${badge.label === 'Gmail' ? 'border-l-2 border-l-red-500' : ''}`}
-                          >
-                            {title.slice(0, 18)}
-                          </button>
-                        );
-                      })}
-                      {cell.events.length > 3 && (
-                        <p className="text-2xs text-text-dim">+{cell.events.length - 3} more</p>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            ))}
+          <div className="overflow-x-auto scroll-region-x overscroll-x-contain">
+            <div className="min-w-[560px] grid grid-cols-7 gap-px rounded-lg overflow-hidden border border-border bg-border">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+                <div
+                  key={d}
+                  className="bg-surface-hover p-2 text-center font-mono text-xs uppercase text-text-dim"
+                >
+                  {d}
+                </div>
+              ))}
+              {calDays.map((cell, i) => (
+                <div
+                  key={i}
+                  className={`min-h-[84px] bg-surface p-1 ${!cell.date ? 'bg-surface-hover/50' : ''}`}
+                >
+                  {cell.date && (
+                    <>
+                      <p className="text-xs font-mono text-text-dim">{cell.date.getDate()}</p>
+                      <div className="mt-1 space-y-1">
+                        {cell.events.slice(0, 3).map((e) => {
+                          const title = String(
+                            (e.payload as Record<string, unknown>)?.['title'] ?? e.type,
+                          );
+                          const badge = getSourceBadge(e);
+                          const proposed = isProposed(e);
+                          return (
+                            <button
+                              key={e.id}
+                              onClick={() => setSelected(e)}
+                              className={`w-full truncate rounded px-1 py-0.5 text-left text-xs border ${proposed ? 'border-amber-500/30 bg-amber-500/10 text-amber-700' : 'border-border bg-background text-text'} ${badge.label === 'Gmail' ? 'border-l-2 border-l-red-500' : ''}`}
+                            >
+                              {title.slice(0, 18)}
+                            </button>
+                          );
+                        })}
+                        {cell.events.length > 3 && (
+                          <p className="text-2xs text-text-dim">+{cell.events.length - 3} more</p>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       ) : (

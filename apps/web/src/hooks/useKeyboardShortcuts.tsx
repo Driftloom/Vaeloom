@@ -2,6 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useScrollLock } from '@vaeloom/ui-kit';
 
 interface Shortcut {
   keys: string;
@@ -55,6 +56,8 @@ export function KeyboardShortcutsModal() {
   const { shortcuts, showModal, setShowModal } = useKeyboardShortcuts();
   const closeRef = React.useRef<HTMLButtonElement>(null);
 
+  useScrollLock(showModal);
+
   React.useEffect(() => {
     if (showModal) {
       closeRef.current?.focus();
@@ -106,11 +109,13 @@ export function KeyboardShortcutsModal() {
         role="dialog"
         aria-modal="true"
         aria-label="Keyboard shortcuts"
-        className="bg-surface border border-border rounded-lg shadow-xl p-6 w-full max-w-md"
+        className="bg-surface border border-border rounded-lg shadow-xl p-6 w-full max-w-md max-h-[90dvh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-display font-semibold text-text mb-4">Keyboard Shortcuts</h2>
-        <div className="space-y-2">
+        <h2 className="text-lg font-display font-semibold text-text mb-4 shrink-0">
+          Keyboard Shortcuts
+        </h2>
+        <div className="space-y-2 flex-1 min-h-0 overflow-y-auto overscroll-y-contain pr-1">
           {shortcuts.map((s) => (
             <div key={s.keys} className="flex items-center justify-between">
               <span className="text-sm text-text-muted">{s.description}</span>
@@ -120,7 +125,7 @@ export function KeyboardShortcutsModal() {
             </div>
           ))}
         </div>
-        <p className="mt-4 text-xs text-text-muted">
+        <p className="mt-4 text-xs text-text-muted shrink-0">
           Press{' '}
           <kbd className="px-1 py-0.5 bg-surface-hover border border-border rounded font-mono">
             ?
@@ -130,7 +135,7 @@ export function KeyboardShortcutsModal() {
         <button
           ref={closeRef}
           onClick={() => setShowModal(false)}
-          className="mt-4 w-full px-3 py-1.5 text-sm text-text bg-surface-hover border border-border rounded hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-background"
+          className="mt-4 shrink-0 w-full px-3 py-1.5 text-sm text-text bg-surface-hover border border-border rounded hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-background"
         >
           Close
         </button>

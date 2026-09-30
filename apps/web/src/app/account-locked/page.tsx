@@ -7,8 +7,8 @@ import { PageHeader } from '@/components/shared/Page';
 
 export default function AccountLockedPage() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-background px-4 py-12">
-      <Card className="w-full max-w-md p-8 text-center space-y-6 border-border-strong shadow-xl">
+    <div className="min-h-screen min-h-[100dvh] flex flex-col items-center justify-center bg-background px-4 py-8 overflow-y-auto overscroll-y-contain">
+      <Card className="w-full max-w-md p-5 sm:p-6 text-center space-y-4 border-border-strong shadow-xl my-auto">
         <div className="mx-auto w-16 h-16 rounded-full bg-danger/10 flex items-center justify-center text-danger">
           <ShieldIcon size={32} />
         </div>
@@ -52,6 +52,6 @@ export default function AccountLockedPage() {
           officer.
         </p>
       </Card>
-    </main>
+    </div>
   );
 }

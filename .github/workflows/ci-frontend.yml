@@ -73,11 +73,16 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          # The step above runs landing.spec.ts, so this must be the landing
-          # snapshot dir. It previously pointed at quality.spec.ts-snapshots,
-          # which meant the refreshed landing baselines were never published.
+          # The step above greps on the literal string "visual baselines", which
+          # matches BOTH landing.spec.ts and quality.spec.ts (quality.spec.ts has
+          # its own `test.describe('visual baselines')` with 36 committed
+          # baselines). So both directories are refreshed on every run and both
+          # need uploading - this previously pointed at quality only, which meant
+          # the landing baselines were never published.
           name: visual-baselines-linux
-          path: apps/web/e2e/landing.spec.ts-snapshots/
+          path: |
+            apps/web/e2e/landing.spec.ts-snapshots/
+            apps/web/e2e/quality.spec.ts-snapshots/
           retention-days: 14
       - uses: actions/upload-artifact@v4
         if: failure()

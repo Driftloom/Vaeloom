@@ -147,17 +147,27 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
   const onMouseUp = useCallback(() => {
     dragging.current = false;
   }, []);
-  const onWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    const delta = -e.deltaY * 0.001 * (prefersReduced.current ? 0.5 : 1);
-    if (rafRef.current) return;
-    rafRef.current = requestAnimationFrame(() => {
-      rafRef.current = null;
-      setTransform((t) => {
-        const nk = Math.min(3, Math.max(0.25, t.k + delta));
-        return { ...t, k: nk };
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = -e.deltaY * 0.001 * (prefersReduced.current ? 0.5 : 1);
+      if (rafRef.current) return;
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        setTransform((t) => {
+          const nk = Math.min(3, Math.max(0.25, t.k + delta));
+          return { ...t, k: nk };
+        });
       });
-    });
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+    };
   }, []);
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 1) {
@@ -300,13 +310,12 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
       ) : (
         <div
           ref={containerRef}
-          className="relative overflow-hidden rounded-xl border border-border bg-surface/50"
+          className="relative overflow-hidden rounded-xl border border-border bg-surface/50 touch-none overscroll-contain"
           style={{ height: 'min(65vh, 560px)' }}
           onMouseDown={onMouseDown}
           onMouseMove={onMouseMove}
           onMouseUp={onMouseUp}
           onMouseLeave={onMouseUp}
-          onWheel={onWheel}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}

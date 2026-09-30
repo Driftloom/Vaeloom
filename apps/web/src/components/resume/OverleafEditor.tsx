@@ -202,7 +202,7 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] bg-white border border-border rounded-lg overflow-hidden">
+    <div className="flex flex-col h-full min-h-[500px] flex-1 bg-white border border-border rounded-lg overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-white gap-2">
         <div className="flex items-center gap-2">

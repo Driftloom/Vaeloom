@@ -491,7 +491,7 @@ export function CommandCenter({
 
   return (
     <Modal isOpen={open} onClose={onClose} title="Command Center" size="xl">
-      <div className="-mx-6 -my-4 flex flex-col max-h-[70vh]" onKeyDown={handleKeyDown}>
+      <div className="-mx-6 -my-4 flex flex-col max-h-[70dvh]" onKeyDown={handleKeyDown}>
         {/* Search header bar */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border bg-surface">
           <SearchIcon size={20} className="text-primary shrink-0" />
@@ -519,7 +519,7 @@ export function CommandCenter({
         </div>
 
         {/* Category filter tabs */}
-        <div className="flex items-center gap-1 px-4 py-2 border-b border-border/50 bg-surface-50/50 overflow-x-auto text-xs">
+        <div className="flex items-center gap-1 px-4 py-2 border-b border-border/50 bg-surface-50/50 overflow-x-auto overscroll-x-contain scrollbar-none text-xs">
           {(
             [
               { id: 'all', label: 'All' },
@@ -551,7 +551,7 @@ export function CommandCenter({
         {/* Results List */}
         <div
           ref={listRef}
-          className="flex-1 overflow-y-auto p-2 space-y-1 divide-y divide-border/20"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 space-y-1 divide-y divide-border/20"
         >
           {filteredCommands.length === 0 ? (
             <div className="p-8 text-center">

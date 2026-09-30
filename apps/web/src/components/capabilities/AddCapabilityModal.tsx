@@ -2013,7 +2013,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                       )}
 
                       {mcpRightTab === 'tools' && (
-                        <div className="flex-1 space-y-2 p-1 overflow-y-auto text-xs">
+                        <div className="flex-1 min-h-0 space-y-2 p-1 overflow-y-auto overscroll-y-contain text-xs">
                           <p className="text-text-secondary text-xs">
                             Tools discovered dynamically on server startup under scope{' '}
                             <code className="text-primary">connector.mcp.execute</code>:

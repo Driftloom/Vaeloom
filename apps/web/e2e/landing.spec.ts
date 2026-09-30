@@ -35,57 +35,102 @@ async function waitForFonts(page: Page, timeout = 5_000): Promise<void> {
  * broken and the pixel comparison still matched inside its 8% tolerance. Nothing
  * in the suite ever asked whether the theme applied; it only compared pictures.
  *
- * Two independent checks, because either alone can lie:
- *   - the `<html>` class, which is what `useTheme` sets; and
+ * Three independent checks, because any one alone can lie:
+ *   - the `<html>` class, which is what `useTheme` sets;
+ *   - `data-theme`, which is set in the same batch and should never be absent; and
  *   - the painted `body` background, which is what a visitor actually sees and
  *     which stays light even when the class is right if a theme token failed.
+ *
+ * Polled rather than sampled after a fixed sleep. `getComputedStyle` does not
+ * block on pending stylesheets, so a pre-CSS read returns `rgba(0, 0, 0, 0)` -
+ * transparent. That was a real hole in the first version of this helper: the
+ * number parse dropped alpha, `rgba(0,0,0,0)` became luma 0, and the DARK branch
+ * (`0 < 96`) passed vacuously - the one failure this function exists to catch.
+ * Polling plus an explicit alpha assertion closes it, and removes the guesswork
+ * that a fixed sleep was standing in for.
  */
 async function expectThemeApplied(page: Page, theme: 'dark' | 'light'): Promise<void> {
-  const state = await page.evaluate(() => ({
-    className: document.documentElement.className,
-    dataTheme: document.documentElement.getAttribute('data-theme'),
-    bodyBg: getComputedStyle(document.body).backgroundColor,
-  }));
-
-  expect(
-    /\b(light|dark)\b/.test(state.className),
-    `<html> has no theme class (got "${state.className}"). The theme never applied, so any screenshot taken now is a lie.`,
-  ).toBe(true);
-
-  const cls = state.className.match(/\b(light|dark)\b/)?.[1];
-  expect(cls, `<html> class resolved to "${cls ?? 'none'}", expected "${theme}"`).toBe(theme);
-  expect(
-    state.dataTheme === null || state.dataTheme === theme,
-    `data-theme="${state.dataTheme}" disagrees with the class "${cls}"`,
-  ).toBe(true);
-
-  // Luminance, not an exact colour: the token is allowed to change value, but a
-  // dark theme must never paint a light page or vice versa.
-  const [r, g, b] = (state.bodyBg.match(/[\d.]+/g) ?? []).map(Number);
-  expect(Number.isFinite(r), `body background "${state.bodyBg}" was not parseable`).toBe(true);
-  const luma = 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+  // `--bg` is `0 0 0` for dark and `247 248 252` for light, so the observed
+  // luma is ~0 and ~248. The bounds sit in the empty middle with wide margins so
+  // a token value change cannot flip the verdict.
   const bound = theme === 'dark' ? 96 : 159;
-  expect(
-    theme === 'dark' ? luma < bound : luma > bound,
-    `theme "${theme}" painted body background ${state.bodyBg} (luma ${Math.round(luma)}); expected ${
-      theme === 'dark' ? `< ${bound}` : `> ${bound}`
-    }.`,
-  ).toBe(true);
+
+  const verdict = async (): Promise<string> => {
+    const s = await page.evaluate(() => {
+      const de = document.documentElement;
+      const bg = getComputedStyle(document.body).backgroundColor;
+      // Anchored, and alpha-aware: rejects oklch()/color(srgb ...) outright rather
+      // than silently reading 0-1 channels as 0-255.
+      const m = bg.match(
+        /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,/]\s*([\d.]+%?))?\s*\)$/i,
+      );
+      const rawAlpha = m?.[4];
+      return {
+        cls: (de.className.match(/\b(light|dark|high-contrast)\b/) ?? [])[1] ?? null,
+        dataTheme: de.getAttribute('data-theme'),
+        bodyBg: bg,
+        parseable: m !== null,
+        alpha:
+          rawAlpha === undefined
+            ? 1
+            : rawAlpha.endsWith('%')
+              ? Number.parseFloat(rawAlpha) / 100
+              : Number(rawAlpha),
+        luma: m ? 0.2126 * Number(m[1]) + 0.7152 * Number(m[2]) + 0.0722 * Number(m[3]) : NaN,
+      };
+    });
+
+    const problems: string[] = [];
+    if (s.cls === null) problems.push('<html> has no theme class');
+    else if (s.cls !== theme) problems.push(`<html> class is "${s.cls}", expected "${theme}"`);
+    if (s.dataTheme !== theme) {
+      problems.push(`data-theme is ${JSON.stringify(s.dataTheme)}, expected "${theme}"`);
+    }
+    if (!s.parseable) {
+      problems.push(`body background "${s.bodyBg}" is not a parseable rgb()/rgba() colour`);
+    } else if (s.alpha !== 1) {
+      problems.push(
+        `body background "${s.bodyBg}" is not opaque, so nothing is painted behind the copy`,
+      );
+    } else if (theme === 'dark' ? s.luma >= bound : s.luma <= bound) {
+      problems.push(
+        `body background "${s.bodyBg}" has luma ${Math.round(s.luma)}, expected ${
+          theme === 'dark' ? `< ${bound}` : `> ${bound}`
+        }`,
+      );
+    }
+    return problems.length === 0 ? 'ok' : problems.join('; ');
+  };
+
+  await expect
+    .poll(verdict, {
+      timeout: 15_000,
+      intervals: [250],
+      message: `theme "${theme}" never settled into the expected state`,
+    })
+    .toBe('ok');
 }
 
 /**
  * Remove Next.js dev-only chrome before capturing.
  *
- * The dev indicator renders the "N" badge and, when the page logs anything, a red
- * "N Issue" pill. Both are dev-only, neither exists in a production build, and
- * both were baked into all four committed baselines - so every baseline differed
- * from production for a reason that has nothing to do with the design.
+ * The dev indicator renders a red "N Issue" pill whenever the page logs anything.
+ * It is dev-only, absent from a production build, and it was baked into all four
+ * committed baselines - so every baseline differed from production for a reason
+ * that has nothing to do with the design.
  *
- * Hiding via CSS alone is not enough: the overlay re-creates itself after the
- * style is applied, which is why the pill was still present when the suite ran
- * end to end even though it disappeared in an isolated capture. So this both
- * hides and removes, then re-removes once more after a tick to catch an overlay
- * that appears during that window.
+ * CSS alone is not enough: the overlay re-creates itself after the style lands,
+ * which is why the pill was still present when the suite ran end to end even
+ * though it vanished in an isolated capture. So the style guards re-appearance
+ * while the node removal does the actual work, and the removal runs twice to
+ * catch an overlay that appears in between. The trailing assertion is the
+ * post-condition - without it this is a race-based heuristic that fails silently.
+ *
+ * KNOWN LIMIT: the small "N" static-route badge survives this. It has no DOM box
+ * at its own coordinates (its host is `pointer-events: none`, which
+ * `elementFromPoint` skips) and lives outside `nextjs-portal`, so neither the
+ * style nor the removal reaches it. Removing it durably needs Next's own
+ * `devIndicators` option in next.config.js, which is shared config.
  */
 async function hideDevIndicators(page: Page): Promise<void> {
   const purge = () => {
@@ -95,6 +140,7 @@ async function hideDevIndicators(page: Page): Promise<void> {
   await page.evaluate(purge);
   await page.waitForTimeout(250);
   await page.evaluate(purge);
+  await expect(page.locator('nextjs-portal')).toHaveCount(0);
 }
 
 /**
@@ -118,6 +164,12 @@ async function hideDevIndicators(page: Page): Promise<void> {
  * committed baselines were both light renders - top-band luminance 170 (dark) and
  * 205 (light) - so the suite could not tell a working dark mode from a broken one.
  * A picture-only comparison cannot catch that class of bug, and did not.
+ *
+ * STILL OUTSTANDING (tracked, not fixed here): no OS ever compares these PNGs.
+ * Required CI change to make them a real gate: commit `-linux` baselines and run
+ * `pnpm exec playwright test --grep "visual baselines"` WITHOUT
+ * `--update-snapshots` on a pinned image. Until then the pixel comparison is
+ * review-only and the theme assertions above are the actual gate.
  */
 
 test.describe('landing functional', () => {
