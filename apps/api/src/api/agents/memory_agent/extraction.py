@@ -56,12 +56,88 @@ async def extract(content: str, source_type: str, source_id: str, workspace_id: 
 
 
 def _mock_extract(content: str) -> ExtractedFacts:
-    if "React" in content:
-        return ExtractedFacts(
-            entities=[
-                ExtractedEntity(name="React", entity_type="Skill", confidence=0.9, aliases=["React.js", "ReactJS"])
-            ],
-            relationships=[]
-        )
+    import re
 
-    return ExtractedFacts(entities=[], relationships=[])
+    entities: list[ExtractedEntity] = []
+    relationships: list[ExtractedRelationship] = []
+    seen_names: set[str] = set()
+
+    def add_entity(name: str, entity_type: str, confidence: float = 0.9, aliases: list[str] | None = None) -> str | None:
+        cleaned = name.strip()
+        if cleaned and cleaned.lower() not in seen_names and len(cleaned) > 1:
+            seen_names.add(cleaned.lower())
+            entities.append(ExtractedEntity(name=cleaned, entity_type=entity_type, confidence=confidence, aliases=aliases or []))
+            return cleaned
+        return None
+
+    # 1. Tech Skills & Languages
+    skill_gazetteer = [
+        ("Python", "Skill", ["py", "python3"]),
+        ("TypeScript", "Skill", ["TS"]),
+        ("JavaScript", "Skill", ["JS", "ES6"]),
+        ("React", "Skill", ["React.js", "ReactJS"]),
+        ("Next.js", "Skill", ["NextJS"]),
+        ("FastAPI", "Skill", []),
+        ("SQL", "Skill", ["PostgreSQL", "Postgres"]),
+        ("Docker", "Tool", []),
+        ("Kubernetes", "Tool", ["K8s"]),
+        ("GraphQL", "Skill", []),
+        ("Tailwind CSS", "Skill", ["Tailwind"]),
+        ("Node.js", "Skill", ["NodeJS"]),
+        ("Git", "Tool", ["GitHub"]),
+        ("AWS", "Organization", ["Amazon Web Services"]),
+        ("GCP", "Organization", ["Google Cloud Platform"]),
+        ("Azure", "Organization", ["Microsoft Azure"]),
+    ]
+    for skill_name, skill_type, aliases in skill_gazetteer:
+        pattern = r"\b" + re.escape(skill_name) + r"\b"
+        if re.search(pattern, content, re.IGNORECASE):
+            add_entity(skill_name, skill_type, 0.95, aliases)
+
+    # 2. Certificates & Badges
+    cert_matches = re.findall(r"([A-Za-z0-9_\-\s]{2,40}(?:Certificate|Badge|Certification|Credential|License|Degree|Diploma))", content, re.IGNORECASE)
+    for cert in cert_matches[:5]:
+        c_clean = cert.strip()
+        if len(c_clean) > 3 and not c_clean.lower().startswith("the "):
+            add_entity(c_clean, "Certificate", 0.9)
+
+    # 3. Person Names
+    name_patterns = [
+        r"(?:Name|Candidate|Author|Employee|Student):\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})",
+    ]
+    person_name = None
+    for np in name_patterns:
+        for m in re.finditer(np, content, re.MULTILINE):
+            p = m.group(1).strip()
+            if p and len(p.split()) >= 2:
+                person_name = add_entity(p, "Person", 0.95)
+                break
+        if person_name:
+            break
+
+    if not person_name:
+        words = re.findall(r"\b[A-Z][a-zA-Z0-9]{2,}\b", content[:250])
+        capitalized = [w for w in words if w.lower() not in {"document", "resume", "curriculum", "vitae", "summary", "profile", "contact", "email", "phone", "badge", "certificate"}]
+        if len(capitalized) >= 2:
+            candidate = " ".join(capitalized[:3])
+            person_name = add_entity(candidate, "Person", 0.85)
+
+    # 4. Organizations / Universities
+    org_matches = re.findall(r"([A-Z][a-zA-Z0-9\s]{2,30}(?:University|College|Institute|Technologies|Solutions|Labs|Inc|LLC|Corp|Corporation))", content)
+    for org in org_matches[:4]:
+        o_clean = org.strip()
+        add_entity(o_clean, "Organization", 0.88)
+
+    # 5. Connect Person to Skills & Certificates
+    if person_name:
+        for ent in entities:
+            if ent.name != person_name:
+                if ent.entity_type == "Certificate":
+                    relationships.append(ExtractedRelationship(from_entity=person_name, to_entity=ent.name, relation_type="holds_credential", confidence=0.9))
+                elif ent.entity_type in ("Skill", "Tool"):
+                    relationships.append(ExtractedRelationship(from_entity=person_name, to_entity=ent.name, relation_type="skilled_in", confidence=0.85))
+                elif ent.entity_type == "Organization":
+                    relationships.append(ExtractedRelationship(from_entity=person_name, to_entity=ent.name, relation_type="affiliated_with", confidence=0.8))
+
+    return ExtractedFacts(entities=entities, relationships=relationships)
+
