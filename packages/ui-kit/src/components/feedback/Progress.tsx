@@ -6,7 +6,7 @@ export interface ProgressProps {
   label?: string;
   showValue?: boolean;
   size?: 'sm' | 'md';
-  variant?: 'primary' | 'success' | 'ai';
+  variant?: 'primary' | 'success' | 'warning' | 'ai';
   className?: string;
 }
 
@@ -18,6 +18,7 @@ const heightMap = {
 const variantMap = {
   primary: 'bg-action',
   success: 'bg-success',
+  warning: 'bg-warning',
   ai: 'bg-accent',
 };
 

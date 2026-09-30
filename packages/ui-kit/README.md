@@ -26,11 +26,13 @@ import { Button, Card, Input, Modal, Spinner } from '@vaeloom/ui-kit';
 </Card>;
 ```
 
-Current exports (`src/index.ts`): `Button`, `Card`, `Input`, `Modal`, `Spinner`
-(+ `ButtonProps`, `CardProps`, `InputProps`, `ModalProps`). Everything else in
-`docs/frontend/Component-Library.md` (Table, Form, ProposalCard, AgentStatus,
-...) is a spec target, not implemented — check `src/index.ts` before importing
-anything not listed here.
+`src/index.ts` is the source of truth for what this package exports — read it
+rather than trusting any list, including this one. It is a long barrel (60+
+values and 40+ prop types) grouped by concern: tokens, icons, core components,
+layout primitives, actions, forms, feedback, containers, AI, memory, navigation
+and data. Everything else in `docs/frontend/Component-Library.md` (Table, Form,
+ProposalCard, AgentStatus, ...) is a spec target rather than an implementation —
+if it is not in `src/index.ts`, it does not exist yet.
 
 ## Tokens: which one is real
 

@@ -172,7 +172,7 @@ describe('generated token JSON is in sync with globals.css', () => {
   it('documents the exact design-record-only gaps, so they stay visible', () => {
     for (const theme of themeNames) {
       const t = tokens.themes[theme] as unknown as {
-        provenance: { designRecordOnly: string[] };
+        provenance: { runtimeDerived: string[]; designRecordOnly: string[] };
       };
       expect([...t.provenance.designRecordOnly].sort()).toEqual(
         [...TOKEN_SOURCE_OF_TRUTH.designRecordOnly].sort(),

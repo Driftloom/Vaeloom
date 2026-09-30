@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 
 import { MIN_TOUCH_TARGET } from '../layout/touchTarget';
