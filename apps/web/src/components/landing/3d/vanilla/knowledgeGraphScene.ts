@@ -1,13 +1,11 @@
 /**
  * Memory — interactive knowledge graph (vanilla three).
- * Six entity types clustered by affinity; relationships can be highlighted
- * either by pointer hover (the standalone `mountKnowledgeGraph` path) or by
- * an id handed down from the section's curated buttons (the shared-stage
+ * Six entity types clustered by affinity; relationships are highlighted by an
+ * id handed down from the section's curated buttons (the shared-stage
  * `createKnowledgeGraph` path, which is what the landing page actually runs).
  */
 
 import * as THREE from 'three';
-import { createRenderer, runLoop, pickAt, type SceneHandle } from './engine';
 import { mulberry32, scenePalette } from '../scene-utils';
 
 const TYPE_LIST = ['skill', 'project', 'org', 'person', 'document', 'event'] as const;
@@ -79,137 +77,6 @@ function buildGraph(): { nodes: NodeDef[]; edges: Array<[number, number]> } {
     edges.push([hubs[h]!, hubs[(h + 1) % hubs.length]!]);
   }
   return { nodes, edges };
-}
-
-type Cfg = {
-  container: HTMLElement;
-  theme: 'dark' | 'light';
-  onSelectionChange?: (
-    sel: { index: number; info: { label: string; type: string; connections: number } } | null,
-  ) => void;
-};
-
-export function mountKnowledgeGraph({
-  container,
-  theme,
-  onSelectionChange,
-}: Cfg): SceneHandle & { setSelectedIndex: (i: number) => void } {
-  const palette = scenePalette(theme);
-  const { renderer, scene, camera } = createRenderer(container);
-  camera.position.set(0, 1.4, 8.6);
-
-  const { nodes, edges } = buildGraph();
-  const neighborSets = new Map<number, Set<number>>();
-  edges.forEach(([a, b]) => {
-    for (const [x, y] of [
-      [a, b],
-      [b, a],
-    ] as Array<[number, number]>) {
-      if (!neighborSets.has(x)) neighborSets.set(x, new Set());
-      neighborSets.get(x)?.add(y);
-    }
-  });
-
-  /* Nodes — one InstancedMesh ------------------------------------------- */
-  const nodeGeo = new THREE.SphereGeometry(0.14, 14, 14);
-  const nodeMat = new THREE.MeshBasicMaterial();
-  const mesh = new THREE.InstancedMesh(nodeGeo, nodeMat, nodes.length);
-  mesh.frustumCulled = false;
-  const dummy = new THREE.Object3D();
-  const color = new THREE.Color();
-  nodes.forEach((n, i) => {
-    dummy.position.copy(n.pos);
-    dummy.scale.setScalar(n.type === 'project' || n.type === 'org' ? 1.35 : 1);
-    dummy.updateMatrix();
-    mesh.setMatrixAt(i, dummy.matrix);
-    mesh.setColorAt(i, color.set(palette.nodes[n.type] ?? palette.core));
-  });
-  scene.add(mesh);
-
-  /* Edges — one LineSegments batch -------------------------------------- */
-  const edgePos = new Float32Array(edges.length * 6);
-  const edgeCol = new Float32Array(edges.length * 6);
-  edges.forEach(([a, b], i) => {
-    const pa = nodes[a]!.pos;
-    const pb = nodes[b]!.pos;
-    edgePos.set([pa.x, pa.y, pa.z, pb.x, pb.y, pb.z], i * 6);
-  });
-  const edgeGeo = new THREE.BufferGeometry();
-  edgeGeo.setAttribute('position', new THREE.BufferAttribute(edgePos, 3));
-  edgeGeo.setAttribute('color', new THREE.BufferAttribute(edgeCol, 3));
-  const lines = new THREE.LineSegments(
-    edgeGeo,
-    new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.85 }),
-  );
-  lines.frustumCulled = false;
-  scene.add(lines);
-
-  function paintEdges(active: number): void {
-    const cDim = new THREE.Color(palette.edge);
-    const cHot = new THREE.Color(palette.edgeHot);
-    const cLink = new THREE.Color(palette.link);
-    edges.forEach(([a, b], i) => {
-      const hot = active >= 0 && (a === active || b === active);
-      const col = hot ? (a === active ? cHot : cLink) : cDim;
-      edgeCol.set([col.r, col.g, col.b], i * 6);
-      edgeCol.set([col.r, col.g, col.b], i * 6 + 3);
-    });
-    (edgeGeo.getAttribute('color') as THREE.BufferAttribute).needsUpdate = true;
-  }
-  paintEdges(-1);
-
-  let selected = -1;
-
-  function emitSelection(index: number): void {
-    selected = index;
-    paintEdges(index);
-    if (!onSelectionChange) return;
-    if (index >= 0 && index < nodes.length) {
-      const n = nodes[index]!;
-      onSelectionChange({
-        index,
-        info: { label: n.label, type: n.type, connections: neighborSets.get(index)?.size ?? 0 },
-      });
-    } else {
-      onSelectionChange(null);
-    }
-  }
-
-  const onMove = (e: PointerEvent): void => {
-    const id = pickAt(e, container, camera, [mesh]);
-    if (id !== -1 && id !== selected && id !== -2) emitSelection(id);
-  };
-  const onLeave = (): void => emitSelection(-1);
-  container.addEventListener('pointermove', onMove);
-  container.addEventListener('pointerleave', onLeave);
-
-  const handle = runLoop(
-    container,
-    renderer,
-    scene,
-    camera,
-    {
-      tick: (_dt, t) => {
-        mesh.rotation.y = t * 0.05;
-        mesh.rotation.x = 0.18;
-        lines.rotation.copy(mesh.rotation);
-        camera.lookAt(0, 0, 0);
-      },
-    },
-    1.75,
-  );
-
-  return {
-    setRunning: handle.setRunning,
-    dispose(): void {
-      container.removeEventListener('pointermove', onMove);
-      container.removeEventListener('pointerleave', onLeave);
-      handle.dispose();
-    },
-    setSelectedIndex(i: number): void {
-      emitSelection(i);
-    },
-  };
 }
 
 export function createKnowledgeGraph(theme: 'dark' | 'light'): {
@@ -340,7 +207,14 @@ export function createKnowledgeGraph(theme: 'dark' | 'light'): {
   paintNodes(-1);
 
   function update(t: number): void {
-    mesh.rotation.y = t * 0.05;
+    // Damped oscillation instead of a continuous yaw.
+    //
+    // A full revolution (`t * 0.05`, 125s per turn) swung the cloud's
+    // horizontal fill between 36% and 73% and, at the widest phase, pushed the
+    // outer nodes past the frame on narrow viewports. Oscillating through
+    // ±0.55 rad keeps the graph in the middle of its range: enough parallax to
+    // read as depth, never enough to empty the box or clip it.
+    mesh.rotation.y = Math.sin(t * 0.18) * 0.55;
     mesh.rotation.x = 0.18;
     lines.rotation.copy(mesh.rotation);
   }

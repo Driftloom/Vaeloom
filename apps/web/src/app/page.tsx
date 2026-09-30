@@ -106,8 +106,14 @@ export default function LandingPage() {
             <CompoundingSection />
             <FAQSection />
             <FinalCTA />
+            {/* Inside the z-10 wrapper with the rest of the content. The
+                footer used to sit outside it as a sibling, which was an
+                unexplained exception to the page's own stacking contract —
+                the only landing content not in the layer that everything else
+                uses. Harmless today by accident of paint order, not by
+                design. */}
+            <LandingFooter />
           </div>
-          <LandingFooter />
         </StageProvider>
       </LandingScrollProvider>
     </>

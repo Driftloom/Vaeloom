@@ -46,21 +46,27 @@ const DustFieldCanvas = dynamic(() => import('./DustFieldCanvas'), { ssr: false 
 type Theme = 'dark' | 'light';
 
 /**
- * Whether the live WebGL stage can run at all: WebGL support plus a tier
- * above low.
+ * Whether the live WebGL stage should run: WebGL support, a tier above `low`,
+ * and no reduced-motion preference.
  *
- * Reduced motion is deliberately NOT part of this. It used to be, which meant
- * a reduced-motion visitor got a captured poster instead of the scene -- and
- * since only 7 of 16 beats have a poster, 9 of them rendered a broken image.
- * Stripping the page of its own composition is a worse accessibility outcome
- * than showing that composition motionless. Reduced motion is now honoured
- * INSIDE the renderer: the scene composes and renders, but time does not
- * advance.
+ * Reduced motion falls back to the captured posters rather than to a live
+ * frozen scene. That was tried and reverted. All 16 beats now have a real
+ * poster captured from the live scene, so the fallback is a genuine frame of
+ * the actual 3D — not a degraded stand-in — and it costs a reduced-motion
+ * visitor zero GPU time, which matters most for the people who enable the
+ * preference for vestibular reasons or on low-end hardware.
+ *
+ * It also keeps the visual-regression suite deterministic: `landing.spec.ts`
+ * captures its baselines with `reducedMotion: 'reduce'` precisely so WebGL
+ * canvases do not appear, because canvas pixels vary per rAF and would make
+ * every baseline flaky. Rendering live scenes under reduced motion broke that
+ * invariant and the baselines could not be regenerated into a stable state.
  */
 export function useSceneAvailable(): boolean {
   const supported = useWebGLSupport();
+  const reduced = useReducedMotionPref();
   const tier = useQualityTier();
-  return Boolean(supported) && tier !== 'low';
+  return Boolean(supported) && !reduced && tier !== 'low';
 }
 
 /**
@@ -72,10 +78,16 @@ export function DustField() {
   const available = useSceneAvailable();
   const theme = useThemeValue();
   // Honour the DETECTED tier. This used to hardcode "high", so a low-end
-  // device paid full particle cost for a layer that is only atmosphere —
+  // device paid full particle cost for a layer that is only atmosphere -
   // and in light mode that density is what turns the hero into confetti.
   const tier = useQualityTier();
-  if (!available) return null;
+  // Dropped entirely under reduced motion, unlike the stage. The stage now
+  // freezes time inside its own renderer, but the dust runs on `engine.ts`'s
+  // `runLoop`, which has no reduced-motion awareness of its own — so it was
+  // still drifting for a visitor who asked for stillness. It is pure
+  // atmosphere and carries no information, so removing it costs nothing.
+  const reduced = useReducedMotionPref();
+  if (!available || reduced) return null;
   return (
     <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0">
       <DustFieldCanvas theme={theme} tier={tier} />

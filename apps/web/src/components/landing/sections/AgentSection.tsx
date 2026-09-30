@@ -24,9 +24,10 @@ export default function AgentSection() {
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const selectAgent = useStageSelection('agents');
 
-  // The orbit only ever heard about selection through mountAgentOrbit, which
-  // the shared stage does not use — so the tablist moved a dossier card while
-  // the 3D ring stood still. Push every selection change into the stage.
+  // Selection used to reach the orbit only through a per-section canvas path the
+  // shared stage does not use, so the tablist moved a dossier card while the 3D
+  // ring stood still — while the aria-label claimed otherwise. Push every
+  // selection change into the stage.
   useEffect(() => {
     selectAgent(selectedId);
   }, [selectAgent, selectedId]);

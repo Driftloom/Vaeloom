@@ -100,7 +100,7 @@ export function CompoundingSection() {
               also sits above the fold-line on most laptops, so it has to earn
               the space. */}
           <div
-            className="relative h-[380px] overflow-hidden rounded-3xl border border-border-subtle bg-surface-elevated/50 sm:h-[460px] lg:h-[520px]"
+            className="landing-panel relative h-[380px] overflow-hidden rounded-3xl sm:h-[460px] lg:h-[520px]"
             role="img"
             aria-label="Memory lattice assembling as you scroll — sparse at day one, dense by year one. Scroll to grow the memory."
           >

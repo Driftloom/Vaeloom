@@ -7,12 +7,11 @@
  * single organism rather than unrelated animations.
  */
 
-import { createRenderer, runLoop, type SceneHandle } from './engine';
 import { createIntelligenceCore } from './intelligenceCoreScene';
 import { createParticleField } from './particleField';
 import { createStreams } from './streams';
 import { createFlowStreams } from './flowStreams';
-import { dprForTier, type QualityTier } from '@/lib/landing/hooks';
+import type { QualityTier } from '@/lib/landing/hooks';
 import type { Object3D } from 'three';
 
 export type Pointer = { x: number; y: number };
@@ -39,8 +38,9 @@ const LIGHT_DENSITY_SCALE = 0.55;
 
 /**
  * Builds the Memory Core sub-objects into one reusable assembly. It creates NO
- * renderer and NO loop — both the hero canvas and the persistent landing `Stage`
- * mount this, so the core geometry stays defined in exactly one place.
+ * renderer and NO loop — the persistent landing `Stage` builds this once and
+ * mounts it as both the hero beat and the closing CTA, so the core geometry
+ * stays defined in exactly one place.
  */
 export function createMemoryCore(
   theme: 'dark' | 'light',
@@ -85,53 +85,4 @@ export function createMemoryCore(
       (flowStreams as { dispose?: () => void } | null)?.dispose?.();
     },
   };
-}
-
-type Cfg = {
-  container: HTMLElement;
-  theme: 'dark' | 'light';
-  density: number;
-  /** quality tier — drives the DPR cap so fragment cost stays predictable */
-  tier: QualityTier;
-  /** false -> calm variant (no streams, used behind the final CTA) */
-  streams?: boolean;
-  /** normalized pointer (-1..1); drives subtle parallax */
-  pointer?: Pointer;
-};
-
-export function mountMemoryCore({
-  container,
-  theme,
-  density,
-  tier,
-  streams = true,
-  pointer,
-}: Cfg): SceneHandle {
-  const { renderer, scene, camera } = createRenderer(container);
-  camera.position.set(0, 0.9, 7.4);
-
-  const core = createMemoryCore(theme, density, tier, pointer, streams);
-  core.objects.forEach((o) => scene.add(o));
-
-  const prefersReducedMotion =
-    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  const handle = runLoop(
-    container,
-    renderer,
-    scene,
-    camera,
-    {
-      cameraZ: 7.4,
-      tick: (dt, t) => {
-        const rm = prefersReducedMotion;
-        const s = core.update(t, dt, pointer, rm);
-        camera.position.x = Math.sin(t * 0.08) * 0.35 + s.x * 0.5;
-        camera.position.y = 0.15 + Math.sin(t * 0.06) * 0.12 + s.y * 0.4;
-        camera.lookAt(0, 0, 0);
-      },
-    },
-    dprForTier(tier)[1],
-  );
-  return handle;
 }

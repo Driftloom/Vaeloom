@@ -47,7 +47,7 @@ export function createFaqScene(theme: ThemeName): FaqScene {
     transparent: true,
     opacity: theme === 'dark' ? 0.16 : 0.1,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
+    blending: theme === 'dark' ? THREE.AdditiveBlending : THREE.NormalBlending,
   });
   disposables.push(horizonMat);
   const horizon = new THREE.Sprite(horizonMat);
@@ -61,7 +61,7 @@ export function createFaqScene(theme: ThemeName): FaqScene {
     transparent: true,
     opacity: 0.3,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
+    blending: theme === 'dark' ? THREE.AdditiveBlending : THREE.NormalBlending,
   });
   disposables.push(moteMat);
 

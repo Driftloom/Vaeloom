@@ -53,7 +53,10 @@ const problemCam: CameraKey = { pos: [0, 1.2, 8.0], look: [0, 0, 0], fov: 45 };
 const principlesCam: CameraKey = { pos: [0, 0.4, 8.2], look: [0, 0, 0], fov: 48 };
 const differenceCam: CameraKey = { pos: [0, 1.5, 8.5], look: [0, 0.2, 0], fov: 48 };
 const journeyCam: CameraKey = { pos: [0, 0, 6.5], look: [0, 0, 1.5], fov: 55 };
-const memoryCam: CameraKey = { pos: [0, 1.4, 8.6], look: [0, 0, 0], fov: 48 };
+// Look target raised above the origin: the node cloud's yaw drifts its
+// composition centre down to -0.24 NDC, which put the lowest node 7px off the
+// bottom edge at the worst phase while leaving 122px empty at the top.
+const memoryCam: CameraKey = { pos: [0, 1.1, 8.6], look: [0, 0.35, 0], fov: 48 };
 const agentsCam: CameraKey = { pos: [0, 1.9, 6.4], look: [0, 0, 0], fov: 50 };
 // The connectors ring lies in the XZ plane, so a low camera elevation
 // projects it into a wide, flat ellipse that a small landscape frame cannot

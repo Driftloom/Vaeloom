@@ -24,32 +24,43 @@ export function PrinciplesStrip() {
           title="Five rules the system never breaks."
           align="left"
         />
-        <ul
-          className="mt-12 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-5"
-          aria-label="Product principles"
-        >
+        {/*
+          Rendered as a ruled two-column list, not a five-across card grid.
+
+          The old markup was the canonical AI feature cell repeated five times:
+          N equal rounded panels, each with an icon, a bold title and one
+          sentence — five `landing-panel`s, so five stacked `backdrop-filter:
+          blur(14px)` layers bought zero legibility over the copy they wrapped.
+          Worse, the layout said "here are five features" when the content is
+          five commitments the product does not break; a grid of tiles flattens
+          a guarantee into a feature.
+
+          Rules read as rules: numbered, ruled, and set in a measure a human
+          can scan. The 3D behind it is a wash at 30%, so the panel treatment
+          is dropped rather than kept for decoration.
+        */}
+        <ol className="mt-12 max-w-3xl divide-y divide-border-subtle border-y border-border-subtle">
           {PRINCIPLES.map((p, i) => (
             <li
               key={p.title}
-              // 5 items in 2 columns leaves the last one alone with a full empty
-              // cell beside it, and because the cells are equal-height bordered
-              // panels that hole read as a missing sixth card rather than as
-              // the end of the list.
-              className={i === PRINCIPLES.length - 1 ? 'sm:col-span-2 xl:col-span-1' : ''}
+              className="grid grid-cols-[2.5rem_1fr] gap-x-4 py-5 sm:grid-cols-[3rem_1fr]"
             >
-              <div className="h-full landing-panel rounded-2xl p-4 sm:p-5">
-                <Icon name={p.icon} className="h-5 w-5 text-primary-400" />
-                <h3 className="mt-3 text-sm font-semibold text-text">{p.title}</h3>
-                {/* Was `hidden sm:block`, which deleted the section's entire
+              <span
+                className="font-mono text-xs font-semibold tabular-nums text-primary-400"
+                aria-hidden="true"
+              >
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <div>
+                <h3 className="font-display text-base font-bold text-text">{p.title}</h3>
+                {/* Was `hidden sm:block`, which deleted this section's entire
                     substance on phones — the five rules went unstated on the
                     most common viewport. */}
-                <p className="mt-1.5 text-xs leading-relaxed text-text-muted sm:text-[13px]">
-                  {p.body}
-                </p>
+                <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">{p.body}</p>
               </div>
             </li>
           ))}
-        </ul>
+        </ol>
       </Container>
     </Section>
   );

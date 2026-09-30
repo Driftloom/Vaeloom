@@ -16,8 +16,13 @@ type Cfg = {
   tier: QualityTier;
 };
 
-// Base count 1800 at density 1.0 — ultra dense for immersive field
+// Base count 1800 at density 1.0 — ultra dense for immersive field.
+// Scaled down in light mode. This layer covers the whole viewport and was the
+// one ambient field with no theme scaling, so it stayed the residual
+// contributor to light-mode mark density after the hero layers were fixed:
+// on white, 1800 discrete points read as confetti however faint each one is.
 const BASE_COUNT = 1800;
+const LIGHT_COUNT_SCALE = 0.55;
 
 // Size tiers: 70% very small, 20% small, 8% medium-small, 2% emphasized
 const SIZE_TIERS = [
@@ -47,7 +52,7 @@ export function mountDustField({ container, theme, density, tier }: Cfg): SceneH
   const { renderer, scene, camera } = createRenderer(container);
   camera.position.set(0, 0, 10);
 
-  const totalCount = Math.round(BASE_COUNT * density);
+  const totalCount = Math.round(BASE_COUNT * density * (theme === 'light' ? LIGHT_COUNT_SCALE : 1));
   // We'll create 4 separate Points for size variation, but share the same update loop
   // For performance, use a single geometry with size attribute and custom shader would be better,
   // but 4 draw calls is still cheap. We'll use a single geometry with vertex colors for simplicity
