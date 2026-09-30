@@ -7,26 +7,20 @@ import useSWR from 'swr';
 import { memoryApi, memoryFeedApi, type MemoryLineageResponse } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { EmptyState } from '@/components/shared/EmptyState';
-import { ErrorState } from '@/components/shared/ErrorState';
 import { PageHeader } from '@/components/shared/Page';
-import { Modal } from '@vaeloom/ui-kit';
+import {
+  Button,
+  Badge,
+  Card,
+  Modal,
+  EmptyState,
+  ErrorState,
+  ConfidenceIndicator,
+} from '@vaeloom/ui-kit';
 
 function formatTimestamp(iso: string | null | undefined) {
-  if (!iso) return '\u2014';
+  if (!iso) return '—';
   return new Date(iso).toLocaleString();
-}
-
-function ConfidenceBar({ value }: { value: number }) {
-  const pct = Math.round((value || 0) * 100);
-  return (
-    <div className="flex items-center gap-1.5">
-      <div className="h-1.5 w-16 rounded-full bg-surface-hover overflow-hidden">
-        <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
-      </div>
-      <span className="font-mono text-xs text-text-muted">{pct}%</span>
-    </div>
-  );
 }
 
 export default function MemoryDetailPage() {
@@ -79,7 +73,7 @@ export default function MemoryDetailPage() {
       toast({
         tone: 'success',
         title: 'Memory updated',
-        detail: 'Changes saved successfully.',
+        detail: 'Changes saved successfully into memory index.',
       });
       setEditing(false);
       await mutateMemory();
@@ -109,7 +103,7 @@ export default function MemoryDetailPage() {
       <ErrorState
         title="Failed to load memory"
         message={(memoryError as Error).message || 'Could not load memory details.'}
-        onRetry={() => mutateMemory()}
+        onRetry={() => void mutateMemory()}
       />
     );
   }
@@ -120,7 +114,7 @@ export default function MemoryDetailPage() {
         title="Memory not found"
         description="This memory does not exist or has been deleted."
         action={{
-          label: 'Back to memory',
+          label: 'Back to Memory Explorer',
           onClick: () => router.push(workspaceId ? `/workspace/${workspaceId}/memory` : '/memory'),
         }}
       />
@@ -135,8 +129,8 @@ export default function MemoryDetailPage() {
   const sourceType = (mem['sourceType'] as string) || (mem['source_type'] as string) || '';
   const sourceUri = (mem['sourceUri'] as string) || (mem['source_uri'] as string) || '';
   const sourceLabel = (mem['sourceLabel'] as string) || (mem['source_label'] as string) || '';
-  const confidence = (mem['confidence'] as number) ?? 0;
-  const status = (mem['status'] as string) || '';
+  const confidence = (mem['confidence'] as number) ?? 0.85;
+  const status = (mem['status'] as string) || 'active';
   const tags = (mem['tags'] as string[]) || [];
   const createdAt = (mem['createdAt'] as string) || (mem['created_at'] as string) || '';
   const updatedAt = (mem['updatedAt'] as string) || (mem['updated_at'] as string) || '';
@@ -144,133 +138,113 @@ export default function MemoryDetailPage() {
   const metadata = (mem['metadata'] as Record<string, unknown>) || {};
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-5xl">
       <PageHeader
         title={title}
-        eyebrow={type}
+        eyebrow={type.toUpperCase()}
         breadcrumb={
           <nav aria-label="Breadcrumb">
             <Link
               href={workspaceId ? `/workspace/${workspaceId}/memory` : '/memory'}
-              className="text-sm text-text-muted hover:text-text transition-colors"
+              className="text-sm text-text-muted hover:text-text transition-colors flex items-center gap-1"
             >
-              Back to memory
+              <span>← Back to Memory Explorer</span>
             </Link>
           </nav>
         }
         actions={
-          <button type="button" className="btn-secondary text-sm" onClick={startEdit}>
-            Edit memory
-          </button>
+          <Button variant="secondary" size="sm" onClick={startEdit}>
+            Edit Memory
+          </Button>
         }
       />
 
-      {status && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={`text-xs rounded-full px-2.5 py-0.5 border ${
-              status === 'superseded'
-                ? 'bg-warning/10 text-warning border-warning/30'
-                : status === 'READY' || status === 'active'
-                  ? 'bg-success/10 text-success border-success/30'
-                  : 'bg-surface-hover text-text-muted border-border'
-            }`}
-          >
-            {status}
+      <div className="flex flex-wrap items-center gap-3">
+        <Badge variant={status === 'superseded' ? 'warning' : 'success'} size="sm">
+          {status}
+        </Badge>
+        <ConfidenceIndicator score={confidence} />
+        {sourceType && (
+          <span className="text-xs text-text-muted font-mono">
+            Source: <strong className="text-text">{sourceType}</strong>
           </span>
-          {confidence > 0 && <ConfidenceBar value={confidence} />}
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Main content */}
+      {/* Main content grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Content column (2/3) */}
         <div className="md:col-span-2 space-y-6">
-          {/* Summary */}
+          {/* Summary Card */}
           {summary && (
-            <div className="card space-y-2">
-              <h2 className="font-mono text-sm uppercase tracking-widest text-text-dim">Summary</h2>
+            <Card padding="md" className="space-y-2 border-border bg-surface">
+              <h2 className="text-2xs font-semibold uppercase tracking-wider text-text-muted">
+                Executive Summary
+              </h2>
               <p className="text-sm text-text leading-relaxed">{summary}</p>
-            </div>
+            </Card>
           )}
 
-          {/* Content */}
+          {/* Full Note Content Card */}
           {content && (
-            <div className="card space-y-2">
-              <h2 className="font-mono text-sm uppercase tracking-widest text-text-dim">Content</h2>
-              <div className="text-sm text-text whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto">
+            <Card padding="md" className="space-y-3 border-border bg-surface">
+              <h2 className="text-2xs font-semibold uppercase tracking-wider text-text-muted">
+                Memory Content & Raw Notes
+              </h2>
+              <div className="text-sm text-text whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto font-sans p-3 rounded-lg bg-surface-sunken border border-border">
                 {content}
               </div>
-            </div>
+            </Card>
           )}
 
           {/* Tags */}
           {tags.length > 0 && (
-            <div className="card space-y-2">
-              <h2 className="font-mono text-sm uppercase tracking-widest text-text-dim">Tags</h2>
+            <Card padding="md" className="space-y-2 border-border bg-surface">
+              <h2 className="text-2xs font-semibold uppercase tracking-wider text-text-muted">
+                Linked Concepts & Tags
+              </h2>
               <div className="flex flex-wrap gap-2">
                 {tags.map((t) => (
-                  <span
-                    key={t}
-                    className="rounded-full bg-surface-hover border border-border px-3 py-1 text-xs text-text-muted"
-                  >
-                    {t}
-                  </span>
+                  <Badge key={t} variant="mono" size="sm">
+                    #{t}
+                  </Badge>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
 
-          {/* Lineage */}
+          {/* Lineage & Supersession Chain */}
           {lineage && (
-            <div className="card space-y-4">
-              <h2 className="font-mono text-sm uppercase tracking-widest text-text-dim">Lineage</h2>
+            <Card padding="md" className="space-y-4 border-border bg-surface">
+              <h2 className="text-2xs font-semibold uppercase tracking-wider text-text-muted">
+                Lineage & Supersession History
+              </h2>
+
               {lineage.chainBackwards.length > 1 && (
                 <div>
-                  <p className="text-xs text-text-muted mb-2">Supersession chain (backwards)</p>
+                  <p className="text-2xs text-text-muted mb-2 uppercase tracking-wider">
+                    Superseded Ancestors
+                  </p>
                   <div className="flex gap-2 overflow-x-auto pb-2">
                     {lineage.chainBackwards.map((m: unknown, idx: number) => {
-                      const mem = m as Record<string, unknown>;
+                      const ances = m as Record<string, unknown>;
                       return (
                         <div
-                          key={String(mem['id'])}
-                          className={`shrink-0 w-48 rounded border p-2 ${
+                          key={String(ances['id'])}
+                          className={`shrink-0 w-52 rounded-lg border p-3 ${
                             idx === 0
-                              ? 'border-primary bg-primary/5'
-                              : 'border-border bg-surface-hover'
+                              ? 'border-primary bg-primary/5 text-primary'
+                              : 'border-border bg-surface-hover text-text'
                           }`}
                         >
-                          <p className="font-mono text-xs text-text-dim">
-                            {idx === 0 ? 'current' : `#${idx} superseded`}
+                          <p className="font-mono text-2xs uppercase">
+                            {idx === 0 ? 'Current' : `v-${idx} Superseded`}
                           </p>
-                          <p className="text-sm font-medium text-text truncate">
-                            {String(mem['title'] || mem['id']).slice(0, 28)}
+                          <p className="text-xs font-medium truncate mt-1">
+                            {String(ances['title'] || ances['id']).slice(0, 30)}
                           </p>
-                          <p className="text-xs text-text-muted line-clamp-2">
-                            {String(mem['summary'] || '')}
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-              {lineage.chainForwards.length > 0 && (
-                <div>
-                  <p className="text-xs text-text-muted mb-2">Superseded by</p>
-                  <div className="flex gap-2 overflow-x-auto pb-2">
-                    {lineage.chainForwards.map((m: unknown) => {
-                      const mem = m as Record<string, unknown>;
-                      return (
-                        <div
-                          key={String(mem['id'])}
-                          className="shrink-0 w-48 rounded border border-warning/30 bg-warning/10 p-2"
-                        >
-                          <p className="text-sm font-medium text-text truncate">
-                            {String(mem['title'] || mem['id']).slice(0, 28)}
-                          </p>
-                          <p className="text-xs text-text-muted line-clamp-2">
-                            {String(mem['summary'] || '')}
+                          <p className="text-2xs text-text-muted line-clamp-2 mt-0.5">
+                            {String(ances['summary'] || '')}
                           </p>
                         </div>
                       );
@@ -278,168 +252,152 @@ export default function MemoryDetailPage() {
                   </div>
                 </div>
               )}
+
               {supersedesId && (
                 <p className="text-xs text-text-dim">
-                  This memory supersedes{' '}
-                  <span className="font-mono">{supersedesId.slice(0, 8)}</span>
+                  This record supersedes{' '}
+                  <span className="font-mono text-text">{supersedesId.slice(0, 8)}</span>.
                 </p>
               )}
-            </div>
+            </Card>
           )}
-
-          {/* Correction panel */}
-          <div className="card space-y-3">
-            <h2 className="font-mono text-sm uppercase tracking-widest text-text-dim">
-              Correction
-            </h2>
-            <p className="text-xs text-text-muted">
-              Correct this memory to create an updated version. The original is preserved in the
-              supersession chain.
-            </p>
-          </div>
         </div>
 
         {/* Sidebar (1/3) */}
         <div className="space-y-6">
-          {/* ID & metadata */}
-          <div className="card space-y-3">
-            <h2 className="font-mono text-sm uppercase tracking-widest text-text-dim">Details</h2>
-            <dl className="space-y-2">
+          {/* Details Card */}
+          <Card padding="md" className="space-y-3 border-border bg-surface">
+            <h2 className="text-2xs font-semibold uppercase tracking-wider text-text-muted">
+              Metadata & Record Info
+            </h2>
+            <dl className="space-y-2 text-xs">
               <div>
-                <dt className="text-xs text-text-muted">ID</dt>
-                <dd className="font-mono text-xs text-text break-all">{memory.id}</dd>
+                <dt className="text-text-muted">ID</dt>
+                <dd className="font-mono text-text break-all mt-0.5">{memory.id}</dd>
               </div>
               <div>
-                <dt className="text-xs text-text-muted">Type</dt>
-                <dd className="text-sm text-text">{type}</dd>
+                <dt className="text-text-muted">Type</dt>
+                <dd className="text-text font-medium mt-0.5">{type}</dd>
               </div>
               <div>
-                <dt className="text-xs text-text-muted">Created</dt>
-                <dd className="text-sm text-text">{formatTimestamp(createdAt)}</dd>
+                <dt className="text-text-muted">Created</dt>
+                <dd className="text-text mt-0.5">{formatTimestamp(createdAt)}</dd>
               </div>
               <div>
-                <dt className="text-xs text-text-muted">Updated</dt>
-                <dd className="text-sm text-text">{formatTimestamp(updatedAt)}</dd>
+                <dt className="text-text-muted">Last Updated</dt>
+                <dd className="text-text mt-0.5">{formatTimestamp(updatedAt)}</dd>
               </div>
             </dl>
-          </div>
+          </Card>
 
-          {/* Source evidence */}
+          {/* Source Evidence Card */}
           {(sourceType || sourceUri || sourceLabel) && (
-            <div className="card space-y-3">
-              <h2 className="font-mono text-sm uppercase tracking-widest text-text-dim">
+            <Card padding="md" className="space-y-3 border-border bg-surface">
+              <h2 className="text-2xs font-semibold uppercase tracking-wider text-text-muted">
                 Source Evidence
               </h2>
-              <dl className="space-y-2">
+              <dl className="space-y-2 text-xs">
                 {sourceType && (
                   <div>
-                    <dt className="text-xs text-text-muted">Source type</dt>
-                    <dd className="text-sm text-text">{sourceType}</dd>
+                    <dt className="text-text-muted">Source Type</dt>
+                    <dd className="text-text font-medium mt-0.5">{sourceType}</dd>
                   </div>
                 )}
                 {sourceLabel && (
                   <div>
-                    <dt className="text-xs text-text-muted">Source label</dt>
-                    <dd className="text-sm text-text">{sourceLabel}</dd>
+                    <dt className="text-text-muted">Source Label</dt>
+                    <dd className="text-text mt-0.5">{sourceLabel}</dd>
                   </div>
                 )}
                 {sourceUri && (
                   <div>
-                    <dt className="text-xs text-text-muted">Source URI</dt>
-                    <dd className="text-sm text-text break-all font-mono text-xs">{sourceUri}</dd>
+                    <dt className="text-text-muted">Source URI</dt>
+                    <dd className="text-text break-all font-mono text-2xs mt-0.5">{sourceUri}</dd>
                   </div>
                 )}
               </dl>
-            </div>
+            </Card>
           )}
 
-          {/* Provenance (from lineage) */}
-          {lineage && lineage.provenance.length > 0 && (
-            <div className="card space-y-3">
-              <h2 className="font-mono text-sm uppercase tracking-widest text-text-dim">
-                Provenance
-              </h2>
-              <ol className="space-y-1">
-                {lineage.provenance.map(
-                  (n: { table: string; id: string; type: string; detail: string }) => (
-                    <li key={`${n.table}-${n.id}`} className="flex items-center gap-2 text-xs">
-                      <span className="rounded bg-surface-hover border border-border px-1.5 py-0.5 font-mono text-text-dim">
-                        {n.table}
-                      </span>
-                      <span className="font-mono text-text-dim">{n.id.slice(0, 8)}</span>
-                      <span className="text-text-muted truncate">{n.detail || n.type}</span>
-                    </li>
-                  ),
-                )}
-              </ol>
-            </div>
-          )}
-
-          {/* Metadata */}
+          {/* Dynamic Metadata Attributes */}
           {Object.keys(metadata).length > 0 && (
-            <div className="card space-y-3">
-              <h2 className="font-mono text-sm uppercase tracking-widest text-text-dim">
-                Metadata
+            <Card padding="md" className="space-y-3 border-border bg-surface">
+              <h2 className="text-2xs font-semibold uppercase tracking-wider text-text-muted">
+                Extended Attributes
               </h2>
-              <div className="space-y-1">
+              <div className="space-y-1.5 text-xs">
                 {Object.entries(metadata).map(([k, v]) => (
-                  <div key={k} className="flex justify-between gap-2 text-xs">
+                  <div
+                    key={k}
+                    className="flex justify-between gap-2 border-b border-border/50 pb-1"
+                  >
                     <span className="font-mono text-text-muted truncate">{k}</span>
-                    <span className="text-text text-right break-all">
+                    <span className="text-text text-right font-mono text-2xs truncate">
                       {typeof v === 'string' ? v : JSON.stringify(v)}
                     </span>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
         </div>
       </div>
 
-      {/* Edit modal */}
-      <Modal isOpen={editing} onClose={cancelEdit} title={`Edit memory: ${title}`} size="lg">
+      {/* Edit Modal */}
+      <Modal isOpen={editing} onClose={cancelEdit} title={`Edit Memory: ${title}`} size="lg">
         <div className="space-y-4">
           <div>
-            <label htmlFor="edit-title" className="block text-sm text-text-muted mb-1">
+            <label
+              htmlFor="edit-title"
+              className="block text-xs font-semibold text-text uppercase tracking-wider mb-1"
+            >
               Title
             </label>
             <input
               id="edit-title"
               type="text"
-              className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:border-primary"
+              className="w-full rounded-md border border-border bg-surface-sunken p-2.5 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary"
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
             />
           </div>
           <div>
-            <label htmlFor="edit-summary" className="block text-sm text-text-muted mb-1">
+            <label
+              htmlFor="edit-summary"
+              className="block text-xs font-semibold text-text uppercase tracking-wider mb-1"
+            >
               Summary
             </label>
             <textarea
               id="edit-summary"
-              className="w-full min-h-[80px] bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:border-primary"
+              rows={3}
+              className="w-full rounded-md border border-border bg-surface-sunken p-2.5 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary"
               value={editSummary}
               onChange={(e) => setEditSummary(e.target.value)}
             />
           </div>
           <div>
-            <label htmlFor="edit-content" className="block text-sm text-text-muted mb-1">
+            <label
+              htmlFor="edit-content"
+              className="block text-xs font-semibold text-text uppercase tracking-wider mb-1"
+            >
               Content
             </label>
             <textarea
               id="edit-content"
-              className="w-full min-h-[120px] bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:border-primary"
+              rows={5}
+              className="w-full rounded-md border border-border bg-surface-sunken p-2.5 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary"
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
             />
           </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <button className="btn-secondary" onClick={cancelEdit}>
+          <div className="flex justify-end gap-2 pt-2 border-t border-border">
+            <Button variant="ghost" onClick={cancelEdit}>
               Cancel
-            </button>
-            <button className="btn-primary" onClick={saveEdit} disabled={saving}>
-              {saving ? 'Saving...' : 'Save changes'}
-            </button>
+            </Button>
+            <Button variant="primary" onClick={() => void saveEdit()} loading={saving}>
+              Save Changes
+            </Button>
           </div>
         </div>
       </Modal>

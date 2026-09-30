@@ -311,7 +311,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
         <div
           ref={containerRef}
           className="relative overflow-hidden rounded-xl border border-border bg-surface/50 touch-none overscroll-contain"
-          style={{ height: 'min(65vh, 560px)' }}
+          style={{ height: 'min(65dvh, 560px)' }}
           onMouseDown={onMouseDown}
           onMouseMove={onMouseMove}
           onMouseUp={onMouseUp}

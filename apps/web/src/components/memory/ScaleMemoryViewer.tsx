@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import useSWR from 'swr';
 import { request } from '@/lib/api';
+import { Card, Badge, Button, EmptyState, Modal, Select } from '@vaeloom/ui-kit';
 
 export interface ScaleMemoryNode {
   id: string;
@@ -24,42 +25,51 @@ interface ScaleMemoryViewerProps {
   workspaceId: string;
 }
 
-const TIERS: Array<{ key: string; label: string; description: string; badgeColor: string }> = [
+const TIERS: Array<{
+  key: string;
+  label: string;
+  description: string;
+  variant: 'default' | 'primary' | 'warning' | 'info' | 'success' | 'mono';
+}> = [
   {
     key: 'ALL',
     label: 'All Wavelengths',
     description: 'Full multiscale temporal hierarchy',
-    badgeColor: 'bg-surface-200 text-text-secondary border border-border',
+    variant: 'default',
   },
   {
     key: 'DAILY',
     label: 'Daily Logs',
     description: 'Nightly consolidated episodic summaries',
-    badgeColor: 'bg-info/15 text-info border border-info/30',
+    variant: 'info',
   },
   {
     key: 'WEEKLY',
     label: 'Weekly Rollups',
     description: '7-day synthesized skill & velocity trends',
-    badgeColor: 'bg-primary/15 text-primary border border-primary/30',
+    variant: 'primary',
   },
   {
     key: 'MONTHLY',
     label: 'Monthly Milestones',
     description: '30-day strategic project & capability progress',
-    badgeColor: 'bg-accent/15 text-accent border border-accent/30',
+    variant: 'warning',
   },
   {
     key: 'NORTH_STAR',
     label: 'North Star',
     description: 'Core personal values & non-negotiable direction',
-    badgeColor: 'bg-warning/15 text-warning border border-warning/30',
+    variant: 'success',
   },
 ];
 
 export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
   const [selectedTier, setSelectedTier] = useState<string>('ALL');
   const [isRollingUp, setIsRollingUp] = useState(false);
+  const [rollupModalOpen, setRollupModalOpen] = useState(false);
+  const [targetRollupTier, setTargetRollupTier] = useState<'WEEKLY' | 'MONTHLY' | 'NORTH_STAR'>(
+    'WEEKLY',
+  );
   const [rollupMessage, setRollupMessage] = useState<string | null>(null);
 
   const queryTier = selectedTier === 'ALL' ? '' : `&tier=${selectedTier}`;
@@ -73,28 +83,30 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
     { revalidateOnFocus: false },
   );
 
-  const handleRollupWeekly = async () => {
+  const triggerRollup = async (tier: 'WEEKLY' | 'MONTHLY' | 'NORTH_STAR') => {
     try {
       setIsRollingUp(true);
       setRollupMessage(null);
       const now = new Date();
-      const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const days = tier === 'WEEKLY' ? 7 : tier === 'MONTHLY' ? 30 : 365;
+      const start = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
       await request('/cognition/scale/rollup', {
         method: 'POST',
         body: JSON.stringify({
           workspace_id: workspaceId,
-          target_tier: 'WEEKLY',
-          period_start: weekStart.toISOString(),
+          target_tier: tier,
+          period_start: start.toISOString(),
           period_end: now.toISOString(),
         }),
       });
 
       await mutate();
-      setRollupMessage('Weekly rollup synthesized successfully!');
+      setRollupMessage(`${tier.replace('_', ' ')} rollup synthesized successfully.`);
+      setRollupModalOpen(false);
       setTimeout(() => setRollupMessage(null), 4000);
     } catch (err) {
-      console.error('Failed to trigger weekly rollup:', err);
+      console.error('Failed to trigger rollup:', err);
     } finally {
       setIsRollingUp(false);
     }
@@ -105,14 +117,16 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
   return (
     <div className="space-y-6">
       {/* Header & Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
         <div>
-          <h3 className="text-base font-display font-medium text-text flex items-center gap-2">
-            <span>PIOS SCALE Multiscale Temporal Hierarchy</span>
-            <span className="text-2xs px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/25 font-semibold">
-              Pillar 2
-            </span>
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-display font-medium text-text">
+              PIOS SCALE Temporal Hierarchy
+            </h3>
+            <Badge variant="primary" size="sm">
+              Multiscale Cognition
+            </Badge>
+          </div>
           <p className="text-xs text-text-muted mt-0.5">
             Temporal wavelength consolidation: Sub-daily stream → Daily logs → Weekly rollups →
             Strategic milestones.
@@ -123,29 +137,30 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
           {rollupMessage && (
             <span className="text-xs text-success font-medium">{rollupMessage}</span>
           )}
-          <button
-            onClick={handleRollupWeekly}
-            disabled={isRollingUp}
-            className="btn-primary text-xs flex items-center gap-1.5"
+          <Button
+            variant="primary"
+            size="sm"
+            loading={isRollingUp}
+            onClick={() => setRollupModalOpen(true)}
           >
-            {isRollingUp ? <span className="animate-spin text-xs">⟳</span> : <span>📊</span>}
-            {isRollingUp ? 'Synthesizing...' : 'Synthesize Weekly Rollup'}
-          </button>
+            Synthesize Rollup
+          </Button>
         </div>
       </div>
 
-      {/* Wavelength Tier Filter Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-border pb-3">
+      {/* Wavelength Tier Filter Pills */}
+      <div className="flex flex-wrap gap-2">
         {TIERS.map((tier) => {
           const active = selectedTier === tier.key;
           return (
             <button
               key={tier.key}
+              type="button"
               onClick={() => setSelectedTier(tier.key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 active
-                  ? 'bg-action text-action-fg shadow-sm'
-                  : 'bg-surface-100 text-text-muted hover:bg-surface-200 hover:text-text'
+                  ? 'bg-primary text-primary-fg shadow-sm'
+                  : 'bg-surface-200 text-text-muted hover:bg-surface-hover hover:text-text'
               }`}
             >
               {tier.label}
@@ -158,7 +173,7 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-pulse">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-44 rounded-xl bg-surface-200 p-5" />
+            <div key={i} className="h-44 rounded-xl bg-surface-hover p-5" />
           ))}
         </div>
       ) : error ? (
@@ -166,16 +181,14 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
           Failed to load SCALE memory nodes.
         </div>
       ) : nodes.length === 0 ? (
-        <div className="p-12 text-center rounded-xl border border-dashed border-border bg-surface-100/50">
-          <div className="text-2xl mb-2">⏳</div>
-          <h4 className="text-sm font-semibold text-text mb-1">
-            No SCALE nodes recorded in this tier yet
-          </h4>
-          <p className="text-xs text-text-muted max-w-md mx-auto mb-4">
-            SCALE memory consolidates automatically at 02:00 AM or on demand. Trigger a weekly
-            rollup above to synthesize your recent memories.
-          </p>
-        </div>
+        <EmptyState
+          title="No SCALE nodes recorded in this tier yet"
+          description="SCALE memory consolidates automatically nightly or on demand. Trigger a rollup above to synthesize your recent memories into high-level insights."
+          action={{
+            label: 'Synthesize Weekly Rollup',
+            onClick: () => void triggerRollup('WEEKLY'),
+          }}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {nodes.map((node) => {
@@ -191,63 +204,111 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
             });
 
             return (
-              <div
+              <Card
                 key={node.id}
-                className="rounded-xl border border-border bg-surface p-5 shadow-card hover:border-border-strong transition"
+                padding="md"
+                className="space-y-3 border-border bg-surface hover:border-border-strong transition shadow-sm"
               >
-                <div className="flex items-center justify-between gap-2 mb-2.5">
-                  <span
-                    className={`text-2xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${tierMeta?.badgeColor || 'bg-surface-200 text-text-muted'}`}
-                  >
+                <div className="flex items-center justify-between gap-2">
+                  <Badge variant={tierMeta.variant} size="sm">
                     {node.tier}
-                  </span>
-                  <span className="text-xs text-text-muted font-mono">
-                    {startDate} → {endDate}
+                  </Badge>
+                  <span className="text-2xs font-mono text-text-dim">
+                    {startDate} — {endDate}
                   </span>
                 </div>
 
-                <p className="text-sm font-medium text-text leading-relaxed mb-3">{node.summary}</p>
+                <p className="text-sm font-medium text-text leading-snug">{node.summary}</p>
 
-                {/* Key Insights Chips */}
-                {node.keyInsights?.length > 0 && (
-                  <div className="mb-3">
-                    <span className="text-2xs font-semibold uppercase tracking-wider text-text-muted block mb-1">
+                {node.keyInsights && node.keyInsights.length > 0 && (
+                  <div className="space-y-1">
+                    <span className="text-2xs uppercase tracking-wider text-text-muted font-semibold">
                       Key Insights
                     </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {node.keyInsights.slice(0, 3).map((insight, idx) => (
-                        <span
-                          key={idx}
-                          className="text-2xs px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20"
-                        >
-                          {insight}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Action Commitments */}
-                {node.actionCommitments?.length > 0 && (
-                  <div className="pt-2.5 border-t border-border">
-                    <span className="text-2xs font-semibold uppercase tracking-wider text-text-muted block mb-1">
-                      Commitments & Follow-Through
-                    </span>
-                    <ul className="text-xs text-text-secondary space-y-1">
-                      {node.actionCommitments.slice(0, 2).map((commit, idx) => (
-                        <li key={idx} className="flex items-start gap-1.5">
-                          <span className="text-primary mt-0.5">›</span>
-                          <span className="truncate">{commit}</span>
+                    <ul className="space-y-0.5">
+                      {node.keyInsights.map((insight, idx) => (
+                        <li key={idx} className="text-xs text-text-muted flex items-start gap-1.5">
+                          <span className="text-primary">•</span>
+                          <span>{insight}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
                 )}
-              </div>
+
+                {node.actionCommitments && node.actionCommitments.length > 0 && (
+                  <div className="space-y-1 pt-2 border-t border-border">
+                    <span className="text-2xs uppercase tracking-wider text-text-muted font-semibold">
+                      Action Commitments
+                    </span>
+                    <ul className="space-y-0.5">
+                      {node.actionCommitments.map((action, idx) => (
+                        <li key={idx} className="text-xs text-success flex items-start gap-1.5">
+                          <span>✓</span>
+                          <span>{action}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </Card>
             );
           })}
         </div>
       )}
+
+      {/* Synthesis Rollup Modal */}
+      <Modal
+        isOpen={rollupModalOpen}
+        onClose={() => setRollupModalOpen(false)}
+        title="Synthesize Multiscale Memory Rollup"
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-text-muted leading-relaxed">
+            Select the temporal wavelength for agentic synthesis. Lower tiers will be consolidated
+            into high-level strategic takeaways, friction analysis, and action items.
+          </p>
+
+          <div>
+            <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1.5">
+              Target Wavelength Tier
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {(['WEEKLY', 'MONTHLY', 'NORTH_STAR'] as const).map((tier) => (
+                <button
+                  key={tier}
+                  type="button"
+                  onClick={() => setTargetRollupTier(tier)}
+                  className={`p-3 rounded-lg border text-xs font-medium text-center transition ${
+                    targetRollupTier === tier
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border bg-surface-200 text-text-muted hover:border-border-strong'
+                  }`}
+                >
+                  <p className="font-semibold">{tier.replace('_', ' ')}</p>
+                  <p className="text-2xs text-text-dim mt-0.5">
+                    {tier === 'WEEKLY' ? '7 days' : tier === 'MONTHLY' ? '30 days' : '1 year'}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-border">
+            <Button variant="ghost" onClick={() => setRollupModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              loading={isRollingUp}
+              onClick={() => void triggerRollup(targetRollupTier)}
+            >
+              Start Synthesis
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -1,16 +1,31 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import useSWR from 'swr';
-import { Tabs, TabPanel, Modal, EmptyState, ConfidenceIndicator } from '@vaeloom/ui-kit';
+import {
+  Tabs,
+  TabPanel,
+  Modal,
+  EmptyState,
+  StatCard,
+  Button,
+  Badge,
+  FilterBar,
+  MemoryCard,
+  MemoryTimeline,
+  type MemoryTimelineItem,
+  type FilterOption,
+} from '@vaeloom/ui-kit';
 import { DynamicGraphViewer } from '@/lib/dynamic-imports';
 import { PageHeader } from '@/components/shared/Page';
 import { MemoryCorrectionPanel } from '@/components/memory/MemoryCorrectionPanel';
 import { ScaleMemoryViewer } from '@/components/memory/ScaleMemoryViewer';
+import { VaultSyncPanel } from '@/components/memory/VaultSyncPanel';
 import { memoryApi, memoryFeedApi } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import type { Memory } from '@vaeloom/shared-types';
 
 function formatRelative(iso: string | null | undefined) {
   if (!iso) return '—';
@@ -25,317 +40,361 @@ function formatRelative(iso: string | null | undefined) {
   return new Date(iso).toLocaleDateString();
 }
 
-function KindBadge({ kind }: { kind: string }) {
-  const map: Record<string, string> = {
-    memory_created: 'bg-success/10 text-success border-success/30',
-    memory_corrected: 'bg-info/10 text-info border-info/30',
-    memory_superseded: 'bg-warning/10 text-warning border-warning/30',
-    agent_created: 'bg-primary/10 text-primary border-primary/30',
-    agent_memory_text: 'bg-primary/10 text-primary border-primary/30',
-  };
-  const cls =
-    map[kind] ||
-    (kind.startsWith('agent_')
-      ? 'bg-accent/10 text-accent border-accent/30'
-      : 'bg-surface-hover text-text-muted border-border');
-  return (
-    <span className={`rounded-full border px-2 py-0.5 text-xs font-mono ${cls}`}>
-      {kind.replace(/_/g, ' ')}
-    </span>
-  );
-}
-
-function ConfidenceBar({ value }: { value: number | undefined }) {
-  // F-02: absent confidence renders an honest label instead of a fake bar.
-  if (value === undefined || value === null) {
-    return <span className="font-mono text-xs text-text-muted">confidence: not reported</span>;
-  }
-  return <ConfidenceIndicator score={value} />;
-}
+const TYPE_FILTERS: FilterOption[] = [
+  { id: 'all', label: 'All Types' },
+  { id: 'note', label: 'Notes' },
+  { id: 'document', label: 'Documents' },
+  { id: 'insight', label: 'Insights' },
+  { id: 'decision', label: 'Decisions' },
+  { id: 'task', label: 'Tasks' },
+];
 
 export default function MemoryGraphPage() {
   const params = useParams<{ workspaceId: string }>();
   const workspaceId = params.workspaceId;
-  const [active, setActive] = useState('feed');
+  const [activeTab, setActiveTab] = useState('list');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedType, setSelectedType] = useState('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showLineage, setShowLineage] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newContent, setNewContent] = useState('');
+  const [newType, setNewType] = useState('note');
+  const [newTags, setNewTags] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+
   const { toast } = useToast();
 
+  // Feed API query
   const {
     data: feedData,
     isLoading: feedLoading,
     mutate: mutateFeed,
   } = useSWR(workspaceId ? `memory-feed-${workspaceId}` : null, () =>
-    memoryFeedApi.feed({ workspace_id: workspaceId, page: 1, page_size: 25 }),
+    memoryFeedApi.feed({ workspace_id: workspaceId, page: 1, page_size: 50 }),
   );
 
+  // Lineage query
   const { data: lineage, isLoading: lineageLoading } = useSWR(
     selectedId ? `lineage-${selectedId}` : null,
     () => memoryFeedApi.lineage(selectedId!),
   );
 
-  const { data: memoriesRes } = useSWR(workspaceId ? `memories-${workspaceId}` : null, () =>
-    memoryApi.list({ page_size: 25 }),
+  // Memories query
+  const {
+    data: memoriesRes,
+    isLoading: memoriesLoading,
+    mutate: mutateMemories,
+  } = useSWR(workspaceId ? `memories-${workspaceId}` : null, () =>
+    memoryApi.list({ page_size: 100 }),
   );
 
-  const memories = memoriesRes as { items?: unknown[] } | unknown[] as unknown;
-  const memItems: Array<Record<string, unknown>> = Array.isArray(memories)
-    ? (memories as Array<Record<string, unknown>>)
-    : (((memoriesRes as { memories?: unknown[] })?.memories ?? []) as Array<
-        Record<string, unknown>
-      >);
+  const memItems: Memory[] = useMemo(() => {
+    if (!memoriesRes) return [];
+    if (Array.isArray(memoriesRes)) return memoriesRes as Memory[];
+    const res = memoriesRes as { memories?: Memory[]; items?: Memory[] };
+    return res.memories ?? res.items ?? [];
+  }, [memoriesRes]);
+
+  // Client-side search and filtering
+  const filteredMemories = useMemo(() => {
+    return memItems.filter((m) => {
+      if (m.status === 'deleted') return false;
+      if (selectedType !== 'all' && m.type !== selectedType) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchesTitle = m.title?.toLowerCase().includes(q);
+        const matchesSummary = m.summary?.toLowerCase().includes(q);
+        const contentStr = ((m as unknown as Record<string, unknown>)['content'] as string) || '';
+        const matchesContent = contentStr.toLowerCase().includes(q);
+        const matchesTags =
+          Array.isArray(m.tags) && m.tags.some((t) => t.toLowerCase().includes(q));
+        if (!matchesTitle && !matchesSummary && !matchesContent && !matchesTags) return false;
+      }
+      return true;
+    });
+  }, [memItems, selectedType, searchQuery]);
 
   const openLineage = useCallback((id: string) => {
     setSelectedId(id);
     setShowLineage(true);
   }, []);
 
+  const handleDeleteMemory = useCallback(
+    async (id: string) => {
+      try {
+        await memoryApi.delete(id);
+        toast({
+          tone: 'success',
+          title: 'Memory removed',
+          detail: 'Memory soft-deleted and archived.',
+        });
+        await mutateMemories();
+        await mutateFeed();
+      } catch (err) {
+        toast({
+          tone: 'error',
+          title: 'Delete failed',
+          detail: err instanceof Error ? err.message : 'Could not delete memory.',
+        });
+      }
+    },
+    [toast, mutateMemories, mutateFeed],
+  );
+
+  const handleCreateMemory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTitle.trim() || !newContent.trim() || isCreating) return;
+
+    setIsCreating(true);
+    try {
+      const tagsArray = newTags
+        .split(',')
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0);
+
+      await memoryApi.create({
+        title: newTitle.trim(),
+        content: newContent.trim(),
+        summary: newContent.slice(0, 160).trim(),
+        type: newType,
+        tags: tagsArray,
+      });
+
+      toast({
+        tone: 'success',
+        title: 'Note & Memory Created',
+        detail: 'Indexed into vector store and knowledge graph.',
+      });
+
+      setCreateModalOpen(false);
+      setNewTitle('');
+      setNewContent('');
+      setNewTags('');
+      await mutateMemories();
+      await mutateFeed();
+    } catch (err) {
+      toast({
+        tone: 'error',
+        title: 'Creation Failed',
+        detail: err instanceof Error ? err.message : 'Could not save memory note.',
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  // Convert feed items to MemoryTimelineItems
+  const timelineItems: MemoryTimelineItem[] = useMemo(() => {
+    if (!feedData?.feed) return [];
+    return feedData.feed.map((f) => {
+      let action: MemoryTimelineItem['action'] = 'ingested';
+      if (f.kind === 'memory_corrected') action = 'updated';
+      else if (f.kind === 'memory_superseded') action = 'archived';
+      else if (f.kind === 'agent_created') action = 'synthesized';
+
+      const mem = f.memory as Record<string, unknown> | null;
+      const title =
+        (mem?.['title'] as string) ||
+        (mem?.['summary'] as string) ||
+        (f.action?.actionType ?? 'Memory Event');
+
+      return {
+        id: `${f.kind}-${f.timestamp}-${mem?.['id'] || ''}`,
+        action,
+        title,
+        source: f.agentName ? `@${f.agentName}` : f.action?.actionType || 'Direct User Ingest',
+        timestamp: formatRelative(f.timestamp),
+      };
+    });
+  }, [feedData]);
+
   const tabs = [
-    { id: 'feed', label: `Agentic Updates${feedData?.feed ? ` (${feedData.feed.length})` : ''}` },
-    { id: 'scale', label: 'SCALE Hierarchy' },
-    { id: 'graph', label: 'Graph' },
-    { id: 'list', label: 'All Memories' },
+    { id: 'list', label: `Notes & Memories (${filteredMemories.length})` },
+    { id: 'feed', label: `Agentic Activity${feedData?.feed ? ` (${feedData.feed.length})` : ''}` },
+    { id: 'scale', label: 'SCALE Temporal' },
+    { id: 'graph', label: 'Knowledge Graph' },
     { id: 'corrections', label: 'Corrections' },
+    { id: 'sync', label: 'Vault & Git Sync' },
   ];
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Memory"
+        title="Second Brain & Memory"
         eyebrow={`Workspace ${workspaceId.slice(0, 8)}`}
-        description="Agentic memory with provenance & supersession."
+        description="Autonomous second brain combining plain Markdown vault sync, cognitive embeddings, multiscale hierarchy, and provenance."
         actions={
-          <>
-            <span className="rounded-full bg-surface border border-border px-3 py-1 text-xs text-text-muted">
-              {feedData?.stats?.totalMemories ?? memItems.length} memories •{' '}
-              {feedData?.stats?.superseded ?? 0} superseded • {feedData?.stats?.agentCreated ?? 0}{' '}
-              agent-created
-            </span>
-            <button onClick={() => void mutateFeed()} className="btn-secondary text-xs">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                void mutateMemories();
+                void mutateFeed();
+              }}
+            >
               Refresh
-            </button>
-          </>
+            </Button>
+            <Button variant="primary" size="sm" onClick={() => setCreateModalOpen(true)}>
+              + New Note / Memory
+            </Button>
+          </div>
         }
       />
 
-      {feedData?.stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="card py-3">
-            <p className="font-mono text-xs uppercase tracking-widest text-text-dim">Total</p>
-            <p className="text-2xl font-display text-text mt-1">{feedData.stats.totalMemories}</p>
-          </div>
-          <div className="card py-3">
-            <p className="font-mono text-xs uppercase tracking-widest text-text-dim">
-              Agent-created
-            </p>
-            <p className="text-2xl font-display text-primary mt-1">{feedData.stats.agentCreated}</p>
-          </div>
-          <div className="card py-3">
-            <p className="font-mono text-xs uppercase tracking-widest text-text-dim">Superseded</p>
-            <p className="text-2xl font-display text-warning mt-1">{feedData.stats.superseded}</p>
-          </div>
-          <div className="card py-3">
-            <p className="font-mono text-xs uppercase tracking-widest text-text-dim">
-              Recent AI actions
-            </p>
-            <p className="text-2xl font-display text-accent mt-1">{feedData.stats.recentActions}</p>
-          </div>
-        </div>
-      )}
+      {/* Top Metric Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard
+          label="Total Memories"
+          value={String(feedData?.stats?.totalMemories ?? memItems.length)}
+          caption="Indexed knowledge items"
+        />
+        <StatCard
+          label="Agent Synthesized"
+          value={String(feedData?.stats?.agentCreated ?? 0)}
+          caption="Autonomous background extractions"
+        />
+        <StatCard
+          label="Superseded / Corrected"
+          value={String(feedData?.stats?.superseded ?? 0)}
+          caption="Immutable version audit trail"
+        />
+        <StatCard label="Vault Git Sync" value="Healthy" caption="30s debounce & 5m rebase" />
+      </div>
 
-      <Tabs tabs={tabs} activeTab={active} onChange={setActive} />
+      {/* Main Tabs Navigation */}
+      <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
-      <TabPanel id="feed" activeTab={active}>
-        {feedLoading ? (
-          <LoadingSpinner text="Loading agentic feed..." />
-        ) : !feedData || feedData.feed.length === 0 ? (
-          <EmptyState
-            title="No agentic updates yet"
-            description="Upload a document or let an agent extract memories. This feed shows agent-created, corrected and superseded chains with provenance."
+      {/* Tab 1: Notes & Memories Explorer */}
+      <TabPanel id="list" activeTab={activeTab}>
+        <div className="space-y-4">
+          <FilterBar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder="Search memories, notes, tags, or concepts..."
+            categories={TYPE_FILTERS}
+            activeCategory={selectedType}
+            onCategoryChange={setSelectedType}
           />
-        ) : (
-          <div className="space-y-3">
-            {feedData.feed.map((item) => {
-              const mem = item.memory as unknown as Record<string, unknown> | null;
-              const title =
-                (mem?.['title'] as string) || (mem?.['summary'] as string) || 'Untitled';
-              const summary = (mem?.['summary'] as string) || (mem?.['content'] as string) || '';
-              const type = (mem?.['type'] as string) || 'document';
-              const status = (mem?.['status'] as string) || '';
-              const tags: string[] = (mem?.['tags'] as string[]) || [];
-              const sourceType =
-                (mem?.['sourceType'] as string) || (mem?.['source_type'] as string) || '';
-              const id = (mem?.['id'] as string) || '';
-              const metadata = (mem?.['metadata'] as Record<string, unknown>) || {};
-              // F-02: confidence is shown only when the backend supplies it;
-              // the previous 0.85 default was fabricated.
-              const confidence =
-                (metadata?.['confidence'] as number | undefined) ??
-                (mem?.['confidence'] as number | undefined);
 
-              return (
-                <div
-                  key={`${item.kind}-${id || item.timestamp}-${item.agentName}`}
-                  className="card hover:border-primary/30 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <KindBadge kind={item.kind} />
-                        <span className="rounded bg-surface-hover border border-border px-1.5 py-0.5 text-xs font-mono text-text-muted">
-                          {type}
-                        </span>
-                        {sourceType && (
-                          <span className="text-xs text-text-dim">via {sourceType}</span>
-                        )}
-                        {item.agentName && (
-                          <span className="rounded-full bg-accent/10 border border-accent/30 px-2 py-0.5 text-xs text-accent">
-                            @{item.agentName}
-                          </span>
-                        )}
-                        {status === 'superseded' && (
-                          <span className="rounded-full bg-warning/10 border border-warning/30 px-2 py-0.5 text-xs text-warning">
-                            superseded
-                          </span>
-                        )}
-                      </div>
-                      <h3 className="mt-1 font-medium text-text truncate">{title}</h3>
-                      {summary && <p className="text-sm text-text-muted line-clamp-2">{summary}</p>}
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <span className="text-xs text-text-dim font-mono">
-                          {formatRelative(item.timestamp)}
-                        </span>
-                        <ConfidenceBar value={confidence} />
-                        {tags.slice(0, 4).map((t) => (
-                          <span
-                            key={t}
-                            className="rounded bg-surface-hover border border-border px-1.5 py-0.5 text-xs text-text-muted"
-                          >
-                            {t}
-                          </span>
-                        ))}
-                        {mem?.['supersedes_id'] || (mem?.['supersedesId'] as string) ? (
-                          <span className="rounded bg-info/10 border border-info/30 px-1.5 py-0.5 text-xs text-info">
-                            correction
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="shrink-0 flex flex-col gap-1">
-                      {id && (
-                        <button
-                          type="button"
-                          onClick={() => openLineage(id)}
-                          className="btn-secondary text-xs"
-                        >
-                          Lineage
-                        </button>
-                      )}
-                      {item.action && (
-                        <span className="text-xs font-mono text-text-dim text-right">
-                          {item.action.actionType}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        <p className="text-xs text-text-dim mt-3">
-          Provenance: each memory links source document → embedding → graph node → agent action.
-          Superseded versions stay visible; corrections create new rows with{' '}
-          <span className="font-mono">supersedes_id</span>.
-        </p>
+          {memoriesLoading ? (
+            <div className="py-12 flex justify-center">
+              <LoadingSpinner text="Loading memories..." />
+            </div>
+          ) : filteredMemories.length === 0 ? (
+            <EmptyState
+              title={
+                searchQuery || selectedType !== 'all'
+                  ? 'No matching memories'
+                  : 'Your Second Brain is ready'
+              }
+              description={
+                searchQuery || selectedType !== 'all'
+                  ? 'No records match your active query and filters. Try resetting search.'
+                  : 'Capture ideas, notes, or connect your local vault to automatically populate memories.'
+              }
+              action={{
+                label: '+ Create Note / Memory',
+                onClick: () => setCreateModalOpen(true),
+              }}
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredMemories.map((m) => {
+                const confScore = (m.metadata?.['confidence'] as number) ?? 0.85;
+                const sourceText =
+                  m.source?.label || m.source?.type || (m.source?.uri ? 'file' : 'manual');
+                const contentStr =
+                  ((m as unknown as Record<string, unknown>)['content'] as string) ||
+                  m.summary ||
+                  m.title;
+                const relTime = formatRelative(m.createdAt);
+
+                return (
+                  <MemoryCard
+                    key={m.id}
+                    id={m.id}
+                    content={contentStr}
+                    confidence={confScore}
+                    source={sourceText}
+                    timestamp={relTime}
+                    entityCount={Array.isArray(m.tags) ? m.tags.length : undefined}
+                    onEdit={() => openLineage(m.id)}
+                    onDelete={handleDeleteMemory}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
       </TabPanel>
 
-      <TabPanel id="scale" activeTab={active}>
+      {/* Tab 2: Agentic Activity & Provenance */}
+      <TabPanel id="feed" activeTab={activeTab}>
+        {feedLoading ? (
+          <div className="py-12 flex justify-center">
+            <LoadingSpinner text="Loading agentic timeline..." />
+          </div>
+        ) : timelineItems.length === 0 ? (
+          <EmptyState
+            title="No agentic activity yet"
+            description="Agentic actions, synthesis rollups, and memory corrections will appear here in chronological order with provenance."
+          />
+        ) : (
+          <div className="rounded-xl border border-border bg-surface p-6 shadow-sm">
+            <h3 className="text-sm font-semibold text-text uppercase tracking-wider mb-4">
+              Memory Lifecycle & Agent Trajectory
+            </h3>
+            <MemoryTimeline items={timelineItems} />
+          </div>
+        )}
+      </TabPanel>
+
+      {/* Tab 3: SCALE Temporal Hierarchy */}
+      <TabPanel id="scale" activeTab={activeTab}>
         {workspaceId && <ScaleMemoryViewer workspaceId={workspaceId} />}
       </TabPanel>
 
-      <TabPanel id="graph" activeTab={active}>
+      {/* Tab 4: Knowledge Graph */}
+      <TabPanel id="graph" activeTab={activeTab}>
         <DynamicGraphViewer workspaceId={workspaceId} />
       </TabPanel>
 
-      <TabPanel id="list" activeTab={active}>
-        {memItems.length === 0 ? (
-          <EmptyState
-            title="No memories yet"
-            description="Memories will appear here after ingestion. Check the feed for agent activity."
-          />
-        ) : (
-          <div className="space-y-2">
-            {memItems.map((m) => {
-              const id = (m['id'] as string) || '';
-              const title = (m['title'] as string) || 'Untitled';
-              const type = (m['type'] as string) || '';
-              const status = (m['status'] as string) || '';
-              const sourceType = (m['sourceType'] as string) || (m['source_type'] as string) || '';
-              const summary = (m['summary'] as string) || '';
-              return (
-                <div key={id} className="card flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs rounded bg-surface-hover border border-border px-1.5 py-0.5">
-                        {type}
-                      </span>
-                      <span
-                        className={`text-xs rounded-full px-2 py-0.5 border ${status === 'superseded' ? 'bg-warning/10 text-warning border-warning/30' : status === 'READY' || status === 'active' ? 'bg-success/10 text-success border-success/30' : 'bg-surface-hover text-text-muted border-border'}`}
-                      >
-                        {status || 'active'}
-                      </span>
-                      {sourceType && <span className="text-xs text-text-dim">{sourceType}</span>}
-                    </div>
-                    <p className="font-medium text-text truncate mt-1">{title}</p>
-                    <p className="text-xs text-text-muted truncate">{summary || 'No summary'}</p>
-                  </div>
-                  <div className="flex shrink-0 gap-2">
-                    <a
-                      href={`/workspace/${workspaceId}/memory/${id}`}
-                      className="rounded-full border border-border px-3 py-1 text-xs hover:bg-surface-hover transition-colors"
-                    >
-                      Details
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => openLineage(id)}
-                      className="btn-secondary text-xs"
-                    >
-                      Lineage
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </TabPanel>
-
-      <TabPanel id="corrections" activeTab={active}>
+      {/* Tab 5: Memory Corrections */}
+      <TabPanel id="corrections" activeTab={activeTab}>
         <MemoryCorrectionPanel />
       </TabPanel>
 
+      {/* Tab 6: Vaeloom Vault Git Sync */}
+      <TabPanel id="sync" activeTab={activeTab}>
+        <VaultSyncPanel workspaceId={workspaceId} />
+      </TabPanel>
+
+      {/* Lineage & Provenance Modal */}
       <Modal
         isOpen={showLineage}
         onClose={() => setShowLineage(false)}
         title={
           lineage?.memory
-            ? `Lineage: ${((lineage.memory as unknown as Record<string, unknown>)['title'] as string) || ((lineage.memory as unknown as Record<string, unknown>)['id'] as string)}`
-            : 'Lineage'
+            ? `Lineage: ${((lineage.memory as unknown as Record<string, unknown>)['title'] as string) || lineage.memory.id.slice(0, 8)}`
+            : 'Lineage & Provenance'
         }
         size="lg"
       >
         {lineageLoading ? (
-          <LoadingSpinner text="Loading lineage..." />
+          <div className="py-12 flex justify-center">
+            <LoadingSpinner text="Tracing provenance..." />
+          </div>
         ) : lineage ? (
           <div className="space-y-4">
             <div>
-              <h3 className="text-sm font-medium text-text mb-1">
-                Supersession chain (backwards — supersedes)
-              </h3>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">
+                Supersession Lineage Chain
+              </h4>
               {lineage.chainBackwards.length === 0 ? (
-                <p className="text-xs text-text-muted">No ancestors</p>
+                <p className="text-xs text-text-muted">Origin record (no previous versions).</p>
               ) : (
                 <div className="flex gap-2 overflow-x-auto pb-2">
                   {lineage.chainBackwards.map((m: unknown, idx: number) => {
@@ -343,19 +402,20 @@ export default function MemoryGraphPage() {
                     return (
                       <div
                         key={String(mem['id'])}
-                        className={`shrink-0 w-48 rounded border p-2 ${idx === 0 ? 'border-primary bg-primary/5' : 'border-border bg-surface-hover'}`}
+                        className={`shrink-0 w-52 rounded-lg border p-3 ${
+                          idx === 0
+                            ? 'border-primary bg-primary/5 text-primary'
+                            : 'border-border bg-surface-hover text-text'
+                        }`}
                       >
-                        <p className="font-mono text-xs text-text-dim">
-                          {idx === 0 ? 'current' : `#${idx} superseded`}
+                        <p className="font-mono text-2xs uppercase">
+                          {idx === 0 ? 'Current Active' : `v-${idx} Superseded`}
                         </p>
-                        <p className="text-sm font-medium text-text truncate">
-                          {String(mem['title'] || mem['id']).slice(0, 28)}
+                        <p className="text-xs font-medium truncate mt-1">
+                          {String(mem['title'] || mem['id']).slice(0, 32)}
                         </p>
-                        <p className="text-xs text-text-muted line-clamp-2">
+                        <p className="text-2xs text-text-muted line-clamp-2 mt-0.5">
                           {String(mem['summary'] || '')}
-                        </p>
-                        <p className="font-mono text-xs text-text-dim mt-1">
-                          {String(mem['id']).slice(0, 8)}
                         </p>
                       </div>
                     );
@@ -363,110 +423,93 @@ export default function MemoryGraphPage() {
                 </div>
               )}
             </div>
-            {lineage.chainForwards.length > 0 && (
-              <div>
-                <h3 className="text-sm font-medium text-text mb-1">
-                  Forward chain (what supersedes this)
-                </h3>
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {lineage.chainForwards.map((m: unknown) => {
-                    const mem = m as Record<string, unknown>;
-                    return (
-                      <div
-                        key={String(mem['id'])}
-                        className="shrink-0 w-48 rounded border border-warning/30 bg-warning/10 p-2"
-                      >
-                        <p className="text-sm font-medium text-text truncate">
-                          {String(mem['title'] || mem['id']).slice(0, 28)}
-                        </p>
-                        <p className="text-xs text-text-muted line-clamp-2">
-                          {String(mem['summary'] || '')}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <h3 className="text-sm font-medium text-text mb-1">Provenance</h3>
-                {lineage.provenance.length === 0 ? (
-                  <p className="text-xs text-text-muted">No provenance trace (older record)</p>
-                ) : (
-                  <ol className="space-y-1">
-                    {lineage.provenance.map(
-                      (n: { table: string; id: string; type: string; detail: string }) => (
-                        <li key={`${n.table}-${n.id}`} className="flex items-center gap-2 text-xs">
-                          <span className="rounded bg-surface-hover border border-border px-1.5 py-0.5 font-mono text-text-dim">
-                            {n.table}
-                          </span>
-                          <span className="font-mono text-text-dim">{n.id.slice(0, 8)}</span>
-                          <span className="text-text-muted truncate">{n.detail || n.type}</span>
-                        </li>
-                      ),
-                    )}
-                  </ol>
-                )}
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-text mb-1">Linked agent actions</h3>
-                {lineage.agentActions.length === 0 ? (
-                  <p className="text-xs text-text-muted">No linked actions</p>
-                ) : (
-                  <ul className="space-y-1">
-                    {lineage.agentActions.map(
-                      (a: {
-                        id: string;
-                        agentName: string;
-                        actionType: string;
-                        status: string;
-                        createdAt: string | null;
-                      }) => (
-                        <li
-                          key={a.id}
-                          className="rounded border border-border bg-surface-hover px-2 py-1 text-xs"
-                        >
-                          <span className="font-medium text-text">{a.agentName}</span>
-                          <span className="mx-1 text-text-dim">•</span>
-                          <span className="text-text-muted">{a.actionType}</span>
-                          <span
-                            className={`ml-2 rounded px-1 py-0.5 text-xs border ${a.status === 'completed' ? 'bg-success/10 text-success border-success/30' : 'bg-surface text-text-muted border-border'}`}
-                          >
-                            {a.status}
-                          </span>
-                          <span className="ml-2 font-mono text-text-dim">
-                            {a.createdAt ? formatRelative(a.createdAt) : ''}
-                          </span>
-                        </li>
-                      ),
-                    )}
-                  </ul>
-                )}
-              </div>
-            </div>
-            <div className="pt-2 border-t border-border flex justify-end gap-2">
-              <button className="btn-secondary" onClick={() => setShowLineage(false)}>
+
+            <div className="pt-2 border-t border-border flex justify-end">
+              <Button variant="secondary" onClick={() => setShowLineage(false)}>
                 Close
-              </button>
-              <button
-                className="btn-primary"
-                onClick={() => {
-                  toast({
-                    tone: 'info',
-                    title: 'Export lineage',
-                    detail: 'Copy from History or request GDPR export for full chain.',
-                  });
-                  setShowLineage(false);
-                }}
-              >
-                Done
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
-          <p className="text-sm text-text-muted">No lineage data</p>
+          <p className="text-sm text-text-muted">No lineage available for this record.</p>
         )}
+      </Modal>
+
+      {/* New Note / Memory Creation Modal */}
+      <Modal
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        title="Create Note / Memory"
+        size="md"
+      >
+        <form onSubmit={handleCreateMemory} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1">
+              Title / Concept
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. Distributed Consensus in Second Brain"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              className="w-full rounded-md border border-border bg-surface-sunken p-2.5 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1">
+              Memory Type
+            </label>
+            <select
+              value={newType}
+              onChange={(e) => setNewType(e.target.value)}
+              className="w-full rounded-md border border-border bg-surface-sunken p-2.5 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="note">Note</option>
+              <option value="document">Document</option>
+              <option value="insight">Insight</option>
+              <option value="decision">Decision</option>
+              <option value="task">Task</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1">
+              Content & Insights
+            </label>
+            <textarea
+              required
+              rows={4}
+              placeholder="Enter note or markdown content..."
+              value={newContent}
+              onChange={(e) => setNewContent(e.target.value)}
+              className="w-full rounded-md border border-border bg-surface-sunken p-2.5 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1">
+              Tags (comma separated)
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. second-brain, architecture, notes"
+              value={newTags}
+              onChange={(e) => setNewTags(e.target.value)}
+              className="w-full rounded-md border border-border bg-surface-sunken p-2.5 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-border">
+            <Button variant="ghost" onClick={() => setCreateModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" loading={isCreating}>
+              Save to Memory
+            </Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

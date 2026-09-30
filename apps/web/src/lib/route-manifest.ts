@@ -136,13 +136,25 @@ export const WORKSPACE_ROUTES: readonly RouteDefinition[] = [
   {
     id: 'memory',
     subpath: 'memory',
-    label: 'Memory Graph',
+    label: 'Second Brain',
     section: 'Memory',
     dataMode: 'live',
-    breadcrumbTitle: 'Memory Graph',
+    breadcrumbTitle: 'Second Brain',
     primaryAction: 'Explore Knowledge Node',
     mobilePattern: 'drawer',
-    description: 'Graph visualization of extracted semantic entities and relationship triples.',
+    description:
+      'Autonomous Second Brain, dynamic memory feed, knowledge graph, and multiscale hierarchy.',
+  },
+  {
+    id: 'vault-sync',
+    subpath: 'memory/vault',
+    label: 'Vault Sync',
+    section: 'Memory',
+    dataMode: 'live',
+    breadcrumbTitle: 'Vault Git Sync',
+    primaryAction: 'Sync Vault',
+    mobilePattern: 'single-column',
+    description: 'Git-backed private markdown vault synchronization replacing Obsidian Sync.',
   },
   {
     id: 'search',
@@ -497,7 +509,7 @@ export function getNavigationGroups(
       },
       {
         label: 'Memory',
-        links: buildLinks(['memory', 'search', 'files'], workspaceId),
+        links: buildLinks(['memory', 'vault-sync', 'search', 'files'], workspaceId),
       },
       {
         label: 'Career',

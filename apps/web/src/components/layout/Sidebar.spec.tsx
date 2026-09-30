@@ -65,7 +65,7 @@ describe('Sidebar', () => {
 
   it('marks the active route with aria-current', () => {
     render(<Sidebar workspaceId="ws-1" open={false} onClose={jest.fn()} />);
-    const active = screen.getByRole('link', { name: 'Memory Graph' });
+    const active = screen.getByRole('link', { name: 'Second Brain' });
     expect(active).toHaveAttribute('aria-current', 'page');
   });
 
@@ -113,8 +113,8 @@ describe('Sidebar', () => {
 
   it('keeps links accessible with sr-only text and title tooltip in collapsed mode', () => {
     render(<Sidebar workspaceId="ws-1" open={false} onClose={jest.fn()} collapsed={true} />);
-    const link = screen.getByRole('link', { name: 'Memory Graph' });
+    const link = screen.getByRole('link', { name: 'Second Brain' });
     expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute('title', 'Memory Graph');
+    expect(link).toHaveAttribute('title', 'Second Brain');
   });
 });

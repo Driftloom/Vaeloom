@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
-import { Modal, ErrorState } from '@vaeloom/ui-kit';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import { Modal, ErrorState, Button, SearchField, Badge } from '@vaeloom/ui-kit';
 import { memoryApi, ApiError } from '@/lib/api-client';
 import { DiffViewer } from '@/components/shared/DiffViewer';
 import { useToast } from '@/components/shared/Toast';
@@ -14,6 +14,7 @@ export function MemoryCorrectionPanel() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Memory | null>(null);
   const [draftText, setDraftText] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
@@ -21,13 +22,7 @@ export function MemoryCorrectionPanel() {
     setLoading(true);
     setLoadError(null);
     try {
-      const res = await memoryApi.list({ page_size: 25 });
-      // `GET /api/v1/memories` returns `{ memories, total, page, page_size }`
-      // (MemoryListResponse). This panel previously read `.items`, which is
-      // always undefined for that envelope, so it always rendered
-      // "No memories yet" and the correction modal was unreachable in
-      // production. Accept the array form too so a future envelope change
-      // degrades to a visible error rather than a silently empty list.
+      const res = await memoryApi.list({ page_size: 50 });
       const rows = Array.isArray(res)
         ? res
         : ((res as { memories?: Memory[]; items?: Memory[] }).memories ??
@@ -35,8 +30,6 @@ export function MemoryCorrectionPanel() {
           []);
       setMemories(rows.filter((m) => m.status !== 'deleted'));
     } catch (err) {
-      // Surfacing the failure matters: a swallowed error here is
-      // indistinguishable from "you have no memories".
       setMemories([]);
       setLoadError(
         err instanceof ApiError
@@ -51,6 +44,17 @@ export function MemoryCorrectionPanel() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const filteredMemories = useMemo(() => {
+    if (!searchQuery.trim()) return memories;
+    const q = searchQuery.toLowerCase();
+    return memories.filter(
+      (m) =>
+        (m.title && m.title.toLowerCase().includes(q)) ||
+        (typeof m.summary === 'string' && m.summary.toLowerCase().includes(q)) ||
+        (Array.isArray(m.tags) && m.tags.some((t) => t.toLowerCase().includes(q))),
+    );
+  }, [memories, searchQuery]);
 
   const openEditor = (memory: Memory) => {
     setEditing(memory);
@@ -86,46 +90,91 @@ export function MemoryCorrectionPanel() {
   };
 
   return (
-    <section className="card mt-6" aria-label="Memory corrections">
-      <header className="mb-4">
-        <h2 className="text-xl font-display font-medium text-text">Memory Corrections</h2>
-        <p className="text-sm text-text-muted">
-          Correct a memory summary. Corrections supersede the old version — it stays visible in
-          History.
-        </p>
+    <section className="card space-y-4" aria-label="Memory corrections">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-border">
+        <div>
+          <h2 className="text-xl font-display font-medium text-text">
+            Memory Corrections & Supersession
+          </h2>
+          <p className="text-sm text-text-muted mt-0.5">
+            Modify any memory summary. Corrections automatically create a new version linked by{' '}
+            <code className="text-xs font-mono">supersedes_id</code> while keeping full provenance
+            history.
+          </p>
+        </div>
+        <Button variant="secondary" size="sm" onClick={() => void load()}>
+          Refresh
+        </Button>
       </header>
+
+      {/* Search Field */}
+      <div className="max-w-md">
+        <SearchField
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Filter memories by title, keyword, or tag..."
+        />
+      </div>
 
       {loading ? (
         <div className="space-y-2" aria-busy="true">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-10 animate-pulse rounded bg-surface-hover" />
+            <div key={i} className="h-14 animate-pulse rounded-lg bg-surface-hover" />
           ))}
         </div>
       ) : loadError ? (
         <ErrorState message={loadError} onRetry={() => void load()} />
-      ) : memories.length === 0 ? (
+      ) : filteredMemories.length === 0 ? (
         <EmptyState
-          title="No memories yet"
-          description="Memories created from your documents will appear here for correction."
+          title={searchQuery ? 'No matching memories' : 'No memories yet'}
+          description={
+            searchQuery
+              ? `No memories matched "${searchQuery}". Try a different keyword.`
+              : 'Memories created from your documents or agents will appear here for correction.'
+          }
         />
       ) : (
-        <ul className="divide-y divide-border">
-          {memories.map((m) => (
-            <li key={m.id} className="flex items-center justify-between gap-3 py-2">
-              <div className="min-w-0">
-                <p className="truncate text-sm text-text">{m.title || 'Untitled memory'}</p>
-                <p className="truncate text-xs text-text-muted">
-                  {typeof m.summary === 'string' ? m.summary : 'No summary'}
-                </p>
+        <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
+          {filteredMemories.map((m) => {
+            const isSuperseded =
+              (m.status as string) === 'superseded' ||
+              (m.metadata?.['status'] as string) === 'superseded';
+
+            return (
+              <div
+                key={m.id}
+                className="p-3 bg-surface hover:bg-surface-hover transition-colors flex items-center justify-between gap-4"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <Badge variant={isSuperseded ? 'warning' : 'default'} size="sm">
+                      {m.type || 'document'}
+                    </Badge>
+                    {isSuperseded && (
+                      <Badge variant="warning" size="sm">
+                        superseded
+                      </Badge>
+                    )}
+                    <p className="truncate text-sm font-medium text-text">
+                      {m.title || 'Untitled memory'}
+                    </p>
+                  </div>
+                  <p className="truncate text-xs text-text-muted mt-1">
+                    {typeof m.summary === 'string' ? m.summary : 'No summary'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button variant="secondary" size="sm" onClick={() => openEditor(m)}>
+                    Correct
+                  </Button>
+                </div>
               </div>
-              <button className="btn-secondary shrink-0" onClick={() => openEditor(m)}>
-                Correct
-              </button>
-            </li>
-          ))}
-        </ul>
+            );
+          })}
+        </div>
       )}
 
+      {/* Interactive Correction Modal */}
       <Modal
         isOpen={editing !== null}
         onClose={() => setEditing(null)}
@@ -136,35 +185,39 @@ export function MemoryCorrectionPanel() {
       >
         {editing && (
           <div className="space-y-4">
+            <p className="text-xs text-text-muted">
+              Compare the original summary against your proposed edits below before saving.
+            </p>
+
             <DiffViewer
               oldText={typeof editing.summary === 'string' ? editing.summary : ''}
               newText={draftText}
             />
+
             <div>
-              <label htmlFor="memory-summary" className="block text-sm text-text-muted mb-1">
-                New summary
+              <label htmlFor="memory-summary" className="block text-sm font-medium text-text mb-1">
+                Updated Summary Content
               </label>
               <textarea
                 id="memory-summary"
-                className="w-full min-h-[96px] bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:border-primary"
+                rows={4}
+                className="w-full rounded-md border border-border bg-surface-sunken p-2.5 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary"
                 value={draftText}
                 onChange={(e) => setDraftText(e.target.value)}
               />
-              <p className="mt-1 text-xs text-text-muted">
-                Saving creates a superseded version; you can undo from History after saving.
+              <p className="mt-1 text-2xs text-text-muted">
+                Saving creates an immutable superseded version. The original remains queryable in
+                the lineage graph.
               </p>
             </div>
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" onClick={() => setEditing(null)}>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-border">
+              <Button variant="ghost" onClick={() => setEditing(null)}>
                 Cancel
-              </button>
-              <button
-                className="btn-primary"
-                onClick={() => void saveCorrection()}
-                disabled={saving}
-              >
-                {saving ? 'Saving...' : 'Save correction'}
-              </button>
+              </Button>
+              <Button variant="primary" onClick={() => void saveCorrection()} loading={saving}>
+                Save Correction
+              </Button>
             </div>
           </div>
         )}

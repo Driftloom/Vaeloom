@@ -256,6 +256,128 @@ export const memoryApi = {
   },
 };
 
+// ─── Vault Sync (Second Brain Git Plumbing) ──────────────────────────────────
+
+export interface VaultSyncStatus {
+  workspaceId: string;
+  status: 'in_sync' | 'syncing' | 'behind' | 'ahead' | 'diverged' | 'conflict' | 'error';
+  installed?: boolean;
+  isBuiltin?: boolean;
+  daemonStatus?: 'running' | 'paused';
+  version?: string;
+  branch: string;
+  remoteUrl?: string;
+  vaultPath: string;
+  totalNotes: number;
+  vaultMemories: number;
+  lastPullTime?: string;
+  lastPushTime?: string;
+  conflictsCount: number;
+  autoIngest: boolean;
+  debounceSeconds?: number;
+  rebaseIntervalMinutes?: number;
+}
+
+export interface VaultConfigUpdateRequest {
+  workspace_id: string;
+  remote_url?: string;
+  branch?: string;
+  vault_path?: string;
+  auto_ingest?: boolean;
+  daemon_status?: 'running' | 'paused';
+}
+
+export interface VaultNoteItem {
+  filename: string;
+  content: string;
+  relative_path?: string;
+  tags?: string[];
+  last_modified?: string;
+}
+
+export interface VaultIngestRequest {
+  workspace_id: string;
+  notes: VaultNoteItem[];
+}
+
+export interface VaultConflict {
+  id: string;
+  file: string;
+  conflict_file: string;
+  detected_at: string;
+  local_head?: string;
+  remote_head?: string;
+}
+
+export interface VaultSyncLog {
+  timestamp: string;
+  level: string;
+  message: string;
+  event?: string;
+}
+
+export const vaultSyncApi = {
+  getStatus(workspaceId: string): Promise<VaultSyncStatus> {
+    return apiClient.get<VaultSyncStatus>('/vault-sync/status', { workspace_id: workspaceId });
+  },
+  updateConfig(body: VaultConfigUpdateRequest): Promise<{ success: boolean; config: unknown }> {
+    return apiClient.post<{ success: boolean; config: unknown }>('/vault-sync/config', body);
+  },
+  triggerSync(
+    workspaceId: string,
+  ): Promise<{
+    success: boolean;
+    status: string;
+    last_pull_time: string;
+    last_push_time: string;
+    message: string;
+  }> {
+    return apiClient.post('/vault-sync/sync', { workspace_id: workspaceId });
+  },
+  getLogs(workspaceId: string): Promise<VaultSyncLog[]> {
+    return apiClient.get<VaultSyncLog[]>('/vault-sync/logs', { workspace_id: workspaceId });
+  },
+  ingest(
+    body: VaultIngestRequest,
+  ): Promise<{
+    success: boolean;
+    ingested_documents: number;
+    created_or_updated_memories: number;
+  }> {
+    return apiClient.post<{
+      success: boolean;
+      ingested_documents: number;
+      created_or_updated_memories: number;
+    }>('/vault-sync/ingest', body);
+  },
+  getConflicts(workspaceId: string): Promise<VaultConflict[]> {
+    return apiClient.get<VaultConflict[]>('/vault-sync/conflicts', { workspace_id: workspaceId });
+  },
+  resolveConflict(
+    conflictId: string,
+    strategy: 'keep-local' | 'accept-incoming',
+    workspaceId: string,
+  ): Promise<{
+    success: boolean;
+    conflict_id: string;
+    strategy: string;
+    remaining_conflicts: number;
+  }> {
+    return apiClient.post<{
+      success: boolean;
+      conflict_id: string;
+      strategy: string;
+      remaining_conflicts: number;
+    }>(
+      `/vault-sync/conflicts/${encodeURIComponent(conflictId)}/resolve?workspace_id=${encodeURIComponent(workspaceId)}`,
+      { strategy },
+    );
+  },
+  downloadClientUrl(os: 'windows' | 'linux' | 'darwin' = 'windows'): string {
+    return `${API_BASE}${API_PREFIX}/vault-sync/download-client?os=${os}`;
+  },
+};
+
 // ─── Agent ───────────────────────────────────────────────────────────────────
 
 export interface AgentCreateRequest {
