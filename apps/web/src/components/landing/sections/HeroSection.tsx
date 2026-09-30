@@ -5,7 +5,6 @@ import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react'
 import { HERO } from '@/lib/landing/copy';
 import { StageSlot } from '@/components/landing/3d/SceneShell';
 import { ButtonLink, Icon } from '@/components/landing/shared/LandingKit';
-import { useTheme } from '@/hooks/useTheme';
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -20,11 +19,9 @@ function useIsMobile() {
 }
 
 export default function HeroSection() {
-  const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const shouldReduceMotion = useReducedMotion();
   const isMobile = useIsMobile();
-  const isLight = theme === 'light';
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -50,14 +47,9 @@ export default function HeroSection() {
 
   // Where the 3D scene sits inside the frame.
   //
-  // Mobile already drops it to the lower half so the core never sits behind
-  // the heading. Light mode needs the same move at EVERY width, for a
-  // different reason: the hero's particle streams radiate outward from a core
-  // that sits dead centre — which is exactly where the copy block is. On dark
-  // that reads as atmosphere behind the type; on white it reads as confetti on
-  // top of it. So the trigger is the theme that has the legibility problem,
-  // not the viewport.
-  const scenePlacement = isLight ? 'top-[38%]' : 'max-md:top-1/2';
+  // Mobile drops it to the lower half so the core never sits behind the heading.
+  // Light mode needs the same move at EVERY width (top: 38%) for particle legibility.
+  // Driven via CSS class `.hero-scene-placement` so SSR and client HTML match identically.
 
   return (
     <div ref={containerRef} id="hero" className="relative h-[130vh] w-full">
@@ -71,7 +63,7 @@ export default function HeroSection() {
           className="absolute inset-0 z-0 w-full h-[130%] top-[-15%] will-change-transform"
           aria-hidden="true"
         >
-          <div className={`absolute inset-0 ${scenePlacement}`}>
+          <div className="hero-scene-placement absolute inset-0">
             <StageSlot beat="hero" className="absolute inset-0" />
           </div>
           <div className="landing-grid-bg absolute inset-0 opacity-60" />
@@ -80,27 +72,11 @@ export default function HeroSection() {
 
         <motion.div
           style={{ opacity: shouldReduceMotion ? 0 : overlayOpacity }}
-          className={`absolute inset-0 z-[1] pointer-events-none ${
-            isLight
-              ? 'bg-gradient-to-b from-white/20 via-white/5 to-white/30'
-              : 'bg-gradient-to-b from-black/20 via-black/5 to-black/30'
-          }`}
+          className="hero-overlay-gradient absolute inset-0 z-[1] pointer-events-none"
           aria-hidden="true"
-          suppressHydrationWarning
         />
         <div
-          className="absolute inset-0 z-[1] pointer-events-none"
-          suppressHydrationWarning
-          style={{
-            // Center wash behind the copy. Light mode needs more of it than dark:
-            // on white the scene's mid-value particles sit ON TOP of dark text
-            // rather than glowing behind it, so the type needs a real knockout
-            // to stay readable. Centre tracks the copy block (h1 + subtitle +
-            // CTAs), which sits slightly above the viewport midpoint.
-            background: isLight
-              ? 'radial-gradient(ellipse 78% 58% at 50% 40%, rgba(255,255,255,0.62) 0%, rgba(255,255,255,0.28) 55%, transparent 78%)'
-              : 'radial-gradient(ellipse 70% 55% at 50% 45%, rgba(0,0,0,0.45) 0%, transparent 70%)',
-          }}
+          className="hero-center-wash absolute inset-0 z-[1] pointer-events-none"
           aria-hidden="true"
         />
 
@@ -114,42 +90,40 @@ export default function HeroSection() {
             none: there the scene glows BEHIND the type, which is the whole
             reason the dark hero works.
 
-            Three earlier shapes were wrong, and the reason they were wrong is
-            worth keeping, because it is a geometry constraint rather than a
-            taste call:
+            The plate is a SIBLING of the copy, not its wrapper. That is the
+            whole trick and it is easy to get backwards. `.hero-copy` is the
+            positioning context, so `.hero-copy-plate` can be an oversized
+            absolutely positioned ellipse (see globals.css) without disturbing
+            the copy's own layout. Applied to the wrapper instead, the plate's
+            own `left/right: -20rem` sizes the box to viewport + 40rem, which
+            drags the headline, subtitle and primary CTA off-screen and makes
+            the CTA row's `w-full` resolve against a 1015px containing block —
+            the 448px-wide buttons on a 375px phone.
 
-              - a flat white fill showed its rectangle against the field;
-              - a radial gradient on this element still showed one, and the
-                culprit is not the gradient but the BOX. `radial-gradient
-                (ellipse A B at 50% 38%)` reaches transparent 38% of the box
-                height above the centre but the box only starts 38% down, so the
-                gradient was still ~0.8 opaque where the element's top edge
-                cut it to zero. A visible hard line, straight across the h1;
-              - adding `backdrop-blur-md` made it worse, not better. A backdrop
-                filter is clipped to the border box with NO falloff, so the
-                blur ran to the very edge and stopped dead there.
+            Sizing the knockout is a geometry constraint rather than a taste
+            call, which is why it lives in CSS:
 
-            An element-sized background cannot fix this: to cover a copy block
-            that nearly fills its own box, the ellipse has to be larger than the
-            box, and any ellipse larger than its box is clipped by it. So the
-            knockout is painted by a PSEUDO-ELEMENT that is deliberately much
-            larger than the copy (`inset: -13rem -20rem`) and sized with
-            `closest-side`, which puts the gradient's transparent stop exactly
-            at that element's own edge in every direction. The visible ellipse
-            is then far larger than the copy and the paint reaches zero before
-            its own bounds, so there is no edge left to see.
+              - a flat white fill shows its rectangle against the field;
+              - an element-sized radial gradient still shows one, because an
+                ellipse large enough to cover a copy block is always larger than
+                its own box, and gets clipped by it;
+              - `backdrop-blur` is worse still: a backdrop filter is clipped to
+                the border box with NO falloff, so the blur runs to the edge and
+                stops dead there.
+
+            So the ellipse is deliberately much larger than the copy
+            (`inset: -13rem -20rem`) and sized with `closest-side`, which puts
+            the transparent stop exactly at its own edge in every direction.
+            The paint therefore reaches zero before its bounds and there is no
+            edge left to see.
 
             The scene's own density does the rest — see the light-mode weight in
             3d/vanilla/particleField.ts. The plate only has to finish the job on
             the last few marks, not fight several thousand of them.
           */}
-          <div
-            className={
-              isLight
-                ? "relative isolate flex flex-col items-center px-6 py-8 before:absolute before:-inset-x-80 before:-top-52 before:-bottom-40 before:-z-10 before:pointer-events-none before:rounded-[50%] before:bg-[radial-gradient(closest-side_at_50%_50%,rgba(255,255,255,0.97)_0%,rgba(255,255,255,0.95)_34%,rgba(255,255,255,0.83)_58%,rgba(255,255,255,0.52)_78%,rgba(255,255,255,0)_100%)] before:content-[''] sm:px-12 sm:py-10"
-                : 'flex flex-col items-center'
-            }
-          >
+          <div className="hero-copy relative flex flex-col items-center px-6 py-8 sm:px-12 sm:py-10">
+            <div className="hero-copy-plate" aria-hidden="true" />
+
             <motion.p
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}

@@ -141,6 +141,16 @@
   --shadow-card-hover: 0 4px 16px rgb(0 0 0 / 0.7), 0 2px 4px rgb(0 0 0 / 0.5);
   --shadow-elevated: 0 8px 32px rgb(0 0 0 / 0.8);
   --shadow-inner-highlight: rgb(255 255 255 / 0.04);
+
+  /* Agent indicator dot hues (dark / default) */
+  --agent-hue-orchestrator: #818cf8;
+  --agent-hue-organization: #22d3ee;
+  --agent-hue-memory: #e879f9;
+  --agent-hue-resume: #34d399;
+  --agent-hue-ats: #fbbf24;
+  --agent-hue-jobsearch: #f97316;
+  --agent-hue-gmail: #f87171;
+  --agent-hue-scheduler: #38bdf8;
 }
 
 .light {
@@ -234,6 +244,16 @@
   --shadow-card-hover: 0 6px 16px rgb(23 26 43 / 0.12), 0 2px 4px rgb(23 26 43 / 0.06);
   --shadow-elevated: 0 12px 32px rgb(23 26 43 / 0.14);
   --shadow-inner-highlight: rgb(255 255 255 / 0.6);
+
+  /* Agent indicator dot hues (light mode) */
+  --agent-hue-orchestrator: #4f46e5;
+  --agent-hue-organization: #0e7490;
+  --agent-hue-memory: #6d28d9;
+  --agent-hue-resume: #047857;
+  --agent-hue-ats: #a16207;
+  --agent-hue-jobsearch: #c2410c;
+  --agent-hue-gmail: #be185d;
+  --agent-hue-scheduler: #1d4ed8;
 }
 
 .high-contrast,
@@ -803,3 +823,96 @@ html.high-contrast,
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-surface-400;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Hero section light/dark responsive layers (Hydration-safe CSS)
+ * ────────────────────────────────────────────────────────────────────────────*/
+/* The hero core sits dead centre on dark and is displaced down on light.
+   Light needs the displacement because on white the mid-value particles read as
+   confetti ON TOP of dark text. Dark keeps the core centred because there the
+   scene glows BEHIND the type, which is the whole reason the dark hero works;
+   `.hero-center-wash` below buys that copy its contrast. */
+.hero-scene-placement {
+  position: absolute;
+  inset: 0;
+}
+@media (max-width: 768px) {
+  .hero-scene-placement {
+    top: 50%;
+  }
+}
+.light .hero-scene-placement {
+  top: 38% !important;
+}
+
+.hero-overlay-gradient {
+  background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.3));
+}
+.light .hero-overlay-gradient {
+  background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.3));
+}
+
+.hero-center-wash {
+  /* Dark: the hero core is a bright white bloom sitting dead centre, which is
+     exactly where the CTA row and the assurance line land. Centred on the COPY
+     BAND (~42% height) rather than the viewport so it buys the type contrast
+     while leaving the core's outer glow visible above and below. Tuned against
+     dark-desk.png: the previous 0.45 radial left the assurance line washed out
+     wherever the core's brightest moment crossed it. */
+  background: radial-gradient(
+    ellipse 78% 66% at 50% 42%,
+    rgba(0, 0, 0, 0.62) 0%,
+    rgba(0, 0, 0, 0.42) 44%,
+    rgba(0, 0, 0, 0.3) 60%,
+    transparent 86%
+  );
+}
+.light .hero-center-wash {
+  background: radial-gradient(ellipse 78% 58% at 50% 40%, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0.28) 55%, transparent 78%);
+}
+
+/* Light-mode copy knockout. Oversized on purpose: a knockout that only covers
+   the copy box gets its own gradient clipped by that box, which leaves a hard
+   edge straight across the headline. `closest-side` puts the transparent stop
+   exactly at this element's edge, so the visible ellipse is far larger than
+   the copy and the paint reaches zero before its own bounds.
+
+   Painted as its own layer, BEFORE the copy in DOM order and at a lower
+   z-index, so the type always wins. It was previously a `::before` on the
+   copy's own wrapper with `z-index: -10`, which inverted: an absolutely
+   positioned pseudo-element at z-index auto paints above the wrapper's in-flow
+   text, so the knockout covered the headline, the subtitle and both CTAs and
+   only the sliver above its own top edge stayed readable. Dark mode needs none
+   of this - there the scene glows BEHIND the type. */
+.hero-copy-plate {
+  position: absolute;
+  left: -20rem;
+  right: -20rem;
+  top: -13rem;
+  bottom: -10rem;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side at 50% 50%,
+    rgba(255, 255, 255, 0.97) 0%,
+    rgba(255, 255, 255, 0.95) 34%,
+    rgba(255, 255, 255, 0.83) 58%,
+    rgba(255, 255, 255, 0.52) 78%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  opacity: 0;
+  transition: opacity 400ms ease;
+}
+.light .hero-copy-plate {
+  opacity: 1;
+}
+
+/* The plate paints at z-index 1, so every child of the copy block is lifted
+   above it. Expressed as a descendant rule rather than per-element classes so
+   copy added later cannot silently fall back under the knockout. */
+.hero-copy > *:not(.hero-copy-plate) {
+  position: relative;
+  z-index: 2;
+}
+

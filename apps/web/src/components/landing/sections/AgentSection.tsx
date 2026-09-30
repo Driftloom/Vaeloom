@@ -96,7 +96,9 @@ export default function AgentSection() {
                   >
                     <span
                       className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle"
-                      style={{ background: dots[a.id] ?? 'currentColor' }}
+                      style={{
+                        background: `var(--agent-hue-${a.id}, ${dots[a.id] ?? 'currentColor'})`,
+                      }}
                       aria-hidden="true"
                     />
                     {a.name.replace(' Agent', '')}
@@ -117,7 +119,9 @@ export default function AgentSection() {
               <div className="flex items-center gap-3">
                 <span
                   className="h-3 w-3 rounded-full"
-                  style={{ background: dots[selected.id] ?? 'currentColor' }}
+                  style={{
+                    background: `var(--agent-hue-${selected.id}, ${dots[selected.id] ?? 'currentColor'})`,
+                  }}
                   aria-hidden="true"
                 />
                 <p className="font-mono text-xs uppercase tracking-widest text-text-muted">
