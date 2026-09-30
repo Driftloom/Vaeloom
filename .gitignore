@@ -376,3 +376,24 @@ apps/web/*_test.png
 apps/web/*-actual.png
 apps/web/*-diff.png
 apps/web/*-expected.png
+
+# ---------------------------------------------------------------------------
+# Toolchain stores that can land inside the checkout
+# ---------------------------------------------------------------------------
+# None of these are produced by a normal `pnpm dev` / `pnpm test` run here, so
+# they are narrow safety nets rather than observed output. Each is listed only
+# because the repo already depends on the mechanism that could produce it.
+
+# Browser binaries. apps/api/Dockerfile sets PLAYWRIGHT_BROWSERS_PATH=/ms-playwright,
+# so pointing that variable at the checkout (common in bind-mounted CI containers)
+# drops several hundred MB of Chromium/Firefox/WebKit inside the working tree.
+ms-playwright/
+
+# pnpm's content-addressable store. The repo's .npmrc does not pin store-dir, so
+# today it lives in the user's home; `pnpm config set store-dir` puts the entire
+# store - every version of every dependency - in the project instead.
+pnpm-store/
+
+# Editable-install metadata. This is a Python monorepo with many packages, and
+# `pip install -e` writes *.egg-info next to each one. None are tracked today.
+*.egg-info/
