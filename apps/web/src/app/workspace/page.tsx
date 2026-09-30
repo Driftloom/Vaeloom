@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@vaeloom/ui-kit';
 import { api, ApiError, clearToken, clearRefreshToken, setToken } from '@/lib/api';
 
 export default function WorkspaceIndexPage() {
@@ -105,15 +106,18 @@ export default function WorkspaceIndexPage() {
               Taking longer than usual to connect to your workspace.
             </p>
             <div className="flex gap-2">
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={() => window.location.reload()}
-                className="px-3 py-1.5 rounded-lg border border-border-subtle bg-surface text-xs font-medium hover:bg-surface-hover text-text transition-colors"
               >
                 Retry
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="primary"
+                size="sm"
                 onClick={() => {
                   clearToken();
                   clearRefreshToken();
@@ -125,10 +129,9 @@ export default function WorkspaceIndexPage() {
                   } catch {}
                   window.location.replace('/login');
                 }}
-                className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary-600 transition-colors"
               >
                 Sign in again
-              </button>
+              </Button>
             </div>
           </div>
         )}

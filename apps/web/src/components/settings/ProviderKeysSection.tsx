@@ -303,7 +303,7 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
                 onClick={() => setScope('user')}
                 className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
                   scope === 'user'
-                    ? 'bg-primary text-white shadow-xs'
+                    ? 'bg-action text-action-fg shadow-xs'
                     : 'text-text-muted hover:text-text'
                 }`}
               >
@@ -318,7 +318,7 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
                 }
                 className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
                   scope === 'workspace'
-                    ? 'bg-primary text-white shadow-xs'
+                    ? 'bg-action text-action-fg shadow-xs'
                     : 'text-text-muted hover:text-text disabled:opacity-40'
                 }`}
               >

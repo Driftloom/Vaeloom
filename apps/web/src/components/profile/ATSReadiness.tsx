@@ -192,7 +192,7 @@ export default function ATSReadiness({ workspaceId, onSkillAdded }: ATSReadiness
 
       <Link
         href={`/workspace/${workspaceId}/resume`}
-        className="block w-full py-2 text-center bg-primary text-white rounded-lg hover:bg-primary/90 text-xs font-semibold tracking-wide transition-colors shadow-sm"
+        className="btn-primary w-full block text-center !text-xs !py-2"
       >
         Optimize in Resume Builder →
       </Link>

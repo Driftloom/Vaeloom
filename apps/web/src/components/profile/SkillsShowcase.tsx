@@ -133,14 +133,14 @@ export default function SkillsShowcase({
               onClick={() => setSelectedCategory(cat)}
               className={`text-xs px-3 py-1 rounded-lg font-medium transition-all flex items-center gap-1.5 ${
                 selected
-                  ? 'bg-primary text-white shadow-xs'
+                  ? 'bg-action text-action-fg shadow-xs'
                   : 'bg-surface border border-border text-text-muted hover:text-text hover:bg-surface-hover'
               }`}
             >
               <span>{cat}</span>
               <span
                 className={`text-2xs px-1.5 py-0.2 rounded-full ${
-                  selected ? 'bg-white/20 text-white' : 'bg-surface-hover text-text-dim'
+                  selected ? 'bg-black/20 text-action-fg' : 'bg-surface-hover text-text-dim'
                 }`}
               >
                 {count}

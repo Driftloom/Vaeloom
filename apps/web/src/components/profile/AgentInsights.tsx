@@ -113,7 +113,7 @@ export default function AgentInsights({ workspaceId, onUpdate }: AgentInsightsPr
                 {rec.actionUrl ? (
                   <Link
                     href={rec.actionUrl}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors shadow-sm"
+                    className="btn-primary !px-3.5 !py-2 !text-xs !rounded-lg inline-flex items-center gap-1.5"
                   >
                     <span>{rec.actionLabel}</span>
                     <svg

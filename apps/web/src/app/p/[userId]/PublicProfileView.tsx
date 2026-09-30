@@ -99,10 +99,7 @@ export default function PublicProfileView({ userId, initialData }: PublicProfile
             <p className="text-sm text-text-muted">
               The public profile you requested is not available or does not exist.
             </p>
-            <Link
-              href="/signup"
-              className="inline-block px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors"
-            >
+            <Link href="/signup" className="btn-primary inline-block">
               Build Your Profile with Vaeloom
             </Link>
           </div>
@@ -126,10 +123,7 @@ export default function PublicProfileView({ userId, initialData }: PublicProfile
           <span className="hidden sm:inline text-xs text-text-dim">
             Powered by AI Career Intelligence
           </span>
-          <Link
-            href="/signup"
-            className="px-3.5 py-1.5 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
-          >
+          <Link href="/signup" className="btn-primary !px-3.5 !py-1.5 !text-xs !rounded-lg">
             Create Your Profile
           </Link>
         </div>

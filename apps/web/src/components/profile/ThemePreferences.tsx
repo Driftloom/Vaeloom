@@ -118,7 +118,7 @@ export function ThemePreferences() {
                 >
                   <div className="flex items-center justify-between w-full">
                     <div
-                      className={`p-2 rounded-lg ${isSelected ? 'bg-primary text-white' : 'bg-surface-hover text-text-muted'}`}
+                      className={`p-2 rounded-lg ${isSelected ? 'bg-action text-action-fg' : 'bg-surface-hover text-text-muted'}`}
                     >
                       <Icon size={18} />
                     </div>

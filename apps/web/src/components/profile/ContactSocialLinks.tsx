@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { ProfileData, UpdateProfileData, profileApi } from '@/lib/api-client';
 import { Panel } from '@/components/shared/Panel';
 
@@ -93,17 +93,10 @@ export default function ContactSocialLinks({
             />
           </div>
           <div className="flex gap-2 pt-2">
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm font-medium"
-            >
+            <button onClick={handleSave} disabled={isSaving} className="btn-primary">
               {isSaving ? 'Saving...' : 'Save Links'}
             </button>
-            <button
-              onClick={() => setIsEditing(false)}
-              className="px-4 py-2 border border-border text-text rounded-lg hover:bg-surface-hover text-sm font-medium"
-            >
+            <button onClick={() => setIsEditing(false)} className="btn-secondary">
               Cancel
             </button>
           </div>

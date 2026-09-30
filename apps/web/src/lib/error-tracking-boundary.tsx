@@ -47,10 +47,7 @@ export class ErrorTrackingBoundary extends React.Component<
           <p className="mt-1 text-sm text-text-muted">
             An unexpected error occurred. Our team has been notified.
           </p>
-          <button
-            onClick={() => this.setState({ hasError: false })}
-            className="mt-4 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
-          >
+          <button onClick={() => this.setState({ hasError: false })} className="mt-4 btn-primary">
             Try again
           </button>
         </div>
