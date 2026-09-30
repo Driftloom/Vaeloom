@@ -784,7 +784,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
         enabled: true,
         source: 'custom',
         usageCount: 0,
-        lastUsed: 'Just now',
+        lastUsedAt: null,
         requiredScope:
           capCategory === 'mcp'
             ? 'connector.mcp.execute'

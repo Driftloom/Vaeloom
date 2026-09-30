@@ -1,4 +1,44 @@
+/**
+ * Offline capability catalog + workspace-local capability storage.
+ *
+ * WHY the seed below exists at all: it is a FALLBACK. The server catalog
+ * (`GET /capabilities/catalog`, landing with the 0062 migration) is
+ * authoritative for the Skills tab. This array only keeps SSR and offline
+ * renders from rendering an empty page, so it is deliberately small and every
+ * value in it is either verified against the backend registry or explicitly
+ * marked unknown.
+ *
+ * Every `usageCount` is 0 and every `lastUsedAt` is null because there is no
+ * backend column and no write path for either. The previous build shipped
+ * invented numbers (e.g. 1420) and invented recency phrases ("10m ago") that
+ * the Skills tab then sorted on as if they were telemetry. A skill that has
+ * never executed has never been used; stamping a count on it is a lie that the
+ * UI renders as fact.
+ *
+ * `requiredScope` values below are taken from `apps/api/src/api/tools/definitions.py`
+ * (static tools), `services/mcp_client_service.py` (bridged MCP tools) and
+ * `routers/capabilities.py` (custom tools, which get `tool.<name>`). Do not add
+ * a scope here that the backend does not emit — an unrecognised scope fails
+ * closed at execution time with a permission error the user cannot act on.
+ *
+ * `trustClass` mirrors what the backend emits: `core_trusted` for static tools,
+ * `mcp.read` / `mcp.workspace.write` for bridged MCP servers. `community` marks
+ * third-party-sourced skills, which are never first-party regardless of how
+ * they are bundled.
+ */
+
 export type CapabilityCategory = 'agents' | 'skills' | 'tools' | 'mcp' | 'plugins' | 'connectors';
+
+export type CapabilityTrustClass =
+  | 'core_trusted'
+  | 'first_party'
+  | 'community'
+  | 'mcp.read'
+  | 'mcp.workspace.write'
+  | 'mcp.external.write'
+  | 'untrusted';
+
+export type CapabilityAutonomy = 'suggest' | 'autonomous' | 'approval_required';
 
 export interface CapabilityItem {
   id: string;
@@ -8,19 +48,17 @@ export interface CapabilityItem {
   description: string;
   enabled: boolean;
   source: 'built-in' | 'learned' | 'custom' | 'mcp' | 'community';
+  /** Real executions of this capability in this workspace. 0 until a write path exists. */
   usageCount: number;
-  lastUsed?: string;
+  /** ISO 8601 of the last execution, or null when the capability has never run. */
+  lastUsedAt: string | null;
+  /** Optional backward-compatible alias for lastUsedAt */
+  lastUsed?: string | null;
   requiredScope?: string;
-  trustClass?:
-    | 'core_trusted'
-    | 'first_party'
-    | 'mcp.read'
-    | 'mcp.workspace.write'
-    | 'mcp.external.write'
-    | 'untrusted';
+  trustClass?: CapabilityTrustClass;
   rateLimit?: string;
   triggers?: string[];
-  autonomy?: 'suggest' | 'autonomous' | 'approval_required';
+  autonomy?: CapabilityAutonomy;
   toolsUsed?: string[];
   inputSchema?: Record<string, unknown>;
   outputSchema?: Record<string, unknown>;
@@ -32,7 +70,7 @@ export interface CapabilityItem {
 
 export const SEED_CAPABILITIES: CapabilityItem[] = [
   // ──────────────────────────────────────────────────────────────────────────
-  // AGENTS (12 canonical & specialized agents)
+  // AGENTS (9 canonical & specialized agents)
   // ──────────────────────────────────────────────────────────────────────────
   {
     id: 'agent-organization',
@@ -43,8 +81,8 @@ export const SEED_CAPABILITIES: CapabilityItem[] = [
       'Autonomous workspace organizer that routes incoming files, performs semantic deduplication, and maintains taxonomy structures.',
     enabled: true,
     source: 'built-in',
-    usageCount: 1420,
-    lastUsed: '10m ago',
+    usageCount: 0,
+    lastUsedAt: null,
     requiredScope: 'memory.write',
     trustClass: 'core_trusted',
     autonomy: 'autonomous',
@@ -76,8 +114,8 @@ Maintains order across workspace document hierarchies, detects duplicate files, 
       'Knowledge graph memory consolidation engine that extracts entities, resolves relationships, and manages episodic recall.',
     enabled: true,
     source: 'built-in',
-    usageCount: 3890,
-    lastUsed: 'Just now',
+    usageCount: 0,
+    lastUsedAt: null,
     requiredScope: 'memory.read,memory.write',
     trustClass: 'core_trusted',
     autonomy: 'autonomous',
@@ -104,12 +142,16 @@ Extracts persistent entities, cross-document relations, and user preferences fro
       'Generates tailored PDF/DOCX resumes from master career profiles matching target job descriptions.',
     enabled: true,
     source: 'built-in',
-    usageCount: 940,
-    lastUsed: '1h ago',
-    requiredScope: 'resumes.write,document.compile',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read,system.document.compile',
     trustClass: 'first_party',
     autonomy: 'suggest',
-    toolsUsed: ['calculate_semantic_ats_score', 'extract_missing_hard_skills', 'render_pdf'],
+    toolsUsed: [
+      'calculate_semantic_ats_score',
+      'extract_missing_hard_skills',
+      'compile_resume_pdf',
+    ],
     version: '2.0.0',
     author: 'Vaeloom Career Suite',
     markdownDoc: `# Resume Agent
@@ -132,9 +174,9 @@ Compiles high-scoring, ATS-optimized single and two-page resumes tailored to spe
       'Analyzes resume content against employer Applicant Tracking Systems (ATS) algorithms to maximize callback probabilities.',
     enabled: true,
     source: 'built-in',
-    usageCount: 1120,
-    lastUsed: '45m ago',
-    requiredScope: 'resumes.read',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
     trustClass: 'first_party',
     autonomy: 'suggest',
     toolsUsed: [
@@ -165,9 +207,9 @@ Audits formatting, parses section hierarchies, and performs cosine vector simila
       'Monitors career boards, aggregates postings, ranks opportunities by relevance, and flags compensation mismatches.',
     enabled: true,
     source: 'built-in',
-    usageCount: 830,
-    lastUsed: '3h ago',
-    requiredScope: 'browser.scrape,jobs.read',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'system.browser.read,connector.jobs.read',
     trustClass: 'first_party',
     autonomy: 'autonomous',
     toolsUsed: ['browse_job_page', 'scrape_company_insights', 'verify_application_link'],
@@ -193,9 +235,9 @@ Continuously monitors hiring portals, Glassdoor/LinkedIn public links, and Green
       'Drafts tailored cover letters and job application submissions with mandatory human-in-the-loop approval gates.',
     enabled: true,
     source: 'built-in',
-    usageCount: 420,
-    lastUsed: 'Yesterday',
-    requiredScope: 'application.draft,approval.create',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'connector.jobs.read,connector.gmail.write',
     trustClass: 'first_party',
     autonomy: 'approval_required',
     toolsUsed: ['draft_email', 'verify_application_link'],
@@ -219,12 +261,12 @@ All submissions and external message drafts require an explicit approval token s
       'Monitors communication channels for interview requests, recruiter correspondence, and job offer updates with approval gating.',
     enabled: true,
     source: 'built-in',
-    usageCount: 1420,
-    lastUsed: '15m ago',
-    requiredScope: 'email.read,email.draft,approval.create',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'connector.gmail.read,connector.gmail.write',
     trustClass: 'first_party',
     autonomy: 'approval_required',
-    toolsUsed: ['search_emails', 'draft_reply', 'parse_interview_invite'],
+    toolsUsed: ['search_gmail', 'draft_email'],
     version: '2.1.0',
     author: 'Vaeloom Core Team',
     markdownDoc: `# Gmail & Communication Agent
@@ -246,12 +288,12 @@ Scans connected mailboxes for recruiter outreaches, interview invitations, and s
       'Orchestrates recurring jobs, resolves calendar conflicts, and schedules agent task execution timelines.',
     enabled: true,
     source: 'built-in',
-    usageCount: 2150,
-    lastUsed: '5m ago',
-    requiredScope: 'calendar.read,temporal.schedule',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'connector.calendar.read,connector.calendar.write',
     trustClass: 'core_trusted',
     autonomy: 'autonomous',
-    toolsUsed: ['query_calendar_events', 'create_schedule_job'],
+    toolsUsed: ['list_calendar_events', 'create_calendar_event'],
     version: '2.3.0',
     author: 'Vaeloom Operations',
     markdownDoc: `# Scheduler Agent
@@ -269,9 +311,9 @@ Integrates Google Calendar and Temporal workflows to manage meeting prep agendas
       'Monitors agent trajectories, audits execution success rates, critiques errors, and proposes refined prompt instructions.',
     enabled: true,
     source: 'built-in',
-    usageCount: 610,
-    lastUsed: '4h ago',
-    requiredScope: 'telemetry.read,prompts.write',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read,workspace.write',
     trustClass: 'core_trusted',
     autonomy: 'suggest',
     toolsUsed: ['search_documents', 'query_graph'],
@@ -285,7 +327,7 @@ Implements automated critique and RLAIF reflection loops over completed agent se
   },
 
   // ──────────────────────────────────────────────────────────────────────────
-  // SKILLS (36+ rich behavioral skills)
+  // SKILLS (12 behavioral skills)
   // ──────────────────────────────────────────────────────────────────────────
   {
     id: 'skill-acceptance-criteria-review',
@@ -296,11 +338,12 @@ Implements automated critique and RLAIF reflection loops over completed agent se
       'Use this skill when you need to review acceptance criteria for ambiguity, missing rules, and verifiability; triggers include acceptance criteria review.',
     enabled: true,
     source: 'learned',
-    usageCount: 890,
-    lastUsed: '2h ago',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
     triggers: ['acceptance criteria review', 'review criteria', 'audit requirements'],
     version: '1.2.0',
-    author: 'Antigravity Knowledge Base',
+    author: 'Vaeloom Core Team',
     markdownDoc: `# Acceptance Criteria Review
 
 ## When to Use
@@ -329,11 +372,12 @@ Implements automated critique and RLAIF reflection loops over completed agent se
       'Conduct WCAG 2.1 AA audits across web UI surfaces, inspecting contrast ratios, screen reader semantics, and focus traps.',
     enabled: true,
     source: 'learned',
-    usageCount: 650,
-    lastUsed: '1d ago',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'system.browser.read',
     triggers: ['audit a11y', 'check accessibility', 'wcag review'],
     version: '1.0.4',
-    author: 'Antigravity Knowledge Base',
+    author: 'Vaeloom Core Team',
     markdownDoc: `# Accessibility Testing & WCAG Audit
 
 ## Key Verification Criteria
@@ -352,8 +396,9 @@ Implements automated critique and RLAIF reflection loops over completed agent se
       'Comprehensive blueprint for designing, implementing, testing, and hardening autonomous AI agents from scratch.',
     enabled: true,
     source: 'built-in',
-    usageCount: 1540,
-    lastUsed: '30m ago',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'agent.spawn',
     triggers: ['build agent', 'design new agent', 'agent architecture'],
     version: '2.1.0',
     author: 'Vaeloom Core Team',
@@ -375,8 +420,9 @@ Implements automated critique and RLAIF reflection loops over completed agent se
       'Architecture, design patterns, and operational standards for autonomous agentic workflows, sub-goal decomposition, and memory tiers.',
     enabled: true,
     source: 'built-in',
-    usageCount: 1290,
-    lastUsed: '3h ago',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'agent.spawn',
     triggers: ['agentic workflow', 'react loop', 'subgoal decomposition'],
     version: '1.8.0',
     author: 'Vaeloom Core Team',
@@ -397,11 +443,12 @@ Implements automated critique and RLAIF reflection loops over completed agent se
       'Auto-review pipeline running CEO, design, eng, and DX reviews sequentially with auto-decisions using 6 principles.',
     enabled: true,
     source: 'learned',
-    usageCount: 970,
-    lastUsed: '10m ago',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read,workspace.write',
     triggers: ['autoplan', 'run all reviews', 'automatic review pipeline'],
     version: '1.0.0',
-    author: 'GStack Engine',
+    author: 'Vaeloom Core Team',
     markdownDoc: `# Autoplan — Auto-Review Pipeline
 
 ## The 6 Decision Principles
@@ -422,8 +469,9 @@ Implements automated critique and RLAIF reflection loops over completed agent se
       'Parses job descriptions, matches skill gaps, tailors achievement bullets, and compiles clean single-page PDF resumes.',
     enabled: true,
     source: 'built-in',
-    usageCount: 1420,
-    lastUsed: '1h ago',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read,system.document.compile',
     triggers: ['build resume', 'tailor resume', 'ats match'],
     version: '2.0.0',
     author: 'Vaeloom Career Suite',
@@ -445,11 +493,12 @@ Implements automated critique and RLAIF reflection loops over completed agent se
       'Verification subagent that reviews git diffs, executes test suites, checks linting, and validates functional correctness.',
     enabled: true,
     source: 'learned',
-    usageCount: 880,
-    lastUsed: '4h ago',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'workspace.write',
     triggers: ['check work', 'verify changes', 'self-verify'],
     version: '1.1.0',
-    author: 'Antigravity Knowledge Base',
+    author: 'Vaeloom Core Team',
     markdownDoc: `# Check Work Verification Protocol
 
 ## Verification Steps
@@ -468,8 +517,9 @@ Implements automated critique and RLAIF reflection loops over completed agent se
       'Evaluates vector embeddings, hybrid dense-sparse retrieval, cross-encoder rerankers, and context recall metrics.',
     enabled: true,
     source: 'built-in',
-    usageCount: 740,
-    lastUsed: '2d ago',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
     triggers: ['eval rag', 'rag metrics', 'retrieval benchmark'],
     version: '1.4.0',
     author: 'Vaeloom Labs',
@@ -490,11 +540,12 @@ Implements automated critique and RLAIF reflection loops over completed agent se
       'Guidance for distinctive, intentional visual design, typography, spacing hierarchies, and theme token alignment.',
     enabled: true,
     source: 'built-in',
-    usageCount: 1680,
-    lastUsed: 'Just now',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'workspace.write',
     triggers: ['frontend design', 'polish ui', 'design system'],
     version: '2.2.0',
-    author: 'Design Lead Studio',
+    author: 'Vaeloom Core Team',
     markdownDoc: `# Frontend Design Standard
 
 ## Core Directives
@@ -513,8 +564,9 @@ Implements automated critique and RLAIF reflection loops over completed agent se
       'Production-grade LLM engineering, structured output enforcement (Pydantic/JSON schema), prompt caching, and token budgeting.',
     enabled: true,
     source: 'built-in',
-    usageCount: 1840,
-    lastUsed: '15m ago',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
     triggers: ['prompt engineering', 'structured outputs', 'token budget'],
     version: '2.5.0',
     author: 'Vaeloom Labs',
@@ -535,8 +587,9 @@ Implements automated critique and RLAIF reflection loops over completed agent se
       'Enterprise distributed systems engineering: high-availability, sharding, caching topologies, and disaster recovery.',
     enabled: true,
     source: 'built-in',
-    usageCount: 620,
-    lastUsed: '3d ago',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read,workspace.write',
     triggers: ['system design', 'architecture review', 'dr drill'],
     version: '1.3.0',
     author: 'Vaeloom Infra',
@@ -557,11 +610,12 @@ Implements automated critique and RLAIF reflection loops over completed agent se
       'UI/UX design intelligence containing 99 guidelines, WCAG AA standards, interaction rules, and responsive patterns.',
     enabled: true,
     source: 'learned',
-    usageCount: 2100,
-    lastUsed: 'Just now',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'workspace.write',
     triggers: ['ui-ux-pro-max', 'audit ux', 'enterprise polish'],
     version: '3.0.0',
-    author: 'Design Intelligence Engine',
+    author: 'Vaeloom Core Team',
     markdownDoc: `# UI/UX Pro Max Design Intelligence
 
 ## Priority Hierarchy
@@ -573,7 +627,7 @@ Implements automated critique and RLAIF reflection loops over completed agent se
   },
 
   // ──────────────────────────────────────────────────────────────────────────
-  // TOOLS (28+ typed execution tools)
+  // TOOLS (6 typed execution tools)
   // ──────────────────────────────────────────────────────────────────────────
   {
     id: 'tool-search-documents',
@@ -584,31 +638,22 @@ Implements automated critique and RLAIF reflection loops over completed agent se
       'Search across user documents using dense semantic vector search with keyword fallback.',
     enabled: true,
     source: 'built-in',
-    usageCount: 4210,
-    lastUsed: '2m ago',
+    usageCount: 0,
+    lastUsedAt: null,
     requiredScope: 'memory.read',
-    trustClass: 'first_party',
+    trustClass: 'core_trusted',
     rateLimit: '200/min',
     inputSchema: {
       type: 'object',
       properties: {
         query: { type: 'string', description: 'Semantic search query string' },
         limit: { type: 'integer', default: 10, description: 'Maximum items to retrieve' },
-        folder_id: { type: 'string', description: 'Optional directory filter ID' },
       },
       required: ['query'],
     },
     outputSchema: {
       type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'string' },
-          title: { type: 'string' },
-          score: { type: 'number' },
-          snippet: { type: 'string' },
-        },
-      },
+      items: { $ref: 'Document' },
     },
     markdownDoc: `# search_documents
 
@@ -626,10 +671,10 @@ Requires \`memory.read\` scope within the calling workspace.
     description: 'Query knowledge graph for entities, typed attributes, and relational edges.',
     enabled: true,
     source: 'built-in',
-    usageCount: 3100,
-    lastUsed: '5m ago',
+    usageCount: 0,
+    lastUsedAt: null,
     requiredScope: 'memory.read',
-    trustClass: 'first_party',
+    trustClass: 'core_trusted',
     rateLimit: '150/min',
     inputSchema: {
       type: 'object',
@@ -640,13 +685,13 @@ Requires \`memory.read\` scope within the calling workspace.
           default: 'any',
           description: 'Filter by entity type (person, skill, company, etc.)',
         },
-        depth: {
-          type: 'integer',
-          default: 2,
-          description: 'Hop depth for relational graph traversal',
-        },
+        limit: { type: 'integer', default: 20, description: 'Maximum edges to traverse' },
       },
       required: ['query'],
+    },
+    outputSchema: {
+      type: 'array',
+      items: { $ref: 'GraphNode' },
     },
     markdownDoc: `# query_graph
 
@@ -662,18 +707,29 @@ Performs relational subgraph traversal on the sovereign knowledge graph, returni
       'Calculate cosine embedding similarity score between resume text and a job requisition.',
     enabled: true,
     source: 'built-in',
-    usageCount: 1250,
-    lastUsed: '1h ago',
-    requiredScope: 'ats.analyze',
-    trustClass: 'first_party',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    trustClass: 'core_trusted',
     rateLimit: '60/min',
     inputSchema: {
       type: 'object',
       properties: {
-        resume_text: { type: 'string', description: 'Full parsed resume text' },
-        job_description: { type: 'string', description: 'Target job posting description' },
+        resume_text: { type: 'string' },
+        job_description: { type: 'string' },
+        target_title: { type: 'string' },
       },
       required: ['resume_text', 'job_description'],
+    },
+    outputSchema: {
+      type: 'object',
+      properties: {
+        score: { type: 'number' },
+        semantic_similarity: { type: 'number' },
+        keyword_match_pct: { type: 'number' },
+        matched_keywords: { type: 'array', items: { type: 'string' } },
+        missing_keywords: { type: 'array', items: { type: 'string' } },
+      },
     },
     markdownDoc: `# calculate_semantic_ats_score
 
@@ -689,18 +745,27 @@ Generates embedding representations of resume sections and requisition requireme
       'Browse an external job posting URL and extract structured job requirements via headless Chromium.',
     enabled: true,
     source: 'built-in',
-    usageCount: 890,
-    lastUsed: '2h ago',
-    requiredScope: 'browser.scrape',
-    trustClass: 'first_party',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'system.browser.read',
+    trustClass: 'core_trusted',
     rateLimit: '20/hour',
     inputSchema: {
       type: 'object',
       properties: {
-        url: { type: 'string', description: 'Public HTTPS URL of target job posting' },
-        extract_salary: { type: 'boolean', default: true },
+        url: { type: 'string', description: 'Public https URL of target job posting' },
       },
       required: ['url'],
+    },
+    outputSchema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        company: { type: 'string' },
+        description: { type: 'string' },
+        requirements: { type: 'array', items: { type: 'string' } },
+        skills_mentioned: { type: 'array', items: { type: 'string' } },
+      },
     },
     markdownDoc: `# browse_job_page
 
@@ -708,30 +773,49 @@ Headless Chromium browser tool guarded by SSRF filters and workspace quotas. Par
 `,
   },
   {
-    id: 'tool-execute-code',
-    name: 'execute_code',
+    id: 'tool-execute-code-sandbox',
+    name: 'execute_code_sandbox',
     category: 'tools',
-    tags: ['Code', 'Sandbox', 'Core'],
+    tags: ['Code', 'Approval-Gated'],
     description:
-      'Execute Python snippets in an isolated sandboxed subprocess with strict resource constraints.',
+      'Approval-gated Python/JavaScript execution in a same-host subprocess with a pattern filter and timeout.',
     enabled: true,
     source: 'built-in',
-    usageCount: 1650,
-    lastUsed: '12m ago',
-    requiredScope: 'system.execute',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'system.sandbox_exec',
     trustClass: 'core_trusted',
     rateLimit: '30/min',
+    autonomy: 'approval_required',
     inputSchema: {
       type: 'object',
       properties: {
-        code: { type: 'string', description: 'Python code block to execute' },
-        timeout_seconds: { type: 'integer', default: 10 },
+        code: { type: 'string' },
+        language: { type: 'string', enum: ['python', 'javascript'], default: 'python' },
+        input_data: { type: 'string' },
+        timeout: { type: 'integer', default: 5 },
       },
       required: ['code'],
     },
-    markdownDoc: `# execute_code
+    outputSchema: {
+      type: 'object',
+      properties: {
+        stdout: { type: 'string' },
+        stderr: { type: 'string' },
+        exit_code: { type: 'integer' },
+      },
+    },
+    markdownDoc: `# execute_code_sandbox
 
-Runs sandboxed Python code with disabled network access and memory caps. Used for mathematical modeling, data extraction, and formatting.
+### Security posture
+This is **not** an OS sandbox. It runs a same-host subprocess guarded by a pattern
+filter, a timeout and a temporary working directory. Treat its output as untrusted:
+it must never be evaluated, rendered as instructions, or granted tool access.
+
+Network access is **not** disabled by this tool. Do not describe it as offline or
+isolated execution.
+
+Approval is required before every call.
 `,
   },
   {
@@ -742,11 +826,12 @@ Runs sandboxed Python code with disabled network access and memory caps. Used fo
     description: 'Prepare an outbound draft email for human approval before sending.',
     enabled: true,
     source: 'built-in',
-    usageCount: 410,
-    lastUsed: 'Yesterday',
-    requiredScope: 'email.draft',
-    trustClass: 'first_party',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'connector.gmail.write',
+    trustClass: 'core_trusted',
     rateLimit: '40/min',
+    autonomy: 'approval_required',
     inputSchema: {
       type: 'object',
       properties: {
@@ -758,12 +843,12 @@ Runs sandboxed Python code with disabled network access and memory caps. Used fo
     },
     markdownDoc: `# draft_email
 
-Generates an email draft in the connected Gmail account and registers a pending approval ticket in the Approvals Center.
+Generates an email draft in the connected Gmail account and registers a pending approval ticket in the Approvals Center. It never sends.
 `,
   },
 
   // ──────────────────────────────────────────────────────────────────────────
-  // MCP (Model Context Protocol Servers)
+  // MCP (4 Model Context Protocol servers)
   // ──────────────────────────────────────────────────────────────────────────
   {
     id: 'mcp-filesystem',
@@ -774,9 +859,9 @@ Generates an email draft in the connected Gmail account and registers a pending 
       'Official local filesystem MCP server providing scoped reading and editing within authorized workspace roots.',
     enabled: true,
     source: 'mcp',
-    usageCount: 2450,
-    lastUsed: '1m ago',
-    requiredScope: 'mcp.workspace.write',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'connector.mcp.execute',
     trustClass: 'mcp.workspace.write',
     version: '1.0.2',
     author: 'Anthropic / ModelContextProtocol',
@@ -786,6 +871,8 @@ Generates an email draft in the connected Gmail account and registers a pending 
 - Transport: \`stdio\`
 - Allowed Root: \`/workspace/data\`
 - Tools Exposed: \`read_file\`, \`write_file\`, \`list_directory\`, \`search_files\`
+
+Write tools are approval-gated.
 `,
   },
   {
@@ -797,8 +884,8 @@ Generates an email draft in the connected Gmail account and registers a pending 
       'GitHub Model Context Protocol bridge for issues, pull requests, repository contents, and branch operations.',
     enabled: true,
     source: 'mcp',
-    usageCount: 1890,
-    lastUsed: '25m ago',
+    usageCount: 0,
+    lastUsedAt: null,
     requiredScope: 'connector.mcp.execute',
     trustClass: 'mcp.external.write',
     version: '2.1.0',
@@ -809,6 +896,8 @@ Generates an email draft in the connected Gmail account and registers a pending 
 - Transport: \`streamable-http\`
 - Scopes: \`repo:read\`, \`issues:write\`
 - Gated Tools: \`create_pull_request\`, \`merge_pull_request\` require human confirmation.
+
+This server can mutate repositories you do not own. Treat it as external-write trust.
 `,
   },
   {
@@ -820,9 +909,9 @@ Generates an email draft in the connected Gmail account and registers a pending 
       'PostgreSQL & Supabase direct database MCP connector with read-only query introspection and schema extraction.',
     enabled: true,
     source: 'mcp',
-    usageCount: 910,
-    lastUsed: '5h ago',
-    requiredScope: 'mcp.read',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'connector.mcp.execute',
     trustClass: 'mcp.read',
     version: '1.1.0',
     author: 'Supabase Community',
@@ -842,8 +931,8 @@ Generates an email draft in the connected Gmail account and registers a pending 
       'Google Drive, Docs, and Calendar MCP integration providing semantic search and document extraction.',
     enabled: true,
     source: 'mcp',
-    usageCount: 1340,
-    lastUsed: '40m ago',
+    usageCount: 0,
+    lastUsedAt: null,
     requiredScope: 'connector.mcp.execute',
     trustClass: 'first_party',
     version: '2.0.1',
@@ -855,7 +944,9 @@ Connects Google Drive and Docs to workspace memory agents with automatic token r
   },
 
   // ──────────────────────────────────────────────────────────────────────────
-  // PLUGINS (Official & Community Sandboxed Plugins)
+  // PLUGINS (4 sandboxed plugins)
+  // Custom capabilities get `tool.<name>` from routers/capabilities.py, so the
+  // scope below follows that rule rather than an invented `plugin.*` namespace.
   // ──────────────────────────────────────────────────────────────────────────
   {
     id: 'plugin-tag-generator',
@@ -866,9 +957,9 @@ Connects Google Drive and Docs to workspace memory agents with automatic token r
       'Extracts topic taxonomy tags and entity labels from unstructured documents using lightweight NLP heuristics.',
     enabled: true,
     source: 'built-in',
-    usageCount: 820,
-    lastUsed: '1h ago',
-    requiredScope: 'plugin.execute',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'tool.tag-generator',
     version: '1.0.0',
     author: 'Vaeloom Official Plugins',
     markdownDoc: `# Tag Generator Plugin
@@ -889,9 +980,9 @@ Connects Google Drive and Docs to workspace memory agents with automatic token r
       'Generates multi-bullet executive summaries and key decision digests from meeting transcripts and PDFs.',
     enabled: true,
     source: 'built-in',
-    usageCount: 1290,
-    lastUsed: '15m ago',
-    requiredScope: 'plugin.execute',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'tool.summarizer',
     version: '1.2.0',
     author: 'Vaeloom Official Plugins',
     markdownDoc: `# Summarizer Plugin
@@ -908,14 +999,18 @@ Generates concise 3-5 bullet point executive digests preserving decision records
       'Analyzes tone, urgency, and stakeholder sentiment across email drafts and communication channels.',
     enabled: false,
     source: 'community',
-    usageCount: 310,
-    lastUsed: '3d ago',
-    requiredScope: 'plugin.execute',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'tool.sentiment',
+    trustClass: 'community',
     version: '0.9.1',
     author: 'Community Contributor',
     markdownDoc: `# Sentiment Analysis Plugin
 
 Evaluates communication urgency (high/medium/low) and tone polarity (constructive/neutral/escalated).
+
+Third-party plugin, pre-1.0. Its output is a model judgement about people and
+must not be used to rank, gate, or auto-escalate anything without a human decision.
 `,
   },
   {
@@ -927,9 +1022,9 @@ Evaluates communication urgency (high/medium/low) and tone polarity (constructiv
       'Multi-lingual translation plugin supporting 24 languages with technical glossary preservation.',
     enabled: true,
     source: 'built-in',
-    usageCount: 520,
-    lastUsed: '2d ago',
-    requiredScope: 'plugin.execute',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'tool.translator',
     version: '1.1.0',
     author: 'Vaeloom Official Plugins',
     markdownDoc: `# Translator Plugin
@@ -939,1027 +1034,410 @@ Translates documents and messages between 24 supported languages while preservin
   },
 ];
 
-const STORAGE_KEY_PREFIX = 'vaeloom.capabilities.';
-const CUSTOM_STORAGE_KEY_PREFIX = 'vaeloom.capabilities.custom.';
+const SECOND = 1000;
+const MINUTE = 60 * SECOND;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+const WEEK = 7 * DAY;
+const MONTH = 30 * DAY;
+const YEAR = 365 * DAY;
 
-export function getStoredCapabilities(workspaceId: string): CapabilityItem[] {
-  if (typeof window === 'undefined') return SEED_CAPABILITIES;
-  try {
-    const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${workspaceId}`);
-    const customRaw = localStorage.getItem(`${CUSTOM_STORAGE_KEY_PREFIX}${workspaceId}`);
-    let customItems: CapabilityItem[] = [];
-    if (customRaw) {
-      customItems = JSON.parse(customRaw) as CapabilityItem[];
-    }
+/**
+ * Render an ISO timestamp for humans, without inventing one.
+ *
+ * A null timestamp means "never", and saying so is the whole point: the previous
+ * implementation carried pre-rendered English phrases ("10m ago") which cannot be
+ * sorted, cannot be localised, and were fabricated rather than measured.
+ *
+ * Unparseable input and clock skew are surfaced rather than smoothed over, because
+ * a wrong-looking timestamp is a bug report and a plausible-looking one is not.
+ */
+export function formatRelativeTime(iso: string | null): string {
+  if (iso === null) return 'Never';
+  if (typeof iso !== 'string' || iso.trim() === '') return 'Unknown';
 
-    const seedRemaining = SEED_CAPABILITIES.filter(
-      (seed) => !customItems.some((c) => c.id === seed.id),
-    );
-    const allBase = [...customItems, ...seedRemaining];
-    if (raw) {
-      const storedMap = JSON.parse(raw) as Record<string, boolean>;
-      return allBase.map((item) => ({
-        ...item,
-        enabled: storedMap[item.id] !== undefined ? Boolean(storedMap[item.id]) : item.enabled,
-      }));
-    }
-    return allBase;
-  } catch {
-    // fallback
+  const parsed = Date.parse(iso);
+  if (Number.isNaN(parsed)) return 'Unknown';
+
+  const elapsed = Date.now() - parsed;
+  if (elapsed < 0) return 'In the future';
+
+  if (elapsed < MINUTE) return 'Just now';
+  if (elapsed < HOUR) return `${Math.floor(elapsed / MINUTE)}m ago`;
+  if (elapsed < DAY) return `${Math.floor(elapsed / HOUR)}h ago`;
+  if (elapsed < WEEK) return `${Math.floor(elapsed / DAY)}d ago`;
+  if (elapsed < MONTH) return `${Math.floor(elapsed / WEEK)}w ago`;
+  if (elapsed < YEAR) return `${Math.floor(elapsed / MONTH)}mo ago`;
+  return `${Math.floor(elapsed / YEAR)}y ago`;
+}
+
+// ─── Storage ────────────────────────────────────────────────────────────────
+//
+// Two keys per workspace plus a dismissed-id set. The envelope exists because a
+// bare payload cannot be migrated: the reader cannot tell "written by an older
+// build" from "written by a newer one", so a schema change either silently
+// misreads the user's data or destroys it. Refusing on a higher version is the
+// only option that does not throw work away.
+
+const STATE_KEY_PREFIX = 'vaeloom.capabilities.';
+const CUSTOM_KEY_PREFIX = 'vaeloom.capabilities.custom.';
+const DISMISSED_KEY_PREFIX = 'vaeloom.capabilities.dismissed.';
+
+export const STORAGE_VERSION = 1;
+
+interface StorageEnvelope<T> {
+  v: number;
+  data: T;
+}
+
+export interface StorageHealth {
+  ok: boolean;
+  error?: string;
+}
+
+let lastStorageError: string | null = null;
+
+function recordStorageError(message: string | null): void {
+  lastStorageError = message;
+}
+
+function describeError(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
+
+/**
+ * The outcome of the most recent storage operation.
+ *
+ * Every failure mode here used to be swallowed by an empty `catch`, so a corrupt
+ * or over-quota store reverted the list to the seed and the user was never told
+ * their custom capabilities had vanished. Callers render a banner from this.
+ */
+export function getStorageHealth(): StorageHealth {
+  if (lastStorageError === null) return { ok: true };
+  return { ok: false, error: lastStorageError };
+}
+
+class StorageFormatError extends Error {}
+
+/**
+ * Deep copy of the module constant.
+ *
+ * Returning the shared array let any caller that mutated the result corrupt the
+ * seed for the entire app for the rest of the session.
+ */
+function cloneSeed(): CapabilityItem[] {
+  return SEED_CAPABILITIES.map((item) => ({
+    ...item,
+    tags: [...item.tags],
+    triggers: item.triggers ? [...item.triggers] : undefined,
+    toolsUsed: item.toolsUsed ? [...item.toolsUsed] : undefined,
+    inputSchema: item.inputSchema ? { ...item.inputSchema } : undefined,
+    outputSchema: item.outputSchema ? { ...item.outputSchema } : undefined,
+  }));
+}
+
+function isEnvelope(parsed: unknown): parsed is StorageEnvelope<unknown> {
+  return (
+    typeof parsed === 'object' &&
+    parsed !== null &&
+    !Array.isArray(parsed) &&
+    typeof (parsed as StorageEnvelope<unknown>).v === 'number' &&
+    'data' in (parsed as Record<string, unknown>)
+  );
+}
+
+function writeEnvelope<T>(key: string, data: T): void {
+  const envelope: StorageEnvelope<T> = { v: STORAGE_VERSION, data };
+  localStorage.setItem(key, JSON.stringify(envelope));
+}
+
+/**
+ * Read one key, migrating forward and refusing to move backward.
+ *
+ * A bare payload is v0: the pre-envelope format, which is migrated on first read
+ * so the user's custom capabilities survive the upgrade instead of being silently
+ * replaced by the seed.
+ */
+function readEnvelope<T>(key: string, migrate: (data: unknown, fromVersion: number) => T): T {
+  const raw = localStorage.getItem(key);
+  if (raw === null) return migrate(undefined, STORAGE_VERSION);
+
+  const parsed: unknown = JSON.parse(raw);
+
+  if (!isEnvelope(parsed)) {
+    const migrated = migrate(parsed, 0);
+    writeEnvelope(key, migrated);
+    return migrated;
   }
-  return SEED_CAPABILITIES;
+
+  if (parsed.v > STORAGE_VERSION) {
+    throw new StorageFormatError(
+      `Refusing to read "${key}": stored by a newer app version (v${parsed.v} > v${STORAGE_VERSION}). ` +
+        'Your capabilities were left untouched.',
+    );
+  }
+
+  if (parsed.v < STORAGE_VERSION) {
+    const migrated = migrate(parsed.data, parsed.v);
+    writeEnvelope(key, migrated);
+    return migrated;
+  }
+
+  return migrate(parsed.data, parsed.v);
+}
+
+function coerceEnabledMap(raw: unknown): Record<string, boolean> {
+  if (raw === undefined || raw === null) return {};
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new StorageFormatError('Capability enable-state store is not an object.');
+  }
+  const out: Record<string, boolean> = {};
+  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === 'boolean') out[id] = value;
+  }
+  return out;
+}
+
+/**
+ * Drop the telemetry the old build fabricated.
+ *
+ * `lastUsed` held phrases like "Just now" and `usageCount` held counts copied
+ * from this file's seed literals — neither was ever measured, because no write
+ * path existed. Migrating them forward would launder invented numbers into the
+ * new schema and back into the UI as fact, so they reset to "never".
+ */
+function stripFabricatedTelemetry(raw: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...raw };
+  delete out['lastUsed'];
+  out['usageCount'] = 0;
+  out['lastUsedAt'] = null;
+  return out;
+}
+
+function coerceCustomItems(raw: unknown, fromVersion: number): CapabilityItem[] {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) {
+    throw new StorageFormatError('Custom capability store is not an array.');
+  }
+
+  return raw.map((entry) => {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+      throw new StorageFormatError('Custom capability store contains a non-object entry.');
+    }
+    const record = entry as Record<string, unknown>;
+    const id = record['id'];
+    if (typeof id !== 'string' || id === '') {
+      throw new StorageFormatError('Custom capability store contains an entry without an id.');
+    }
+    const base = fromVersion === 0 ? stripFabricatedTelemetry(record) : { ...record };
+    const count = base['usageCount'];
+    const lastUsedAt = base['lastUsedAt'];
+    const tags = base['tags'];
+    return {
+      ...(base as unknown as CapabilityItem),
+      id,
+      usageCount: typeof count === 'number' && Number.isFinite(count) ? count : 0,
+      lastUsedAt: typeof lastUsedAt === 'string' ? lastUsedAt : null,
+      tags: Array.isArray(tags) ? (tags as string[]) : [],
+    };
+  });
+}
+
+function coerceDismissedIds(raw: unknown): string[] {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) {
+    throw new StorageFormatError('Dismissed capability store is not an array.');
+  }
+  return raw.filter((id): id is string => typeof id === 'string');
+}
+
+function stateKey(workspaceId: string): string {
+  return `${STATE_KEY_PREFIX}${workspaceId}`;
+}
+
+function customKey(workspaceId: string): string {
+  return `${CUSTOM_KEY_PREFIX}${workspaceId}`;
+}
+
+function dismissedKey(workspaceId: string): string {
+  return `${DISMISSED_KEY_PREFIX}${workspaceId}`;
+}
+
+function readState(workspaceId: string): Record<string, boolean> {
+  return readEnvelope(stateKey(workspaceId), coerceEnabledMap);
+}
+
+function readCustom(workspaceId: string): CapabilityItem[] {
+  return readEnvelope(customKey(workspaceId), coerceCustomItems);
+}
+
+function readDismissed(workspaceId: string): string[] {
+  return readEnvelope(dismissedKey(workspaceId), coerceDismissedIds);
+}
+
+/**
+ * The merged capability list for a workspace: dismissed-filtered seed + custom,
+ * with the enable-state overlay applied last.
+ *
+ * Falls back to the seed on any read failure but records why, so the caller can
+ * tell the user their custom capabilities are missing instead of showing a
+ * plausible-looking default list.
+ */
+export function getStoredCapabilities(workspaceId: string): CapabilityItem[] {
+  recordStorageError(null);
+  if (typeof window === 'undefined') return cloneSeed();
+
+  try {
+    const dismissed = new Set(readDismissed(workspaceId));
+    const custom = readCustom(workspaceId);
+    const state = readState(workspaceId);
+
+    const customIds = new Set(custom.map((c) => c.id));
+    const seedRemaining = cloneSeed().filter(
+      (seed) => !dismissed.has(seed.id) && !customIds.has(seed.id),
+    );
+    const merged = [...custom, ...seedRemaining];
+
+    return merged.map((item) => {
+      const override = state[item.id];
+      return {
+        ...item,
+        enabled: typeof override === 'boolean' ? override : Boolean(item.enabled),
+      };
+    });
+  } catch (err) {
+    recordStorageError(describeError(err));
+    return cloneSeed();
+  }
 }
 
 export function saveCustomCapability(workspaceId: string, item: CapabilityItem): void {
   if (typeof window === 'undefined') return;
   try {
-    const customRaw = localStorage.getItem(`${CUSTOM_STORAGE_KEY_PREFIX}${workspaceId}`);
-    const customItems: CapabilityItem[] = customRaw ? JSON.parse(customRaw) : [];
-    const filtered = customItems.filter((c) => c.id !== item.id);
-    filtered.unshift(item);
-    localStorage.setItem(`${CUSTOM_STORAGE_KEY_PREFIX}${workspaceId}`, JSON.stringify(filtered));
-  } catch {
-    // ignore
+    const custom = readCustom(workspaceId);
+    const without = custom.filter((c) => c.id !== item.id);
+    writeEnvelope(customKey(workspaceId), [item, ...without]);
+
+    // Saving is a deliberate install, so it cancels a previous dismissal.
+    const dismissed = readDismissed(workspaceId).filter((id) => id !== item.id);
+    if (dismissed.length > 0) writeEnvelope(dismissedKey(workspaceId), dismissed);
+
+    recordStorageError(null);
+  } catch (err) {
+    recordStorageError(describeError(err));
   }
 }
 
+/**
+ * Patch a single custom capability.
+ *
+ * Exists so an edit does not have to read the whole list, mutate one field, and
+ * write the whole list back — which is how one save ended up touching two
+ * storage locations with a partially-stale snapshot.
+ */
+export function updateCustomCapability(
+  workspaceId: string,
+  id: string,
+  patch: Partial<Omit<CapabilityItem, 'id'>>,
+): CapabilityItem[] {
+  let writeError: string | null = null;
+  if (typeof window !== 'undefined') {
+    try {
+      const custom = readCustom(workspaceId);
+      const index = custom.findIndex((c) => c.id === id);
+      if (index !== -1) {
+        writeEnvelope(customKey(workspaceId), [
+          ...custom.slice(0, index),
+          { ...custom[index], ...patch, id },
+          ...custom.slice(index + 1),
+        ]);
+      }
+      recordStorageError(null);
+    } catch (err) {
+      writeError = describeError(err);
+    }
+  }
+
+  const merged = getStoredCapabilities(workspaceId);
+  if (writeError !== null) recordStorageError(writeError);
+  return merged;
+}
+
+/**
+ * Flip one capability's enabled flag.
+ *
+ * Reads and writes only the enable-state key. The previous version rebuilt the
+ * whole list first, so two rapid toggles could each write back a snapshot taken
+ * before the other landed and lose one of the two changes — and any concurrent
+ * save to the custom-capability key was clobbered along the way.
+ */
 export function setStoredCapabilityEnabled(
   workspaceId: string,
   capabilityId: string,
   enabled: boolean,
 ): CapabilityItem[] {
-  const current = getStoredCapabilities(workspaceId);
-  const updated = current.map((c) => (c.id === capabilityId ? { ...c, enabled } : c));
+  let writeError: string | null = null;
   if (typeof window !== 'undefined') {
     try {
-      const stateMap: Record<string, boolean> = {};
-      updated.forEach((c) => {
-        stateMap[c.id] = c.enabled;
-      });
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}${workspaceId}`, JSON.stringify(stateMap));
-    } catch {
-      // ignore
+      const state = readState(workspaceId);
+      state[capabilityId] = enabled;
+      writeEnvelope(stateKey(workspaceId), state);
+      recordStorageError(null);
+    } catch (err) {
+      writeError = describeError(err);
     }
   }
-  return updated;
+
+  const merged = getStoredCapabilities(workspaceId);
+  // A failed write is the more urgent signal than a successful re-read, so it wins.
+  if (writeError !== null) recordStorageError(writeError);
+  return merged;
 }
 
+/**
+ * Remove a capability for good.
+ *
+ * A seed item also has to be recorded in the dismissed set. Deleting it from the
+ * custom key alone does nothing to it, so the next read re-injected it from
+ * `SEED_CAPABILITIES` and the delete appeared to silently fail.
+ */
 export function deleteCustomCapability(
   workspaceId: string,
   capabilityId: string,
 ): CapabilityItem[] {
-  if (typeof window === 'undefined') return SEED_CAPABILITIES;
-  try {
-    const customRaw = localStorage.getItem(`${CUSTOM_STORAGE_KEY_PREFIX}${workspaceId}`);
-    if (customRaw) {
-      const customItems: CapabilityItem[] = JSON.parse(customRaw);
-      const filtered = customItems.filter((c) => c.id !== capabilityId);
-      localStorage.setItem(`${CUSTOM_STORAGE_KEY_PREFIX}${workspaceId}`, JSON.stringify(filtered));
+  let writeError: string | null = null;
+  if (typeof window !== 'undefined') {
+    try {
+      const custom = readCustom(workspaceId);
+      const remaining = custom.filter((c) => c.id !== capabilityId);
+      if (remaining.length !== custom.length) {
+        writeEnvelope(customKey(workspaceId), remaining);
+      }
+
+      // Only seed ids need the dismissed set. A deleted custom item is already
+      // gone from its own key, and logging it here would grow the set forever.
+      const isSeedId = SEED_CAPABILITIES.some((s) => s.id === capabilityId);
+      if (isSeedId) {
+        const dismissed = readDismissed(workspaceId);
+        if (!dismissed.includes(capabilityId)) {
+          writeEnvelope(dismissedKey(workspaceId), [...dismissed, capabilityId]);
+        }
+      }
+
+      const state = readState(workspaceId);
+      if (Object.prototype.hasOwnProperty.call(state, capabilityId)) {
+        delete state[capabilityId];
+        writeEnvelope(stateKey(workspaceId), state);
+      }
+
+      recordStorageError(null);
+    } catch (err) {
+      writeError = describeError(err);
     }
-    const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${workspaceId}`);
-    if (raw) {
-      const stateMap: Record<string, boolean> = JSON.parse(raw);
-      delete stateMap[capabilityId];
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}${workspaceId}`, JSON.stringify(stateMap));
-    }
-  } catch {
-    // ignore
-  }
-  return getStoredCapabilities(workspaceId);
-}
-
-// ─── Hub Discovery Catalog (Marketplace & Community Browser) ───────────────
-
-export type HubCategory =
-  | 'all'
-  | 'desktop'
-  | 'memory'
-  | 'platforms'
-  | 'web-browser'
-  | 'tools'
-  | 'voice'
-  | 'automation'
-  | 'models'
-  | 'general';
-
-export interface HubCapabilityItem {
-  id: string;
-  name: string;
-  hubCategory: HubCategory;
-  category: CapabilityCategory;
-  description: string;
-  isOfficial: boolean;
-  stars: number;
-  version: string;
-  tags: string[];
-  toolsCount?: number;
-  author: string;
-  capabilityItem: CapabilityItem;
-}
-
-export const SEED_HUB_ITEMS: HubCapabilityItem[] = [
-  {
-    id: 'hub-mnemosyne-dashboard',
-    name: 'mnemosyne-dashboard',
-    hubCategory: 'desktop',
-    category: 'plugins',
-    description:
-      'Local-only web dashboard for browsing and visualising sovereign memories, triples, stats, and consolidation.',
-    isOfficial: false,
-    stars: 215,
-    version: '1.4.2',
-    tags: ['Desktop', 'Memory', 'Dashboard'],
-    toolsCount: 4,
-    author: 'Vaeloom Community',
-    capabilityItem: {
-      id: 'plugin-mnemosyne-dashboard',
-      name: 'mnemosyne-dashboard',
-      category: 'plugins',
-      tags: ['Desktop', 'Memory', 'Dashboard'],
-      description:
-        'Local web dashboard for browsing knowledge graph triples, stats, and episodic memory recall.',
-      enabled: true,
-      source: 'community',
-      usageCount: 215,
-      lastUsed: 'Just now',
-      requiredScope: 'memory.read,plugin.execute',
-      trustClass: 'first_party',
-      version: '1.4.2',
-      author: 'Vaeloom Community',
-      markdownDoc: `# Mnemosyne Dashboard\n\nInteractive desktop memory visualization dashboard for inspecting entity nodes, edge saliency weights, and active agent memory footprints.\n`,
-    },
-  },
-  {
-    id: 'hub-vaeloom-resetwatch',
-    name: 'hermes-resetwatch',
-    hubCategory: 'desktop',
-    category: 'skills',
-    description:
-      'Track subscription quotas, rate limits, and reset times in agent sessions. Auto-notifies before exhaustion.',
-    isOfficial: false,
-    stars: 69,
-    version: '0.2.19',
-    tags: ['Desktop', 'Quota', 'Observability'],
-    author: 'Community Contributor',
-    capabilityItem: {
-      id: 'skill-hermes-resetwatch',
-      name: 'hermes-resetwatch',
-      category: 'skills',
-      tags: ['Desktop', 'Quota', 'Observability'],
-      description: 'Track subscription quotas, rate limits, and reset times in agent sessions.',
-      enabled: true,
-      source: 'community',
-      usageCount: 69,
-      requiredScope: 'system.observe',
-      trustClass: 'first_party',
-      version: '0.2.19',
-      author: 'Community Contributor',
-      markdownDoc: `# ResetWatch Skill\n\nContinuously tracks LLM quota ceilings, active token consumption, and scheduled quota reset windows across all configured providers.\n`,
-    },
-  },
-  {
-    id: 'hub-hermes-memory-ui',
-    name: 'hermes-memory-ui',
-    hubCategory: 'memory',
-    category: 'plugins',
-    description:
-      'Real-only memory dashboard and desktop plugin for inspecting episodic recall, Mem0, and Honcho state.',
-    isOfficial: false,
-    stars: 55,
-    version: '1.1.0',
-    tags: ['Memory', 'Desktop', 'Inspection'],
-    author: 'Community',
-    capabilityItem: {
-      id: 'plugin-hermes-memory-ui',
-      name: 'hermes-memory-ui',
-      category: 'plugins',
-      tags: ['Memory', 'Desktop', 'Inspection'],
-      description: 'Desktop plugin for inspecting episodic recall, Mem0, and Honcho state.',
-      enabled: true,
-      source: 'community',
-      usageCount: 55,
-      requiredScope: 'memory.read',
-      trustClass: 'first_party',
-      version: '1.1.0',
-      author: 'Community',
-      markdownDoc: `# Hermes Memory UI\n\nLive episodic memory inspector with graph visualizer and recall audit timeline.\n`,
-    },
-  },
-  {
-    id: 'hub-hermes-rss',
-    name: 'hermes-rss',
-    hubCategory: 'web-browser',
-    category: 'skills',
-    description:
-      'Read RSS and Atom feeds and discuss articles with agents directly within workspace sessions.',
-    isOfficial: false,
-    stars: 51,
-    version: '1.0.4',
-    tags: ['Web & Browser', 'RSS', 'Feeds'],
-    author: 'Community',
-    capabilityItem: {
-      id: 'skill-hermes-rss',
-      name: 'hermes-rss',
-      category: 'skills',
-      tags: ['Web & Browser', 'RSS', 'Feeds'],
-      description:
-        'Read RSS and Atom feeds and discuss articles with agents directly within workspace sessions.',
-      enabled: true,
-      source: 'community',
-      usageCount: 51,
-      requiredScope: 'connector.read',
-      trustClass: 'first_party',
-      version: '1.0.4',
-      author: 'Community',
-      markdownDoc: `# RSS Feeds Skill\n\nFetches and extracts full-text articles from curated RSS feeds and injects summaries into agent contexts.\n`,
-    },
-  },
-  {
-    id: 'hub-hermes-tailscale',
-    name: 'hermes-tailscale',
-    hubCategory: 'platforms',
-    category: 'mcp',
-    description:
-      'Browse Tailscale devices and connect to remote agent nodes across encrypted private mesh networks.',
-    isOfficial: false,
-    stars: 41,
-    version: '2.1.0',
-    tags: ['Platforms', 'Networking', 'Mesh'],
-    author: 'Tailscale Community',
-    capabilityItem: {
-      id: 'mcp-hermes-tailscale',
-      name: 'hermes-tailscale',
-      category: 'mcp',
-      tags: ['Platforms', 'Networking', 'Mesh'],
-      description: 'Connect to remote agent nodes across encrypted Tailscale mesh networks.',
-      enabled: true,
-      source: 'mcp',
-      usageCount: 41,
-      requiredScope: 'connector.mcp.execute',
-      trustClass: 'mcp.workspace.write',
-      version: '2.1.0',
-      author: 'Tailscale Community',
-      markdownDoc: `# Tailscale Mesh Connector\n\nEnables agent-to-agent peer communication across private Tailscale overlay networks without exposing public ports.\n`,
-    },
-  },
-  {
-    id: 'hub-hermes-newswire',
-    name: 'hermes-newswire',
-    hubCategory: 'desktop',
-    category: 'plugins',
-    description:
-      'Breaking-news ticker for workspace desktop: scrolling RSS/Atom feed strip above the status bar.',
-    isOfficial: false,
-    stars: 12,
-    version: '0.9.1',
-    tags: ['Desktop', 'News', 'Ticker'],
-    author: 'Community',
-    capabilityItem: {
-      id: 'plugin-hermes-newswire',
-      name: 'hermes-newswire',
-      category: 'plugins',
-      tags: ['Desktop', 'News', 'Ticker'],
-      description: 'Breaking news ticker for workspace desktop: scrolling RSS/Atom feed strip.',
-      enabled: true,
-      source: 'community',
-      usageCount: 12,
-      requiredScope: 'plugin.execute',
-      trustClass: 'first_party',
-      version: '0.9.1',
-      author: 'Community',
-      markdownDoc: `# Newswire Plugin\n\nDisplays continuous real-time market and developer news headlines directly in the workspace status line.\n`,
-    },
-  },
-  {
-    id: 'hub-agent-analytics',
-    name: 'agent-analytics',
-    hubCategory: 'tools',
-    category: 'tools',
-    description:
-      'Telemetry and dashboard-only read plugin for agent analytics, cost tracking, and execution metrics.',
-    isOfficial: false,
-    stars: 27,
-    version: '1.3.0',
-    tags: ['Tools', 'Analytics', 'Metrics'],
-    author: 'Community',
-    capabilityItem: {
-      id: 'tool-agent-analytics',
-      name: 'agent-analytics',
-      category: 'tools',
-      tags: ['Tools', 'Analytics', 'Metrics'],
-      description:
-        'Dashboard-only read tool for agent analytics, cost tracking, and execution metrics.',
-      enabled: true,
-      source: 'community',
-      usageCount: 27,
-      requiredScope: 'system.observe',
-      trustClass: 'first_party',
-      version: '1.3.0',
-      author: 'Community',
-      markdownDoc: `# Agent Analytics Tool\n\nAggregates per-agent execution times, tool failure rates, token expenditures, and trajectory quality scores.\n`,
-    },
-  },
-  {
-    id: 'hub-home-dashboard',
-    name: 'home-dashboard',
-    hubCategory: 'desktop',
-    category: 'plugins',
-    description:
-      'Personalizable home page with draggable, resizable widgets for workspace documents and active sessions.',
-    isOfficial: false,
-    stars: 13,
-    version: '1.0.0',
-    tags: ['Desktop', 'Widgets', 'Customization'],
-    author: 'Community',
-    capabilityItem: {
-      id: 'plugin-home-dashboard',
-      name: 'home-dashboard',
-      category: 'plugins',
-      tags: ['Desktop', 'Widgets', 'Customization'],
-      description: 'Personalizable home page with draggable, resizable widgets.',
-      enabled: true,
-      source: 'community',
-      usageCount: 13,
-      requiredScope: 'plugin.execute',
-      trustClass: 'first_party',
-      version: '1.0.0',
-      author: 'Community',
-      markdownDoc: `# Home Dashboard Plugin\n\nModular dashboard framework allowing users to arrange live status widgets, document recents, and agent feeds.\n`,
-    },
-  },
-  {
-    id: 'hub-hermes-ledgerline',
-    name: 'hermes-ledgerline',
-    hubCategory: 'tools',
-    category: 'tools',
-    description:
-      'Inspect session costs and token usage in workspace desktop with fine-grained per-model cost ledger.',
-    isOfficial: false,
-    stars: 11,
-    version: '1.0.2',
-    tags: ['Tools', 'Ledger', 'Costs'],
-    author: 'Community',
-    capabilityItem: {
-      id: 'tool-hermes-ledgerline',
-      name: 'hermes-ledgerline',
-      category: 'tools',
-      tags: ['Tools', 'Ledger', 'Costs'],
-      description:
-        'Inspect session costs and token usage in workspace with fine-grained per-model cost ledger.',
-      enabled: true,
-      source: 'community',
-      usageCount: 11,
-      requiredScope: 'system.observe',
-      trustClass: 'first_party',
-      version: '1.0.2',
-      author: 'Community',
-      markdownDoc: `# LedgerLine Cost Audit\n\nDetailed breakdown of input, output, and cache token costs per model, workspace, and autonomous agent run.\n`,
-    },
-  },
-  {
-    id: 'hub-playwright-automator',
-    name: 'playwright-browser-scraper',
-    hubCategory: 'web-browser',
-    category: 'tools',
-    description:
-      'Headless Chromium browser automation tool for job boards, company pages, and portal navigation with SSRF guards.',
-    isOfficial: true,
-    stars: 142,
-    version: '2.4.0',
-    tags: ['Web & Browser', 'Chromium', 'Official'],
-    toolsCount: 6,
-    author: 'Vaeloom Official',
-    capabilityItem: {
-      id: 'tool-playwright-browser-scraper',
-      name: 'playwright-browser-scraper',
-      category: 'tools',
-      tags: ['Web & Browser', 'Chromium', 'Official'],
-      description:
-        'Headless Chromium browser automation tool with SSRF guards and anti-bot evasions.',
-      enabled: true,
-      source: 'built-in',
-      usageCount: 142,
-      requiredScope: 'connector.read',
-      trustClass: 'first_party',
-      version: '2.4.0',
-      author: 'Vaeloom Official',
-      markdownDoc: `# Playwright Browser Scraper\n\nOfficial headless browser tool enabling agents to navigate external web applications and extract live HTML.\n`,
-    },
-  },
-  {
-    id: 'hub-whisper-transcriber',
-    name: 'whisper-voice-transcriber',
-    hubCategory: 'voice',
-    category: 'plugins',
-    description:
-      'Local speech-to-text audio transcriber with Whisper engine, timestamping, and multi-lingual voice notes.',
-    isOfficial: true,
-    stars: 88,
-    version: '1.2.0',
-    tags: ['Voice', 'Whisper', 'Audio'],
-    author: 'Vaeloom Official',
-    capabilityItem: {
-      id: 'plugin-whisper-voice-transcriber',
-      name: 'whisper-voice-transcriber',
-      category: 'plugins',
-      tags: ['Voice', 'Whisper', 'Audio'],
-      description:
-        'Local speech-to-text audio transcriber with Whisper engine and speaker diarization.',
-      enabled: true,
-      source: 'built-in',
-      usageCount: 88,
-      requiredScope: 'plugin.execute',
-      trustClass: 'first_party',
-      version: '1.2.0',
-      author: 'Vaeloom Official',
-      markdownDoc: `# Whisper Voice Transcriber\n\nTranscribes voice recordings and audio attachments directly into workspace document markdown.\n`,
-    },
-  },
-  {
-    id: 'hub-github-copilot-bridge',
-    name: 'github-copilot-bridge',
-    hubCategory: 'platforms',
-    category: 'mcp',
-    description:
-      'Bidirectional GitHub platform bridge for managing pull requests, review comments, and repo code search.',
-    isOfficial: true,
-    stars: 176,
-    version: '3.0.1',
-    tags: ['Platforms', 'GitHub', 'Official'],
-    author: 'Vaeloom Official',
-    capabilityItem: {
-      id: 'mcp-github-copilot-bridge',
-      name: 'github-copilot-bridge',
-      category: 'mcp',
-      tags: ['Platforms', 'GitHub', 'Official'],
-      description: 'Bidirectional GitHub platform bridge for managing PRs and repositories.',
-      enabled: true,
-      source: 'mcp',
-      usageCount: 176,
-      requiredScope: 'connector.mcp.execute',
-      trustClass: 'mcp.workspace.write',
-      version: '3.0.1',
-      author: 'Vaeloom Official',
-      markdownDoc: `# GitHub Copilot Bridge\n\nModel Context Protocol connector to GitHub APIs, pull requests, and commit verification workflows.\n`,
-    },
-  },
-  {
-    id: 'hub-chroma-vector-vault',
-    name: 'chroma-vector-vault',
-    hubCategory: 'memory',
-    category: 'plugins',
-    description:
-      'Local embedded vector vault for semantic embedding storage, document chunk indexing, and similarity lookups.',
-    isOfficial: true,
-    stars: 310,
-    version: '2.1.0',
-    tags: ['Memory', 'Vector', 'Chroma'],
-    toolsCount: 5,
-    author: 'Vaeloom Official',
-    capabilityItem: {
-      id: 'plugin-chroma-vector-vault',
-      name: 'chroma-vector-vault',
-      category: 'plugins',
-      tags: ['Memory', 'Vector', 'Chroma'],
-      description:
-        'Local embedded vector vault for semantic embedding storage and similarity lookups.',
-      enabled: true,
-      source: 'built-in',
-      usageCount: 310,
-      requiredScope: 'memory.write',
-      trustClass: 'first_party',
-      version: '2.1.0',
-      author: 'Vaeloom Official',
-      markdownDoc: `# Chroma Vector Vault\n\nEmbedded vector store enabling semantic search and similarity retrieval across workspace documents.\n`,
-    },
-  },
-  {
-    id: 'hub-episodic-decay-monitor',
-    name: 'episodic-decay-monitor',
-    hubCategory: 'memory',
-    category: 'skills',
-    description:
-      'Monitors memory node saliency and automatically decays unreferenced episodic memories over time.',
-    isOfficial: false,
-    stars: 94,
-    version: '1.2.1',
-    tags: ['Memory', 'Decay', 'Graph'],
-    author: 'Community',
-    capabilityItem: {
-      id: 'skill-episodic-decay-monitor',
-      name: 'episodic-decay-monitor',
-      category: 'skills',
-      tags: ['Memory', 'Decay', 'Graph'],
-      description:
-        'Monitors memory node saliency and decays unreferenced episodic memories over time.',
-      enabled: true,
-      source: 'community',
-      usageCount: 94,
-      requiredScope: 'memory.write',
-      trustClass: 'first_party',
-      version: '1.2.1',
-      author: 'Community',
-      markdownDoc: `# Episodic Decay Monitor\n\nManages knowledge graph lifecycle by dynamically adjusting entity saliency weights based on recall frequency.\n`,
-    },
-  },
-  {
-    id: 'hub-mem0-sovereign-bridge',
-    name: 'mem0-sovereign-bridge',
-    hubCategory: 'memory',
-    category: 'mcp',
-    description:
-      'Model Context Protocol connector synchronizing sovereign workspace memories with Mem0 semantic storage.',
-    isOfficial: true,
-    stars: 245,
-    version: '1.5.0',
-    tags: ['Memory', 'MCP', 'Mem0'],
-    toolsCount: 3,
-    author: 'Vaeloom Official',
-    capabilityItem: {
-      id: 'mcp-mem0-sovereign-bridge',
-      name: 'mem0-sovereign-bridge',
-      category: 'mcp',
-      tags: ['Memory', 'MCP', 'Mem0'],
-      description:
-        'MCP connector synchronizing sovereign workspace memories with Mem0 semantic storage.',
-      enabled: true,
-      source: 'mcp',
-      usageCount: 245,
-      requiredScope: 'connector.mcp.execute',
-      trustClass: 'mcp.workspace.write',
-      version: '1.5.0',
-      author: 'Vaeloom Official',
-      markdownDoc: `# Mem0 Sovereign Bridge\n\nProvides bidirectional synchronization between Vaeloom knowledge graph nodes and external Mem0 persistence.\n`,
-    },
-  },
-  {
-    id: 'hub-cron-workflow-scheduler',
-    name: 'cron-workflow-scheduler',
-    hubCategory: 'automation',
-    category: 'plugins',
-    description:
-      'Enterprise cron scheduler for recurring background agent executions, automated rollups, and hygiene sweeps.',
-    isOfficial: true,
-    stars: 188,
-    version: '2.0.1',
-    tags: ['Automation', 'Cron', 'Scheduler'],
-    toolsCount: 4,
-    author: 'Vaeloom Official',
-    capabilityItem: {
-      id: 'plugin-cron-workflow-scheduler',
-      name: 'cron-workflow-scheduler',
-      category: 'plugins',
-      tags: ['Automation', 'Cron', 'Scheduler'],
-      description: 'Enterprise cron scheduler for recurring background agent executions.',
-      enabled: true,
-      source: 'built-in',
-      usageCount: 188,
-      requiredScope: 'plugin.execute',
-      trustClass: 'core_trusted',
-      version: '2.0.1',
-      author: 'Vaeloom Official',
-      markdownDoc: `# Cron Workflow Scheduler\n\nRuns recurring scheduled tasks and autonomous agent sweeps with configurable cron expressions and logging.\n`,
-    },
-  },
-  {
-    id: 'hub-webhook-action-dispatcher',
-    name: 'webhook-action-dispatcher',
-    hubCategory: 'automation',
-    category: 'tools',
-    description:
-      'Inbound and outbound webhook router delivering event payloads to external APIs with automatic retries and HMAC verification.',
-    isOfficial: false,
-    stars: 76,
-    version: '1.1.4',
-    tags: ['Automation', 'Webhooks', 'HTTP'],
-    author: 'Community',
-    capabilityItem: {
-      id: 'tool-webhook-action-dispatcher',
-      name: 'webhook-action-dispatcher',
-      category: 'tools',
-      tags: ['Automation', 'Webhooks', 'HTTP'],
-      description:
-        'Webhook router delivering event payloads to external APIs with HMAC signatures.',
-      enabled: true,
-      source: 'community',
-      usageCount: 76,
-      requiredScope: 'connector.write',
-      trustClass: 'first_party',
-      version: '1.1.4',
-      author: 'Community',
-      markdownDoc: `# Webhook Action Dispatcher\n\nDispatches webhook notifications and triggers agent loops upon receipt of signed webhooks.\n`,
-    },
-  },
-  {
-    id: 'hub-event-stream-relay',
-    name: 'event-stream-relay',
-    hubCategory: 'automation',
-    category: 'mcp',
-    description:
-      'Model Context Protocol bridge streaming Server-Sent Events (SSE) and Kafka pub/sub events into agent contexts.',
-    isOfficial: false,
-    stars: 112,
-    version: '1.3.0',
-    tags: ['Automation', 'Kafka', 'SSE'],
-    author: 'Community',
-    capabilityItem: {
-      id: 'mcp-event-stream-relay',
-      name: 'event-stream-relay',
-      category: 'mcp',
-      tags: ['Automation', 'Kafka', 'SSE'],
-      description: 'MCP bridge streaming SSE and Kafka pub/sub events into agent contexts.',
-      enabled: true,
-      source: 'mcp',
-      usageCount: 112,
-      requiredScope: 'connector.mcp.execute',
-      trustClass: 'mcp.workspace.write',
-      version: '1.3.0',
-      author: 'Community',
-      markdownDoc: `# Event Stream Relay\n\nSubscribes to enterprise event topics and streams relevant messages to autonomous listening agents.\n`,
-    },
-  },
-  {
-    id: 'hub-elevenlabs-voice-synthesis',
-    name: 'elevenlabs-voice-synthesis',
-    hubCategory: 'voice',
-    category: 'plugins',
-    description:
-      'Ultra-low latency streaming voice synthesis transforming agent responses into natural, human-like voice audio.',
-    isOfficial: false,
-    stars: 164,
-    version: '2.2.0',
-    tags: ['Voice', 'ElevenLabs', 'Audio'],
-    author: 'Community',
-    capabilityItem: {
-      id: 'plugin-elevenlabs-voice-synthesis',
-      name: 'elevenlabs-voice-synthesis',
-      category: 'plugins',
-      tags: ['Voice', 'ElevenLabs', 'Audio'],
-      description: 'Ultra-low latency streaming voice synthesis generating natural audio output.',
-      enabled: true,
-      source: 'community',
-      usageCount: 164,
-      requiredScope: 'plugin.execute',
-      trustClass: 'first_party',
-      version: '2.2.0',
-      author: 'Community',
-      markdownDoc: `# ElevenLabs Voice Synthesis\n\nHigh fidelity neural voice generator providing lifelike audio responses for agent conversations.\n`,
-    },
-  },
-  {
-    id: 'hub-voice-command-trigger',
-    name: 'voice-command-trigger',
-    hubCategory: 'voice',
-    category: 'skills',
-    description:
-      'Hands-free voice recognition trigger that activates agent workflows upon detecting spoken hotwords.',
-    isOfficial: true,
-    stars: 82,
-    version: '1.0.3',
-    tags: ['Voice', 'Hotwords', 'HandsFree'],
-    author: 'Vaeloom Official',
-    capabilityItem: {
-      id: 'skill-voice-command-trigger',
-      name: 'voice-command-trigger',
-      category: 'skills',
-      tags: ['Voice', 'Hotwords', 'HandsFree'],
-      description:
-        'Hands-free voice recognition trigger activating workflows upon spoken hotwords.',
-      enabled: true,
-      source: 'built-in',
-      usageCount: 82,
-      requiredScope: 'system.observe',
-      trustClass: 'first_party',
-      version: '1.0.3',
-      author: 'Vaeloom Official',
-      markdownDoc: `# Voice Command Trigger\n\nListens for customizable audio wake phrases to initiate hands-free agent dialogs.\n`,
-    },
-  },
-  {
-    id: 'hub-ollama-local-gateway',
-    name: 'ollama-local-gateway',
-    hubCategory: 'models',
-    category: 'plugins',
-    description:
-      'Connects local Ollama instances running Llama 3, Mistral, and DeepSeek for offline, zero-data-leakage inference.',
-    isOfficial: true,
-    stars: 390,
-    version: '3.1.0',
-    tags: ['Models', 'Ollama', 'LocalLLM'],
-    toolsCount: 6,
-    author: 'Vaeloom Official',
-    capabilityItem: {
-      id: 'plugin-ollama-local-gateway',
-      name: 'ollama-local-gateway',
-      category: 'plugins',
-      tags: ['Models', 'Ollama', 'LocalLLM'],
-      description:
-        'Connects local Ollama instances running open-weight models for private inference.',
-      enabled: true,
-      source: 'built-in',
-      usageCount: 390,
-      requiredScope: 'plugin.execute',
-      trustClass: 'core_trusted',
-      version: '3.1.0',
-      author: 'Vaeloom Official',
-      markdownDoc: `# Ollama Local Gateway\n\nRoutes LLM prompts to localhost or LAN Ollama instances without routing data over the public internet.\n`,
-    },
-  },
-  {
-    id: 'hub-anthropic-claude-routing',
-    name: 'anthropic-claude-routing',
-    hubCategory: 'models',
-    category: 'tools',
-    description:
-      'Dynamic tiered model router that selects Claude 3.5 Sonnet, Haiku, or Opus based on prompt difficulty and token budget.',
-    isOfficial: true,
-    stars: 278,
-    version: '2.0.0',
-    tags: ['Models', 'Anthropic', 'Router'],
-    author: 'Vaeloom Official',
-    capabilityItem: {
-      id: 'tool-anthropic-claude-routing',
-      name: 'anthropic-claude-routing',
-      category: 'tools',
-      tags: ['Models', 'Anthropic', 'Router'],
-      description: 'Tiered model router selecting optimal Claude model based on prompt complexity.',
-      enabled: true,
-      source: 'built-in',
-      usageCount: 278,
-      requiredScope: 'system.observe',
-      trustClass: 'first_party',
-      version: '2.0.0',
-      author: 'Vaeloom Official',
-      markdownDoc: `# Anthropic Claude Routing\n\nIntelligent prompt complexity evaluator that minimizes cost by routing simple queries to Haiku and complex reasoning to Sonnet.\n`,
-    },
-  },
-  {
-    id: 'hub-groq-speed-gateway',
-    name: 'groq-speed-gateway',
-    hubCategory: 'models',
-    category: 'tools',
-    description:
-      'Ultra-high-speed inference gateway leveraging Groq LPU hardware for sub-second agent reasoning loops.',
-    isOfficial: false,
-    stars: 153,
-    version: '1.4.0',
-    tags: ['Models', 'Groq', 'LPU'],
-    author: 'Community',
-    capabilityItem: {
-      id: 'tool-groq-speed-gateway',
-      name: 'groq-speed-gateway',
-      category: 'tools',
-      tags: ['Models', 'Groq', 'LPU'],
-      description: 'Ultra-high-speed inference gateway leveraging Groq LPU hardware.',
-      enabled: true,
-      source: 'community',
-      usageCount: 153,
-      requiredScope: 'connector.read',
-      trustClass: 'first_party',
-      version: '1.4.0',
-      author: 'Community',
-      markdownDoc: `# Groq Speed Gateway\n\nAccesses ultra-fast LPU inference endpoints for real-time interactive voice agents and instant search indexing.\n`,
-    },
-  },
-  {
-    id: 'hub-slack-agent-relay',
-    name: 'slack-agent-relay',
-    hubCategory: 'platforms',
-    category: 'mcp',
-    description:
-      'Bidirectional Slack workspace bot relay for querying agents, triggering tasks, and posting status updates directly in channels.',
-    isOfficial: true,
-    stars: 220,
-    version: '2.3.0',
-    tags: ['Platforms', 'Slack', 'Official'],
-    author: 'Vaeloom Official',
-    capabilityItem: {
-      id: 'mcp-slack-agent-relay',
-      name: 'slack-agent-relay',
-      category: 'mcp',
-      tags: ['Platforms', 'Slack', 'Official'],
-      description:
-        'Bidirectional Slack workspace bot relay for querying agents and receiving alerts.',
-      enabled: true,
-      source: 'mcp',
-      usageCount: 220,
-      requiredScope: 'connector.mcp.execute',
-      trustClass: 'mcp.workspace.write',
-      version: '2.3.0',
-      author: 'Vaeloom Official',
-      markdownDoc: `# Slack Agent Relay\n\nLinks team Slack channels to sovereign agent workflows with thread continuity and action buttons.\n`,
-    },
-  },
-  {
-    id: 'hub-linear-sync-bridge',
-    name: 'linear-sync-bridge',
-    hubCategory: 'platforms',
-    category: 'mcp',
-    description:
-      'Syncs workspace tasks and project roadmaps with Linear issues, cycles, and team backlogs.',
-    isOfficial: false,
-    stars: 145,
-    version: '1.2.2',
-    tags: ['Platforms', 'Linear', 'Project'],
-    author: 'Community',
-    capabilityItem: {
-      id: 'mcp-linear-sync-bridge',
-      name: 'linear-sync-bridge',
-      category: 'mcp',
-      tags: ['Platforms', 'Linear', 'Project'],
-      description: 'Syncs workspace tasks and roadmaps with Linear issues and cycles.',
-      enabled: true,
-      source: 'mcp',
-      usageCount: 145,
-      requiredScope: 'connector.mcp.execute',
-      trustClass: 'mcp.workspace.write',
-      version: '1.2.2',
-      author: 'Community',
-      markdownDoc: `# Linear Sync Bridge\n\nAutomatically manages Linear tickets, updates issue states upon code completion, and generates release notes.\n`,
-    },
-  },
-  {
-    id: 'hub-firecrawl-deep-extractor',
-    name: 'firecrawl-deep-extractor',
-    hubCategory: 'web-browser',
-    category: 'tools',
-    description:
-      'Recursively crawls web documentation and dynamic single-page applications, extracting clean markdown for LLM ingestion.',
-    isOfficial: false,
-    stars: 260,
-    version: '1.8.0',
-    tags: ['Web & Browser', 'Crawler', 'Markdown'],
-    author: 'Community',
-    capabilityItem: {
-      id: 'tool-firecrawl-deep-extractor',
-      name: 'firecrawl-deep-extractor',
-      category: 'tools',
-      tags: ['Web & Browser', 'Crawler', 'Markdown'],
-      description: 'Recursively crawls web documentation, producing LLM-ready markdown.',
-      enabled: true,
-      source: 'community',
-      usageCount: 260,
-      requiredScope: 'connector.read',
-      trustClass: 'first_party',
-      version: '1.8.0',
-      author: 'Community',
-      markdownDoc: `# Firecrawl Deep Extractor\n\nPerforms multi-page web document scraping with JavaScript execution, cookie handling, and noise filtering.\n`,
-    },
-  },
-  {
-    id: 'hub-code-complexity-analyzer',
-    name: 'code-complexity-analyzer',
-    hubCategory: 'tools',
-    category: 'tools',
-    description:
-      'AST static code analysis utility computing cyclomatic complexity, Halstead metrics, and maintainability index.',
-    isOfficial: true,
-    stars: 118,
-    version: '1.1.0',
-    tags: ['Tools', 'AST', 'Metrics'],
-    author: 'Vaeloom Official',
-    capabilityItem: {
-      id: 'tool-code-complexity-analyzer',
-      name: 'code-complexity-analyzer',
-      category: 'tools',
-      tags: ['Tools', 'AST', 'Metrics'],
-      description: 'AST static code analysis computing complexity and maintainability index.',
-      enabled: true,
-      source: 'built-in',
-      usageCount: 118,
-      requiredScope: 'system.observe',
-      trustClass: 'first_party',
-      version: '1.1.0',
-      author: 'Vaeloom Official',
-      markdownDoc: `# Code Complexity Analyzer\n\nEvaluates cyclomatic complexity and nesting depth across Python, TypeScript, and Go source files.\n`,
-    },
-  },
-  {
-    id: 'hub-json-schema-guard',
-    name: 'json-schema-guard',
-    hubCategory: 'tools',
-    category: 'tools',
-    description:
-      'High-speed JSON schema validation tool verifying agent tool inputs and structured model outputs against OpenAPI schemas.',
-    isOfficial: true,
-    stars: 92,
-    version: '1.0.5',
-    tags: ['Tools', 'Schema', 'Validation'],
-    author: 'Vaeloom Official',
-    capabilityItem: {
-      id: 'tool-json-schema-guard',
-      name: 'json-schema-guard',
-      category: 'tools',
-      tags: ['Tools', 'Schema', 'Validation'],
-      description: 'High-speed JSON schema validation verifying structured agent outputs.',
-      enabled: true,
-      source: 'built-in',
-      usageCount: 92,
-      requiredScope: 'system.observe',
-      trustClass: 'first_party',
-      version: '1.0.5',
-      author: 'Vaeloom Official',
-      markdownDoc: `# JSON Schema Guard\n\nValidates incoming and outgoing payloads against strict Draft-07 JSON schemas before tool dispatch.\n`,
-    },
-  },
-  {
-    id: 'hub-markdown-pdf-compiler',
-    name: 'markdown-pdf-compiler',
-    hubCategory: 'general',
-    category: 'plugins',
-    description:
-      'Headless document compiler generating professional, publication-ready PDFs from Markdown specifications.',
-    isOfficial: true,
-    stars: 175,
-    version: '2.1.0',
-    tags: ['Doc', 'PDF', 'Markdown'],
-    author: 'Vaeloom Official',
-    capabilityItem: {
-      id: 'plugin-markdown-pdf-compiler',
-      name: 'markdown-pdf-compiler',
-      category: 'plugins',
-      tags: ['Doc', 'PDF', 'Markdown'],
-      description: 'Headless document compiler generating publication-ready PDFs from Markdown.',
-      enabled: true,
-      source: 'built-in',
-      usageCount: 175,
-      requiredScope: 'plugin.execute',
-      trustClass: 'first_party',
-      version: '2.1.0',
-      author: 'Vaeloom Official',
-      markdownDoc: `# Markdown PDF Compiler\n\nConverts Markdown documents into paginated, typography-optimized PDFs with syntax-highlighted code blocks.\n`,
-    },
-  },
-  {
-    id: 'hub-document-diff-engine',
-    name: 'document-diff-engine',
-    hubCategory: 'general',
-    category: 'tools',
-    description:
-      'High-precision Myers diffing and semantic patch generator for comparing document versions and workspace artifacts.',
-    isOfficial: false,
-    stars: 84,
-    version: '1.2.0',
-    tags: ['Git', 'Diff', 'Patch'],
-    author: 'Community',
-    capabilityItem: {
-      id: 'tool-document-diff-engine',
-      name: 'document-diff-engine',
-      category: 'tools',
-      tags: ['Git', 'Diff', 'Patch'],
-      description: 'Myers diffing and semantic patch generator for comparing document revisions.',
-      enabled: true,
-      source: 'community',
-      usageCount: 84,
-      requiredScope: 'system.observe',
-      trustClass: 'first_party',
-      version: '1.2.0',
-      author: 'Community',
-      markdownDoc: `# Document Diff Engine\n\nGenerates side-by-side visual diffs and unified patch representations for file version auditing.\n`,
-    },
-  },
-  {
-    id: 'hub-regex-pattern-extractor',
-    name: 'regex-pattern-extractor',
-    hubCategory: 'general',
-    category: 'skills',
-    description:
-      'Synthesizes and audits complex regular expression patterns for unstructured text parsing and log analysis.',
-    isOfficial: false,
-    stars: 62,
-    version: '1.0.1',
-    tags: ['Text', 'Regex', 'Parser'],
-    author: 'Community',
-    capabilityItem: {
-      id: 'skill-regex-pattern-extractor',
-      name: 'regex-pattern-extractor',
-      category: 'skills',
-      tags: ['Text', 'Regex', 'Parser'],
-      description: 'Synthesizes and audits regex patterns for unstructured text parsing.',
-      enabled: true,
-      source: 'community',
-      usageCount: 62,
-      requiredScope: 'system.observe',
-      trustClass: 'first_party',
-      version: '1.0.1',
-      author: 'Community',
-      markdownDoc: `# Regex Pattern Extractor\n\nBuilds, validates, and benchmarks Re2-compatible regular expressions for high-throughput pattern matching.\n`,
-    },
-  },
-];
-
-export function installHubCapability(
-  workspaceId: string,
-  hubItem: HubCapabilityItem,
-): CapabilityItem[] {
-  const current = getStoredCapabilities(workspaceId);
-  const exists = current.find(
-    (c) => c.id === hubItem.capabilityItem.id || c.name === hubItem.capabilityItem.name,
-  );
-  if (exists) {
-    return setStoredCapabilityEnabled(workspaceId, exists.id, true);
   }
 
-  saveCustomCapability(workspaceId, { ...hubItem.capabilityItem, enabled: true });
-  return setStoredCapabilityEnabled(workspaceId, hubItem.capabilityItem.id, true);
+  const merged = getStoredCapabilities(workspaceId);
+  if (writeError !== null) recordStorageError(writeError);
+  return merged;
 }

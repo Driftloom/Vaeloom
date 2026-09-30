@@ -323,9 +323,7 @@ export const vaultSyncApi = {
   updateConfig(body: VaultConfigUpdateRequest): Promise<{ success: boolean; config: unknown }> {
     return apiClient.post<{ success: boolean; config: unknown }>('/vault-sync/config', body);
   },
-  triggerSync(
-    workspaceId: string,
-  ): Promise<{
+  triggerSync(workspaceId: string): Promise<{
     success: boolean;
     status: string;
     last_pull_time: string;
@@ -337,9 +335,7 @@ export const vaultSyncApi = {
   getLogs(workspaceId: string): Promise<VaultSyncLog[]> {
     return apiClient.get<VaultSyncLog[]>('/vault-sync/logs', { workspace_id: workspaceId });
   },
-  ingest(
-    body: VaultIngestRequest,
-  ): Promise<{
+  ingest(body: VaultIngestRequest): Promise<{
     success: boolean;
     ingested_documents: number;
     created_or_updated_memories: number;
@@ -1008,6 +1004,19 @@ export const documentApi = {
     return apiClient.patch<DocumentResponse>(
       `/documents/${encodeURIComponent(id)}?workspace_id=${encodeURIComponent(workspaceId)}`,
       { path },
+    );
+  },
+  move(id: string, workspaceId: string, folderId: string | null): Promise<DocumentResponse> {
+    return apiClient.postQuery<DocumentResponse>(
+      `/documents/${encodeURIComponent(id)}/move`,
+      { workspace_id: workspaceId },
+      { folder_id: folderId },
+    );
+  },
+  updateTags(id: string, workspaceId: string, tags: string[]): Promise<DocumentResponse> {
+    return apiClient.patch<DocumentResponse>(
+      `/documents/${encodeURIComponent(id)}/tags?workspace_id=${encodeURIComponent(workspaceId)}`,
+      { tags },
     );
   },
   archive(id: string, workspaceId: string): Promise<DocumentResponse> {
@@ -2531,6 +2540,23 @@ export const agentCatalogApi = {
   },
 };
 
+/**
+ * `POST /capabilities/{id}/test`
+ *
+ * Distinct from `CapabilityTestResponse` on purpose. This one DOES dispatch the
+ * capability (`executed: true`) and reports wall-clock `latency_ms`, which is not
+ * the same quantity as `execution_duration_ms` above and is measured with a
+ * different clock. They are separate types so a page cannot read one field name
+ * off a response that carries the other.
+ */
+export interface TestCapabilityByIdResponse {
+  status: 'success' | 'warning' | 'error';
+  latencyMs: number;
+  output: unknown;
+  error: string | null;
+  executed: boolean;
+}
+
 export interface CapabilityTestRequest {
   workspaceId: string;
   capabilityName: string;
@@ -2538,6 +2564,18 @@ export interface CapabilityTestRequest {
   inputPayload?: Record<string, unknown>;
 }
 
+/**
+ * `POST /agents/capabilities/test`
+ *
+ * This endpoint does NOT execute the capability. It validates the input against
+ * the registered schema and returns `executed: false`; the handler's own
+ * docstring says "The tool was NOT executed". A `status: 'success'` here means
+ * "the parameters validated", not "the capability works".
+ *
+ * There is no `simulated_output` field any more. The hardcoded fake payload it
+ * used to return was removed in favour of the `executed` flag, so a caller can no
+ * longer mistake a canned response for a real one.
+ */
 export interface CapabilityTestResponse {
   status: 'success' | 'warning' | 'error';
   capability: string;
@@ -2546,6 +2584,7 @@ export interface CapabilityTestResponse {
   executionDurationMs: number;
   validationErrors: string[];
   result: unknown;
+  executed: boolean;
 }
 
 // ─── Memory Feed / Lineage ────────────────────────────────────────────────
@@ -3675,6 +3714,113 @@ export const marketplaceApi = {
 
 // ─── Capabilities API ───────────────────────────────────────────────────────
 
+/**
+ * The free-form `config` bag on a capability row.
+ *
+ * The backend stores `parameters` / `returns` as JSON Schema (see
+ * `routers/capabilities.py`, which reads them straight back when building a
+ * synthetic ToolDefinition), so those two stay `Record<string, unknown>` on
+ * purpose: their keys are schema property names, not field names, and must be
+ * preserved verbatim.
+ *
+ * The index signature is an escape hatch for genuinely open data, not an
+ * invitation to index blindly. Use the getters below instead.
+ */
+export interface CapabilityConfig {
+  doc?: string;
+  tags?: string[];
+  parameters?: Record<string, unknown>;
+  returns?: Record<string, unknown>;
+  autonomy?: CapabilityAutonomy;
+  requiredScope?: string;
+  url?: string;
+  importedAt?: string;
+  [k: string]: unknown;
+}
+
+export type CapabilityAutonomy = 'suggest' | 'autonomous' | 'approval_required';
+
+/**
+ * Trust classes the server actually emits.
+ *
+ * The bundled catalog uses only `core_trusted` and `community`; bridged MCP
+ * servers use the `mcp.*` pair from `mcp_client_service.py`. The `string & {}`
+ * arm keeps an unrecognised server value readable without pretending it is one
+ * of the values above.
+ */
+export type CapabilityTrustClass =
+  'core_trusted' | 'community' | 'mcp.read' | 'mcp.workspace.write' | 'untrusted' | (string & {});
+
+const CAPABILITY_AUTONOMY: ReadonlySet<string> = new Set<CapabilityAutonomy>([
+  'suggest',
+  'autonomous',
+  'approval_required',
+]);
+
+/**
+ * Typed readers for the `config` bag.
+ *
+ * Every one of these was an `as` cast at the call site, which is how a server
+ * that changed a field's type kept typechecking. They coerce and fall back
+ * instead, because the bag is user-writable through `PATCH /capabilities/{id}`
+ * and is not trustworthy at compile time.
+ */
+
+/**
+ * Markdown documentation stored on the capability.
+ *
+ * Reads `markdownDoc` as well as `doc`: the server field is `markdown_doc`, and
+ * `transformKeys()` recurses over the whole response body, so it arrives already
+ * camelCased. `doc` is kept for rows written before the field was renamed.
+ *
+ * NOTE: `transformKeys()` also recurses *into* `parameters` and `returns`, so
+ * JSON Schema property names inside them are camelCased on the way in
+ * (`resume_text` arrives as `resumeText`). Do not round-trip `config.parameters`
+ * back to the server through this client without de-camelCasing it first.
+ */
+export function capabilityConfigMarkdownDoc(config?: CapabilityConfig | null): string | undefined {
+  if (!config) return undefined;
+  const camel = config['markdownDoc'];
+  if (typeof camel === 'string') return camel;
+  if (typeof config.doc === 'string') return config.doc;
+  return undefined;
+}
+
+export function capabilityConfigTags(config?: CapabilityConfig | null): string[] {
+  const tags = config?.tags;
+  if (!Array.isArray(tags)) return [];
+  return tags.filter((tag): tag is string => typeof tag === 'string');
+}
+
+export function capabilityConfigAutonomy(
+  config?: CapabilityConfig | null,
+): CapabilityAutonomy | undefined {
+  const value = config?.autonomy;
+  if (typeof value !== 'string' || !CAPABILITY_AUTONOMY.has(value)) return undefined;
+  return value as CapabilityAutonomy;
+}
+
+export function capabilityConfigRequiredScope(
+  config?: CapabilityConfig | null,
+): string | undefined {
+  const value = config?.requiredScope;
+  return typeof value === 'string' && value !== '' ? value : undefined;
+}
+
+/**
+ * Prefer the real 0062 telemetry columns on the row; fall back to the config bag
+ * for rows written before those columns existed.
+ */
+export function capabilityConfigUsageCount(config?: CapabilityConfig | null): number {
+  const value = config?.['usageCount'];
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+export function capabilityConfigLastUsedAt(config?: CapabilityConfig | null): string | null {
+  const value = config?.['lastUsedAt'];
+  return typeof value === 'string' && value !== '' ? value : null;
+}
+
 export interface CapabilityItemRecord {
   id: string;
   workspaceId: string;
@@ -3687,9 +3833,14 @@ export interface CapabilityItemRecord {
   author: string;
   type: string;
   runtime: string;
-  config: Record<string, unknown>;
+  config: CapabilityConfig;
   createdAt?: string;
   updatedAt?: string;
+  /** Real executions, from the 0062 telemetry columns. 0 has never run. */
+  usageCount: number;
+  /** ISO 8601 of the last execution; null when it has never run. */
+  lastUsedAt: string | null;
+  installedAt?: string | null;
 }
 
 export interface CreateCapabilityRequest {
@@ -3700,14 +3851,65 @@ export interface CreateCapabilityRequest {
   author?: string;
   type?: string;
   runtime?: string;
-  config?: Record<string, unknown>;
+  config?: CapabilityConfig;
 }
 
 export interface UpdateCapabilityRequest {
   enabled?: boolean;
   status?: string;
   description?: string;
-  config?: Record<string, unknown>;
+  config?: CapabilityConfig;
+  autonomy?: CapabilityAutonomy;
+  requiredScope?: string;
+}
+
+/**
+ * One row of the server skill catalog: `GET /capabilities/catalog`.
+ *
+ * The catalog is global, so it carries no install state and no workspace id.
+ * `bundled` is the only install signal available here; resolving "is this already
+ * installed for my workspace" needs `listSkills` below.
+ *
+ * Note the server field `self_check`, which `transformKeys()` delivers as
+ * `selfCheck`.
+ */
+export interface SkillCatalogEntry {
+  slug: string;
+  name: string;
+  description: string;
+  tags: string[];
+  version: string;
+  author: string;
+  requiredScope: string;
+  autonomy: CapabilityAutonomy;
+  trustClass: CapabilityTrustClass;
+  triggers: string[];
+  markdownDoc: string;
+  bundled: boolean;
+  selfCheck?: unknown;
+}
+
+/**
+ * A workspace capability row unioned with the not-yet-installed catalog entries.
+ *
+ * `GET /capabilities?category=skill&include_catalog=true`. A catalog-only row has
+ * `installed: false`, a null `id` and null `workspaceId`, so anything that needs
+ * a row to exist server-side must branch on `installed` before touching `id`.
+ * `usageCount` is 0 and `lastUsedAt` is null on such rows by construction.
+ */
+export interface SkillListItem extends Omit<CapabilityItemRecord, 'id' | 'workspaceId'> {
+  installed: boolean;
+  /** Null on a catalog-only row: it has no workspace row to point at. */
+  id: string | null;
+  workspaceId: string | null;
+  tags: string[];
+  markdownDoc: string | null;
+  requiredScope: string | null;
+  trustClass: CapabilityTrustClass | null;
+  autonomy: CapabilityAutonomy | null;
+  triggers: string[];
+  bundled: boolean;
+  slug: string | null;
 }
 
 export const capabilitiesApi = {
@@ -3715,12 +3917,6 @@ export const capabilitiesApi = {
     const params: Record<string, string | undefined> = {};
     if (category) params['category'] = category;
     if (workspaceId) params['workspace_id'] = workspaceId;
-    return apiClient.get<CapabilityItemRecord[]>('/capabilities', params);
-  },
-  getCapabilities(params?: {
-    workspaceId?: string;
-    category?: string;
-  }): Promise<CapabilityItemRecord[]> {
     return apiClient.get<CapabilityItemRecord[]>('/capabilities', params);
   },
   get(capabilityId: string): Promise<CapabilityItemRecord> {
@@ -3735,20 +3931,62 @@ export const capabilitiesApi = {
   delete(capabilityId: string): Promise<void> {
     return apiClient.delete<void>(`/capabilities/${capabilityId}`);
   },
-  toggleCapability(capabilityId: string, enabled: boolean, workspaceId?: string) {
-    return apiClient.patch<CapabilityItemRecord>(`/capabilities/${capabilityId}`, {
-      enabled,
+  /**
+   * The server-owned catalog. Authoritative for the Skills tab; the TS seed in
+   * `capabilities-data.ts` is only the offline/SSR fallback.
+   *
+   * `category` is a plain `string` rather than a union because the server treats
+   * it as free text (`list_catalog(category)` filters on equality); narrowing it
+   * client-side would only be a guess about which values are populated today.
+   *
+   * No workspace parameter: `list_catalog_capabilities` reads no workspace row,
+   * so a workspace id here would be silently ignored. Use `listSkills` when the
+   * answer depends on what this workspace has installed.
+   */
+  catalog(category = 'skill'): Promise<SkillCatalogEntry[]> {
+    return apiClient.get<SkillCatalogEntry[]>('/capabilities/catalog', { category });
+  },
+  /**
+   * Installed skills merged with the catalog in one request.
+   *
+   * Saves the page a fetch-then-join: it would otherwise have to reconcile the
+   * two lists itself and could show a catalog skill the workspace had already
+   * installed. Lands with the 0062 migration.
+   */
+  listSkills(workspaceId: string): Promise<SkillListItem[]> {
+    return apiClient.get<SkillListItem[]>('/capabilities', {
+      category: 'skill',
+      include_catalog: 'true',
       workspace_id: workspaceId,
     });
   },
+  /**
+   * Flip a capability on or off.
+   *
+   * `workspace_id` is omitted deliberately. `UpdateCapabilityRequest` accepts the
+   * field so the client can stop having it silently dropped, but the backend only
+   * uses it to prove the client agrees with the verified workspace — authorization
+   * comes from the request-scoped workspace id (`Depends(get_workspace_id)`), never
+   * from a body field. Sending it invites a caller to believe it is load-bearing.
+   */
+  toggleCapability(
+    capabilityId: string,
+    enabled: boolean,
+    _workspaceId?: string,
+  ): Promise<CapabilityItemRecord> {
+    return apiClient.patch<CapabilityItemRecord>(`/capabilities/${capabilityId}`, { enabled });
+  },
+  /**
+   * Dispatch a registered capability for real and report what happened.
+   *
+   * Not interchangeable with `test()`, which never executes anything.
+   */
   testCapability(
     capabilityId: string,
     inputPayload?: Record<string, unknown>,
-    workspaceId?: string,
-  ) {
-    return apiClient.post(`/capabilities/${capabilityId}/test`, {
-      input: inputPayload,
-      workspace_id: workspaceId,
+  ): Promise<TestCapabilityByIdResponse> {
+    return apiClient.post<TestCapabilityByIdResponse>(`/capabilities/${capabilityId}/test`, {
+      input: inputPayload ?? {},
     });
   },
   test(body: CapabilityTestRequest): Promise<CapabilityTestResponse> {

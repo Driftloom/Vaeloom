@@ -205,7 +205,7 @@ function CapabilitiesContent() {
           enabled: dbCap.enabled,
           source: 'custom',
           usageCount: (dbCap.config?.['usageCount'] as number) || 0,
-          lastUsed: 'Recently',
+          lastUsedAt: null,
           requiredScope:
             (dbCap.config?.['requiredScope'] as string) ||
             (mappedCat === 'mcp' ? 'connector.mcp.execute' : 'system.execute'),
@@ -284,7 +284,7 @@ function CapabilitiesContent() {
                 enabled: conn.status === 'connected',
                 source: 'mcp',
                 usageCount: 12,
-                lastUsed: conn.lastSyncAt ? 'Recently synced' : 'idle',
+                lastUsedAt: conn.lastSyncAt ?? null,
                 requiredScope: 'connector.mcp.execute',
                 trustClass: 'mcp.workspace.write',
                 version: '1.0.0',
@@ -451,7 +451,7 @@ function CapabilitiesContent() {
       setCapabilities(updated);
 
       try {
-        await capabilitiesApi.toggleCapability(id, nextState, workspaceId);
+        await capabilitiesApi.toggleCapability(id, nextState);
         void mutateCapabilities();
       } catch (err) {
         // A 404 is the static-capability case the old bare `catch` was papering
@@ -577,7 +577,7 @@ function CapabilitiesContent() {
         enabled: true,
         source: 'custom',
         usageCount: 1,
-        lastUsed: 'Just now',
+        lastUsedAt: new Date().toISOString(),
         requiredScope: 'system.execute',
         trustClass: 'first_party',
         version: '1.0.0',

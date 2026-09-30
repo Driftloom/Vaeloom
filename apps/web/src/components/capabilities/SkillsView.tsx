@@ -57,7 +57,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
       return a.name.localeCompare(b.name);
     }
     if (sortBy === 'recent') {
-      return (b.lastUsed || '').localeCompare(a.lastUsed || '');
+      return (b.lastUsedAt || '').localeCompare(a.lastUsedAt || '');
     }
     return (b.usageCount || 0) - (a.usageCount || 0);
   });
