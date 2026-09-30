@@ -1005,9 +1005,9 @@ export const McpView: React.FC<McpViewProps> = ({
                       />
                     </svg>
                   </div>
-                  <h3 className="text-base font-semibold text-text font-sans">
+                  <h2 className="text-base sm:text-lg font-semibold tracking-tight text-text font-sans">
                     Model Context Protocol (MCP v2) Runtime
-                  </h3>
+                  </h2>
                   <p className="text-xs text-text-secondary max-w-lg mx-auto leading-relaxed font-sans">
                     Connect verified external tools, local filesystems, and databases directly to
                     autonomous agents with sandboxed stdio subprocesses or streamable-http

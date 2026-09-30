@@ -117,11 +117,10 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
 
   return (
     <div className="flex-1 flex min-h-0 min-w-0 bg-background text-text overflow-hidden">
-      {/* This view is the default landing tab of /capabilities and previously had
-          no page-level heading, so the route served no <h1> at all. The axe gate
-          only runs wcag2a/2aa/21aa/22aa tags, which exclude the
-          page-has-heading-one best-practice rule, so nothing caught it. */}
-      <h1 className="sr-only">Skills</h1>
+      {/* No heading here. `capabilities/page.tsx` renders the route's single
+          <h1> via <PageHeader>, and this view's own section heading is the
+          <h2> below. A previous `sr-only` <h1> existed only because the route
+          had no heading at all; keeping it would now render two <h1>s. */}
       {/* Left Column: Capability List with 1 Most used sort */}
       <div
         className={`w-full lg:w-[320px] xl:w-[350px] shrink-0 border-r border-border bg-surface flex flex-col min-h-0 ${

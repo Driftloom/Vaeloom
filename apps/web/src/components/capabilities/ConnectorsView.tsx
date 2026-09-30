@@ -176,17 +176,28 @@ export function ConnectorsView({
             }),
         connectorsApi?.mcp?.builtin
           ? connectorsApi.mcp.builtin()
-          : Promise.resolve<{ builtin_servers: BuiltinMcpServer[] }>({ builtin_servers: [] }),
+          : Promise.resolve<{
+              builtinServers: BuiltinMcpServer[];
+              builtin_servers?: BuiltinMcpServer[];
+            }>({
+              builtinServers: [],
+              builtin_servers: [],
+            }),
       ]);
 
       if (!isMountedRef.current) return;
       if (conns.status === 'fulfilled' && Array.isArray(conns.value)) {
         setDynamicConnectors(conns.value);
       }
-      if (compStatus.status === 'fulfilled' && compStatus.value?.popular_apps) {
-        setComposioApps(compStatus.value.popular_apps);
-        if (compStatus.value.total_apps) {
-          setComposioTotalCount(compStatus.value.total_apps);
+      if (compStatus.status === 'fulfilled') {
+        const val = compStatus.value;
+        const pop = val?.popularApps ?? val?.popular_apps;
+        if (pop) {
+          setComposioApps(pop);
+        }
+        const tot = val?.totalApps ?? val?.total_apps;
+        if (tot) {
+          setComposioTotalCount(tot);
         }
       }
       if (
@@ -199,8 +210,11 @@ export function ConnectorsView({
           setComposioTotalCount(compApps.value.total);
         }
       }
-      if (mcp.status === 'fulfilled' && mcp.value?.builtin_servers) {
-        setBuiltinServers(mcp.value.builtin_servers);
+      if (mcp.status === 'fulfilled') {
+        const servers = mcp.value?.builtinServers ?? mcp.value?.builtin_servers;
+        if (servers) {
+          setBuiltinServers(servers);
+        }
       }
     } catch {
       // safe fallback
@@ -851,9 +865,9 @@ export function ConnectorsView({
       <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-background text-text antialiased overflow-hidden">
         <div className="border-b border-border bg-surface px-4 sm:px-6 py-2.5 shrink-0 shadow-xs">
           <div className="flex items-center gap-3">
-            <h1 className="text-base sm:text-lg font-semibold text-text tracking-tight">
+            <h2 className="text-base sm:text-lg font-semibold tracking-tight text-text font-sans">
               Connectors Studio
-            </h1>
+            </h2>
           </div>
         </div>
         <div className="flex h-64 items-center justify-center">
@@ -871,9 +885,9 @@ export function ConnectorsView({
       <div className="border-b border-border bg-surface px-4 sm:px-6 py-2.5 shrink-0 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 min-w-0">
           <div className="flex items-center gap-3">
-            <h1 className="text-base sm:text-lg font-semibold text-text tracking-tight">
+            <h2 className="text-base sm:text-lg font-semibold tracking-tight text-text font-sans">
               Connectors Studio
-            </h1>
+            </h2>
           </div>
           {/* Sub-nav Segmented Switcher */}
           <div className="flex items-center gap-1 p-0.5 rounded-lg bg-surface-elevated border border-border overflow-x-auto no-scrollbar shrink-0">

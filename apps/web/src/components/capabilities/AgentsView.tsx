@@ -600,7 +600,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h2 className="text-xl font-bold tracking-tight text-text font-sans">
+                        <h2 className="text-base sm:text-lg font-semibold tracking-tight text-text font-sans">
                           {visual.readableTitle}
                         </h2>
                         <span className="px-1.5 py-0.5 text-xs font-mono text-text-muted bg-surface-elevated border border-border rounded">

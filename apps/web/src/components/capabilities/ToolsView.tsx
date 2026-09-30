@@ -749,12 +749,12 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, search
                   Active
                 </span>
               </div>
-              <h1 className="text-base sm:text-lg font-bold text-text tracking-tight mt-0.5 flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-semibold tracking-tight text-text font-sans mt-0.5 flex items-center gap-2">
                 <span>{selectedSuite.name}</span>
                 <span className="text-xs font-mono font-medium px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20">
                   {selectedSuite.count} functions
                 </span>
-              </h1>
+              </h2>
               <p className="text-xs text-text-secondary mt-1 max-w-2xl leading-relaxed">
                 {selectedSuite.description}
               </p>
