@@ -4,6 +4,7 @@ import React from 'react';
 
 import { XIcon } from '../../icons';
 import { MIN_TOUCH_TARGET } from '../layout/touchTarget';
+import { lockScroll, unlockScroll } from '../layout/scrollLock';
 
 export interface DrawerProps {
   isOpen: boolean;
@@ -40,13 +41,13 @@ export const Drawer: React.FC<DrawerProps> = ({
       }
     };
     if (isOpen) {
-      document.body.style.overflow = 'hidden';
+      lockScroll();
       window.addEventListener('keydown', handleKeyDown);
-    } else {
-      document.body.style.overflow = '';
     }
     return () => {
-      document.body.style.overflow = '';
+      if (isOpen) {
+        unlockScroll();
+      }
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onClose]);
@@ -56,7 +57,11 @@ export const Drawer: React.FC<DrawerProps> = ({
   const sStyle = sizeStyles[size] || sizeStyles.md;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true">
+    <div
+      className="fixed inset-0 z-50 flex justify-end overscroll-contain"
+      role="dialog"
+      aria-modal="true"
+    >
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
@@ -86,7 +91,9 @@ export const Drawer: React.FC<DrawerProps> = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5 text-sm text-text">{children}</div>
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-5 text-sm text-text">
+          {children}
+        </div>
 
         {/* Footer */}
         {footer && (

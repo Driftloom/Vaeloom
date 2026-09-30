@@ -43,6 +43,12 @@ export { Heading } from './components/layout/Heading';
 export { Divider } from './components/layout/Divider';
 export { VisuallyHidden } from './components/layout/VisuallyHidden';
 export { MIN_TOUCH_TARGET } from './components/layout/touchTarget';
+export {
+  lockScroll,
+  unlockScroll,
+  resetScrollLock,
+  useScrollLock,
+} from './components/layout/scrollLock';
 
 export type { BoxProps } from './components/layout/Box';
 export type { StackProps } from './components/layout/Stack';

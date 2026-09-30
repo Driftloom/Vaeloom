@@ -54,7 +54,7 @@ export function DataTable<T>({
 
   return (
     <div
-      className={`w-full overflow-x-auto rounded-lg border border-border bg-surface ${className}`}
+      className={`w-full overflow-x-auto overscroll-x-contain rounded-lg border border-border bg-surface ${className}`}
     >
       <table className="w-full text-left border-collapse text-sm">
         <thead>

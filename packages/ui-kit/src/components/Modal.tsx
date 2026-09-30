@@ -4,6 +4,7 @@ import React, { useEffect, useCallback, useRef, useId } from 'react';
 import { createPortal } from 'react-dom';
 
 import { MIN_TOUCH_TARGET } from './layout/touchTarget';
+import { lockScroll, unlockScroll } from './layout/scrollLock';
 
 export interface ModalProps {
   isOpen: boolean;
@@ -64,11 +65,11 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
     focusTarget?.focus();
     document.addEventListener('keydown', handleEscape);
     document.addEventListener('keydown', trapFocus);
-    document.body.style.overflow = 'hidden';
+    lockScroll();
     return () => {
       document.removeEventListener('keydown', handleEscape);
       document.removeEventListener('keydown', trapFocus);
-      document.body.style.overflow = '';
+      unlockScroll();
       previouslyFocused.current?.focus();
     };
   }, [isOpen, handleEscape, trapFocus]);
@@ -76,17 +77,17 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
   if (!isOpen) return null;
 
   const content = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overscroll-contain">
       <div className="fixed inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
       <div
         ref={dialogRef}
-        className={`relative w-full ${sizes[size]} mx-4 bg-surface rounded-lg border border-border shadow-xl`}
+        className={`relative w-full ${sizes[size]} mx-4 max-h-[90dvh] flex flex-col bg-surface rounded-lg border border-border shadow-xl overscroll-contain`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
           <h2 id={titleId} className="text-lg font-semibold text-text">
             {title}
           </h2>
@@ -112,7 +113,9 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
             </svg>
           </button>
         </div>
-        <div className="px-6 py-4 text-text">{children}</div>
+        <div className="px-6 py-4 text-text flex-1 min-h-0 overflow-y-auto overscroll-y-contain">
+          {children}
+        </div>
       </div>
     </div>
   );
