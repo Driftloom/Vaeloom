@@ -27,6 +27,40 @@ import { defineConfig, devices } from '@playwright/test';
 const E2E_API_PORT = Number(process.env['VAELOOM_E2E_API_PORT'] ?? '8000');
 const E2E_API_ORIGIN = `http://127.0.0.1:${E2E_API_PORT}`;
 
+/**
+ * Which app server the suite runs against.
+ *
+ * `build` (default) runs `next build` then `next start`, so the suite exercises
+ * the optimised artifact that actually deploys.
+ *
+ * The previous config hardcoded `next dev`. That had two consequences, both
+ * observed rather than theoretical:
+ *
+ *   1. `next dev` and `next build` share `.next`. Running the suite therefore
+ *      overwrote the production build, so `next start` afterwards failed with
+ *      `PageNotFoundError` / `pages-manifest.json ENOENT` until `.next` was
+ *      deleted by hand.
+ *   2. Dev serves routes lazily. The first hit on a large route (the 124 kB
+ *      /capabilities bundle) took longer than the 45 s `waitForURL` budget in
+ *      quality.spec.ts, which surfaced as a bare navigation timeout with no
+ *      indication that compilation was the cause.
+ *
+ * `dev` is available for fast local iteration via E2E_WEB_MODE=dev, and is not
+ * what CI should use.
+ */
+const E2E_WEB_MODE = process.env['E2E_WEB_MODE'] === 'dev' ? 'dev' : 'build';
+
+const WEB_SERVER = {
+  build: {
+    command: 'pnpm build && pnpm next start -p 3000',
+    timeout: 600_000,
+  },
+  dev: {
+    command: 'pnpm next dev -p 3000',
+    timeout: 300_000,
+  },
+}[E2E_WEB_MODE] as { command: string; timeout: number };
+
 export default defineConfig({
   testDir: './e2e',
   timeout: 90_000,
@@ -77,10 +111,13 @@ export default defineConfig({
       },
     },
     {
-      command: 'pnpm next dev -p 3000',
+      ...WEB_SERVER,
       url: 'http://127.0.0.1:3000/login',
-      reuseExistingServer: !process.env['CI'],
-      timeout: 300_000,
+      // Reuse only in dev mode. In build mode, silently adopting whatever
+      // happens to be listening on 3000 would mean the run reports on a server
+      // nobody rebuilt, and the `.next` it may be writing to is the one the
+      // build command is about to overwrite.
+      reuseExistingServer: E2E_WEB_MODE === 'dev' && !process.env['CI'],
       // No `cwd` override: `next` must resolve from apps/web. Setting it to the
       // repo root (as the API entry does) makes node look for
       // node_modules/next at the root, where it does not exist, and the server
@@ -90,6 +127,11 @@ export default defineConfig({
         // apps/web/.env.local, which may point somewhere else entirely.
         INTERNAL_API_URL: E2E_API_ORIGIN,
         NEXT_PUBLIC_API_URL: E2E_API_ORIGIN,
+        // A production build is not NODE_ENV=development, so the CSP
+        // connect-src allowlist would omit the local API and every browser
+        // fetch would be silently blocked. The login helper then fails at
+        // waitForURL with no console-visible cause.
+        ALLOW_LOCAL_API: 'true',
       },
     },
   ],

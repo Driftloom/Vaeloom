@@ -856,6 +856,7 @@ export default function WorkspaceFilesPage() {
             </button>
           </div>
 
+          <h2 className="sr-only">Folders</h2>
           <nav aria-label="Folder Navigation" className="space-y-1">
             <button
               type="button"
@@ -927,6 +928,13 @@ export default function WorkspaceFilesPage() {
 
         {/* Documents Content Column */}
         <div className="lg:col-span-3 space-y-4">
+          {/* Names the region for assistive tech without adding visual weight.
+              The folder column beside it is labelled the same way (a nav with an
+              aria-label at the top of the column), so the two columns stay
+              symmetric -- neither carries a visible heading the other lacks.
+              Screen-reader users get a heading list; sighted users do not get a
+              label competing with the search toolbar. */}
+          <h2 className="sr-only">Documents</h2>
           {/* Search Toolbar */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 bg-surface border border-border/60 rounded-xl p-3">
             {/* Full-text Live Search */}
