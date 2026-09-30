@@ -1,9 +1,13 @@
 import { FAQ } from '@/lib/landing/copy';
 import { Container, Reveal, Section, SectionHeading } from '@/components/landing/shared/LandingKit';
+import { StageSlot } from '@/components/landing/3d/SceneShell';
 
 export default function FAQSection() {
   return (
-    <Section id="faq" labelledBy="faq-title">
+    <Section id="faq" labelledBy="faq-title" className="relative">
+      {/* The quietest beat on the page: this section is pure reading, so the
+          scene stays a faint horizon and nothing competes with the answers. */}
+      <StageSlot beat="faq" className="absolute inset-0 opacity-40" />
       <Container>
         <SectionHeading id="faq-title" eyebrow={FAQ.eyebrow} title={FAQ.title} />
         <div className="mx-auto mt-12 max-w-3xl divide-y divide-border-subtle">

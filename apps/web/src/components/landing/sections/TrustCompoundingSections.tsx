@@ -17,7 +17,8 @@ const STATE_STYLE: Record<string, { label: string; cls: string }> = {
 
 export function TrustSection() {
   return (
-    <Section id="trust" labelledBy="trust-title" className="bg-surface-50/60">
+    <Section id="trust" labelledBy="trust-title" className="relative bg-surface-50/60">
+      <StageSlot beat="trust" className="absolute inset-0 opacity-30" />
       <Container>
         <SectionHeading
           id="trust-title"
@@ -83,8 +84,13 @@ export function CompoundingSection() {
         />
 
         <div className="mx-auto mt-16 max-w-4xl">
+          {/* Height is load-bearing here, not cosmetic: the lattice is scrubbed
+              by this frame's own scroll progress, so a short box leaves almost
+              no range to assemble across and the section reads as empty. It
+              also sits above the fold-line on most laptops, so it has to earn
+              the space. */}
           <div
-            className="relative h-[300px] overflow-hidden rounded-3xl border border-border-subtle bg-black/40 sm:h-[360px]"
+            className="relative h-[380px] overflow-hidden rounded-3xl border border-border-subtle bg-surface-elevated/50 sm:h-[460px] lg:h-[520px]"
             role="img"
             aria-label="Memory lattice assembling as you scroll — sparse at day one, dense by year one. Scroll to grow the memory."
           >

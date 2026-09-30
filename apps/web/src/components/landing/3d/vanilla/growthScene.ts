@@ -12,6 +12,8 @@ import { mulberry32, scenePalette } from '../scene-utils';
 const GRID = 8; // 8 x 5 x 8
 const GRID_Y = 5;
 const COUNT = GRID * GRID_Y * GRID;
+/** Cube edge. Sized to read as a solid cell against the 0.85 lattice pitch. */
+const CUBE = 0.4;
 
 type Cfg = {
   container: HTMLElement;
@@ -28,7 +30,7 @@ export function mountGrowth({
   camera.lookAt(0, 1.2, 0);
 
   const rand = mulberry32(20260825);
-  const geo = new THREE.BoxGeometry(0.32, 0.32, 0.32);
+  const geo = new THREE.BoxGeometry(CUBE, CUBE, CUBE);
   const mat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.9 });
   const mesh = new THREE.InstancedMesh(geo, mat, COUNT);
   mesh.frustumCulled = false;
@@ -56,7 +58,7 @@ export function mountGrowth({
   // per-instance color by height (indigo -> cyan)
   const color = new THREE.Color();
   const cLow = new THREE.Color(palette.core);
-  const cHigh = new THREE.Color(theme === 'light' ? '#0891b2' : '#22d3ee');
+  const cHigh = new THREE.Color(palette.streamA);
 
   let progress = 0;
 
@@ -108,7 +110,7 @@ export function createGrowth(theme: 'dark' | 'light'): {
   const palette = scenePalette(theme);
   const group = new THREE.Group();
   const rand = mulberry32(20260825);
-  const geo = new THREE.BoxGeometry(0.32, 0.32, 0.32);
+  const geo = new THREE.BoxGeometry(CUBE, CUBE, CUBE);
   const mat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.9 });
   const mesh = new THREE.InstancedMesh(geo, mat, COUNT);
   mesh.frustumCulled = false;
@@ -129,10 +131,15 @@ export function createGrowth(theme: 'dark' | 'light'): {
   group.add(mesh);
   const color = new THREE.Color();
   const cLow = new THREE.Color(palette.core);
-  const cHigh = new THREE.Color(theme === 'light' ? '#0891b2' : '#22d3ee');
+  const cHigh = new THREE.Color(palette.streamA);
   const dummy = new THREE.Object3D();
   function update(localProgress: number): void {
-    const progress = Math.min(1, Math.max(0, localProgress));
+    // Scrubbed by scroll, but never from zero. A pure 0..1 map left the frame
+    // looking empty whenever the box was at its reading position, which is
+    // most of the time. "Day 1" should read as sparse, not as a bug — so the
+    // lattice starts ~20% assembled and still has most of its growth left to
+    // show by the time the box leaves.
+    const progress = Math.min(1, Math.max(0, 0.2 + localProgress * 0.8));
     for (let idx = 0; idx < COUNT; idx++) {
       const c = cubes[idx]!;
       const local = Math.min(1, Math.max(0, (progress - c.threshold * 0.85) / 0.15));

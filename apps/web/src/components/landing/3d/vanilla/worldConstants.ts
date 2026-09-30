@@ -19,7 +19,7 @@ import type { QualityTier } from './stageScene';
 export const BEAT_SPACING = 60;
 
 /** Total number of narrative beats. */
-export const BEAT_COUNT = 12;
+export const BEAT_COUNT = 15;
 
 /** Total world depth (negative Z). */
 export const WORLD_DEPTH = -(BEAT_COUNT - 1) * BEAT_SPACING;
@@ -35,8 +35,6 @@ export interface BeatDef {
   camera: CameraKey;
   /** Whether this beat has scroll-driven camera path. */
   hasPath?: boolean;
-  /** Scroll range (0..1 page progress) where this beat is dominant. */
-  scrollRange: [number, number];
   /** Section class: 'A' = primary 3D, 'B' = shared/transitional, 'C' = HTML-first. */
   class: 'A' | 'B' | 'C';
 }
@@ -57,102 +55,52 @@ const agentsCam: CameraKey = { pos: [0, 1.9, 6.4], look: [0, 0, 0], fov: 50 };
 const connectorsCam: CameraKey = { pos: [0, 2.6, 6.8], look: [0, 0, 0], fov: 52 };
 const organizationCam: CameraKey = { pos: [0, 1.8, 7.5], look: [0, 0.5, 0], fov: 50 };
 const resumeCam: CameraKey = { pos: [0, 1.2, 7.0], look: [0, 0.3, 0], fov: 48 };
+// Career is a pipeline the camera looks down: pulled back, near-axis, so the
+// stage reads as depth rather than as a subject you have to inspect.
+const careerCam: CameraKey = { pos: [0, 0.6, 8.8], look: [0, 0, 0], fov: 46 };
 const schedulerCam: CameraKey = { pos: [0, 1.5, 7.2], look: [0, 0.2, 0], fov: 50 };
-const growthCam: CameraKey = { pos: [7.5, 5.5, 9.5], look: [0, 1.2, 0], fov: 55 };
+// Trust is the calmest beat on the page — camera holds still and wide so the
+// permission table stays the loudest thing in the section.
+const trustCam: CameraKey = { pos: [0, 1.6, 9.2], look: [0, 0.2, 0], fov: 44 };
+// Compounding sits in a tall framed box, so the camera frames the lattice as a
+// monument rather than a distant object. Kept close to the Z axis: pushing far
+// off-axis skewed the lattice into one corner of the frame and left the rest
+// of the box empty.
+const growthCam: CameraKey = { pos: [3.0, 3.2, 8.8], look: [0, 2.1, 0], fov: 46 };
+// FAQ is the reading beat: widest, flattest framing, dimmest scene.
+const faqCam: CameraKey = { pos: [0, 1.2, 10.5], look: [0, 0, 0], fov: 42 };
 const ctaCam: CameraKey = heroCam; // Return to hero-like calm
 
 /**
  * All beats in scroll order.
  * Index 0 = hero (top of page), index N = CTA (bottom).
  * z positions are computed from BEAT_SPACING.
+ *
+ * ORDER IS LOAD-BEARING: it must mirror the DOM order of the sections that
+ * mount a `StageSlot`, because the stage walks this array by index to decide
+ * which scene is built, which neighbours stream in, and how far the camera
+ * travels. Adding or reordering a section means reordering this table too.
+ *
+ * The active beat is resolved from live element geometry (see StageProvider),
+ * NOT from a scroll-position table — a static table drifts out of sync with
+ * the real layout the moment any section's height changes.
  */
 export const BEATS: BeatDef[] = [
-  {
-    id: 'hero',
-    z: 0,
-    camera: heroCam,
-    hasPath: false,
-    scrollRange: [0, 0.06],
-    class: 'A',
-  },
-  {
-    id: 'problem',
-    z: -BEAT_SPACING,
-    camera: problemCam,
-    scrollRange: [0.06, 0.11],
-    class: 'A',
-  },
-  {
-    id: 'difference',
-    z: -BEAT_SPACING * 2,
-    camera: differenceCam,
-    scrollRange: [0.11, 0.17],
-    class: 'A',
-  },
-  {
-    id: 'journey',
-    z: -BEAT_SPACING * 3,
-    camera: journeyCam,
-    hasPath: true,
-    scrollRange: [0.17, 0.25],
-    class: 'A',
-  },
-  {
-    id: 'memory',
-    z: -BEAT_SPACING * 4,
-    camera: memoryCam,
-    scrollRange: [0.25, 0.35],
-    class: 'A',
-  },
-  {
-    id: 'agents',
-    z: -BEAT_SPACING * 5,
-    camera: agentsCam,
-    scrollRange: [0.35, 0.44],
-    class: 'A',
-  },
-  {
-    id: 'connectors',
-    z: -BEAT_SPACING * 6,
-    camera: connectorsCam,
-    scrollRange: [0.44, 0.51],
-    class: 'A',
-  },
-  {
-    id: 'organization',
-    z: -BEAT_SPACING * 7,
-    camera: organizationCam,
-    scrollRange: [0.51, 0.55],
-    class: 'A',
-  },
-  {
-    id: 'resume',
-    z: -BEAT_SPACING * 8,
-    camera: resumeCam,
-    scrollRange: [0.55, 0.64],
-    class: 'A',
-  },
-  {
-    id: 'scheduler',
-    z: -BEAT_SPACING * 9,
-    camera: schedulerCam,
-    scrollRange: [0.64, 0.76],
-    class: 'A',
-  },
-  {
-    id: 'growth',
-    z: -BEAT_SPACING * 10,
-    camera: growthCam,
-    scrollRange: [0.76, 0.93],
-    class: 'A',
-  },
-  {
-    id: 'cta',
-    z: -BEAT_SPACING * 11,
-    camera: ctaCam,
-    scrollRange: [0.93, 1.0],
-    class: 'A',
-  },
+  { id: 'hero', z: 0, camera: heroCam, class: 'A' },
+  { id: 'problem', z: -BEAT_SPACING, camera: problemCam, class: 'A' },
+  { id: 'difference', z: -BEAT_SPACING * 2, camera: differenceCam, class: 'A' },
+  { id: 'journey', z: -BEAT_SPACING * 3, camera: journeyCam, hasPath: true, class: 'A' },
+  { id: 'memory', z: -BEAT_SPACING * 4, camera: memoryCam, class: 'A' },
+  { id: 'agents', z: -BEAT_SPACING * 5, camera: agentsCam, class: 'A' },
+  { id: 'connectors', z: -BEAT_SPACING * 6, camera: connectorsCam, class: 'A' },
+  { id: 'organization', z: -BEAT_SPACING * 7, camera: organizationCam, class: 'A' },
+  { id: 'resume', z: -BEAT_SPACING * 8, camera: resumeCam, class: 'A' },
+  { id: 'career', z: -BEAT_SPACING * 9, camera: careerCam, class: 'A' },
+  { id: 'scheduler', z: -BEAT_SPACING * 10, camera: schedulerCam, class: 'A' },
+  { id: 'trust', z: -BEAT_SPACING * 11, camera: trustCam, class: 'A' },
+  { id: 'growth', z: -BEAT_SPACING * 12, camera: growthCam, class: 'A' },
+  { id: 'faq', z: -BEAT_SPACING * 13, camera: faqCam, class: 'A' },
+  { id: 'cta', z: -BEAT_SPACING * 14, camera: ctaCam, class: 'A' },
 ];
 
 // ─── CAMERA TRANSITION ─────────────────────────────────────────
@@ -179,64 +127,16 @@ export const DENSITY_BY_TIER: Record<QualityTier, number> = {
   high: 1,
 };
 
-// ─── SCENE COLORS (dark/light) ─────────────────────────────────
+// ─── COLORS ────────────────────────────────────────────────────
 
-export interface ScenePalette {
-  structure: string;
-  core: string;
-  streamA: string;
-  link: string;
-  edge: string;
-  edgeHot: string;
-  dust: string;
-}
-
-export const PALETTE: Record<'dark' | 'light', ScenePalette> = {
-  dark: {
-    structure: '#7c8cf8',
-    core: '#818cf8',
-    streamA: '#22d3ee',
-    link: '#e879f9',
-    edge: '#2c2c34',
-    edgeHot: '#a5b4fc',
-    dust: '#a5b4fc',
-  },
-  light: {
-    structure: '#4f46e5',
-    core: '#4f46e5',
-    streamA: '#0891b2',
-    link: '#c026d3',
-    edge: '#c4c9de',
-    edgeHot: '#4338ca',
-    dust: '#6366f1',
-  },
-};
-
-// ─── NODE TYPE COLORS ──────────────────────────────────────────
-
-export const NODE_COLORS: Record<string, Record<'dark' | 'light', string>> = {
-  person: { dark: '#ec4899', light: '#be185d' },
-  skill: { dark: '#8b5cf6', light: '#7c3aed' },
-  project: { dark: '#3b82f6', light: '#1d4ed8' },
-  org: { dark: '#6366f1', light: '#4338ca' },
-  document: { dark: '#f59e0b', light: '#b45309' },
-  event: { dark: '#f97316', light: '#c2410c' },
-  entity: { dark: '#06b6d4', light: '#0e7490' },
-  topic: { dark: '#10b981', light: '#047857' },
-};
-
-// ─── AGENT HUE MAP ─────────────────────────────────────────────
-
-export const AGENT_HUES: Record<string, string> = {
-  orchestrator: '#818cf8',
-  organization: '#22d3ee',
-  memory: '#e879f9',
-  resume: '#34d399',
-  ats: '#fbbf24',
-  jobsearch: '#f97316',
-  gmail: '#f87171',
-  scheduler: '#38bdf8',
-};
+/**
+ * Color lives in `../scene-utils` and nowhere else.
+ *
+ * This file used to carry a second copy of the scene palette, the node-type
+ * map, and the agent hue map. Nothing read them — every scene imports
+ * `scenePalette()` / `AGENT_HUES` from scene-utils — so the two copies drifted
+ * and a light-mode fix had to be applied twice to land. Do not re-add them.
+ */
 
 // ─── HELPER ────────────────────────────────────────────────────
 

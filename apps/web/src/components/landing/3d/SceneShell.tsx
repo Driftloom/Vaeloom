@@ -33,13 +33,8 @@ import {
   useWebGLSupport,
 } from '@/lib/landing/hooks';
 import { useTheme } from '@/hooks/useTheme';
-import {
-  useSectionProgress,
-  usePageScrollSubscribe,
-  usePageScrollProgress,
-} from '@/lib/landing/scroll';
+import { usePageScrollSubscribe, useSectionProgress } from '@/lib/landing/scroll';
 import { createStage, type StageHandle } from './vanilla/stageScene';
-import { getBeatIndex, BEATS } from './vanilla/worldConstants';
 
 /** Resolved theme for scene wrappers (dark is SSR/brand default). */
 function useThemeValue(): Theme {
@@ -83,10 +78,14 @@ export function useSceneAvailable(): boolean {
 export function DustField() {
   const available = useSceneAvailable();
   const theme = useThemeValue();
+  // Honour the DETECTED tier. This used to hardcode "high", so a low-end
+  // device paid full particle cost for a layer that is only atmosphere —
+  // and in light mode that density is what turns the hero into confetti.
+  const tier = useQualityTier();
   if (!available) return null;
   return (
     <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0">
-      <DustFieldCanvas theme={theme} tier="high" />
+      <DustFieldCanvas theme={theme} tier={tier} />
     </div>
   );
 }
@@ -111,10 +110,21 @@ const StageCtx = createContext<StageCtxValue | null>(null);
  * matching beat becomes active. This folds the per-section canvases into a
  * single renderer while preserving every section's existing layout.
  *
- * Beat switching is scroll-driven (not IntersectionObserver): the page progress
- * 0..1 resolves to the active beat via worldConstants scrollRange, giving
- * deterministic camera transitions between beats.
+ * Beat switching is geometry-driven: the active beat is the registered slot
+ * straddling the viewport focus line (see FOCUS_LINE). No scroll-position
+ * table, so section height changes can't desync the camera from the content.
  */
+/**
+ * Viewport fraction that decides "the section you are reading". A slot that
+ * spans this line is the active beat; otherwise the slot whose centre is
+ * nearest to it wins. Slightly above centre because every landing section
+ * opens with a heading in its upper third.
+ */
+const FOCUS_LINE = 0.45;
+
+/** Ranking weight that makes "contains the focus line" beat "is nearest to it". */
+const STRADDLE_BONUS = 1e6;
+
 export function StageProvider({ children }: { children: ReactNode }): ReactElement {
   const available = useSceneAvailable();
   const tier = useQualityTier();
@@ -138,8 +148,46 @@ export function StageProvider({ children }: { children: ReactNode }): ReactEleme
     [],
   );
 
-  // Scroll-driven beat switching
-  const pageRef = usePageScrollProgress();
+  /**
+   * Resolve the active beat from where the slots actually are on screen.
+   *
+   * This deliberately does NOT consult a table of scroll-position fractions.
+   * A static table has to be hand-maintained against the real layout, and any
+   * section that grows, shrinks, or gets added silently desyncs it — which is
+   * exactly how the canvas ended up parked in the wrong section. Reading live
+   * geometry cannot drift: whatever the CSS does, the camera follows.
+   *
+   * Ranking is two-tier, and both tiers matter:
+   *   1. A slot that straddles the focus line always beats one that does not.
+   *   2. Among straddling slots, the one whose CENTRE is nearest the line wins.
+   *
+   * Tier 2 is not optional. A slot can be taller than the viewport, or offset
+   * (the hero drops its scene in light mode so it does not sit behind the
+   * copy), in which case two slots straddle the same line at once. Ranking
+   * those by registration order hands every tie to whichever section happens
+   * to register first — which pinned the canvas to the hero for the entire
+   * page. Nearest-centre is the tie-break that matches what a reader is
+   * actually looking at.
+   */
+  const resolveActiveBeat = useCallback((): string => {
+    const focusY = window.innerHeight * FOCUS_LINE;
+    let best = '';
+    let bestScore = Infinity;
+    slotsRef.current.forEach((slot, beat) => {
+      const r = slot.el.getBoundingClientRect();
+      if (r.height <= 0) return;
+      const straddles = r.top <= focusY && r.bottom >= focusY;
+      const centreDist = Math.abs(r.top + r.height / 2 - focusY);
+      // STRADDLE_BONUS is large enough to outrank any plausible centre
+      // distance, so "contains the focus line" always wins as a tier.
+      const score = (straddles ? -STRADDLE_BONUS : 0) + centreDist;
+      if (score < bestScore) {
+        bestScore = score;
+        best = beat;
+      }
+    });
+    return best;
+  }, []);
 
   usePageScrollSubscribe(() => {
     const stage = stageRef.current;
@@ -151,32 +199,7 @@ export function StageProvider({ children }: { children: ReactNode }): ReactEleme
         ? (new URLSearchParams(window.location.search).get('stageBeat') ?? undefined)
         : undefined;
 
-    const p = pageRef.current ?? 0;
-
-    // Resolve active beat from scroll progress — iterate BEATS and find which
-    // scrollRange contains the current progress
-    let resolvedBeat = forcedBeat ?? '';
-    if (!forcedBeat) {
-      for (const b of BEATS) {
-        if (p >= b.scrollRange[0] && p <= b.scrollRange[1]) {
-          resolvedBeat = b.id;
-          break;
-        }
-      }
-      // Fallback: closest beat by distance
-      if (!resolvedBeat) {
-        let minDist = Infinity;
-        for (const b of BEATS) {
-          const mid = (b.scrollRange[0] + b.scrollRange[1]) / 2;
-          const dist = Math.abs(p - mid);
-          if (dist < minDist) {
-            minDist = dist;
-            resolvedBeat = b.id;
-          }
-        }
-      }
-    }
-
+    const resolvedBeat = forcedBeat || resolveActiveBeat();
     if (!resolvedBeat || resolvedBeat === activeBeatRef.current) return;
     activeBeatRef.current = resolvedBeat;
 

@@ -19,7 +19,12 @@ export const NAV_LINKS = [
 export const HERO = {
   titleA: 'Your second brain for',
   titleB: 'education and career.',
-  subtitle: '',
+  subtitle:
+    'Connect your mail, code, and files once. Vaeloom turns them into one living memory — then keeps a resume, ranks your roles, and files your workspace from it. Agents suggest; you approve.',
+  primary: { label: 'Get started — free', href: '/signup' },
+  secondary: { label: 'See how it works', href: '#how-it-works' },
+  /** Small proof line under the CTAs — no metrics we can't cite. */
+  assurance: 'Read-only by default · Nothing acts without your approval',
 } as const;
 
 /** Streams shown entering the hero memory core — real MVP connectors only. */

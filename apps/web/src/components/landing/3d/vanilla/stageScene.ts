@@ -11,7 +11,10 @@ import { createDifferenceScene } from './differenceScene';
 import { createOrganizationScene } from './organizationScene';
 import { createResumeScene } from './resumeScene';
 import { createSchedulerScene } from './schedulerScene';
-import { BEATS, getBeat } from './worldConstants';
+import { createCareerScene } from './careerScene';
+import { createTrustScene } from './trustScene';
+import { createFaqScene } from './faqScene';
+import { getBeat } from './worldConstants';
 
 export type QualityTier = 'high' | 'medium' | 'low';
 export type ThemeName = 'dark' | 'light';
@@ -79,8 +82,12 @@ export function buildStage(opts: BuildStageOptions, world: THREE.Group): BuildSt
 
   // Per-beat factory. Heavy scene graphs are built LAZILY — only when a beat
   // scrolls near the viewport — so the first paint isn't blocked building all
-  // 12 scenes up front. This removes the multi-hundred-ms main-thread freeze
+  // 15 scenes up front. This removes the multi-hundred-ms main-thread freeze
   // that made the hero "load badly" on refresh.
+  //
+  // ORDER HERE MUST MATCH `BEATS` in worldConstants: `beats` below is built by
+  // mapping over this array and `getBeat(m.id)` supplies the z position, so a
+  // mismatch silently misplaces every scene after the divergence point.
   const makeMeta = (
     th: ThemeName,
     de: number,
@@ -209,10 +216,34 @@ export function buildStage(opts: BuildStageOptions, world: THREE.Group): BuildSt
         },
       },
       {
+        id: 'career',
+        cameraFor: cf('career'),
+        build: () => {
+          const s = createCareerScene(th);
+          return {
+            object: s.group,
+            tick: (_t, _dt, _p, _rm, lp) => s.update(_t, _dt, lp),
+            dispose: s.dispose,
+          };
+        },
+      },
+      {
         id: 'scheduler',
         cameraFor: cf('scheduler'),
         build: () => {
           const s = createSchedulerScene(th);
+          return {
+            object: s.group,
+            tick: (_t, _dt, _p, _rm, lp) => s.update(_t, _dt, lp),
+            dispose: s.dispose,
+          };
+        },
+      },
+      {
+        id: 'trust',
+        cameraFor: cf('trust'),
+        build: () => {
+          const s = createTrustScene(th);
           return {
             object: s.group,
             tick: (_t, _dt, _p, _rm, lp) => s.update(_t, _dt, lp),
@@ -228,6 +259,18 @@ export function buildStage(opts: BuildStageOptions, world: THREE.Group): BuildSt
           return {
             object: s.group,
             tick: (_t, _dt, _p, _rm, lp) => s.update(lp),
+            dispose: s.dispose,
+          };
+        },
+      },
+      {
+        id: 'faq',
+        cameraFor: cf('faq'),
+        build: () => {
+          const s = createFaqScene(th);
+          return {
+            object: s.group,
+            tick: (_t, _dt, _p, _rm, lp) => s.update(_t, _dt, lp),
             dispose: s.dispose,
           };
         },

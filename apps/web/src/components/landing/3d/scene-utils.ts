@@ -43,24 +43,49 @@ const DARK: ScenePalette = {
   dust: '#a5b4fc',
 };
 
+/**
+ * Light theme is DESIGNED, not inverted.
+ *
+ * Dark mode gets saturated hues against near-black: the color is the only
+ * thing carrying the image, so it can be loud. Light mode inverts that — the
+ * background is the thing carrying the image, so hue drops to a supporting
+ * role and every value moves toward the tint it sits on. Two rules:
+ *
+ *  1. Nothing structural is darker than ~`#6366f1`. On white, a saturated
+ *     magenta or cyan particle stops being atmosphere and becomes confetti,
+ *     and once it drifts across dark headline text it wrecks legibility.
+ *  2. `dust` and `nodes` are the worst offenders because they are the small,
+ *     high-count elements — they carry the most visual weight per pixel and
+ *     are the ones that land on top of type.
+ *
+ * So: hues are desaturated toward indigo, values are held in a mid band
+ * (roughly L* 45-60) rather than pushed dark, and the near-accents that read
+ * as "energy" in dark mode (fuchsia link, cyan stream) are pulled back to
+ * their indigo family. The scene reads as depth, not as glitter.
+ */
 const LIGHT: ScenePalette = {
-  structure: '#4f46e5',
+  structure: '#6366f1',
   core: '#4f46e5',
-  streamA: '#0891b2',
-  link: '#c026d3',
-  edge: '#c4c9de',
+  // Cyan stays a cyan, but a deep one: it has to read as a second channel
+  // without competing with `core` for attention.
+  streamA: '#0e7490',
+  // Fuchsia is pulled almost all the way to indigo. This is the single
+  // biggest legibility win in light mode — it was the loudest thing on the
+  // page and it crossed the hero headline.
+  link: '#7c3aed',
+  edge: '#d7dbec',
   edgeHot: '#4338ca',
   nodes: {
     person: '#be185d',
-    skill: '#7c3aed',
+    skill: '#6d28d9',
     project: '#1d4ed8',
     org: '#4338ca',
-    document: '#b45309',
+    document: '#a16207',
     event: '#c2410c',
     entity: '#0e7490',
     topic: '#047857',
   },
-  dust: '#6366f1',
+  dust: '#818cf8',
 };
 
 export function scenePalette(theme: 'dark' | 'light'): ScenePalette {

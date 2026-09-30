@@ -302,7 +302,11 @@ export function ResumeSection() {
 
 export function CareerSection() {
   return (
-    <Section id="career" labelledBy="career-title" className="bg-surface-50/60">
+    <Section id="career" labelledBy="career-title" className="relative bg-surface-50/60">
+      {/* 45% rather than the usual 30%: the pipeline is thin lines and small
+          cards, and in light mode the lighter palette drops below the
+          visibility floor at 30% — the section just looked empty. */}
+      <StageSlot beat="career" className="absolute inset-0 opacity-45" />
       <Container>
         <SectionHeading id="career-title" eyebrow={CAREER.eyebrow} title={CAREER.title} />
         <ol className="mx-auto mt-12 max-w-5xl space-y-2">

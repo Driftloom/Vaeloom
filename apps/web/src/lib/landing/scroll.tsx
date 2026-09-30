@@ -23,11 +23,9 @@ import {
   useEffect,
   useRef,
   useCallback,
-  useState,
   type ReactNode,
   type RefObject,
 } from 'react';
-import { BEATS, type BeatDef } from '@/components/landing/3d/vanilla/worldConstants';
 
 type ScrollApi = {
   pageProgressRef: RefObject<number>;
@@ -106,9 +104,19 @@ export function usePageScrollSubscribe(cb: () => void): void {
 }
 
 /**
- * Local scroll progress for a section element, matching the previous
- * per-section math. `viewLead`/`viewTrail` are the viewport biases used by
- * HowItWorks (0.5/0.5) and Compounding (0.6/0.4).
+ * Local scroll progress for a section element, 0..1.
+ *
+ * Height-independent by construction. The previous formula divided by
+ * `rect.height - vh * viewTrail`, which goes NEGATIVE for any element shorter
+ * than half the viewport — and then returned 0 forever. That silently pinned
+ * every short slot (the compounding frame, the connectors frame) to progress
+ * 0, so scroll-scrubbed scenes never assembled. The bug was invisible because
+ * it only affected elements too small to notice as "stuck".
+ *
+ * Now progress is measured as the distance the element has travelled between
+ * two well-defined moments, both of which exist for any height:
+ *   p = 0  →  the element's top edge is `viewLead` down the viewport
+ *   p = 1  →  the element's bottom edge is `viewTrail` above the viewport top
  */
 export function useSectionProgress(
   ref: RefObject<HTMLElement>,
@@ -124,67 +132,14 @@ export function useSectionProgress(
       if (!el) return;
       const rect = el.getBoundingClientRect();
       const vh = window.innerHeight;
-      const total = rect.height - vh * viewTrail;
-      const p = total > 0 ? (-rect.top + vh * viewLead) / total : 0;
+      const start = vh * viewLead;
+      const end = -rect.height - vh * viewTrail;
+      const span = start - end;
+      const p = span > 0 ? (start - rect.top) / span : 0;
       progressRef.current = Math.min(1, Math.max(0, p));
     };
     return register(cb);
   }, [ref, register, viewLead, viewTrail]);
 
   return progressRef;
-}
-
-/**
- * Resolve the currently active beat from page scroll progress.
- * Returns the beat definition and local progress (0..1) within that beat.
- */
-export function useActiveBeat(): { beat: BeatDef; local: number; index: number } {
-  const pageRef = usePageScrollProgress();
-  const [state, setState] = useState<{ beat: BeatDef; local: number; index: number }>(() => ({
-    beat: BEATS[0]!,
-    local: 0,
-    index: 0,
-  }));
-
-  usePageScrollSubscribe(() => {
-    const p = pageRef.current ?? 0;
-    // Find which beat's scrollRange contains the current progress
-    for (let i = 0; i < BEATS.length; i++) {
-      const b = BEATS[i]!;
-      const [start, end] = b.scrollRange;
-      if (p >= start && p <= end) {
-        const span = end - start;
-        const local = span > 0 ? (p - start) / span : 0;
-        setState({ beat: b, local, index: i });
-        return;
-      }
-    }
-    // Past last beat — clamp to CTA
-    const last = BEATS[BEATS.length - 1]!;
-    setState({ beat: last, local: 1, index: BEATS.length - 1 });
-  });
-
-  return state;
-}
-
-/**
- * Returns active beat id string — lightweight version for StageProvider.
- */
-export function useActiveBeatId(): string {
-  const pageRef = usePageScrollProgress();
-  const [id, setId] = useState(BEATS[0]!.id);
-
-  usePageScrollSubscribe(() => {
-    const p = pageRef.current ?? 0;
-    for (let i = 0; i < BEATS.length; i++) {
-      const b = BEATS[i]!;
-      if (p >= b.scrollRange[0] && p <= b.scrollRange[1]) {
-        setId(b.id);
-        return;
-      }
-    }
-    setId(BEATS[BEATS.length - 1]!.id);
-  });
-
-  return id;
 }

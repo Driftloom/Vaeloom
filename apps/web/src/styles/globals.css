@@ -482,10 +482,14 @@ html.high-contrast,
   --landing-glow-b: 8 145 178;
   --landing-glow-c: 192 38 211;
   --landing-canvas-veil: 247 248 252;
-  /* Node hues deepened for AA contrast on light surfaces. */
+  /* Node hues deepened for AA contrast on light surfaces.
+     These MUST stay identical to LIGHT.nodes in
+     components/landing/3d/scene-utils.ts — the memory-graph legend swatches
+     read these vars while the WebGL graph uses the palette, and a drift
+     between them makes the legend lie about the thing it labels. */
   --landing-node-person: #be185d;
-  --landing-node-skill: #7c3aed;
-  --landing-node-document: #b45309;
+  --landing-node-skill: #6d28d9;
+  --landing-node-document: #a16207;
   --landing-node-topic: #047857;
   --landing-node-org: #4338ca;
   --landing-node-event: #c2410c;
