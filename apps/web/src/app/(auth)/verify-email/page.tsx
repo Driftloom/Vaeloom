@@ -3,6 +3,7 @@ import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { api, ApiError } from '../../../lib/api';
+import { Spinner } from '@vaeloom/ui-kit';
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
@@ -36,7 +37,7 @@ function VerifyEmailContent() {
   }, [token]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-8">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 sm:p-8">
       <div className="w-full max-w-[400px] text-center space-y-6">
         <div className="inline-flex items-center gap-2 mb-4">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-400 flex items-center justify-center">
@@ -46,10 +47,10 @@ function VerifyEmailContent() {
         </div>
 
         {status === 'loading' && (
-          <>
-            <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
+          <div className="flex flex-col items-center gap-3">
+            <Spinner size="lg" />
             <p className="text-text-muted">Verifying your email...</p>
-          </>
+          </div>
         )}
 
         {status === 'success' && (
@@ -116,7 +117,7 @@ export default function VerifyEmailPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-background">
-          <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <Spinner size="lg" />
         </div>
       }
     >
