@@ -49,18 +49,17 @@ type Theme = 'dark' | 'light';
  * Whether the live WebGL stage should run: WebGL support, a tier above `low`,
  * and no reduced-motion preference.
  *
- * Reduced motion falls back to the captured posters rather than to a live
- * frozen scene. That was tried and reverted. All 16 beats now have a real
- * poster captured from the live scene, so the fallback is a genuine frame of
- * the actual 3D — not a degraded stand-in — and it costs a reduced-motion
- * visitor zero GPU time, which matters most for the people who enable the
- * preference for vestibular reasons or on low-end hardware.
+ * Reduced motion falls back to a CSS-only ambient treatment rather than to a
+ * live frozen scene. That was tried and reverted. A live scene costs a
+ * reduced-motion visitor real GPU time, which matters most for the people who
+ * enable the preference for vestibular reasons or on low-end hardware, and it
+ * also made the visual-regression suite nondeterministic: canvas pixels vary per
+ * frame, so `landing.spec.ts` captures its baselines with `reducedMotion:
+ * 'reduce'` precisely so no WebGL canvas appears. Rendering live scenes under
+ * reduced motion broke that invariant.
  *
- * It also keeps the visual-regression suite deterministic: `landing.spec.ts`
- * captures its baselines with `reducedMotion: 'reduce'` precisely so WebGL
- * canvases do not appear, because canvas pixels vary per rAF and would make
- * every baseline flaky. Rendering live scenes under reduced motion broke that
- * invariant and the baselines could not be regenerated into a stable state.
+ * The fallback carries no information, so nothing about a section depends on it
+ * being a faithful frame - the copy is always real DOM text.
  */
 export function useSceneAvailable(): boolean {
   const supported = useWebGLSupport();
@@ -305,12 +304,11 @@ export function StageSlot({
     return () => ctx.register(beat, null, () => 0);
   }, [ctx, beat, progressRef]);
 
-  // Keep the captured-scene poster on screen (and fade it out) while the live
-  // canvas fades in, so the hero never pops in over an empty beat on refresh.
-  // Only the hero is on screen during that initial gap; other beats are already
-  // live (ready) by the time they scroll into view, so they don't need a poster.
-  const showPoster = !available || beat === 'hero';
-  const posterOpacity = available && ctx?.ready ? 0 : 0.9;
+  // The live scene and the fallback are opposites, so this is just "is the
+  // scene running yet". The hero is the only beat on screen during the gap,
+  // since the others finish initialising before you scroll to them.
+  const sceneRunning = Boolean(available && ctx?.ready);
+  const showFallback = !available || beat === 'hero';
 
   return (
     <div
@@ -320,18 +318,19 @@ export function StageSlot({
       className={className}
       style={{ position: 'absolute', inset: 0 }}
     >
-      {showPoster && (
+      {showFallback && (
         <div
           aria-hidden="true"
           style={{
-            position: 'absolute',
-            inset: 0,
-            opacity: posterOpacity,
+            opacity: sceneRunning ? 0 : 1,
             transition: 'opacity 600ms ease',
             pointerEvents: 'none',
           }}
         >
-          {fallback ?? <StagePoster beat={beat} />}
+          {/* Loading only while WebGL is actually starting; static when it will
+              never run (reduced motion, no WebGL, low tier). */}
+          <StageFallback loading={Boolean(available) && !sceneRunning} />
+          {fallback}
         </div>
       )}
     </div>
@@ -339,27 +338,42 @@ export function StageSlot({
 }
 
 /**
- * Poster fallback shown only when WebGL is unavailable (or reduced motion /
- * low tier). Captured from the REAL scene via Playwright (never hand-drawn
- * SVG) so the visual language stays consistent. A brand gradient sits behind
- * it as a safety net if the asset is missing.
+ * What a beat shows while its live scene is not on screen.
+ *
+ * CSS-only, deliberately. The previous fallback was a captured PNG per beat in
+ * `public/landing/beats/`, which looked like the right idea and was not:
+ *
+ *   - Only 7 of the 16 beats were ever captured (`capture-landing-beats.py` lists
+ *     7), so the other 9 were placeholder-quality at best.
+ *   - The files that did exist were mostly not scene art at all. Several were
+ *     screenshots of the rendered page - 1440x900 viewport grabs and one
+ *     1344x1230 - so they had the nav bar, the hero headline, body copy and the
+ *     Next.js dev badge baked into the pixels. Under reduced motion the hero beat
+ *     therefore painted a second, ghost copy of the site over the real one.
+ *   - A bitmap of a UI can never be kept in sync with that UI. The headline baked
+ *     into `hero.png` was already out of date with the live headline.
+ *
+ * Ambient gradient and rings instead: a few hundred bytes of CSS, themed off the
+ * same `--landing-*` tokens the WebGL scenes read, impossible to desync, and it
+ * carries no information - the copy is always real DOM text, so nothing about the
+ * section depends on this being accurate.
+ *
+ * Two states, because they are genuinely different and used to share one
+ * treatment:
+ *
+ *   - WebGL supported but not initialised yet (the hero on first load):
+ *     transient, so `.stage-fallback--loading` pulses. Honest, because it ends.
+ *   - Reduced motion, no WebGL, or low tier: permanent. The scene will never run,
+ *     so it does NOT pulse. A perpetual shimmer would be a lie, and it is exactly
+ *     the endless motion that reduced-motion users set the preference to avoid.
+ *
+ * See `globals.css` for the layers.
  */
-function StagePoster({ beat }: { beat: string }): ReactElement {
+function StageFallback({ loading }: { loading: boolean }): ReactElement {
   return (
     <div
       aria-hidden="true"
-      className="absolute inset-0"
-      style={{
-        background:
-          'radial-gradient(circle at 50% 45%, rgba(124,140,248,0.18), rgba(10,12,20,0) 70%)',
-      }}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={`/landing/beats/${beat}.png`}
-        alt=""
-        className="h-full w-full object-cover opacity-90"
-      />
-    </div>
+      className={`stage-fallback${loading ? ' stage-fallback--loading' : ''}`}
+    />
   );
 }

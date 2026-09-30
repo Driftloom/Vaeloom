@@ -658,6 +658,68 @@ html.high-contrast,
     overflow: hidden !important;
     touch-action: none;
   }
+
+  /* ─────────────────────────────────────────────────────────────────────────────
+   * Workspace App Shell Invariant (Zero-Trust Scroll Isolation)
+   * The application workspace shell is a 100% viewport-locked application.
+   * The browser document (html, body, #main-content) MUST NEVER scroll.
+   * All scrolling is strictly confined to internal designated scroll regions.
+   * ────────────────────────────────────────────────────────────────────────────*/
+  html.app-shell-locked,
+  html.app-shell-locked body {
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 100% !important;
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+  }
+
+  html.app-shell-locked #main-content {
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────────
+   * TopNav Scroll Offset Guard
+   * The TopNav is 56px (h-14). Every normal-page scroll container needs
+   * scroll-padding-top to prevent focused elements and hash anchors from
+   * hiding behind the sticky nav when scrolled into view.
+   *
+   * Also adds -webkit-overflow-scrolling: touch for iOS momentum scrolling
+   * and touch-action: pan-y to allow vertical scrolling while blocking
+   * inadvertent horizontal swipe navigation on mobile.
+   * ────────────────────────────────────────────────────────────────────────────*/
+  .overflow-y-auto,
+  .overflow-auto,
+  .scroll-region {
+    scroll-padding-top: 3.5rem; /* 56px = TopNav h-14 */
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+
+  /* Utility: apply to individual elements that need top clearance when
+     scrolled into view (e.g. validation errors, anchor headings). */
+  .scroll-mt-topnav {
+    scroll-margin-top: 3.5rem; /* matches TopNav height */
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────────
+   * iOS Safe Area Insets
+   * Ensures bottom-fixed content (inputs, floating actions) doesn't overlap
+   * the iPhone home indicator on notched/Dynamic Island devices.
+   * ────────────────────────────────────────────────────────────────────────────*/
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  /* Chat/editor input bars need combined fixed padding + safe area */
+  .pb-safe-plus-4 {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* ============================================================
@@ -891,8 +953,93 @@ html.high-contrast,
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+ * Stage fallback — what a 3D beat shows when its scene is not running.
+ *
+ * Ambient only: gradient blooms and orbit rings that echo the WebGL scene's
+ * shapes without copying a frame of it. Themed entirely off `--landing-*`, so
+ * it follows both themes and cannot drift from them.
+ *
+ * This replaced one captured PNG per beat in public/landing/beats/. See the
+ * StageFallback comment in SceneShell.tsx for why a bitmap of the UI was the
+ * wrong answer — chiefly that most of those files were screenshots of the
+ * rendered page, so reduced motion painted a ghost copy of the nav and hero
+ * headline over the real ones.
+ * ────────────────────────────────────────────────────────────────────────────*/
+.stage-fallback {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    /* core bloom */
+    radial-gradient(circle at 50% 45%, rgb(var(--landing-glow-a) / 0.2), rgb(var(--landing-glow-a) / 0) 58%),
+    /* data streams, offset */
+    radial-gradient(circle at 74% 62%, rgb(var(--landing-glow-b) / 0.14), rgb(var(--landing-glow-b) / 0) 46%),
+    /* memory links */
+    radial-gradient(circle at 26% 30%, rgb(var(--landing-glow-c) / 0.12), rgb(var(--landing-glow-c) / 0) 42%);
+}
+
+/* Concentric orbit rings, faded out towards the edge so the motif has no
+   visible boundary. Sized off the container rather than fixed, so it does not
+   band on wide or short viewports. */
+.stage-fallback::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: min(120%, 1100px);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: repeating-radial-gradient(
+    circle,
+    rgb(var(--landing-grid) / 0) 0 38px,
+    rgb(var(--landing-grid) / 0.16) 38px 39px
+  );
+  mask-image: radial-gradient(circle, #000 12%, transparent 72%);
+  -webkit-mask-image: radial-gradient(circle, #000 12%, transparent 72%);
+}
+
+/* Only ever present on the loading path, i.e. while WebGL is genuinely
+   starting. Never shown in the permanent-fallback case: a pulse that never stops
+   is exactly the endless motion reduced-motion exists to avoid. */
+.stage-fallback--loading::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 46vmin;
+  height: 46vmin;
+  translate: -50% -50%;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgb(var(--landing-glow-a) / 0.32), transparent 70%);
+  animation: stage-fallback-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes stage-fallback-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    scale: 0.96;
+  }
+  50% {
+    opacity: 1;
+    scale: 1.04;
+  }
+}
+
+/* Unreachable via useSceneAvailable() - it returns false under reduced motion,
+   which takes the permanent path with no pulse. Here so the pulse cannot become
+   an accessibility regression if that gate is ever refactored. */
+@media (prefers-reduced-motion: reduce) {
+  .stage-fallback--loading::after {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+/* ─────────────────────────────────────────────────────────────────────────────
  * Hero section light/dark responsive layers (Hydration-safe CSS)
  * ────────────────────────────────────────────────────────────────────────────*/
+
 /* The hero core sits dead centre on dark and is displaced down on light.
    Light needs the displacement because on white the mid-value particles read as
    confetti ON TOP of dark text. Dark keeps the core centred because there the

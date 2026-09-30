@@ -164,18 +164,36 @@ describe('landing 3D stage wiring', () => {
   });
 
   /**
-   * Every beat needs a real captured poster. `StageSlot` renders
-   * `/landing/beats/<beat>.png` whenever WebGL is unavailable, and only 7 of
-   * 16 existed — so a visitor without WebGL got a broken image over the brand
-   * gradient on 9 sections. A missing poster renders fine in jsdom and in CI,
-   * because an `<img>` with a missing src is not a test failure; only the
-   * filesystem knows.
+   * Beats must not ship a captured bitmap.
+   *
+   * This used to assert the opposite — that every beat had a PNG in
+   * `public/landing/beats/`. It could only ever pass for the 7 beats
+   * `capture-landing-beats.py` knew about, and the files it did produce were
+   * mostly screenshots of the rendered page rather than scene art, so reduced
+   * motion painted a ghost nav and a second hero headline over the real ones.
+   * A bitmap of a UI cannot be kept in sync with that UI; the live headline had
+   * already drifted from the one baked into `hero.png`.
+   *
+   * So the fallback is CSS-only now, and this guards that decision: if someone
+   * reintroduces per-beat image assets, fail with the reason rather than let it
+   * rot unnoticed a second time.
    */
-  it('has a captured poster for every beat', () => {
+  it('ships no per-beat bitmap fallbacks', () => {
     const dir = join(process.cwd(), 'public/landing/beats');
-    const beatIds = [...stageSource.matchAll(/id: '([a-z]+)',/g)].map((m) => m[1]);
-    const missing = beatIds.filter((b) => !existsSync(join(dir, `${b}.png`)));
-    expect(missing).toEqual([]);
+    expect(existsSync(dir)).toBe(false);
+  });
+
+  it('keeps the beat fallback free of image assets', () => {
+    const src = readFileSync(
+      join(process.cwd(), 'src/components/landing/3d/SceneShell.tsx'),
+      'utf8',
+    )
+      // Comments legitimately name the history, so match against code only —
+      // otherwise this test just forbids documenting the decision.
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^[ \t]*\/\/.*$/gm, '');
+    expect(src).not.toMatch(/landing\/beats/);
+    expect(src).not.toMatch(/<img\b/);
   });
 
   /**
@@ -204,15 +222,19 @@ describe('landing 3D stage wiring', () => {
 });
 
 describe('landing scene fallbacks', () => {
-  it('renders Playwright poster fallbacks (no SVG) when WebGL unsupported', async () => {
+  it('renders a CSS-only fallback with no bitmap when WebGL is unsupported', async () => {
     const LandingPage = (await import('@/app/page')).default;
     const { container } = render(
       <ThemeProvider>
         <LandingPage />
       </ThemeProvider>,
     );
-    const posters = container.querySelectorAll('img[src*="/landing/beats/"]');
-    expect(posters.length).toBeGreaterThan(0);
+    // Ambient layers, not assets: every beat paints a fallback element.
+    const fallbacks = container.querySelectorAll('.stage-fallback');
+    expect(fallbacks.length).toBeGreaterThan(0);
+    // ...and none of them is an image.
+    expect(container.querySelectorAll('.stage-fallback img')).toHaveLength(0);
+    expect(container.querySelectorAll('img[src*="/landing/beats/"]')).toHaveLength(0);
     // The deleted StaticScenes module (hand-drawn SVG) must not be rendered.
     expect(container.querySelector('svg#smc-glow')).toBeNull();
   });
