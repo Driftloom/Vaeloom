@@ -2,6 +2,6 @@
 import React from 'react';
 import { DocumentDetailView } from '@/components/documents/DocumentDetailView';
 
-export default function FileDetailPage() {
-  return <DocumentDetailView basePath="files" />;
+export default function WorkspaceDocumentDetailPage() {
+  return <DocumentDetailView basePath="documents" />;
 }

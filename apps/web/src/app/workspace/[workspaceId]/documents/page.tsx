@@ -1,10 +1,7 @@
-import { redirect } from 'next/navigation';
+'use client';
+import React from 'react';
+import { DocumentsHub } from '@/components/documents/DocumentsHub';
 
-export default async function DocumentsRedirectPage({
-  params,
-}: {
-  params: Promise<{ workspaceId: string }>;
-}) {
-  const resolved = await params;
-  redirect(`/workspace/${resolved.workspaceId}/files`);
+export default function WorkspaceDocumentsPage() {
+  return <DocumentsHub basePath="documents" />;
 }

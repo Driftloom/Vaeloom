@@ -659,19 +659,79 @@ export interface BulkUploadResponse {
   errors: Array<{ filename: string; error: string }>;
 }
 
+export interface DocumentAuditCheckItem {
+  id: string;
+  name: string;
+  category: string;
+  passed: boolean;
+  score: number;
+  detail: string;
+  recommendation?: string | null;
+}
+
+export interface DocumentAuditCategoryScore {
+  total: number;
+  passed: number;
+  score: number;
+}
+
+export interface DocumentAuditResponse {
+  documentId: string;
+  document_id?: string;
+  totalChecks: number;
+  total_checks?: number;
+  passedChecks: number;
+  passed_checks?: number;
+  failedChecks: number;
+  failed_checks?: number;
+  qualityScore: number;
+  quality_score?: number;
+  verdict: 'EXCELLENT' | 'GOOD' | 'NEEDS_IMPROVEMENT' | 'CRITICAL_ISSUES' | string;
+  categories: Record<string, DocumentAuditCategoryScore>;
+  checks: DocumentAuditCheckItem[];
+  recommendations: string[];
+}
+
+export interface DocumentCompareResponse {
+  documentId: string;
+  document_id?: string;
+  versionA: number;
+  version_a?: number;
+  versionB: number;
+  version_b?: number;
+  similarityRatio: number;
+  similarity_ratio?: number;
+  wordCountA: number;
+  word_count_a?: number;
+  wordCountB: number;
+  word_count_b?: number;
+  wordCountDelta: number;
+  word_count_delta?: number;
+  additionsCount: number;
+  additions_count?: number;
+  deletionsCount: number;
+  deletions_count?: number;
+  additions: string[];
+  deletions: string[];
+  diffSnippet: string;
+  diff_snippet?: string;
+  summary: string;
+}
+
 function contentUrl(documentId: string, workspaceId: string): string {
   return `${API_BASE}${API_PREFIX}/documents/${encodeURIComponent(documentId)}/content?workspace_id=${encodeURIComponent(workspaceId)}`;
 }
 
 export const documentApi = {
-  upload(file: File, workspaceId: string): Promise<DocumentResponse> {
+  upload(file: File, workspaceId: string, folderId?: string | null): Promise<DocumentResponse> {
     const formData = new FormData();
     formData.append('file', file);
     const token = getToken();
     return getCsrfToken().then(async (csrf) => {
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
       if (csrf) headers[CSRF_HEADER] = csrf;
-      const url = `${API_BASE}${API_PREFIX}/documents?workspace_id=${encodeURIComponent(workspaceId)}`;
+      const folderParam = folderId ? `&folder_id=${encodeURIComponent(folderId)}` : '';
+      const url = `${API_BASE}${API_PREFIX}/documents?workspace_id=${encodeURIComponent(workspaceId)}${folderParam}`;
       const doFetch = () =>
         fetch(url, {
           method: 'POST',
@@ -688,7 +748,19 @@ export const documentApi = {
           res = await doFetch();
         }
       }
-      if (!res.ok) throw new ApiClientError(res.status, 'Upload failed');
+      if (!res.ok) {
+        let msg = 'Upload failed';
+        try {
+          const errJson = await res.json();
+          if (errJson?.detail) {
+            msg =
+              typeof errJson.detail === 'string' ? errJson.detail : JSON.stringify(errJson.detail);
+          }
+        } catch {
+          if (res.status === 413) msg = 'File too large — max 100MB';
+        }
+        throw new ApiClientError(res.status, msg);
+      }
       return (res.json() as Promise<Record<string, unknown>>).then(
         (j) => transformKeys(j) as DocumentResponse,
       );
@@ -698,13 +770,29 @@ export const documentApi = {
     file: File,
     workspaceId: string,
     onProgress: (percent: number) => void,
+    folderId?: string | null,
   ): Promise<DocumentResponse> {
+    const extractErrorMsg = (xhr: XMLHttpRequest): string => {
+      try {
+        const data = JSON.parse(xhr.responseText);
+        if (data?.detail) {
+          return typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+        }
+      } catch {
+        // Fallback
+      }
+      if (xhr.status === 413) return 'File too large — max 100MB';
+      if (xhr.status === 400) return 'Invalid upload request or file rejected by security scan';
+      return `Upload failed (HTTP ${xhr.status || 'Error'})`;
+    };
+
     return new Promise((resolve, reject) => {
       getCsrfToken().then((csrf) => {
         const xhr = new XMLHttpRequest();
+        const folderParam = folderId ? `&folder_id=${encodeURIComponent(folderId)}` : '';
         xhr.open(
           'POST',
-          `${API_BASE}${API_PREFIX}/documents?workspace_id=${encodeURIComponent(workspaceId)}`,
+          `${API_BASE}${API_PREFIX}/documents?workspace_id=${encodeURIComponent(workspaceId)}${folderParam}`,
         );
         xhr.withCredentials = true;
         const token = getToken();
@@ -720,7 +808,7 @@ export const documentApi = {
             try {
               resolve(parseDoc(xhr.responseText));
             } catch {
-              reject(new ApiClientError(xhr.status, 'Upload failed'));
+              reject(new ApiClientError(xhr.status, 'Upload failed to parse response'));
             }
           } else if (xhr.status === 403 && csrf) {
             resetCsrfToken();
@@ -729,7 +817,7 @@ export const documentApi = {
                 const retry = new XMLHttpRequest();
                 retry.open(
                   'POST',
-                  `${API_BASE}${API_PREFIX}/documents?workspace_id=${encodeURIComponent(workspaceId)}`,
+                  `${API_BASE}${API_PREFIX}/documents?workspace_id=${encodeURIComponent(workspaceId)}${folderParam}`,
                 );
                 retry.withCredentials = true;
                 if (token) retry.setRequestHeader('Authorization', `Bearer ${token}`);
@@ -742,20 +830,20 @@ export const documentApi = {
                     try {
                       resolve(parseDoc(retry.responseText));
                     } catch {
-                      reject(new ApiClientError(retry.status, 'Upload failed'));
+                      reject(new ApiClientError(retry.status, 'Upload failed to parse response'));
                     }
                   } else {
-                    reject(new ApiClientError(retry.status, 'Upload failed'));
+                    reject(new ApiClientError(retry.status, extractErrorMsg(retry)));
                   }
                 };
                 retry.onerror = () => reject(new ApiClientError(0, 'Network error during upload'));
                 retry.send(form);
               } else {
-                reject(new ApiClientError(xhr.status, 'Upload failed'));
+                reject(new ApiClientError(xhr.status, extractErrorMsg(xhr)));
               }
             });
           } else {
-            reject(new ApiClientError(xhr.status, 'Upload failed'));
+            reject(new ApiClientError(xhr.status, extractErrorMsg(xhr)));
           }
         };
         xhr.onerror = () => reject(new ApiClientError(0, 'Network error during upload'));
@@ -764,6 +852,19 @@ export const documentApi = {
         xhr.send(form);
       });
     });
+  },
+  autoOrganize(workspaceId: string): Promise<{
+    message: string;
+    organized_count: number;
+    folders_created: string[];
+    moved_documents: Array<{ id: string; name: string; folder: string; folder_id: string }>;
+  }> {
+    return apiClient.postQuery<{
+      message: string;
+      organized_count: number;
+      folders_created: string[];
+      moved_documents: Array<{ id: string; name: string; folder: string; folder_id: string }>;
+    }>('/documents/auto-organize', { workspace_id: workspaceId });
   },
   list(params?: {
     workspace_id?: string;
@@ -797,6 +898,21 @@ export const documentApi = {
       workspace_id: workspaceId,
     });
   },
+  delete(id: string, workspaceId: string): Promise<void> {
+    return apiClient.delete<void>(
+      `/documents/${encodeURIComponent(id)}?workspace_id=${encodeURIComponent(workspaceId)}`,
+    );
+  },
+  bulkDelete(
+    workspaceId: string,
+    documentIds: string[],
+  ): Promise<{ deleted_count: number; document_ids: string[] }> {
+    return apiClient.postQuery<{ deleted_count: number; document_ids: string[] }>(
+      '/documents/bulk/delete',
+      { workspace_id: workspaceId },
+      { document_ids: documentIds },
+    );
+  },
   actions(id: string, workspaceId: string): Promise<DocumentActionListResponse> {
     return apiClient.get<DocumentActionListResponse>(
       `/documents/${encodeURIComponent(id)}/actions`,
@@ -809,10 +925,12 @@ export const documentApi = {
       { workspace_id: workspaceId },
     );
   },
-  async getContent(id: string, workspaceId: string): Promise<Blob> {
+  async getContent(id: string, workspaceId: string, inline: boolean = true): Promise<Blob> {
     const token = getToken();
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-    const res = await fetch(contentUrl(id, workspaceId), {
+    const base = contentUrl(id, workspaceId);
+    const url = inline ? `${base}&inline=true` : base;
+    const res = await fetch(url, {
       headers,
       credentials: 'include',
     });
@@ -982,6 +1100,23 @@ export const documentApi = {
     );
     if (!res.ok) throw new ApiClientError(res.status, 'Bulk download failed');
     return res.blob();
+  },
+  audit(documentId: string, workspaceId: string): Promise<DocumentAuditResponse> {
+    return apiClient.postQuery<DocumentAuditResponse>(
+      `/documents/${encodeURIComponent(documentId)}/audit`,
+      { workspace_id: workspaceId },
+    );
+  },
+  compare(
+    documentId: string,
+    versionA: number,
+    versionB: number,
+    workspaceId: string,
+  ): Promise<DocumentCompareResponse> {
+    return apiClient.post<DocumentCompareResponse>(
+      `/documents/${encodeURIComponent(documentId)}/compare?workspace_id=${encodeURIComponent(workspaceId)}`,
+      { version_a: versionA, version_b: versionB },
+    );
   },
 };
 
