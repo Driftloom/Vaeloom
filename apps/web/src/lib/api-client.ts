@@ -620,23 +620,34 @@ export interface FolderTreeItem {
 
 export interface DocumentVersionResponse {
   id: string;
-  document_id: string;
-  version_number: number;
-  storage_key: string;
+  documentId: string;
+  document_id?: string;
+  versionNumber: number;
+  version_number?: number;
+  storageKey: string;
+  storage_key?: string;
   checksum?: string | null;
+  sizeBytes?: number | null;
   size_bytes?: number | null;
-  created_at: string;
+  createdAt: string;
+  created_at?: string;
 }
 
 export interface DocumentShareResponse {
   id: string;
-  document_id: string;
-  source_workspace_id: string;
-  target_workspace_id: string;
+  documentId: string;
+  document_id?: string;
+  sourceWorkspaceId: string;
+  source_workspace_id?: string;
+  targetWorkspaceId: string;
+  target_workspace_id?: string;
   permission: string;
+  grantedBy?: string | null;
   granted_by?: string | null;
+  expiresAt?: string | null;
   expires_at?: string | null;
-  created_at: string;
+  createdAt: string;
+  created_at?: string;
 }
 
 export interface BulkUploadResponse {
@@ -764,6 +775,11 @@ export const documentApi = {
       '/documents',
       params as Record<string, string | number | boolean | undefined | null>,
     );
+  },
+  getById(documentId: string, workspaceId: string): Promise<DocumentResponse> {
+    return apiClient.get<DocumentResponse>(`/documents/${encodeURIComponent(documentId)}`, {
+      workspace_id: workspaceId,
+    });
   },
   rename(id: string, workspaceId: string, path: string): Promise<DocumentResponse> {
     return apiClient.patch<DocumentResponse>(
@@ -1581,13 +1597,18 @@ export interface JobResponse {
 
 export interface JobExecutionResponse {
   id: string;
-  job_id: string;
+  jobId: string;
+  job_id?: string;
   status: string;
+  startedAt?: string;
   started_at?: string;
+  finishedAt?: string;
   finished_at?: string;
+  statusCode?: number;
   status_code?: number;
   error?: string;
-  created_at: string;
+  createdAt: string;
+  created_at?: string;
 }
 
 export const schedulerApi = {
@@ -2456,15 +2477,22 @@ export interface WebhookItem {
 
 export interface WebhookDeliveryItem {
   id: string;
-  webhook_id: string;
-  event_type: string;
+  webhookId: string;
+  webhook_id?: string;
+  eventType: string;
+  event_type?: string;
   status: string;
-  status_code: number | null;
-  response_body: string | null;
+  statusCode: number | null;
+  status_code?: number | null;
+  responseBody: string | null;
+  response_body?: string | null;
   attempt: number;
-  max_attempts: number;
-  completed_at: string | null;
-  created_at: string;
+  maxAttempts: number;
+  max_attempts?: number;
+  completedAt: string | null;
+  completed_at?: string | null;
+  createdAt: string;
+  created_at?: string;
 }
 
 export const webhookApi = {
@@ -3543,17 +3571,23 @@ export interface ComposioAppsResponse {
 
 export interface ComposioStatusResponse {
   enabled: boolean;
+  totalApps?: number;
   total_apps?: number;
-  popular_apps: ComposioAppInfo[];
+  popularApps?: ComposioAppInfo[];
+  popular_apps?: ComposioAppInfo[];
 }
 
 export interface ComposioAuthUrlResponse {
   status: string;
   app: string;
+  authUrl?: string;
   auth_url?: string;
   url?: string;
+  workspaceId?: string;
   workspace_id?: string;
+  connectionStatus?: string;
   connection_status?: string;
+  errorCode?: string;
   error_code?: string;
   message?: string;
 }
@@ -3625,8 +3659,14 @@ export const connectorsApi = {
         arguments: args,
       });
     },
-    builtin(): Promise<{ builtin_servers: BuiltinMcpServer[] }> {
-      return apiClient.get<{ builtin_servers: BuiltinMcpServer[] }>('/connectors/mcp/builtin');
+    builtin(): Promise<{
+      builtinServers: BuiltinMcpServer[];
+      builtin_servers?: BuiltinMcpServer[];
+    }> {
+      return apiClient.get<{
+        builtinServers: BuiltinMcpServer[];
+        builtin_servers?: BuiltinMcpServer[];
+      }>('/connectors/mcp/builtin');
     },
   },
   composio: {
