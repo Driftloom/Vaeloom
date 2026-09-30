@@ -111,14 +111,44 @@ test.describe('chat', () => {
     // A new conversation is titled from the first prompt (ChatWindow.tsx:544)
     // and is reachable in the thread rail.
     const rail = page.locator('aside').filter({ hasText: 'THREADS' });
-    await expect(
-      rail.getByRole('button', { name: new RegExp(prompt.slice(0, 24), 'i') }),
-    ).toBeVisible({
-      timeout: 30_000,
+    const threadLabel = prompt.slice(0, 24);
+    // Scoped away from the per-thread actions trigger, whose accessible name also
+    // contains the title — matching both would trip Playwright strict mode.
+    const thread = rail
+      .locator('li button')
+      .filter({ hasText: new RegExp(threadLabel, 'i') })
+      .first();
+    await expect(thread).toBeVisible({ timeout: 30_000 });
+
+    // INVERTED from the old assertion. That test encoded a known gap — the pre-rail
+    // chat had no delete affordance anywhere, so it asserted
+    // `getByRole('button', { name: /delete thread/i })` had count 0. ChatThreadRail now
+    // ships a per-thread actions disclosure, so the control MUST exist.
+    //
+    // RAIL CONTRACT (reconcile here if the rail's roles or names change):
+    //   trigger   → button, aria-label `Actions for ${title}`
+    //   items     → native buttons named Rename / Clear / Delete (deliberately NOT
+    //               `role="menuitem"`: a menu widget requires roving tabindex, and
+    //               shipping menuitem without it is a worse violation than buttons)
+    //   confirm   → inline panel, button aria-label `Confirm delete` (text "Yes, delete")
+    // The trigger is matched with an anchored regex on purpose: its accessible name
+    // contains the thread title, so an unanchored match also hits the select button
+    // and Playwright strict mode fails on the 2-element result.
+    const threadActions = rail.getByRole('button', {
+      name: new RegExp(`^actions for ${threadLabel}`, 'i'),
     });
-    // There is no delete-thread control anywhere in the app, so the old test's
-    // `getByRole('button', { name: /delete thread/i })` was permanently skipped.
-    await expect(page.getByRole('button', { name: /delete thread/i })).toHaveCount(0);
+    await expect(threadActions, 'thread actions trigger never rendered').toBeVisible();
+    await threadActions.click();
+
+    const deleteItem = rail.getByRole('button', { name: /^delete$/i });
+    await expect(deleteItem, 'the actions disclosure exposed no Delete item').toBeVisible();
+    await deleteItem.click();
+
+    const confirmDelete = rail.getByRole('button', { name: /^confirm delete$/i });
+    await expect(confirmDelete, 'deleting a thread asked for no confirmation').toBeVisible();
+    await confirmDelete.click();
+
+    await expect(thread, 'the confirmed delete left the thread in the rail').toHaveCount(0);
   });
 
   test('stop control replaces send during streaming', async ({ page }) => {
