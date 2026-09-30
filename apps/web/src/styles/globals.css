@@ -871,19 +871,27 @@ html.high-contrast,
   background: radial-gradient(ellipse 78% 58% at 50% 40%, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0.28) 55%, transparent 78%);
 }
 
-/* Light-mode copy knockout. Oversized on purpose: a knockout that only covers
-   the copy box gets its own gradient clipped by that box, which leaves a hard
-   edge straight across the headline. `closest-side` puts the transparent stop
-   exactly at this element's edge, so the visible ellipse is far larger than
-   the copy and the paint reaches zero before its own bounds.
+/* Copy knockout. Oversized on purpose: a knockout that only covers the copy box
+   gets its own gradient clipped by that box, which leaves a hard edge straight
+   across the headline. `closest-side` puts the transparent stop exactly at this
+   element's edge, so the visible ellipse is far larger than the copy and the
+   paint reaches zero before its own bounds.
 
-   Painted as its own layer, BEFORE the copy in DOM order and at a lower
-   z-index, so the type always wins. It was previously a `::before` on the
-   copy's own wrapper with `z-index: -10`, which inverted: an absolutely
-   positioned pseudo-element at z-index auto paints above the wrapper's in-flow
-   text, so the knockout covered the headline, the subtitle and both CTAs and
-   only the sliver above its own top edge stayed readable. Dark mode needs none
-   of this - there the scene glows BEHIND the type. */
+   Painted as its own layer, BEFORE the copy in DOM order and at a lower z-index,
+   so the type always wins. It was previously a `::before` on the copy's own
+   wrapper with `z-index: -10`, which inverted: an absolutely positioned
+   pseudo-element at z-index auto paints above the wrapper's in-flow text, so the
+   knockout covered the headline, the subtitle and both CTAs and only the sliver
+   above its own top edge stayed readable.
+
+   BOTH themes paint one. Dark originally painted none, on the theory that the
+   scene glows BEHIND the type. It does, but the core is a bright white bloom and
+   the scene animates, so its brightest moments sweep across the copy: measured
+   at 1.27:1 worst-case contrast for the assurance line, which no text colour can
+   rescue (pure white over that background still only reaches 4.13:1, under the
+   4.5:1 AA threshold for 12px text). Washing the background instead only
+   muddies the whole hero. The knockout is the fix, and it makes the two themes
+   structurally identical. */
 .hero-copy-plate {
   position: absolute;
   left: -20rem;
@@ -893,6 +901,19 @@ html.high-contrast,
   z-index: 1;
   pointer-events: none;
   border-radius: 50%;
+  /* Alpha is tuned from measured composites, not by eye: at the assurance line
+     this ellipse is still ~0.82 opaque, which is what pulls the core's 125/255
+     grey down far enough for `text-text-muted` to clear 4.5:1. */
+  background: radial-gradient(
+    closest-side at 50% 50%,
+    rgba(3, 4, 10, 0.92) 0%,
+    rgba(3, 4, 10, 0.88) 34%,
+    rgba(3, 4, 10, 0.74) 58%,
+    rgba(3, 4, 10, 0.42) 78%,
+    rgba(3, 4, 10, 0) 100%
+  );
+}
+.light .hero-copy-plate {
   background: radial-gradient(
     closest-side at 50% 50%,
     rgba(255, 255, 255, 0.97) 0%,
@@ -901,11 +922,6 @@ html.high-contrast,
     rgba(255, 255, 255, 0.52) 78%,
     rgba(255, 255, 255, 0) 100%
   );
-  opacity: 0;
-  transition: opacity 400ms ease;
-}
-.light .hero-copy-plate {
-  opacity: 1;
 }
 
 /* The plate paints at z-index 1, so every child of the copy block is lifted
