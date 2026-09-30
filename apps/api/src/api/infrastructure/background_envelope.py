@@ -56,7 +56,7 @@ _NONCE_TTL_MAX_S = 86400
 
 def _clean_expired_nonces(now: float) -> None:
     """Purge expired nonces from in-memory replay cache."""
-    expired = [n for n, exp in _SEEN_NONCES.items() if exp < now]
+    expired = [n for n, exp in _SEEN_NONCES.items() if (exp[0] if isinstance(exp, tuple) else exp) < now]
     for n in expired:
         _SEEN_NONCES.pop(n, None)
 
@@ -128,23 +128,43 @@ def nonce_backend_status() -> str:
     return "redis" if _get_default_nonce_redis() is not None else "memory"
 
 
-def _claim_nonce_sync(client: Any, nonce: str, ttl_s: int) -> bool:
-    """Atomically claim a nonce via SET NX EX. True = first winner, False = replay.
+def _claim_nonce_sync(client: Any, nonce: str, ttl_s: int, job_id: str | None = None) -> bool:
+    """Atomically claim a nonce via SET NX EX. True = first winner or same job retry, False = replay.
 
     Raises on connection errors so callers can fall back honestly.
     """
-    res = client.set(f"{_NONCE_KEY_PREFIX}{nonce}", "1", nx=True, ex=ttl_s)
+    owner = str(job_id) if job_id else "1"
+    res = client.set(f"{_NONCE_KEY_PREFIX}{nonce}", owner, nx=True, ex=ttl_s)
     if inspect.isawaitable(res):
         raise TypeError("async redis client passed to sync nonce claim; use averify_background_envelope")
-    return bool(res)
+    if bool(res):
+        return True
+    if job_id:
+        val = client.get(f"{_NONCE_KEY_PREFIX}{nonce}")
+        if isinstance(val, bytes):
+            val = val.decode("utf-8")
+        if val == str(job_id):
+            return True
+    return False
 
 
-async def _claim_nonce_async(client: Any, nonce: str, ttl_s: int) -> bool:
+async def _claim_nonce_async(client: Any, nonce: str, ttl_s: int, job_id: str | None = None) -> bool:
     """Async variant of _claim_nonce_sync (awaits coroutine results)."""
-    res = client.set(f"{_NONCE_KEY_PREFIX}{nonce}", "1", nx=True, ex=ttl_s)
+    owner = str(job_id) if job_id else "1"
+    res = client.set(f"{_NONCE_KEY_PREFIX}{nonce}", owner, nx=True, ex=ttl_s)
     if inspect.isawaitable(res):
         res = await res
-    return bool(res)
+    if bool(res):
+        return True
+    if job_id:
+        val = client.get(f"{_NONCE_KEY_PREFIX}{nonce}")
+        if inspect.isawaitable(val):
+            val = await val
+        if isinstance(val, bytes):
+            val = val.decode("utf-8")
+        if val == str(job_id):
+            return True
+    return False
 
 
 def create_background_envelope(
@@ -217,12 +237,17 @@ def _nonce_ttl_s(envelope: dict[str, Any], now: float) -> int:
         return 3600
 
 
-def _claim_nonce_memory(nonce: str, expires_at: float, now: float) -> bool:
-    """Process-local claim. True = first winner, False = replay."""
+def _claim_nonce_memory(nonce: str, expires_at: float, now: float, job_id: str | None = None) -> bool:
+    """Process-local claim. True = first winner or same job retry, False = replay."""
     _clean_expired_nonces(now)
     if nonce in _SEEN_NONCES:
+        entry = _SEEN_NONCES[nonce]
+        exp = entry[0] if isinstance(entry, tuple) else entry
+        owner = entry[1] if isinstance(entry, tuple) else "1"
+        if job_id and owner == str(job_id) and exp >= now:
+            return True
         return False
-    _SEEN_NONCES[nonce] = expires_at
+    _SEEN_NONCES[nonce] = (expires_at, str(job_id) if job_id else "1")
     return True
 
 
@@ -230,6 +255,7 @@ def verify_background_envelope(
     envelope: dict[str, Any],
     check_replay: bool = True,
     redis_client: Any = None,
+    job_id: str | None = None,
 ) -> tuple[bool, str, dict[str, Any] | None]:
     """Verify background execution envelope.
 
@@ -251,20 +277,20 @@ def verify_background_envelope(
         client = redis_client if redis_client is not None else _get_default_nonce_redis()
         if client is not None:
             try:
-                if not _claim_nonce_sync(client, nonce, ttl_s):
+                if not _claim_nonce_sync(client, nonce, ttl_s, job_id=job_id):
                     return False, f"replay detected: nonce {nonce} already consumed", None
             except TypeError:
                 # Async client passed to sync API — cannot await here; use
                 # memory fallback and direct async callers to averify_*.
                 logger.debug("async redis client with sync verify; local fallback")
-                if not _claim_nonce_memory(nonce, float(envelope["expires_at"]), now):
+                if not _claim_nonce_memory(nonce, float(envelope["expires_at"]), now, job_id=job_id):
                     return False, f"replay detected: nonce {nonce} already consumed", None
             except Exception as exc:
                 logger.warning("nonce Redis claim failed, local fallback: %s", exc)
-                if not _claim_nonce_memory(nonce, float(envelope["expires_at"]), now):
+                if not _claim_nonce_memory(nonce, float(envelope["expires_at"]), now, job_id=job_id):
                     return False, f"replay detected: nonce {nonce} already consumed", None
         else:
-            if not _claim_nonce_memory(nonce, float(envelope["expires_at"]), now):
+            if not _claim_nonce_memory(nonce, float(envelope["expires_at"]), now, job_id=job_id):
                 return False, f"replay detected: nonce {nonce} already consumed", None
 
     return True, "valid", envelope
@@ -274,6 +300,7 @@ async def averify_background_envelope(
     envelope: dict[str, Any],
     check_replay: bool = True,
     redis_client: Any = None,
+    job_id: str | None = None,
 ) -> tuple[bool, str, dict[str, Any] | None]:
     """Async variant of verify_background_envelope (awaits async Redis clients).
 
@@ -309,11 +336,11 @@ async def averify_background_envelope(
                 client = None
         if client is not None:
             try:
-                if not await _claim_nonce_async(client, nonce, ttl_s):
+                if not await _claim_nonce_async(client, nonce, ttl_s, job_id=job_id):
                     return False, f"replay detected: nonce {nonce} already consumed", None
             except Exception as exc:
                 logger.warning("nonce async Redis claim failed, local fallback: %s", exc)
-                if not _claim_nonce_memory(nonce, float(envelope["expires_at"]), now):
+                if not _claim_nonce_memory(nonce, float(envelope["expires_at"]), now, job_id=job_id):
                     return False, f"replay detected: nonce {nonce} already consumed", None
             finally:
                 # Close loop-bound clients we created; leave caller-owned clients alone.
@@ -323,7 +350,7 @@ async def averify_background_envelope(
                     except Exception:
                         pass
         else:
-            if not _claim_nonce_memory(nonce, float(envelope["expires_at"]), now):
+            if not _claim_nonce_memory(nonce, float(envelope["expires_at"]), now, job_id=job_id):
                 return False, f"replay detected: nonce {nonce} already consumed", None
 
     return True, "valid", envelope

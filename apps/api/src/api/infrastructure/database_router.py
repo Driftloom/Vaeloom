@@ -8,6 +8,8 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
+from api.database import RLSGuardedAsyncSession
+
 
 def _build_engine(url: str) -> Any:
     kwargs: dict[str, Any] = {"pool_pre_ping": True}
@@ -31,10 +33,10 @@ class DatabaseRouter:
         self._replica_engine: Any = None
         if self._replica_url:
             self._replica_engine = _build_engine(self._replica_url)
-        self._primary_factory = async_sessionmaker(self._primary_engine, expire_on_commit=False)
+        self._primary_factory = async_sessionmaker(self._primary_engine, class_=RLSGuardedAsyncSession, expire_on_commit=False)
         self._replica_factory: Any = None
         if self._replica_engine:
-            self._replica_factory = async_sessionmaker(self._replica_engine, expire_on_commit=False)
+            self._replica_factory = async_sessionmaker(self._replica_engine, class_=RLSGuardedAsyncSession, expire_on_commit=False)
 
     @property
     def has_replica(self) -> bool:
@@ -45,6 +47,12 @@ class DatabaseRouter:
         factory = self._replica_factory if self._replica_factory else self._primary_factory
         async with factory() as session:
             try:
+                from api.middleware.tenant import set_rls_session_vars
+
+                await set_rls_session_vars(session)
+            except Exception:
+                pass
+            try:
                 yield session
             finally:
                 await session.close()
@@ -52,6 +60,12 @@ class DatabaseRouter:
     @asynccontextmanager
     async def get_write_session(self) -> AsyncGenerator[AsyncSession, None]:
         async with self._primary_factory() as session:
+            try:
+                from api.middleware.tenant import set_rls_session_vars
+
+                await set_rls_session_vars(session)
+            except Exception:
+                pass
             try:
                 yield session
                 await session.commit()
@@ -75,3 +89,16 @@ def get_router() -> DatabaseRouter:
 def reset_router() -> None:
     global _router
     _router = None
+
+
+async def get_db_read() -> AsyncGenerator[AsyncSession, None]:
+    router = get_router()
+    async with router.get_read_session() as session:
+        yield session
+
+
+async def get_db_write() -> AsyncGenerator[AsyncSession, None]:
+    router = get_router()
+    async with router.get_write_session() as session:
+        yield session
+

@@ -4,9 +4,45 @@
 Reads plugin code from stdin, context from PLUGIN_CONTEXT env var.
 Writes JSON result to stdout.
 """
+import ast
 import json
 import os
 import sys
+
+FORBIDDEN_CALLS = {
+    "eval", "exec", "compile", "getattr", "setattr", "delattr",
+    "open", "__import__", "globals", "locals", "vars", "breakpoint",
+}
+
+
+class SecurityViolation(Exception):
+    """Raised when plugin code violates sandbox security constraints."""
+    pass
+
+
+def validate_ast(code: str) -> None:
+    """Validate that plugin code does not use dangerous Python constructs or introspection."""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError as e:
+        raise SecurityViolation(f"Syntax error: {e}") from e
+
+    for node in ast.walk(tree):
+        # Disallow import statements
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            raise SecurityViolation("Import statements are forbidden in plugin sandbox")
+
+        # Disallow access to dunder attributes (blocks __class__, __subclasses__, __bases__, __globals__, etc.)
+        if isinstance(node, ast.Attribute):
+            if node.attr.startswith("__") and node.attr.endswith("__"):
+                raise SecurityViolation(f"Access to private/dunder attribute '{node.attr}' is forbidden")
+
+        # Disallow restricted function names and dunder identifiers
+        if isinstance(node, ast.Name):
+            if node.id in FORBIDDEN_CALLS:
+                raise SecurityViolation(f"Use of restricted primitive '{node.id}' is forbidden")
+            if node.id.startswith("__") and node.id.endswith("__"):
+                raise SecurityViolation(f"Reference to dunder identifier '{node.id}' is forbidden")
 
 
 def main():
@@ -14,6 +50,13 @@ def main():
 
     if not code.strip():
         json.dump({"success": False, "error": "No code to execute"}, sys.stdout)
+        sys.stdout.flush()
+        return
+
+    try:
+        validate_ast(code)
+    except SecurityViolation as sv:
+        json.dump({"success": False, "error": f"SecurityViolation: {str(sv)}"}, sys.stdout)
         sys.stdout.flush()
         return
 
@@ -53,3 +96,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

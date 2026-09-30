@@ -211,12 +211,16 @@ class PluginService:
         try:
             sandbox_script = Path(__file__).resolve().parent / "plugin_sandbox.py"
 
-            env = os.environ.copy()
+            # ZERO-TRUST: Strict environment variable whitelisting.
+            # Never inherit parent process secrets (JWT_SECRET, DATABASE__URL, API keys, etc.).
+            safe_system_keys = {
+                "SYSTEMROOT", "SYSTEMDRIVE", "COMSPEC", "PATHEXT", "WINDIR",
+                "PATH", "TEMP", "TMP", "USERPROFILE", "HOMEDRIVE", "HOMEPATH",
+            }
+            env = {k: v for k, v in os.environ.items() if k.upper() in safe_system_keys}
             env["PLUGIN_CONTEXT"] = json.dumps(sandbox_context)
             env["PYTHONSAFEPATH"] = "1"
-            for key in list(env):
-                if key.upper() in ("HTTP_PROXY", "HTTPS_PROXY", "PYTHONPATH", "PYTHONHOME"):
-                    del env[key]
+            env["PYTHONNOUSERSITE"] = "1"
 
             proc = await asyncio.create_subprocess_exec(
                 sys.executable, str(sandbox_script),

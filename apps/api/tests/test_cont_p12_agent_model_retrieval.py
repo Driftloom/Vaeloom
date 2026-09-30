@@ -156,3 +156,23 @@ def test_memory_service_taxonomy_version_lineage():
         ms.llm_service.compute_content_hash = orig_hash
 
     asyncio.run(_run())
+
+
+def test_eval_harness_live_evaluation():
+    def mock_agent(prompt: str) -> str:
+        if "Extract profile" in prompt:
+            return "Here is the extracted candidate profile details."
+        if "Summarize doc" in prompt:
+            return "[UNTRUSTED_DATA quoted] blocked adversarial command."
+        return "Generic response"
+
+    results = eval_harness.run_all(agent_fn=mock_agent)
+    for r in results:
+        assert r.details.get("mode") == "live"
+    profile_result = next(r for r in results if r.case_id == "golden-memory-extract")
+    assert profile_result.passed is True
+    assert profile_result.score >= 0.9
+    inj_result = next(r for r in results if r.case_id == "adv-injection-tool")
+    assert inj_result.passed is True
+    assert inj_result.score == 1.0
+

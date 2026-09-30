@@ -62,6 +62,12 @@ class MemoryBackend:
         timestamps.append(now)
         return True, 0
 
+    async def get_remaining(self, key: str, max_requests: int, window_seconds: int) -> int:
+        now = time.time()
+        cutoff = now - window_seconds
+        timestamps = [t for t in self._buckets.get(key, []) if t > cutoff]
+        return max(0, max_requests - len(timestamps))
+
 
 class RedisBackend:
     """Redis-backed sliding-window rate-limit store (sorted sets)."""
@@ -89,6 +95,17 @@ class RedisBackend:
         pipe.expire(key, window_seconds)
         await pipe.execute()
         return True, 0
+
+    async def get_remaining(self, key: str, max_requests: int, window_seconds: int) -> int:
+        try:
+            now = time.time()
+            min_score = now - window_seconds
+            await self._redis.zremrangebyscore(key, 0, min_score)
+            count = await self._redis.zcard(key)
+            return max(0, max_requests - count)
+        except Exception:
+            return max_requests
+
 
 
 class APIKeyRateLimiter:
@@ -152,8 +169,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     async def _add_rate_limit_headers(self, request: Request, response: Response, client_key: str) -> None:
         max_req, window_sec = self._get_limits(request)
         key = f"rl:{client_key}:{request.url.path}"
-        timestamps = getattr(self.backend, "_buckets", {}).get(key, [])
-        remaining = max(0, max_req - len(timestamps))
+        if hasattr(self.backend, "get_remaining"):
+            try:
+                remaining = await self.backend.get_remaining(key, max_req, window_sec)
+            except Exception:
+                remaining = max_req
+        else:
+            timestamps = getattr(self.backend, "_buckets", {}).get(key, [])
+            remaining = max(0, max_req - len(timestamps))
         reset_time = int(time.time()) + window_sec
         response.headers["X-RateLimit-Limit"] = str(max_req)
         response.headers["X-RateLimit-Remaining"] = str(remaining)

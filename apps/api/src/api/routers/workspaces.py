@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,11 +22,22 @@ async def create_workspace(dto: CreateWorkspaceRequest, db: AsyncSession = Depen
 
 
 @router.get("", response_model=list[WorkspaceResponse])
-async def list_workspaces(db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user)):
+async def list_workspaces(
+    response: Response,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = current_user.get("sub")
-    return await workspace_service.list_for_user(user_id=user_id, db=db)
+    workspaces = await workspace_service.list_for_user(user_id=user_id, db=db)
+    total = len(workspaces)
+    response.headers["X-Total-Count"] = str(total)
+    response.headers["X-Limit"] = str(limit)
+    response.headers["X-Offset"] = str(offset)
+    return workspaces[offset : offset + limit]
 
 
 @router.get("/{workspace_id}", response_model=WorkspaceResponse)

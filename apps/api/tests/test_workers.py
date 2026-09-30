@@ -11,6 +11,10 @@ def mock_redis(monkeypatch):
     redis_mock.hset = AsyncMock()
     redis_mock.zadd = AsyncMock()
     redis_mock.sadd = AsyncMock()
+    redis_mock.lrem = AsyncMock()
+    redis_mock.brpoplpush = AsyncMock(return_value=None)
+    redis_mock.blpop = AsyncMock(return_value=None)
+    redis_mock.lrange = AsyncMock(return_value=[])
     redis_mock.close = AsyncMock()
     import redis.asyncio
     monkeypatch.setattr(redis.asyncio.Redis, "from_url", lambda *a, **kw: redis_mock)

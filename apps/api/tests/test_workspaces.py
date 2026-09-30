@@ -56,6 +56,20 @@ class TestWorkspaces:
         res = await client.get("/api/v1/workspaces", headers=headers)
         assert res.status_code == 200
         assert len(res.json()) >= 1
+        assert "x-total-count" in res.headers
+        assert int(res.headers["x-total-count"]) >= 1
+
+    async def test_list_workspaces_pagination(self, client: AsyncClient):
+        headers = await self._auth_header(client)
+        await self._create_workspace(client, headers, "PageWS1")
+        await self._create_workspace(client, headers, "PageWS2")
+        res = await client.get("/api/v1/workspaces?limit=1&offset=0", headers=headers)
+        assert res.status_code == 200
+        assert len(res.json()) == 1
+        assert res.headers["x-limit"] == "1"
+        assert res.headers["x-offset"] == "0"
+        assert int(res.headers["x-total-count"]) >= 2
+
 
     async def test_list_workspaces_returns_401_when_no_user(self, client: AsyncClient):
         headers = await self._auth_header(client)

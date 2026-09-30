@@ -41,7 +41,11 @@ def _get_redis():
         logger.info("CSRF store using Redis at %s", redis_url.split("@")[-1])
         return _redis_client
     except Exception as e:
-        logger.debug("CSRF Redis unavailable, using in-memory: %s", e)
+        env = getattr(settings, "service_environment", "local")
+        if env in ("production", "staging"):
+            logger.warning("CRITICAL: CSRF Redis unavailable in %s, multi-pod CSRF at risk; falling back to in-memory: %s", env, e)
+        else:
+            logger.debug("CSRF Redis unavailable, using in-memory: %s", e)
         return None
 
 MUTATING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
@@ -95,7 +99,7 @@ class CSRFTokenStore:
         redis_client = _get_redis()
         if redis_client is not None:
             try:
-                redis_client.setex(f"csrf:{token}", int(self._ttl), "1")
+                redis_client.set(f"csrf:{token}", "1", ex=int(self._ttl))
                 return token
             except Exception as e:
                 logger.debug("CSRF Redis setex failed, fallback to memory: %s", e)

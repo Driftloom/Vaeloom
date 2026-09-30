@@ -529,3 +529,75 @@ class TestPluginService:
         rows, total = await service.list_executions(uuid.uuid4(), 1, 10, mock_db)
         assert total == 3
         assert len(rows) == 1
+
+    # ── Zero-Trust AST Sandbox Security Tests ─────────────────────────────
+
+    async def test_execute_blocks_subclass_introspection(self, service, mock_db):
+        plugin_row = _MockMapping(id="p1", name="P1", version="1.0", author="A",
+                                   description="D", license="MIT", status="REGISTERED",
+                                   permissions="{}", tenant_id="t1")
+
+        call_index = 0
+        def side_effect(stmt, params=None):
+            nonlocal call_index
+            call_index += 1
+            r = MagicMock()
+            if call_index == 1:
+                r.mappings.return_value.first.return_value = plugin_row
+            else:
+                exec_row = _MockMapping(
+                    id="e1", plugin_id="p1",
+                    status=params.get("status", "failed") if params else "failed",
+                    duration_ms=5, output=None,
+                    error_message=params.get("error_message") if params else "Error",
+                    created_at=datetime.now(timezone.utc),
+                )
+                r.mappings.return_value.first.return_value = exec_row
+            return r
+
+        mock_db.execute = AsyncMock(side_effect=side_effect)
+
+        dto = MagicMock()
+        dto.code = "subclasses = ().__class__.__bases__[0].__subclasses__()\nresult = len(subclasses)"
+        dto.input = {}
+        dto.timeout_ms = 5000
+
+        result = await service.execute(uuid.uuid4(), dto, mock_db)
+        assert result["status"] == "failed"
+        assert "SecurityViolation" in result["error_message"]
+
+    async def test_execute_blocks_import_statements(self, service, mock_db):
+        plugin_row = _MockMapping(id="p1", name="P1", version="1.0", author="A",
+                                   description="D", license="MIT", status="REGISTERED",
+                                   permissions="{}", tenant_id="t1")
+
+        call_index = 0
+        def side_effect(stmt, params=None):
+            nonlocal call_index
+            call_index += 1
+            r = MagicMock()
+            if call_index == 1:
+                r.mappings.return_value.first.return_value = plugin_row
+            else:
+                exec_row = _MockMapping(
+                    id="e1", plugin_id="p1",
+                    status=params.get("status", "failed") if params else "failed",
+                    duration_ms=5, output=None,
+                    error_message=params.get("error_message") if params else "Error",
+                    created_at=datetime.now(timezone.utc),
+                )
+                r.mappings.return_value.first.return_value = exec_row
+            return r
+
+        mock_db.execute = AsyncMock(side_effect=side_effect)
+
+        dto = MagicMock()
+        dto.code = "import os\nresult = os.name"
+        dto.input = {}
+        dto.timeout_ms = 5000
+
+        result = await service.execute(uuid.uuid4(), dto, mock_db)
+        assert result["status"] == "failed"
+        assert "SecurityViolation" in result["error_message"]
+        assert "Import statements are forbidden" in result["error_message"]
+

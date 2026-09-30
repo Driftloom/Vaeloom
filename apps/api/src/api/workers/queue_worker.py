@@ -84,6 +84,22 @@ class BullMQWorker:
         """Register a handler for a specific job type (e.g. 'event.publish')."""
         self._handlers[job_type] = handler
 
+    async def _recover_active_jobs(self, r: redis.Redis) -> None:
+        """On worker startup, check for orphaned jobs left in the active queue by crashed workers."""
+        try:
+            if hasattr(r, "lrange"):
+                active_jobs = await r.lrange(self._active_key, 0, -1)
+                if active_jobs:
+                    logger.warning("Recovering %d orphaned active job(s) from crashed workers", len(active_jobs))
+                    for job_id in active_jobs:
+                        if hasattr(r, "lrem"):
+                            removed = await r.lrem(self._active_key, 1, job_id)
+                            if removed and hasattr(r, "rpush"):
+                                await r.rpush(self._wait_key, job_id)
+                                logger.info("Orphaned job %s re-queued to wait list", job_id)
+        except Exception:
+            logger.debug("Active queue recovery failed", exc_info=True)
+
     async def start(self) -> None:
         """Start the worker loop."""
         r = await self._get_redis()
@@ -94,15 +110,31 @@ class BullMQWorker:
             self.queue_name,
             self.concurrency,
         )
+        await self._recover_active_jobs(r)
 
         while self._running:
             try:
                 await self._promote_delayed(r)
-                result = await r.blpop(self._wait_key, timeout=self.poll_interval)
-                if result is None:
-                    continue
+                job_id = None
+                # Reliable dequeue: BRPOPLPUSH atomically moves item from wait to active queue
+                try:
+                    if hasattr(r, "brpoplpush"):
+                        res = await r.brpoplpush(self._wait_key, self._active_key, timeout=self.poll_interval)
+                        if res:
+                            job_id = res
+                except Exception:
+                    job_id = None
 
-                _key, job_id = result
+                if job_id is None:
+                    result = await r.blpop(self._wait_key, timeout=self.poll_interval)
+                    if result is None:
+                        continue
+                    _key, job_id = result
+                    if hasattr(r, "lpush"):
+                        try:
+                            await r.lpush(self._active_key, job_id)
+                        except Exception:
+                            pass
 
                 async with self._semaphore:
                     task = asyncio.create_task(self._process_job(job_id))
@@ -142,6 +174,11 @@ class BullMQWorker:
             raw = await r.hgetall(job_key)
             if not raw:
                 logger.warning("Job %s not found in Redis", job_id)
+                if hasattr(r, "lrem"):
+                    try:
+                        await r.lrem(self._active_key, 1, job_id)
+                    except Exception:
+                        pass
                 return
 
             job_data = {
@@ -158,9 +195,23 @@ class BullMQWorker:
                 logger.warning("No handler registered for job type '%s'", job_name)
                 await r.hset(job_key, "failedReason", f"No handler for '{job_name}'")
                 await r.zadd(self._failed_key, {job_id: 0})
+                if hasattr(r, "lrem"):
+                    try:
+                        await r.lrem(self._active_key, 1, job_id)
+                    except Exception:
+                        pass
                 return
 
-            result = await handler(data)
+            if hasattr(handler, "__code__") and "job_id" in handler.__code__.co_varnames:
+                result = await handler(data, job_id=job_id)
+            else:
+                result = await handler(data)
+
+            if hasattr(r, "lrem"):
+                try:
+                    await r.lrem(self._active_key, 1, job_id)
+                except Exception:
+                    pass
 
             await r.zadd(self._completed_key, {job_id: float(job_data.get("timestamp", 0) or 0)})
             await r.hset(job_key, mapping={"returnvalue": json.dumps(result)})
@@ -169,6 +220,11 @@ class BullMQWorker:
 
         except Exception:
             logger.exception("Job %s failed", job_id)
+            if hasattr(r, "lrem"):
+                try:
+                    await r.lrem(self._active_key, 1, job_id)
+                except Exception:
+                    pass
             # Retry with exponential backoff until maxAttempts, then dead-letter
             try:
                 attempts = int(job_data.get("attempts", 0) or 0)
@@ -213,7 +269,7 @@ class BullMQWorker:
 # ── Wiring ─────────────────────────────────────────────────────────────────────
 
 
-async def handle_event_publish(data: dict[str, Any], db: Any = None) -> dict[str, Any]:
+async def handle_event_publish(data: dict[str, Any], db: Any = None, job_id: str | None = None) -> dict[str, Any]:
     """Handle 'event.publish' jobs from the API events queue."""
     from api.infrastructure.background_envelope import (
         BackgroundSecurityError,
@@ -234,7 +290,8 @@ async def handle_event_publish(data: dict[str, Any], db: Any = None) -> dict[str
         if not envelope:
             raise BackgroundSecurityError("Missing required background security envelope for agent.execute")
 
-        valid, reason, verified = await averify_background_envelope(envelope)
+        current_job_id = job_id or data.get("job_id")
+        valid, reason, verified = await averify_background_envelope(envelope, job_id=current_job_id)
         if not valid or not verified:
             raise BackgroundSecurityError(f"Security envelope validation failed: {reason}")
 
@@ -288,7 +345,7 @@ async def handle_subscription_create(data: dict[str, Any]) -> dict[str, Any]:
 # ── Durable scheduling handlers (ADR-033) ─────────────────────────────────────
 
 
-async def handle_schedule_agent_run(data: dict[str, Any]) -> dict[str, Any]:
+async def handle_schedule_agent_run(data: dict[str, Any], job_id: str | None = None) -> dict[str, Any]:
     """Execute a claimed AgentSchedule slot enqueued by the background daemon.
 
     Raises on failure so BullMQWorker retries with backoff.
@@ -310,7 +367,8 @@ async def handle_schedule_agent_run(data: dict[str, Any]) -> dict[str, Any]:
     if not envelope:
         raise BackgroundSecurityError("Missing required security envelope for schedule.agent_run")
 
-    valid, reason, verified = await averify_background_envelope(envelope)
+    current_job_id = job_id or data.get("job_id")
+    valid, reason, verified = await averify_background_envelope(envelope, job_id=current_job_id)
     if not valid or not verified:
         raise BackgroundSecurityError(f"Security envelope validation failed: {reason}")
 

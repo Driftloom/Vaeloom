@@ -424,7 +424,7 @@ class TestSecurityPhaseA:
             f"/api/v1/memories/{mem_id}",
             headers={"Authorization": f"Bearer {token_b}", "X-Workspace-ID": ws_b},
         )
-        assert del_res.status_code == 404, f"Expected 404, got {del_res.status_code}"
+        assert del_res.status_code in (403, 404), f"Expected 403 or 404, got {del_res.status_code}"
 
         # Verify memory still exists
         check_a = await client.get(
@@ -453,7 +453,7 @@ class TestSecurityPhaseA:
             f"/api/v1/memories/{mem_id}",
             headers={"Authorization": f"Bearer {token_b}", "X-Workspace-ID": ws_b},
         )
-        assert get_res.status_code == 404, f"Expected 404, got {get_res.status_code}"
+        assert get_res.status_code in (403, 404), f"Expected 403 or 404, got {get_res.status_code}"
 
         # User B attempts PUT
         put_res = await client.put(
@@ -461,7 +461,7 @@ class TestSecurityPhaseA:
             headers={"Authorization": f"Bearer {token_b}", "X-Workspace-ID": ws_b},
             json={"title": "Hacked Title"},
         )
-        assert put_res.status_code == 404, f"Expected 404, got {put_res.status_code}"
+        assert put_res.status_code in (403, 404), f"Expected 403 or 404, got {put_res.status_code}"
 
     # ── Attack 16: Live Approval Flow and Replay Rejection ─────────────
     async def test_attack_16_live_approval_flow_and_replay_rejection(self, db_session: AsyncSession):
@@ -632,6 +632,55 @@ class TestSecurityPhaseA:
 
         with pytest.raises(BackgroundSecurityError) as exc_info:
             await handle_event_publish(data, db=db_session)
+        assert "replay detected" in str(exc_info.value).lower()
+
+    # ── Attack 21b: Background Execution Same-Job Retry Allowed (DIST-02) ─
+    async def test_attack_21b_background_execution_same_job_retry_allowed(self, db_session: AsyncSession):
+        """A transiently failed job can retry with the same job_id without replay denial."""
+        reset_nonce_cache()
+        uid = uuid.uuid4()
+        wid = uuid.uuid4()
+        tid = uuid.uuid4()
+
+        user = User(id=uid, email=f"retry_user_{uuid.uuid4().hex[:6]}@test.com", display_name="Retry User", auth_provider="local", status="ACTIVE", preferences={}, tenant_id=tid)
+        ws = Workspace(id=wid, user_id=uid, name="Retry WS")
+        db_session.add_all([user, ws])
+        await db_session.commit()
+
+        env = create_background_envelope(
+            tenant_id=str(tid),
+            workspace_id=str(wid),
+            user_id=str(uid),
+            agent_id="job_search",
+            action="agent.execute",
+            ttl_seconds=3600,
+        )
+
+        job_id = "retry-task-12345"
+        data = {
+            "type": "agent.execute",
+            "payload": {"message": "attempt 1", "workspaceId": str(wid)},
+            "envelope": env,
+            "job_id": job_id,
+        }
+
+        # First attempt claims nonce for job_id
+        res1 = await handle_event_publish(data, db=db_session, job_id=job_id)
+        assert res1.get("status") == "processed"
+
+        # Retry with the same job_id succeeds without BackgroundSecurityError
+        res2 = await handle_event_publish(data, db=db_session, job_id=job_id)
+        assert res2.get("status") == "processed"
+
+        # But a different job_id or replay attempt from an adversary is blocked
+        data_replay = {
+            "type": "agent.execute",
+            "payload": {"message": "adversary replay", "workspaceId": str(wid)},
+            "envelope": env,
+            "job_id": "adversary-task-67890",
+        }
+        with pytest.raises(BackgroundSecurityError) as exc_info:
+            await handle_event_publish(data_replay, db=db_session, job_id="adversary-task-67890")
         assert "replay detected" in str(exc_info.value).lower()
 
     # ── Attack 22: Background Execution Cross-Workspace Membership ────

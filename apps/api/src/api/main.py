@@ -2,7 +2,7 @@ import sqlite3
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -63,7 +63,13 @@ from .infrastructure.opentelemetry import instrumement_fastapi, setup_openteleme
 from .middleware.api_version import APIVersionMiddleware
 from .middleware.auth import AuthMiddleware
 from .middleware.csrf import CSRFMiddleware, create_csrf_token
-from .middleware.exception_handler import generic_exception_handler, unified_exception_handler, validation_exception_handler
+from .middleware.exception_handler import (
+    PROBLEM_MEDIA_TYPE,
+    generic_exception_handler,
+    problem_envelope,
+    unified_exception_handler,
+    validation_exception_handler,
+)
 from .middleware.idempotency import IdempotencyMiddleware
 from .middleware.ip_filter import IPAllowlistMiddleware
 from .middleware.prompt_injection import PromptInjectionMiddleware
@@ -429,12 +435,18 @@ from .temporal.client import TemporalUnavailableError as _TemporalUnavailableErr
 
 
 @app.exception_handler(_TemporalUnavailableError)
-async def _temporal_unavailable_handler(request, exc: _TemporalUnavailableError):  # type: ignore[unused-arg]
+async def _temporal_unavailable_handler(request: Request, exc: _TemporalUnavailableError):
     # Fail-closed: durability was requested but Temporal is unreachable — refuse,
     # do not silently fall back to a non-durable run.
     return JSONResponse(
         status_code=503,
-        content={"detail": "Temporal service unavailable — durable execution refused", "error": str(exc)},
+        media_type=PROBLEM_MEDIA_TYPE,
+        content=problem_envelope(
+            503,
+            "Temporal service unavailable — durable execution refused",
+            str(exc),
+            request=request,
+        ),
     )
 
 @app.get("/csrf-token", tags=["security"])

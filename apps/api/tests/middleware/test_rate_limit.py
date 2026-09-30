@@ -212,3 +212,30 @@ class TestRateLimitMiddleware:
         result = await middleware.dispatch(request, call_next)
         assert result.status_code == 429
         assert any("Rate limit exceeded" in msg for msg in caplog.messages)
+
+    @pytest.mark.asyncio
+    async def test_get_remaining_memory_and_redis(self):
+        mem = MemoryBackend()
+        key = "rem:test"
+        assert await mem.get_remaining(key, 10, 60) == 10
+        await mem.check_and_record(key, 10, 60)
+        await mem.check_and_record(key, 10, 60)
+        assert await mem.get_remaining(key, 10, 60) == 8
+
+        class MockRedisLimiter:
+            def __init__(self):
+                self.count = 3
+            async def zremrangebyscore(self, k, a, b):
+                pass
+            async def zcard(self, k):
+                return self.count
+
+        from api.middleware.rate_limit import RedisBackend
+
+        class PatchedRedisBackend(RedisBackend):
+            def __init__(self):
+                self._redis = MockRedisLimiter()
+
+        r_backend = PatchedRedisBackend()
+        assert await r_backend.get_remaining("k", 10, 60) == 7
+

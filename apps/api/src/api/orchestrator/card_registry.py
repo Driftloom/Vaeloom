@@ -234,7 +234,6 @@ GMAIL_CARD = AgentCard(
         "search_outlook_mail",
         "draft_outlook_mail",
         "search_documents",
-        "send_email",
     ],
     safety_guidelines=[
         "Draft emails for user review; never send without explicit human confirmation.",

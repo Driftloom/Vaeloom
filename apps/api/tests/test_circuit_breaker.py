@@ -230,3 +230,69 @@ class TestCircuitBreaker:
 
         result = await cb.call(fail_again(), fallback="saved")
         assert result == "saved"
+
+    @pytest.mark.asyncio
+    async def test_circuit_breaker_syncs_with_redis(self):
+        class MockRedis:
+            def __init__(self):
+                self.store = {}
+            async def get(self, key):
+                return self.store.get(key)
+            async def set(self, key, value, ex=None):
+                self.store[key] = value
+                return True
+            async def delete(self, *keys):
+                for k in keys:
+                    self.store.pop(k, None)
+                return True
+
+        redis = MockRedis()
+        redis.store["cb:payment:state"] = "open"
+
+        cb = CircuitBreaker(name="payment", redis_client=redis)
+        assert cb.get_state() == CircuitState.CLOSED
+
+        async def dummy():
+            return "ok"
+
+        with pytest.raises(CircuitBreakerOpenError):
+            await cb.call(dummy())
+
+        assert cb.get_state() == CircuitState.OPEN
+
+    @pytest.mark.asyncio
+    async def test_circuit_breaker_sets_and_clears_redis(self):
+        class MockRedis:
+            def __init__(self):
+                self.store = {}
+            async def get(self, key):
+                return self.store.get(key)
+            async def set(self, key, value, ex=None):
+                self.store[key] = value
+                return True
+            async def delete(self, *keys):
+                for k in keys:
+                    self.store.pop(k, None)
+                return True
+
+        redis = MockRedis()
+        cb = CircuitBreaker(failure_threshold=1, recovery_timeout=0.05, name="api_ext", redis_client=redis)
+
+        async def fail():
+            raise RuntimeError("down")
+
+        with pytest.raises(RuntimeError):
+            await cb.call(fail())
+
+        assert redis.store.get("cb:api_ext:state") == "open"
+
+        await asyncio.sleep(0.06)
+
+        async def ok():
+            return "recovered"
+
+        res = await cb.call(ok())
+        assert res == "recovered"
+        assert cb.get_state() == CircuitState.CLOSED
+        assert "cb:api_ext:state" not in redis.store
+

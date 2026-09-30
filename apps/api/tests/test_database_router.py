@@ -70,3 +70,25 @@ class TestDatabaseRouter:
             result = await session.execute(text("SELECT 1 AS val"))
             row = result.fetchone()
             assert row is not None
+
+    async def test_sessions_are_rls_guarded(self):
+        from api.database import RLSGuardedAsyncSession
+        from api.infrastructure.database_router import DatabaseRouter
+
+        router = DatabaseRouter(primary_url="sqlite+aiosqlite://")
+        async with router.get_write_session() as session:
+            assert isinstance(session, RLSGuardedAsyncSession)
+        async with router.get_read_session() as session:
+            assert isinstance(session, RLSGuardedAsyncSession)
+
+    async def test_dependencies_yield_sessions(self):
+        from api.database import RLSGuardedAsyncSession
+        from api.infrastructure.database_router import get_db_read, get_db_write
+
+        async for session in get_db_read():
+            assert isinstance(session, RLSGuardedAsyncSession)
+            break
+        async for session in get_db_write():
+            assert isinstance(session, RLSGuardedAsyncSession)
+            break
+
