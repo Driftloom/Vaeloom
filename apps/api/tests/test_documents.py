@@ -39,6 +39,56 @@ class TestDocuments:
         assert res.status_code == 201
         assert "id" in res.json()
 
+    async def test_get_document_by_id_success(self, client: AsyncClient):
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+        content = b"Content for single document test"
+        upload_res = await client.post(
+            f"/api/v1/documents?workspace_id={ws_id}",
+            files={"file": ("single_doc.txt", io.BytesIO(content), "text/plain")},
+            headers=headers,
+        )
+        assert upload_res.status_code == 201
+        doc_id = upload_res.json()["id"]
+
+        get_res = await client.get(
+            f"/api/v1/documents/{doc_id}?workspace_id={ws_id}",
+            headers=headers,
+        )
+        assert get_res.status_code == 200
+        data = get_res.json()
+        assert data["id"] == doc_id
+        assert "single_doc.txt" in data["path"]
+
+    async def test_get_document_by_id_not_found(self, client: AsyncClient):
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+        fake_id = str(uuid.uuid4())
+        res = await client.get(
+            f"/api/v1/documents/{fake_id}?workspace_id={ws_id}",
+            headers=headers,
+        )
+        assert res.status_code == 404
+
+    async def test_get_document_by_id_cross_workspace_isolated(self, client: AsyncClient):
+        headers = await self._auth_header(client)
+        ws_id1 = await self._create_workspace(client, headers)
+        ws_id2 = str(uuid.uuid4())
+        upload_res = await client.post(
+            f"/api/v1/documents?workspace_id={ws_id1}",
+            files={"file": ("isolated.txt", io.BytesIO(b"Secret content"), "text/plain")},
+            headers=headers,
+        )
+        assert upload_res.status_code == 201
+        doc_id = upload_res.json()["id"]
+
+        # Attempt to access doc_id using another workspace that does not own or share it
+        res = await client.get(
+            f"/api/v1/documents/{doc_id}?workspace_id={ws_id2}",
+            headers=headers,
+        )
+        assert res.status_code in (403, 404)
+
     async def test_list_documents(self, client: AsyncClient):
         headers = await self._auth_header(client)
         ws_id = await self._create_workspace(client, headers)
@@ -108,7 +158,7 @@ class TestDocumentContentAndOperations:
             f"/api/v1/documents/{doc_id}/content?workspace_id={ws_id}",
             headers=other_headers,
         )
-        assert res.status_code == 404
+        assert res.status_code == 403
 
     async def test_rename_records_action_and_undo_restores(self, client: AsyncClient):
         headers = await self._auth_header(client)

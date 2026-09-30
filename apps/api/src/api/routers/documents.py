@@ -356,6 +356,29 @@ async def get_document_content(
     )
 
 
+@router.get("/{document_id}", response_model=DocumentResponse)
+async def get_document(
+    document_id: str,
+    workspace_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    try:
+        doc = await document_service.get_document(
+            document_id=document_id,
+            workspace_id=workspace_id,
+            db=db,
+        )
+    except DocumentNotFound:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    return DocumentResponse.model_validate(doc)
+
+
 @router.patch("/{document_id}", response_model=DocumentResponse)
 async def rename_document(
     document_id: str,

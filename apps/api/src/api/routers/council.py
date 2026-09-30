@@ -70,8 +70,8 @@ async def triage_artifact(
 
 class CouncilCertifyRequest(BaseModel):
     workspace_id: uuid.UUID
-    agent_name: str
-    execution_id: str
+    agent_name: str | None = None
+    execution_id: str | None = None
     artifact: str = Field(..., min_length=1)
     artifact_type: str = "text"
     tools_invoked: list[str] = Field(default_factory=list)
@@ -86,12 +86,14 @@ async def evaluate_and_certify(
 ) -> dict[str, Any]:
     """Evaluates artifact through Council and automatically generates W3C AgentAuditCredential on consensus."""
     user_id = uuid.UUID(current_user["sub"])
+    agent_name = body.agent_name or "CouncilEvaluator"
+    execution_id = body.execution_id or str(uuid.uuid4())
     return await agent_council.evaluate_and_certify(
         db=db,
         user_id=user_id,
         workspace_id=body.workspace_id,
-        agent_name=body.agent_name,
-        execution_id=body.execution_id,
+        agent_name=agent_name,
+        execution_id=execution_id,
         artifact=body.artifact,
         artifact_type=body.artifact_type,
         tools_invoked=body.tools_invoked,
