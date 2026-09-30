@@ -209,109 +209,298 @@ class CapabilityTestRequest(BaseModel):
     input_payload: dict[str, Any] = {}
 
 
+# The playground sends plural category labels ("tools", "agents"); the capability
+# rows use singular ones. Both resolve to the same branch.
+_CATEGORY_ALIASES: dict[str, str] = {
+    "skill": "skill",
+    "skills": "skill",
+    "plugin": "plugin",
+    "plugins": "plugin",
+    "tool": "tool",
+    "tools": "tool",
+    "mcp": "mcp",
+    "agent": "agent",
+    "agents": "agent",
+    "connector": "connector",
+    "connectors": "connector",
+}
+
+NO_EXECUTABLE_RUNTIME = (
+    "This category has no executable runtime; only its configuration was validated."
+)
+
+TOOL_VALIDATION_ONLY = (
+    "The tool was NOT executed. This endpoint validates parameters against the "
+    "tool's declared input schema only. For real execution call "
+    "POST /api/v1/capabilities/{id}/test on the workspace capability row."
+)
+
+AGENT_NOT_RUN = (
+    "No planning or execution run occurred. This endpoint read the agent's "
+    "declared contract from the live registry and performed no LLM call."
+)
+
+_PLUGIN_REQUIRED_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "non-empty string"),
+    ("version", "non-empty string"),
+    ("author", "non-empty string"),
+    ("description", "string"),
+    ("license", "string"),
+    ("min_app_version", "string"),
+    ("entry_point", "non-empty string"),
+)
+
+
+def _as_list(value: Any) -> list[Any]:
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str):
+        return [p.strip() for p in value.split(",") if p.strip()]
+    return []
+
+
+def _validate_plugin_config(config: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
+    """Manifest validation for a plugin capability, mirroring RegisterPluginRequest."""
+    errors: list[str] = []
+    for field_name, expectation in _PLUGIN_REQUIRED_FIELDS:
+        value = config.get(field_name)
+        if expectation.startswith("non-empty"):
+            if not isinstance(value, str) or not value.strip():
+                errors.append(f"Plugin config field '{field_name}' is required and must be a {expectation}")
+        elif value is None or not isinstance(value, str):
+            errors.append(f"Plugin config field '{field_name}' is required and must be a {expectation}")
+
+    tags = _as_list(config.get("tags"))
+    if not tags:
+        errors.append("Plugin config field 'tags' is required and must contain at least one tag")
+
+    if not isinstance(config.get("permissions"), dict):
+        errors.append("Plugin config field 'permissions' is required and must be an object")
+
+    config_schema = config.get("config_schema")
+    parsed_schema: dict[str, Any] | None = None
+    if isinstance(config_schema, str):
+        try:
+            parsed_schema = json.loads(config_schema)
+        except json.JSONDecodeError as exc:
+            errors.append(f"Plugin config_schema is not valid JSON: {exc}")
+            parsed_schema = None
+    elif config_schema is not None:
+        if not isinstance(config_schema, dict):
+            errors.append("Plugin config_schema must be an object or a JSON object string")
+        else:
+            parsed_schema = config_schema
+
+    return errors, {"config_schema": parsed_schema, "tags": tags}
+
+
+async def _find_capability_row(db: AsyncSession, workspace_id: str, name: str, category: str):
+    from ..services.capability_usage_service import find_capability
+
+    return await find_capability(db, workspace_id=workspace_id, name=name, category=category)
+
+
 @router.post("/capabilities/test")
 async def test_capability(
     dto: CapabilityTestRequest,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Interactive capability test runner endpoint for workspace playground."""
+    """Validate a capability's real configuration. Executes nothing by default.
+
+    Every response carries ``executed``. Nothing on this endpoint invents a
+    result: a tool is schema-checked but not run, an agent's contract is read
+    from the registry but no plan is produced, and an MCP capability reports a
+    real discovery round trip or says that nothing was contacted.
+    """
     import time
-    from ..orchestrator.router import AGENT_REGISTRY
-    from ..tools.definitions import ALL_TOOLS
 
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     await _verify_workspace_access(dto.workspace_id, current_user, db)
 
     start_time = time.perf_counter()
-    category = dto.category.lower().strip()
+    raw_category = dto.category.lower().strip()
+    category = _CATEGORY_ALIASES.get(raw_category)
+    if category is None:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Unsupported category '{dto.category}'. "
+                f"Expected one of: {sorted(set(_CATEGORY_ALIASES))}"
+            ),
+        )
+
     cap_name = dto.capability_name.strip()
-    validation_errors = []
+    validation_errors: list[str] = []
     result_data: Any = None
     status = "success"
+    executed = False
 
-    if category == "tools":
-        tool_def = ALL_TOOLS.get(cap_name)
-        if not tool_def:
-            alt_name = cap_name.lower().replace("-", "_")
-            tool_def = ALL_TOOLS.get(alt_name)
-        if tool_def:
+    if category == "skill":
+        from ..services.capability_usage_service import record_usage_by_name
+        from ..services.skill_catalog_service import get_catalog_entry, validate_skill_document
+
+        row = await record_usage_by_name(
+            db,
+            workspace_id=dto.workspace_id,
+            name=cap_name,
+            category="skill",
+        )
+        catalog = get_catalog_entry(cap_name)
+        config = dict(row.config or {}) if row is not None else {}
+        markdown_doc = config.get("markdown_doc") or (catalog.markdown_doc if catalog else "")
+        required_scope = config.get("required_scope") or (catalog.required_scope if catalog else "")
+        tags = _as_list(config.get("tags")) or (list(catalog.tags) if catalog else [])
+        triggers = _as_list(config.get("triggers")) or (list(catalog.triggers) if catalog else [])
+
+        result = validate_skill_document(
+            markdown_doc=markdown_doc,
+            required_scope=str(required_scope or ""),
+            tags=tags,
+            entry=catalog,
+            triggers=triggers,
+        )
+        if row is not None:
+            await db.commit()
+        validation_errors = [v.message for v in result.violations]
+        status = result.status
+        result_data = {
+            "skill": cap_name,
+            "source": "catalog" if catalog else ("workspace" if row is not None else "none"),
+            "installed": row is not None,
+            "rules_checked": result.rules_checked,
+            "violations": [v.model_dump() for v in result.violations],
+            "required_scope": required_scope or None,
+            "tags": tags,
+            "from_catalog": result.from_catalog,
+            "usage_recorded": row is not None,
+            "detail": result.detail,
+        }
+
+    elif category == "plugin":
+        row = await _find_capability_row(db, dto.workspace_id, cap_name, "plugin")
+        config = dict(row.config or {}) if row is not None else dict(dto.input_payload)
+        errors, extra = _validate_plugin_config(config)
+        validation_errors = errors
+        status = "warning" if errors else "success"
+        result_data = {
+            "plugin": cap_name,
+            "installed": row is not None,
+            "validated_fields": [name for name, _ in _PLUGIN_REQUIRED_FIELDS] + ["tags", "permissions", "config_schema"],
+            "config_schema": extra["config_schema"],
+            "tags": extra["tags"],
+            "detail": NO_EXECUTABLE_RUNTIME,
+        }
+
+    elif category == "tool":
+        from ..tools.definitions import ALL_TOOLS
+
+        tool_def = ALL_TOOLS.get(cap_name) or ALL_TOOLS.get(cap_name.lower().replace("-", "_"))
+        if tool_def is None:
+            validation_errors = [f"No built-in tool named '{cap_name}' is registered"]
+            status = "warning"
+            result_data = {
+                "capability": cap_name,
+                "note": "Not a built-in tool; workspace tools are validated via POST /api/v1/capabilities/{id}/test",
+                "detail": TOOL_VALIDATION_ONLY,
+            }
+        else:
             schema = tool_def.input_schema or {}
-            required_props = schema.get("required", [])
+            required_props = schema.get("required", []) or []
             for req_field in required_props:
                 if req_field not in dto.input_payload or dto.input_payload[req_field] is None:
                     validation_errors.append(f"Missing required parameter '{req_field}' in input payload")
-            if validation_errors:
-                status = "warning"
-                result_data = {
-                    "tool": tool_def.name,
-                    "validation": "failed",
-                    "missing": validation_errors,
-                    "expected_schema": schema,
-                }
-            else:
-                result_data = {
-                    "tool": tool_def.name,
-                    "validation": "passed",
-                    "category": tool_def.category,
-                    "required_scope": tool_def.required_scope,
-                    "simulated_output": {
-                        "status": "completed",
-                        "records_matched": 3,
-                        "entities": ["Document#104", "GraphEdge#99", "Artifact#22"],
-                        "confidence": 0.96,
-                    },
-                }
-        else:
+            status = "warning" if validation_errors else "success"
             result_data = {
-                "capability": cap_name,
-                "note": "Custom or unregistered tool",
-                "echo": dto.input_payload,
-            }
-
-    elif category == "agents":
-        agent_cls = AGENT_REGISTRY.get(cap_name) or AGENT_REGISTRY.get(cap_name.lower().replace("-", "_"))
-        if agent_cls:
-            mission = getattr(agent_cls, "mission", "") or getattr(agent_cls, "__doc__", "") or ""
-            default_autonomy = getattr(agent_cls, "default_autonomy", "suggest")
-            result_data = {
-                "agent": cap_name,
-                "status": "ready",
-                "mission": mission.strip() if isinstance(mission, str) else str(mission),
-                "autonomy_tier": default_autonomy,
-                "plan_proposal": {
-                    "decision": "PROCEED",
-                    "reason": "Autonomous evaluation confirms payload aligns with agent directives",
-                    "suggested_actions": ["extract_entities", "resolve_graph_relationships"],
-                },
-            }
-        else:
-            result_data = {
-                "agent": cap_name,
-                "status": "custom_ready",
-                "echo": dto.input_payload,
+                "tool": tool_def.name,
+                "validation": "failed" if validation_errors else "passed",
+                "missing": validation_errors,
+                "expected_schema": schema,
+                "category": tool_def.category,
+                "required_scope": tool_def.required_scope,
+                "validated_params": dict(dto.input_payload),
+                "executed": False,
+                "detail": TOOL_VALIDATION_ONLY,
             }
 
     elif category == "mcp":
-        result_data = {
-            "mcp_server": cap_name,
-            "status": "connected",
-            "protocol_version": "2024-11-05",
-            "tools_count": 4,
-            "ping_latency_ms": 12,
-            "session_active": True,
-        }
+        from ..routers.capabilities import probe_mcp_endpoint
 
-    else:
-        # skills & plugins
+        row = await _find_capability_row(db, dto.workspace_id, cap_name, "mcp")
+        config = dict(row.config or {}) if row is not None else {}
+        probe = await probe_mcp_endpoint(config)
+        if probe["status"] == "connected":
+            executed = True
+            status = "success"
+        elif probe["status"] == "skipped":
+            status = "skipped"
+        else:
+            status = probe["status"]
+            validation_errors = [probe["detail"]]
+        result_data = {"mcp_server": cap_name, "installed": row is not None, **probe}
+
+    elif category == "agent":
+        from ..orchestrator.router import AGENT_REGISTRY
+        from ..tools.definitions import ALL_TOOLS
+
+        agent_cls = AGENT_REGISTRY.get(cap_name) or AGENT_REGISTRY.get(cap_name.lower().replace("-", "_"))
+        if agent_cls is None:
+            validation_errors = [f"No agent named '{cap_name}' is registered"]
+            status = "warning"
+            result_data = {
+                "agent": cap_name,
+                "registered": False,
+                "detail": AGENT_NOT_RUN,
+            }
+        else:
+            mission = getattr(agent_cls, "mission", "") or getattr(agent_cls, "__doc__", "") or ""
+            default_autonomy = getattr(agent_cls, "default_autonomy", None)
+            declared_tools = [t.name for t in (getattr(agent_cls, "tools", None) or [])]
+            required_scopes = sorted(
+                {
+                    ALL_TOOLS[t].required_scope
+                    for t in declared_tools
+                    if t in ALL_TOOLS
+                }
+            )
+            unresolved_tools = [t for t in declared_tools if t not in ALL_TOOLS]
+            result_data = {
+                "agent": cap_name,
+                "registered": True,
+                "class_name": getattr(agent_cls, "__name__", None),
+                "mission": mission.strip() if isinstance(mission, str) else str(mission),
+                "default_autonomy": default_autonomy,
+                "declared_tools": declared_tools,
+                "required_scopes": required_scopes,
+                "unresolved_tools": unresolved_tools,
+                "plan_proposal": None,
+                "detail": AGENT_NOT_RUN,
+            }
+
+    else:  # connector
+        from ..services.mcp_client_service import McpConfigError, validate_mcp_config
+
+        row = await _find_capability_row(db, dto.workspace_id, cap_name, "connector")
+        config = dict(row.config or {}) if row is not None else {}
+        connector_type = str(config.get("type") or "")
+        if not connector_type:
+            validation_errors = ["Connector config has no 'type' field"]
+        elif connector_type == "mcp":
+            try:
+                validate_mcp_config(config)
+            except McpConfigError as exc:
+                validation_errors = [f"Invalid MCP connector config: {exc}"]
+        elif not str(config.get("api_key") or config.get("credentials") or "").strip() and not config.get("auth_type"):
+            validation_errors = [
+                "Connector config declares neither credentials nor an auth_type; nothing was contacted."
+            ]
+        status = "warning" if validation_errors else "success"
         result_data = {
-            "capability": cap_name,
-            "category": category,
-            "evaluation": "passed",
-            "rules_checked": 6,
-            "violations_detected": 0,
-            "recommendation": "Output conforms with enterprise guidelines",
+            "connector": cap_name,
+            "installed": row is not None,
+            "connector_type": connector_type or None,
+            "detail": NO_EXECUTABLE_RUNTIME,
         }
 
     duration_ms = max(1, int((time.perf_counter() - start_time) * 1000))
@@ -320,6 +509,7 @@ async def test_capability(
         "status": status,
         "capability": cap_name,
         "category": category,
+        "executed": executed,
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "execution_duration_ms": duration_ms,
         "validation_errors": validation_errors,
