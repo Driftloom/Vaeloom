@@ -60,16 +60,24 @@ jobs:
       # the Next.js dev server.
       - name: Run E2E suite (real backend, axe, responsive — gating)
         run: pnpm exec playwright test --grep-invert "visual baselines"
-      # Visual regression is advisory in CI: font rasterization differs across
-      # OSes, so linux baselines are refreshed and uploaded for review rather
-      # than compared against win32-generated baselines.
+      # Visual regression stays advisory: `toHaveScreenshot` compares per-OS, and
+      # only -win32 baselines are committed, so a hard compare against ubuntu
+      # output has nothing to match and would fail on font rasterization alone.
+      # What IS gated lives in the blocking run above: landing.spec.ts's a11y tests
+      # now assert the requested theme actually applied (html class + painted body
+      # background), which is the check the old pixel-only suite was missing - the
+      # committed "dark" baselines were light renders (top-band luminance 170 vs
+      # 73 for a correct dark capture) and still passed.
       - name: Visual baselines (advisory, refresh + upload)
         run: pnpm exec playwright test --grep "visual baselines" --update-snapshots
       - uses: actions/upload-artifact@v4
         if: always()
         with:
+          # The step above runs landing.spec.ts, so this must be the landing
+          # snapshot dir. It previously pointed at quality.spec.ts-snapshots,
+          # which meant the refreshed landing baselines were never published.
           name: visual-baselines-linux
-          path: apps/web/e2e/quality.spec.ts-snapshots/
+          path: apps/web/e2e/landing.spec.ts-snapshots/
           retention-days: 14
       - uses: actions/upload-artifact@v4
         if: failure()
