@@ -71,7 +71,7 @@
   /* Primary = LINK/brand text color (theme-aware, AA on black surfaces).
      Action = solid button background (fixed indigo, white label). */
   --primary: 165 180 252;       /* #A5B4FC ≈ 10:1 on #000000 */
-  --primary-fg: 255 255 255;
+  --primary-fg: 0 0 0;          /* High contrast text on light lilac #A5B4FC (10.5:1 AAA) */
   --primary-300: 165 180 252;
   --primary-400: 129 140 248;
   --primary-700: 67 56 202;
@@ -360,6 +360,7 @@ html.high-contrast,
     --border: 255 255 255;
     --border-strong: 255 255 255;
     --primary: 255 255 0;
+    --primary-fg: 0 0 0;          /* High contrast text on neon yellow (19.6:1 AAA) */
     --accent: 255 255 0;
     --color-focus-ring: #ffff00;
     --color-focus-ring-offset: #000000;
@@ -1040,18 +1041,30 @@ html.high-contrast,
  * Hero section light/dark responsive layers (Hydration-safe CSS)
  * ────────────────────────────────────────────────────────────────────────────*/
 
-/* The hero core sits dead centre on dark and is displaced down on light.
-   Light needs the displacement because on white the mid-value particles read as
-   confetti ON TOP of dark text. Dark keeps the core centred because there the
-   scene glows BEHIND the type, which is the whole reason the dark hero works;
-   `.hero-center-wash` below buys that copy its contrast. */
+/* The hero core sits BELOW the copy block, in both themes.
+   It used to sit dead centre, on the theory that on dark the scene would read as
+   "atmosphere behind the type". It does glow, but the core is a bright white
+   bloom directly behind the CTA row and the assurance line, and it animates, so
+   the contrast under the copy changed frame to frame - measured worst-case
+   1.27:1, which no text colour can fix (pure white over that background still
+   only reaches 4.13:1).
+
+   The first fix was a near-opaque copy plate, which did restore the contrast and
+   did so by burying the core under a black ellipse - the hero's one genuinely
+   striking element gone, replaced by a dark void. Covering the scene to protect
+   the text was the wrong trade.
+
+   Displacing the core fixes both at once: the copy gets clean space, and the
+   core stays fully visible below the CTAs. Same treatment as light mode, so the
+   two themes are structurally identical rather than each needing a workaround. */
 .hero-scene-placement {
   position: absolute;
   inset: 0;
+  top: 50%;
 }
 @media (max-width: 768px) {
   .hero-scene-placement {
-    top: 50%;
+    top: 58%;
   }
 }
 .light .hero-scene-placement {
@@ -1114,15 +1127,17 @@ html.high-contrast,
   z-index: 1;
   pointer-events: none;
   border-radius: 50%;
-  /* Alpha is tuned from measured composites, not by eye: at the assurance line
-     this ellipse is still ~0.82 opaque, which is what pulls the core's 125/255
-     grey down far enough for `text-text-muted` to clear 4.5:1. */
+  /* Insurance only. The core is displaced below the copy (see
+     `.hero-scene-placement`), so this is not carrying legibility on its own any
+     more - it just stops an occasional bright particle drifting under the text.
+     It was 0.92 opaque here, which is what buried the core; the contrast problem
+     it was invented for is now solved structurally instead. */
   background: radial-gradient(
     closest-side at 50% 50%,
-    rgba(3, 4, 10, 0.92) 0%,
-    rgba(3, 4, 10, 0.88) 34%,
-    rgba(3, 4, 10, 0.74) 58%,
-    rgba(3, 4, 10, 0.42) 78%,
+    rgba(3, 4, 10, 0.5) 0%,
+    rgba(3, 4, 10, 0.4) 34%,
+    rgba(3, 4, 10, 0.26) 58%,
+    rgba(3, 4, 10, 0.1) 78%,
     rgba(3, 4, 10, 0) 100%
   );
 }

@@ -172,7 +172,7 @@ export default function HeroSection() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.56 }}
-              className="mt-6 hidden items-center gap-2 text-xs font-medium text-text-muted sm:flex"
+              className="mt-6 hidden items-center gap-2 text-xs font-medium text-text-secondary sm:flex"
             >
               <Icon name="lock" className="h-3.5 w-3.5 shrink-0" />
               {HERO.assurance}

@@ -50,13 +50,35 @@ const E2E_API_ORIGIN = `http://127.0.0.1:${E2E_API_PORT}`;
  */
 const E2E_WEB_MODE = process.env['E2E_WEB_MODE'] === 'dev' ? 'dev' : 'build';
 
+/**
+ * Everything the web server needs is parameterised so two runs can coexist.
+ *
+ * This exists because a shared `apps/web/.next` is a single-writer resource.
+ * With the suite hardcoded to port 3000 and the default distDir, a `next dev`
+ * or a second Playwright run silently truncates the build out from under
+ * `next start`, which then fails with `PageNotFoundError: Cannot find module for
+ * page: /_document` or `pages-manifest.json ENOENT`. That failure looks like a
+ * build bug and is not one; it is two writers.
+ *
+ * Defaults preserve today's behaviour for a solo run. Set E2E_WEB_PORT and
+ * NEXT_DIST_DIR to run a second suite concurrently against its own build.
+ */
+const E2E_WEB_PORT = Number(process.env['E2E_WEB_PORT'] ?? '3000');
+const E2E_WEB_ORIGIN = `http://127.0.0.1:${E2E_WEB_PORT}`;
+// The suite builds into its own distDir by default so that running the tests
+// can never clobber a developer's `next dev` output, which was the original
+// defect. `.next-build` rather than a new name because .gitignore already
+// covers `apps/web/.next-build/`, so this introduces no untracked artefacts.
+// Override with NEXT_DIST_DIR to point somewhere else.
+const E2E_DIST_DIR = process.env['NEXT_DIST_DIR'] ?? '.next-build';
+
 const WEB_SERVER = {
   build: {
-    command: 'pnpm build && pnpm next start -p 3000',
+    command: `pnpm build && pnpm next start -p ${E2E_WEB_PORT}`,
     timeout: 600_000,
   },
   dev: {
-    command: 'pnpm next dev -p 3000',
+    command: `pnpm next dev -p ${E2E_WEB_PORT}`,
     timeout: 300_000,
   },
 }[E2E_WEB_MODE] as { command: string; timeout: number };
@@ -83,7 +105,7 @@ export default defineConfig({
     // 127.0.0.1 rather than localhost: `localhost` resolves to IPv6 ::1 first on
     // some hosts, and the dev server may only be bound on IPv4, which turns every
     // navigation into a 30s timeout rather than a clear connection error.
-    baseURL: 'http://127.0.0.1:3000',
+    baseURL: E2E_WEB_ORIGIN,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
@@ -112,11 +134,10 @@ export default defineConfig({
     },
     {
       ...WEB_SERVER,
-      url: 'http://127.0.0.1:3000/login',
+      url: `${E2E_WEB_ORIGIN}/login`,
       // Reuse only in dev mode. In build mode, silently adopting whatever
-      // happens to be listening on 3000 would mean the run reports on a server
-      // nobody rebuilt, and the `.next` it may be writing to is the one the
-      // build command is about to overwrite.
+      // happens to be listening on the port would mean the run reports on a
+      // server nobody rebuilt, over a distDir the build is about to overwrite.
       reuseExistingServer: E2E_WEB_MODE === 'dev' && !process.env['CI'],
       // No `cwd` override: `next` must resolve from apps/web. Setting it to the
       // repo root (as the API entry does) makes node look for
@@ -132,6 +153,7 @@ export default defineConfig({
         // fetch would be silently blocked. The login helper then fails at
         // waitForURL with no console-visible cause.
         ALLOW_LOCAL_API: 'true',
+        NEXT_DIST_DIR: E2E_DIST_DIR,
       },
     },
   ],
