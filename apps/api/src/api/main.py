@@ -119,6 +119,7 @@ from .routers import (
     scheduler,
     search,
     sovereignty,
+    vault_sync,
     webhooks,
     workspaces,
 )
@@ -538,6 +539,7 @@ _safe_include(onboarding.router, "/api/v1/onboarding", ["onboarding"])
 _safe_include(career.router, "/api/v1", ["career"])
 _safe_include(orchestrator.router, "/api/v1/orchestrator", ["orchestrator"])
 _safe_include(registries.router, "/api/v1", ["registries"])
+_safe_include(vault_sync.router, "/api/v1/vault-sync", ["vault-sync"])
 
 
 # ── Enterprise routes (CF-06 / R6) ──────────────────────────────────
