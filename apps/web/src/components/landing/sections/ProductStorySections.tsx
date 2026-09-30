@@ -11,18 +11,6 @@ import {
 } from '@/components/landing/shared/LandingKit';
 import { StageSlot } from '@/components/landing/3d/SceneShell';
 
-/** Chip positions approximating the six ring sources in connectorScene. */
-const SOURCE_CHIPS = [
-  'left-[4%] top-[38%]',
-  'left-[16%] top-[8%]',
-  'right-[16%] top-[8%]',
-  'right-[4%] top-[38%]',
-  'left-[22%] bottom-[6%]',
-  'right-[22%] bottom-[6%]',
-] as const;
-
-const SOURCE_HUES = ['#22d3ee', '#818cf8', '#e879f9', '#34d399', '#fbbf24', '#f87171'];
-
 /* ------------------------------ Connectors ------------------------------ */
 
 export function ConnectorSection() {
@@ -72,24 +60,24 @@ export function ConnectorSection() {
             </svg>
 
             <div
-              className="relative h-64 overflow-hidden rounded-2xl border border-border-subtle bg-black/40 md:h-72"
+              className="relative h-56 overflow-hidden rounded-2xl border border-border-subtle bg-surface-900/85 md:h-60"
               role="img"
               aria-label="Six connector sources streaming into one ingestion core"
             >
               <StageSlot beat="connectors" className="absolute inset-0" />
-              <ul className="pointer-events-none absolute inset-0">
-                {CONNECTORS.items.map((c, i) => (
-                  <li key={c.name} className={`absolute ${SOURCE_CHIPS[i]}`}>
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-background/70 px-2 py-0.5 text-2xs font-medium text-text-secondary backdrop-blur-sm">
-                      <span
-                        className="h-1.5 w-1.5 rounded-full"
-                        style={{ background: SOURCE_HUES[i] }}
-                      />
-                      {c.name}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              {/* The floating name chips that used to live here are gone. They
+                  claimed to label the ring sources but were pinned to static
+                  percentages while the ring rotates continuously, so they
+                  pointed at the wrong sources by up to 78% of the frame. They
+                  also carried the same six names as real DOM in the list to
+                  the left, and their 10px `text-text-secondary` on a light
+                  chip over this dark frame measured 3.15:1 — a contrast
+                  failure that axe never saw, because `role="img"` makes every
+                  descendant presentational. Decoration that lies about the
+                  3D is worse than no decoration. */}
+              <p className="pointer-events-none absolute bottom-3 left-0 right-0 text-center font-mono text-2xs uppercase tracking-widest text-white/45">
+                six sources, one ingestion core
+              </p>
             </div>
 
             <svg

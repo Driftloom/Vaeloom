@@ -10,6 +10,7 @@
 
 import * as THREE from 'three';
 import type { ThemeName } from './stageScene';
+import { scenePalette } from '../scene-utils';
 
 export interface ProblemScene {
   group: THREE.Group;
@@ -36,9 +37,10 @@ export function createProblemScene(theme: ThemeName): ProblemScene {
   const group = new THREE.Group();
   const shards: Shard[] = [];
 
-  const baseColor = theme === 'dark' ? '#7c8cf8' : '#4f46e5';
-  const edgeColor = theme === 'dark' ? '#2c2c34' : '#c4c9de';
-  const accentColor = theme === 'dark' ? '#f87171' : '#dc2626';
+  const palette = scenePalette(theme);
+  const baseColor = palette.structure;
+  const edgeColor = palette.edge;
+  const accentColor = palette.nodes['person'];
 
   for (let i = 0; i < SHARD_COUNT; i++) {
     const r = seededRandom;

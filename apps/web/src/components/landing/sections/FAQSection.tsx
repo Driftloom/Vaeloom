@@ -13,8 +13,15 @@ export default function FAQSection() {
         <div className="mx-auto mt-12 max-w-3xl divide-y divide-border-subtle">
           {FAQ.items.map((item) => (
             <Reveal key={item.q}>
-              <details className="group py-5">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left">
+              <details className="group">
+                {/*
+                  Padding belongs on the <summary>, not the <details>. With it
+                  on the wrapper the pressable area was only the summary's own
+                  content height — the 7px icon — about 28px, with 20px of dead
+                  space above and below that ignored taps. The bottom padding
+                  moves to the answer so the open state keeps its rhythm.
+                */}
+                <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-4 py-5 text-left">
                   <span className="text-sm font-semibold text-text sm:text-base">{item.q}</span>
                   <span
                     className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border-subtle text-text-secondary transition-transform duration-300 group-open:rotate-45"
@@ -31,7 +38,7 @@ export default function FAQSection() {
                     </svg>
                   </span>
                 </summary>
-                <p className="mt-3 text-sm leading-relaxed text-text-secondary">{item.a}</p>
+                <p className="mt-3 pb-5 text-sm leading-relaxed text-text-secondary">{item.a}</p>
               </details>
             </Reveal>
           ))}

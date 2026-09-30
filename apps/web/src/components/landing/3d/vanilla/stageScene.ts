@@ -7,6 +7,7 @@ import { createConnectorFlow } from './connectorScene';
 import { createGrowth } from './growthScene';
 import { createJourney } from './journeyScene';
 import { createProblemScene } from './problemScene';
+import { createPrinciplesScene } from './principlesScene';
 import { createDifferenceScene } from './differenceScene';
 import { createOrganizationScene } from './organizationScene';
 import { createResumeScene } from './resumeScene';
@@ -132,6 +133,18 @@ export function buildStage(opts: BuildStageOptions, world: THREE.Group): BuildSt
         },
       },
       {
+        id: 'principles',
+        cameraFor: cf('principles'),
+        build: () => {
+          const s = createPrinciplesScene(th);
+          return {
+            object: s.group,
+            tick: (_t, _dt, _p, _rm, lp) => s.update(_t, _dt, lp),
+            dispose: s.dispose,
+          };
+        },
+      },
+      {
         id: 'difference',
         cameraFor: cf('difference'),
         build: () => {
@@ -167,14 +180,26 @@ export function buildStage(opts: BuildStageOptions, world: THREE.Group): BuildSt
         id: 'agents',
         cameraFor: cf('agents'),
         build: () => {
+          // These MUST be the real, shipped agent ids — the same eight as
+          // `AGENTS.list` in lib/landing/copy.ts and `AGENT_HUES` in
+          // scene-utils. They previously were seven invented ids
+          // ('researcher', 'scholar', 'planner', 'writer', 'critic',
+          // 'journal') that exist nowhere in the product. Two failures
+          // followed: six of the seven missed AGENT_HUES and so rendered the
+          // fallback indigo, making the orbit seven identical nodes while the
+          // DOM legend showed eight distinct hues; and the aria-label claims
+          // "Eight specialist agents" while the canvas drew seven.
+          // The jest suite asserts this list against the copy, so a drift
+          // between marketing scene and product truth fails CI.
           const s = createAgentOrbit(th, [
             'orchestrator',
-            'researcher',
-            'scholar',
-            'planner',
-            'writer',
-            'critic',
-            'journal',
+            'organization',
+            'memory',
+            'resume',
+            'ats',
+            'jobsearch',
+            'gmail',
+            'scheduler',
           ]);
           return { object: s.group, tick: (t, dt) => s.update(t, dt), dispose: s.dispose };
         },
@@ -406,6 +431,8 @@ export function createStage(opts: CreateStageOptions): StageHandle {
   let parentEl: HTMLElement | null = null;
   let activeIndex = 0;
   let getProgress: () => number = () => 0;
+  // Set on a beat CHANGE, consumed by the next frame. See `frame()`.
+  let snapCamera = true;
   const rm = prefersReducedMotion();
 
   let raf = 0;
@@ -453,11 +480,25 @@ export function createStage(opts: CreateStageOptions): StageHandle {
     tmpLook.set(cs.look[0], cs.look[1], cs.look[2] + zOff);
 
     const lerp = Math.min(1, dt * 6);
-    curPos.lerp(tmpPos, lerp);
-    curLook.lerp(tmpLook, lerp);
+    if (snapCamera) {
+      // Beat CHANGE, not scroll. The canvas has already been physically
+      // reparented into the new section's box, so easing the camera across
+      // BEAT_SPACING (60 world units) animates a hard cut — it rendered the
+      // incoming section as an off-frame speck for 200-400ms after the move.
+      // There is no spatial continuity left to preserve across a teleport, so
+      // arrive immediately. Within-beat scroll scrub still lerps, which is
+      // where the easing actually reads as motion.
+      curPos.copy(tmpPos);
+      curLook.copy(tmpLook);
+      camera.fov = cs.fov;
+      snapCamera = false;
+    } else {
+      curPos.lerp(tmpPos, lerp);
+      curLook.lerp(tmpLook, lerp);
+      camera.fov += (cs.fov - camera.fov) * lerp;
+    }
     camera.position.copy(curPos);
     camera.lookAt(curLook);
-    camera.fov += (cs.fov - camera.fov) * lerp;
     camera.updateProjectionMatrix();
 
     // Continuity: keep the active beat plus its immediate neighbours visible
@@ -485,9 +526,12 @@ export function createStage(opts: CreateStageOptions): StageHandle {
   function setActiveBeat(name: string, getProg?: () => number): void {
     const idx = beats.findIndex((b) => b.name === name);
     if (idx < 0) return;
+    const changed = idx !== activeIndex;
     activeIndex = idx;
     if (getProg) getProgress = getProg;
     else getProgress = () => 0;
+    // Arrive at the new beat's camera on the next frame instead of flying.
+    if (changed) snapCamera = true;
     // Stream in the now-active beat and its immediate neighbours so the scene
     // is ready before the camera arrives (no blank frame mid-scroll).
     builtStage.ensureBuilt(idx);

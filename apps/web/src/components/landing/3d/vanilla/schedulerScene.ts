@@ -9,6 +9,7 @@
 
 import * as THREE from 'three';
 import type { ThemeName } from './stageScene';
+import { scenePalette } from '../scene-utils';
 
 export interface SchedulerScene {
   group: THREE.Group;
@@ -27,10 +28,11 @@ function seededRandom(seed: number): number {
 export function createSchedulerScene(theme: ThemeName): SchedulerScene {
   const group = new THREE.Group();
 
-  const lineColor = theme === 'dark' ? '#818cf8' : '#4f46e5';
-  const particleColor = theme === 'dark' ? '#c084fc' : '#9333ea';
-  const warningColor = theme === 'dark' ? '#fbbf24' : '#d97706';
-  const safeColor = theme === 'dark' ? '#34d399' : '#059669';
+  const palette = scenePalette(theme);
+  const lineColor = palette.core;
+  const particleColor = palette.link;
+  const warningColor = palette.nodes['document'];
+  const safeColor = palette.nodes['topic'];
 
   // ─── Timeline axis ───────────────────────────────────────────
   const axisGeo = new THREE.BufferGeometry().setFromPoints([
@@ -40,7 +42,7 @@ export function createSchedulerScene(theme: ThemeName): SchedulerScene {
   const axisMat = new THREE.LineBasicMaterial({
     color: lineColor,
     transparent: true,
-    opacity: 0.3,
+    opacity: 0.42,
   });
   group.add(new THREE.Line(axisGeo, axisMat));
 
@@ -54,7 +56,7 @@ export function createSchedulerScene(theme: ThemeName): SchedulerScene {
     const tickMat = new THREE.LineBasicMaterial({
       color: lineColor,
       transparent: true,
-      opacity: 0.2,
+      opacity: 0.4,
     });
     group.add(new THREE.Line(tickGeo, tickMat));
   }

@@ -54,13 +54,22 @@ export default function HowItWorks() {
           {/* Sticky journey visual / rail */}
           <div className="hidden lg:block">
             <div className="sticky top-28 h-[520px]">
-              <div className="relative h-full overflow-hidden rounded-3xl border border-border-subtle bg-black/40">
+              <div className="relative h-full overflow-hidden rounded-3xl border border-border-subtle bg-surface-900/85">
                 <StageSlot beat="journey" className="absolute inset-0" />
+                {/*
+                 This frame is a deliberate dark viewport in BOTH themes — it is
+                 a window onto the 3D world, so a theme-aware surface token is
+                 the wrong tool and `bg-black/40` was wrong in light mode too.
+                 That makes the content inside it light-on-dark by definition,
+                 so it must NOT use the theme-aware `text-text`: in light mode
+                 that is near-black on a near-black panel, 1.55:1. Explicit
+                 white-on-solid is the correct pairing here.
+               */}
                 <div className="pointer-events-none absolute bottom-5 left-5 right-5">
-                  <p className="font-mono text-5xl font-semibold text-text tabular-nums">
+                  <p className="font-mono text-5xl font-semibold text-white tabular-nums">
                     {stage.n}
                   </p>
-                  <p className="mt-1 font-display text-xl font-bold text-text">{stage.name}</p>
+                  <p className="mt-1 font-display text-xl font-bold text-white/90">{stage.name}</p>
                 </div>
                 <p className="sr-only">
                   Scroll-driven visualization of the nine-stage Vaeloom pipeline. Stage {stage.n}:{' '}

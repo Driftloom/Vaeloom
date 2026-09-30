@@ -10,6 +10,7 @@
 
 import * as THREE from 'three';
 import type { ThemeName } from './stageScene';
+import { scenePalette } from '../scene-utils';
 
 export interface DifferenceScene {
   group: THREE.Group;
@@ -29,9 +30,10 @@ function seededRandom(seed: number): number {
 export function createDifferenceScene(theme: ThemeName): DifferenceScene {
   const group = new THREE.Group();
 
-  const chaosColor = theme === 'dark' ? '#f87171' : '#dc2626';
-  const orderColor = theme === 'dark' ? '#818cf8' : '#4f46e5';
-  const linkColor = theme === 'dark' ? '#22d3ee' : '#0891b2';
+  const palette = scenePalette(theme);
+  const chaosColor = palette.nodes['person'];
+  const orderColor = palette.core;
+  const linkColor = palette.streamA;
 
   // ─── LEFT: Chaos particles (scattered, no connections) ───────
   const chaosPositions = new Float32Array(CHAOS_COUNT * 3);
@@ -128,7 +130,7 @@ export function createDifferenceScene(theme: ThemeName): DifferenceScene {
   const divMat = new THREE.LineBasicMaterial({
     color: linkColor,
     transparent: true,
-    opacity: 0.15,
+    opacity: 0.3,
   });
   group.add(new THREE.Line(divGeo, divMat));
 
@@ -136,7 +138,7 @@ export function createDifferenceScene(theme: ThemeName): DifferenceScene {
   const labelMat = new THREE.LineBasicMaterial({
     color: chaosColor,
     transparent: true,
-    opacity: 0.15,
+    opacity: 0.3,
   });
   const leftLabel = new THREE.LineSegments(
     new THREE.EdgesGeometry(new THREE.PlaneGeometry(2.5, 0.4)),
@@ -148,7 +150,7 @@ export function createDifferenceScene(theme: ThemeName): DifferenceScene {
   const rightLabelMat = new THREE.LineBasicMaterial({
     color: orderColor,
     transparent: true,
-    opacity: 0.15,
+    opacity: 0.3,
   });
   const rightLabel = new THREE.LineSegments(
     new THREE.EdgesGeometry(new THREE.PlaneGeometry(2.5, 0.4)),
@@ -173,7 +175,7 @@ export function createDifferenceScene(theme: ThemeName): DifferenceScene {
 
     // Order: particles gently pulse, connections brighten
     orderMat.opacity = 0.3 + localProgress * 0.5;
-    linkMat.opacity = 0.1 + localProgress * 0.4;
+    linkMat.opacity = 0.35 + localProgress * 0.4;
 
     // Subtle group rotation
     group.rotation.y = Math.sin(t * 0.15) * 0.05;

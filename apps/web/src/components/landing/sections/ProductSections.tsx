@@ -12,24 +12,44 @@ import { StageSlot } from '@/components/landing/3d/SceneShell';
 
 export function PrinciplesStrip() {
   return (
-    <Section id="product" labelledBy="principles-title" className="!py-16">
+    <Section id="product" labelledBy="principles-title" className="relative">
+      <StageSlot beat="principles" className="absolute inset-0 opacity-30" />
       <Container>
-        <Reveal>
-          <ul
-            className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5"
-            aria-label="Product principles"
-          >
-            {PRINCIPLES.map((p) => (
-              <li key={p.title} className="landing-panel rounded-2xl p-4 sm:p-5">
+        {/* This section had no heading at all, so its first heading was the
+            per-item <h3> — an h1->h3 skip — and `aria-labelledby` pointed at
+            an id that existed nowhere in the repo. */}
+        <SectionHeading
+          id="principles-title"
+          eyebrow="The guarantees"
+          title="Five rules the system never breaks."
+          align="left"
+        />
+        <ul
+          className="mt-12 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-5"
+          aria-label="Product principles"
+        >
+          {PRINCIPLES.map((p, i) => (
+            <li
+              key={p.title}
+              // 5 items in 2 columns leaves the last one alone with a full empty
+              // cell beside it, and because the cells are equal-height bordered
+              // panels that hole read as a missing sixth card rather than as
+              // the end of the list.
+              className={i === PRINCIPLES.length - 1 ? 'sm:col-span-2 xl:col-span-1' : ''}
+            >
+              <div className="h-full landing-panel rounded-2xl p-4 sm:p-5">
                 <Icon name={p.icon} className="h-5 w-5 text-primary-400" />
                 <h3 className="mt-3 text-sm font-semibold text-text">{p.title}</h3>
-                <p className="mt-1.5 hidden text-xs leading-relaxed text-text-muted sm:block">
+                {/* Was `hidden sm:block`, which deleted the section's entire
+                    substance on phones — the five rules went unstated on the
+                    most common viewport. */}
+                <p className="mt-1.5 text-xs leading-relaxed text-text-muted sm:text-[13px]">
                   {p.body}
                 </p>
-              </li>
-            ))}
-          </ul>
-        </Reveal>
+              </div>
+            </li>
+          ))}
+        </ul>
       </Container>
     </Section>
   );

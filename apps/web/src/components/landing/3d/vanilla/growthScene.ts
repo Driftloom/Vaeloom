@@ -134,12 +134,20 @@ export function createGrowth(theme: 'dark' | 'light'): {
   const cHigh = new THREE.Color(palette.streamA);
   const dummy = new THREE.Object3D();
   function update(localProgress: number): void {
-    // Scrubbed by scroll, but never from zero. A pure 0..1 map left the frame
-    // looking empty whenever the box was at its reading position, which is
-    // most of the time. "Day 1" should read as sparse, not as a bug — so the
-    // lattice starts ~20% assembled and still has most of its growth left to
-    // show by the time the box leaves.
-    const progress = Math.min(1, Math.max(0, 0.2 + localProgress * 0.8));
+    // Scrubbed by scroll, but never from zero, and it MUST be able to finish.
+    //
+    // Two hard-won constraints:
+    //  - Never from zero: at the box's reading position a raw 0..1 map left
+    //    the frame looking empty, which is most of the time. "Day 1" should
+    //    read as sparse, not as a bug.
+    //  - Must reach 1: `tick` only runs while this beat is active, and active
+    //    is only true while the slot straddles the viewport focus line. For a
+    //    ~520px slot that caps localProgress around 0.40, so a naive map
+    //    topped out at ~52% assembled and the lattice froze with a visibly
+    //    unfinished roof — while its own label promised "dense by year one".
+    //    Normalising against that ceiling makes it finish just as it leaves.
+    const MAX_REACHABLE_LP = 0.4;
+    const progress = Math.min(1, 0.15 + Math.min(1, localProgress / MAX_REACHABLE_LP) * 0.85);
     for (let idx = 0; idx < COUNT; idx++) {
       const c = cubes[idx]!;
       const local = Math.min(1, Math.max(0, (progress - c.threshold * 0.85) / 0.15));

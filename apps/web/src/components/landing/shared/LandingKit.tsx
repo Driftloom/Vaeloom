@@ -21,8 +21,18 @@ export function Container({
   children: React.ReactNode;
   className?: string;
 }) {
+  // `relative` is load-bearing, not cosmetic. Sections that mount a
+  // `StageSlot` put an absolutely-positioned, inset-0 canvas BEFORE this
+  // Container in tree order. With `position: static` the Container's text is
+  // painted at CSS 2.1 step 5 (in-flow inline content) and the slot at step 8
+  // (positioned descendants with z-index: auto) — so the 3D wash composited
+  // ON TOP of every heading and paragraph in the section. `position: relative`
+  // with `z-index: auto` keeps the same step but resolves by tree order, and
+  // the Container comes after the slot, so the copy wins.
   return (
-    <div className={`mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 ${className}`}>{children}</div>
+    <div className={`relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 ${className}`}>
+      {children}
+    </div>
   );
 }
 

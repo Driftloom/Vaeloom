@@ -86,12 +86,16 @@ export function createTrustScene(theme: ThemeName): TrustScene {
   });
 
   // ── Core: held, not animated. "Passive by default." ──────────────
+  // NormalBlending, NOT additive. Additive is `dst + src·α`, so over the light
+  // page these sprites composited to `#FEFDFF` — a white smudge with no hue,
+  // punching a hole through the tint band instead of reading as a core.
+  // Additive only makes sense against a dark canvas; this scene renders as a
+  // 30% wash over both themes.
   const coreMat = new THREE.SpriteMaterial({
     map: new THREE.CanvasTexture(glowTextureStops(palette.core, palette.edgeHot)),
     transparent: true,
-    opacity: theme === 'dark' ? 0.5 : 0.3,
+    opacity: theme === 'dark' ? 0.5 : 0.45,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
   });
   disposables.push(coreMat);
   const core = new THREE.Sprite(coreMat);
@@ -99,12 +103,13 @@ export function createTrustScene(theme: ThemeName): TrustScene {
   group.add(core);
 
   // ── Tokens: scoped grants orbiting the outer ring ────────────────
+  // NormalBlending for the same reason as the core — additive tokens on a
+  // light page read as white specks, not as scoped grants.
   const tokenMat = new THREE.SpriteMaterial({
     map: new THREE.CanvasTexture(glowTexture(palette.structure)),
     transparent: true,
-    opacity: 0.7,
+    opacity: 0.85,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
   });
   disposables.push(tokenMat);
 
@@ -158,7 +163,7 @@ export function createTrustScene(theme: ThemeName): TrustScene {
     // leaves — the through-line of the whole permission story.
     const breathe = 1 + Math.sin(t * 0.7) * 0.03;
     core.scale.set(1.7 * breathe, 1.7 * breathe, 1);
-    coreMat.opacity = (theme === 'dark' ? 0.42 : 0.26) * presence;
+    coreMat.opacity = (theme === 'dark' ? 0.42 : 0.4) * presence;
   }
 
   function dispose(): void {

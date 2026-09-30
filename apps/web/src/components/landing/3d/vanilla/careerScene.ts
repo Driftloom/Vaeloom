@@ -84,12 +84,14 @@ export function createCareerScene(theme: ThemeName): CareerScene {
   gate.position.set(GATE_X, 0, -RAIL_DEPTH * 0.5);
   group.add(gate);
 
+  // NormalBlending, NOT additive: over the light page an additive glow at this
+  // size (~490px across) composited to `#FDFDFF` — a bright white smudge that
+  // erased the tint it was supposed to sit in.
   const gateGlowMat = new THREE.SpriteMaterial({
     map: new THREE.CanvasTexture(glowTexture(palette.core)),
     transparent: true,
     opacity: 0.4,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
   });
   disposables.push(gateGlowMat);
   const gateGlow = new THREE.Sprite(gateGlowMat);
@@ -185,7 +187,7 @@ export function createCareerScene(theme: ThemeName): CareerScene {
     // The gate breathes; its glow is the visual "you approve here".
     const pulse = 0.5 + Math.sin(t * 1.4) * 0.5;
     gateMat.opacity = ((theme === 'dark' ? 0.34 : 0.22) + pulse * 0.22) * presence;
-    gateGlowMat.opacity = ((theme === 'dark' ? 0.34 : 0.2) + pulse * 0.2) * presence;
+    gateGlowMat.opacity = ((theme === 'dark' ? 0.34 : 0.3) + pulse * 0.2) * presence;
     gateGlow.scale.setScalar(3.2 + pulse * 0.5);
   }
 

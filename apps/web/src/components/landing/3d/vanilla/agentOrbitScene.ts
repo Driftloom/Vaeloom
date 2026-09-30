@@ -10,7 +10,16 @@ import { AGENT_HUES, glowTexture, scenePalette } from '../scene-utils';
 
 const ORBIT_RADIUS = 2.6;
 const RING_TILT = 0.32;
-const agentAngle = (i: number): number => (i / 8) * Math.PI * 2;
+/**
+ * Angle for node `i` of `n` around the ring.
+ *
+ * `n` is a parameter, not a constant. This used to be hardcoded to 8, which
+ * silently assumed the caller passed the full agent list: with the wrong
+ * count the ring still spaced nodes by 1/8 turn, so the last gap was double
+ * the others and left a visible hole in the orbit. Deriving it from the array
+ * length means a wrong count degrades to even spacing instead of a broken ring.
+ */
+const agentAngle = (i: number, n: number): number => (i / Math.max(1, n)) * Math.PI * 2;
 
 type Cfg = {
   container: HTMLElement;
@@ -94,7 +103,7 @@ export function mountAgentOrbit({
   links.frustumCulled = false;
   ring.add(links);
 
-  let currentRotation = -agentAngle(Math.max(0, ids.indexOf(selectedId)));
+  let currentRotation = -agentAngle(Math.max(0, ids.indexOf(selectedId)), ids.length);
   let targetId = selectedId;
 
   function updateLinks(): void {
@@ -104,7 +113,7 @@ export function mountAgentOrbit({
     const hot = new THREE.Color(palette.link);
     const dim = new THREE.Color(palette.edge);
     ids.forEach((id, i) => {
-      const a = agentAngle(i);
+      const a = agentAngle(i, ids.length);
       posArr.set([Math.cos(a) * ORBIT_RADIUS, 0, Math.sin(a) * ORBIT_RADIUS, 0, 0, 0], i * 6);
       const c = id === targetId ? hot : dim;
       colArr.set([c.r, c.g, c.b], i * 6);
@@ -135,7 +144,7 @@ export function mountAgentOrbit({
       tick: (dt, t) => {
         // swing selected agent to the front
         const idx = Math.max(0, ids.indexOf(targetId));
-        const target = -agentAngle(idx);
+        const target = -agentAngle(idx, ids.length);
         let diff = target - currentRotation;
         while (diff > Math.PI) diff -= Math.PI * 2;
         while (diff < -Math.PI) diff += Math.PI * 2;
@@ -143,7 +152,7 @@ export function mountAgentOrbit({
         ring.rotation.y = currentRotation;
 
         ids.forEach((id, i) => {
-          const a = agentAngle(i);
+          const a = agentAngle(i, ids.length);
           const bob = Math.sin(t * 1.1 + i * 1.7) * 0.08;
           dummy.position.set(Math.cos(a) * ORBIT_RADIUS, bob, Math.sin(a) * ORBIT_RADIUS);
           dummy.updateMatrix();
@@ -245,7 +254,7 @@ export function createAgentOrbit(
     const hot = new THREE.Color(palette.link);
     const dim = new THREE.Color(palette.edge);
     ids.forEach((id, i) => {
-      const a = agentAngle(i);
+      const a = agentAngle(i, ids.length);
       posArr.set([Math.cos(a) * ORBIT_RADIUS, 0, Math.sin(a) * ORBIT_RADIUS, 0, 0, 0], i * 6);
       const c = id === targetId ? hot : dim;
       colArr.set([c.r, c.g, c.b], i * 6);
@@ -258,14 +267,14 @@ export function createAgentOrbit(
   const dummy = new THREE.Object3D();
   function update(t: number, dt: number): void {
     const idx = Math.max(0, ids.indexOf(targetId));
-    const target = -agentAngle(idx);
+    const target = -agentAngle(idx, ids.length);
     let diff = target - currentRotation;
     while (diff > Math.PI) diff -= Math.PI * 2;
     while (diff < -Math.PI) diff += Math.PI * 2;
     currentRotation += diff * Math.min(1, dt * 4);
     ring.rotation.y = currentRotation;
     ids.forEach((id, i) => {
-      const a = agentAngle(i);
+      const a = agentAngle(i, ids.length);
       const bob = Math.sin(t * 1.1 + i * 1.7) * 0.08;
       dummy.position.set(Math.cos(a) * ORBIT_RADIUS, bob, Math.sin(a) * ORBIT_RADIUS);
       dummy.updateMatrix();

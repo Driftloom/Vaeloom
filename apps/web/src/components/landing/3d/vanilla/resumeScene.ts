@@ -10,6 +10,7 @@
 
 import * as THREE from 'three';
 import type { ThemeName } from './stageScene';
+import { scenePalette } from '../scene-utils';
 
 export interface ResumeScene {
   group: THREE.Group;
@@ -27,9 +28,10 @@ function seededRandom(seed: number): number {
 export function createResumeScene(theme: ThemeName): ResumeScene {
   const group = new THREE.Group();
 
-  const docColor = theme === 'dark' ? '#818cf8' : '#4f46e5';
-  const fragColor = theme === 'dark' ? '#38bdf8' : '#0284c7';
-  const lineColor = theme === 'dark' ? '#22d3ee' : '#0891b2';
+  const palette = scenePalette(theme);
+  const docColor = palette.core;
+  const fragColor = palette.nodes['project'];
+  const lineColor = palette.streamA;
 
   // ─── Central document (wireframe rectangle) ──────────────────
   const docGeo = new THREE.EdgesGeometry(new THREE.PlaneGeometry(2.4, 3.2));

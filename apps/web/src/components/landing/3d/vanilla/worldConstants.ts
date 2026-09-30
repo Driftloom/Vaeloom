@@ -19,7 +19,7 @@ import type { QualityTier } from './stageScene';
 export const BEAT_SPACING = 60;
 
 /** Total number of narrative beats. */
-export const BEAT_COUNT = 15;
+export const BEAT_COUNT = 16;
 
 /** Total world depth (negative Z). */
 export const WORLD_DEPTH = -(BEAT_COUNT - 1) * BEAT_SPACING;
@@ -48,11 +48,18 @@ export interface CameraKey {
 // Camera keyframes — each beat has a resting camera position.
 const heroCam: CameraKey = { pos: [0, 0.9, 7.4], look: [0, 0, 0], fov: 42 };
 const problemCam: CameraKey = { pos: [0, 1.2, 8.0], look: [0, 0, 0], fov: 45 };
+// Principles is a wide, calm band between problem and difference. The camera
+// stays back and square so five parallel rails read as a list.
+const principlesCam: CameraKey = { pos: [0, 0.4, 8.2], look: [0, 0, 0], fov: 48 };
 const differenceCam: CameraKey = { pos: [0, 1.5, 8.5], look: [0, 0.2, 0], fov: 48 };
 const journeyCam: CameraKey = { pos: [0, 0, 6.5], look: [0, 0, 1.5], fov: 55 };
 const memoryCam: CameraKey = { pos: [0, 1.4, 8.6], look: [0, 0, 0], fov: 48 };
 const agentsCam: CameraKey = { pos: [0, 1.9, 6.4], look: [0, 0, 0], fov: 50 };
-const connectorsCam: CameraKey = { pos: [0, 2.6, 6.8], look: [0, 0, 0], fov: 52 };
+// The connectors ring lies in the XZ plane, so a low camera elevation
+// projects it into a wide, flat ellipse that a small landscape frame cannot
+// hold — the box read as 87% empty. Raising the camera opens the ellipse
+// vertically so the ring fills the frame without changing its radius.
+const connectorsCam: CameraKey = { pos: [0, 4.4, 5.8], look: [0, 0, 0], fov: 52 };
 const organizationCam: CameraKey = { pos: [0, 1.8, 7.5], look: [0, 0.5, 0], fov: 50 };
 const resumeCam: CameraKey = { pos: [0, 1.2, 7.0], look: [0, 0.3, 0], fov: 48 };
 // Career is a pipeline the camera looks down: pulled back, near-axis, so the
@@ -62,11 +69,10 @@ const schedulerCam: CameraKey = { pos: [0, 1.5, 7.2], look: [0, 0.2, 0], fov: 50
 // Trust is the calmest beat on the page — camera holds still and wide so the
 // permission table stays the loudest thing in the section.
 const trustCam: CameraKey = { pos: [0, 1.6, 9.2], look: [0, 0.2, 0], fov: 44 };
-// Compounding sits in a tall framed box, so the camera frames the lattice as a
-// monument rather than a distant object. Kept close to the Z axis: pushing far
-// off-axis skewed the lattice into one corner of the frame and left the rest
+// Pulled further onto the Z axis and back: x=3.0 still pushed a near lattice
+// corner past the bottom edge of the frame, and the off-axis view left a third
 // of the box empty.
-const growthCam: CameraKey = { pos: [3.0, 3.2, 8.8], look: [0, 2.1, 0], fov: 46 };
+const growthCam: CameraKey = { pos: [1.6, 2.6, 9.6], look: [0, 2.0, 0], fov: 46 };
 // FAQ is the reading beat: widest, flattest framing, dimmest scene.
 const faqCam: CameraKey = { pos: [0, 1.2, 10.5], look: [0, 0, 0], fov: 42 };
 const ctaCam: CameraKey = heroCam; // Return to hero-like calm
@@ -88,19 +94,20 @@ const ctaCam: CameraKey = heroCam; // Return to hero-like calm
 export const BEATS: BeatDef[] = [
   { id: 'hero', z: 0, camera: heroCam, class: 'A' },
   { id: 'problem', z: -BEAT_SPACING, camera: problemCam, class: 'A' },
-  { id: 'difference', z: -BEAT_SPACING * 2, camera: differenceCam, class: 'A' },
-  { id: 'journey', z: -BEAT_SPACING * 3, camera: journeyCam, hasPath: true, class: 'A' },
-  { id: 'memory', z: -BEAT_SPACING * 4, camera: memoryCam, class: 'A' },
-  { id: 'agents', z: -BEAT_SPACING * 5, camera: agentsCam, class: 'A' },
-  { id: 'connectors', z: -BEAT_SPACING * 6, camera: connectorsCam, class: 'A' },
-  { id: 'organization', z: -BEAT_SPACING * 7, camera: organizationCam, class: 'A' },
-  { id: 'resume', z: -BEAT_SPACING * 8, camera: resumeCam, class: 'A' },
-  { id: 'career', z: -BEAT_SPACING * 9, camera: careerCam, class: 'A' },
-  { id: 'scheduler', z: -BEAT_SPACING * 10, camera: schedulerCam, class: 'A' },
-  { id: 'trust', z: -BEAT_SPACING * 11, camera: trustCam, class: 'A' },
-  { id: 'growth', z: -BEAT_SPACING * 12, camera: growthCam, class: 'A' },
-  { id: 'faq', z: -BEAT_SPACING * 13, camera: faqCam, class: 'A' },
-  { id: 'cta', z: -BEAT_SPACING * 14, camera: ctaCam, class: 'A' },
+  { id: 'principles', z: -BEAT_SPACING * 2, camera: principlesCam, class: 'A' },
+  { id: 'difference', z: -BEAT_SPACING * 3, camera: differenceCam, class: 'A' },
+  { id: 'journey', z: -BEAT_SPACING * 4, camera: journeyCam, hasPath: true, class: 'A' },
+  { id: 'memory', z: -BEAT_SPACING * 5, camera: memoryCam, class: 'A' },
+  { id: 'agents', z: -BEAT_SPACING * 6, camera: agentsCam, class: 'A' },
+  { id: 'connectors', z: -BEAT_SPACING * 7, camera: connectorsCam, class: 'A' },
+  { id: 'organization', z: -BEAT_SPACING * 8, camera: organizationCam, class: 'A' },
+  { id: 'resume', z: -BEAT_SPACING * 9, camera: resumeCam, class: 'A' },
+  { id: 'career', z: -BEAT_SPACING * 10, camera: careerCam, class: 'A' },
+  { id: 'scheduler', z: -BEAT_SPACING * 11, camera: schedulerCam, class: 'A' },
+  { id: 'trust', z: -BEAT_SPACING * 12, camera: trustCam, class: 'A' },
+  { id: 'growth', z: -BEAT_SPACING * 13, camera: growthCam, class: 'A' },
+  { id: 'faq', z: -BEAT_SPACING * 14, camera: faqCam, class: 'A' },
+  { id: 'cta', z: -BEAT_SPACING * 15, camera: ctaCam, class: 'A' },
 ];
 
 // ─── CAMERA TRANSITION ─────────────────────────────────────────

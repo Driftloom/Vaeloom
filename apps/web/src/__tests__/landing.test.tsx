@@ -3,6 +3,8 @@
  * Self-contained polyfills so the global jest.setup stays untouched.
  */
 import { render, screen } from '@testing-library/react';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { ThemeProvider } from '@/hooks/useTheme';
 
 // AuthRedirectProbe (and any nav hooks) need App Router context.
@@ -99,6 +101,68 @@ describe('landing copy product truth', () => {
 });
 
 // ---- Structural / a11y invariants -----------------------------------------
+
+describe('landing 3D stage wiring', () => {
+  /**
+   * The agents beat used to render seven invented ids ('researcher',
+   * 'scholar', 'planner', 'writer', 'critic', 'journal') that exist nowhere
+   * in the product. Six of the seven missed AGENT_HUES and so all rendered
+   * the fallback indigo, while the DOM legend showed eight distinct hues and
+   * the section's aria-label claimed "Eight specialist agents". The 3D and
+   * the product disagreed and nothing caught it.
+   *
+   * These read the stage source directly: the ids are a literal inside
+   * stageScene.ts, and asserting on the rendered canvas is not possible
+   * under jsdom (WebGL is stubbed out).
+   */
+  const stageSource = readFileSync(
+    join(process.cwd(), 'src/components/landing/3d/vanilla/stageScene.ts'),
+    'utf8',
+  );
+
+  it('feeds the agents beat the real shipped agent ids', () => {
+    const block = stageSource.slice(
+      stageSource.indexOf("id: 'agents'"),
+      stageSource.indexOf("id: 'connectors'"),
+    );
+    // Every real agent must appear. The failure mode this guards is a 3D scene
+    // quietly disagreeing with the product, so assert presence of all eight.
+    const missing = AGENTS.list.filter((a) => !block.includes(`'${a.id}'`)).map((a) => a.id);
+    expect(missing).toEqual([]);
+    expect(AGENTS.list).toHaveLength(8);
+  });
+
+  it('keeps the beat table and the scene factories in the same order', () => {
+    const wc = readFileSync(
+      join(process.cwd(), 'src/components/landing/3d/vanilla/worldConstants.ts'),
+      'utf8',
+    );
+    // `{ id: '…',` also matches the inline `{ id: 'cta', cameraFor: … }` entry,
+    // which a stricter per-line pattern silently skipped — and a skipped beat
+    // is exactly the kind of drift this test exists to catch.
+    const fromTable = [...wc.matchAll(/id: '([a-z]+)',/g)].map((m) => m[1]);
+    const fromScenes = [...stageSource.matchAll(/id: '([a-z]+)',/g)].map((m) => m[1]);
+    expect(fromScenes.length).toBeGreaterThan(0);
+    // stageScene's makeMeta order drives which scene gets built at which index;
+    // BEATS supplies the z position. A mismatch silently misplaces every
+    // scene after the divergence point.
+    expect(fromScenes).toEqual(fromTable);
+  });
+
+  it('registers a slot for every beat, so the canvas is never dropped', () => {
+    const sectionDir = join(process.cwd(), 'src/components/landing/sections');
+    const used = new Set<string>();
+    readdirSync(sectionDir)
+      .filter((f) => f.endsWith('.tsx'))
+      .forEach((f) => {
+        const src = readFileSync(join(sectionDir, f), 'utf8');
+        for (const m of src.matchAll(/<StageSlot\s+beat="([a-z]+)"/g)) used.add(m[1]);
+      });
+    const beatIds = [...stageSource.matchAll(/id: '([a-z]+)',/g)].map((m) => m[1]);
+    const orphans = beatIds.filter((id) => !used.has(id));
+    expect(orphans).toEqual([]);
+  });
+});
 
 describe('landing scene fallbacks', () => {
   it('renders Playwright poster fallbacks (no SVG) when WebGL unsupported', async () => {

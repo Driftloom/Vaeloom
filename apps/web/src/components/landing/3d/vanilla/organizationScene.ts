@@ -9,6 +9,7 @@
 
 import * as THREE from 'three';
 import type { ThemeName } from './stageScene';
+import { scenePalette } from '../scene-utils';
 
 export interface OrganizationScene {
   group: THREE.Group;
@@ -27,10 +28,16 @@ function seededRandom(seed: number): number {
 export function createOrganizationScene(theme: ThemeName): OrganizationScene {
   const group = new THREE.Group();
 
-  const hubColor = theme === 'dark' ? '#818cf8' : '#4f46e5';
-  const nodeColor = theme === 'dark' ? '#34d399' : '#059669';
-  const ringColor = theme === 'dark' ? '#2c2c34' : '#c4c9de';
-  const pulseColor = theme === 'dark' ? '#22d3ee' : '#0891b2';
+  // Colors come from the shared palette, not from private literals here. This
+  // scene was the worst offender: it kept its own `theme === 'dark' ? …` set,
+  // so it never received the light-theme redesign, and its approval rings —
+  // the section's entire named visual — composited to 1.017:1 against the
+  // light band. Mathematically the same colour as the background.
+  const palette = scenePalette(theme);
+  const hubColor = palette.core;
+  const nodeColor = palette.nodes['topic'];
+  const ringColor = palette.edge;
+  const pulseColor = palette.streamA;
 
   // ─── Central hub ─────────────────────────────────────────────
   const hubGeo = new THREE.IcosahedronGeometry(0.6, 2);
@@ -66,7 +73,11 @@ export function createOrganizationScene(theme: ThemeName): OrganizationScene {
     const ringMat = new THREE.LineBasicMaterial({
       color: ringColor,
       transparent: true,
-      opacity: 0.15,
+      // 0.15 was tuned when this scene had its own darker light palette. Once
+      // the edge colour came from the shared palette the effective alpha
+      // (material x slot 0.30) landed the rings at 4.5% — invisible. These
+      // rings ARE the section's concept, so they get a floor.
+      opacity: 0.45,
     });
     const ring = new THREE.Line(ringGeo, ringMat);
     ring.rotation.x = seededRandom(i * 31) * 0.4;
@@ -94,7 +105,7 @@ export function createOrganizationScene(theme: ThemeName): OrganizationScene {
   const lineMat = new THREE.LineBasicMaterial({
     color: pulseColor,
     transparent: true,
-    opacity: 0.2,
+    opacity: 0.35,
   });
   const lines = new THREE.LineSegments(lineGeo, lineMat);
   group.add(lines);
@@ -127,7 +138,9 @@ export function createOrganizationScene(theme: ThemeName): OrganizationScene {
     // Pulse effect as progress increases
     const pulse = 0.5 + Math.sin(t * 2) * 0.15 * localProgress;
     hubMat.opacity = pulse;
-    lineMat.opacity = 0.1 + localProgress * 0.2;
+    // Floor kept in step with the constructor: the hub-to-node links are what
+    // make the orbits read as orbits rather than as stray circles.
+    lineMat.opacity = 0.35 + localProgress * 0.25;
   }
 
   function dispose(): void {
