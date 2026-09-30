@@ -360,3 +360,19 @@ apps/web/public/uploads/
 
 # Python coverage HTML report (the .coverage data file is ignored above)
 apps/api/htmlcov/
+
+# ---------------------------------------------------------------------------
+# Ad-hoc browser verification artifacts
+# ---------------------------------------------------------------------------
+# One-off screenshots written by throwaway verification scripts (manual login
+# probes, full-page capture sweeps). They are evidence of a single run, not
+# source, and they are regenerated on every attempt.
+#
+# Deliberately NOT a blanket *.png rule: 76 PNGs are legitimately tracked, the
+# Playwright visual baselines under e2e/*-snapshots/ being the important set.
+# A broad rule would silently exclude new baselines from review, which is the
+# opposite of what a visual-regression gate is for.
+apps/web/*_test.png
+apps/web/*-actual.png
+apps/web/*-diff.png
+apps/web/*-expected.png
