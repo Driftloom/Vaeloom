@@ -4,9 +4,11 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
 import { Button, Card, Input, Modal } from '@vaeloom/ui-kit';
+import { PageHeader } from '@/components/shared/Page';
 import { Table, type Column } from '@/components/shared/Table';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { ErrorState } from '@/components/shared/ErrorState';
 import useSWR from 'swr';
 import {
   apiKeysApi,
@@ -17,16 +19,60 @@ import {
 import { useToast } from '@/components/shared/Toast';
 import { API_BASE, API_PREFIX } from '@/lib/api';
 
-interface WebhookDelivery {
+/**
+ * The outcome of one webhook test. `pending` is a first-class state, not a
+ * synonym for success: the delivery record can exist with a status the API has
+ * not resolved yet, and rendering that green would claim a delivery that
+ * never happened.
+ */
+type WebhookTestStatus = 'delivered' | 'failed' | 'pending';
+
+interface WebhookTestOutcome {
   id: string;
   event: string;
   url: string;
-  status: 'success' | 'failed' | 'pending';
+  status: WebhookTestStatus;
+  /** Real HTTP response code from the delivery record, or null when none was reported. */
+  statusCode: number | null;
   timestamp: string;
-  duration: string;
+  deliveryCount: number;
+  note: string;
 }
 
-const rateLimits = [
+function deliveryStatusOf(delivery: WebhookDeliveryItem | null): WebhookTestStatus {
+  const raw = (delivery as unknown as { status?: unknown } | null)?.status;
+  const status = typeof raw === 'string' ? raw.toLowerCase() : '';
+  if (status === 'delivered' || status === 'success' || status === 'ok') return 'delivered';
+  if (status === 'failed' || status === 'error') return 'failed';
+  return 'pending';
+}
+
+/**
+ * `WebhookDeliveryItem` has no timing field, so there is no duration to show.
+ * An HTTP status code is not a duration and must never be rendered as
+ * milliseconds; it gets its own row instead.
+ */
+function deliveryStatusCodeOf(delivery: WebhookDeliveryItem | null): number | null {
+  if (!delivery) return null;
+  // The api client camelCases response keys via `transformKeys`; the declared
+  // type still uses the wire spelling, so both are accepted.
+  const record = delivery as unknown as Record<string, unknown>;
+  const raw = record['statusCode'] ?? record['status_code'];
+  return typeof raw === 'number' ? raw : null;
+}
+
+const STATUS_VARIANT: Record<WebhookTestStatus, 'success' | 'error' | 'info'> = {
+  delivered: 'success',
+  failed: 'error',
+  pending: 'info',
+};
+
+/**
+ * Static reference values transcribed from the published API policy. They are
+ * NOT read from the server, so they say nothing about this workspace's plan,
+ * its current consumption, or what the limiter will actually enforce.
+ */
+const documentedRateLimits = [
   { name: 'REST API', limit: '1,000 / hour' },
   { name: 'GraphQL API', limit: '500 / hour' },
   { name: 'Streaming API', limit: '100 / min' },
@@ -66,11 +112,18 @@ function DeveloperContent() {
   const [copiedSecret, setCopiedSecret] = useState(false);
 
   // Webhook testing states
-  const [showWebhookModal, setShowWebhookModal] = useState(false);
   const [webhookUrl, setWebhookUrl] = useState('https://');
   const [webhookEvent, setWebhookEvent] = useState('job.match');
-  const [webhookResult, setWebhookResult] = useState<WebhookDelivery | null>(null);
+  /**
+   * Supplied by the user, per test, and never persisted. The previous build
+   * hardcoded the literal "test-secret" and shipped it to the API as if it were
+   * a chosen secret; a hardcoded value is not a secret and must not be presented
+   * as one.
+   */
+  const [webhookTestSecret, setWebhookTestSecret] = useState('');
+  const [webhookResult, setWebhookResult] = useState<WebhookTestOutcome | null>(null);
   const [showTestConsole, setShowTestConsole] = useState(false);
+  const [isSendingTest, setIsSendingTest] = useState(false);
 
   // Real backend SWR query for API keys
   const {
@@ -230,12 +283,22 @@ function DeveloperContent() {
   ];
 
   const sendTestWebhook = useCallback(async () => {
+    if (!webhookTestSecret.trim()) {
+      toast({
+        tone: 'error',
+        title: 'Test secret required',
+        detail:
+          'Enter a throwaway signing secret for this test run. It is sent once and discarded.',
+      });
+      return;
+    }
+    setIsSendingTest(true);
     setWebhookResult(null);
     try {
       const wh = await webhookApi.create({
         name: `test-${webhookEvent}-${Date.now()}`,
         url: webhookUrl,
-        secret: 'test-secret',
+        secret: webhookTestSecret.trim(),
         events: [webhookEvent],
         active: true,
       });
@@ -244,52 +307,64 @@ function DeveloperContent() {
       try {
         const { deliveries } = await webhookApi.deliveries(wh.id);
         delivery = deliveries?.[0] ?? null;
-      } catch {}
+      } catch {
+        // The delivery list is a separate endpoint; if it is unavailable we say
+        // so rather than inferring an outcome from its absence.
+      }
       await webhookApi.delete(wh.id).catch(() => {});
 
+      const status = deliveryStatusOf(delivery);
+      const statusCode = deliveryStatusCodeOf(delivery);
       setWebhookResult({
-        id: delivery?.id ?? 'wh_' + Date.now(),
+        id: delivery?.id ?? `wh_${Date.now()}`,
         event: webhookEvent,
         url: webhookUrl,
-        status:
-          delivery?.status === 'delivered'
-            ? 'success'
-            : delivery?.status === 'failed'
-              ? 'failed'
-              : 'success',
+        status,
+        statusCode,
         timestamp: delivery?.created_at ?? new Date().toISOString(),
-        duration: delivery
-          ? `${delivery.status_code ?? 200}ms`
-          : `${testResult.delivery_count} delivery`,
+        deliveryCount: testResult.delivery_count,
+        note: delivery
+          ? 'Recorded delivery, reported by the server.'
+          : 'The API accepted the test but returned no delivery record, so the outcome is unknown.',
       });
+      setWebhookTestSecret('');
       toast({
-        tone: 'success',
-        title: 'Test webhook fired',
-        detail: `${testResult.delivery_count} delivery(ies) sent.`,
+        tone: status === 'delivered' ? 'success' : status === 'failed' ? 'error' : 'info',
+        title: status === 'delivered' ? 'Test webhook delivered' : 'Test webhook not confirmed',
+        detail:
+          status === 'delivered'
+            ? `${testResult.delivery_count} delivery(ies) sent.`
+            : status === 'failed'
+              ? 'The endpoint reported a failed delivery.'
+              : 'The API accepted the test but has not reported a delivery outcome.',
       });
-    } catch {
+    } catch (err) {
       setWebhookResult({
-        id: 'wh_' + Date.now(),
+        id: `wh_${Date.now()}`,
         event: webhookEvent,
         url: webhookUrl,
         status: 'failed',
+        statusCode: null,
         timestamp: new Date().toISOString(),
-        duration: 'error',
+        deliveryCount: 0,
+        note: err instanceof Error ? err.message : 'The test request itself failed.',
       });
       toast({
         tone: 'error',
         title: 'Test failed',
         detail: 'Backend unavailable or webhook URL unreachable.',
       });
+    } finally {
+      setIsSendingTest(false);
     }
-  }, [webhookEvent, webhookUrl, toast]);
+  }, [webhookEvent, webhookUrl, webhookTestSecret, toast]);
 
   return (
     <div className="space-y-8">
-      <header>
-        <h1 className="text-3xl font-display font-medium text-text mb-2">Developer</h1>
-        <p className="text-text-muted">
-          Manage API keys, webhooks, SDKs, and developer integration resources.{' '}
+      <PageHeader
+        title="Developer"
+        description="Manage API keys, webhooks, SDKs, and developer integration resources."
+        actions={
           <span className={!keysError && !keysLoading ? 'text-success' : 'text-text-dim'}>
             {keysLoading
               ? 'Syncing…'
@@ -297,8 +372,8 @@ function DeveloperContent() {
                 ? 'Connected to live API'
                 : 'Backend unavailable'}
           </span>
-        </p>
-      </header>
+        }
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link
@@ -335,6 +410,13 @@ function DeveloperContent() {
         </div>
         {keysLoading ? (
           <div className="py-8 text-center text-text-muted text-sm">Loading API keys…</div>
+        ) : keysError ? (
+          // A failed list must not read as "this workspace has no keys".
+          <ErrorState
+            title="Failed to load API keys"
+            message={keysError.message}
+            onRetry={() => void mutateKeys()}
+          />
         ) : apiKeys.length === 0 ? (
           <EmptyState
             title="No API keys"
@@ -346,13 +428,18 @@ function DeveloperContent() {
       </Card>
 
       <Card padding="lg">
-        <h2 className="text-lg font-display font-medium text-text mb-4">Rate Limit Policy</h2>
+        <h2 className="text-lg font-display font-medium text-text mb-1">Documented Rate Limits</h2>
+        <p className="text-xs text-text-muted mb-4">
+          Static reference values transcribed from the published API policy. They are not read from
+          the server, so they do not reflect your plan, your current usage, or what the limiter will
+          actually enforce on your next request.
+        </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          {rateLimits.map((rl) => (
+          {documentedRateLimits.map((rl) => (
             <div key={rl.name} className="bg-background rounded-lg p-4 border border-border">
               <p className="text-sm text-text-muted">{rl.name}</p>
               <p className="text-2xl font-display text-text mt-1">{rl.limit}</p>
-              <p className="text-xs text-text-muted font-mono mt-1">Documented limit</p>
+              <p className="text-xs text-text-muted font-mono mt-1">Published policy (static)</p>
             </div>
           ))}
         </div>
@@ -374,8 +461,11 @@ function DeveloperContent() {
                 onChange={(e) => setWebhookUrl(e.target.value)}
               />
               <div className="space-y-1">
-                <label className="block text-sm font-medium text-text">Event Type</label>
+                <label htmlFor="webhook-event" className="block text-sm font-medium text-text">
+                  Event Type
+                </label>
                 <select
+                  id="webhook-event"
                   className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:border-primary"
                   value={webhookEvent}
                   onChange={(e) => setWebhookEvent(e.target.value)}
@@ -388,9 +478,40 @@ function DeveloperContent() {
                 </select>
               </div>
             </div>
+            <div>
+              <label htmlFor="webhook-test-secret" className="block text-sm font-medium text-text">
+                Test signing secret
+              </label>
+              <input
+                id="webhook-test-secret"
+                type="password"
+                autoComplete="off"
+                value={webhookTestSecret}
+                onChange={(e) => setWebhookTestSecret(e.target.value)}
+                placeholder="Enter a throwaway value for this run"
+                aria-describedby="webhook-test-secret-help"
+                className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:border-primary"
+              />
+              <p id="webhook-test-secret-help" className="text-xs text-text-muted mt-1">
+                TEST VALUE ONLY. It is sent with this single test delivery and cleared immediately
+                afterwards. It is not a real credential and is not stored.
+              </p>
+            </div>
             <div className="flex gap-2">
-              <Button onClick={sendTestWebhook}>Send Test Event</Button>
-              <Button variant="secondary" onClick={() => setWebhookResult(null)}>
+              <Button
+                onClick={() => void sendTestWebhook()}
+                disabled={isSendingTest}
+                loading={isSendingTest}
+              >
+                Send Test Event
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setWebhookResult(null);
+                  setWebhookTestSecret('');
+                }}
+              >
                 Clear
               </Button>
             </div>
@@ -398,17 +519,24 @@ function DeveloperContent() {
               <div className="p-4 bg-surface rounded-lg border border-border">
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <span className="text-text-muted">Status</span>
-                  <StatusBadge
-                    variant={webhookResult.status === 'success' ? 'success' : 'error'}
-                    label={webhookResult.status}
-                  />
+                  <span>
+                    <StatusBadge
+                      variant={STATUS_VARIANT[webhookResult.status]}
+                      label={webhookResult.status}
+                    />
+                  </span>
                   <span className="text-text-muted">Event</span>
                   <span className="font-mono text-text">{webhookResult.event}</span>
-                  <span className="text-text-muted">Duration</span>
-                  <span className="font-mono text-text">{webhookResult.duration}</span>
+                  <span className="text-text-muted">HTTP Status</span>
+                  <span className="font-mono text-text">
+                    {webhookResult.statusCode === null ? 'Not reported' : webhookResult.statusCode}
+                  </span>
+                  <span className="text-text-muted">Delivery Attempts</span>
+                  <span className="font-mono text-text">{webhookResult.deliveryCount}</span>
                   <span className="text-text-muted">Timestamp</span>
                   <span className="text-text-muted text-xs">{webhookResult.timestamp}</span>
                 </div>
+                <p className="text-xs text-text-muted mt-3">{webhookResult.note}</p>
               </div>
             )}
           </div>
@@ -452,6 +580,7 @@ function DeveloperContent() {
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
+                  aria-hidden="true"
                 >
                   <path
                     strokeLinecap="round"
@@ -506,7 +635,7 @@ function DeveloperContent() {
         title="API Key Generated"
       >
         <div className="space-y-4">
-          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-200 text-sm">
+          <div className="p-3 bg-warning/10 border border-warning/30 rounded-lg text-warning text-sm">
             <p className="font-semibold mb-1">Save this key in a secure location.</p>
             <p className="text-xs">
               For security reasons, this key will never be shown again. If you lose it, you will
@@ -535,29 +664,6 @@ function DeveloperContent() {
           </div>
         </div>
       </Modal>
-
-      {/* Webhook Info Modal */}
-      {showWebhookModal && (
-        <Modal isOpen={showWebhookModal} onClose={() => setShowWebhookModal(false)} title="Webhook">
-          <div className="space-y-4">
-            <p className="text-text-muted text-sm">
-              Use the dedicated webhooks console at{' '}
-              <Link
-                className="text-primary underline"
-                href={`/workspace/${workspaceId}/developer/webhooks`}
-              >
-                /developer/webhooks
-              </Link>
-              .
-            </p>
-            <div className="flex justify-end">
-              <Button variant="secondary" onClick={() => setShowWebhookModal(false)}>
-                Close
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }

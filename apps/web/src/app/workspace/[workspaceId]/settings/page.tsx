@@ -9,6 +9,7 @@ import { ProviderKeysSection } from '@/components/settings/ProviderKeysSection';
 import { ThemePreferences } from '@/components/profile/ThemePreferences';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { ErrorState } from '@/components/shared/ErrorState';
+import { PageHeader } from '@/components/shared/Page';
 import {
   Panel,
   Button,
@@ -250,15 +251,32 @@ export default function SettingsPage() {
     }
   };
 
+  // One PageHeader above both branches. The agentsError return and the main
+  // return each carried their own top-level heading, so the file declared two for
+  // a page that only ever renders one.
+  const header = (
+    <PageHeader
+      title={agentsError ? 'Settings' : 'Workspace Settings'}
+      description={
+        agentsError
+          ? 'Manage workspace preferences and security policies.'
+          : 'Configure agent governance, connected integrations, BYOK credentials, and data privacy.'
+      }
+      actions={
+        agentsError ? undefined : (
+          <Badge variant="default" size="sm">
+            <LockIcon size={12} className="mr-1 text-primary" />
+            Zero-Trust Enforced
+          </Badge>
+        )
+      }
+    />
+  );
+
   if (agentsError) {
     return (
-      <div className="flex flex-col h-full max-w-6xl mx-auto py-6 px-4">
-        <header className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-display font-medium text-text mb-2">Settings</h1>
-          <p className="text-sm text-text-muted">
-            Manage workspace preferences and security policies.
-          </p>
-        </header>
+      <div className="flex flex-col h-full max-w-6xl mx-auto py-6 px-4 space-y-6">
+        {header}
         <ErrorState
           title="Failed to load workspace settings"
           message={agentsError.message || 'An unexpected error occurred.'}
@@ -270,26 +288,7 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-col h-full max-w-6xl mx-auto py-6 px-4 sm:px-6 space-y-6">
-      {/* Page Header */}
-      <header className="border-b border-border pb-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-display font-medium text-text">
-              Workspace Settings
-            </h1>
-            <p className="text-sm text-text-muted mt-1">
-              Configure agent governance, connected integrations, BYOK credentials, and data
-              privacy.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Badge variant="default" size="sm">
-              <LockIcon size={12} className="mr-1 text-primary" />
-              Zero-Trust Enforced
-            </Badge>
-          </div>
-        </div>
-      </header>
+      {header}
 
       {/* Global Save Error Banner */}
       {saveError && (

@@ -86,7 +86,9 @@ export default function WorkspaceInvitePage() {
           <Badge variant="primary" size="sm">
             ORGANIZATION INVITATION
           </Badge>
-          <h1 className="text-2xl font-bold tracking-tight text-text">
+          {/* Centred invitation card: own heading block at the app type scale,
+              since PageHeader is a full-width workspace title bar. */}
+          <h1 className="text-2xl sm:text-3xl font-display font-medium text-text">
             You have been invited to a Vaeloom organization
           </h1>
           <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">

@@ -7,6 +7,8 @@ import { api } from '../../../../lib/api';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { Tabs, TabPanel } from '@/components/shared/Tabs';
+import { PageHeader } from '@/components/shared/Page';
 import { useToast } from '@/components/shared/Toast';
 
 export default function SovereignVaultPage() {
@@ -214,37 +216,30 @@ export default function SovereignVaultPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 p-6">
-      {/* Header */}
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-500 ring-1 ring-indigo-500/20">
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"
-                />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-3xl font-display font-medium text-text">
-                Sovereign Trust & Verifiable Credentials
-              </h1>
-              <p className="text-sm text-text-muted">
-                W3C Decentralized Identifiers (DIDs), Ed25519 verifiable attestations, and
-                local-first CRDT synchronization.
-              </p>
-            </div>
+      <PageHeader
+        title="Sovereign Trust & Verifiable Credentials"
+        description="W3C Decentralized Identifiers (DIDs), Ed25519 verifiable attestations, and local-first CRDT synchronization."
+        actions={
+          <div
+            aria-hidden="true"
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-ai-proposed/10 text-ai-proposed ring-1 ring-ai-proposed/20"
+          >
+            <svg
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"
+              />
+            </svg>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Sovereign Identity Badge & Key Info */}
       {identity && (
@@ -266,6 +261,7 @@ export default function SovereignVaultPage() {
                   onClick={() => copyToClipboard(identity.did, 'DID')}
                   className="rounded p-1 text-text-muted hover:bg-surface-200 hover:text-text"
                   title="Copy DID"
+                  aria-label="Copy DID to clipboard"
                 >
                   <svg
                     className="h-4 w-4"
@@ -273,6 +269,7 @@ export default function SovereignVaultPage() {
                     viewBox="0 0 24 24"
                     strokeWidth={1.5}
                     stroke="currentColor"
+                    aria-hidden="true"
                   >
                     <path
                       strokeLinecap="round"
@@ -289,6 +286,7 @@ export default function SovereignVaultPage() {
                   onClick={() => copyToClipboard(identity.publicKeyBase64, 'Public Key')}
                   className="rounded p-1 hover:bg-surface-200 hover:text-text"
                   title="Copy Public Key"
+                  aria-label="Copy public key to clipboard"
                 >
                   <svg
                     className="h-3.5 w-3.5"
@@ -296,6 +294,7 @@ export default function SovereignVaultPage() {
                     viewBox="0 0 24 24"
                     strokeWidth={1.5}
                     stroke="currentColor"
+                    aria-hidden="true"
                   >
                     <path
                       strokeLinecap="round"
@@ -332,51 +331,19 @@ export default function SovereignVaultPage() {
       )}
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-border">
-        <button
-          onClick={() => setActiveTab('credentials')}
-          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-            activeTab === 'credentials'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-text-muted hover:text-text'
-          }`}
-        >
-          Active Credentials ({credsData?.total ?? 0})
-        </button>
-        <button
-          onClick={() => setActiveTab('issue')}
-          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-            activeTab === 'issue'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-text-muted hover:text-text'
-          }`}
-        >
-          Issue Capability Credential
-        </button>
-        <button
-          onClick={() => setActiveTab('verify')}
-          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-            activeTab === 'verify'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-text-muted hover:text-text'
-          }`}
-        >
-          Mathematical Verifier
-        </button>
-        <button
-          onClick={() => setActiveTab('sync')}
-          className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
-            activeTab === 'sync'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-text-muted hover:text-text'
-          }`}
-        >
-          Local-First Sync (CRDT)
-        </button>
-      </div>
+      <Tabs
+        tabs={[
+          { id: 'credentials', label: `Active Credentials (${credsData?.total ?? 0})` },
+          { id: 'issue', label: 'Issue Capability Credential' },
+          { id: 'verify', label: 'Mathematical Verifier' },
+          { id: 'sync', label: 'Local-First Sync (CRDT)' },
+        ]}
+        activeTab={activeTab}
+        onChange={(id) => setActiveTab(id as typeof activeTab)}
+      />
 
       {/* Tab 1: Credentials List */}
-      {activeTab === 'credentials' && (
+      <TabPanel id="credentials" activeTab={activeTab}>
         <div className="space-y-4">
           {!credsData || credsData.credentials.length === 0 ? (
             <EmptyState
@@ -467,10 +434,10 @@ export default function SovereignVaultPage() {
             </div>
           )}
         </div>
-      )}
+      </TabPanel>
 
       {/* Tab 2: Issue Capability */}
-      {activeTab === 'issue' && (
+      <TabPanel id="issue" activeTab={activeTab}>
         <div className="rounded-xl border border-border bg-surface p-6 shadow-card">
           <h2 className="text-lg font-display font-medium text-text">
             Issue Signed W3C Capability Credential
@@ -482,10 +449,14 @@ export default function SovereignVaultPage() {
 
           <form onSubmit={handleIssueCapability} className="mt-6 space-y-4">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted">
+              <label
+                htmlFor="capability-tag"
+                className="block text-xs font-semibold uppercase tracking-wider text-text-muted"
+              >
                 Capability Tag
               </label>
               <input
+                id="capability-tag"
                 type="text"
                 value={capabilityTag}
                 onChange={(e) => setCapabilityTag(e.target.value)}
@@ -496,10 +467,14 @@ export default function SovereignVaultPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted">
+              <label
+                htmlFor="validation-tier"
+                className="block text-xs font-semibold uppercase tracking-wider text-text-muted"
+              >
                 Validation Tier
               </label>
               <select
+                id="validation-tier"
                 value={validationTier}
                 onChange={(e) => setValidationTier(e.target.value)}
                 className="input-field mt-1.5"
@@ -513,10 +488,14 @@ export default function SovereignVaultPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted">
+              <label
+                htmlFor="evidence-log"
+                className="block text-xs font-semibold uppercase tracking-wider text-text-muted"
+              >
                 Evidence Log (One per line)
               </label>
               <textarea
+                id="evidence-log"
                 value={evidenceInput}
                 onChange={(e) => setEvidenceInput(e.target.value)}
                 rows={4}
@@ -534,10 +513,10 @@ export default function SovereignVaultPage() {
             </button>
           </form>
         </div>
-      )}
+      </TabPanel>
 
       {/* Tab 3: Mathematical Verifier */}
-      {activeTab === 'verify' && (
+      <TabPanel id="verify" activeTab={activeTab}>
         <div className="space-y-6">
           <div className="rounded-xl border border-border bg-surface p-6 shadow-card">
             <div className="flex items-center justify-between">
@@ -560,7 +539,11 @@ export default function SovereignVaultPage() {
             </div>
 
             <div className="mt-4">
+              <label htmlFor="verify-json" className="sr-only">
+                W3C Verifiable Credential JSON
+              </label>
               <textarea
+                id="verify-json"
                 value={verifyJsonInput}
                 onChange={(e) => setVerifyJsonInput(e.target.value)}
                 rows={10}
@@ -660,10 +643,10 @@ export default function SovereignVaultPage() {
             </div>
           )}
         </div>
-      )}
+      </TabPanel>
 
       {/* Tab 4: Local-First Sync (CRDT) */}
-      {activeTab === 'sync' && (
+      <TabPanel id="sync" activeTab={activeTab}>
         <div className="space-y-6">
           <div className="rounded-xl border border-border bg-surface p-6 shadow-card">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -708,7 +691,7 @@ export default function SovereignVaultPage() {
 
           {/* Deltas table */}
           {syncData?.deltas && syncData.deltas.length > 0 ? (
-            <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
+            <div className="overflow-x-auto rounded-xl border border-border bg-surface shadow-card">
               <table className="min-w-full divide-y divide-border">
                 <thead className="bg-surface-100">
                   <tr>
@@ -756,18 +739,24 @@ export default function SovereignVaultPage() {
             </div>
           )}
         </div>
-      )}
+      </TabPanel>
 
       {/* Inspect Credential Modal */}
       {inspectModalOpen && selectedCred && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-xl border border-border bg-surface shadow-card">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="W3C JSON-LD Verifiable Credential"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+        >
+          <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-card">
             <div className="flex items-center justify-between border-b border-border p-4">
               <h3 className="text-base font-display font-medium text-text">
                 W3C JSON-LD Verifiable Credential
               </h3>
               <button
                 onClick={() => setInspectModalOpen(false)}
+                aria-label="Close credential inspector"
                 className="rounded-lg p-1 text-text-muted hover:bg-surface-200 hover:text-text"
               >
                 <svg
@@ -776,12 +765,13 @@ export default function SovereignVaultPage() {
                   viewBox="0 0 24 24"
                   strokeWidth={1.5}
                   stroke="currentColor"
+                  aria-hidden="true"
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            <div className="max-h-[60vh] overflow-y-auto p-4 font-mono text-xs">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 font-mono text-xs">
               <pre className="rounded-xl bg-background p-4 text-success overflow-x-auto">
                 {JSON.stringify(selectedCred, null, 2)}
               </pre>
@@ -808,14 +798,20 @@ export default function SovereignVaultPage() {
 
       {/* Inspect DID Document Modal */}
       {didModalOpen && identity && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-xl border border-border bg-surface shadow-card">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="W3C DID Document"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+        >
+          <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-card">
             <div className="flex items-center justify-between border-b border-border p-4">
               <h3 className="text-base font-display font-medium text-text">
                 W3C DID Document ({identity.did})
               </h3>
               <button
                 onClick={() => setDidModalOpen(false)}
+                aria-label="Close DID document inspector"
                 className="rounded-lg p-1 text-text-muted hover:bg-surface-200 hover:text-text"
               >
                 <svg
@@ -824,12 +820,13 @@ export default function SovereignVaultPage() {
                   viewBox="0 0 24 24"
                   strokeWidth={1.5}
                   stroke="currentColor"
+                  aria-hidden="true"
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            <div className="max-h-[60vh] overflow-y-auto p-4 font-mono text-xs">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 font-mono text-xs">
               <pre className="rounded-xl bg-background p-4 text-info overflow-x-auto">
                 {JSON.stringify(identity.didDocument, null, 2)}
               </pre>

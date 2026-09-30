@@ -3,20 +3,9 @@
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import {
-  Card,
-  Input,
-  Badge,
-  Button,
-  SearchIcon,
-  HelpCircleIcon,
-  ShieldIcon,
-  PlugIcon,
-  CpuIcon,
-  ClockIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
-} from '@vaeloom/ui-kit';
+import { Card, Input, Button, SearchIcon, ChevronDownIcon, ChevronUpIcon } from '@vaeloom/ui-kit';
+import { PageHeader } from '@/components/shared/Page';
+import { FilterPills } from '@/components/shared/FilterPills';
 import { WORKSPACE_ROUTES } from '@/lib/route-manifest';
 
 interface LiveHelpArticle {
@@ -53,11 +42,16 @@ const SYSTEM_SHORTCUTS: LiveShortcut[] = [
     scope: 'Forms & Modals',
   },
   {
-    key: 'A',
-    description: 'Approve selected pending proposal in Approvals Center',
+    key: 'Tab / Shift + Tab',
+    description: 'Move focus between the Approve and Reject controls on a pending proposal',
     scope: 'Approvals',
   },
-  { key: 'R', description: 'Reject selected proposal with feedback reason', scope: 'Approvals' },
+  {
+    key: 'A / R',
+    description:
+      'Approve or reject the focused approval card without reaching for the mouse. The card must have focus (Tab to it); the buttons display the same hint.',
+    scope: 'Approvals',
+  },
   { key: 'Space', description: 'Play / pause audio or preview in media views', scope: 'Workspace' },
 ];
 
@@ -132,11 +126,11 @@ export default function HelpCenterPage() {
   }, [workspaceId]);
 
   const categories = [
-    { id: 'ALL', label: 'All Topics' },
-    { id: 'GETTING_STARTED', label: 'Getting Started' },
-    { id: 'AGENTS_AUTONOMY', label: 'Agents & Autonomy' },
-    { id: 'CONNECTORS', label: 'Connectors & MCP' },
-    { id: 'SECURITY_PRIVACY', label: 'Zero-Trust Security' },
+    { value: 'ALL', label: 'All Topics' },
+    { value: 'GETTING_STARTED', label: 'Getting Started' },
+    { value: 'AGENTS_AUTONOMY', label: 'Agents & Autonomy' },
+    { value: 'CONNECTORS', label: 'Connectors & MCP' },
+    { value: 'SECURITY_PRIVACY', label: 'Zero-Trust Security' },
   ];
 
   const filteredArticles = useMemo(() => {
@@ -169,23 +163,11 @@ export default function HelpCenterPage() {
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto pb-16">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-subtle pb-5">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-              Documentation &amp; Help Center
-            </h1>
-            <Badge variant="info" size="sm">
-              STATIC DOCS
-            </Badge>
-          </div>
-          <p className="text-xs sm:text-sm text-text-secondary">
-            Product documentation, keyboard shortcuts, and architecture guides.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
+      <PageHeader
+        title="Documentation &amp; Help Center"
+        eyebrow="Static docs"
+        description="Product documentation, keyboard shortcuts, and architecture guides."
+        actions={
           <Link
             href={`/workspace/${workspaceId}/chat?prompt=${encodeURIComponent('Explain how Vaeloom agents collaborate on career progression and ATS tailoring.')}`}
           >
@@ -193,15 +175,19 @@ export default function HelpCenterPage() {
               Ask AI Copilot
             </Button>
           </Link>
-        </div>
-      </div>
+        }
+      />
 
       {/* Search Input */}
       <div className="relative flex items-center">
         <div className="absolute left-3.5 text-text-muted pointer-events-none">
           <SearchIcon size={18} />
         </div>
+        <label htmlFor="help-search" className="sr-only">
+          Search guides, architectural concepts, or keyboard shortcuts
+        </label>
         <Input
+          id="help-search"
           type="search"
           placeholder="Search guides, architectural concepts, or keyboard shortcuts..."
           value={query}
@@ -220,22 +206,12 @@ export default function HelpCenterPage() {
       </div>
 
       {/* Category Filter Pills */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        {categories.map((cat) => (
-          <button
-            key={cat.id}
-            type="button"
-            onClick={() => setSelectedCategory(cat.id)}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              selectedCategory === cat.id
-                ? 'bg-action text-white shadow-xs'
-                : 'bg-surface-200 text-text-secondary hover:text-text'
-            }`}
-          >
-            {cat.label}
-          </button>
-        ))}
-      </div>
+      <FilterPills
+        options={categories}
+        value={selectedCategory}
+        onChange={setSelectedCategory}
+        ariaLabel="Filter documentation by category"
+      />
 
       {/* Articles Section */}
       <div className="space-y-4">
@@ -251,19 +227,17 @@ export default function HelpCenterPage() {
           <div className="space-y-3">
             {filteredArticles.map((art) => {
               const isExpanded = expandedArticle === art.id;
+              const bodyId = `help-article-body-${art.id}`;
 
               return (
                 <Card key={art.id} className="p-4 transition-all hover:border-action/40">
-                  <div
-                    onClick={() => setExpandedArticle(isExpanded ? null : art.id)}
-                    className="flex items-start justify-between gap-3 cursor-pointer"
-                  >
+                  <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-2xs font-mono uppercase text-action font-semibold">
+                        <span className="text-xs font-mono uppercase text-action font-semibold">
                           {art.category.replace('_', ' ')}
                         </span>
-                        <span className="text-2xs text-text-muted">• {art.readTime}</span>
+                        <span className="text-xs text-text-muted">• {art.readTime}</span>
                       </div>
                       <h3 className="text-sm font-semibold text-text">{art.title}</h3>
                       <p className="text-xs text-text-secondary">{art.summary}</p>
@@ -271,15 +245,21 @@ export default function HelpCenterPage() {
 
                     <button
                       type="button"
+                      aria-expanded={isExpanded}
+                      aria-controls={bodyId}
+                      aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${art.title}`}
+                      onClick={() => setExpandedArticle(isExpanded ? null : art.id)}
                       className="p-1 text-text-muted hover:text-text"
-                      title={isExpanded ? 'Collapse' : 'Expand'}
                     >
                       {isExpanded ? <ChevronUpIcon size={16} /> : <ChevronDownIcon size={16} />}
                     </button>
                   </div>
 
                   {isExpanded && (
-                    <div className="pt-3 mt-3 border-t border-border-subtle text-xs text-text leading-relaxed space-y-2">
+                    <div
+                      id={bodyId}
+                      className="pt-3 mt-3 border-t border-border-subtle text-xs text-text leading-relaxed space-y-2"
+                    >
                       <p>{art.content}</p>
                       {art.link && (
                         <div className="pt-1">
@@ -306,7 +286,7 @@ export default function HelpCenterPage() {
           <h2 className="text-sm font-bold text-text uppercase tracking-wider">
             Operational Keyboard Shortcuts ({filteredShortcuts.length})
           </h2>
-          <span className="text-2xs text-text-muted font-mono">Platform Standard</span>
+          <span className="text-xs text-text-muted font-mono">Platform Standard</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -317,7 +297,7 @@ export default function HelpCenterPage() {
             >
               <div>
                 <p className="text-xs font-medium text-text">{sc.description}</p>
-                <span className="text-2xs text-text-muted font-mono">{sc.scope}</span>
+                <span className="text-xs text-text-muted font-mono">{sc.scope}</span>
               </div>
               <kbd className="px-2 py-1 rounded bg-surface border border-border-strong font-mono text-xs text-text shrink-0 shadow-2xs">
                 {sc.key}

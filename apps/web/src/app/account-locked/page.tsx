@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Card, Button, ShieldIcon, AlertTriangleIcon, KeyIcon } from '@vaeloom/ui-kit';
+import { PageHeader } from '@/components/shared/Page';
 
 export default function AccountLockedPage() {
   return (
@@ -12,15 +13,10 @@ export default function AccountLockedPage() {
           <ShieldIcon size={32} />
         </div>
 
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight text-text">
-            Account Temporarily Locked
-          </h1>
-          <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
-            Sign-in is temporarily blocked on this account after too many failed attempts. This is
-            an automated defence against credential stuffing and token replay.
-          </p>
-        </div>
+        <PageHeader
+          title="Account Temporarily Locked"
+          description="Sign-in is temporarily blocked on this account after too many failed attempts. This is an automated defence against credential stuffing and token replay."
+        />
 
         <div className="p-3.5 rounded-lg bg-surface-100 border border-border-subtle text-left space-y-1.5 text-xs text-text-secondary">
           <div className="font-semibold text-text flex items-center gap-1.5">

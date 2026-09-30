@@ -1,5 +1,16 @@
 import React from 'react';
 
+/**
+ * A static provenance chip, not a citation. It cannot delegate to the ui-kit
+ * `SourceCitation` because that component is an interactive affordance — a
+ * `<button>` whose click opens `url` or invokes `onClick`, with an optional
+ * snippet tooltip. Neither call site (ApprovalCard, ResumeBuilder) passes a
+ * `url` or an `onClick`, so delegating would render a focusable button that
+ * does nothing — a keyboard trap that looks like a control. `SourceCitation`
+ * also exposes neither a `confidence` prop nor a children slot, so the
+ * confidence percentage would have to move outside the badge chrome, changing
+ * the visual at both call sites rather than consolidating it.
+ */
 export interface ProvenanceItem {
   label: string;
   confidence?: number;

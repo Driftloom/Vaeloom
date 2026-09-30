@@ -221,34 +221,47 @@ describe('Mojibake', () => {
 
 describe('Page heading structure', () => {
   /**
-   * Routes that legitimately render no <h1>. Full-bleed surfaces (chat,
-   * capabilities, editors, viewers) have no title bar by design, and the
-   * redirect stubs render nothing at all. Marketing, auth and public pages
-   * carry their own heading hierarchy outside the workspace shell.
+   * Routes that legitimately render a heading the canonical PageHeader does not
+   * own. Two categories, both deliberate:
    *
-   * Adding a route here is a product decision, not a cleanup.
+   * 1. FULL-BLEED surfaces — chat, capabilities, the Monaco resume editor, the
+   *    document viewer and the redirect stubs have no title bar by design.
+   * 2. NARROW AUTH CARDS — the auth routes render a centred card around
+   *    400-420px wide. A full-width PageHeader inside that card is wrong, so
+   *    they keep their own heading element at the app's type scale
+   *    (`text-2xl sm:text-3xl font-display font-medium text-text`) and exactly
+   *    one <h1>. Marketing, legal and public pages carry their own hierarchy
+   *    outside the workspace shell.
+   *
+   * Adding a route here is a product decision, not a cleanup. Every entry below
+   * was reviewed by hand.
    */
   const HEADING_EXEMPT = new Set([
-    'app/page.tsx',
-    'app/(auth)/callback/page.tsx',
-    'app/(auth)/login/page.tsx',
-    'app/(auth)/signup/page.tsx',
-    'app/(auth)/forgot-password/page.tsx',
-    'app/(auth)/onboarding/page.tsx',
-    'app/privacy/page.tsx',
-    'app/terms/page.tsx',
-    'app/p/[userId]/page.tsx',
-    'app/workspace/page.tsx',
+    // Full-bleed workspace surfaces.
     'app/workspace/[workspaceId]/capabilities/page.tsx',
     'app/workspace/[workspaceId]/chat/page.tsx',
     'app/workspace/[workspaceId]/connectors/page.tsx',
     'app/workspace/[workspaceId]/documents/page.tsx',
-    'app/workspace/[workspaceId]/profile/page.tsx',
+    'app/workspace/[workspaceId]/files/[documentId]/page.tsx',
     'app/workspace/[workspaceId]/resume/page.tsx',
     'app/workspace/[workspaceId]/resume/[resumeId]/edit/page.tsx',
     'app/workspace/[workspaceId]/resumes/page.tsx',
-    'app/workspace/[workspaceId]/files/[documentId]/page.tsx',
     'app/workspace/[workspaceId]/[...catchAll]/page.tsx',
+    // Narrow centred auth cards (exactly one <h1> each, app type scale).
+    'app/(auth)/callback/page.tsx',
+    'app/(auth)/forgot-password/page.tsx',
+    'app/(auth)/login/page.tsx',
+    'app/(auth)/onboarding/page.tsx',
+    'app/(auth)/reset-password/page.tsx',
+    'app/(auth)/signup/page.tsx',
+    'app/(auth)/verify-email/page.tsx',
+    'app/invite/[token]/page.tsx',
+    // Marketing, legal and public pages.
+    'app/page.tsx',
+    'app/privacy/page.tsx',
+    'app/terms/page.tsx',
+    'app/p/[userId]/page.tsx',
+    'app/workspace/page.tsx',
   ]);
 
   /**
@@ -258,17 +271,32 @@ describe('Page heading structure', () => {
    * explicitly rather than silently tolerated. Each was reviewed by hand.
    *
    * If you add a branch here, confirm the branches really are exclusive.
+   *
+   * Empty: settings was the last entry and now hoists a single PageHeader above
+   * its agentsError and success branches, matching applications / notifications
+   * / schedule.
    */
-  const BRANCH_EXCLUSIVE = new Set([
-    // agentsError return vs. the main return.
-    'app/workspace/[workspaceId]/settings/page.tsx',
-    // sent / success / form-token states.
-    'app/(auth)/reset-password/page.tsx',
-    // verified / failed / no-token states.
-    'app/(auth)/verify-email/page.tsx',
-  ]);
+  const BRANCH_EXCLUSIVE = new Set<string>();
 
   const pages = classFiles.filter((f) => f.endsWith('page.tsx'));
+
+  /**
+   * Count real <h1> ELEMENTS in a page.
+   *
+   * Comments and string literals are stripped first. Without that, a page whose
+   * only `<h1` occurrence is inside an explanatory comment (for example
+   * "previously gave this file three <h1>s") is reported as a violation, which
+   * is how three already-migrated pages stayed on the offender list after being
+   * converted to <PageHeader>.
+   */
+  const countHeadings = (path: string): number => {
+    const text = readFileSync(path, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/[^\n]*/g, '')
+      .replace(/'(?:[^'\\\n]|\\.)*'/g, "''")
+      .replace(/"(?:[^"\\\n]|\\.)*"/g, '""');
+    return (text.match(/<h1[\s>]/g) ?? []).length;
+  };
 
   it('has pages to check', () => {
     expect(pages.length).toBeGreaterThan(40);
@@ -280,19 +308,18 @@ describe('Page heading structure', () => {
     // branches. Those are now a single <PageHeader> above the branches.
     const offenders: string[] = [];
     for (const p of pages) {
-      const text = readFileSync(p, 'utf8');
-      const count = (text.match(/<h1[\s>]/g) ?? []).length;
-      if (count > 1 && !BRANCH_EXCLUSIVE.has(srcRel(p))) offenders.push(`${rel(p)} (${count})`);
+      const count = countHeadings(p);
+      if (count > 1 && !BRANCH_EXCLUSIVE.has(srcRel(p))) offenders.push(`${srcRel(p)} (${count})`);
     }
     expect(offenders).toEqual([]);
   });
 
   it('lists every branch-exclusive page that the h1 check cannot verify', () => {
-    // If a page is added to BRANCH_EXCLUSIVE, this fails until the note above is
-    // updated, so the exemption list cannot grow without being acknowledged.
+    // If a page is added to or removed from BRANCH_EXCLUSIVE, this fails until
+    // the list is updated, so the exemption set cannot drift silently.
     const declared = [...BRANCH_EXCLUSIVE].sort();
     const actual = pages
-      .filter((p) => (readFileSync(p, 'utf8').match(/<h1[\s>]/g) ?? []).length > 1)
+      .filter((p) => countHeadings(p) > 1)
       .map(srcRel)
       .sort();
     expect(declared).toEqual(actual);
@@ -300,16 +327,14 @@ describe('Page heading structure', () => {
 
   it('keeps every workspace page title on the canonical PageHeader', () => {
     // Rather than assert a className (which drifts), assert that a page either
-    // uses <PageHeader> or is a documented full-bleed exemption. Pages that
-    // hand-roll an <h1> are the remaining style debt and should be listed here
-    // as they are migrated, so the list is the migration backlog.
+    // uses <PageHeader> or is a documented exemption. Pages that hand-roll an
+    // <h1> are the remaining style debt and are listed here as they migrate, so
+    // the list is the migration backlog.
     const rawH1Pages = pages
-      .filter((p) => /<h1[\s>]/.test(readFileSync(p, 'utf8')))
+      .filter((p) => countHeadings(p) > 0)
       .map(srcRel)
       .filter((r) => !HEADING_EXEMPT.has(r));
 
-    // Report rather than block: this is measured debt, not a hard failure, so
-    // the number stays visible as pages migrate to PageHeader.
     // eslint-disable-next-line no-console
     console.log(
       `[design-system] pages still hand-rolling <h1> outside exemptions: ${rawH1Pages.length}`,

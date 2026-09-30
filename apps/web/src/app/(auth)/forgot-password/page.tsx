@@ -67,7 +67,8 @@ export default function ForgotPasswordPage() {
             </div>
             <span className="text-2xl font-bold text-text">Vaeloom</span>
           </div>
-          <h1 className="text-4xl font-bold text-text leading-tight mt-8">Reset your password</h1>
+          {/* Marketing panel: hidden below lg, so it cannot be the page heading. */}
+          <p className="text-4xl font-bold text-text leading-tight mt-8">Reset your password</p>
           <p className="text-lg text-text-muted mt-4 max-w-md">
             Enter your email and we will send a secure reset link. The link expires in 15 minutes.
           </p>
@@ -76,7 +77,10 @@ export default function ForgotPasswordPage() {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-[400px]">
           <div className="mb-8">
-            <h2 className="text-2xl font-display font-medium text-text">Forgot password</h2>
+            {/* Narrow auth card: single h1 at the app type scale. */}
+            <h1 className="text-2xl sm:text-3xl font-display font-medium text-text">
+              Forgot password
+            </h1>
             <p className="text-text-muted">We will email you a reset link</p>
           </div>
           <div className="bg-surface-50 border border-border rounded-2xl p-8 shadow-card">

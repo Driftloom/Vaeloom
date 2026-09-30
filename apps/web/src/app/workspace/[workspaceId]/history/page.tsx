@@ -8,8 +8,9 @@ import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Tabs, TabPanel } from '@/components/shared/Tabs';
 import { DiffViewer } from '@/components/shared/DiffViewer';
+import { PageHeader } from '@/components/shared/Page';
 import { notificationApi, documentApi } from '@/lib/api-client';
-import type { NotificationResponse, DocumentAction, AgentActionHistory } from '@/lib/api-client';
+import type { NotificationResponse, DocumentAction } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 
 function formatTimestamp(iso: string | null | undefined): string {
@@ -148,21 +149,19 @@ export default function HistoryPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-display font-medium text-text mb-2">History</h1>
-          <p className="text-text-muted text-sm">
-            Agent actions, document changes and system events — with diffs and undo.
-          </p>
-        </div>
-        <button
-          className="btn-secondary text-sm"
-          onClick={handleExport}
-          disabled={!docActions.length && !agentActions?.length && !notifications?.length}
-        >
-          Export Log
-        </button>
-      </header>
+      <PageHeader
+        title="History"
+        description="Agent actions, document changes and system events — with diffs and undo."
+        actions={
+          <button
+            className="btn-secondary text-sm"
+            onClick={handleExport}
+            disabled={!docActions.length && !agentActions?.length && !notifications?.length}
+          >
+            Export Log
+          </button>
+        }
+      />
 
       <Tabs tabs={tabs} activeTab={active} onChange={setActive} />
 

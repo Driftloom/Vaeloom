@@ -7,6 +7,7 @@ import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ApprovalCard } from '@/components/shared/ApprovalCard';
 import { Tabs, TabPanel } from '@/components/shared/Tabs';
+import { PageHeader } from '@/components/shared/Page';
 import { approvalApi, type ApprovalItem } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 
@@ -109,34 +110,30 @@ export default function ApprovalsPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-display font-medium text-text mb-2">Approvals</h1>
-          <p className="text-text-muted text-sm">
-            Unified inbox for all agent suggestions requiring approval. Least-privilege — review
-            scopes, risk, and expiry before acting. Use <kbd className="font-mono">A</kbd> to
-            approve, <kbd className="font-mono">R</kbd> to reject.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <select
-            aria-label="Filter approvals by agent"
-            value={filterAgent}
-            onChange={(e) => setFilterAgent(e.target.value)}
-            className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm"
-          >
-            <option value="all">All agents</option>
-            {agents.map((a) => (
-              <option key={a} value={a}>
-                {a}
-              </option>
-            ))}
-          </select>
-          <button onClick={() => mutate()} className="btn-secondary text-sm">
-            Refresh
-          </button>
-        </div>
-      </header>
+      <PageHeader
+        title="Approvals"
+        description="Unified inbox for all agent suggestions requiring approval. Least-privilege — review scopes, risk, and expiry before acting."
+        actions={
+          <>
+            <select
+              aria-label="Filter approvals by agent"
+              value={filterAgent}
+              onChange={(e) => setFilterAgent(e.target.value)}
+              className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm"
+            >
+              <option value="all">All agents</option>
+              {agents.map((a) => (
+                <option key={a} value={a}>
+                  {a}
+                </option>
+              ))}
+            </select>
+            <button onClick={() => void mutate()} className="btn-secondary text-sm">
+              Refresh
+            </button>
+          </>
+        }
+      />
 
       <Tabs tabs={tabs} activeTab={active} onChange={setActive} />
 

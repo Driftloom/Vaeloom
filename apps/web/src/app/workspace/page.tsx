@@ -91,6 +91,9 @@ export default function WorkspaceIndexPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background text-text p-6">
       <div className="flex flex-col items-center gap-4 text-center max-w-sm">
+        {/* Redirect stub: no visible title bar by design (it is on screen for a
+            second or two), but the route still needs a name in the a11y tree. */}
+        <h1 className="sr-only">Entering your workspace</h1>
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         <p className="text-sm text-text-muted">
           {error ? `${error}. Redirecting to login...` : 'Entering your workspace...'}

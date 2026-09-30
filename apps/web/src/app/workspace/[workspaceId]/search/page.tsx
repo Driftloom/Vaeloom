@@ -13,12 +13,13 @@ import {
   FileTextIcon,
   BrainIcon,
   BriefcaseIcon,
-  ClockIcon,
   DatabaseIcon,
-  CheckSquareIcon,
+  Spinner,
   ExternalLinkIcon,
   EmptyState,
 } from '@vaeloom/ui-kit';
+import { PageHeader } from '@/components/shared/Page';
+import { FilterPills } from '@/components/shared/FilterPills';
 import { searchApi, type SearchResponse, type SearchResult } from '@/lib/api-client';
 
 export default function GlobalSearchPage() {
@@ -39,16 +40,16 @@ export default function GlobalSearchPage() {
   }, [searchQuery]);
 
   const categories = [
-    { id: 'all', label: 'All Sources', sourceKey: undefined },
-    { id: 'documents', label: 'Documents', sourceKey: 'documents' },
-    { id: 'memories', label: 'Memories', sourceKey: 'memories' },
-    { id: 'resumes', label: 'Resumes', sourceKey: 'resumes' },
-    { id: 'jobs', label: 'Jobs', sourceKey: 'jobs' },
-    { id: 'entities', label: 'Graph Entities', sourceKey: 'entities' },
-  ];
+    { value: 'all', label: 'All Sources', sourceKey: undefined },
+    { value: 'documents', label: 'Documents', sourceKey: 'documents' },
+    { value: 'memories', label: 'Memories', sourceKey: 'memories' },
+    { value: 'resumes', label: 'Resumes', sourceKey: 'resumes' },
+    { value: 'jobs', label: 'Jobs', sourceKey: 'jobs' },
+    { value: 'entities', label: 'Graph Entities', sourceKey: 'entities' },
+  ] as const;
 
   const activeSourceKey = useMemo(() => {
-    const found = categories.find((c) => c.id === selectedCategory);
+    const found = categories.find((c) => c.value === selectedCategory);
     return found?.sourceKey ? [found.sourceKey] : undefined;
   }, [selectedCategory]);
 
@@ -121,36 +122,27 @@ export default function GlobalSearchPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-subtle pb-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-              Unified Enterprise Search
-            </h1>
-            <Badge variant="success" size="sm">
-              LIVE PGVECTOR
-            </Badge>
-          </div>
-          <p className="text-xs sm:text-sm text-text-secondary">
-            Cross-partition semantic vector retrieval across memory traces, documents, resumes, and
-            knowledge entities.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 text-2xs font-mono text-text-muted">
+      <PageHeader
+        title="Unified Enterprise Search"
+        eyebrow="Live pgvector"
+        description="Cross-partition semantic vector retrieval across memory traces, documents, resumes, and knowledge entities."
+        actions={
           <Badge variant="default" size="sm">
             Zero-Trust Filtered
           </Badge>
-        </div>
-      </div>
+        }
+      />
 
       {/* Main Search Input */}
       <div className="relative flex items-center">
         <div className="absolute left-3.5 text-text-muted pointer-events-none">
           <SearchIcon size={18} />
         </div>
+        <label htmlFor="global-search" className="sr-only">
+          Search across documents, memories, jobs, resumes, and skills
+        </label>
         <Input
+          id="global-search"
           type="search"
           placeholder="Search across documents, memories, jobs, resumes, and skills..."
           value={searchQuery}
@@ -170,29 +162,20 @@ export default function GlobalSearchPage() {
 
       {/* Controls: Category Filter Bar & Sort */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-        <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto pb-1">
-          {categories.map((cat) => {
-            const isSelected = selectedCategory === cat.id;
-
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                  isSelected
-                    ? 'bg-action text-white shadow-xs'
-                    : 'bg-surface-200 text-text-secondary hover:text-text'
-                }`}
-              >
-                <span>{cat.label}</span>
-              </button>
-            );
-          })}
-        </div>
+        <FilterPills
+          options={categories.map((c) => ({ value: c.value, label: c.label }))}
+          value={selectedCategory}
+          onChange={setSelectedCategory}
+          ariaLabel="Filter search results by source"
+          className="overflow-x-auto pb-1"
+        />
 
         <div className="w-48 shrink-0">
+          <label htmlFor="search-sort" className="sr-only">
+            Sort search results
+          </label>
           <Select
+            id="search-sort"
             label=""
             value={sortBy}
             onChange={setSortBy}
@@ -205,7 +188,7 @@ export default function GlobalSearchPage() {
       </div>
 
       {/* Results Summary Counter */}
-      <div className="flex items-center justify-between text-2xs text-text-muted px-1">
+      <div className="flex items-center justify-between text-xs text-text-muted px-1">
         <span>
           Found <strong>{sortedResults.length}</strong> matching item
           {sortedResults.length === 1 ? '' : 's'}
@@ -216,7 +199,7 @@ export default function GlobalSearchPage() {
       {/* Results Content State */}
       {isLoading ? (
         <Card className="p-12 text-center space-y-3">
-          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <Spinner size="md" className="text-primary" />
           <p className="text-xs text-text-muted font-medium">
             Executing hybrid vector search across workspace…
           </p>
@@ -262,7 +245,7 @@ export default function GlobalSearchPage() {
                       {getCategoryIcon(result.source)}
                     </div>
                     <div>
-                      <span className="text-2xs font-mono uppercase tracking-wider text-text-muted">
+                      <span className="text-xs font-mono uppercase tracking-wider text-text-muted">
                         {result.source}
                       </span>
                       <Link
@@ -290,7 +273,7 @@ export default function GlobalSearchPage() {
                 <p className="text-xs text-text-secondary leading-relaxed pl-8">{result.text}</p>
 
                 {result.metadata && Object.keys(result.metadata).length > 0 && (
-                  <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-border-subtle pl-8 text-2xs font-mono text-text-muted">
+                  <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-border-subtle pl-8 text-xs font-mono text-text-muted">
                     {Object.entries(result.metadata)
                       .slice(0, 4)
                       .map(([k, v]) => (

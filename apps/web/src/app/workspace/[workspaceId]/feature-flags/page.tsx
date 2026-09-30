@@ -4,6 +4,10 @@ import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/Enterp
 import { Button, Card, Input } from '@vaeloom/ui-kit';
 import { Toggle } from '@/components/shared/Toggle';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { PageHeader } from '@/components/shared/Page';
+import { Tabs, TabPanel } from '@/components/shared/Tabs';
+import { ErrorState } from '@/components/shared/ErrorState';
+import { EmptyState } from '@/components/shared/EmptyState';
 import useSWR from 'swr';
 import { useParams } from 'next/navigation';
 import { featureFlagsApi, type FeatureFlagItem } from '@/lib/api-client';
@@ -11,12 +15,14 @@ import { useToast } from '@/components/shared/Toast';
 
 const CATEGORIES = ['general', 'ui', 'features', 'ai', 'integrations'];
 
+type TabId = 'flags' | 'abtest' | 'session';
+
 export default function FeatureFlagsPage() {
   const { toast } = useToast();
   const params = useParams();
   const workspaceId = (params?.['workspaceId'] as string | undefined) ?? '';
 
-  const [activeTab, setActiveTab] = useState<'flags' | 'abtest' | 'audit'>('flags');
+  const [activeTab, setActiveTab] = useState<TabId>('flags');
   const [newFlagName, setNewFlagName] = useState('');
   const [newFlagDesc, setNewFlagDesc] = useState('');
   const [newFlagCategory, setNewFlagCategory] = useState('general');
@@ -28,8 +34,12 @@ export default function FeatureFlagsPage() {
   const [splitPct, setSplitPct] = useState(50);
   const [isCreatingTest, setIsCreatingTest] = useState(false);
 
+  // `error` was never destructured, so a 500 left `flags` undefined and the page
+  // rendered "No flags yet. Create one above." — indistinguishable from an
+  // empty workspace.
   const {
     data: flags,
+    error,
     mutate,
     isLoading,
   } = useSWR<FeatureFlagItem[]>(
@@ -38,12 +48,20 @@ export default function FeatureFlagsPage() {
     { revalidateOnFocus: false },
   );
 
-  const [auditLog, setAuditLog] = useState<
+  /**
+   * SESSION-LOCAL CHANGE LOG — NOT AN AUDIT TRAIL.
+   *
+   * There is no audit endpoint on the feature-flag router. This array is React
+   * state, so it holds only the changes made in this browser session and is lost
+   * on refresh. It is presented under a "This session" tab for that reason; a
+   * durable compliance trail needs a server-side endpoint first.
+   */
+  const [sessionLog, setSessionLog] = useState<
     Array<{ flag: string; action: string; timestamp: string }>
   >([]);
 
-  const appendAudit = useCallback((flagName: string, action: string) => {
-    setAuditLog((prev) =>
+  const appendSession = useCallback((flagName: string, action: string) => {
+    setSessionLog((prev) =>
       [{ flag: flagName, action, timestamp: new Date().toLocaleString() }, ...prev].slice(0, 50),
     );
   }, []);
@@ -55,7 +73,7 @@ export default function FeatureFlagsPage() {
         mutate((prev) => (prev ? prev.map((f) => (f.id === flag.id ? updated : f)) : prev), {
           revalidate: false,
         });
-        appendAudit(
+        appendSession(
           flag.name,
           updated.enabled ? `enabled (${updated.rollout_percentage}%)` : 'disabled',
         );
@@ -68,7 +86,7 @@ export default function FeatureFlagsPage() {
         toast({ tone: 'error', title: 'Toggle failed', detail: 'Backend unavailable.' });
       }
     },
-    [mutate, appendAudit, toast],
+    [mutate, appendSession, toast],
   );
 
   const handleRollout = useCallback(
@@ -82,12 +100,12 @@ export default function FeatureFlagsPage() {
         mutate((prev) => (prev ? prev.map((f) => (f.id === flag.id ? updated : f)) : prev), {
           revalidate: false,
         });
-        appendAudit(flag.name, `rollout changed to ${clamped}%`);
+        appendSession(flag.name, `rollout changed to ${clamped}%`);
       } catch {
         toast({ tone: 'error', title: 'Update failed', detail: 'Backend unavailable.' });
       }
     },
-    [mutate, appendAudit, toast],
+    [mutate, appendSession, toast],
   );
 
   const handleCreate = useCallback(async () => {
@@ -99,14 +117,14 @@ export default function FeatureFlagsPage() {
         category: newFlagCategory,
       });
       mutate((prev) => (prev ? [...prev, created] : [created]), { revalidate: false });
-      appendAudit(created.name, 'created');
+      appendSession(created.name, 'created');
       toast({ tone: 'success', title: 'Flag created', detail: created.name });
       setNewFlagName('');
       setNewFlagDesc('');
     } catch {
       toast({ tone: 'error', title: 'Create failed', detail: 'Backend unavailable.' });
     }
-  }, [workspaceId, newFlagName, newFlagDesc, newFlagCategory, mutate, appendAudit, toast]);
+  }, [workspaceId, newFlagName, newFlagDesc, newFlagCategory, mutate, appendSession, toast]);
 
   const handleDelete = useCallback(
     async (flag: FeatureFlagItem) => {
@@ -115,27 +133,45 @@ export default function FeatureFlagsPage() {
         mutate((prev) => (prev ? prev.filter((f) => f.id !== flag.id) : prev), {
           revalidate: false,
         });
-        appendAudit(flag.name, 'deleted');
+        appendSession(flag.name, 'deleted');
         toast({ tone: 'info', title: 'Flag deleted', detail: flag.name });
       } catch {
         toast({ tone: 'error', title: 'Delete failed', detail: 'Backend unavailable.' });
       }
     },
-    [mutate, appendAudit, toast],
+    [mutate, appendSession, toast],
   );
 
+  /**
+   * Creates ONE feature flag, not an experiment.
+   *
+   * There is no experiment entity, no variant identity and no assignment or
+   * metrics service. The two "variants" were only ever a string in the flag
+   * description, while `rollout_percentage` — the number that actually gates
+   * exposure — was set from the B slider while the UI printed the inverse for A,
+   * so the two halves of the screen disagreed about the split. Here the single
+   * slider is `treatmentSharePct`: it is written verbatim to `rollout_percentage`
+   * and the same number is displayed for both rows.
+   */
   const handleCreateAbTest = useCallback(async () => {
     if (!abTestName.trim()) {
       toast({
         tone: 'error',
         title: 'Test name required',
-        detail: 'Please enter a name for the A/B test.',
+        detail: 'Please enter a name for the split test.',
       });
       return;
     }
     setIsCreatingTest(true);
     try {
-      const description = `${abTestDesc.trim() || 'A/B Experiment'} [Split: ${variantALabel} (${100 - splitPct}%) vs ${variantBLabel} (${splitPct}%)]`;
+      const controlShare = 100 - splitPct;
+      const description = [
+        abTestDesc.trim() || 'Split rollout',
+        '',
+        `NOT AN A/B EXPERIMENT. One flag, no variant assignment and no metrics.`,
+        `Variant A ("${variantALabel}") ${controlShare}% — not represented as an entity.`,
+        `Variant B ("${variantBLabel}") ${splitPct}% — equals this flag's rollout_percentage.`,
+      ].join('\n');
       const created = await featureFlagsApi.create(workspaceId, {
         name: abTestName.trim(),
         description,
@@ -144,11 +180,11 @@ export default function FeatureFlagsPage() {
         enabled: true,
       });
       mutate((prev) => (prev ? [...prev, created] : [created]), { revalidate: false });
-      appendAudit(created.name, `A/B test created with ${splitPct}% rollout`);
+      appendSession(created.name, `split rollout created at ${splitPct}% treatment share`);
       toast({
         tone: 'success',
-        title: 'A/B Test Created',
-        detail: `Created ${created.name} targeting ${splitPct}% traffic`,
+        title: 'Split Rollout Created',
+        detail: `Created ${created.name} exposed to ${splitPct}% of traffic.`,
       });
       setAbTestName('');
       setAbTestDesc('');
@@ -157,7 +193,7 @@ export default function FeatureFlagsPage() {
       toast({
         tone: 'error',
         title: 'Create failed',
-        detail: 'Could not create A/B experiment flag.',
+        detail: 'Could not create the split rollout flag.',
       });
     } finally {
       setIsCreatingTest(false);
@@ -170,7 +206,7 @@ export default function FeatureFlagsPage() {
     splitPct,
     workspaceId,
     mutate,
-    appendAudit,
+    appendSession,
     toast,
   ]);
 
@@ -180,130 +216,172 @@ export default function FeatureFlagsPage() {
 
   return (
     <div className="space-y-8">
-      <header>
-        <h1 className="text-3xl font-display font-medium text-text mb-2">Feature Flags</h1>
-        <p className="text-text-muted">
-          Manage feature rollouts, A/B tests, and track changes.{' '}
-          <span className={flagList.length > 0 ? 'text-success' : 'text-text-dim'}>
+      <PageHeader
+        title="Feature Flags"
+        description="Manage feature rollouts and traffic splits."
+        actions={
+          <span
+            className={`ml-2 ${error ? 'text-error' : flagList.length > 0 ? 'text-success' : 'text-text-dim'}`}
+          >
             {isLoading
               ? 'Syncing…'
-              : flagList.length > 0
-                ? `${flagList.length} flags from backend`
-                : 'No flags yet'}
+              : error
+                ? 'Could not load flags from the backend'
+                : flagList.length > 0
+                  ? `${flagList.length} flags from backend`
+                  : 'No flags returned'}
           </span>
-        </p>
-      </header>
+        }
+      />
 
-      <div className="flex gap-2 border-b border-border">
-        {(['flags', 'abtest', 'audit'] as const).map((tab) => (
-          <button
-            key={tab}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-[1px] ${activeTab === tab ? 'border-primary text-text' : 'border-transparent text-text-muted hover:text-text'}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab === 'flags' ? 'Flags' : tab === 'abtest' ? 'A/B Tests' : 'Audit Trail'}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        tabs={[
+          { id: 'flags', label: 'Flags' },
+          { id: 'abtest', label: 'Traffic Split' },
+          { id: 'session', label: 'This Session' },
+        ]}
+        activeTab={activeTab}
+        onChange={(id) => setActiveTab(id as TabId)}
+      />
 
-      {activeTab === 'flags' && (
+      <TabPanel id="flags" activeTab={activeTab}>
         <div className="space-y-4">
-          <Card padding="md">
-            <h3 className="text-sm font-medium text-text mb-3">Create New Flag</h3>
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-              <Input
-                label="Flag name"
-                value={newFlagName}
-                onChange={(e) => setNewFlagName(e.target.value)}
-                placeholder="e.g. new-agent-ui"
-                className="flex-1"
-              />
-              <Input
-                label="Description"
-                value={newFlagDesc}
-                onChange={(e) => setNewFlagDesc(e.target.value)}
-                placeholder="What this flag controls"
-                className="flex-1"
-              />
-              <div className="space-y-1">
-                <label className="block text-sm font-medium text-text">Category</label>
-                <select
-                  className="bg-background border border-border rounded-md px-3 py-2 text-sm text-text w-full sm:w-auto"
-                  value={newFlagCategory}
-                  onChange={(e) => setNewFlagCategory(e.target.value)}
-                >
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <Button onClick={handleCreate} className="w-full sm:w-auto">
-                Create
-              </Button>
-            </div>
-          </Card>
-
-          {flagList.map((flag) => (
-            <Card key={flag.id} padding="md">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <Toggle enabled={flag.enabled} onChange={() => handleToggle(flag)} />
-                    <div>
-                      <span className="font-mono text-sm text-primary">{flag.name}</span>
-                      <span className="ml-2 text-xs text-text-muted bg-surface-active px-2 py-0.5 rounded">
-                        {flag.category}
-                      </span>
-                    </div>
-                    <StatusBadge
-                      variant={flag.enabled ? 'success' : 'neutral'}
-                      label={flag.enabled ? 'ON' : 'OFF'}
-                    />
-                    <span className="text-xs text-text-dim font-mono ml-auto hidden sm:inline">
-                      {flag.updated_at?.slice(0, 10)}
-                    </span>
+          {error ? (
+            <ErrorState
+              title="Failed to load feature flags"
+              message={`${
+                (error as Error).message || 'The feature flag service returned an error.'
+              } No flags are listed, which is not the same as having none.`}
+              onRetry={() => {
+                void mutate();
+              }}
+            />
+          ) : (
+            <>
+              <Card padding="md">
+                <h3 className="text-sm font-medium text-text mb-3">Create New Flag</h3>
+                <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+                  <Input
+                    label="Flag name"
+                    value={newFlagName}
+                    onChange={(e) => setNewFlagName(e.target.value)}
+                    placeholder="e.g. new-agent-ui"
+                    className="flex-1"
+                  />
+                  <Input
+                    label="Description"
+                    value={newFlagDesc}
+                    onChange={(e) => setNewFlagDesc(e.target.value)}
+                    placeholder="What this flag controls"
+                    className="flex-1"
+                  />
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="new-flag-category"
+                      className="block text-sm font-medium text-text"
+                    >
+                      Category
+                    </label>
+                    <select
+                      id="new-flag-category"
+                      className="bg-background border border-border rounded-md px-3 py-2 text-sm text-text w-full sm:w-auto"
+                      value={newFlagCategory}
+                      onChange={(e) => setNewFlagCategory(e.target.value)}
+                    >
+                      {CATEGORIES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  <p className="text-sm text-text-muted mt-2 ml-11">{flag.description}</p>
-                  <div className="ml-11 mt-3">
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs text-text-muted w-32">
-                        Rollout: {flag.rollout_percentage}%
-                      </span>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={flag.rollout_percentage}
-                        onChange={(e) => handleRollout(flag, parseInt(e.target.value, 10))}
-                        className="flex-1 h-2 bg-surface-active rounded-lg appearance-none cursor-pointer accent-primary max-w-xs"
-                      />
-                    </div>
-                  </div>
+                  <Button onClick={handleCreate} className="w-full sm:w-auto">
+                    Create
+                  </Button>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => handleDelete(flag)}>
-                  Delete
-                </Button>
-              </div>
-            </Card>
-          ))}
-          {flagList.length === 0 && !isLoading && (
-            <p className="text-text-dim text-sm text-center py-8">
-              No flags yet. Create one above.
-            </p>
+              </Card>
+
+              {flagList.map((flag) => (
+                <Card key={flag.id} padding="md">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-3">
+                        {/* `label` is what names the switch: Toggle renders it as a
+                            <label htmlFor> and as aria-labelledby. An
+                            `aria-label` prop would be dropped, and a bare Toggle
+                            with no label is an unnamed control. The flag name is
+                            therefore rendered once, as the switch's own label. */}
+                        <Toggle
+                          enabled={flag.enabled}
+                          onChange={() => handleToggle(flag)}
+                          label={flag.name}
+                        />
+                        <span className="text-xs text-text-muted bg-surface-active px-2 py-0.5 rounded">
+                          {flag.category}
+                        </span>
+                        <StatusBadge
+                          variant={flag.enabled ? 'success' : 'neutral'}
+                          label={flag.enabled ? 'ON' : 'OFF'}
+                        />
+                        <span className="text-xs text-text-dim font-mono ml-auto hidden sm:inline">
+                          {flag.updated_at?.slice(0, 10)}
+                        </span>
+                      </div>
+                      {flag.description && (
+                        <p className="text-sm text-text-muted mt-2 ml-11 whitespace-pre-line">
+                          {flag.description}
+                        </p>
+                      )}
+                      <div className="ml-11 mt-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                          <label
+                            htmlFor={`rollout-${flag.id}`}
+                            className="text-xs text-text-muted sm:w-32"
+                          >
+                            Rollout: {flag.rollout_percentage}%
+                          </label>
+                          <input
+                            id={`rollout-${flag.id}`}
+                            type="range"
+                            min={0}
+                            max={100}
+                            step={1}
+                            value={flag.rollout_percentage}
+                            onChange={(e) => handleRollout(flag, parseInt(e.target.value, 10))}
+                            className="flex-1 h-2 bg-surface-active rounded-lg appearance-none cursor-pointer accent-primary max-w-xs"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <Button variant="danger" size="sm" onClick={() => handleDelete(flag)}>
+                      Delete
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+              {flagList.length === 0 && !isLoading && (
+                <EmptyState
+                  title="No flags yet"
+                  description="The backend returned zero flags for this workspace. Create one above to get started."
+                />
+              )}
+            </>
           )}
         </div>
-      )}
+      </TabPanel>
 
-      {activeTab === 'abtest' && (
+      <TabPanel id="abtest" activeTab={activeTab}>
         <Card padding="lg">
-          <h2 className="text-lg font-display font-medium text-text mb-4">
-            A/B Test Configuration
-          </h2>
+          <h2 className="text-lg font-display font-medium text-text mb-4">Traffic Split</h2>
+          <div className="p-3 rounded-lg bg-ai-needs-review/10 border border-ai-needs-review/30 text-xs text-ai-needs-review mb-4">
+            <strong>A/B testing is not implemented.</strong> This form creates a single feature flag
+            and sets its rollout percentage. There is no experiment entity, no variant identity, no
+            traffic assignment between variants and no metrics collection. The variant labels below
+            are stored as free text in the flag description and nothing routes traffic to them.
+          </div>
           <div className="space-y-4">
             <Input
-              label="Test Name"
+              label="Flag name"
               value={abTestName}
               onChange={(e) => setAbTestName(e.target.value)}
               placeholder="e.g. new-onboarding-flow"
@@ -312,31 +390,43 @@ export default function FeatureFlagsPage() {
               label="Description"
               value={abTestDesc}
               onChange={(e) => setAbTestDesc(e.target.value)}
-              placeholder="Describe what this test compares"
+              placeholder="Describe what this rollout gates"
             />
             <div className="space-y-1">
-              <label className="block text-sm font-medium text-text">Variants & Split</label>
+              <span className="block text-sm font-medium text-text">Traffic share</span>
               <div className="space-y-2">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <label htmlFor="split-variant-a" className="text-xs text-text-muted sm:w-40">
+                    Variant A (held back)
+                  </label>
                   <Input
+                    id="split-variant-a"
                     placeholder="Variant A label (Control)"
                     value={variantALabel}
                     onChange={(e) => setVariantALabel(e.target.value)}
                     className="flex-1"
                   />
-                  <div className="w-20 px-3 py-2 text-sm text-text-muted bg-surface-active rounded-md text-center font-mono">
+                  <span className="text-sm text-text-muted bg-surface-active rounded-md text-center font-mono px-3 py-2 sm:w-20">
                     {100 - splitPct}%
-                  </div>
+                  </span>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <label htmlFor="split-variant-b" className="text-xs text-text-muted sm:w-40">
+                    Variant B (rollout_percentage)
+                  </label>
                   <Input
+                    id="split-variant-b"
                     placeholder="Variant B label (Treatment)"
                     value={variantBLabel}
                     onChange={(e) => setVariantBLabel(e.target.value)}
                     className="flex-1"
                   />
                   <div className="flex items-center gap-1">
+                    <label htmlFor="split-pct" className="sr-only">
+                      Treatment share percentage
+                    </label>
                     <input
+                      id="split-pct"
                       type="number"
                       min={0}
                       max={100}
@@ -346,53 +436,50 @@ export default function FeatureFlagsPage() {
                         const val = parseInt(e.target.value, 10);
                         setSplitPct(isNaN(val) ? 0 : Math.max(0, Math.min(100, val)));
                       }}
-                      placeholder="50"
                     />
-                    <span className="text-xs text-text-muted font-mono">%</span>
+                    <span className="text-xs text-text-muted font-mono" aria-hidden="true">
+                      %
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
             <Button onClick={handleCreateAbTest} disabled={isCreatingTest}>
-              {isCreatingTest ? 'Creating…' : 'Create Test'}
+              {isCreatingTest ? 'Creating…' : 'Create Split Rollout'}
             </Button>
           </div>
-          <p className="mt-4 text-xs text-text-dim font-mono">
-            A/B tests configure live feature flags with rollout splits. Variants and allocations
-            sync directly to the backend flag service.
-          </p>
         </Card>
-      )}
+      </TabPanel>
 
-      {activeTab === 'audit' && (
+      <TabPanel id="session" activeTab={activeTab}>
         <Card padding="lg">
-          <h2 className="text-lg font-display font-medium text-text mb-4">Audit Trail</h2>
-          <div className="space-y-2 overflow-x-auto">
-            <div className="min-w-[480px]">
-              <div className="grid grid-cols-3 gap-4 text-xs font-mono text-text-muted uppercase tracking-wider pb-2 border-b border-border">
-                <span>Flag</span>
-                <span>Action</span>
-                <span>Timestamp</span>
-              </div>
-              {auditLog.map((a, i) => (
-                <div
+          <h2 className="text-lg font-display font-medium text-text mb-1">This Session</h2>
+          <p className="text-xs text-text-muted mb-4">
+            Changes you have made in this browser session, newest first. There is no server-side
+            feature-flag audit endpoint, so nothing is persisted: this list is lost on refresh and
+            cannot be used as a compliance record.
+          </p>
+          {sessionLog.length === 0 ? (
+            <EmptyState
+              title="No changes this session"
+              description="Toggle, create or delete a flag and the change will be listed here for as long as this tab stays open."
+            />
+          ) : (
+            <ul className="space-y-2">
+              {sessionLog.map((a, i) => (
+                <li
                   key={`${a.flag}-${a.timestamp}-${i}`}
-                  className="grid grid-cols-3 gap-4 py-2 text-sm text-text hover:bg-background/50 rounded px-2 -mx-2 transition-colors"
+                  className="grid grid-cols-1 sm:grid-cols-3 gap-1 sm:gap-4 py-2 text-sm text-text border-b border-border/50 last:border-b-0"
                 >
                   <span className="font-mono text-primary truncate">{a.flag}</span>
                   <span className="text-text-muted truncate">{a.action}</span>
                   <span className="text-text-muted text-xs truncate">{a.timestamp}</span>
-                </div>
+                </li>
               ))}
-            </div>
-            {auditLog.length === 0 && (
-              <p className="text-text-dim text-sm text-center py-8">
-                No audit entries yet. Toggle or create a flag to see changes here.
-              </p>
-            )}
-          </div>
+            </ul>
+          )}
         </Card>
-      )}
+      </TabPanel>
     </div>
   );
 }

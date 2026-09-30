@@ -4,6 +4,73 @@ import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { councilApi, type CouncilVerdict, type CouncilCritique } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
+import { PageHeader } from '@/components/shared/Page';
+import { ErrorState } from '@/components/shared/ErrorState';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+
+type VerdictKey = 'SHIP' | 'REVISE' | 'HOLD';
+
+/**
+ * One source of truth for the council colour scheme.
+ *
+ * `getVerdictBadge` and the per-critique stance text previously duplicated the
+ * same three-swatch palette with different raw values, so the banner and the
+ * transcript could disagree about what "good" looks like. Both now read from
+ * this map.
+ */
+const VERDICT_TOKENS: Record<VerdictKey, { chip: string; text: string; label: string }> = {
+  SHIP: {
+    chip: 'bg-ai-verified/10 text-ai-verified border-ai-verified/30',
+    text: 'text-ai-verified',
+    label: 'SHIP (Passed)',
+  },
+  REVISE: {
+    chip: 'bg-ai-needs-review/10 text-ai-needs-review border-ai-needs-review/30',
+    text: 'text-ai-needs-review',
+    label: 'REVISE (Conditional)',
+  },
+  HOLD: {
+    chip: 'bg-ai-blocked/10 text-ai-blocked border-ai-blocked/30',
+    text: 'text-ai-blocked',
+    label: 'HOLD (Vetoed)',
+  },
+};
+
+const STANCE_TOKENS: Record<string, string> = {
+  PASS: VERDICT_TOKENS.SHIP.text,
+  CONCERN: VERDICT_TOKENS.REVISE.text,
+  BLOCK: VERDICT_TOKENS.HOLD.text,
+};
+
+const VERDICT_ICON: Record<VerdictKey, string> = {
+  SHIP: 'M5 13l4 4L19 7',
+  REVISE:
+    'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',
+  HOLD: 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z',
+};
+
+const SYNTHETIC_BANNER =
+  '[SYNTHETIC PLACEHOLDER — every figure below is invented for UI testing. ' +
+  "This is not a record of anyone's experience and must not be submitted for certification.]";
+
+/**
+ * Demonstration text only. The claims are fabricated, so they carry a synthetic
+ * marker in their own first line: the council mints a signed audit credential
+ * from whatever it is given, and a user one click away from "Certify W3C" should
+ * not be able to pass invented metrics off as attested fact.
+ */
+const SAMPLE_ARTIFACTS: Record<string, string> = {
+  resume: `${SYNTHETIC_BANNER}
+Synthetic Resume — Senior Staff Distributed Systems Engineer (illustrative)
+- Architected a sub-50ms multi-agent orchestration runtime handling 10M+ daily agent actions with 99.99% availability.
+- Designed zero-trust Row-Level Security (RLS) and cryptographic HMAC verification layers across PostgreSQL and vector stores.
+- Mentored 12 staff engineers and drove cross-functional alignment on enterprise AI compliance.`,
+  proposal: `${SYNTHETIC_BANNER}
+Synthetic Proposal: Enterprise Multi-Agent Governance Platform (illustrative)
+We propose introducing a Dual-Brain architecture combining sub-50ms typed routing (System 1) with arbitrary BYOK generative LLMs (System 2).
+Expected ROI: 75% reduction in API token spend, deterministic human-in-the-loop safety guarantees, and SOC2 compliance out of the box.`,
+};
 
 export default function CouncilPage() {
   const params = useParams();
@@ -17,16 +84,8 @@ export default function CouncilPage() {
   const [isCertifying, setIsCertifying] = useState<boolean>(false);
   const [verdict, setVerdict] = useState<CouncilVerdict | null>(null);
   const [certification, setCertification] = useState<Record<string, unknown> | null>(null);
-
-  const sampleArtifacts: Record<string, string> = {
-    resume: `Senior Staff Distributed Systems Engineer
-- Architected sub-50ms multi-agent orchestration runtime handling 10M+ daily agent actions with 99.99% availability.
-- Designed zero-trust Row-Level Security (RLS) and cryptographic HMAC verification layers across PostgreSQL and vector stores.
-- Mentored 12 staff engineers and drove cross-functional alignment on enterprise AI compliance.`,
-    proposal: `Proposal: Enterprise Multi-Agent Governance Platform
-We propose introducing a Dual-Brain architecture combining sub-50ms typed routing (System 1) with arbitrary BYOK generative LLMs (System 2).
-Expected ROI: 75% reduction in API token spend, deterministic human-in-the-loop safety guarantees, and SOC2 compliance out of the box.`,
-  };
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [certifyError, setCertifyError] = useState<string | null>(null);
 
   const handleReview = async () => {
     if (!artifact.trim()) {
@@ -41,6 +100,8 @@ Expected ROI: 75% reduction in API token spend, deterministic human-in-the-loop 
     setIsDeliberating(true);
     setVerdict(null);
     setCertification(null);
+    setReviewError(null);
+    setCertifyError(null);
 
     try {
       const res = await councilApi.review({
@@ -56,11 +117,10 @@ Expected ROI: 75% reduction in API token spend, deterministic human-in-the-loop 
         detail: `Council returned verdict: ${res.verdict} (${res.overallScore}/100)`,
       });
     } catch (err) {
-      toast({
-        tone: 'error',
-        title: 'Review Failed',
-        detail: err instanceof Error ? err.message : 'Unable to complete council deliberation.',
-      });
+      const detail =
+        err instanceof Error ? err.message : 'Unable to complete council deliberation.';
+      setReviewError(detail);
+      toast({ tone: 'error', title: 'Review Failed', detail });
     } finally {
       setIsDeliberating(false);
     }
@@ -70,15 +130,25 @@ Expected ROI: 75% reduction in API token spend, deterministic human-in-the-loop 
     if (!workspaceId || !artifact.trim()) return;
 
     setIsCertifying(true);
+    setCertifyError(null);
     try {
+      // `agent_name` and `execution_id` are required by POST
+      // /council/evaluate-and-certify and the server derives neither, so the
+      // browser must supply something. Sending "AgentCouncil" and
+      // `exec-${Date.now()}` made the credential attest to an identity and an
+      // execution the client invented. These values say plainly where they came
+      // from instead of impersonating a server-side agent run.
+      //
+      // `toolsInvoked` is deliberately omitted: the council service did not
+      // report which tools it ran, so any list here would be client-asserted
+      // provenance baked into a signed credential. The API defaults it to [].
       const res = await councilApi.certify({
         workspaceId,
-        agentName: 'AgentCouncil',
-        executionId: `exec-${Date.now()}`,
+        agentName: 'client-asserted:council-ui',
+        executionId: `client-asserted:${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`}`,
         artifact,
         artifactType,
         mode,
-        toolsInvoked: ['council.evaluate', 'council.certify'],
       });
       setCertification(res);
       toast({
@@ -87,119 +157,64 @@ Expected ROI: 75% reduction in API token spend, deterministic human-in-the-loop 
         detail: 'W3C Verifiable AgentAuditCredential minted successfully.',
       });
     } catch (err) {
-      toast({
-        tone: 'error',
-        title: 'Certification Failed',
-        detail: err instanceof Error ? err.message : 'Failed to issue audit credential.',
-      });
+      const detail = err instanceof Error ? err.message : 'Failed to issue audit credential.';
+      setCertifyError(detail);
+      toast({ tone: 'error', title: 'Certification Failed', detail });
     } finally {
       setIsCertifying(false);
     }
   };
 
-  const getVerdictBadge = (v: 'SHIP' | 'REVISE' | 'HOLD') => {
-    switch (v) {
-      case 'SHIP':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-            SHIP (Passed)
-          </span>
-        );
-      case 'REVISE':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-            REVISE (Conditional)
-          </span>
-        );
-      case 'HOLD':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/30">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            HOLD (Vetoed)
-          </span>
-        );
-    }
-  };
+  const verdictKey = (verdict?.verdict ?? 'HOLD') as VerdictKey;
+  const verdictToken = VERDICT_TOKENS[verdictKey] ?? VERDICT_TOKENS.HOLD;
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8">
-      {/* Header */}
-      <div className="border-b border-border/40 pb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/20">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div className="max-w-7xl mx-auto space-y-8">
+      <PageHeader
+        eyebrow="Multi-Agent Adjudication"
+        title="PIOS 5-Agent Council"
+        description="Autonomous multi-agent adjudication protocol evaluating quality, voice, evidence, skepticism, and strategy."
+        actions={
+          <>
+            <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-secondary text-secondary-foreground border border-border">
+              Workspace: {workspaceId?.slice(0, 8) ?? 'Default'}
+            </span>
+            <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"
+                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
                 />
               </svg>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                PIOS 5-Agent Council
-              </h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Autonomous multi-agent adjudication protocol evaluating quality, voice, evidence,
-                skepticism, and strategy.
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-secondary text-secondary-foreground border border-border">
-            Workspace: {workspaceId?.slice(0, 8) ?? 'Default'}
-          </span>
-          <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-              />
-            </svg>
-            Zero-Trust Adjudication
-          </span>
-        </div>
-      </div>
+              Zero-Trust Adjudication
+            </span>
+          </>
+        }
+      />
 
       {/* Input Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
           <div className="bg-card rounded-xl border border-border p-5 space-y-4 shadow-sm">
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <label
+                htmlFor="council-artifact"
+                className="text-sm font-semibold text-foreground flex items-center gap-2"
+              >
                 <svg
                   className="w-4 h-4 text-primary"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
+                  aria-hidden="true"
                 >
                   <path
                     strokeLinecap="round"
@@ -213,22 +228,28 @@ Expected ROI: 75% reduction in API token spend, deterministic human-in-the-loop 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setArtifact(sampleArtifacts['resume'] ?? '')}
-                  className="text-xs px-2.5 py-1 rounded bg-secondary/80 hover:bg-secondary text-secondary-foreground transition-colors"
+                  onClick={() => setArtifact(SAMPLE_ARTIFACTS['resume'] ?? '')}
+                  className="btn-secondary text-xs"
                 >
-                  Load Resume Sample
+                  Load Synthetic Resume Example
                 </button>
                 <button
                   type="button"
-                  onClick={() => setArtifact(sampleArtifacts['proposal'] ?? '')}
-                  className="text-xs px-2.5 py-1 rounded bg-secondary/80 hover:bg-secondary text-secondary-foreground transition-colors"
+                  onClick={() => setArtifact(SAMPLE_ARTIFACTS['proposal'] ?? '')}
+                  className="btn-secondary text-xs"
                 >
-                  Load Proposal Sample
+                  Load Synthetic Proposal Example
                 </button>
               </div>
             </div>
+            <p className="text-xs text-ai-needs-review">
+              The example loaders insert <strong>synthetic placeholder text</strong> with invented
+              metrics so the council can be exercised. Replace it with your own artifact before
+              certifying.
+            </p>
 
             <textarea
+              id="council-artifact"
               value={artifact}
               onChange={(e) => setArtifact(e.target.value)}
               placeholder="Paste artifact markdown, resume bullet points, job application text, or proposal here..."
@@ -239,8 +260,9 @@ Expected ROI: 75% reduction in API token spend, deterministic human-in-the-loop 
             <div className="flex items-center justify-between flex-wrap gap-3 pt-2">
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span>Type:</span>
+                  <label htmlFor="council-artifact-type">Type:</label>
                   <select
+                    id="council-artifact-type"
                     value={artifactType}
                     onChange={(e) => setArtifactType(e.target.value)}
                     className="bg-background border border-border rounded px-2 py-1 text-xs text-foreground focus:outline-none"
@@ -254,8 +276,9 @@ Expected ROI: 75% reduction in API token spend, deterministic human-in-the-loop 
                 </div>
 
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span>Mode:</span>
+                  <label htmlFor="council-mode">Mode:</label>
                   <select
+                    id="council-mode"
                     value={mode}
                     onChange={(e) => setMode(e.target.value as 'collaborative' | 'adversarial')}
                     className="bg-background border border-border rounded px-2 py-1 text-xs text-foreground focus:outline-none"
@@ -271,11 +294,14 @@ Expected ROI: 75% reduction in API token spend, deterministic human-in-the-loop 
                   type="button"
                   disabled={isDeliberating || !artifact.trim()}
                   onClick={handleReview}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-action text-action-fg text-sm font-medium hover:bg-action/90 disabled:opacity-50 transition-colors shadow-sm"
+                  className="btn-primary"
                 >
                   {isDeliberating ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                      <span
+                        aria-hidden="true"
+                        className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"
+                      />
                       Deliberating...
                     </>
                   ) : (
@@ -285,6 +311,7 @@ Expected ROI: 75% reduction in API token spend, deterministic human-in-the-loop 
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
+                        aria-hidden="true"
                       >
                         <path
                           strokeLinecap="round"
@@ -302,12 +329,21 @@ Expected ROI: 75% reduction in API token spend, deterministic human-in-the-loop 
                   type="button"
                   disabled={isCertifying || !artifact.trim()}
                   onClick={handleCertify}
-                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-secondary-foreground text-sm font-medium hover:bg-secondary/80 disabled:opacity-50 transition-colors border border-border"
+                  className="btn-secondary"
                 >
                   {isCertifying ? (
-                    <div className="w-4 h-4 border-2 border-foreground border-t-transparent rounded-full animate-spin" />
+                    <span
+                      aria-hidden="true"
+                      className="w-4 h-4 border-2 border-foreground border-t-transparent rounded-full animate-spin"
+                    />
                   ) : (
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      aria-hidden="true"
+                    >
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -331,6 +367,7 @@ Expected ROI: 75% reduction in API token spend, deterministic human-in-the-loop 
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
@@ -366,14 +403,49 @@ Expected ROI: 75% reduction in API token spend, deterministic human-in-the-loop 
         </div>
       </div>
 
+      {reviewError && (
+        <ErrorState
+          title="Deliberation failed"
+          message={`${reviewError} No verdict was produced, so nothing below is a council result.`}
+          onRetry={() => void handleReview()}
+        />
+      )}
+
+      {certifyError && (
+        <ErrorState
+          title="Certification failed"
+          message={`${certifyError} No credential was issued and no verdict was recorded on-chain.`}
+        />
+      )}
+
+      {isDeliberating && <LoadingSpinner text="Council is deliberating…" />}
+
       {/* Deliberation Verdict & Opinions */}
-      {verdict && (
+      {verdict && !isDeliberating && (
         <div className="space-y-6">
           {/* Verdict Banner */}
           <div className="bg-card rounded-xl border border-border p-6 shadow-sm space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/40 pb-4">
               <div className="flex items-center gap-3">
-                {getVerdictBadge(verdict.verdict)}
+                <span
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold border ${verdictToken.chip}`}
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d={VERDICT_ICON[verdictKey] ?? VERDICT_ICON.HOLD}
+                    />
+                  </svg>
+                  {verdictToken.label}
+                </span>
                 <span className="text-lg font-bold text-foreground">
                   Consensus Score: {verdict.overallScore}/100
                 </span>
@@ -391,12 +463,13 @@ Expected ROI: 75% reduction in API token spend, deterministic human-in-the-loop 
 
             {verdict.revisionBrief && verdict.revisionBrief.length > 0 && (
               <div className="pt-2">
-                <h4 className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <h4 className="text-xs font-semibold text-warning uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <svg
                     className="w-3.5 h-3.5"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
+                    aria-hidden="true"
                   >
                     <path
                       strokeLinecap="round"
@@ -424,6 +497,7 @@ Expected ROI: 75% reduction in API token spend, deterministic human-in-the-loop 
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
+                aria-hidden="true"
               >
                 <path
                   strokeLinecap="round"
@@ -434,62 +508,77 @@ Expected ROI: 75% reduction in API token spend, deterministic human-in-the-loop 
               </svg>
               Individual Deliberation Transcripts
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(verdict.round1Critiques || {}).map(
-                ([key, critique]: [string, CouncilCritique]) => (
-                  <div
-                    key={key}
-                    className="bg-card rounded-xl border border-border p-4 shadow-sm space-y-3 flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2 mb-2">
-                        <div>
-                          <h3 className="font-semibold text-sm text-foreground capitalize">
-                            {critique.role || key}
-                          </h3>
-                        </div>
-                        <div className="text-right">
-                          <span
-                            className={`text-xs font-bold ${critique.stance === 'PASS' ? 'text-emerald-400' : critique.stance === 'CONCERN' ? 'text-amber-400' : 'text-rose-400'}`}
-                          >
-                            {critique.stance}
-                          </span>
-                          <div className="text-[10px] text-muted-foreground">
-                            {critique.confidence}% conf
+            {Object.keys(verdict.round1Critiques || {}).length === 0 ? (
+              <EmptyState
+                title="No individual critiques returned"
+                description="The council produced a verdict but reported no per-role transcripts, so no role-level reasoning is shown."
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(verdict.round1Critiques || {}).map(
+                  ([key, critique]: [string, CouncilCritique]) => (
+                    <div
+                      key={key}
+                      className="bg-card rounded-xl border border-border p-4 shadow-sm space-y-3 flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2 mb-2">
+                          <div>
+                            <h3 className="font-semibold text-sm text-foreground capitalize">
+                              {critique.role || key}
+                            </h3>
+                          </div>
+                          <div className="text-right">
+                            <span
+                              className={`text-xs font-bold ${
+                                STANCE_TOKENS[critique.stance] ?? VERDICT_TOKENS.HOLD.text
+                              }`}
+                            >
+                              {critique.stance}
+                            </span>
+                            <div className="text-xs text-muted-foreground">
+                              {critique.confidence}% conf
+                            </div>
                           </div>
                         </div>
+
+                        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-4 hover:line-clamp-none transition-all">
+                          {critique.analysis}
+                        </p>
                       </div>
 
-                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-4 hover:line-clamp-none transition-all">
-                        {critique.analysis}
-                      </p>
+                      {critique.reducibleFlaws && critique.reducibleFlaws.length > 0 && (
+                        <div className="pt-2 border-t border-border/30">
+                          <span className="text-xs font-semibold text-foreground uppercase">
+                            Fixable Items:
+                          </span>
+                          <ul className="list-disc pl-4 space-y-0.5 text-xs text-muted-foreground mt-1">
+                            {critique.reducibleFlaws.slice(0, 2).map((r, i) => (
+                              <li key={i}>{r}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
-
-                    {critique.reducibleFlaws && critique.reducibleFlaws.length > 0 && (
-                      <div className="pt-2 border-t border-border/30">
-                        <span className="text-[10px] font-semibold text-foreground uppercase">
-                          Fixable Items:
-                        </span>
-                        <ul className="list-disc pl-4 space-y-0.5 text-[11px] text-muted-foreground mt-1">
-                          {critique.reducibleFlaws.slice(0, 2).map((r, i) => (
-                            <li key={i}>{r}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                ),
-              )}
-            </div>
+                  ),
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {/* Certification Result */}
       {certification && (
-        <div className="bg-card rounded-xl border border-emerald-500/30 p-5 shadow-sm space-y-3 bg-emerald-500/5">
-          <div className="flex items-center gap-2 text-emerald-400 font-semibold text-sm">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="bg-card rounded-xl border border-ai-verified/30 bg-ai-verified/5 p-5 shadow-sm space-y-3">
+          <div className="flex items-center gap-2 text-ai-verified font-semibold text-sm">
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -499,10 +588,22 @@ Expected ROI: 75% reduction in API token spend, deterministic human-in-the-loop 
             </svg>
             W3C AgentAuditCredential Issued
           </div>
+          <p className="text-xs text-text-muted">
+            Provenance limits: the agent name and execution id in this credential were supplied by
+            this browser session, not derived by the server, and no tool-invocation list is attested
+            because the council service did not report one.
+          </p>
           <pre className="text-xs font-mono bg-background p-3 rounded-lg border border-border overflow-x-auto text-muted-foreground max-h-60">
             {JSON.stringify(certification, null, 2)}
           </pre>
         </div>
+      )}
+
+      {!verdict && !certification && !isDeliberating && !reviewError && !certifyError && (
+        <EmptyState
+          title="No deliberation yet"
+          description="Paste an artifact above and run Deliberate to get a council verdict, per-role critiques, and — on a SHIP verdict — a signed W3C audit credential."
+        />
       )}
     </div>
   );

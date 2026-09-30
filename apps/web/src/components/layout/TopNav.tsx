@@ -16,6 +16,7 @@ import {
   LogOutIcon,
   StatusDot,
   ChevronDownIcon,
+  Breadcrumb,
   BrainIcon,
   BuildingIcon,
   TerminalIcon,
@@ -116,23 +117,17 @@ export function TopNav({
         </button>
 
         {/* Dynamic Breadcrumb Hierarchy */}
-        <nav
-          aria-label="Breadcrumb"
-          className="hidden sm:flex items-center gap-1.5 text-xs text-text-secondary truncate"
-        >
-          <Link
-            href={workspaceId ? `/workspace/${workspaceId}` : '/workspace'}
-            className="hover:text-text transition-colors truncate max-w-[140px] font-medium"
-          >
-            {currentWorkspace?.name || 'Workspace'}
-          </Link>
-          <span className="text-text-muted opacity-60">/</span>
-          <span className="text-text-muted text-xs uppercase tracking-wider font-mono">
-            {breadcrumb.section}
-          </span>
-          <span className="text-text-muted opacity-60">/</span>
-          <span className="text-text font-semibold truncate">{breadcrumb.title}</span>
-        </nav>
+        <Breadcrumb
+          className="hidden sm:flex"
+          items={[
+            {
+              label: currentWorkspace?.name || 'Workspace',
+              href: workspaceId ? `/workspace/${workspaceId}` : '/workspace',
+            },
+            { label: breadcrumb.section },
+            { label: breadcrumb.title, current: true },
+          ]}
+        />
         <span className="sm:hidden text-sm font-semibold text-text truncate">
           {breadcrumb.title}
         </span>

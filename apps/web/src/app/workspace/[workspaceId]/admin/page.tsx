@@ -1,15 +1,12 @@
 'use client';
 import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
+import { PageHeader } from '@/components/shared/Page';
 import React, { useState, useEffect } from 'react';
-import { Button, Modal } from '@vaeloom/ui-kit';
-import { EmptyState } from '@/components/shared/EmptyState';
+import { Button } from '@vaeloom/ui-kit';
 import { Table, type Column } from '@/components/shared/Table';
 import { StatusBadge, type StatusVariant } from '@/components/shared/StatusBadge';
-import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { ErrorState } from '@/components/shared/ErrorState';
 import useSWR from 'swr';
-import { iamApi, auditApi, analyticsApi, adminApi } from '@/lib/api-client';
-import { api } from '@/lib/api';
+import { iamApi, auditApi, adminApi } from '@/lib/api-client';
 
 type UserRole = 'admin' | 'member' | 'viewer';
 type UserStatus = 'active' | 'invited' | 'suspended';
@@ -196,22 +193,21 @@ export default function AdminPage() {
           {toast}
         </div>
       )}
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-display font-medium text-text mb-2">Admin Dashboard</h1>
-          <p className="text-text-muted">
-            System administration, user management, and audit controls.{' '}
-            {iamLoading || auditLoading
-              ? 'Syncing...'
-              : iamError
-                ? 'Using fallback mock data (backend IAM not reachable)'
-                : 'Live data from backend IAM & Audit.'}
-          </p>
-        </div>
-        <Button variant="secondary" onClick={handleRefresh} disabled={refreshing}>
-          {refreshing ? 'Checking…' : 'Refresh health'}
-        </Button>
-      </header>
+      <PageHeader
+        title="Admin Dashboard"
+        description={`System administration, user management, and audit controls. ${
+          iamLoading || auditLoading
+            ? 'Syncing...'
+            : iamError
+              ? 'Using fallback mock data (backend IAM not reachable)'
+              : 'Live data from backend IAM & Audit.'
+        }`}
+        actions={
+          <Button variant="secondary" onClick={() => void handleRefresh()} disabled={refreshing}>
+            {refreshing ? 'Checking…' : 'Refresh health'}
+          </Button>
+        }
+      />
 
       <section>
         <h2 className="text-xl font-display font-medium text-text mb-4 border-b border-border pb-2">

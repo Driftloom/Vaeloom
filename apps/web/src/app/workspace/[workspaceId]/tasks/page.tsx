@@ -12,14 +12,14 @@ import {
   CheckSquareIcon,
   ClockIcon,
   PlayIcon,
-  AlertTriangleIcon,
   ShieldIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-  CheckIcon,
-  RefreshCwIcon,
+  Spinner,
   EmptyState,
 } from '@vaeloom/ui-kit';
+import { PageHeader } from '@/components/shared/Page';
+import { FilterPills } from '@/components/shared/FilterPills';
 import { schedulerApi, approvalApi, type JobResponse, type ApprovalItem } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 
@@ -157,24 +157,11 @@ export default function TasksPage() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-subtle pb-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text">
-              Autonomous Tasks &amp; Workflow DAGs
-            </h1>
-            <Badge variant="success" size="sm">
-              LIVE SCHEDULER
-            </Badge>
-          </div>
-          <p className="text-xs sm:text-sm text-text-secondary">
-            Multi-agent execution graph, background cron sweeps, and human-in-the-loop decision
-            checkpoints.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5">
+      <PageHeader
+        title="Autonomous Tasks &amp; Workflow DAGs"
+        eyebrow="Live scheduler"
+        description="Multi-agent execution graph, background cron sweeps, and human-in-the-loop decision checkpoints."
+        actions={
           <Link href={`/workspace/${workspaceId}/approvals`}>
             <Button variant={pendingApprovals.length > 0 ? 'primary' : 'outline'} size="sm">
               <span className="flex items-center gap-1.5">
@@ -183,8 +170,8 @@ export default function TasksPage() {
               </span>
             </Button>
           </Link>
-        </div>
-      </div>
+        }
+      />
 
       {/* Execution Telemetry Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -215,22 +202,16 @@ export default function TasksPage() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex flex-wrap items-center gap-1.5 pb-1">
-        {['ALL', 'ACTIVE', 'PAUSED'].map((st) => (
-          <button
-            key={st}
-            type="button"
-            onClick={() => setStatusFilter(st)}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              statusFilter === st
-                ? 'bg-action text-white shadow-xs'
-                : 'bg-surface-200 text-text-secondary hover:text-text'
-            }`}
-          >
-            {st === 'ALL' ? 'All Tasks' : st}
-          </button>
-        ))}
-      </div>
+      <FilterPills
+        options={[
+          { value: 'ALL', label: 'All Tasks' },
+          { value: 'ACTIVE', label: 'ACTIVE' },
+          { value: 'PAUSED', label: 'PAUSED' },
+        ]}
+        value={statusFilter}
+        onChange={setStatusFilter}
+        ariaLabel="Filter tasks by schedule status"
+      />
 
       {/* Pending Approvals Section if any */}
       {pendingApprovals.length > 0 && (
@@ -242,7 +223,7 @@ export default function TasksPage() {
             </div>
             <Link
               href={`/workspace/${workspaceId}/approvals`}
-              className="text-2xs text-action hover:underline font-medium"
+              className="text-xs text-action hover:underline font-medium"
             >
               Review in Approvals &rarr;
             </Link>
@@ -269,7 +250,7 @@ export default function TasksPage() {
       {/* Tasks List */}
       {jobsLoading ? (
         <Card className="p-12 text-center space-y-3">
-          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <Spinner size="md" className="text-primary" />
           <p className="text-xs text-text-muted font-medium">
             Loading autonomous execution schedules from database…
           </p>
@@ -297,11 +278,11 @@ export default function TasksPage() {
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-2xs px-2 py-0.5 rounded bg-surface-200 text-text-muted">
+                      <span className="font-mono text-xs px-2 py-0.5 rounded bg-surface-200 text-text-muted">
                         {job.id}
                       </span>
                       {getStatusBadge(job.status)}
-                      <span className="text-2xs font-mono text-text-muted">
+                      <span className="text-xs font-mono text-text-muted">
                         Cron: <code className="text-text">{job.cron}</code>
                       </span>
                     </div>
@@ -334,8 +315,9 @@ export default function TasksPage() {
                     <button
                       type="button"
                       onClick={() => toggleExpand(job.id)}
+                      aria-expanded={isExpanded}
+                      aria-label={`${isExpanded ? 'Collapse' : 'Expand'} details for ${job.name}`}
                       className="p-1.5 rounded-lg border border-border-subtle hover:bg-surface-100 text-text-muted hover:text-text transition-colors"
-                      title={isExpanded ? 'Collapse' : 'Expand'}
                     >
                       {isExpanded ? <ChevronUpIcon size={16} /> : <ChevronDownIcon size={16} />}
                     </button>
@@ -345,7 +327,7 @@ export default function TasksPage() {
                 {/* Expanded Details */}
                 {isExpanded && (
                   <div className="space-y-3 pt-3 border-t border-border-subtle text-xs">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-lg bg-surface-100 border border-border-subtle font-mono text-2xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-lg bg-surface-100 border border-border-subtle font-mono text-xs">
                       <div>
                         <span className="text-text-muted block">Last Run:</span>
                         <span className="text-text font-semibold">
@@ -368,10 +350,10 @@ export default function TasksPage() {
 
                     {job.payload && Object.keys(job.payload).length > 0 && (
                       <div className="space-y-1">
-                        <span className="text-2xs font-semibold uppercase text-text-muted">
+                        <span className="text-xs font-semibold uppercase text-text-muted">
                           Configured Payload
                         </span>
-                        <pre className="p-3 rounded-lg bg-surface-200 border border-border-subtle font-mono text-2xs overflow-x-auto text-text">
+                        <pre className="p-3 rounded-lg bg-surface-200 border border-border-subtle font-mono text-xs overflow-x-auto text-text">
                           {JSON.stringify(job.payload, null, 2)}
                         </pre>
                       </div>

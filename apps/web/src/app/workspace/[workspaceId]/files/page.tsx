@@ -5,6 +5,7 @@ import { Modal } from '@vaeloom/ui-kit';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { PageHeader } from '@/components/shared/Page';
 import { useToast } from '@/components/shared/Toast';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { ProgressBar } from '@/components/shared/ProgressBar';
@@ -187,6 +188,7 @@ export default function WorkspaceFilesPage() {
     | { kind: 'restore-version'; version: number }
     | null
   >(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -419,6 +421,7 @@ export default function WorkspaceFilesPage() {
   const handleDeleteFolder = useCallback(
     async (folderId: string, name: string) => {
       if (!workspaceId) return;
+      setConfirmBusy(true);
       try {
         await documentApi.deleteFolder(folderId, workspaceId);
         toast({ tone: 'success', title: 'Folder deleted', detail: name });
@@ -432,6 +435,7 @@ export default function WorkspaceFilesPage() {
           detail: err instanceof Error ? err.message : 'Error deleting folder',
         });
       } finally {
+        setConfirmBusy(false);
         setPendingConfirm(null);
       }
     },
@@ -459,6 +463,7 @@ export default function WorkspaceFilesPage() {
         });
       } finally {
         setVersionBusy(false);
+        setConfirmBusy(false);
         setPendingConfirm(null);
       }
     },
@@ -645,64 +650,79 @@ export default function WorkspaceFilesPage() {
       </div>
 
       {/* Header & Main Controls */}
-      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-border/40 pb-5">
-        <div>
-          <h1 className="text-3xl font-display font-medium text-text tracking-tight">
-            Workspace Files
-          </h1>
-          <p className="text-sm text-text-muted mt-1">
-            Enterprise document storage with zero-trust quarantine, revision history, and
-            cross-workspace sharing.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setNewFolderOpen(true)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg border border-border bg-surface text-text hover:bg-surface-hover transition-colors"
+      <PageHeader
+        title="Workspace Files"
+        description="Enterprise document storage with zero-trust quarantine, revision history, and cross-workspace sharing."
+        breadcrumb={
+          <nav
+            aria-label="Breadcrumb"
+            className="flex items-center gap-1.5 text-xs text-text-muted"
           >
-            <svg
-              className="w-4 h-4 text-text-muted"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+            <button
+              type="button"
+              onClick={() => setSelectedFolderId(null)}
+              className="hover:text-primary transition-colors"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
-              />
-            </svg>
-            New Folder
-          </button>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-action text-action-fg hover:bg-action/90 transition-colors shadow-sm"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-              />
-            </svg>
-            Upload Files
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files) enqueueFiles(e.target.files);
-              e.target.value = '';
-            }}
-          />
-        </div>
-      </header>
+              Root
+            </button>
+            {currentFolder && (
+              <>
+                <span>/</span>
+                <span className="font-semibold text-text">{currentFolder.name}</span>
+              </>
+            )}
+          </nav>
+        }
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => setNewFolderOpen(true)}
+              className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg border border-border bg-surface text-text hover:bg-surface-hover transition-colors"
+            >
+              <svg
+                className="w-4 h-4 text-text-muted"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+                />
+              </svg>
+              New Folder
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-action text-action-fg hover:bg-action/90 transition-colors shadow-sm"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                />
+              </svg>
+              Upload Files
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files) enqueueFiles(e.target.files);
+                e.target.value = '';
+              }}
+            />
+          </>
+        }
+      />
 
       {/* Drag & Drop Dropzone (Multi-file queue with Zero Silent Drops) */}
       <div
@@ -776,12 +796,12 @@ export default function WorkspaceFilesPage() {
                   <span className="font-mono text-text truncate max-w-[200px]">{item.name}</span>
                   <span className="text-text-muted shrink-0">({formatSize(item.size)})</span>
                   {item.status === 'uploading' && (
-                    <ProgressBar
-                      value={item.progress}
-                      max={100}
-                      showValue={false}
-                      className="w-24 shrink-0"
-                    />
+                    // The width lives on this wrapper: ui-kit `Progress` emits its
+                    // own `w-full` on the element that would otherwise take the
+                    // className, and Tailwind resolves `w-full` after `w-24`.
+                    <div className="w-24 shrink-0">
+                      <ProgressBar value={item.progress} max={100} showValue={false} />
+                    </div>
                   )}
                 </div>
                 <div>
@@ -907,25 +927,8 @@ export default function WorkspaceFilesPage() {
 
         {/* Documents Content Column */}
         <div className="lg:col-span-3 space-y-4">
-          {/* Breadcrumbs & Search Toolbar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface border border-border/60 rounded-xl p-3">
-            {/* Breadcrumb Trail */}
-            <div className="flex items-center gap-1.5 text-xs text-text-muted">
-              <button
-                type="button"
-                onClick={() => setSelectedFolderId(null)}
-                className="hover:text-primary transition-colors"
-              >
-                Root
-              </button>
-              {currentFolder && (
-                <>
-                  <span>/</span>
-                  <span className="font-semibold text-text">{currentFolder.name}</span>
-                </>
-              )}
-            </div>
-
+          {/* Search Toolbar */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 bg-surface border border-border/60 rounded-xl p-3">
             {/* Full-text Live Search */}
             <div className="relative flex-1 sm:max-w-xs">
               <input
@@ -1467,7 +1470,7 @@ export default function WorkspaceFilesPage() {
         }
         confirmLabel={pendingConfirm?.kind === 'restore-version' ? 'Restore' : 'Delete'}
         variant="danger"
-        loading={versionBusy || folderBusy}
+        loading={confirmBusy}
       />
     </div>
   );

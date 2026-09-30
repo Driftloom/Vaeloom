@@ -6,152 +6,61 @@ import Link from 'next/link';
 import useSWR from 'swr';
 import { agentCatalogApi, type CatalogAgent } from '@/lib/api-client';
 import { useWorkspace } from '@/hooks/useWorkspace';
-import { Badge, StatusDot, Skeleton } from '@vaeloom/ui-kit';
+import { PageHeader } from '@/components/shared/Page';
+import { AgentErrorState, ScopePills } from './AgentShared';
+import {
+  Badge,
+  BrainIcon,
+  BuildingIcon,
+  CalendarIcon,
+  CheckIcon,
+  ChevronRightIcon,
+  EditIcon,
+  FileTextIcon,
+  LockIcon,
+  MailIcon,
+  SearchIcon,
+  ShieldIcon,
+  Skeleton,
+  SparklesIcon,
+  StatusDot,
+  type IconProps,
+} from '@vaeloom/ui-kit';
+
+type AgentIcon = React.ComponentType<IconProps>;
 
 interface AgentVisualMeta {
-  color: string;
+  /**
+   * Written out in full rather than interpolated from a token name: Tailwind's
+   * content scanner only sees literal strings, so `bg-${tone}/10` would purge
+   * every one of these. Raw palette shades (`-500`/`-600`) are avoided because
+   * they vanish on the near-black dark canvas.
+   */
   badgeClass: string;
-  iconSvg: React.ReactNode;
+  Icon: AgentIcon;
 }
 
+const AGENT_VISUALS: Record<string, AgentVisualMeta> = {
+  organization: {
+    badgeClass: 'bg-warning/10 text-warning border-warning/30',
+    Icon: BuildingIcon,
+  },
+  memory: { badgeClass: 'bg-accent/10 text-accent border-accent/30', Icon: BrainIcon },
+  resume: { badgeClass: 'bg-info/10 text-info border-info/30', Icon: FileTextIcon },
+  ats: { badgeClass: 'bg-success/10 text-success border-success/30', Icon: CheckIcon },
+  job_search: { badgeClass: 'bg-action/10 text-action border-action/30', Icon: SearchIcon },
+  application: { badgeClass: 'bg-primary/10 text-primary border-primary/30', Icon: EditIcon },
+  gmail: { badgeClass: 'bg-accent/10 text-accent border-accent/30', Icon: MailIcon },
+  scheduler: { badgeClass: 'bg-action/10 text-action border-action/30', Icon: CalendarIcon },
+};
+
+const DEFAULT_VISUAL: AgentVisualMeta = {
+  badgeClass: 'bg-primary/10 text-primary border-primary/30',
+  Icon: SparklesIcon,
+};
+
 function getAgentVisualMeta(name: string): AgentVisualMeta {
-  switch (name.toLowerCase()) {
-    case 'organization':
-      return {
-        color: 'text-amber-500',
-        badgeClass: 'bg-amber-500/10 text-amber-500 border-amber-500/30',
-        iconSvg: (
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-            />
-          </svg>
-        ),
-      };
-    case 'memory':
-      return {
-        color: 'text-purple-500',
-        badgeClass: 'bg-purple-500/10 text-purple-500 border-purple-500/30',
-        iconSvg: (
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-            />
-          </svg>
-        ),
-      };
-    case 'resume':
-      return {
-        color: 'text-sky-500',
-        badgeClass: 'bg-sky-500/10 text-sky-500 border-sky-500/30',
-        iconSvg: (
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-        ),
-      };
-    case 'ats':
-      return {
-        color: 'text-emerald-500',
-        badgeClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30',
-        iconSvg: (
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        ),
-      };
-    case 'job_search':
-      return {
-        color: 'text-blue-500',
-        badgeClass: 'bg-blue-500/10 text-blue-500 border-blue-500/30',
-        iconSvg: (
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
-        ),
-      };
-    case 'application':
-      return {
-        color: 'text-pink-500',
-        badgeClass: 'bg-pink-500/10 text-pink-500 border-pink-500/30',
-        iconSvg: (
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-            />
-          </svg>
-        ),
-      };
-    case 'gmail':
-      return {
-        color: 'text-rose-500',
-        badgeClass: 'bg-rose-500/10 text-rose-500 border-rose-500/30',
-        iconSvg: (
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-            />
-          </svg>
-        ),
-      };
-    case 'scheduler':
-      return {
-        color: 'text-amber-600',
-        badgeClass: 'bg-amber-600/10 text-amber-600 border-amber-600/30',
-        iconSvg: (
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-            />
-          </svg>
-        ),
-      };
-    default:
-      return {
-        color: 'text-primary',
-        badgeClass: 'bg-primary/10 text-primary border-primary/20',
-        iconSvg: (
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M13 10V3L4 14h7v7l9-11h-7z"
-            />
-          </svg>
-        ),
-      };
-  }
+  return AGENT_VISUALS[name.toLowerCase()] ?? DEFAULT_VISUAL;
 }
 
 function CategoryBadge({ isCanonical }: { isCanonical: boolean }) {
@@ -163,35 +72,9 @@ function CategoryBadge({ isCanonical }: { isCanonical: boolean }) {
   );
 }
 
-function ScopePills({ scopes }: { scopes: { readTypes: string[]; writeTypes: string[] } }) {
-  return (
-    <div className="flex flex-wrap gap-1">
-      {scopes.readTypes.map((t) => (
-        <span
-          key={`r-${t}`}
-          className="rounded bg-success/10 border border-success/30 px-1.5 py-0.5 text-xs text-success"
-        >
-          read:{t}
-        </span>
-      ))}
-      {scopes.writeTypes.map((t) => (
-        <span
-          key={`w-${t}`}
-          className="rounded bg-warning/10 border border-warning/30 px-1.5 py-0.5 text-xs text-warning"
-        >
-          write:{t}
-        </span>
-      ))}
-      {scopes.readTypes.length === 0 && scopes.writeTypes.length === 0 && (
-        <span className="text-xs text-text-dim">no memory scope</span>
-      )}
-    </div>
-  );
-}
-
 function AgentCard({ agent, workspaceId }: { agent: CatalogAgent; workspaceId?: string }) {
   const [open, setOpen] = useState(false);
-  const visual = getAgentVisualMeta(agent.name);
+  const { badgeClass, Icon } = getAgentVisualMeta(agent.name);
 
   return (
     <div
@@ -202,10 +85,10 @@ function AgentCard({ agent, workspaceId }: { agent: CatalogAgent; workspaceId?: 
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
           <div
-            className={`p-2.5 rounded-lg border shrink-0 ${visual.badgeClass} flex items-center justify-center`}
+            className={`p-2.5 rounded-lg border shrink-0 flex items-center justify-center ${badgeClass}`}
             aria-hidden="true"
           >
-            {visual.iconSvg}
+            <Icon size={20} />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -265,24 +148,11 @@ function AgentCard({ agent, workspaceId }: { agent: CatalogAgent; workspaceId?: 
               </Link>
               <Link
                 href={`/workspace/${workspaceId}/chat?agent=${agent.name}`}
-                className="inline-flex items-center gap-1 text-xs font-medium text-action-fg bg-action hover:bg-action-hover px-2.5 py-1 rounded transition-colors"
+                className="btn-primary text-xs"
                 aria-label={`Chat with ${agent.name}`}
               >
                 <span>Chat</span>
-                <svg
-                  className="w-3 h-3"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
+                <ChevronRightIcon size={12} />
               </Link>
             </>
           )}
@@ -304,7 +174,7 @@ function AgentCard({ agent, workspaceId }: { agent: CatalogAgent; workspaceId?: 
                   <p className="text-xs text-text-muted">{t.description || 'No description'}</p>
                 </div>
                 <span
-                  className={`shrink-0 rounded px-1.5 py-0.5 text-2xs font-mono border ${
+                  className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-mono border ${
                     t.category === 'memory_write' || t.category === 'connector_write'
                       ? 'bg-error/10 text-error border-error/30'
                       : t.category === 'memory_read' || t.category === 'connector_read'
@@ -360,6 +230,10 @@ export default function AgentsPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
+        <PageHeader
+          title="Agents"
+          description={workspace?.name ? `${workspace.name} agent fleet` : undefined}
+        />
         <Skeleton className="h-32 w-full rounded-xl" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -372,41 +246,41 @@ export default function AgentsPage() {
 
   if (error) {
     return (
-      <div
-        className="flex flex-col items-center justify-center py-16 text-center card"
-        role="alert"
-      >
-        <div className="p-3 rounded-full bg-error/10 text-error mb-3">
-          <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
-        </div>
-        <p className="text-text font-medium text-lg">Could not load agent catalog</p>
-        <p className="text-sm text-text-muted mt-1 max-w-md">
-          {(error as Error).message || 'An unexpected connection issue occurred.'}
-        </p>
-        <button onClick={() => mutate()} className="btn-secondary mt-5">
-          Retry Connection
-        </button>
+      <div className="space-y-6">
+        <PageHeader
+          title="Agents"
+          description={workspace?.name ? `${workspace.name} agent fleet` : undefined}
+        />
+        <AgentErrorState
+          title="Could not load agent catalog"
+          message={(error as Error).message || 'An unexpected connection issue occurred.'}
+          onRetry={() => void mutate()}
+          retryLabel="Retry Connection"
+        />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      <PageHeader
+        title="Specialist Agent Fleet"
+        eyebrow="Autonomy"
+        description={`${
+          workspace?.name ? `${workspace.name} • ` : ''
+        }Governed multi-agent copilot system running under human oversight, 42/42 zero-trust memory RLS, and strict suggest-mode approvals.`}
+      />
       {/* Consolidated into Capabilities Hub Notice */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-primary/10 border border-primary/25 text-xs">
         <div className="flex items-center gap-3">
-          <span className="p-2 rounded-lg bg-primary/20 text-primary text-base font-bold shrink-0">
+          <span
+            className="p-2 rounded-lg bg-primary/20 text-primary text-base font-bold shrink-0"
+            aria-hidden="true"
+          >
             ✦
           </span>
           <div>
-            <span className="font-semibold text-white">
+            <span className="font-semibold text-text">
               Autonomous Agents are now part of the unified Capabilities Studio
             </span>
             <p className="text-text-muted mt-0.5">
@@ -417,10 +291,10 @@ export default function AgentsPage() {
         </div>
         <Link
           href={`/workspace/${workspaceId}/capabilities?category=agents`}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition-colors shrink-0 shadow-xs"
+          className="btn-primary text-xs shrink-0"
         >
           <span>Open in Capabilities Hub</span>
-          <span>→</span>
+          <ChevronRightIcon size={12} />
         </Link>
       </div>
 
@@ -431,13 +305,9 @@ export default function AgentsPage() {
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-mono font-medium mb-3">
               <StatusDot status="active" pulse size="sm" />
-              <span>AGENT MESH & AUTONOMY RUNTIME</span>
+              <span>AGENT MESH &amp; AUTONOMY RUNTIME</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-display font-medium text-text tracking-tight">
-              Specialist Agent Fleet
-            </h1>
-            <p className="text-sm text-text-muted mt-2 leading-relaxed">
-              {workspace?.name ? `${workspace.name} • ` : ''}
+            <p className="text-sm text-text-muted leading-relaxed">
               Governed multi-agent copilot system running under human oversight, 42/42 zero-trust
               memory RLS, and strict suggest-mode approvals.
             </p>
@@ -474,44 +344,41 @@ export default function AgentsPage() {
 
       {/* Filter and Search Bar */}
       <div className="card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3">
-        <div className="flex items-center gap-2 overflow-x-auto max-w-full">
-          <div className="flex rounded-lg bg-surface-hover p-1 shrink-0 border border-border">
-            {(['all', 'canonical', 'enterprise'] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setFilter(v)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md capitalize transition-all ${
-                  filter === v
-                    ? 'bg-action text-action-fg shadow-sm'
-                    : 'text-text-muted hover:text-text'
-                }`}
-              >
-                {v}{' '}
-                {v === 'canonical'
-                  ? `(${canonical.length})`
-                  : v === 'enterprise'
-                    ? `(${enterprise.length})`
-                    : `(${agents.length})`}
-              </button>
-            ))}
-          </div>
+        <div
+          role="group"
+          aria-label="Filter agents by availability"
+          className="flex rounded-lg bg-surface-hover p-1 shrink-0 border border-border"
+        >
+          {(['all', 'canonical', 'enterprise'] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              aria-pressed={filter === v}
+              onClick={() => setFilter(v)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md capitalize transition-all ${
+                filter === v ? 'btn-primary' : 'text-text-muted hover:text-text'
+              }`}
+            >
+              {v}{' '}
+              {v === 'canonical'
+                ? `(${canonical.length})`
+                : v === 'enterprise'
+                  ? `(${enterprise.length})`
+                  : `(${agents.length})`}
+            </button>
+          ))}
         </div>
         <div className="relative w-full sm:w-72">
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-dim pointer-events-none"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
+          <SearchIcon
+            size={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-text-dim pointer-events-none"
+          />
+          <label htmlFor="agent-search" className="sr-only">
+            Search agents by name, mission, or skill
+          </label>
           <input
+            id="agent-search"
+            type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search agents, skills, tools..."
@@ -530,15 +397,8 @@ export default function AgentsPage() {
       {/* Empty State */}
       {filtered.length === 0 && (
         <div className="card border-dashed flex flex-col items-center py-12 px-4 text-center">
-          <div className="p-3 rounded-full bg-surface-hover text-text-dim mb-3">
-            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
+          <div className="p-3 rounded-full bg-surface-hover text-text-dim mb-3" aria-hidden="true">
+            <SearchIcon size={32} />
           </div>
           <p className="text-base font-medium text-text">No agents match your criteria</p>
           <p className="text-sm text-text-muted mt-1 max-w-sm">
@@ -560,14 +420,7 @@ export default function AgentsPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="card">
           <div className="flex items-center gap-2 mb-2 text-primary">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 10V3L4 14h7v7l9-11h-7z"
-              />
-            </svg>
+            <SparklesIcon size={16} />
             <h2 className="font-mono text-xs uppercase tracking-widest text-text font-semibold">
               Intent Routing Gate
             </h2>
@@ -579,16 +432,9 @@ export default function AgentsPage() {
         </div>
         <div className="card">
           <div className="flex items-center gap-2 mb-2 text-success">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-              />
-            </svg>
+            <ShieldIcon size={16} />
             <h2 className="font-mono text-xs uppercase tracking-widest text-text font-semibold">
-              MCP Tools & Sandboxing
+              MCP Tools &amp; Sandboxing
             </h2>
           </div>
           <p className="text-xs text-text-muted leading-relaxed">
@@ -598,16 +444,9 @@ export default function AgentsPage() {
         </div>
         <div className="card">
           <div className="flex items-center gap-2 mb-2 text-warning">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-              />
-            </svg>
+            <LockIcon size={16} />
             <h2 className="font-mono text-xs uppercase tracking-widest text-text font-semibold">
-              Governance & Approvals
+              Governance &amp; Approvals
             </h2>
           </div>
           <p className="text-xs text-text-muted leading-relaxed">
@@ -632,10 +471,10 @@ export default function AgentsPage() {
                 <p className="font-mono text-xs text-text font-semibold">{name}</p>
                 <p className="text-xs text-text-muted mt-0.5">{def.description}</p>
                 <div className="mt-2 flex items-center gap-2">
-                  <span className="rounded bg-surface px-1.5 py-0.5 font-mono text-2xs text-text-dim border border-border">
+                  <span className="rounded bg-surface px-1.5 py-0.5 font-mono text-xs text-text-dim border border-border">
                     scope: {def.requiredScope}
                   </span>
-                  <span className="rounded bg-surface px-1.5 py-0.5 font-mono text-2xs text-primary border border-border">
+                  <span className="rounded bg-surface px-1.5 py-0.5 font-mono text-xs text-primary border border-border">
                     {def.category}
                   </span>
                 </div>

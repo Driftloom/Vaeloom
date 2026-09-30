@@ -15,9 +15,26 @@ export interface TableProps<T> {
   keyExtractor: (item: T) => string;
   onRowClick?: (item: T) => void;
   emptyMessage?: string;
+  /**
+   * `Column.sortable` only marks a header as sortable; ui-kit's `DataTable` gates
+   * its sort button on `onSort` being present, so without these three props a
+   * column declared `sortable: true` rendered a button that did nothing.
+   */
+  sortBy?: string;
+  sortDir?: 'asc' | 'desc';
+  onSort?: (key: string) => void;
 }
 
-export function Table<T>({ columns, data, keyExtractor, onRowClick, emptyMessage }: TableProps<T>) {
+export function Table<T>({
+  columns,
+  data,
+  keyExtractor,
+  onRowClick,
+  emptyMessage,
+  sortBy,
+  sortDir,
+  onSort,
+}: TableProps<T>) {
   const tableColumns: ColumnDef<T>[] = columns.map((col) => ({
     key: col.key,
     header: col.header,
@@ -33,6 +50,9 @@ export function Table<T>({ columns, data, keyExtractor, onRowClick, emptyMessage
       keyExtractor={keyExtractor}
       onRowClick={onRowClick}
       emptyMessage={emptyMessage}
+      sortBy={sortBy}
+      sortDir={sortDir}
+      onSort={onSort}
     />
   );
 }

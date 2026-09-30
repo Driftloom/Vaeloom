@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { TwoFactorAuthCard } from '@/components/profile/TwoFactorAuthCard';
 import { ActiveSessions } from '@/components/profile/ActiveSessions';
 import { useAuth } from '@/hooks/useAuth';
+import { PageHeader } from '@/components/shared/Page';
 import { Panel, Badge, ShieldIcon, LockIcon, KeyIcon } from '@vaeloom/ui-kit';
 
 /**
@@ -35,17 +36,15 @@ export default function SecuritySettingsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight text-text">Security</h1>
-          <p className="text-sm text-text-secondary">
-            Two-factor authentication and the devices signed into your account.
-          </p>
-        </div>
-        <Badge variant="default" size="sm">
-          <ShieldIcon size={12} /> Account security
-        </Badge>
-      </header>
+      <PageHeader
+        title="Security"
+        description="Two-factor authentication and the devices signed into your account."
+        actions={
+          <Badge variant="default" size="sm">
+            <ShieldIcon size={12} /> Account security
+          </Badge>
+        }
+      />
 
       <section aria-labelledby="sec-mfa" className="space-y-3">
         <h2 id="sec-mfa" className="text-sm font-semibold text-text-muted uppercase tracking-wide">

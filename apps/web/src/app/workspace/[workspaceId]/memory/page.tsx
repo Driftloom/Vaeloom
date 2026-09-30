@@ -3,17 +3,9 @@
 import React, { useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import useSWR from 'swr';
-import {
-  Tabs,
-  TabPanel,
-  Modal,
-  EmptyState,
-  ConfidenceIndicator,
-  Button,
-  Card,
-  Badge,
-} from '@vaeloom/ui-kit';
+import { Tabs, TabPanel, Modal, EmptyState, ConfidenceIndicator } from '@vaeloom/ui-kit';
 import { DynamicGraphViewer } from '@/lib/dynamic-imports';
+import { PageHeader } from '@/components/shared/Page';
 import { MemoryCorrectionPanel } from '@/components/memory/MemoryCorrectionPanel';
 import { ScaleMemoryViewer } from '@/components/memory/ScaleMemoryViewer';
 import { memoryApi, memoryFeedApi } from '@/lib/api-client';
@@ -36,15 +28,15 @@ function formatRelative(iso: string | null | undefined) {
 function KindBadge({ kind }: { kind: string }) {
   const map: Record<string, string> = {
     memory_created: 'bg-success/10 text-success border-success/30',
-    memory_corrected: 'bg-sky-500/10 text-sky-700 border-sky-500/20',
+    memory_corrected: 'bg-info/10 text-info border-info/30',
     memory_superseded: 'bg-warning/10 text-warning border-warning/30',
-    agent_created: 'bg-primary/10 text-primary border-primary/20',
-    agent_memory_text: 'bg-primary/10 text-primary border-primary/20',
+    agent_created: 'bg-primary/10 text-primary border-primary/30',
+    agent_memory_text: 'bg-primary/10 text-primary border-primary/30',
   };
   const cls =
     map[kind] ||
     (kind.startsWith('agent_')
-      ? 'bg-violet-500/10 text-violet-700 border-violet-500/20'
+      ? 'bg-accent/10 text-accent border-accent/30'
       : 'bg-surface-hover text-text-muted border-border');
   return (
     <span className={`rounded-full border px-2 py-0.5 text-xs font-mono ${cls}`}>
@@ -108,27 +100,23 @@ export default function MemoryGraphPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-baseline justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-display font-medium text-text">Memory</h1>
-          <p className="text-sm text-text-muted mt-1">
-            Agentic memory with provenance & supersession. Workspace{' '}
-            <span className="font-mono text-xs bg-surface-hover px-1 py-0.5 rounded">
-              {workspaceId.slice(0, 8)}
+      <PageHeader
+        title="Memory"
+        eyebrow={`Workspace ${workspaceId.slice(0, 8)}`}
+        description="Agentic memory with provenance & supersession."
+        actions={
+          <>
+            <span className="rounded-full bg-surface border border-border px-3 py-1 text-xs text-text-muted">
+              {feedData?.stats?.totalMemories ?? memItems.length} memories •{' '}
+              {feedData?.stats?.superseded ?? 0} superseded • {feedData?.stats?.agentCreated ?? 0}{' '}
+              agent-created
             </span>
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="rounded-full bg-surface border border-border px-3 py-1 text-xs text-text-muted">
-            {feedData?.stats?.totalMemories ?? memItems.length} memories •{' '}
-            {feedData?.stats?.superseded ?? 0} superseded • {feedData?.stats?.agentCreated ?? 0}{' '}
-            agent-created
-          </span>
-          <button onClick={() => mutateFeed()} className="btn-secondary text-xs !px-3 !py-1.5">
-            Refresh
-          </button>
-        </div>
-      </header>
+            <button onClick={() => void mutateFeed()} className="btn-secondary text-xs">
+              Refresh
+            </button>
+          </>
+        }
+      />
 
       {feedData?.stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -150,9 +138,7 @@ export default function MemoryGraphPage() {
             <p className="font-mono text-xs uppercase tracking-widest text-text-dim">
               Recent AI actions
             </p>
-            <p className="text-2xl font-display text-violet-600 mt-1">
-              {feedData.stats.recentActions}
-            </p>
+            <p className="text-2xl font-display text-accent mt-1">{feedData.stats.recentActions}</p>
           </div>
         </div>
       )}
@@ -203,7 +189,7 @@ export default function MemoryGraphPage() {
                           <span className="text-xs text-text-dim">via {sourceType}</span>
                         )}
                         {item.agentName && (
-                          <span className="rounded-full bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 text-xs text-violet-700">
+                          <span className="rounded-full bg-accent/10 border border-accent/30 px-2 py-0.5 text-xs text-accent">
                             @{item.agentName}
                           </span>
                         )}
@@ -229,7 +215,7 @@ export default function MemoryGraphPage() {
                           </span>
                         ))}
                         {mem?.['supersedes_id'] || (mem?.['supersedesId'] as string) ? (
-                          <span className="rounded bg-sky-500/10 border border-sky-500/20 px-1.5 py-0.5 text-xs text-sky-700">
+                          <span className="rounded bg-info/10 border border-info/30 px-1.5 py-0.5 text-xs text-info">
                             correction
                           </span>
                         ) : null}
@@ -238,14 +224,15 @@ export default function MemoryGraphPage() {
                     <div className="shrink-0 flex flex-col gap-1">
                       {id && (
                         <button
+                          type="button"
                           onClick={() => openLineage(id)}
-                          className="btn-secondary text-xs !px-3 !py-1"
+                          className="btn-secondary text-xs"
                         >
                           Lineage
                         </button>
                       )}
                       {item.action && (
-                        <span className="text-2xs font-mono text-text-dim text-right">
+                        <span className="text-xs font-mono text-text-dim text-right">
                           {item.action.actionType}
                         </span>
                       )}
@@ -311,8 +298,9 @@ export default function MemoryGraphPage() {
                       Details
                     </a>
                     <button
+                      type="button"
                       onClick={() => openLineage(id)}
-                      className="btn-secondary text-xs !px-3 !py-1"
+                      className="btn-secondary text-xs"
                     >
                       Lineage
                     </button>
@@ -366,7 +354,7 @@ export default function MemoryGraphPage() {
                         <p className="text-xs text-text-muted line-clamp-2">
                           {String(mem['summary'] || '')}
                         </p>
-                        <p className="font-mono text-2xs text-text-dim mt-1">
+                        <p className="font-mono text-xs text-text-dim mt-1">
                           {String(mem['id']).slice(0, 8)}
                         </p>
                       </div>
@@ -443,7 +431,7 @@ export default function MemoryGraphPage() {
                           <span className="mx-1 text-text-dim">•</span>
                           <span className="text-text-muted">{a.actionType}</span>
                           <span
-                            className={`ml-2 rounded px-1 py-0.5 text-2xs border ${a.status === 'completed' ? 'bg-success/10 text-success border-success/30' : 'bg-surface text-text-muted border-border'}`}
+                            className={`ml-2 rounded px-1 py-0.5 text-xs border ${a.status === 'completed' ? 'bg-success/10 text-success border-success/30' : 'bg-surface text-text-muted border-border'}`}
                           >
                             {a.status}
                           </span>

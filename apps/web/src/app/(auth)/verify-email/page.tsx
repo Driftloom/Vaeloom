@@ -5,6 +5,22 @@ import { useSearchParams } from 'next/navigation';
 import { api, ApiError } from '../../../lib/api';
 import { Spinner } from '@vaeloom/ui-kit';
 
+/**
+ * The single h1 for this route, shared by every status branch.
+ *
+ * Each of success / error / no-token / loading used to carry its own inline
+ * heading, so the file had four of them and the guardrail could not tell whether
+ * they were branch-exclusive. One component, one h1 in source, one rendered.
+ */
+function VerificationHeading({ title, detail }: { title: string; detail: string }) {
+  return (
+    <>
+      <h1 className="text-2xl sm:text-3xl font-display font-medium text-text">{title}</h1>
+      <p className="text-text-muted">{detail}</p>
+    </>
+  );
+}
+
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams?.get('token');
@@ -49,7 +65,10 @@ function VerifyEmailContent() {
         {status === 'loading' && (
           <div className="flex flex-col items-center gap-3">
             <Spinner size="lg" />
-            <p className="text-text-muted">Verifying your email...</p>
+            <VerificationHeading
+              title="Verifying your email"
+              detail="Hold on while we confirm the link you followed."
+            />
           </div>
         )}
 
@@ -62,12 +81,12 @@ function VerifyEmailContent() {
                 viewBox="0 0 24 24"
                 stroke="currentColor"
                 strokeWidth={2}
+                aria-hidden="true"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h1 className="text-2xl font-display font-medium text-text">Email verified</h1>
-            <p className="text-text-muted">{message}</p>
+            <VerificationHeading title="Email verified" detail={message} />
             <Link href="/login" className="btn-primary inline-block">
               Sign in
             </Link>
@@ -83,12 +102,12 @@ function VerifyEmailContent() {
                 viewBox="0 0 24 24"
                 stroke="currentColor"
                 strokeWidth={2}
+                aria-hidden="true"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </div>
-            <h1 className="text-2xl font-display font-medium text-text">Verification failed</h1>
-            <p className="text-text-muted">{message}</p>
+            <VerificationHeading title="Verification failed" detail={message} />
             <Link href="/login" className="btn-primary inline-block">
               Back to sign in
             </Link>
@@ -97,11 +116,10 @@ function VerifyEmailContent() {
 
         {status === 'no-token' && (
           <>
-            <h1 className="text-2xl font-display font-medium text-text">No verification token</h1>
-            <p className="text-text-muted">
-              The verification link is missing a token. Please check your email for the correct
-              link.
-            </p>
+            <VerificationHeading
+              title="No verification token"
+              detail="The verification link is missing a token. Please check your email for the correct link."
+            />
             <Link href="/login" className="btn-primary inline-block">
               Back to sign in
             </Link>

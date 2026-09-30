@@ -8,6 +8,31 @@ import { useToast } from '@/components/shared/Toast';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/**
+ * The single h1 for this route, shared by the sent / resetComplete / form
+ * branches.
+ *
+ * Those three branches each used to carry their own heading, so the file had
+ * three h1 elements and the guardrail listed it as branch-exclusive pending a
+ * manual proof. One component, one h1 in source, one rendered per state.
+ */
+function AuthCardHeading({
+  title,
+  detail,
+  className = '',
+}: {
+  title: string;
+  detail: string;
+  className?: string;
+}) {
+  return (
+    <div className={`mb-8 ${className}`}>
+      <h1 className="text-2xl sm:text-3xl font-display font-medium text-text mb-2">{title}</h1>
+      <p className="text-text-muted">{detail}</p>
+    </div>
+  );
+}
+
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const token = searchParams?.get('token') ?? null;
@@ -127,7 +152,7 @@ function ResetPasswordForm() {
               </div>
               <span className="text-2xl font-bold text-text">Vaeloom</span>
             </div>
-            <h1 className="text-4xl font-bold text-text leading-tight mt-8">Password updated</h1>
+            <p className="text-4xl font-bold text-text leading-tight mt-8">Password updated</p>
             <p className="text-lg text-text-muted mt-4 max-w-md">
               Your password has been successfully reset. You can now sign in with your new
               credentials.
@@ -136,12 +161,15 @@ function ResetPasswordForm() {
         </div>
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="w-full max-w-[400px]">
+            <AuthCardHeading
+              title="Password successfully reset"
+              detail="Sign in with your new password to continue."
+              className="text-center"
+            />
             <div className="bg-surface-50 border border-border rounded-2xl p-8 shadow-card text-center space-y-4">
               <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary text-2xl font-bold">
-                &#10003;
+                <span aria-hidden="true">&#10003;</span>
               </div>
-              <p className="text-text font-medium">Password successfully reset</p>
-              <p className="text-sm text-text-muted">Sign in with your new password to continue.</p>
               <Link href="/login" className="btn-primary w-full inline-block text-center">
                 Sign in
               </Link>
@@ -163,7 +191,7 @@ function ResetPasswordForm() {
               </div>
               <span className="text-2xl font-bold text-text">Vaeloom</span>
             </div>
-            <h1 className="text-4xl font-bold text-text leading-tight mt-8">Check your email</h1>
+            <p className="text-4xl font-bold text-text leading-tight mt-8">Check your email</p>
             <p className="text-lg text-text-muted mt-4 max-w-md">
               If we sent a password reset link, it expires in 15 minutes.
             </p>
@@ -171,6 +199,11 @@ function ResetPasswordForm() {
         </div>
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="w-full max-w-[400px]">
+            <AuthCardHeading
+              title="Check your email"
+              detail="We will email you a reset link if an account exists for that address."
+              className="text-center"
+            />
             <div className="bg-surface-50 border border-border rounded-2xl p-8 shadow-card text-center space-y-4">
               <p className="text-text">
                 If an account exists for <span className="font-mono font-medium">{email}</span>, a
@@ -202,9 +235,9 @@ function ResetPasswordForm() {
               <span className="text-2xl font-bold text-text">Vaeloom</span>
             </div>
           </div>
-          <h1 className="text-4xl lg:text-5xl font-bold text-text leading-tight mb-6 animate-slide-up">
+          <p className="text-4xl lg:text-5xl font-bold text-text leading-tight mb-6 animate-slide-up">
             {token ? 'Set a new password' : 'Reset your password'}
-          </h1>
+          </p>
           <p className="text-lg text-text-muted max-w-md animate-slide-up stagger-1">
             {token
               ? 'Choose a strong password that you have not used before.'
@@ -227,14 +260,10 @@ function ResetPasswordForm() {
           </div>
 
           {/* Welcome text */}
-          <div className="mb-8">
-            <h2 className="text-2xl font-display font-medium text-text mb-2">
-              {token ? 'New password' : 'Forgot password'}
-            </h2>
-            <p className="text-text-muted">
-              {token ? 'Enter your new password below' : 'We will email you a reset link'}
-            </p>
-          </div>
+          <AuthCardHeading
+            title={token ? 'New password' : 'Forgot password'}
+            detail={token ? 'Enter your new password below' : 'We will email you a reset link'}
+          />
 
           {/* Form card */}
           <div className="bg-surface-50 border border-border rounded-2xl p-8 shadow-card">
@@ -265,7 +294,12 @@ function ResetPasswordForm() {
                       className="text-sm text-error flex items-center gap-1.5 animate-slide-down"
                       role="alert"
                     >
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <svg
+                        className="w-4 h-4"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                        aria-hidden="true"
+                      >
                         <path
                           fillRule="evenodd"
                           d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
@@ -305,7 +339,12 @@ function ResetPasswordForm() {
                         className="text-sm text-error flex items-center gap-1.5 animate-slide-down"
                         role="alert"
                       >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <svg
+                          className="w-4 h-4"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                          aria-hidden="true"
+                        >
                           <path
                             fillRule="evenodd"
                             d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
@@ -341,7 +380,12 @@ function ResetPasswordForm() {
                         className="text-sm text-error flex items-center gap-1.5 animate-slide-down"
                         role="alert"
                       >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <svg
+                          className="w-4 h-4"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                          aria-hidden="true"
+                        >
                           <path
                             fillRule="evenodd"
                             d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
@@ -362,7 +406,12 @@ function ResetPasswordForm() {
                   role="alert"
                 >
                   <p className="text-sm text-error flex items-center gap-2">
-                    <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <svg
+                      className="w-5 h-5 flex-shrink-0"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                      aria-hidden="true"
+                    >
                       <path
                         fillRule="evenodd"
                         d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
@@ -382,7 +431,12 @@ function ResetPasswordForm() {
               >
                 {submitting ? (
                   <>
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+                    <svg
+                      className="animate-spin h-5 w-5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      aria-hidden="true"
+                    >
                       <circle
                         className="opacity-25"
                         cx="12"

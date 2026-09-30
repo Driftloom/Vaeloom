@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { clearToken, clearRefreshToken } from '../../lib/api';
+import { PageHeader } from '@/components/shared/Page';
 
 export default function SessionExpiredPage() {
   const router = useRouter();
@@ -35,12 +36,13 @@ export default function SessionExpiredPage() {
           />
         </svg>
       </div>
-      <h1 className="text-3xl sm:text-4xl font-display font-bold text-text mb-3">
-        Session Expired
-      </h1>
-      <p className="text-sm sm:text-base text-text-muted max-w-md mb-8">
-        For your security, your session has expired. Please sign in again to continue.
-      </p>
+      <div className="w-full max-w-md mb-8">
+        <PageHeader
+          title="Session Expired"
+          description="For your security, your session has expired. Please sign in again to continue."
+          className="text-center"
+        />
+      </div>
       <div className="flex flex-col items-center gap-4">
         <Link href="/login" className="btn-primary px-8">
           Sign in again

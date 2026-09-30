@@ -1,5 +1,14 @@
 import React from 'react';
+import { Progress as UiKitProgress } from '@vaeloom/ui-kit';
 
+/**
+ * Adapter onto the ui-kit `Progress` bar.
+ *
+ * The prop names diverge from ui-kit's (`color` vs `variant`, and ui-kit's
+ * `showValue` defaults to false while this one defaulted to true), so the old
+ * names are mapped here rather than breaking every call site. `accent` maps to
+ * ui-kit's `ai` variant, which is the same accent fill under a different name.
+ */
 interface ProgressBarProps {
   value: number;
   max: number;
@@ -9,11 +18,14 @@ interface ProgressBarProps {
   className?: string;
 }
 
-const colorStyles: Record<string, string> = {
-  primary: 'bg-primary',
-  accent: 'bg-accent',
-  success: 'bg-success',
-  warning: 'bg-warning',
+const variantMap: Record<
+  NonNullable<ProgressBarProps['color']>,
+  'primary' | 'success' | 'warning' | 'ai'
+> = {
+  primary: 'primary',
+  accent: 'ai',
+  success: 'success',
+  warning: 'warning',
 };
 
 export function ProgressBar({
@@ -24,29 +36,14 @@ export function ProgressBar({
   showValue = true,
   className = '',
 }: ProgressBarProps) {
-  const pct = max > 0 ? Math.min(Math.round((value / max) * 100), 100) : 0;
-
   return (
-    <div className={`space-y-1 ${className}`}>
-      {(label || showValue) && (
-        <div className="flex justify-between text-sm">
-          {label && <span className="text-text-muted">{label}</span>}
-          {showValue && <span className="font-mono text-text-muted">{pct}%</span>}
-        </div>
-      )}
-      <div
-        className="h-2 bg-surface-active rounded-full overflow-hidden"
-        role="progressbar"
-        aria-valuenow={pct}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label={label ?? `Progress: ${pct}%`}
-      >
-        <div
-          className={`h-full rounded-full transition-all duration-300 ${colorStyles[color]}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
+    <UiKitProgress
+      value={value}
+      max={max}
+      label={label}
+      showValue={showValue}
+      variant={variantMap[color]}
+      className={className}
+    />
   );
 }

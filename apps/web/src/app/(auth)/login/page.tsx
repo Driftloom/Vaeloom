@@ -239,7 +239,9 @@ function LoginForm() {
 
           {/* Welcome text */}
           <div className="mb-8">
-            <h1 className="text-2xl font-display font-medium text-text mb-2">
+            {/* Narrow auth card: the page keeps its own heading block rather than
+                a full-width PageHeader, but the type scale is the app scale. */}
+            <h1 className="text-2xl sm:text-3xl font-display font-medium text-text mb-2">
               {mfaChallenge ? 'Two-Factor Verification' : 'Welcome back'}
             </h1>
             <p className="text-text-muted">
@@ -342,7 +344,12 @@ function LoginForm() {
                         id="email-error"
                         className="text-sm text-error flex items-center gap-1.5 animate-slide-down"
                       >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <svg
+                          className="w-4 h-4"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                          aria-hidden="true"
+                        >
                           <path
                             fillRule="evenodd"
                             d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
@@ -394,7 +401,12 @@ function LoginForm() {
                         id="password-error"
                         className="text-sm text-error flex items-center gap-1.5 animate-slide-down"
                       >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <svg
+                          className="w-4 h-4"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                          aria-hidden="true"
+                        >
                           <path
                             fillRule="evenodd"
                             d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
@@ -413,7 +425,12 @@ function LoginForm() {
                       role="alert"
                     >
                       <p className="text-sm text-error flex items-center gap-2">
-                        <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <svg
+                          className="w-4 h-4 shrink-0"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                          aria-hidden="true"
+                        >
                           <path
                             fillRule="evenodd"
                             d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
@@ -434,7 +451,12 @@ function LoginForm() {
                   >
                     {submitting ? (
                       <>
-                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+                        <svg
+                          className="animate-spin h-5 w-5"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          aria-hidden="true"
+                        >
                           <circle
                             className="opacity-25"
                             cx="12"
@@ -476,7 +498,12 @@ function LoginForm() {
                     className="btn-secondary flex items-center justify-center gap-2 py-2.5"
                     aria-label="Continue with Google"
                   >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                    <svg
+                      className="w-5 h-5"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
                       <path
                         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                         fill="#4285F4"
@@ -503,7 +530,12 @@ function LoginForm() {
                     className="btn-secondary flex items-center justify-center gap-2 py-2.5"
                     aria-label="Continue with Microsoft"
                   >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                    <svg
+                      className="w-5 h-5"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
                       <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zM24 11.4H12.6V0H24v11.4z" />
                     </svg>
                     Microsoft

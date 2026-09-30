@@ -7,6 +7,7 @@ import { StatusBadge, type StatusVariant } from '@/components/shared/StatusBadge
 import { Toggle } from '@/components/shared/Toggle';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { PageHeader } from '@/components/shared/Page';
 import { useToast } from '@/components/shared/Toast';
 import { api } from '@/lib/api';
 
@@ -249,13 +250,11 @@ export default function WebhooksPage() {
 
   return (
     <div className="space-y-8">
-      <header className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-display font-medium text-text mb-2">Webhooks</h1>
-          <p className="text-text-muted">Manage outgoing webhook endpoints and delivery logs.</p>
-        </div>
-        <Button onClick={() => setShowCreate(true)}>Create Webhook</Button>
-      </header>
+      <PageHeader
+        title="Webhooks"
+        description="Manage outgoing webhook endpoints and delivery logs."
+        actions={<Button onClick={() => setShowCreate(true)}>Create Webhook</Button>}
+      />
 
       <Card padding="lg">
         {loading ? (

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Badge as UiKitBadge } from '@vaeloom/ui-kit';
 
 export type StatusVariant = 'success' | 'warning' | 'error' | 'info' | 'neutral';
 
@@ -8,22 +9,30 @@ interface StatusBadgeProps {
   className?: string;
 }
 
-const variantStyles: Record<StatusVariant, string> = {
-  // Semantic tokens resolve per theme (Wave 03) — AA contrast in both.
-  success: 'bg-success/10 text-success border-success/30',
-  warning: 'bg-warning/10 text-warning border-warning/30',
-  error: 'bg-error/10 text-error border-error/30',
-  info: 'bg-info/10 text-info border-info/30',
-  neutral: 'bg-surface-active text-text-muted border-border',
+/**
+ * `neutral` has no ui-kit counterpart by that name; `default` is the neutral
+ * surface treatment (`bg-surface-hover text-text-muted border-border`).
+ * `font-mono` is applied through className rather than the ui-kit `mono` variant,
+ * because that variant is a neutral-grey treatment and would discard the
+ * semantic colour every other variant carries.
+ */
+const variantMap: Record<StatusVariant, 'default' | 'success' | 'warning' | 'error' | 'info'> = {
+  neutral: 'default',
+  success: 'success',
+  warning: 'warning',
+  error: 'error',
+  info: 'info',
 };
 
 export function StatusBadge({ variant, label, className = '' }: StatusBadgeProps) {
   return (
-    <span
+    <UiKitBadge
       role="status"
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono border ${variantStyles[variant]} ${className}`}
+      variant={variantMap[variant]}
+      size="sm"
+      className={`font-mono ${className}`.trim()}
     >
       {label}
-    </span>
+    </UiKitBadge>
   );
 }

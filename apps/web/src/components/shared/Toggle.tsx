@@ -1,40 +1,34 @@
 import React from 'react';
+import { Switch as UiKitSwitch } from '@vaeloom/ui-kit';
 
-interface ToggleProps {
+/**
+ * App-facing alias for the ui-kit `Switch`.
+ *
+ * This previously shipped a second switch widget (`h-6 w-11 translate-x-5`,
+ * `bg-primary`) with no `MIN_TOUCH_TARGET`, so it rendered a 24x44px hit area
+ * against ui-kit's 24px-minimum control. It also named the prop `enabled`
+ * instead of `checked`; that name is preserved here so the existing pages keep
+ * compiling, but the rendering and the accessibility affordances now come from
+ * the single canonical implementation.
+ */
+export interface ToggleProps {
   enabled: boolean;
   onChange: (enabled: boolean) => void;
   label?: string;
   disabled?: boolean;
+  id?: string;
+  className?: string;
 }
 
-export function Toggle({ enabled, onChange, label, disabled = false }: ToggleProps) {
-  const id = React.useId();
+export function Toggle({ enabled, onChange, label, disabled, id, className }: ToggleProps) {
   return (
-    <span className="inline-flex items-center gap-2">
-      <button
-        type="button"
-        role="switch"
-        aria-checked={enabled}
-        aria-label={label}
-        aria-labelledby={label ? `${id}-label` : undefined}
-        id={id}
-        disabled={disabled}
-        onClick={() => onChange(!enabled)}
-        className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed ${
-          enabled ? 'bg-primary' : 'bg-surface-active'
-        }`}
-      >
-        <span
-          className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out ${
-            enabled ? 'translate-x-5' : 'translate-x-0'
-          }`}
-        />
-      </button>
-      {label && (
-        <label htmlFor={id} id={`${id}-label`} className="text-sm text-text cursor-pointer">
-          {label}
-        </label>
-      )}
-    </span>
+    <UiKitSwitch
+      checked={enabled}
+      onChange={onChange}
+      label={label}
+      disabled={disabled}
+      id={id}
+      className={className}
+    />
   );
 }

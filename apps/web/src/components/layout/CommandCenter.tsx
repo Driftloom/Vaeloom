@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
@@ -9,6 +9,7 @@ import { WORKSPACE_ROUTES } from '@/lib/route-manifest';
 import {
   BrainIcon,
   CpuIcon,
+  Modal,
   SearchIcon,
   FileTextIcon,
   BriefcaseIcon,
@@ -111,7 +112,6 @@ export function CommandCenter({
   const [recentIds, setRecentIds] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const searchInputId = useId();
 
   const workspaceId = useMemo(() => {
     const match = pathname?.match(/\/workspace\/([^/]+)/);
@@ -411,21 +411,7 @@ export function CommandCenter({
         subtitle: `${r.source.toUpperCase()} · Match ${matchScore}%`,
         category: 'search',
         badge: `${matchScore}%`,
-        icon: (
-          <svg
-            className="w-4 h-4 text-accent"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
-            />
-          </svg>
-        ),
+        icon: <SearchIcon size={16} className="text-accent" />,
         perform: () => {
           if (r.source === 'memory') router.push(ws('/memory'));
           else if (r.source === 'document') router.push(ws('/files'));
@@ -473,12 +459,11 @@ export function CommandCenter({
     }
   }, [open]);
 
-  // Keyboard navigation inside modal
+  // Keyboard navigation inside modal. Escape is deliberately absent: the ui-kit
+  // Modal binds it on `document`, so handling it here as well would call onClose
+  // twice for a single keypress.
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      onClose();
-    } else if (e.key === 'ArrowDown') {
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
       setFocusedIndex((prev) => (prev + 1) % Math.max(1, filteredCommands.length));
     } else if (e.key === 'ArrowUp') {
@@ -504,39 +489,13 @@ export function CommandCenter({
     }
   };
 
-  if (!open) return null;
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={searchInputId}
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] sm:pt-[15vh] p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        className="relative w-full max-w-2xl bg-surface border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[75vh]"
-        onKeyDown={handleKeyDown}
-      >
+    <Modal isOpen={open} onClose={onClose} title="Command Center" size="xl">
+      <div className="-mx-6 -my-4 flex flex-col max-h-[70vh]" onKeyDown={handleKeyDown}>
         {/* Search header bar */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border bg-surface">
-          <svg
-            className="w-5 h-5 text-primary shrink-0"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
-            />
-          </svg>
+          <SearchIcon size={20} className="text-primary shrink-0" />
           <input
-            id={searchInputId}
             ref={inputRef}
             type="text"
             value={query}
@@ -686,6 +645,6 @@ export function CommandCenter({
           <span className="font-mono text-2xs">Vaeloom Command Center</span>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

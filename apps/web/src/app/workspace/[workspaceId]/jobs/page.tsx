@@ -1,10 +1,11 @@
 'use client';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Tabs, TabPanel } from '@/components/shared/Tabs';
+import { PageHeader } from '@/components/shared/Page';
 import { schedulerApi, agentApi, applicationApi, opportunityApi } from '@/lib/api-client';
 import type { JobResponse, OpportunityMatchResult } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
@@ -17,6 +18,27 @@ function formatDate(iso?: string): string {
     year: 'numeric',
   });
 }
+
+type MatchMetricKey =
+  'cosineSimilarity' | 'decayWeightedConfidence' | 'networkProximity' | 'skillGapPenalty';
+
+/**
+ * Read a PIOS metric only when the server actually sent a number.
+ *
+ * F-02 (same rule as memory/page.tsx:186): the match metrics used to fall back
+ * to 0.85 / 1.0 / 0, so a server that returned no `metrics` at all rendered
+ * "85.0% Half-Life Model" and "1.00x Graph Boost" as if they had been measured.
+ * Responses are camelCased by the api client's `transformKeys`, so the camelCase
+ * key is the only one that can ever be populated. Returns null when absent so
+ * the caller can render an explicit "not reported" instead of a plausible number.
+ */
+function readMatchMetric(metrics: unknown, key: MatchMetricKey): number | null {
+  if (!metrics || typeof metrics !== 'object') return null;
+  const raw = (metrics as Record<string, unknown>)[key];
+  return typeof raw === 'number' && Number.isFinite(raw) ? raw : null;
+}
+
+const NOT_REPORTED = 'not reported';
 
 const statusStyles: Record<string, string> = {
   active: 'border-success/30 text-success bg-success/10',
@@ -188,53 +210,76 @@ export default function JobsPage() {
   }, [workspaceId, query, toast]);
 
   const handleSave = useCallback(
-    (item: { title: string; detail?: string }) => {
-      setSaved((prev) => (prev.some((s) => s.title === item.title) ? prev : [...prev, item]));
-      // Durable backend (fail-open to local): POST /workspaces/{id}/applications draft
-      if (workspaceId) {
-        applicationApi
-          .create(workspaceId, {
-            job_external_id: item.title,
-            platform: 'saved',
-            status: 'draft',
-            metadata: { title: item.title, detail: item.detail ?? '', saved: true },
-          } as unknown as Record<string, unknown>)
-          .catch(() => {});
+    async (item: { title: string; detail?: string }) => {
+      if (!workspaceId) {
+        toast({
+          tone: 'error',
+          title: 'Save failed',
+          detail: 'A workspace context is required to save a job.',
+        });
+        return;
       }
-      toast({ tone: 'success', title: 'Saved', detail: item.title });
+      setSaved((prev) => (prev.some((s) => s.title === item.title) ? prev : [...prev, item]));
+      try {
+        // Durable backend record: POST /workspaces/{id}/applications draft
+        await applicationApi.create(workspaceId, {
+          job_external_id: item.title,
+          platform: 'saved',
+          status: 'draft',
+          metadata: { title: item.title, detail: item.detail ?? '', saved: true },
+        } as unknown as Record<string, unknown>);
+        toast({ tone: 'success', title: 'Saved', detail: item.title });
+      } catch (err) {
+        // Roll the optimistic local add back so the list matches the server.
+        setSaved((prev) => prev.filter((s) => s.title !== item.title));
+        toast({
+          tone: 'error',
+          title: 'Save failed',
+          detail:
+            `${item.title} was not saved to this workspace. ${err instanceof Error ? err.message : ''}`.trim(),
+        });
+      }
     },
     [toast, workspaceId],
   );
 
   const handleReject = useCallback(
-    (title: string) => {
-      setSaved((prev) => prev.filter((s) => s.title !== title));
-      // Best-effort backend remove: set outcome to rejected
-      if (workspaceId) {
-        applicationApi
-          .list(workspaceId)
-          .then((apps) => {
-            const hit = (apps as unknown as Array<Record<string, unknown>>).find(
-              (a) =>
-                (a as Record<string, unknown>)['job_external_id'] === title ||
-                ((a as Record<string, unknown>)['metadata'] as Record<string, unknown>)?.[
-                  'title'
-                ] === title,
-            );
-            if ((hit as unknown as Record<string, unknown>)?.['id'])
-              applicationApi
-                .updateOutcome(
-                  workspaceId,
-                  String((hit as unknown as Record<string, unknown>)['id']),
-                  { status: 'rejected' },
-                )
-                .catch(() => {});
-          })
-          .catch(() => {});
+    async (title: string) => {
+      if (!workspaceId) {
+        toast({
+          tone: 'error',
+          title: 'Remove failed',
+          detail: 'A workspace context is required to update a saved job.',
+        });
+        return;
       }
-      toast({ tone: 'info', title: 'Removed', detail: title });
+      const removed = saved.find((s) => s.title === title);
+      setSaved((prev) => prev.filter((s) => s.title !== title));
+      try {
+        // Best-effort backend remove: set outcome to rejected
+        const apps = await applicationApi.list(workspaceId);
+        const hit = (apps as unknown as Array<Record<string, unknown>>).find(
+          (a) =>
+            (a as Record<string, unknown>)['job_external_id'] === title ||
+            ((a as Record<string, unknown>)['metadata'] as Record<string, unknown>)?.['title'] ===
+              title,
+        );
+        const hitId = (hit as unknown as Record<string, unknown> | undefined)?.['id'];
+        if (hitId) {
+          await applicationApi.updateOutcome(workspaceId, String(hitId), { status: 'rejected' });
+        }
+        toast({ tone: 'info', title: 'Removed', detail: title });
+      } catch (err) {
+        setSaved((prev) => (removed ? [...prev, removed] : prev));
+        toast({
+          tone: 'error',
+          title: 'Remove failed',
+          detail:
+            `${title} was not removed from this workspace. ${err instanceof Error ? err.message : ''}`.trim(),
+        });
+      }
     },
-    [toast, workspaceId],
+    [saved, toast, workspaceId],
   );
 
   const handleApply = useCallback(
@@ -366,6 +411,16 @@ export default function JobsPage() {
     [workspaceId, toast],
   );
 
+  const matchMetrics = useMemo(
+    () => ({
+      cosine: readMatchMetric(matchResult?.metrics, 'cosineSimilarity'),
+      decay: readMatchMetric(matchResult?.metrics, 'decayWeightedConfidence'),
+      proximity: readMatchMetric(matchResult?.metrics, 'networkProximity'),
+      gapPenalty: readMatchMetric(matchResult?.metrics, 'skillGapPenalty'),
+    }),
+    [matchResult],
+  );
+
   const tabs = [
     { id: 'search', label: 'Job Search' },
     { id: 'matcher', label: 'PIOS Matcher' },
@@ -375,13 +430,10 @@ export default function JobsPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <header className="mb-6">
-        <h1 className="text-3xl font-display font-medium text-text mb-2">Jobs</h1>
-        <p className="text-text-muted">
-          Search ranked roles (via Job Search agent), save/reject, and apply with approval.
-          Scheduled automations are below.
-        </p>
-      </header>
+      <PageHeader
+        title="Jobs"
+        description="Search ranked roles (via Job Search agent), save/reject, and apply with approval. Scheduled automations are below."
+      />
 
       <Tabs tabs={tabs} activeTab={active} onChange={setActive} />
 
@@ -410,7 +462,7 @@ export default function JobsPage() {
               type="button"
               onClick={handleSearch}
               disabled={searching || !query.trim()}
-              className="min-h-11 rounded-full bg-white px-5 py-2 text-sm text-black disabled:opacity-40"
+              className="min-h-11 rounded-full btn-primary px-5 py-2 text-sm disabled:opacity-40"
             >
               {searching ? 'Searching…' : 'Search'}
             </button>
@@ -462,10 +514,10 @@ export default function JobsPage() {
                                 <span
                                   className={`text-xs px-2 py-0.5 rounded-full font-mono font-medium border ${
                                     pScore >= 0.75
-                                      ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                      ? 'bg-success/15 text-success border-success/30'
                                       : pScore >= 0.5
-                                        ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
-                                        : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                                        ? 'bg-warning/15 text-warning border-warning/30'
+                                        : 'bg-error/15 text-error border-error/30'
                                   }`}
                                   title="PIOS matcher_core score"
                                 >
@@ -519,7 +571,7 @@ export default function JobsPage() {
                                   return (
                                     <span
                                       key={idx}
-                                      className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-2xs"
+                                      className="px-1.5 py-0.5 rounded bg-success/10 text-success border border-success/20 text-2xs"
                                     >
                                       {name} ({tier})
                                     </span>
@@ -557,14 +609,14 @@ export default function JobsPage() {
 
                       <div className="mt-4 flex gap-2">
                         <button
-                          onClick={() => handleSave(p)}
+                          onClick={() => void handleSave(p)}
                           disabled={isSaved}
-                          className={`flex-1 rounded-full text-xs py-1.5 ${isSaved ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'bg-white text-black'}`}
+                          className={`flex-1 rounded-full text-xs py-1.5 ${isSaved ? 'bg-success/15 text-success border border-success/30' : 'btn-primary'}`}
                         >
                           {isSaved ? 'Saved' : 'Save'}
                         </button>
                         <button
-                          onClick={() => handleReject(p.title)}
+                          onClick={() => void handleReject(p.title)}
                           className="flex-1 rounded-full border border-border text-xs py-1.5"
                         >
                           Reject
@@ -786,10 +838,10 @@ export default function JobsPage() {
                             <div
                               className={`text-3xl font-extrabold font-mono ${
                                 mScore >= 0.75
-                                  ? 'text-emerald-400'
+                                  ? 'text-success'
                                   : mScore >= 0.5
-                                    ? 'text-amber-400'
-                                    : 'text-rose-400'
+                                    ? 'text-warning'
+                                    : 'text-error'
                               }`}
                             >
                               {Math.round(mScore * 100)}%
@@ -826,61 +878,63 @@ export default function JobsPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="card p-3 text-center">
                     <span className="text-2xs text-text-dim block mb-1">Cosine Similarity</span>
-                    <span className="text-base font-mono font-bold text-text">
-                      {(
-                        Number(
-                          matchResult.metrics?.cosineSimilarity ??
-                            (matchResult.metrics as any)?.cosine_similarity ??
-                            0,
-                        ) * 100
-                      ).toFixed(1)}
-                      %
+                    <span
+                      className={`text-base font-mono font-bold ${matchMetrics.cosine === null ? 'text-text-muted' : 'text-text'}`}
+                    >
+                      {matchMetrics.cosine === null
+                        ? '—'
+                        : `${(matchMetrics.cosine * 100).toFixed(1)}%`}
                     </span>
-                    <span className="text-[9px] text-text-muted block mt-0.5">Semantic Fit</span>
+                    <span className="text-xs text-text-muted block mt-0.5">
+                      {matchMetrics.cosine === null
+                        ? `Semantic Fit (${NOT_REPORTED})`
+                        : 'Semantic Fit'}
+                    </span>
                   </div>
                   <div className="card p-3 text-center">
                     <span className="text-2xs text-text-dim block mb-1">Recency Decay</span>
-                    <span className="text-base font-mono font-bold text-emerald-400">
-                      {(
-                        Number(
-                          matchResult.metrics?.decayWeightedConfidence ??
-                            (matchResult.metrics as any)?.decay_weighted_confidence ??
-                            (matchResult.metrics as any)?.recency_decay ??
-                            0.85,
-                        ) * 100
-                      ).toFixed(1)}
-                      %
+                    <span
+                      className={`text-base font-mono font-bold ${matchMetrics.decay === null ? 'text-text-muted' : 'text-success'}`}
+                    >
+                      {matchMetrics.decay === null
+                        ? '—'
+                        : `${(matchMetrics.decay * 100).toFixed(1)}%`}
                     </span>
-                    <span className="text-[9px] text-text-muted block mt-0.5">Half-Life Model</span>
+                    <span className="text-xs text-text-muted block mt-0.5">
+                      {matchMetrics.decay === null
+                        ? `Half-Life Model (${NOT_REPORTED})`
+                        : 'Half-Life Model'}
+                    </span>
                   </div>
                   <div className="card p-3 text-center">
                     <span className="text-2xs text-text-dim block mb-1">Network Proximity</span>
-                    <span className="text-base font-mono font-bold text-primary">
-                      {Number(
-                        matchResult.metrics?.networkProximity ??
-                          (matchResult.metrics as any)?.network_proximity ??
-                          (matchResult.metrics as any)?.graph_proximity_score ??
-                          1.0,
-                      ).toFixed(2)}
-                      x
+                    <span
+                      className={`text-base font-mono font-bold ${matchMetrics.proximity === null ? 'text-text-muted' : 'text-primary'}`}
+                    >
+                      {matchMetrics.proximity === null
+                        ? '—'
+                        : `${matchMetrics.proximity.toFixed(2)}x`}
                     </span>
-                    <span className="text-[9px] text-text-muted block mt-0.5">Graph Boost</span>
+                    <span className="text-xs text-text-muted block mt-0.5">
+                      {matchMetrics.proximity === null
+                        ? `Graph Boost (${NOT_REPORTED})`
+                        : 'Graph Boost'}
+                    </span>
                   </div>
                   <div className="card p-3 text-center">
                     <span className="text-2xs text-text-dim block mb-1">Skill Gap Penalty</span>
-                    <span className="text-base font-mono font-bold text-rose-400">
-                      -
-                      {(
-                        Number(
-                          matchResult.metrics?.skillGapPenalty ??
-                            (matchResult.metrics as any)?.skill_gap_penalty ??
-                            (matchResult.metrics as any)?.gap_penalty ??
-                            0,
-                        ) * 100
-                      ).toFixed(1)}
-                      %
+                    <span
+                      className={`text-base font-mono font-bold ${matchMetrics.gapPenalty === null ? 'text-text-muted' : 'text-error'}`}
+                    >
+                      {matchMetrics.gapPenalty === null
+                        ? '—'
+                        : `-${(matchMetrics.gapPenalty * 100).toFixed(1)}%`}
                     </span>
-                    <span className="text-[9px] text-text-muted block mt-0.5">Missing Bounds</span>
+                    <span className="text-xs text-text-muted block mt-0.5">
+                      {matchMetrics.gapPenalty === null
+                        ? `Missing Bounds (${NOT_REPORTED})`
+                        : 'Missing Bounds'}
+                    </span>
                   </div>
                 </div>
 
@@ -928,12 +982,12 @@ export default function JobsPage() {
                               key={idx}
                               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-200 border border-border text-xs"
                             >
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-success" />
                               <span className="font-medium text-text">{name}</span>
-                              <span className="text-[9px] font-mono px-1 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                              <span className="text-xs font-mono px-1 rounded bg-info/15 text-info border border-info/30">
                                 {tier}
                               </span>
-                              <span className="text-[9px] text-text-dim">{decay}</span>
+                              <span className="text-xs text-text-dim">{decay}</span>
                             </div>
                           );
                         })}
@@ -981,7 +1035,7 @@ export default function JobsPage() {
                   <div className="pt-3 flex gap-2">
                     <button
                       onClick={() =>
-                        handleSave({
+                        void handleSave({
                           title: matchResult.title || 'Role',
                           detail:
                             typeof matchResult.whyYou === 'string'
@@ -1127,12 +1181,12 @@ export default function JobsPage() {
                 <div className="mt-3 flex gap-2">
                   <button
                     onClick={() => handleApply(s.title)}
-                    className="flex-1 rounded-full bg-white text-black text-xs py-1.5"
+                    className="flex-1 rounded-full btn-primary text-xs py-1.5"
                   >
                     Apply
                   </button>
                   <button
-                    onClick={() => handleReject(s.title)}
+                    onClick={() => void handleReject(s.title)}
                     className="flex-1 rounded-full border border-border text-xs py-1.5"
                   >
                     Remove

@@ -158,10 +158,18 @@ export function ApprovalCard({
       ) : (
         <div className="flex items-center gap-2 mt-2">
           <button className="btn-primary flex-1" onClick={approve}>
-            Approve <kbd className="ml-1 opacity-70">A</kbd>
+            Approve{' '}
+            {/* Sighted-only affordance. Without aria-hidden the key cap is folded
+                into the accessible name, so the button is announced as "Approve A". */}
+            <kbd className="ml-1 opacity-70" aria-hidden="true">
+              A
+            </kbd>
           </button>
           <button className="btn-secondary flex-1" onClick={reject}>
-            Reject <kbd className="ml-1 opacity-70">R</kbd>
+            Reject{' '}
+            <kbd className="ml-1 opacity-70" aria-hidden="true">
+              R
+            </kbd>
           </button>
         </div>
       )}

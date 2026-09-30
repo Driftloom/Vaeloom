@@ -10,6 +10,14 @@ import {
   type RealityGapAnalysis,
 } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
+import { PageHeader } from '@/components/shared/Page';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { ErrorState } from '@/components/shared/ErrorState';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { Tabs, TabPanel } from '@/components/shared/Tabs';
+
+type ScaleTier = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'ANNUAL' | 'NORTH_STAR';
 
 export default function CognitionPage() {
   const params = useParams();
@@ -20,10 +28,12 @@ export default function CognitionPage() {
   const [selectedTier, setSelectedTier] = useState<string>('ALL');
   const [isTriggeringOvernight, setIsTriggeringOvernight] = useState<boolean>(false);
   const [isCreatingNode, setIsCreatingNode] = useState<boolean>(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [pendingDeleteTitle, setPendingDeleteTitle] = useState<string>('');
 
   // New Node Form State
   const [newTitle, setNewTitle] = useState('');
-  const [newTier, setNewTier] = useState('DAILY');
+  const [newTier, setNewTier] = useState<ScaleTier>('DAILY');
   const [newSummary, setNewSummary] = useState('');
 
   // 1. Morning Briefing SWR
@@ -119,50 +129,40 @@ export default function CognitionPage() {
     } catch (err) {
       toast({
         tone: 'error',
-        title: 'Delete Failed',
+        title: 'Delete failed',
         detail: err instanceof Error ? err.message : 'Could not delete node.',
       });
+    } finally {
+      setPendingDeleteId(null);
     }
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8">
-      {/* Header */}
-      <div className="border-b border-border/40 pb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/20">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                PIOS Cognition & SCALE Memory
-              </h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                5-Tier multiscale temporal memory, overnight background daemon, and reality gap
-                auditing.
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
+    <div className="max-w-7xl mx-auto space-y-8">
+      <PageHeader
+        eyebrow="Temporal Memory"
+        title="PIOS Cognition & SCALE Memory"
+        description="5-Tier multiscale temporal memory, overnight background daemon, and reality gap auditing."
+        actions={
           <button
             type="button"
             disabled={isTriggeringOvernight}
             onClick={handleTriggerOvernight}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-action text-action-fg text-xs font-medium hover:bg-action/90 disabled:opacity-50 transition-colors shadow-sm"
+            className="btn-primary text-xs"
           >
             {isTriggeringOvernight ? (
-              <div className="w-3.5 h-3.5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+              <span
+                aria-hidden="true"
+                className="w-3.5 h-3.5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin"
+              />
             ) : (
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -173,90 +173,32 @@ export default function CognitionPage() {
             )}
             Run Overnight Daemon
           </button>
-        </div>
-      </div>
+        }
+      />
 
-      {/* Tabs */}
-      <div className="flex border-b border-border gap-6 text-sm font-medium">
-        <button
-          type="button"
-          onClick={() => setActiveTab('briefing')}
-          className={`pb-3 flex items-center gap-2 border-b-2 transition-colors ${
-            activeTab === 'briefing'
-              ? 'border-primary text-primary font-semibold'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-            />
-          </svg>
-          Morning Briefing
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('reality_gap')}
-          className={`pb-3 flex items-center gap-2 border-b-2 transition-colors ${
-            activeTab === 'reality_gap'
-              ? 'border-primary text-primary font-semibold'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-            />
-          </svg>
-          Reality Gap Diagnostics
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('scale')}
-          className={`pb-3 flex items-center gap-2 border-b-2 transition-colors ${
-            activeTab === 'scale'
-              ? 'border-primary text-primary font-semibold'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-            />
-          </svg>
-          5-Tier Memory Hierarchy
-        </button>
-      </div>
+      <Tabs
+        tabs={[
+          { id: 'briefing', label: 'Morning Briefing' },
+          { id: 'reality_gap', label: 'Reality Gap Diagnostics' },
+          { id: 'scale', label: '5-Tier Memory Hierarchy' },
+        ]}
+        activeTab={activeTab}
+        onChange={(id) => setActiveTab(id as typeof activeTab)}
+      />
 
       {/* Tab 1: Morning Briefing */}
-      {activeTab === 'briefing' && (
+      <TabPanel id="briefing" activeTab={activeTab}>
         <div className="space-y-6">
           {briefingLoading ? (
-            <div className="flex items-center justify-center p-12 text-muted-foreground gap-2">
-              <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              Synthesizing Morning Briefing...
-            </div>
+            <LoadingSpinner text="Synthesizing Morning Briefing..." />
           ) : briefingError ? (
-            <div className="p-6 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-center gap-3">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <span>Failed to load briefing: {briefingError.message || 'Error occurred.'}</span>
-            </div>
+            <ErrorState
+              title="Failed to load morning briefing"
+              message={briefingError.message || 'The briefing service returned an error.'}
+              onRetry={() => {
+                void mutateBriefing();
+              }}
+            />
           ) : briefing ? (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Main Briefing Column */}
@@ -266,10 +208,11 @@ export default function CognitionPage() {
                   <div className="flex items-center justify-between border-b border-border/40 pb-3">
                     <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
                       <svg
-                        className="w-5 h-5 text-amber-400"
+                        className="w-5 h-5 text-warning"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
+                        aria-hidden="true"
                       >
                         <path
                           strokeLinecap="round"
@@ -290,6 +233,7 @@ export default function CognitionPage() {
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
+                          aria-hidden="true"
                         >
                           <path
                             strokeLinecap="round"
@@ -308,10 +252,11 @@ export default function CognitionPage() {
                 <div className="bg-card rounded-xl border border-border p-6 shadow-sm space-y-4">
                   <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
                     <svg
-                      className="w-5 h-5 text-emerald-400"
+                      className="w-5 h-5 text-ai-verified"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
+                      aria-hidden="true"
                     >
                       <path
                         strokeLinecap="round"
@@ -345,6 +290,7 @@ export default function CognitionPage() {
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
+                      aria-hidden="true"
                     >
                       <path
                         strokeLinecap="round"
@@ -371,10 +317,11 @@ export default function CognitionPage() {
                 <div className="bg-card rounded-xl border border-border p-5 shadow-sm space-y-3">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <svg
-                      className="w-4 h-4 text-rose-400"
+                      className="w-4 h-4 text-ai-blocked"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
+                      aria-hidden="true"
                     >
                       <path
                         strokeLinecap="round"
@@ -389,7 +336,7 @@ export default function CognitionPage() {
                     {briefing.blockersAndRisks?.map((risk, i) => (
                       <div
                         key={i}
-                        className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300"
+                        className="p-2.5 rounded-lg bg-ai-blocked/10 border border-ai-blocked/20 text-xs text-ai-blocked"
                       >
                         {risk}
                       </div>
@@ -399,33 +346,24 @@ export default function CognitionPage() {
               </div>
             </div>
           ) : (
-            <div className="p-8 text-center text-muted-foreground text-sm">
-              No briefing found for today. Run the overnight daemon to synthesize one.
-            </div>
+            <EmptyState
+              title="No briefing found for today"
+              description="The briefing endpoint returned no briefing for this workspace. Run the overnight daemon to synthesize one."
+            />
           )}
         </div>
-      )}
+      </TabPanel>
 
       {/* Tab 2: Reality Gap Diagnostics */}
-      {activeTab === 'reality_gap' && (
+      <TabPanel id="reality_gap" activeTab={activeTab}>
         <div className="space-y-6">
           {gapLoading ? (
-            <div className="flex items-center justify-center p-12 text-muted-foreground gap-2">
-              <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              Evaluating Reality Gap Traces...
-            </div>
+            <LoadingSpinner text="Evaluating Reality Gap Traces..." />
           ) : gapError ? (
-            <div className="p-6 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-center gap-3">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <span>Failed to load reality gap analysis: {gapError.message}</span>
-            </div>
+            <ErrorState
+              title="Failed to load reality gap analysis"
+              message={gapError.message || 'The reality gap service returned an error.'}
+            />
           ) : realityGap ? (
             <div className="space-y-6">
               {/* Scorecard */}
@@ -458,12 +396,12 @@ export default function CognitionPage() {
                           {gap.commitment}
                         </span>
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                          className={`text-xs font-bold px-2 py-0.5 rounded ${
                             gap.gapSeverity === 'CRITICAL'
-                              ? 'bg-rose-500/20 text-rose-400'
+                              ? 'bg-ai-blocked/20 text-ai-blocked'
                               : gap.gapSeverity === 'HIGH'
-                                ? 'bg-amber-500/20 text-amber-400'
-                                : 'bg-blue-500/20 text-blue-400'
+                                ? 'bg-warning/20 text-warning'
+                                : 'bg-info/20 text-info'
                           }`}
                         >
                           {gap.gapSeverity}
@@ -472,7 +410,7 @@ export default function CognitionPage() {
                       <p className="text-xs text-muted-foreground leading-relaxed">
                         {gap.observation}
                       </p>
-                      <div className="text-[11px] font-mono text-muted-foreground/80 pt-1 border-t border-border/40">
+                      <div className="text-xs font-mono text-muted-foreground/80 pt-1 border-t border-border/40">
                         Evidence: {gap.evidence}
                       </div>
                     </div>
@@ -480,17 +418,28 @@ export default function CognitionPage() {
                 </div>
               </div>
             </div>
-          ) : null}
+          ) : (
+            <EmptyState
+              title="No reality gap analysis reported"
+              description="The analysis endpoint returned no result. This is not evidence that commitments and actions are aligned — no analysis was performed."
+            />
+          )}
         </div>
-      )}
+      </TabPanel>
 
       {/* Tab 3: SCALE Memory Nodes */}
-      {activeTab === 'scale' && (
+      <TabPanel id="scale" activeTab={activeTab}>
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground font-medium">Filter Tier:</span>
+              <label
+                htmlFor="scale-tier-filter"
+                className="text-xs text-muted-foreground font-medium"
+              >
+                Filter Tier:
+              </label>
               <select
+                id="scale-tier-filter"
                 value={selectedTier}
                 onChange={(e) => setSelectedTier(e.target.value)}
                 className="bg-background border border-border rounded px-2.5 py-1 text-xs text-foreground focus:outline-none"
@@ -507,10 +456,18 @@ export default function CognitionPage() {
 
             <button
               type="button"
+              aria-expanded={isCreatingNode}
+              aria-controls="scale-node-form"
               onClick={() => setIsCreatingNode(!isCreatingNode)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-secondary-foreground text-xs font-medium hover:bg-secondary/80 transition-colors border border-border"
+              className="btn-secondary text-xs"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -525,14 +482,21 @@ export default function CognitionPage() {
           {/* New Node Inline Form */}
           {isCreatingNode && (
             <form
+              id="scale-node-form"
               onSubmit={handleCreateNode}
               className="bg-card rounded-xl border border-border p-5 space-y-4 shadow-sm"
             >
               <h3 className="text-sm font-semibold text-foreground">Create SCALE Memory Node</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Title</label>
+                  <label
+                    htmlFor="scale-node-title"
+                    className="text-xs text-muted-foreground block mb-1"
+                  >
+                    Title
+                  </label>
                   <input
+                    id="scale-node-title"
                     type="text"
                     required
                     value={newTitle}
@@ -542,10 +506,16 @@ export default function CognitionPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Scale Tier</label>
+                  <label
+                    htmlFor="scale-node-tier"
+                    className="text-xs text-muted-foreground block mb-1"
+                  >
+                    Scale Tier
+                  </label>
                   <select
+                    id="scale-node-tier"
                     value={newTier}
-                    onChange={(e) => setNewTier(e.target.value)}
+                    onChange={(e) => setNewTier(e.target.value as ScaleTier)}
                     className="w-full rounded bg-background border border-border px-3 py-1.5 text-xs text-foreground focus:outline-none"
                   >
                     <option value="DAILY">Daily</option>
@@ -557,8 +527,14 @@ export default function CognitionPage() {
                 </div>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground block mb-1">Summary</label>
+                <label
+                  htmlFor="scale-node-summary"
+                  className="text-xs text-muted-foreground block mb-1"
+                >
+                  Summary
+                </label>
                 <textarea
+                  id="scale-node-summary"
                   required
                   rows={3}
                   value={newSummary}
@@ -568,10 +544,7 @@ export default function CognitionPage() {
                 />
               </div>
               <div className="flex justify-end gap-2">
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 rounded bg-action text-action-fg text-xs font-medium hover:bg-action/90 transition-colors"
-                >
+                <button type="submit" className="btn-primary text-xs">
                   Save Node
                 </button>
               </div>
@@ -580,14 +553,15 @@ export default function CognitionPage() {
 
           {/* Nodes List */}
           {scaleLoading ? (
-            <div className="flex items-center justify-center p-12 text-muted-foreground gap-2">
-              <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              Loading SCALE Memory Nodes...
-            </div>
+            <LoadingSpinner text="Loading SCALE Memory Nodes..." />
           ) : scaleError ? (
-            <div className="p-6 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-              Failed to load SCALE nodes: {scaleError.message}
-            </div>
+            <ErrorState
+              title="Failed to load SCALE nodes"
+              message={scaleError.message || 'The memory service returned an error.'}
+              onRetry={() => {
+                void mutateScale();
+              }}
+            />
           ) : scaleData && scaleData.nodes?.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {scaleData.nodes.map((node) => (
@@ -597,20 +571,26 @@ export default function CognitionPage() {
                 >
                   <div>
                     <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2 mb-2">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
                         {node.tier}
                       </span>
                       <button
                         type="button"
-                        onClick={() => handleDeleteNode(node.id)}
-                        className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                        onClick={() => {
+                          setPendingDeleteId(node.id);
+                          setPendingDeleteTitle(node.title);
+                        }}
+                        className="text-muted-foreground hover:text-error transition-colors p-1"
                         title="Delete memory node"
+                        aria-label={`Delete memory node: ${node.title}`}
+                        aria-haspopup="dialog"
                       >
                         <svg
                           className="w-3.5 h-3.5"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
+                          aria-hidden="true"
                         >
                           <path
                             strokeLinecap="round"
@@ -628,7 +608,7 @@ export default function CognitionPage() {
                       {node.summary}
                     </p>
                   </div>
-                  <div className="text-[10px] text-muted-foreground font-mono pt-2 border-t border-border/30">
+                  <div className="text-xs text-muted-foreground font-mono pt-2 border-t border-border/30">
                     {new Date(node.createdAt).toLocaleString()}
                   </div>
                 </div>
@@ -636,11 +616,23 @@ export default function CognitionPage() {
             </div>
           ) : (
             <div className="p-12 text-center text-muted-foreground text-sm border border-dashed border-border rounded-xl">
-              No memory nodes recorded in this tier yet. Add a node or trigger overnight rollup.
+              No memory nodes recorded in this tier. Add a node or trigger overnight rollup.
             </div>
           )}
         </div>
-      )}
+      </TabPanel>
+
+      <ConfirmDialog
+        isOpen={pendingDeleteId !== null}
+        onClose={() => setPendingDeleteId(null)}
+        onConfirm={() => {
+          if (pendingDeleteId) return handleDeleteNode(pendingDeleteId);
+        }}
+        title="Delete memory node"
+        message={`Permanently delete "${pendingDeleteTitle}"? This cannot be undone and the node is removed from the SCALE hierarchy.`}
+        confirmLabel="Delete node"
+        variant="danger"
+      />
     </div>
   );
 }

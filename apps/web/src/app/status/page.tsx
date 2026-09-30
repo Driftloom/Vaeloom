@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorState } from '@/components/shared/ErrorState';
+import { PageHeader } from '@/components/shared/Page';
 
 interface ServiceStatus {
   status: 'ok' | 'degraded' | 'down';
@@ -145,19 +146,21 @@ export default function StatusPage() {
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto px-4 py-8 sm:py-16">
         <div className="text-center mb-8 sm:mb-12">
-          <div className="flex items-center justify-center gap-3 mb-4">
+          <div className="mb-4 flex justify-center">
             <div
               className={`w-4 h-4 rounded-full ${indicatorColors[overallStatus]} ${overallStatus === 'ok' ? 'animate-pulse' : ''}`}
+              aria-hidden="true"
             />
-            <h1 className="text-2xl sm:text-4xl font-display font-bold text-text">
-              Vaeloom Status
-            </h1>
           </div>
-          <p className="text-text-muted text-base sm:text-lg">
-            {overallStatus === 'ok'
-              ? 'All systems operational'
-              : 'Some systems experiencing issues'}
-          </p>
+          <PageHeader
+            title="Vaeloom Status"
+            description={
+              overallStatus === 'ok'
+                ? 'All systems operational'
+                : 'Some systems experiencing issues'
+            }
+            className="text-center"
+          />
           {overall?.timestamp && (
             <p className="text-text-muted text-xs sm:text-sm mt-2 font-mono">
               Last checked: {new Date(overall.timestamp).toLocaleString()}

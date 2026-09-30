@@ -5,16 +5,16 @@ import { useParams, useSearchParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import useSWR from 'swr';
-import { Badge, StatusDot, Button, EmptyState } from '@vaeloom/ui-kit';
+import { CapabilityCategory } from '@/lib/capabilities-data';
+import type { CapabilityItem } from '@/lib/capabilities-data';
 import {
-  CapabilityCategory,
-  CapabilityItem,
   getStoredCapabilities,
   setStoredCapabilityEnabled,
   saveCustomCapability,
   deleteCustomCapability,
 } from '@/lib/capabilities-data';
 import { useToast } from '@/components/shared/Toast';
+import { PageHeader } from '@/components/shared/Page';
 import { agentCatalogApi, capabilitiesApi } from '@/lib/api-client';
 import { useWorkspaceConnectors } from '../../../../hooks/useWorkspace';
 import { AddCapabilityModal } from '@/components/capabilities/AddCapabilityModal';
@@ -28,6 +28,38 @@ import { ConnectorsView } from '@/components/capabilities/ConnectorsView';
 type TabView = 'installed' | 'browse';
 type SortOption = 'most-used' | 'alphabetical' | 'recent';
 type DetailSubTab = 'doc' | 'schema' | 'test';
+
+/**
+ * The single place the server's category vocabulary is mapped onto the UI's.
+ * It used to be copied three times in this file (twice as the inverse map), and
+ * the three copies could disagree about where a capability belongs.
+ */
+const SERVER_CATEGORY_TO_UI: Record<string, CapabilityCategory> = {
+  skill: 'skills',
+  skills: 'skills',
+  connector: 'connectors',
+  connectors: 'connectors',
+  mcp: 'mcp',
+  plugin: 'plugins',
+  plugins: 'plugins',
+  tool: 'tools',
+  tools: 'tools',
+  agent: 'agents',
+  agents: 'agents',
+};
+
+function toUiCategory(serverCategory: string): CapabilityCategory {
+  return SERVER_CATEGORY_TO_UI[serverCategory] ?? 'skills';
+}
+
+function toServerCategory(uiCategory: CapabilityCategory): string {
+  const entry = Object.entries(SERVER_CATEGORY_TO_UI).find(([, ui]) => ui === uiCategory);
+  return entry ? entry[0] : 'skill';
+}
+
+function isNotFound(err: unknown): boolean {
+  return (err as { status?: number } | null)?.status === 404;
+}
 
 function getSamplePayloadForCapability(item: CapabilityItem | null): string {
   if (!item) return '{\n  "query": "example test run",\n  "limit": 5\n}';
@@ -127,9 +159,6 @@ function CapabilitiesContent() {
 
   // Remote Git / Registry Import Modal
   const [importModalOpen, setImportModalOpen] = useState(false);
-  const [importUrl, setImportUrl] = useState('');
-  const [importType, setImportType] = useState<CapabilityCategory>('skills');
-  const [importLoading, setImportLoading] = useState(false);
 
   // Interactive Test State
   const [testInputJson, setTestInputJson] = useState(
@@ -140,11 +169,14 @@ function CapabilitiesContent() {
   const [testLatency, setTestLatency] = useState<number | null>(null);
 
   // Live Backend Data Fetching via SWR
-  const { data: liveCatalog, error: catalogError } = useSWR(
-    'agent-catalog',
-    () => agentCatalogApi.get(),
-    { revalidateOnFocus: false, shouldRetryOnError: false },
-  );
+  const {
+    data: liveCatalog,
+    error: catalogError,
+    mutate: mutateCatalog,
+  } = useSWR('agent-catalog', () => agentCatalogApi.get(), {
+    revalidateOnFocus: false,
+    shouldRetryOnError: false,
+  });
 
   const { connectors: liveConnectors } = useWorkspaceConnectors(workspaceId);
 
@@ -159,21 +191,8 @@ function CapabilitiesContent() {
     if (!dbCapabilities || !Array.isArray(dbCapabilities) || dbCapabilities.length === 0) return;
     setCapabilities((prev) => {
       const merged = [...prev];
-      const catMap: Record<string, CapabilityCategory> = {
-        skill: 'skills',
-        skills: 'skills',
-        connector: 'connectors',
-        connectors: 'connectors',
-        mcp: 'mcp',
-        plugin: 'plugins',
-        plugins: 'plugins',
-        tool: 'tools',
-        tools: 'tools',
-        agent: 'agents',
-        agents: 'agents',
-      };
       dbCapabilities.forEach((dbCap) => {
-        const mappedCat = catMap[dbCap.category] || 'skills';
+        const mappedCat = toUiCategory(dbCap.category);
         const existingIdx = merged.findIndex(
           (c) => c.id === dbCap.id || (c.name === dbCap.name && c.category === mappedCat),
         );
@@ -285,7 +304,9 @@ function CapabilitiesContent() {
   const categoryCounts = useMemo(() => {
     const counts: Record<CapabilityCategory, number> = {
       skills: 0,
-      connectors: liveConnectors?.length || 14,
+      // The real attached-connector count. This used to fall back to 14, which
+      // told every workspace with zero connectors that it had 14.
+      connectors: liveConnectors?.length ?? 0,
       mcp: 0,
       plugins: 0,
       tools: 0,
@@ -393,9 +414,20 @@ function CapabilitiesContent() {
     async (id: string) => {
       try {
         await capabilitiesApi.delete(id);
-        mutateCapabilities();
-      } catch {
-        // Fallback for custom local items
+        void mutateCapabilities();
+      } catch (err) {
+        // 404 means the record was never in the database (a locally created
+        // item), so the local delete below is the whole operation. Any other
+        // failure means the server row is still there, and deleting only the
+        // local copy would leave the two permanently out of step.
+        if (!isNotFound(err)) {
+          toast({
+            tone: 'error',
+            title: 'Delete failed',
+            detail: `${err instanceof Error ? err.message : 'The capability was not deleted.'}`,
+          });
+          return;
+        }
       }
       const updated = deleteCustomCapability(workspaceId, id);
       setCapabilities(updated);
@@ -420,8 +452,22 @@ function CapabilitiesContent() {
 
       try {
         await capabilitiesApi.toggleCapability(id, nextState, workspaceId);
-      } catch {
-        // Fallback for static capabilities not yet in DB
+        void mutateCapabilities();
+      } catch (err) {
+        // A 404 is the static-capability case the old bare `catch` was papering
+        // over: there is no server row to update, so the local flag is correct.
+        // Anything else is a real write failure and must not be reported as a
+        // success, nor left as a local flag the server disagrees with.
+        if (!isNotFound(err)) {
+          const reverted = setStoredCapabilityEnabled(workspaceId, id, item.enabled);
+          setCapabilities(reverted);
+          toast({
+            tone: 'error',
+            title: nextState ? `Could not enable ${item.name}` : `Could not disable ${item.name}`,
+            detail: err instanceof Error ? err.message : 'The change was not saved.',
+          });
+          return;
+        }
       }
 
       toast({
@@ -430,7 +476,7 @@ function CapabilitiesContent() {
         detail: `Changes apply to new agent sessions in workspace`,
       });
     },
-    [capabilities, workspaceId, toast],
+    [capabilities, workspaceId, toast, mutateCapabilities],
   );
 
   // Copy Definition / Spec
@@ -563,58 +609,47 @@ function CapabilitiesContent() {
     [newCapName, newCapCategory, newCapDescription, newCapTags, newCapDoc, workspaceId, toast],
   );
 
-  // Remote Import Submit Handler
-  const handleImportSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!importUrl.trim()) return;
-      setImportLoading(true);
-
-      setTimeout(() => {
-        const urlParts = importUrl.trim().replace(/\/$/, '').split('/');
-        const rawName = urlParts[urlParts.length - 1]?.replace(/\.git$/, '') || 'remote-capability';
-        const cleanName = rawName.toLowerCase().replace(/[^a-z0-9-_]/g, '-');
-
-        const newImportedItem: CapabilityItem = {
-          id: `import-${cleanName}-${Date.now()}`,
-          name: cleanName,
-          category: importType,
-          tags: ['Imported', 'Remote', importType],
-          description: `Imported capability from ${importUrl}`,
-          enabled: true,
-          source: importType === 'mcp' ? 'mcp' : 'custom',
-          usageCount: 1,
-          lastUsed: 'Just now',
-          requiredScope: importType === 'mcp' ? 'connector.mcp.execute' : 'system.execute',
-          trustClass: importType === 'mcp' ? 'mcp.workspace.write' : 'first_party',
-          version: '1.0.0',
-          author: importUrl.includes('github.com')
-            ? importUrl.split('/')[3] || 'Git Author'
-            : 'Remote Registry',
-          markdownDoc: `# ${cleanName}\n\nImported from remote registry or git source: \`${importUrl}\`\n\n## Overview\nAuto-discovered manifest with dynamic execution tools.\n`,
-        };
-
-        saveCustomCapability(workspaceId, newImportedItem);
-        const updated = setStoredCapabilityEnabled(workspaceId, newImportedItem.id, true);
-        setCapabilities(updated);
-        setSelectedCategory(importType);
-        setSelectedId(newImportedItem.id);
-        setImportLoading(false);
-        setImportModalOpen(false);
-        setImportUrl('');
-
-        toast({
-          tone: 'success',
-          title: `Imported ${cleanName}`,
-          detail: `Successfully compiled and registered into workspace ${importType}`,
-        });
-      }, 500);
-    },
-    [importUrl, importType, workspaceId, toast],
-  );
-
   return (
     <div className="flex flex-col h-full min-h-0 bg-background text-text antialiased selection:bg-primary/25 selection:text-primary overflow-hidden">
+      <div className="shrink-0 px-4 sm:px-6 pt-4">
+        <PageHeader
+          title="Capabilities"
+          description="Author, install and govern the skills, agents, tools, MCP servers, plugins and connectors available to this workspace's agents."
+          actions={
+            <button
+              type="button"
+              onClick={() => {
+                void mutateCatalog();
+                void mutateCapabilities();
+              }}
+              className="btn-secondary text-xs"
+            >
+              Refresh from server
+            </button>
+          }
+        />
+      </div>
+      {/* A catalog fetch failure only costs live agent enrichment, so it is a
+          notice rather than a page-level error: the stored and workspace
+          capabilities below are still real. */}
+      {catalogError && (
+        <div
+          role="status"
+          className="shrink-0 mx-4 sm:mx-6 mt-3 flex items-center justify-between gap-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning"
+        >
+          <span>
+            Live agent catalog unavailable, so agents are shown without server-supplied scopes and
+            autonomy defaults. {catalogError.message}
+          </span>
+          <button
+            type="button"
+            onClick={() => void mutateCatalog()}
+            className="shrink-0 font-medium underline"
+          >
+            Retry
+          </button>
+        </div>
+      )}
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* 1. Header: Enterprise Unified Command Ribbon                               */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
@@ -664,7 +699,7 @@ function CapabilitiesContent() {
                   </svg>
                 </button>
               ) : (
-                <kbd className="hidden sm:inline-block font-mono text-[10px] text-text-muted border border-border rounded px-1.5 py-0.5 bg-surface">
+                <kbd className="hidden sm:inline-block font-mono text-xs text-text-muted border border-border rounded px-1.5 py-0.5 bg-surface">
                   /
                 </kbd>
               )}
@@ -810,7 +845,7 @@ function CapabilitiesContent() {
                       </span>
                       <span>{tab.label}</span>
                       <span
-                        className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${
+                        className={`text-xs font-mono px-1.5 py-0.5 rounded-full ${
                           isActive
                             ? 'bg-primary/20 text-primary font-semibold border border-primary/30'
                             : 'text-text-muted bg-surface'
@@ -919,7 +954,6 @@ function CapabilitiesContent() {
               setCreateModalOpen(true);
             }}
             onOpenImport={() => {
-              setImportType('mcp');
               setImportModalOpen(true);
             }}
           />
@@ -931,7 +965,6 @@ function CapabilitiesContent() {
             searchQuery={searchQuery}
             onTogglePlugin={handleToggle}
             onOpenGitImport={() => {
-              setImportType('plugins');
               setImportModalOpen(true);
             }}
           />
@@ -952,17 +985,9 @@ function CapabilitiesContent() {
         workspaceId={workspaceId}
         onCreate={async (newCap) => {
           try {
-            const catMap: Record<string, string> = {
-              skills: 'skill',
-              plugins: 'plugin',
-              tools: 'tool',
-              agents: 'agent',
-              connectors: 'connector',
-              mcp: 'mcp',
-            };
             const created = await capabilitiesApi.create({
               name: newCap.name,
-              category: catMap[newCap.category] || newCap.category,
+              category: toServerCategory(newCap.category),
               description: newCap.description,
               version: newCap.version || '1.0.0',
               author: newCap.author || 'Workspace Member',
@@ -976,9 +1001,22 @@ function CapabilitiesContent() {
               },
             });
             newCap.id = created.id;
-            mutateCapabilities();
+            void mutateCapabilities();
           } catch (err) {
+            // Keep the local record so the authoring is not lost, but say plainly
+            // that the workspace copy was not written.
             console.warn('Backend capability creation failed (using local sync):', err);
+            saveCustomCapability(workspaceId, newCap);
+            const localUpdated = setStoredCapabilityEnabled(workspaceId, newCap.id, true);
+            setCapabilities(localUpdated);
+            setSelectedCategory(newCap.category);
+            setSelectedId(newCap.id);
+            toast({
+              tone: 'warning',
+              title: `Saved locally only: ${newCap.name}`,
+              detail: `${err instanceof Error ? err.message : 'The server write failed.'} It was not registered in this workspace.`,
+            });
+            return;
           }
           saveCustomCapability(workspaceId, newCap);
           const updated = setStoredCapabilityEnabled(workspaceId, newCap.id, true);
@@ -997,19 +1035,16 @@ function CapabilitiesContent() {
             urlParts[urlParts.length - 1]?.replace(/\.git$/, '') || 'remote-capability';
           const cleanName = rawName.toLowerCase().replace(/[^a-z0-9-_]/g, '-');
 
-          let newId = `import-${cleanName}-${Date.now()}`;
+          // The one and only import path. Vaeloom has no remote compiler or
+          // fetcher, so this records the source URL against a real server row and
+          // says exactly that. It must not claim to have compiled anything, and
+          // it must not fall back to a local-only record that looks identical to
+          // a successful import.
+          let created;
           try {
-            const catMap: Record<string, string> = {
-              skills: 'skill',
-              plugins: 'plugin',
-              tools: 'tool',
-              agents: 'agent',
-              connectors: 'connector',
-              mcp: 'mcp',
-            };
-            const created = await capabilitiesApi.create({
+            created = await capabilitiesApi.create({
               name: cleanName,
-              category: catMap[category] || category,
+              category: toServerCategory(category),
               description: `Imported capability from ${url}`,
               author: url.includes('github.com')
                 ? url.split('/')[3] || 'Git Author'
@@ -1021,41 +1056,23 @@ function CapabilitiesContent() {
                 tags: ['Imported', 'Remote', category],
               },
             });
-            newId = created.id;
-            mutateCapabilities();
           } catch (err) {
-            console.warn('Backend capability import save failed (local fallback):', err);
+            toast({
+              tone: 'error',
+              title: 'Import failed',
+              detail:
+                `Nothing was registered for ${url}. ${err instanceof Error ? err.message : ''}`.trim(),
+            });
+            throw err;
           }
 
-          const newImportedItem: CapabilityItem = {
-            id: newId,
-            name: cleanName,
-            category: category,
-            tags: ['Imported', 'Remote', category],
-            description: `Imported capability from ${url}`,
-            enabled: true,
-            source: category === 'mcp' ? 'mcp' : 'custom',
-            usageCount: 1,
-            lastUsed: 'Just now',
-            requiredScope: category === 'mcp' ? 'connector.mcp.execute' : 'system.execute',
-            trustClass: category === 'mcp' ? 'mcp.workspace.write' : 'first_party',
-            version: '1.0.0',
-            author: url.includes('github.com')
-              ? url.split('/')[3] || 'Git Author'
-              : 'Remote Registry',
-            markdownDoc: `# ${cleanName}\n\nImported from remote registry or git source: \`${url}\`\n\n## Overview\nAuto-discovered manifest with dynamic execution tools.\n`,
-          };
-
-          saveCustomCapability(workspaceId, newImportedItem);
-          const updated = setStoredCapabilityEnabled(workspaceId, newImportedItem.id, true);
-          setCapabilities(updated);
+          void mutateCapabilities();
           setSelectedCategory(category);
-          setSelectedId(newImportedItem.id);
-
+          setSelectedId(created.id);
           toast({
             tone: 'success',
-            title: `Imported ${cleanName}`,
-            detail: `Successfully compiled and registered into workspace ${category}`,
+            title: `Registered ${cleanName}`,
+            detail: `Source URL recorded under ${category}. Nothing was fetched, compiled or executed from ${url}.`,
           });
         }}
       />

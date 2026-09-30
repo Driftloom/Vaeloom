@@ -1,35 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import useSWR from 'swr';
-import { agentCatalogApi, type CatalogAgent } from '@/lib/api-client';
-import { Badge, StatusDot, Skeleton, Button } from '@vaeloom/ui-kit';
+import { agentApi, agentCatalogApi } from '@/lib/api-client';
+import { PageHeader } from '@/components/shared/Page';
+import { AgentErrorState, ScopePills } from '../AgentShared';
+import { Badge, Button, ExternalLinkIcon, PlayIcon, Skeleton, StatusDot } from '@vaeloom/ui-kit';
 
-function ScopePills({ scopes }: { scopes: { readTypes: string[]; writeTypes: string[] } }) {
+function BackToFleet({ workspaceId }: { workspaceId?: string }) {
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {scopes.readTypes.map((t) => (
-        <span
-          key={`r-${t}`}
-          className="rounded bg-success/10 border border-success/30 px-2 py-0.5 text-xs text-success"
-        >
-          read:{t}
-        </span>
-      ))}
-      {scopes.writeTypes.map((t) => (
-        <span
-          key={`w-${t}`}
-          className="rounded bg-warning/10 border border-warning/30 px-2 py-0.5 text-xs text-warning"
-        >
-          write:{t}
-        </span>
-      ))}
-      {scopes.readTypes.length === 0 && scopes.writeTypes.length === 0 && (
-        <span className="text-xs text-text-dim">no memory scope</span>
-      )}
-    </div>
+    <Link
+      href={workspaceId ? `/workspace/${workspaceId}/agents` : '/agents'}
+      className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text transition-colors"
+    >
+      Back to agent fleet
+    </Link>
   );
 }
 
@@ -85,131 +72,129 @@ export default function AgentDetailPage() {
     error?: string;
   } | null>(null);
 
+  /** The stream reader is long-lived; unmounting must tear it down or the
+   *  reader keeps the socket (and the response body) open after the route is
+   *  gone. */
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => abortRef.current?.abort(), []);
+
   const agents = data?.agents ?? [];
   const agent = agents.find(
     (a) => a.name === agentId || a.name.replace(/[_\s-]/g, '-') === agentId,
   );
 
-  const samplePrompts = (agent ? DEFAULT_SAMPLE_PROMPTS[agent.name] : null) ?? [
-    `Run a diagnostic check with ${agentId}`,
-    `Explain capabilities and declared tool scopes for ${agentId}`,
-  ];
+  const samplePrompts = useMemo(
+    () =>
+      (agent ? DEFAULT_SAMPLE_PROMPTS[agent.name] : null) ?? [
+        `Run a diagnostic check with ${agentId}`,
+        `Explain capabilities and declared tool scopes for ${agentId}`,
+      ],
+    [agent, agentId],
+  );
 
-  const handleRunTest = async (promptToRun?: string) => {
-    const prompt = promptToRun || testPrompt;
-    if (!prompt.trim() || !workspaceId || !agent) return;
+  const handleRunTest = useCallback(
+    async (promptToRun?: string) => {
+      const prompt = promptToRun || testPrompt;
+      if (!prompt.trim() || !workspaceId || !agent) return;
 
-    setTestRunning(true);
-    setTestOutput({
-      phase: 'connecting',
-      text: '',
-      events: ['Connecting to agent orchestration stream...'],
-    });
+      // A second run supersedes the first; without this the two readers would
+      // interleave their chunks into one event timeline.
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
 
-    try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
-      const res = await fetch('/api/v1/agents/chat/stream', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          workspaceId,
-          message: prompt,
-          agentName: agent.name,
-        }),
+      setTestRunning(true);
+      setTestOutput({
+        phase: 'connecting',
+        text: '',
+        events: ['Connecting to agent orchestration stream...'],
       });
 
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.detail || `Server returned HTTP ${res.status}`);
-      }
-
-      if (!res.body) {
-        throw new Error('Readable stream not supported by browser');
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let accumulatedText = '';
       const eventsCaptured: string[] = ['Stream established'];
+      let accumulatedText = '';
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-
-        let currentEvent = '';
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            currentEvent = line.slice(7).trim();
-          } else if (line.startsWith('data: ')) {
-            const rawData = line.slice(6).trim();
-            try {
-              const dataObj = JSON.parse(rawData);
-              if (currentEvent === 'intent') {
+      try {
+        await agentApi.chatStream(
+          { workspaceId, message: prompt, agentName: agent.name },
+          (event, data) => {
+            switch (event) {
+              case 'intent':
                 eventsCaptured.push(
-                  `Intent classified: ${dataObj.agent} (${Math.round((dataObj.confidence ?? 0) * 100)}% confidence)`,
+                  `Intent classified: ${data['agent']} (${Math.round(
+                    ((data['confidence'] as number) ?? 0) * 100,
+                  )}% confidence)`,
                 );
-              } else if (currentEvent === 'plan') {
+                break;
+              case 'plan':
                 eventsCaptured.push(
-                  `Planning phase: ${dataObj.steps?.length ?? 1} sub-goals planned`,
+                  `Planning phase: ${(data['steps'] as unknown[] | undefined)?.length ?? 1} sub-goals planned`,
                 );
-              } else if (currentEvent === 'act') {
-                eventsCaptured.push(`Act phase: executing action`);
-              } else if (currentEvent === 'tool_start') {
-                eventsCaptured.push(`Tool started: ${dataObj.tool || dataObj.name}`);
-              } else if (currentEvent === 'tool_result') {
-                eventsCaptured.push(`Tool finished: ${dataObj.tool || dataObj.name}`);
-              } else if (currentEvent === 'observe' || currentEvent === 'reflect') {
-                eventsCaptured.push(`${currentEvent.toUpperCase()}: reasoning updated`);
-              } else if (currentEvent === 'token') {
-                accumulatedText += dataObj.token ?? '';
-              } else if (currentEvent === 'done') {
+                break;
+              case 'act':
+                eventsCaptured.push('Act phase: executing action');
+                break;
+              case 'tool_start':
+              case 'tool_result':
+                eventsCaptured.push(
+                  `Tool ${event === 'tool_start' ? 'started' : 'finished'}: ${
+                    (data['tool'] as string) ?? (data['name'] as string)
+                  }`,
+                );
+                break;
+              case 'observe':
+              case 'reflect':
+                eventsCaptured.push(`${event.toUpperCase()}: reasoning updated`);
+                break;
+              case 'token':
+                accumulatedText += (data['token'] as string) ?? '';
+                break;
+              case 'done':
                 eventsCaptured.push('Execution completed');
-              } else if (currentEvent === 'error') {
-                eventsCaptured.push(`Error: ${dataObj.message || 'Stream error'}`);
-              }
-            } catch {
-              if (rawData) accumulatedText += rawData;
+                break;
+              case 'error':
+                eventsCaptured.push(`Error: ${(data['message'] as string) || 'Stream error'}`);
+                break;
+              default:
+                if (typeof data['raw'] === 'string') accumulatedText += data['raw'];
+                break;
             }
-
             setTestOutput({
-              phase: currentEvent || 'streaming',
+              phase: event || 'streaming',
               text: accumulatedText,
               events: [...eventsCaptured],
             });
-          }
-        }
-      }
+          },
+          controller.signal,
+        );
 
-      setTestOutput((prev) => ({
-        phase: 'complete',
-        text: prev?.text || accumulatedText || 'Agent responded successfully without text payload.',
-        events: [...eventsCaptured, 'Finished'],
-      }));
-    } catch (err) {
-      setTestOutput((prev) => ({
-        phase: 'error',
-        text: prev?.text || '',
-        events: [...(prev?.events || []), `Failed: ${(err as Error).message}`],
-        error: (err as Error).message,
-      }));
-    } finally {
-      setTestRunning(false);
-    }
-  };
+        if (controller.signal.aborted) return;
+        setTestOutput({
+          phase: 'complete',
+          text: accumulatedText || 'Agent responded successfully without text payload.',
+          events: [...eventsCaptured, 'Finished'],
+        });
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        const message = err instanceof Error ? err.message : 'Stream failed';
+        setTestOutput((prev) => ({
+          phase: 'error',
+          text: prev?.text || accumulatedText,
+          events: [...(prev?.events || []), `Failed: ${message}`],
+          error: message,
+        }));
+      } finally {
+        if (!controller.signal.aborted) setTestRunning(false);
+      }
+    },
+    [testPrompt, workspaceId, agent],
+  );
 
   if (isLoading) {
     return (
       <div className="space-y-6 max-w-4xl">
-        <Skeleton className="h-6 w-32" />
-        <Skeleton className="h-10 w-64" />
+        <PageHeader title="Agent" breadcrumb={<BackToFleet workspaceId={workspaceId} />} />
+        <Skeleton className="h-24 w-full rounded-xl" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Skeleton className="h-48 rounded-xl" />
           <Skeleton className="h-48 rounded-xl" />
@@ -221,147 +206,65 @@ export default function AgentDetailPage() {
 
   if (error) {
     return (
-      <div
-        className="flex flex-col items-center justify-center py-16 text-center card max-w-xl mx-auto"
-        role="alert"
-      >
-        <div className="p-3 rounded-full bg-error/10 text-error mb-3">
-          <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
-        </div>
-        <p className="text-text font-medium text-lg">Could not load agent details</p>
-        <p className="text-sm text-text-muted mt-1">
-          {(error as Error).message || 'Unexpected error'}
-        </p>
-        <button onClick={() => mutate()} className="btn-secondary mt-4">
-          Retry
-        </button>
+      <div className="space-y-6 max-w-4xl">
+        <PageHeader title="Agent" breadcrumb={<BackToFleet workspaceId={workspaceId} />} />
+        <AgentErrorState
+          title="Could not load agent details"
+          message={(error as Error).message || 'Unexpected error'}
+          onRetry={() => void mutate()}
+          className="max-w-xl mx-auto"
+        />
       </div>
     );
   }
 
   if (!agent) {
     return (
-      <div
-        className="flex flex-col items-center justify-center py-16 text-center card max-w-md mx-auto"
-        role="status"
-      >
-        <div className="p-3 rounded-full bg-surface-hover text-text-dim mb-4" aria-hidden="true">
-          <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
-        </div>
-        <h2 className="text-xl font-display font-medium mb-2 text-text">Agent not found</h2>
-        <p className="text-text-muted text-sm max-w-sm mb-6">
-          The agent &quot;{agentId}&quot; does not exist or is not available in this workspace.
-        </p>
-        <Link
-          href={workspaceId ? `/workspace/${workspaceId}/agents` : '/agents'}
-          className="btn-primary"
-        >
-          Back to agents
-        </Link>
+      <div className="space-y-6 max-w-4xl">
+        <PageHeader
+          title="Agent not found"
+          breadcrumb={<BackToFleet workspaceId={workspaceId} />}
+          description={`The agent "${agentId}" does not exist or is not available in this workspace.`}
+          actions={
+            <Link
+              href={workspaceId ? `/workspace/${workspaceId}/agents` : '/agents'}
+              className="btn-primary"
+            >
+              Back to agents
+            </Link>
+          }
+        />
       </div>
     );
   }
 
   return (
     <div className="space-y-6 max-w-4xl">
-      {/* Back link */}
-      <nav aria-label="Breadcrumb">
-        <Link
-          href={workspaceId ? `/workspace/${workspaceId}/agents` : '/agents'}
-          className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text transition-colors"
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-          Back to agent fleet
-        </Link>
-      </nav>
-
-      {/* Header with Quick Actions */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border">
-        <div>
-          <div className="flex flex-wrap items-center gap-3 mb-1">
-            <h1 className="text-3xl font-display font-medium text-text capitalize">
-              {agent.name.replace(/[_-]/g, ' ')}
-            </h1>
-            <Badge variant={agent.isCanonical ? 'primary' : 'default'}>
-              <StatusDot
-                status={agent.isCanonical ? 'active' : 'disabled'}
-                pulse={agent.isCanonical}
-                size="sm"
-              />
-              <span>{agent.isCanonical ? 'canonical (MVP)' : 'enterprise (gated)'}</span>
-            </Badge>
-          </div>
-          <p className="text-text-muted text-sm max-w-2xl">
-            {agent.mission || 'Specialist autonomous worker'}
-          </p>
-        </div>
-
-        {workspaceId && (
-          <div className="flex items-center gap-2 shrink-0">
+      <PageHeader
+        title={agent.name.replace(/[_-]/g, ' ')}
+        titleId="agent-detail-title"
+        breadcrumb={<BackToFleet workspaceId={workspaceId} />}
+        description={agent.mission || 'Specialist autonomous worker'}
+        eyebrow={agent.isCanonical ? 'Canonical (MVP)' : 'Enterprise (gated)'}
+        actions={
+          workspaceId ? (
             <Link
               href={`/workspace/${workspaceId}/chat?agent=${agent.name}`}
               className="btn-primary inline-flex items-center gap-1.5 text-sm"
             >
               <span>Open in Chat</span>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 8l4 4m0 0l-4 4m4-4H3"
-                />
-              </svg>
+              <ExternalLinkIcon size={16} />
             </Link>
-          </div>
-        )}
-      </header>
+          ) : undefined
+        }
+      />
 
       {/* Interactive Agent Test Console */}
       <section className="card p-5 border-primary/30 bg-surface-hover/30">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded bg-primary/10 text-primary">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
+            <span className="p-1.5 rounded bg-primary/10 text-primary" aria-hidden="true">
+              <PlayIcon size={16} />
             </span>
             <h2 className="text-sm font-semibold text-text uppercase tracking-wider font-mono">
               Interactive Test Runner
@@ -380,21 +283,26 @@ export default function AgentDetailPage() {
           {samplePrompts.map((sp, idx) => (
             <button
               key={idx}
+              type="button"
               onClick={() => {
                 setTestPrompt(sp);
-                handleRunTest(sp);
+                void handleRunTest(sp);
               }}
               disabled={testRunning}
               className="text-xs rounded-full border border-border bg-surface px-2.5 py-1 text-text-muted hover:text-text hover:border-primary/40 transition-colors disabled:opacity-50 text-left"
             >
-              💡 {sp}
+              <span aria-hidden="true">💡</span> {sp}
             </button>
           ))}
         </div>
 
         {/* Input & Run */}
         <div className="flex gap-2">
+          <label htmlFor="agent-test-prompt" className="sr-only">
+            Test prompt for {agent.name}
+          </label>
           <input
+            id="agent-test-prompt"
             value={testPrompt}
             onChange={(e) => setTestPrompt(e.target.value)}
             placeholder={`Enter test prompt for ${agent.name}...`}
@@ -402,13 +310,13 @@ export default function AgentDetailPage() {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                handleRunTest();
+                void handleRunTest();
               }
             }}
             className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm text-text placeholder:text-text-dim focus:outline-none focus:border-primary"
           />
           <Button
-            onClick={() => handleRunTest()}
+            onClick={() => void handleRunTest()}
             loading={testRunning}
             disabled={!testPrompt.trim()}
             size="sm"
@@ -561,7 +469,7 @@ export default function AgentDetailPage() {
                   </p>
                 </div>
                 <span
-                  className={`shrink-0 rounded px-2 py-0.5 text-2xs font-mono border ${
+                  className={`shrink-0 rounded px-2 py-0.5 text-xs font-mono border ${
                     t.category === 'memory_write' || t.category === 'connector_write'
                       ? 'bg-error/10 text-error border-error/30'
                       : t.category === 'memory_read' || t.category === 'connector_read'

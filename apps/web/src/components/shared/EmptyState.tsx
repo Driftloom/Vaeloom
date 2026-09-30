@@ -1,8 +1,5 @@
 import React from 'react';
-import {
-  EmptyState as UiKitEmptyState,
-  EmptyStateProps as UiKitEmptyStateProps,
-} from '@vaeloom/ui-kit';
+import { EmptyState as UiKitEmptyState } from '@vaeloom/ui-kit';
 
 export interface EmptyStateProps {
   title: string;

@@ -1,18 +1,9 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import {
-  Button,
-  Card,
-  Input,
-  Modal,
-  ConfirmationDialog,
-  DataTable,
-  Select,
-  Skeleton,
-  type ColumnDef,
-} from '@vaeloom/ui-kit';
+import { Button, Card, Input, Modal, ConfirmationDialog, Select, Skeleton } from '@vaeloom/ui-kit';
 import { StatusBadge, type StatusVariant } from '@/components/shared/StatusBadge';
+import { Table, type Column } from '@/components/shared/Table';
 import useSWR, { mutate } from 'swr';
 import { useParams } from 'next/navigation';
 import {
@@ -22,6 +13,7 @@ import {
   type OrganizationInvitation,
 } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
+import { PageHeader } from '@/components/shared/Page';
 import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
 
 interface Role {
@@ -64,6 +56,53 @@ const memberStatusColors: Record<string, StatusVariant> = {
   suspended: 'neutral',
 };
 const mStatusColor = (s: string): StatusVariant => memberStatusColors[s] ?? 'neutral';
+
+/**
+ * `shared/Table` forwards no `loading` prop, so the placeholder rows live here
+ * rather than being dropped. The markup mirrors ui-kit's DataTable skeleton so
+ * the loading and loaded states occupy the same box.
+ */
+function TableSkeleton({
+  columns,
+  rows = 5,
+}: {
+  columns: { key: string; header: string }[];
+  rows?: number;
+}) {
+  return (
+    <div
+      className="w-full overflow-x-auto rounded-lg border border-border bg-surface"
+      aria-busy="true"
+    >
+      <table className="w-full text-left border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-border bg-surface-50/50">
+            {columns.map((col) => (
+              <th
+                key={col.key}
+                scope="col"
+                className="py-3 px-4 text-xs font-semibold uppercase tracking-wider text-text-muted"
+              >
+                {col.header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border-subtle">
+          {Array.from({ length: rows }).map((_, rIdx) => (
+            <tr key={`skeleton-${rIdx}`}>
+              {columns.map((col) => (
+                <td key={col.key} className="py-3 px-4">
+                  <Skeleton className="h-4 w-3/4" />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 function findNodePath(roots: OrganizationNode[], targetId: string): OrganizationNode[] {
   for (const root of roots) {
@@ -136,6 +175,7 @@ function OrgTreeNode({
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
@@ -218,6 +258,8 @@ function OrganizationsContent() {
   const [memberSearch, setMemberSearch] = useState('');
   const [memberSortBy, setMemberSortBy] = useState('userId');
   const [memberSortDir, setMemberSortDir] = useState<'asc' | 'desc'>('asc');
+  const [invitationSortBy, setInvitationSortBy] = useState('email');
+  const [invitationSortDir, setInvitationSortDir] = useState<'asc' | 'desc'>('asc');
 
   // Unified Confirmation Dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -477,19 +519,30 @@ function OrganizationsContent() {
     return filtered;
   }, [members, memberSearch, memberSortBy, memberSortDir]);
 
+  const sortedInvitations = useMemo(() => {
+    const list = [...(invitations ?? [])];
+    list.sort((a, b) => {
+      const aVal = (a as any)[invitationSortBy] ?? '';
+      const bVal = (b as any)[invitationSortBy] ?? '';
+      const cmp = String(aVal).localeCompare(String(bVal));
+      return invitationSortDir === 'asc' ? cmp : -cmp;
+    });
+    return list;
+  }, [invitations, invitationSortBy, invitationSortDir]);
+
   // Member table columns definition
-  const memberColumns: ColumnDef<OrganizationMember>[] = [
+  const memberColumns: Column<OrganizationMember>[] = [
     {
       key: 'userId',
       header: 'Member',
       sortable: true,
-      render: (val: string) => (
+      render: (m) => (
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-full bg-surface-200 text-text font-mono text-xs flex items-center justify-center shrink-0 border border-border/60">
-            {val.slice(0, 2).toUpperCase()}
+            {m.userId.slice(0, 2).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <p className="font-mono text-xs text-text truncate max-w-[200px]">{val}</p>
+            <p className="font-mono text-xs text-text truncate max-w-[200px]">{m.userId}</p>
           </div>
         </div>
       ),
@@ -498,9 +551,9 @@ function OrganizationsContent() {
       key: 'role',
       header: 'Role',
       sortable: true,
-      render: (val: string) => (
+      render: (m) => (
         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize bg-surface-100 border border-border/60 text-text">
-          {val}
+          {m.role}
         </span>
       ),
     },
@@ -508,55 +561,51 @@ function OrganizationsContent() {
       key: 'status',
       header: 'Status',
       sortable: true,
-      render: (val: string) => <StatusBadge variant={mStatusColor(val)} label={val} />,
+      render: (m) => <StatusBadge variant={mStatusColor(m.status)} label={m.status} />,
     },
     {
       key: 'actions',
       header: 'Action',
-      className: 'text-right',
-      headerClassName: 'text-right',
-      render: (_: any, row: OrganizationMember) => (
-        <div className="text-right">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              setConfirmDialog({
-                isOpen: true,
-                title: 'Remove Member',
-                description: `Are you sure you want to remove user "${row.userId}" from ${selectedNode?.name ?? 'this unit'}?`,
-                confirmLabel: 'Remove Member',
-                variant: 'destructive',
-                onConfirm: async () => {
-                  setConfirmDialog((p) => ({ ...p, isOpen: false }));
-                  await executeRemoveMember(row.userId);
-                },
-              })
-            }
-            className="text-xs text-error hover:text-error"
-          >
-            Remove
-          </Button>
-        </div>
+      render: (m) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() =>
+            setConfirmDialog({
+              isOpen: true,
+              title: 'Remove Member',
+              description: `Are you sure you want to remove user "${m.userId}" from ${selectedNode?.name ?? 'this unit'}?`,
+              confirmLabel: 'Remove Member',
+              variant: 'destructive',
+              onConfirm: async () => {
+                setConfirmDialog((p) => ({ ...p, isOpen: false }));
+                await executeRemoveMember(m.userId);
+              },
+            })
+          }
+          className="text-xs text-error hover:text-error"
+        >
+          Remove
+        </Button>
       ),
     },
   ];
 
   // Invitations table columns definition
-  const invitationColumns: ColumnDef<OrganizationInvitation>[] = [
+  const invitationColumns: Column<OrganizationInvitation>[] = [
     {
       key: 'email',
       header: 'Email',
       sortable: true,
-      render: (val: string) => <span className="font-mono text-xs text-text">{val}</span>,
+      render: (inv) => <span className="font-mono text-xs text-text">{inv.email}</span>,
     },
     {
       key: 'role',
       header: 'Role',
       sortable: true,
-      render: (val: string) => (
+      render: (inv) => (
         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize bg-surface-100 border border-border/60 text-text">
-          {val}
+          {inv.role}
         </span>
       ),
     },
@@ -564,35 +613,35 @@ function OrganizationsContent() {
       key: 'status',
       header: 'Status',
       sortable: true,
-      render: (val: string) => (
+      render: (inv) => (
         <StatusBadge
-          variant={val === 'accepted' ? 'success' : val === 'pending' ? 'warning' : 'neutral'}
-          label={val}
+          variant={
+            inv.status === 'accepted' ? 'success' : inv.status === 'pending' ? 'warning' : 'neutral'
+          }
+          label={inv.status}
         />
       ),
     },
     {
       key: 'expiresAt',
       header: 'Expires',
-      render: (val?: string) => (
+      render: (inv) => (
         <span className="text-xs text-text-muted">
-          {val ? new Date(val).toLocaleDateString() : '7 days'}
+          {inv.expiresAt ? new Date(inv.expiresAt).toLocaleDateString() : '7 days'}
         </span>
       ),
     },
     {
       key: 'actions',
       header: 'Action',
-      className: 'text-right',
-      headerClassName: 'text-right',
-      render: (_: any, row: OrganizationInvitation) => (
-        <div className="flex items-center justify-end gap-2">
-          {row.token && (
+      render: (inv) => (
+        <div className="flex items-center gap-2">
+          {inv.token && (
             <Button
               variant="ghost"
               size="sm"
               onClick={async () => {
-                const inviteUrl = `${window.location.origin}/join?token=${row.token}`;
+                const inviteUrl = `${window.location.origin}/join?token=${inv.token}`;
                 try {
                   await navigator.clipboard.writeText(inviteUrl);
                   toast({ tone: 'success', title: 'Link copied to clipboard' });
@@ -605,7 +654,7 @@ function OrganizationsContent() {
               Copy Link
             </Button>
           )}
-          {row.status === 'pending' && (
+          {inv.status === 'pending' && (
             <Button
               variant="ghost"
               size="sm"
@@ -613,12 +662,12 @@ function OrganizationsContent() {
                 setConfirmDialog({
                   isOpen: true,
                   title: 'Revoke Invitation',
-                  description: `Are you sure you want to revoke the invitation sent to ${row.email}? The link will stop working immediately.`,
+                  description: `Are you sure you want to revoke the invitation sent to ${inv.email}? The link will stop working immediately.`,
                   confirmLabel: 'Revoke Invite',
                   variant: 'destructive',
                   onConfirm: async () => {
                     setConfirmDialog((p) => ({ ...p, isOpen: false }));
-                    await executeRevokeInvite(row.id);
+                    await executeRevokeInvite(inv.id);
                   },
                 })
               }
@@ -636,30 +685,51 @@ function OrganizationsContent() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <header className="flex flex-wrap justify-between items-start gap-4 pb-4 border-b border-border">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-display font-medium text-text">Organizations</h1>
-          <p className="text-sm text-text-muted mt-1">
-            Enterprise hierarchical organization structure, departments, and team membership.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              setCreateParentId(selectedNode ? selectedNode.id : null);
-              setShowCreateModal(true);
-            }}
-          >
-            Add Unit
-          </Button>
-          <Button size="sm" onClick={() => setShowInviteModal(true)} disabled={!selectedNode}>
-            Add Member
-          </Button>
-        </div>
-      </header>
+      <PageHeader
+        title="Organizations"
+        description="Enterprise hierarchical organization structure, departments, and team membership."
+        breadcrumb={
+          selectedPath.length > 0 ? (
+            <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-xs flex-wrap">
+              {selectedPath.map((item, idx, arr) => (
+                <React.Fragment key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedNode(item)}
+                    className={`hover:text-text transition-colors ${
+                      idx === arr.length - 1 ? 'font-semibold text-text' : 'text-text-muted'
+                    }`}
+                  >
+                    {item.name}
+                  </button>
+                  {idx < arr.length - 1 && (
+                    <span className="text-text-dim" aria-hidden="true">
+                      /
+                    </span>
+                  )}
+                </React.Fragment>
+              ))}
+            </nav>
+          ) : undefined
+        }
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setCreateParentId(selectedNode ? selectedNode.id : null);
+                setShowCreateModal(true);
+              }}
+            >
+              Add Unit
+            </Button>
+            <Button size="sm" onClick={() => setShowInviteModal(true)} disabled={!selectedNode}>
+              Add Member
+            </Button>
+          </>
+        }
+      />
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -739,29 +809,6 @@ function OrganizationsContent() {
         <div className="lg:col-span-2 space-y-6">
           {/* Members Card */}
           <Card padding="lg">
-            {/* Breadcrumbs for unit hierarchy */}
-            {selectedPath.length > 0 && (
-              <nav
-                aria-label="Breadcrumb"
-                className="flex items-center gap-1 text-xs text-text-muted mb-3 flex-wrap"
-              >
-                {selectedPath.map((item, idx, arr) => (
-                  <React.Fragment key={item.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedNode(item)}
-                      className={`hover:text-text transition-colors ${
-                        idx === arr.length - 1 ? 'font-semibold text-text' : ''
-                      }`}
-                    >
-                      {item.name}
-                    </button>
-                    {idx < arr.length - 1 && <span className="text-text-dim">/</span>}
-                  </React.Fragment>
-                ))}
-              </nav>
-            )}
-
             <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
               <div>
                 <h2 className="text-base font-display font-medium text-text">
@@ -776,6 +823,7 @@ function OrganizationsContent() {
               {selectedNode && (
                 <div className="flex items-center gap-2">
                   <Input
+                    aria-label="Filter members by id, role, or status"
                     placeholder="Filter members..."
                     value={memberSearch}
                     onChange={(e) => setMemberSearch(e.target.value)}
@@ -796,12 +844,13 @@ function OrganizationsContent() {
               <div className="py-12 text-center text-sm text-text-muted">
                 Select an organizational unit from the hierarchy tree to view members.
               </div>
+            ) : membersLoading ? (
+              <TableSkeleton columns={memberColumns} />
             ) : (
-              <DataTable<OrganizationMember>
+              <Table<OrganizationMember>
                 columns={memberColumns}
                 data={filteredMembers}
                 keyExtractor={(m) => m.id}
-                loading={membersLoading}
                 sortBy={memberSortBy}
                 sortDir={memberSortDir}
                 onSort={(key) => {
@@ -854,12 +903,23 @@ function OrganizationsContent() {
               <div className="py-8 text-center text-sm text-text-muted">
                 Select an organizational unit from the tree to view invitations.
               </div>
+            ) : invitationsLoading ? (
+              <TableSkeleton columns={invitationColumns} />
             ) : (
-              <DataTable<OrganizationInvitation>
+              <Table<OrganizationInvitation>
                 columns={invitationColumns}
-                data={invitations ?? []}
+                data={sortedInvitations}
                 keyExtractor={(inv) => inv.id}
-                loading={invitationsLoading}
+                sortBy={invitationSortBy}
+                sortDir={invitationSortDir}
+                onSort={(key) => {
+                  if (invitationSortBy === key) {
+                    setInvitationSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+                  } else {
+                    setInvitationSortBy(key);
+                    setInvitationSortDir('asc');
+                  }
+                }}
                 emptyMessage="No invitations found for this unit."
               />
             )}
@@ -881,7 +941,7 @@ function OrganizationsContent() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-sm text-text">{role.name}</span>
-                    <span className="text-2xs font-mono px-1.5 py-0.5 rounded bg-surface-200 text-text-secondary">
+                    <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-surface-200 text-text-secondary">
                       {role.permissions.length} scopes
                     </span>
                   </div>
@@ -890,7 +950,7 @@ function OrganizationsContent() {
                     {role.permissions.map((perm) => (
                       <span
                         key={perm}
-                        className="text-2xs font-mono px-1.5 py-0.5 rounded bg-surface border border-border/70 text-text-dim"
+                        className="text-xs font-mono px-1.5 py-0.5 rounded bg-surface border border-border/70 text-text-dim"
                       >
                         {perm}
                       </span>

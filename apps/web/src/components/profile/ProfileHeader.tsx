@@ -8,6 +8,7 @@ import {
   profileApi,
 } from '@/lib/api-client';
 import { Avatar } from '@/components/shared/Avatar';
+import { PageHeader } from '@/components/shared/Page';
 import {
   Badge,
   Button,
@@ -509,33 +510,36 @@ export default function ProfileHeader({ profile, workspaceId, onUpdate }: Profil
               </div>
             ) : (
               <div>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <h1 className="text-2xl sm:text-3xl font-display font-medium text-text truncate">
-                      {profile.displayName || 'Anonymous User'}
-                    </h1>
-                    <Badge variant="default" size="sm">
-                      <CheckIcon size={12} className="mr-1 text-primary" />
-                      Verified Identity
-                    </Badge>
-                  </div>
-
-                  <div className="flex items-center gap-2.5 shrink-0">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setShowImportModal(true)}
-                      className="border-primary/30 text-primary hover:bg-primary/5"
-                    >
-                      <SparklesIcon size={14} className="mr-1.5 text-primary" />
-                      Import Profile
-                    </Button>
-                    <Button variant="secondary" size="sm" onClick={() => setIsEditing(true)}>
-                      <EditIcon size={14} className="mr-1.5" />
-                      Edit Profile
-                    </Button>
-                  </div>
-                </div>
+                <PageHeader
+                  title={profile.displayName || 'Anonymous User'}
+                  // PageHeader owns the h1 className, so truncation is applied
+                  // through the wrapper rather than on the heading itself.
+                  className="[&_h1]:truncate"
+                  // The badge is title-adjacent in the source layout but
+                  // PageHeader exposes no slot beside the title, so it joins the
+                  // action cluster rather than being dropped.
+                  actions={
+                    <>
+                      <Badge variant="default" size="sm">
+                        <CheckIcon size={12} className="mr-1 text-primary" />
+                        Verified Identity
+                      </Badge>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setShowImportModal(true)}
+                        className="border-primary/30 text-primary hover:bg-primary/5"
+                      >
+                        <SparklesIcon size={14} className="mr-1.5 text-primary" />
+                        Import Profile
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => setIsEditing(true)}>
+                        <EditIcon size={14} className="mr-1.5" />
+                        Edit Profile
+                      </Button>
+                    </>
+                  }
+                />
 
                 {/* Import success toast */}
                 {importSuccess && (

@@ -2,22 +2,16 @@
 
 import React, { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import {
-  Button,
-  Card,
-  Modal,
-  Tabs,
-  Select,
-  Skeleton,
-  ConfirmationDialog,
-  Input,
-} from '@vaeloom/ui-kit';
+import { Button, Card, Modal, Select, Skeleton, ConfirmationDialog, Input } from '@vaeloom/ui-kit';
+import { Tabs } from '@/components/shared/Tabs';
 import { SearchInput } from '@/components/shared/SearchInput';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { PageHeader } from '@/components/shared/Page';
 import useSWR, { mutate } from 'swr';
 import {
   marketplaceApi,
   connectorsApi,
+  type ConnectorItem,
   type MarketplaceListingItem,
   type WorkspacePluginInstallItem,
 } from '@/lib/api-client';
@@ -25,6 +19,24 @@ import { useToast } from '@/components/shared/Toast';
 import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
 
 const CATEGORIES = ['All', 'AI', 'Analytics', 'Data', 'Integration', 'Productivity', 'Security'];
+
+/**
+ * The listing id recorded in a connector's config when this page attaches the
+ * built-in ATS MCP server. Install state is read back from that server-side
+ * field; the previous build inferred it from whether any connector's *name*
+ * happened to contain "ats", "job-search" or "crawler", which reported unrelated
+ * workspace connectors as installed marketplace plugins.
+ */
+const LISTING_ID_CONFIG_KEY = 'marketplace_listing_id';
+
+function installedListingIds(connectors: ConnectorItem[] | undefined): Set<string> {
+  const ids = new Set<string>();
+  for (const connector of connectors ?? []) {
+    const listingId = connector.config?.[LISTING_ID_CONFIG_KEY];
+    if (typeof listingId === 'string' && listingId) ids.add(listingId);
+  }
+  return ids;
+}
 
 export default function MarketplacePage() {
   if (!isEnterpriseEnabled()) {
@@ -62,23 +74,16 @@ function MarketplaceContent() {
     async () => {
       const catParam = category === 'All' ? undefined : category;
       const searchParam = search.trim() ? search.trim() : undefined;
-      let res = await marketplaceApi.getListings({
+      // Read-only. This fetcher used to POST marketplaceApi.seed() whenever the
+      // catalog came back empty, so every browser that loaded an empty
+      // marketplace wrote to the backend from a GET, and the seed failure was
+      // swallowed. Seeding is now an explicit operator action.
+      return await marketplaceApi.getListings({
         category: catParam,
         search: searchParam,
         page: 1,
         page_size: 50,
       });
-
-      // If database is completely empty on initial load, auto-seed defaults
-      if ((!res || res.total === 0) && category === 'All' && !search.trim()) {
-        try {
-          await marketplaceApi.seed();
-          res = await marketplaceApi.getListings({ page: 1, page_size: 50 });
-        } catch {
-          // seed failed or not needed
-        }
-      }
-      return res;
     },
     { revalidateOnFocus: false },
   );
@@ -104,10 +109,7 @@ function MarketplaceContent() {
   );
 
   const installedListingsMap = useMemo(() => {
-    const map = new Map<
-      string,
-      WorkspacePluginInstallItem | { listingId: string; isActive: boolean }
-    >();
+    const map = new Map<string, WorkspacePluginInstallItem>();
     if (Array.isArray(installedData)) {
       for (const item of installedData) {
         if (item.isActive) {
@@ -115,23 +117,25 @@ function MarketplaceContent() {
         }
       }
     }
-    if (Array.isArray(connectorsData)) {
-      const hasAtsMcp = connectorsData.some(
-        (c) =>
-          c.type === 'mcp' &&
-          (c.name.toLowerCase().includes('ats') ||
-            c.name.toLowerCase().includes('job-search') ||
-            c.name.toLowerCase().includes('crawler')),
-      );
-      if (hasAtsMcp) {
-        map.set('native-ats-mcp', {
-          listingId: 'native-ats-mcp',
+    // Connector-backed listings carry their install state in the connector's own
+    // config, so nothing here is inferred from a display name.
+    for (const listingId of installedListingIds(
+      Array.isArray(connectorsData) ? connectorsData : undefined,
+    )) {
+      if (!map.has(listingId)) {
+        map.set(listingId, {
+          id: listingId,
+          workspaceId,
+          listingId,
+          installedBy: '',
           isActive: true,
-        } as WorkspacePluginInstallItem);
+          config: {},
+          installedAt: '',
+        });
       }
     }
     return map;
-  }, [installedData, connectorsData]);
+  }, [installedData, connectorsData, workspaceId]);
 
   const listings = listingsData?.items ?? [];
 
@@ -170,18 +174,21 @@ function MarketplaceContent() {
 
       if (listing.id === 'native-ats-mcp') {
         const builtinRes = await connectorsApi.mcp.builtin();
-        const server =
-          builtinRes.builtin_servers?.find((s) => s.id === 'job-search-mcp') ||
-          builtinRes.builtin_servers?.[0];
+        // Only the named server, or nothing. Falling back to
+        // `builtin_servers?.[0]` attached an arbitrary unrelated server and then
+        // reported it as the ATS MCP the user asked for.
+        const server = builtinRes.builtin_servers?.find((s) => s.id === 'job-search-mcp');
         if (!server) {
-          throw new Error('Built-in Job Search ATS MCP server definition not found.');
+          throw new Error(
+            'This deployment does not offer the Job Search ATS MCP server, so it cannot be attached.',
+          );
         }
 
         const created = await connectorsApi.create({
           name: server.name,
           type: 'mcp',
           workspace_id: workspaceId,
-          config: server.config,
+          config: { ...server.config, [LISTING_ID_CONFIG_KEY]: listing.id },
         });
 
         await connectorsApi.mcp.sync(created.id, workspaceId);
@@ -230,11 +237,7 @@ function MarketplaceContent() {
     try {
       if (listing.id === 'native-ats-mcp') {
         const conn = (connectorsData || []).find(
-          (c) =>
-            c.type === 'mcp' &&
-            (c.name.toLowerCase().includes('ats') ||
-              c.name.toLowerCase().includes('job-search') ||
-              c.name.toLowerCase().includes('crawler')),
+          (c) => c.config?.[LISTING_ID_CONFIG_KEY] === listing.id,
         );
         if (conn) {
           await connectorsApi.delete(conn.id);
@@ -340,28 +343,20 @@ function MarketplaceContent() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <header className="flex flex-wrap justify-between items-start gap-4 pb-4 border-b border-border">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-display font-medium text-text">Marketplace</h1>
-          <p className="text-sm text-text-muted mt-1">
-            Extend your workspace with community plugins, enterprise connectors, and autonomous
-            agent tools.
-          </p>
-        </div>
-
-        {/* View Toggle Tabs */}
-        <Tabs
-          tabs={[
-            { id: 'browse', label: 'Browse Catalog' },
-            { id: 'installed', label: 'Installed', badge: installedListingsMap.size },
-          ]}
-          activeTab={view}
-          onTabChange={(id) => setView(id as 'browse' | 'installed')}
-          variant="pills"
-          size="sm"
-        />
-      </header>
+      <PageHeader
+        title="Marketplace"
+        description="Extend your workspace with community plugins, enterprise connectors, and autonomous agent tools."
+        actions={
+          <Tabs
+            tabs={[
+              { id: 'browse', label: 'Browse Catalog' },
+              { id: 'installed', label: `Installed (${installedListingsMap.size})` },
+            ]}
+            activeTab={view}
+            onChange={(id) => setView(id as 'browse' | 'installed')}
+          />
+        }
+      />
 
       {/* Error Banner */}
       {listingsError && (
@@ -443,7 +438,11 @@ function MarketplaceContent() {
           <p className="text-sm text-text-muted">
             {view === 'installed'
               ? 'No plugins installed in this workspace yet.'
-              : 'No plugins match your current filters.'}
+              : listingsError
+                ? 'The marketplace catalog could not be loaded, so there is nothing to show.'
+                : category !== 'All' || search.trim()
+                  ? 'No plugins match your current filters.'
+                  : 'The marketplace catalog is empty on this deployment. It is populated by an operator, not by loading this page.'}
           </p>
           {view === 'installed' && (
             <Button size="sm" onClick={() => setView('browse')}>

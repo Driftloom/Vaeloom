@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { memoryApi, memoryFeedApi, type MemoryLineageResponse } from '@/lib/api-client';
@@ -9,6 +9,7 @@ import { useToast } from '@/components/shared/Toast';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ErrorState } from '@/components/shared/ErrorState';
+import { PageHeader } from '@/components/shared/Page';
 import { Modal } from '@vaeloom/ui-kit';
 
 function formatTimestamp(iso: string | null | undefined) {
@@ -32,6 +33,7 @@ export default function MemoryDetailPage() {
   const params = useParams();
   const workspaceId = params?.['workspaceId'] as string | undefined;
   const memoryId = params?.['memoryId'] as string | undefined;
+  const router = useRouter();
   const { toast } = useToast();
 
   const {
@@ -119,7 +121,7 @@ export default function MemoryDetailPage() {
         description="This memory does not exist or has been deleted."
         action={{
           label: 'Back to memory',
-          onClick: () => {},
+          onClick: () => router.push(workspaceId ? `/workspace/${workspaceId}/memory` : '/memory'),
         }}
       />
     );
@@ -143,53 +145,42 @@ export default function MemoryDetailPage() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      {/* Back link */}
-      <nav aria-label="Breadcrumb">
-        <Link
-          href={workspaceId ? `/workspace/${workspaceId}/memory` : '/memory'}
-          className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text transition-colors"
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-          Back to memory
-        </Link>
-      </nav>
-
-      {/* Header */}
-      <header>
-        <div className="flex flex-wrap items-center gap-2 mb-2">
-          <span className="font-mono text-xs rounded bg-surface-hover border border-border px-2 py-0.5 text-text-muted">
-            {type}
-          </span>
-          {status && (
-            <span
-              className={`text-xs rounded-full px-2.5 py-0.5 border ${
-                status === 'superseded'
-                  ? 'bg-warning/10 text-warning border-warning/30'
-                  : status === 'READY' || status === 'active'
-                    ? 'bg-success/10 text-success border-success/30'
-                    : 'bg-surface-hover text-text-muted border-border'
-              }`}
+      <PageHeader
+        title={title}
+        eyebrow={type}
+        breadcrumb={
+          <nav aria-label="Breadcrumb">
+            <Link
+              href={workspaceId ? `/workspace/${workspaceId}/memory` : '/memory'}
+              className="text-sm text-text-muted hover:text-text transition-colors"
             >
-              {status}
-            </span>
-          )}
+              Back to memory
+            </Link>
+          </nav>
+        }
+        actions={
+          <button type="button" className="btn-secondary text-sm" onClick={startEdit}>
+            Edit memory
+          </button>
+        }
+      />
+
+      {status && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={`text-xs rounded-full px-2.5 py-0.5 border ${
+              status === 'superseded'
+                ? 'bg-warning/10 text-warning border-warning/30'
+                : status === 'READY' || status === 'active'
+                  ? 'bg-success/10 text-success border-success/30'
+                  : 'bg-surface-hover text-text-muted border-border'
+            }`}
+          >
+            {status}
+          </span>
           {confidence > 0 && <ConfidenceBar value={confidence} />}
         </div>
-        <h1 className="text-3xl font-display font-medium text-text">{title}</h1>
-      </header>
+      )}
 
       {/* Main content */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -305,9 +296,6 @@ export default function MemoryDetailPage() {
               Correct this memory to create an updated version. The original is preserved in the
               supersession chain.
             </p>
-            <button className="btn-secondary text-sm" onClick={startEdit}>
-              Edit memory
-            </button>
           </div>
         </div>
 
