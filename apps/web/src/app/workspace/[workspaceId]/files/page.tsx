@@ -502,7 +502,7 @@ export default function WorkspaceFilesPage() {
         toast({
           tone: 'success',
           title: 'New version uploaded',
-          detail: `Version ${newV.version_number}`,
+          detail: `Version ${newV.versionNumber ?? newV.version_number ?? 1}`,
         });
         const updatedList = await documentApi.listVersions(versionDoc.id, workspaceId);
         setVersions(updatedList);
@@ -1270,16 +1270,22 @@ export default function WorkspaceFilesPage() {
                     className="flex items-center justify-between p-3 rounded-lg bg-background border border-border/50 text-xs"
                   >
                     <div>
-                      <div className="font-semibold text-text">Version {v.version_number}</div>
+                      <div className="font-semibold text-text">
+                        Version {v.versionNumber ?? v.version_number}
+                      </div>
                       <div className="text-text-muted">
-                        {formatDate(v.created_at)} • {formatSize(v.size_bytes)}
+                        {formatDate(v.createdAt ?? v.created_at ?? '')} •{' '}
+                        {formatSize(v.sizeBytes ?? v.size_bytes ?? 0)}
                       </div>
                     </div>
                     <button
                       type="button"
                       disabled={versionBusy}
                       onClick={() =>
-                        setPendingConfirm({ kind: 'restore-version', version: v.version_number })
+                        setPendingConfirm({
+                          kind: 'restore-version',
+                          version: v.versionNumber ?? v.version_number ?? 1,
+                        })
                       }
                       className="px-2.5 py-1 text-xs font-medium rounded border border-border hover:bg-surface-hover"
                     >

@@ -30,29 +30,13 @@ function field<T>(source: unknown, snake: string, camel: string): T | undefined 
   return record[snake] ?? record[camel];
 }
 
-/**
- * Resolve one document by id.
- *
- * There is no `GET /documents/{id}` — the router exposes only PATCH on that
- * path — so the id has to be resolved against the list endpoint. A single
- * unpaged `list()` call silently returned "Document not found" for anything
- * past the server's default page size, so the pages are walked until the id
- * turns up or the workspace runs out of documents.
- */
-async function findDocument(workspaceId: string, documentId: string) {
-  for (let page = 1; page <= 50; page += 1) {
-    const res = await documentApi.list({
-      workspace_id: workspaceId,
-      include_archived: true,
-      page,
-      page_size: FIND_PAGE_SIZE,
-    });
-    const found = res.documents.find((d) => d.id === documentId);
-    if (found) return found;
-    if (res.documents.length < FIND_PAGE_SIZE) break;
-    if (page * FIND_PAGE_SIZE >= res.total) break;
+/** Fetch document directly by id. */
+async function fetchDocument(workspaceId: string, documentId: string) {
+  try {
+    return await documentApi.getById(documentId, workspaceId);
+  } catch {
+    return null;
   }
-  return null;
 }
 
 export default function FileDetailPage() {
@@ -60,6 +44,7 @@ export default function FileDetailPage() {
   const workspaceId = params.workspaceId as string;
   const documentId = params.documentId as string;
   const router = useRouter();
+
   const [doc, setDoc] = useState<DocumentResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +62,7 @@ export default function FileDetailPage() {
     setError(null);
     setHistoryError(null);
     try {
-      const found = await findDocument(workspaceId, documentId);
+      const found = await fetchDocument(workspaceId, documentId);
       if (!found) throw new Error('Document not found');
       setDoc(found);
 
