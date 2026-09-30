@@ -16,7 +16,7 @@ export default function SearchError({
   }, [error]);
 
   return (
-    <div className="flex h-full items-center justify-center min-h-[60vh] p-4">
+    <div className="flex h-full items-center justify-center min-h-[60dvh] p-4">
       <div className="max-w-md w-full">
         <ErrorState
           title="Search error"

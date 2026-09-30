@@ -523,7 +523,7 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
             <h3 className="font-mono text-sm text-text-muted uppercase tracking-wider">
               Variants ({variants.length})
             </h3>
-            <div className="flex flex-col gap-2 lg:overflow-y-auto lg:max-h-[60vh]">
+            <div className="flex flex-col gap-2 lg:overflow-y-auto lg:max-h-[60dvh] overscroll-y-contain">
               {variants.map((v) => {
                 const ats = atsScores[v.id];
                 const st = getTrustStats(v.content as Record<string, unknown>);
@@ -616,7 +616,7 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
             title="Resume preview"
             srcDoc={previewHtml.html}
             sandbox=""
-            className="w-full h-[70vh] rounded border border-border bg-white"
+            className="w-full h-[70dvh] rounded border border-border bg-white"
           />
         )}
       </Modal>

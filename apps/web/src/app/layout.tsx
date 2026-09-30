@@ -107,7 +107,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${spaceGrotesk.variable} ${ibmPlexMono.variable}`}
+      className={`${inter.variable} ${spaceGrotesk.variable} ${ibmPlexMono.variable} h-full`}
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
@@ -128,7 +128,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#000000" />
       </head>
-      <body className="antialiased min-h-screen bg-background text-text">
+      <body className="antialiased h-full min-h-screen bg-background text-text">
         <ErrorTrackingBoundary>
           <SWRProvider>
             <AuthProvider>
@@ -140,7 +140,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     <KeyboardShortcutsModal />
                     <WebVitals />
                     <SkipLink />
-                    <main id="main-content" tabIndex={-1} className="focus:outline-none">
+                    <main
+                      id="main-content"
+                      tabIndex={-1}
+                      className="focus:outline-none min-h-0 h-full w-full"
+                    >
                       {children}
                     </main>
                   </KeyboardShortcutProvider>

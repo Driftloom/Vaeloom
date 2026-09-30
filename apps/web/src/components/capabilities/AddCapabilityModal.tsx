@@ -927,7 +927,7 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
       aria-describedby="add-capability-modal-desc"
       className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
     >
-      <div className="w-full max-w-5xl h-[670px] max-h-[90vh] bg-surface border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden text-text antialiased">
+      <div className="w-full max-w-5xl h-[670px] max-h-[90dvh] bg-surface border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden text-text antialiased">
         {/* ── 1. Top Header: Title, Category Badge, and Mode Navigation ──────── */}
         <header className="px-5 py-3 border-b border-border bg-surface-elevated flex items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3">

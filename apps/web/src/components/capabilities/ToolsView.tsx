@@ -639,7 +639,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, search
         </div>
 
         {/* Scrollable suites list */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-1.5 min-h-0">
+        <div className="flex-1 overflow-y-auto overscroll-y-contain p-2 pb-12 space-y-1.5 min-h-0">
           {filteredSuites.map((suite) => {
             const isSelected = suite.id === selectedSuite.id;
             return (
@@ -853,7 +853,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, search
 
         {/* Tab 1: Provider Configuration */}
         {detailSubTab === 'provider' && (
-          <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-background min-h-0 space-y-4">
+          <div className="flex-1 overflow-y-auto overscroll-y-contain p-4 sm:p-5 pb-16 bg-background min-h-0 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               {selectedSuite.providers.map((p) => {
                 const isSelected = p.id === selectedProviderId;
@@ -939,7 +939,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, search
 
         {/* Tab 2: Schema & Parameters */}
         {detailSubTab === 'schema' && (
-          <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-background min-h-0 space-y-4">
+          <div className="flex-1 overflow-y-auto overscroll-y-contain p-4 sm:p-5 pb-16 bg-background min-h-0 space-y-4">
             {/* Tool Summary Card */}
             <div className="p-4 rounded-xl border border-border bg-surface">
               <div className="flex items-center justify-between">
@@ -1039,7 +1039,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, search
 
         {/* Tab 3: Test Playground */}
         {detailSubTab === 'test' && (
-          <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-background min-h-0 space-y-4">
+          <div className="flex-1 overflow-y-auto overscroll-y-contain p-4 sm:p-5 pb-16 bg-background min-h-0 space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-semibold text-text font-sans">
@@ -1130,7 +1130,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({ tools, workspaceId, search
 
         {/* Tab 4: Security & Governance */}
         {detailSubTab === 'security' && (
-          <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-background min-h-0 space-y-4">
+          <div className="flex-1 overflow-y-auto overscroll-y-contain p-4 sm:p-5 pb-16 bg-background min-h-0 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               <div className="p-4 rounded-xl border border-border bg-surface space-y-2">
                 <span className="text-2xs font-mono uppercase text-text-muted">

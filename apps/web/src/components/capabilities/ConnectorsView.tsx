@@ -984,7 +984,7 @@ export function ConnectorsView({
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* Main Content Area                                                          */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-5 min-h-0 min-w-0 bg-background">
+      <div className="flex-1 overflow-y-auto overscroll-y-contain px-4 sm:px-6 lg:px-8 py-5 pb-16 min-h-0 min-w-0 bg-background">
         {activeSubTab === 'discover' ? (
           <div className="max-w-7xl mx-auto space-y-6 min-w-0">
             {/* Filter Toolbar: Purpose Selector + Filter Chips */}

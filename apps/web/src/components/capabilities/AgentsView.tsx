@@ -502,7 +502,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
         </div>
 
         {/* Scrollable Agent Items List */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain divide-y divide-border p-1.5 space-y-0.5">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain divide-y divide-border p-1.5 pb-12 space-y-0.5">
           {filteredAgents.map((agent) => {
             const isSelected = agent.id === selectedAgent?.id;
             const meta = getAgentVisualMeta(agent.name);
@@ -747,7 +747,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
             </div>
 
             {/* Subtab Content Panels */}
-            <div className="flex-1 overflow-y-auto p-5 bg-background min-h-0 font-sans">
+            <div className="flex-1 overflow-y-auto overscroll-y-contain p-5 pb-16 bg-background min-h-0 font-sans">
               {/* 1. MISSION & PROMPTS SUBTAB */}
               {detailSubTab === 'card' && (
                 <div className="space-y-5 max-w-3xl">

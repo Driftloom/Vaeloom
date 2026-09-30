@@ -15,7 +15,7 @@ export default function WorkspaceError({
   const params = useParams();
 
   return (
-    <div className="flex h-full items-center justify-center min-h-[60vh]">
+    <div className="flex h-full items-center justify-center min-h-[60dvh]">
       <ErrorState
         title="Workspace error"
         message={error.message || `Failed to load workspace ${params['workspaceId']}.`}

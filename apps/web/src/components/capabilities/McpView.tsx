@@ -774,7 +774,7 @@ export const McpView: React.FC<McpViewProps> = ({
             <span className="text-2xs font-mono text-primary font-medium">1-Click Install</span>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain divide-y divide-border-subtle p-2 space-y-1">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain divide-y divide-border-subtle p-2 pb-12 space-y-1">
             {filteredCatalog.map((template) => {
               const isInstalled = installedServers.some(
                 (s) =>
@@ -986,7 +986,7 @@ export const McpView: React.FC<McpViewProps> = ({
 
         {/* Content Pane: Inspector vs Manifest */}
         {activeSubTab === 'inspector' ? (
-          <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
+          <div className="flex-1 flex flex-col min-h-0 overflow-y-auto overscroll-y-contain pb-16">
             {!selectedServer ? (
               <div className="flex-1 flex flex-col p-6 max-w-4xl mx-auto w-full space-y-6">
                 <div className="text-center py-6 space-y-2 border-b border-border">

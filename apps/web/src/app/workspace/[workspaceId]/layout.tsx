@@ -33,6 +33,23 @@ export default function WorkspaceLayout({
   useScrollLock(sidebarOpen);
   useScrollRestoration(contentRef);
 
+  // Invariant: Workspace Shell is 100% viewport locked.
+  // Lock window/document scrolling permanently while inside workspace shell.
+  useEffect(() => {
+    document.documentElement.classList.add('app-shell-locked');
+    document.body.classList.add('app-shell-locked');
+    window.scrollTo(0, 0);
+
+    return () => {
+      document.documentElement.classList.remove('app-shell-locked');
+      document.body.classList.remove('app-shell-locked');
+    };
+  }, []);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
   useEffect(() => {
     void params.then((p) => setWorkspaceId(p.workspaceId));
   }, [params]);
@@ -126,7 +143,7 @@ export default function WorkspaceLayout({
   return (
     <RealtimeProvider workspaceId={workspaceId}>
       <AppModeProvider>
-        <div className="flex h-screen h-[100dvh] overflow-hidden bg-background">
+        <div className="fixed inset-0 flex overflow-hidden bg-background">
           <Sidebar
             key="workspace-sidebar"
             workspaceId={workspaceId}
@@ -145,7 +162,10 @@ export default function WorkspaceLayout({
               aria-hidden="true"
             />
           ) : null}
-          <div key="workspace-main-content" className="flex-1 flex flex-col min-w-0">
+          <div
+            key="workspace-main-content"
+            className="flex-1 flex flex-col min-h-0 min-w-0 h-full overflow-hidden"
+          >
             <TopNav
               key="workspace-top-nav"
               onMenuClick={toggleSidebar}
@@ -180,7 +200,7 @@ export default function WorkspaceLayout({
                     <div
                       key="workspace-content-wrapper"
                       className={`flex flex-col min-h-0 ${
-                        isFullBleed ? 'flex-1 h-full' : 'min-h-full'
+                        isFullBleed ? 'flex-1 h-full overflow-hidden' : 'min-h-full pb-16'
                       }`}
                     >
                       <DataModeBanner key="workspace-data-mode-banner" />

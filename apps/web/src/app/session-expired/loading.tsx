@@ -5,7 +5,7 @@ export default function SessionExpiredLoading() {
     <div
       role="status"
       aria-label="Loading session status"
-      className="flex min-h-[70vh] items-center justify-center p-6 animate-pulse"
+      className="flex min-h-[70dvh] items-center justify-center p-6 animate-pulse"
     >
       <div className="max-w-md w-full text-center space-y-4">
         <div className="w-16 h-16 rounded-full bg-surface-200 mx-auto" />

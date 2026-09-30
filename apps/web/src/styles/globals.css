@@ -400,8 +400,8 @@ html.high-contrast,
     color-scheme: light;
   }
 
-  /* Anchor targets account for sticky TopNav (h-14 = 56px) */
-  [id] {
+  /* Anchor targets account for sticky TopNav (h-14 = 56px), exempting root landmarks */
+  [id]:not(#main-content) {
     scroll-margin-top: 4rem;
   }
 }

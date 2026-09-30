@@ -153,7 +153,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-background text-text overflow-y-auto antialiased">
+    <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-background text-text overflow-y-auto overscroll-y-contain pb-16 antialiased">
       {/* Top Banner Toolbar: Subtitle + Action buttons */}
       <div className="px-5 py-3 border-b border-border bg-surface flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 shadow-xs">
         <div>

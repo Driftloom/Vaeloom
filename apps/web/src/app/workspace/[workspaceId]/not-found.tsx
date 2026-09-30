@@ -3,7 +3,7 @@ import { PageHeader } from '@/components/shared/Page';
 
 export default function WorkspaceNotFound() {
   return (
-    <div className="flex h-full flex-col items-center justify-center min-h-[60vh] text-center px-4">
+    <div className="flex h-full flex-col items-center justify-center min-h-[60dvh] text-center px-4">
       <p className="text-6xl font-display font-bold text-primary mb-4">404</p>
       <PageHeader
         title="Workspace not found"

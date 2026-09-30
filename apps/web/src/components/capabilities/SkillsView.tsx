@@ -188,7 +188,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
         </div>
 
         {/* Scrollable Capability Items */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain divide-y divide-border p-1.5 space-y-0.5">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain divide-y divide-border p-1.5 pb-12 space-y-0.5">
           {sortedSkills.length === 0 ? (
             <div className="p-8">
               <EmptyState
@@ -406,7 +406,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
             </div>
 
             {/* Detail Content Body: Clean Monospace Instructions */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-background min-h-0 space-y-3.5">
+            <div className="flex-1 overflow-y-auto overscroll-y-contain p-4 sm:p-5 pb-16 bg-background min-h-0 space-y-3.5">
               {isEditing ? (
                 <div className="rounded-xl border border-border bg-surface p-4 shadow-md space-y-3">
                   <div className="flex items-center justify-between text-2xs font-sans text-text-secondary pb-2 border-b border-border">

@@ -61,6 +61,7 @@ const ROUTE_ICONS: Record<string, React.ReactNode> = {
   cognition: <CpuIcon size={16} />,
   council: <UsersIcon size={16} />,
   memory: <BrainIcon size={16} />,
+  'vault-sync': <DatabaseIcon size={16} />,
   search: <SearchIcon size={16} />,
   files: <FileTextIcon size={16} />,
   career: <BriefcaseIcon size={16} />,
@@ -120,7 +121,7 @@ function SidebarNavLink({ link, current, collapsed }: SidebarNavLinkProps) {
         title={collapsed ? link.name : undefined}
         aria-label={collapsed ? link.name : undefined}
         aria-current={current ? 'page' : undefined}
-        className={`flex items-center rounded-md transition-colors text-xs font-medium ${
+        className={`relative flex items-center rounded-md transition-colors text-xs font-medium ${
           collapsed ? 'p-2 justify-center' : 'gap-2.5 px-2.5 py-1.5'
         } ${
           current
@@ -205,7 +206,7 @@ export function Sidebar({
     <>
       <aside
         aria-label="Sidebar navigation"
-        className={`h-screen h-[100dvh] border-r border-border-subtle bg-surface flex flex-col transition-all duration-200 select-none ${
+        className={`h-full border-r border-border-subtle bg-surface flex flex-col transition-all duration-200 select-none relative overflow-hidden ${
           open ? 'fixed inset-y-0 left-0 z-40 w-64' : 'hidden md:flex'
         } ${isCol ? 'md:w-16' : 'md:w-64'}`}
       >
@@ -335,7 +336,7 @@ export function Sidebar({
 
         {/* Nav Links */}
         <nav
-          className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain py-2.5 px-2 space-y-4"
+          className="relative flex-1 min-h-0 overflow-y-auto overscroll-y-contain py-2.5 px-2 space-y-4"
           aria-label="Workspace navigation"
         >
           {groups.map((group, gIdx) => (
@@ -368,7 +369,7 @@ export function Sidebar({
 
         {/* Footer Utilities */}
         <div
-          className={`p-2 border-t border-border-subtle bg-surface ${isCol ? 'flex flex-col items-center gap-2' : 'space-y-1'}`}
+          className={`p-2 border-t border-border-subtle bg-surface shrink-0 ${isCol ? 'flex flex-col items-center gap-2' : 'space-y-1'}`}
         >
           {onOpenCommandCenter && (
             <button
