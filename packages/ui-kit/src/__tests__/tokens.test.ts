@@ -47,74 +47,194 @@ describe('Vaeloom Design Token Engine (DS-GATE-03)', () => {
     expect(css).toContain('.dark');
     expect(css).toContain('.light');
     expect(css).toContain('.high-contrast');
-    expect(css).toContain('--color-bg-canvas: #08080a');
-    expect(css).toContain('--color-bg-canvas: #f8f9fc');
+    // Canvas values are now taken verbatim from globals.css. The dark canvas is
+    // the brand pure black (#000000) and the light canvas #f7f8fc; the previous
+    // #08080a / #f8f9fc came from a hand-authored JSON that had drifted.
     expect(css).toContain('--color-bg-canvas: #000000');
+    expect(css).toContain('--color-bg-canvas: #f7f8fc');
     expect(css).toContain('--radius-md: 6px');
     expect(css).toContain('--radius-control: var(--radius-md)');
     expect(css).toContain('--radius-card: var(--radius-lg)');
     expect(css).toContain('--elevation-raised: 0 1px 3px 0 rgb(0 0 0 / 0.1)');
     expect(css).toContain('--elevation-card: var(--elevation-raised)');
+    // globals.css does not declare --color-focus-ring inside the high-contrast
+    // block, so that theme inherits the :root value; generateCssVariables()
+    // pins the accessible yellow explicitly.
     expect(css).toContain('--color-focus-ring: #ffff00');
   });
 });
 
 /**
- * These two engines are NOT supposed to agree. `globals.css` is the runtime
- * stylesheet the app actually loads; the JSON under `src/tokens` is design
- * documentation with no build-time caller. Reconciling them is out of scope, so
- * the drift is pinned here as a baseline that fails if it changes.
+ * The JSON under `src/tokens` is GENERATED from `apps/web/src/styles/globals.css`
+ * by `scripts/gen_tokens.py`. These tests re-derive every runtime-derived value
+ * straight from the stylesheet and compare, so hand-editing the JSON (or
+ * changing globals.css without regenerating) fails here rather than silently
+ * diverging.
  *
- * Measured shape of the drift (86 custom properties in globals.css):
- *   - colour:  disjoint, 2 of 57 names shared, both value-identical
- *   - scales:  aligned, 17 of 17 `--radius-*` / `--elevation-*` value-identical
- *   - space + typography: engine-only
+ * The map is read from `tokens/mapping.json` — also generated — so the
+ * globals-name -> token-name relationship has exactly one definition.
+ *
+ * What is deliberately NOT asserted: that the two agree on everything. 18 of
+ * 57 names per theme are design-record-only (15 AI semantic colours, the scrim,
+ * and text-inverse) and have no runtime counterpart. Those are listed in each
+ * theme's `provenance.designRecordOnly` and must stay disjoint from
+ * `runtimeDerived`, so nothing in the JSON implies an implementation that does
+ * not exist.
  */
-describe('token engine vs. runtime stylesheet drift baseline', () => {
-  const generated = generateCssVariables();
-  const engineValues = new Map(
-    [...generated.matchAll(/^\s*(--[a-zA-Z0-9-]+)\s*:\s*([^;]+);/gm)].map((m) => [
-      m[1] as string,
-      (m[2] as string).trim(),
-    ]),
-  );
-  const engineNames = declaredNames(generated);
+describe('generated token JSON is in sync with globals.css', () => {
   const globalsCss = readFileSync(GLOBALS_CSS, 'utf8');
-  const runtimeValues = new Map<string, Set<string>>();
-  for (const m of globalsCss.matchAll(/(--[a-zA-Z0-9-]+)\s*:\s*([^;]+);/g)) {
-    const name = m[1] as string;
-    const bucket = runtimeValues.get(name) ?? new Set<string>();
-    bucket.add((m[2] as string).trim());
-    runtimeValues.set(name, bucket);
-  }
-  const runtimeNames = declaredNames(globalsCss);
+  const mapping = (
+    JSON.parse(
+      readFileSync(
+        resolve(REPO_ROOT, 'packages', 'ui-kit', 'src', 'tokens', 'mapping.json'),
+        'utf8',
+      ),
+    ) as { map: Record<string, string[]> }
+  ).map;
 
-  const SHARED_COLORS = ['--color-focus-ring', '--color-focus-ring-offset'] as const;
-  const inBoth = (names: string[], other: string[]) =>
-    names.filter((n) => other.includes(n)).sort();
+  /** globals.css stores colours as `R G B` triplets for Tailwind alpha support. */
+  const toHex = (value: string): string => {
+    const v = value.trim();
+    if (v.startsWith('#')) return v.toLowerCase();
+    const parts = v.split(/\s+/);
+    if (parts.length === 3 && parts.every((p) => /^\d+$/.test(p))) {
+      return `#${parts.map((p) => Number(p).toString(16).padStart(2, '0')).join('')}`;
+    }
+    return v;
+  };
 
-  it('reads the documented runtime source of truth from disk', () => {
-    expect(existsSync(GLOBALS_CSS)).toBe(true);
-    expect(TOKEN_SOURCE_OF_TRUTH.runtime).toBe('apps/web/src/styles/globals.css');
-    expect(TOKEN_SOURCE_OF_TRUTH.designRecord).toBe('packages/ui-kit/src/tokens');
-    expect(TOKEN_SOURCE_OF_TRUTH.wiredIntoAppBuild).toBe(false);
+  /** Every value globals.css declares for a name, normalised to hex. */
+  const runtimeValues = (name: string): Set<string> => {
+    const out = new Set<string>();
+    for (const m of globalsCss.matchAll(new RegExp(`${name}\\s*:\\s*([^;]+);`, 'g'))) {
+      out.add(toHex(m[1] as string));
+    }
+    return out;
+  };
+
+  const themeNames = ['dark', 'light', 'high-contrast'] as const;
+
+  it('marks every theme as generated, with a provenance block', () => {
+    for (const theme of themeNames) {
+      const t = tokens.themes[theme] as unknown as {
+        generated: boolean;
+        provenance: { generatedFrom: string; runtimeDerived: string[]; designRecordOnly: string[] };
+      };
+      expect(t.generated).toBe(true);
+      expect(t.provenance.generatedFrom).toBe('apps/web/src/styles/globals.css');
+      expect(Array.isArray(t.provenance.runtimeDerived)).toBe(true);
+      expect(Array.isArray(t.provenance.designRecordOnly)).toBe(true);
+    }
   });
 
-  it('keeps the colour namespaces disjoint apart from the two documented names', () => {
-    const engineColors = engineNames.filter((n) => n.startsWith('--color-'));
-    expect(inBoth(engineColors, runtimeNames)).toEqual([...SHARED_COLORS]);
-    expect(TOKEN_SOURCE_OF_TRUTH.sharedColorNames).toEqual([...SHARED_COLORS]);
+  it('keeps runtimeDerived and designRecordOnly disjoint and complete', () => {
+    for (const theme of themeNames) {
+      const t = tokens.themes[theme] as unknown as {
+        values: Record<string, string>;
+        provenance: { runtimeDerived: string[]; designRecordOnly: string[] };
+      };
+      const runtime = new Set(t.provenance.runtimeDerived);
+      const recordOnly = new Set(t.provenance.designRecordOnly);
+      for (const name of runtime) {
+        expect(recordOnly.has(name)).toBe(false);
+      }
+      const union = new Set([...runtime, ...recordOnly]);
+      expect(union.size).toBe(Object.keys(t.values).length);
+      for (const name of Object.keys(t.values)) {
+        expect(union.has(name)).toBe(true);
+      }
+    }
+  });
+
+  it('gives every runtimeDerived value a matching declaration in globals.css', () => {
+    for (const theme of themeNames) {
+      const t = tokens.themes[theme] as unknown as {
+        values: Record<string, string>;
+        provenance: { runtimeDerived: string[] };
+      };
+      const derived = new Set(t.provenance.runtimeDerived);
+
+      for (const [globalsName, tokenNames] of Object.entries(mapping)) {
+        const declared = runtimeValues(globalsName);
+        expect(declared.size).toBeGreaterThan(0);
+        for (const tokenName of tokenNames) {
+          if (!derived.has(tokenName)) continue;
+          // The value must appear verbatim in globals.css for at least one
+          // theme block. Themes that legitimately inherit (e.g. high-contrast
+          // falls back to :root for --color-focus-ring) still match, because the
+          // set spans every block in the file.
+          expect(Array.from(declared)).toContain(t.values[tokenName]);
+        }
+      }
+    }
+  });
+
+  it('documents the exact design-record-only gaps, so they stay visible', () => {
+    for (const theme of themeNames) {
+      const t = tokens.themes[theme] as unknown as {
+        provenance: { designRecordOnly: string[] };
+      };
+      expect([...t.provenance.designRecordOnly].sort()).toEqual(
+        [...TOKEN_SOURCE_OF_TRUTH.designRecordOnly].sort(),
+      );
+      expect(TOKEN_SOURCE_OF_TRUTH.runtimeDerivedPerTheme).toBe(t.provenance.runtimeDerived.length);
+    }
+  });
+
+  it('never marks a name as runtime-derived unless globals.css declares it', () => {
+    // The inverse direction of the sync test: a token claiming a runtime source
+    // must actually be traceable to a declaration in the stylesheet. This is
+    // what stops a hand-edited provenance block from inventing coverage.
+    for (const theme of themeNames) {
+      const t = tokens.themes[theme] as unknown as {
+        provenance: { runtimeDerived: string[] };
+      };
+      const traceable = new Set(Object.values(mapping).flat());
+      for (const name of t.provenance.runtimeDerived) {
+        expect(traceable.has(name)).toBe(true);
+      }
+    }
+  });
+
+  it('resolves the destructive active state against a real token, not a guess', () => {
+    // `--color-action-destructive-active` was aspirational: semantic.json and
+    // component.json both dereference it, but globals.css defined no
+    // `--error-active`, so it carried a hand-picked hex no stylesheet backed.
+    // globals.css now defines it in all three themes, so the generator derives
+    // it and the dangling var() reference is gone.
+    const expected: Record<string, string> = {
+      dark: '#dc2626',
+      light: '#991b1b',
+      'high-contrast': '#cc0000',
+    };
+    for (const theme of themeNames) {
+      const t = tokens.themes[theme] as unknown as {
+        values: Record<string, string>;
+        provenance: { runtimeDerived: string[]; designRecordOnly: string[] };
+      };
+      expect(t.values['--color-action-destructive-active']).toBe(expected[theme]);
+      expect(t.provenance.runtimeDerived).toContain('--color-action-destructive-active');
+      expect(t.provenance.designRecordOnly).not.toContain('--color-action-destructive-active');
+    }
   });
 
   it('keeps the radius and elevation scales value-identical on both sides', () => {
+    const generated = generateCssVariables();
+    const engineValues = new Map(
+      [...generated.matchAll(/^\s*(--[a-zA-Z0-9-]+)\s*:\s*([^;]+);/gm)].map((m) => [
+        m[1] as string,
+        (m[2] as string).trim(),
+      ]),
+    );
+    const engineNames = declaredNames(generated);
+    const runtimeNames = declaredNames(globalsCss);
     const scales = engineNames.filter(
       (n) => n.startsWith('--radius-') || n.startsWith('--elevation-'),
     );
-    const shared = inBoth(scales, runtimeNames);
+    const shared = scales.filter((n) => runtimeNames.includes(n)).sort();
     expect(shared).toHaveLength(17);
-    expect(TOKEN_SOURCE_OF_TRUTH.sharedScaleNames).toBe(shared.length);
     const mismatched = shared.filter(
-      (n) => ![...(runtimeValues.get(n) ?? [])].includes(engineValues.get(n) ?? ''),
+      (n) => ![...runtimeValues(n)].includes(engineValues.get(n) ?? ''),
     );
     expect(mismatched).toEqual([]);
   });
@@ -123,6 +243,9 @@ describe('token engine vs. runtime stylesheet drift baseline', () => {
     const engineOnlyPrefixes = TOKEN_SOURCE_OF_TRUTH.engineOnlyNamespaces.map((p) =>
       p.replace('*', ''),
     );
+    const generated = generateCssVariables();
+    const engineNames = declaredNames(generated);
+    const runtimeNames = declaredNames(globalsCss);
     const leaked = engineNames.filter(
       (n) => engineOnlyPrefixes.some((p) => n.startsWith(p)) && runtimeNames.includes(n),
     );
@@ -131,46 +254,33 @@ describe('token engine vs. runtime stylesheet drift baseline', () => {
     expect(runtimeNames.some((n) => n.startsWith('--font-size-'))).toBe(false);
   });
 
-  it('keeps the two shared colour names value-identical in the dark and light themes', () => {
-    type ThemeValues = (typeof tokens.themes)['dark']['values'];
-    const blocks: Array<[ThemeValues, RegExp]> = [
-      [tokens.themes.dark.values, /:root,\s*\.dark\s*\{([\s\S]*?)\n\}/],
-      [tokens.themes.light.values, /\.light\s*\{([\s\S]*?)\n\}/],
-    ];
-    for (const [values, block] of blocks) {
-      const blockText = block.exec(generated)?.[1] ?? '';
-      for (const name of SHARED_COLORS) {
-        expect(values[name]).toMatch(/^#[0-9a-f]{6}$/);
-        expect(blockText).toContain(`${name}: ${values[name]};`);
-        // globals.css declares these twice (dark root + light), so membership is
-        // the honest assertion: both theme values must be present there.
-        expect(runtimeValues.get(name)).toContain(values[name]);
-      }
-    }
-    expect(runtimeValues.get('--color-focus-ring')).toEqual(new Set(['#818cf8', '#6366f1']));
-    expect(runtimeValues.get('--color-focus-ring-offset')).toEqual(new Set(['#08080a', '#ffffff']));
-    // The engine's high-contrast focus ring is intentionally not in globals.css.
-    expect(tokens.themes['high-contrast'].values['--color-focus-ring']).toBe('#ffff00');
-    expect(runtimeValues.get('--color-focus-ring')?.has('#ffff00')).toBe(false);
+  it('keeps every theme at the same value count, so no theme is partial', () => {
+    const counts = themeNames.map((t) => Object.keys(tokens.themes[t].values).length);
+    expect(new Set(counts).size).toBe(1);
+    expect(counts[0]).toBe(57);
   });
 
   it('pins the size of the runtime palette so silent divergence is visible', () => {
-    // 88 as of the token-authority pass that added the previously-dangling
-    // --primary-fg and --primary-700 (both were referenced by shipped code but
-    // declared nowhere). Bump deliberately, and note the delta in the commit.
-    expect(runtimeNames).toHaveLength(88);
-    // The two that shipped code dereferenced but which were never declared.
+    const runtimeNames = declaredNames(globalsCss);
+    // 104 as of the AI-semantic-token pass, which added the 15 --ai-* names
+    //   --error-active  - the pressed destructive state, which semantic.json and
+    //                     component.json already dereferenced (dangling until now)
+    //   --ai-* x15  - AI semantic states, previously design-record-only
+    // Bump deliberately, and note the delta in the commit.
+    expect(runtimeNames).toHaveLength(104);
     expect(runtimeNames).toContain('--primary-fg');
     expect(runtimeNames).toContain('--primary-700');
-    expect(runtimeOnlyColours(runtimeNames, engineNames).length).toBeGreaterThan(50);
+    expect(runtimeNames).toContain('--error-active');
+    // Every theme must override the focus ring, or high-contrast silently
+    // inherits the dim :root indigo and loses its accessible yellow.
+    const highContrastBlock = globalsCss.slice(
+      globalsCss.indexOf('.high-contrast,'),
+      globalsCss.indexOf('@media (prefers-contrast'),
+    );
+    expect(highContrastBlock).toContain('--color-focus-ring: #ffff00');
+    expect(highContrastBlock).toContain('--color-focus-ring-offset: #000000');
   });
 });
-
-function runtimeOnlyColours(runtimeNames: string[], engineNames: string[]): string[] {
-  return runtimeNames.filter(
-    (n) => !engineNames.includes(n) && !n.startsWith('--radius-') && !n.startsWith('--elevation-'),
-  );
-}
 
 describe('generateCssVariables() is internally self-consistent', () => {
   const generated = generateCssVariables();

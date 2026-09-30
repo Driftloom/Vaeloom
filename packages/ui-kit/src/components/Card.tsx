@@ -19,7 +19,11 @@ export const Card: React.FC<CardProps> = ({
   const paddings: Record<string, string> = {
     none: '',
     sm: 'p-3',
-    md: 'p-4',
+    // Responsive padding, matching the `.card` class alias in globals.css.
+    // `sm:p-5` was the established behaviour across the ~77 files that use the
+    // class; converging on `p-4` alone would have been a silent visual
+    // regression on every desktop card.
+    md: 'p-4 sm:p-5',
     lg: 'p-6',
   };
 

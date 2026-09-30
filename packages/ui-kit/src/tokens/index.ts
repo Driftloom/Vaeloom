@@ -1,29 +1,38 @@
 /**
  * Design token source of record.
  *
- * THIS JSON TREE IS NOT THE RUNTIME AUTHORITY. The stylesheet that actually
- * drives the application is `apps/web/src/styles/globals.css`; the app build
- * never imports these files, and `generateCssVariables()` has no callers in the
- * app. Editing a value here changes nothing at runtime.
+ * GENERATED FILE — DO NOT HAND-EDIT.
  *
- * Treat this module as documentation and tooling input only. Do not add code
- * paths, styles, or Tailwind config that assume these values reach the DOM, and
- * do not "fix" a visual regression by editing here — change globals.css.
+ * `apps/web/src/styles/globals.css` is the single source of truth. The JSON in
+ * this directory is a machine-generated projection of it, produced by
+ * `scripts/gen_tokens.py`. Regenerate with:
  *
- * The two engines are not aligned. Measured against the current
- * `apps/web/src/styles/globals.css` (86 unique custom properties):
+ *     python scripts/gen_tokens.py           # rewrite the JSON
+ *     python scripts/gen_tokens.py --check   # CI gate; exits 1 on drift
  *
- *   - Colour: disjoint. Of the 57 `--color-*` names here, exactly two exist
- *     there — `--color-focus-ring` and `--color-focus-ring-offset` — and those
- *     two are value-identical in the dark and light themes. globals.css uses
- *     its own unprefixed palette (`--surface`, `--text`, `--accent`, ...).
- *   - Radius + elevation: aligned. All 17 `--radius-*` / `--elevation-*` names
- *     exist in both and are value-identical.
- *   - Space + typography: engine-only. globals.css defines no `--space-*`,
- *     `--font-size-*` or `--font-weight-*`.
+ * The app build never reads these files, so editing them still changes no
+ * pixels — that is precisely why they must be generated rather than
+ * hand-maintained. They previously were hand-authored and drifted: 66 colour
+ * values across the three themes disagreed with the stylesheet, and the JSON
+ * light palette would have failed the very axe contrast checks globals.css was
+ * explicitly tuned to pass.
  *
- * `src/__tests__/tokens.test.ts` pins all three facts as a baseline so the drift
- * cannot change silently.
+ * PROVENANCE, NOT VAGUENESS
+ * -------------------------
+ * Each theme file records which values come from the runtime:
+ *
+ *   provenance.runtimeDerived    - present in globals.css; drift-checked.
+ *   provenance.designRecordOnly  - design intent with NO runtime counterpart.
+ *                                  Never given an invented runtime value, and
+ *                                  NOT drift-checked, so nothing here implies
+ *                                  an implementation that does not exist.
+ *
+ * Currently 39 of 57 names per theme are runtime-derived. The 18
+ * design-record-only names are the 15 AI semantic colours
+ * (proposed/processing/verified/needs-review/blocked), `--color-bg-scrim`
+ * (globals.css `--overlay` carries no alpha) and `--color-text-inverse`.
+ * Those are real gaps in globals.css, tracked in
+ * `docs/frontend/design-tokens-audit.md`.
  */
 import component from './component.json';
 import primitives from './primitives.json';
@@ -33,15 +42,28 @@ import highContrastTheme from './themes/high-contrast.json';
 import lightTheme from './themes/light.json';
 
 /**
- * Machine-readable form of the warning above, for consumers that want to assert
- * on it rather than read a comment.
+ * Machine-readable form of the contract above, for consumers that want to
+ * assert on it rather than read a comment.
  */
 export const TOKEN_SOURCE_OF_TRUTH = {
-  runtime: 'apps/web/src/styles/globals.css',
-  designRecord: 'packages/ui-kit/src/tokens',
+  /** The only stylesheet the app build and Tailwind actually read. */
+  source: 'apps/web/src/styles/globals.css',
+  /** Generated projection of `source`. Never hand-edited. */
+  generated: 'packages/ui-kit/src/tokens',
+  generator: 'scripts/gen_tokens.py',
+  checkCommand: 'python scripts/gen_tokens.py --check',
+  /** These JSON files are still not read by the app build. */
   wiredIntoAppBuild: false,
-  sharedColorNames: ['--color-focus-ring', '--color-focus-ring-offset'],
-  sharedScaleNames: 17,
+  /** Count of colour names per theme that globals.css actually defines. */
+  runtimeDerivedPerTheme: 55,
+  /** Total colour names per theme, all three themes in lockstep. */
+  valuesPerTheme: 57,
+  /**
+   * Design intent with no runtime counterpart. Listed so that nothing in this
+   * tree implies an implementation that does not exist.
+   */
+  designRecordOnly: ['--color-bg-scrim', '--color-text-inverse'],
+  /** globals.css namespaces this engine does not model. */
   engineOnlyNamespaces: ['--space-*', '--font-size-*', '--font-weight-*'],
 } as const;
 

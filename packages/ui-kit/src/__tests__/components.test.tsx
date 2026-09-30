@@ -28,11 +28,11 @@ import * as uiKit from '../index';
 type Variant = NonNullable<ButtonProps['variant']>;
 
 const variantSignature: Record<Variant, string[]> = {
-  primary: ['bg-action', 'text-action-fg', 'focus:ring-accent'],
-  secondary: ['bg-surface-hover', 'border', 'focus:ring-border'],
+  primary: ['bg-action', 'text-action-fg', 'focus-visible:ring-accent'],
+  secondary: ['bg-surface-hover', 'border', 'focus-visible:ring-border'],
   outline: ['bg-transparent', 'border', 'hover:bg-surface-hover'],
   ghost: ['bg-transparent', 'hover:bg-surface-hover'],
-  danger: ['bg-error', 'text-error-fg', 'focus:ring-error'],
+  danger: ['bg-error', 'text-error-fg', 'focus-visible:ring-error'],
 };
 
 describe('Button', () => {
@@ -96,9 +96,14 @@ describe('Button', () => {
     for (const variant of Object.keys(variantSignature) as Variant[]) {
       const { unmount } = render(<Button variant={variant}>Action</Button>);
       const cls = screen.getByRole('button').className.split(/\s+/);
-      expect(cls).toContain('focus:ring-2');
-      expect(cls).toContain('focus:ring-offset-2');
+      expect(cls).toContain('focus-visible:ring-2');
+      expect(cls).toContain('focus-visible:ring-offset-2');
       expect(cls).toContain('focus:outline-none');
+      // Regression guard: a bare `focus:ring-*` would fire the ring on every
+      // mouse click, duplicating the global `:focus-visible` outline in
+      // globals.css. The ring must be keyboard-only.
+      expect(cls.filter((c) => /^focus:ring/.test(c))).toEqual([]);
+      expect(cls.some((c) => c.startsWith('focus-visible:ring'))).toBe(true);
       unmount();
     }
   });
@@ -859,12 +864,19 @@ describe('public export surface', () => {
   });
 
   it('publishes the token source-of-truth record so consumers stop guessing', () => {
+    // globals.css is the source; the JSON tree is a GENERATED projection of it.
+    // `designRecordOnly` is asserted verbatim because those 2 names are real
+    // gaps in globals.css (the alpha-less scrim and text-inverse) and
+    // the record must not imply they ship.
     expect(uiKit.TOKEN_SOURCE_OF_TRUTH).toEqual({
-      runtime: 'apps/web/src/styles/globals.css',
-      designRecord: 'packages/ui-kit/src/tokens',
+      source: 'apps/web/src/styles/globals.css',
+      generated: 'packages/ui-kit/src/tokens',
+      generator: 'scripts/gen_tokens.py',
+      checkCommand: 'python scripts/gen_tokens.py --check',
       wiredIntoAppBuild: false,
-      sharedColorNames: ['--color-focus-ring', '--color-focus-ring-offset'],
-      sharedScaleNames: 17,
+      runtimeDerivedPerTheme: 55,
+      valuesPerTheme: 57,
+      designRecordOnly: ['--color-bg-scrim', '--color-text-inverse'],
       engineOnlyNamespaces: ['--space-*', '--font-size-*', '--font-weight-*'],
     });
   });

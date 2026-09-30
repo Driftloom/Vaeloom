@@ -19,20 +19,29 @@ export const Button: React.FC<ButtonProps> = ({
   className = '',
   ...props
 }) => {
+  // Canonical base. `focus-visible` (not `focus`) is deliberate: the global
+  // `:focus-visible` outline in globals.css is the keyboard indicator, and a
+  // bare `focus:` ring duplicated it on every mouse click. The `.btn-*` class
+  // aliases in globals.css use the same focus-visible contract so both
+  // surfaces render an identical indicator.
   const base =
-    'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed';
+    'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variants: Record<string, string> = {
     // Canonical primary action family — indigo with guaranteed-contrast label.
     primary:
-      'bg-action text-action-fg hover:bg-action-hover active:bg-action-active focus:ring-accent',
+      'bg-action text-action-fg hover:bg-action-hover active:bg-action-active focus-visible:ring-accent',
     secondary:
-      'bg-surface-hover text-text hover:bg-surface-active focus:ring-border border border-border',
+      'bg-surface-hover text-text hover:bg-surface-active focus-visible:ring-border border border-border',
     outline:
-      'bg-transparent text-text hover:bg-surface-hover focus:ring-border border border-border',
-    ghost: 'bg-transparent text-text hover:bg-surface-hover focus:ring-border',
+      'bg-transparent text-text hover:bg-surface-hover focus-visible:ring-border border border-border',
+    ghost: 'bg-transparent text-text hover:bg-surface-hover focus-visible:ring-border',
     // Destructive actions use the semantic error color, not the accent.
-    danger: 'bg-error text-error-fg hover:bg-error/90 active:bg-error/80 focus:ring-error',
+    // `active:bg-error-active` is a real token (--error-active, all 3 themes)
+    // rather than the `bg-error/80` alpha hack, so the pressed state is defined
+    // by the palette instead of a hard-coded opacity.
+    danger:
+      'bg-error text-error-fg hover:bg-error/90 active:bg-error-active focus-visible:ring-error',
   };
 
   const sizes: Record<string, string> = {
