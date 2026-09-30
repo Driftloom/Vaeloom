@@ -60,9 +60,20 @@ const ThemeContext = createContext<ThemeContextValue>({
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Lazy initializer keeps SSR markup stable (server renders 'dark' default;
-  // the pre-paint script reconciles before hydration paint).
-  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+  // Always initialize with 'dark' on both server and client during initial render
+  // to ensure that initial SSR HTML and client hydration VDOM match identically.
+  // The blocking script in root layout applies stored/OS theme before first paint.
+  const [theme, setThemeState] = useState<Theme>('dark');
+
+  useEffect(() => {
+    const clientTheme = getInitialTheme();
+    if (clientTheme !== 'dark') {
+      setThemeState(clientTheme);
+    }
+    applyTheme(clientTheme);
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (meta) meta.content = THEME_BG[clientTheme];
+  }, []);
 
   useEffect(() => {
     applyTheme(theme);
