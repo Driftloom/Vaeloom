@@ -114,7 +114,19 @@ export function middleware(request: NextRequest) {
       "form-action 'self'",
     ].join('; '),
   );
-  response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+
+  // Only enforce HSTS in production for real domain names (never on localhost/127.0.0.1,
+  // which forces browsers like Edge/Chrome into ERR_SSL_PROTOCOL_ERROR on local HTTP dev).
+  if (
+    process.env.NODE_ENV === 'production' &&
+    request.nextUrl.hostname !== 'localhost' &&
+    request.nextUrl.hostname !== '127.0.0.1'
+  ) {
+    response.headers.set(
+      'Strict-Transport-Security',
+      'max-age=63072000; includeSubDomains; preload',
+    );
+  }
 
   return response;
 }

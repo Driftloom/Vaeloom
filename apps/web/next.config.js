@@ -70,10 +70,9 @@ const nextConfig = {
               "form-action 'self'",
             ].join('; '),
           },
-          {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=63072000; includeSubDomains; preload',
-          },
+          // Note: Strict-Transport-Security is intentionally omitted from static headers here
+          // and handled dynamically in src/middleware.ts. This prevents `next start` on localhost
+          // from poisoning browser HSTS caches and causing ERR_SSL_PROTOCOL_ERROR.
         ],
       },
     ];

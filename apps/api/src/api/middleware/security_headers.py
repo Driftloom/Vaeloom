@@ -24,5 +24,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             # "default-src 'none'; sandbox" so stored HTML/SVG cannot execute in
             # the app origin. Overwriting that here re-enabled stored XSS.
             response.headers["Content-Security-Policy"] = "default-src 'self'"
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        host = request.url.hostname or ""
+        if host not in ("localhost", "127.0.0.1"):
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
