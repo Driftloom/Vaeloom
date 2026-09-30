@@ -391,11 +391,17 @@ html.high-contrast,
 
   html {
     scroll-behavior: smooth;
+    scroll-padding-top: 4rem;
     color-scheme: dark;
   }
 
   html.light {
     color-scheme: light;
+  }
+
+  /* Anchor targets account for sticky TopNav (h-14 = 56px) */
+  [id] {
+    scroll-margin-top: 4rem;
   }
 }
 
@@ -627,6 +633,31 @@ html.high-contrast,
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+
+  /* Canonical overscroll & scroll region utilities */
+  .scroll-contain {
+    overscroll-behavior: contain;
+  }
+  .overscroll-y-contain {
+    overscroll-behavior-y: contain;
+  }
+  .overscroll-x-contain {
+    overscroll-behavior-x: contain;
+  }
+  .scroll-region {
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .scroll-region-x {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .scroll-locked {
+    overflow: hidden !important;
+    touch-action: none;
+  }
 }
 
 /* ============================================================
@@ -784,6 +815,9 @@ html.high-contrast,
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
@@ -806,7 +840,7 @@ html.high-contrast,
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar — WebKit */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -822,6 +856,38 @@ html.high-contrast,
 
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-surface-400;
+}
+
+/* Custom scrollbar — Firefox & standard */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--surface-300)) transparent;
+}
+
+/* Print styles: unpin sticky/fixed containers and reveal all content */
+@media print {
+  body, html {
+    overflow: visible !important;
+    height: auto !important;
+    min-height: auto !important;
+  }
+  aside,
+  header,
+  nav,
+  .sticky,
+  .fixed {
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+  .overflow-hidden,
+  .overflow-y-auto,
+  .overflow-x-auto,
+  .overflow-auto {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
