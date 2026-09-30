@@ -112,8 +112,12 @@ class TestCapabilitiesE2E:
         assert test_res.status_code == 200
         test_data = test_res.json()
         assert test_data["status"] == "success"
+        assert test_data["executed"] is True
         assert "latency_ms" in test_data
         assert test_data["latency_ms"] >= 0.0
+        assert test_data["output"]["status"] == "ok"
+        assert test_data["output"]["tool"] == "custom_echo_tool"
+        assert test_data["output"]["echo"] == {"message": "hello world"}
 
         # 9. Filter capabilities by category
         filter_res = await client.get("/api/v1/capabilities?category=skill", headers=headers)
@@ -121,8 +125,34 @@ class TestCapabilitiesE2E:
         skills = filter_res.json()
         assert len(skills) >= 1
         assert all(s["category"] == "skill" for s in skills)
+        assert all(s["installed"] is True for s in skills)
+        assert all(s["usage_count"] == 0 for s in skills)
+        assert all(s["last_used_at"] is None for s in skills)
+        assert all(s["installed_at"] is not None for s in skills)
 
-        # 10. Delete capability
+        # 9b. Telemetry fields and skill metadata are persisted on the row
+        skill_row = next(s for s in skills if s["id"] == skill_id)
+        assert skill_row["tags"] == ["Security", "Audit"]
+        assert skill_row["autonomy"] == "autonomous"
+
+        # 10. Merge the workspace rows with the browsable catalog
+        merged_res = await client.get(
+            "/api/v1/capabilities?category=skill&include_catalog=true", headers=headers
+        )
+        assert merged_res.status_code == 200
+        merged = merged_res.json()
+        browsable = [m for m in merged if not m["installed"]]
+        assert len(browsable) == 12
+        assert all(m["id"] is None and m["enabled"] is False for m in browsable)
+        assert all(m["trust_class"] in ("core_trusted", "community") for m in browsable)
+        assert all("## Mission" in m["markdown_doc"] for m in browsable)
+
+        # 10b. The catalog route is not swallowed by the {cap_id} route
+        catalog_res = await client.get("/api/v1/capabilities/catalog?category=skill", headers=headers)
+        assert catalog_res.status_code == 200
+        assert len(catalog_res.json()) == 12
+
+        # 11. Delete capability
         del_res = await client.delete(f"/api/v1/capabilities/{skill_id}", headers=headers)
         assert del_res.status_code == 204
 
