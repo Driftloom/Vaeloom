@@ -20,6 +20,7 @@ from ..schemas.agent import (
     ScheduleResponse,
 )
 from ..services.agent_service import agent_service
+from ..services.memory_service import retrieve_memory_and_vault_context
 
 router = APIRouter()
 
@@ -575,9 +576,11 @@ async def chat(
     _tenant = getattr(request.state, "tenant_id", None)
     if not _tenant and isinstance(current_user, dict):
         _tenant = current_user.get("tenant_id") or (current_user.get("tenant") if isinstance(current_user.get("tenant"), str) else None)
+    bg_context = await retrieve_memory_and_vault_context(dto.workspaceId, dto.message, db)
+    full_message = f"{dto.message}\n\n{bg_context}" if bg_context else dto.message
     req = UserRequest(
         request_id=str(uuid.uuid4()),
-        message=dto.message,
+        message=full_message,
         workspace_id=dto.workspaceId,
         preferred_agent=dto.agentName.strip().lower() if dto.agentName else None,
         user_id=str(_uid) if _uid else None,
@@ -614,6 +617,8 @@ async def chat_stream(
 
     req_id = str(uuid.uuid4())
     preferred = dto.agentName.strip().lower() if dto.agentName else None
+    bg_context = await retrieve_memory_and_vault_context(dto.workspaceId, dto.message, db)
+    full_message = f"{dto.message}\n\n{bg_context}" if bg_context else dto.message
 
     async def event_gen():
         try:
@@ -624,9 +629,9 @@ async def chat_stream(
                 try:
                     from ..orchestrator.supervisor import is_multi_agent_request as _is_multi
                     from ..orchestrator.supervisor import run_supervisor_stream
-                    if _is_multi(dto.message):
+                    if _is_multi(full_message):
                         yield f"event: supervisor_start\ndata: {json.dumps({'message': 'Complex multi-step goal detected — delegating to specialist team'})}\n\n"
-                        async for sup_evt in run_supervisor_stream(dto.message, dto.workspaceId, req_id):
+                        async for sup_evt in run_supervisor_stream(full_message, dto.workspaceId, req_id):
                             yield f"event: {sup_evt.get('event','data')}\ndata: {json.dumps(sup_evt.get('data', {}))}\n\n"
                             if sup_evt.get("event") == "done":
                                 # QA gate for supervisor output
@@ -652,7 +657,7 @@ async def chat_stream(
             else:
                 from api.orchestrator.router import route_intent_and_plan
                 agent_name, confidence, plan = await route_intent_and_plan(
-                    dto.message,
+                    full_message,
                     workspace_id=str(dto.workspaceId) if dto.workspaceId else None,
                 )
             yield f"event: intent\ndata: {json.dumps({'agent': agent_name, 'confidence': confidence, 'request_id': req_id})}\n\n"
@@ -754,7 +759,7 @@ async def chat_stream(
                 yield "event: done\ndata: {}\n\n"
                 return
             agent = agent_cls()
-            agent_req = AgentRequest(agent=agent, request_id=req_id, message=dto.message, workspace_id=dto.workspaceId, agent_name=agent_name,
+            agent_req = AgentRequest(agent=agent, request_id=req_id, message=full_message, workspace_id=dto.workspaceId, agent_name=agent_name,
                                      db=db, user_id=(current_user.get("sub") or current_user.get("user_id")) if current_user else None,
                                      correlation_id=req_id, execution_plan=plan)
 

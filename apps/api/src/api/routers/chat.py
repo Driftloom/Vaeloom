@@ -16,6 +16,7 @@ from ..database import get_db
 from ..dependencies import get_current_user
 from ..orchestrator.router import UserRequest
 from ..orchestrator.router import handle as orchestrator_handle
+from ..services.memory_service import retrieve_memory_and_vault_context
 
 router = APIRouter()
 
@@ -64,9 +65,11 @@ async def send_chat_message(
     await _verify_workspace_access(workspace_id, current_user, db)
     user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
     tenant_id = current_user.get("tenant_id")
+    bg_context = await retrieve_memory_and_vault_context(workspace_id, dto.message, db)
+    full_message = f"{dto.message}\n\n{bg_context}" if bg_context else dto.message
     req = UserRequest(
         request_id=str(uuid.uuid4()),
-        message=dto.message,
+        message=full_message,
         workspace_id=workspace_id,
         preferred_agent=dto.agent_name.strip().lower() if dto.agent_name else None,
         user_id=str(user_id) if user_id else None,

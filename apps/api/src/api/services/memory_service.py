@@ -8,7 +8,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.schema import Memory
@@ -351,32 +351,169 @@ class MemoryService:
         except Exception as e:
             logger.debug(f"Vector store search failed or bypassed: {e}")
 
-        stmt = select(Memory, func.cosine_distance(Memory.embedding, query_embedding).label("distance"))
-        conditions = [Memory.status == "active", Memory.embedding.isnot(None)]
-        if tenant_id:
-            conditions.append(Memory.tenant_id == tenant_id)
-        # Enforced workspace scoping (F-03, G-41): MemoryService.search_memories now scopes by
-        # the authoritative workspace_id, so workspace B cannot retrieve workspace A's
-        # memories even within the same tenant.
+        try:
+            stmt = select(Memory, func.cosine_distance(Memory.embedding, query_embedding).label("distance"))
+            conditions = [Memory.status == "active", Memory.embedding.isnot(None)]
+            if tenant_id:
+                conditions.append(Memory.tenant_id == tenant_id)
+            # Enforced workspace scoping (F-03, G-41): MemoryService.search_memories now scopes by
+            # the authoritative workspace_id, so workspace B cannot retrieve workspace A's
+            # memories even within the same tenant.
+            if target_ws:
+                ws_uuid = _to_uuid(target_ws)
+                if ws_uuid is not None:
+                    conditions.append(Memory.workspace_id == ws_uuid)
+            if dto.type:
+                conditions.append(Memory.type == dto.type)
+            if dto.domain:
+                conditions.append(Memory.domain == dto.domain)
+            if dto.tags:
+                conditions.append(Memory.tags.overlap(dto.tags))
+
+            stmt = stmt.where(*conditions)
+            if dto.threshold is not None:
+                stmt = stmt.where(func.cosine_distance(Memory.embedding, query_embedding) <= (1.0 - dto.threshold))
+            stmt = stmt.order_by(func.cosine_distance(Memory.embedding, query_embedding)).limit(dto.top_k)
+
+            result = await db.execute(stmt)
+            rows = result.all()
+            if rows:
+                return [(row[0], float(1.0 - row[1])) for row in rows]
+        except Exception as e:
+            logger.debug(f"Cosine distance search failed or unsupported on this dialect: {e}")
+
+        # Text fallback search across title/summary/content for SQLite parity & resilience
+        pattern = f"%{dto.query}%"
+        words = [w.strip() for w in dto.query.split() if len(w.strip()) > 2]
+        match_expr = or_(
+            Memory.title.ilike(pattern),
+            Memory.summary.ilike(pattern),
+            Memory.content.ilike(pattern),
+        )
+        if words and len(words) > 1:
+            word_conditions = [
+                or_(
+                    Memory.title.ilike(f"%{w}%"),
+                    Memory.summary.ilike(f"%{w}%"),
+                    Memory.content.ilike(f"%{w}%"),
+                )
+                for w in words
+            ]
+            match_expr = or_(match_expr, and_(*word_conditions))
+
+        fallback_stmt = select(Memory).where(
+            Memory.status == "active",
+            match_expr,
+        )
         if target_ws:
             ws_uuid = _to_uuid(target_ws)
             if ws_uuid is not None:
-                conditions.append(Memory.workspace_id == ws_uuid)
+                fallback_stmt = fallback_stmt.where(Memory.workspace_id == ws_uuid)
+        if tenant_id:
+            fallback_stmt = fallback_stmt.where(Memory.tenant_id == tenant_id)
         if dto.type:
-            conditions.append(Memory.type == dto.type)
-        if dto.domain:
-            conditions.append(Memory.domain == dto.domain)
-        if dto.tags:
-            conditions.append(Memory.tags.overlap(dto.tags))
-
-        stmt = stmt.where(*conditions)
-        if dto.threshold is not None:
-            stmt = stmt.where(func.cosine_distance(Memory.embedding, query_embedding) <= (1.0 - dto.threshold))
-        stmt = stmt.order_by(func.cosine_distance(Memory.embedding, query_embedding)).limit(dto.top_k)
-
-        result = await db.execute(stmt)
-        rows = result.all()
-        return [(row[0], float(1.0 - row[1])) for row in rows]
+            fallback_stmt = fallback_stmt.where(Memory.type == dto.type)
+        fallback_stmt = fallback_stmt.limit(dto.top_k)
+        fb_res = await db.execute(fallback_stmt)
+        fb_mems = fb_res.scalars().all()
+        return [(m, 0.90 if dto.query.lower() in m.title.lower() else 0.75) for m in fb_mems]
 
 
 memory_service = MemoryService()
+
+
+async def retrieve_memory_and_vault_context(
+    workspace_id: str | uuid.UUID | None,
+    query: str,
+    db: AsyncSession,
+    limit: int = 5,
+) -> str:
+    """
+    Retrieve relevant workspace memories and vault notes as background context
+    for chat queries.
+    """
+    if not workspace_id or not query:
+        return ""
+
+    try:
+        import uuid as _uuid
+        from sqlalchemy import or_, select
+        from ..models.schema import Document, Memory
+
+        ws_uuid = _uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, _uuid.UUID) else workspace_id
+
+        # 1. Extract meaningful query terms (strip punctuation, skip common question stop words)
+        _stop_words = {
+            "what", "when", "where", "which", "who", "whom", "whose", "why", "how",
+            "tell", "write", "about", "does", "have", "with", "this", "that", "these",
+            "those", "from", "your", "mine", "some", "more", "then", "into", "also",
+            "show", "find", "give", "please", "could", "would", "should", "been", "were",
+            "the", "and", "for", "are", "did"
+        }
+        cleaned_tokens = [w.strip("?!.,;:\"'()[]{}").lower() for w in query.split()]
+        terms = [t for t in cleaned_tokens if len(t) >= 3 and t not in _stop_words]
+        if not terms:
+            terms = [t for t in cleaned_tokens if len(t) >= 3]
+
+        mem_stmt = (
+            select(Memory)
+            .where(Memory.workspace_id == ws_uuid)
+            .where(Memory.deleted_at.is_(None))
+        )
+        if terms:
+            word_filters = [
+                or_(
+                    Memory.title.ilike(f"%{t}%"),
+                    Memory.summary.ilike(f"%{t}%"),
+                )
+                for t in terms[:5]
+            ]
+            mem_stmt = mem_stmt.where(or_(*word_filters))
+
+        mem_stmt = mem_stmt.order_by(Memory.updated_at.desc(), Memory.created_at.desc()).limit(limit)
+        mem_res = await db.execute(mem_stmt)
+        memories = mem_res.scalars().all()
+
+        # 2. Search relevant or recent vault notes (markdown documents)
+        doc_stmt = (
+            select(Document)
+            .where(Document.workspace_id == ws_uuid)
+            .where(Document.deleted_at.is_(None))
+            .where(
+                or_(
+                    Document.type == "markdown",
+                    Document.path.ilike("%.md"),
+                )
+            )
+        )
+        if terms:
+            doc_filters = [
+                or_(
+                    Document.path.ilike(f"%{t}%"),
+                    Document.summary.ilike(f"%{t}%"),
+                )
+                for t in terms[:5]
+            ]
+            doc_stmt = doc_stmt.where(or_(*doc_filters))
+
+        doc_stmt = doc_stmt.order_by(Document.updated_at.desc(), Document.created_at.desc()).limit(limit)
+        doc_res = await db.execute(doc_stmt)
+        documents = doc_res.scalars().all()
+
+        if not memories and not documents:
+            return ""
+
+        context_lines = ["[Background Context from Workspace Memories & Vault Notes]"]
+        for m in memories:
+            snippet = (m.summary or m.content or "").strip()[:200]
+            context_lines.append(f"- Memory ({m.type or 'fact'}): {m.title} — {snippet}")
+        for d in documents:
+            snippet = (d.summary or "").strip()[:200]
+            title = d.path.rsplit("/", 1)[-1] if d.path else "Note"
+            context_lines.append(f"- Vault Note ({title}): {snippet}")
+
+        return "\n".join(context_lines)
+    except Exception as e:
+        logger.debug(f"Failed to retrieve memory/vault context: {e}")
+        return ""
+

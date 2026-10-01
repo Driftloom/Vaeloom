@@ -288,6 +288,13 @@ _BASE_APPROVAL_GATED = frozenset({
     "create_google_doc", "append_google_doc", "replace_google_doc_text",
     "create_workspace_folder", "restore_document_version", "share_workspace_document",
     "sync_notion_pages",
+    # Vault/memory writers (2026-10-01): these write Memory rows and create
+    # documents/folders on the workspace's behalf. create_entity and
+    # move_file - the equivalent existing writers - are already gated above,
+    # and an ungated write tool is the exact gap the approval gate exists to
+    # close: with no JEV_API_KEY the only triage path (noul) is skipped
+    # silently, so these would execute straight from an LLM tool call.
+    "create_memory", "sync_vault", "ingest_vault_notes",
 })
 
 
@@ -922,6 +929,445 @@ async def _execute_categorize_document(params: dict[str, Any], workspace_id: str
     except Exception as e:
         logger.error(f"categorize_document failed: {e}")
         return {"status": "error", "tool": "categorize_document", "result": str(e)}
+
+
+async def _execute_sync_vault(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    force = bool(params.get("force", False))
+    try:
+        import uuid as _uuid
+        from datetime import UTC, datetime
+        from sqlalchemy import select
+        from api.models.schema import Connector, Document
+
+        ws_uuid = _uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, _uuid.UUID) else workspace_id
+        async with _ws_session(workspace_id) as session:
+            # 1. Get or create vault_sync connector
+            stmt = select(Connector).where(
+                Connector.workspace_id == ws_uuid,
+                Connector.type == "vault_sync",
+            )
+            connector = (await session.execute(stmt)).scalar_one_or_none()
+            if not connector:
+                connector = Connector(
+                    id=_uuid.uuid4(),
+                    workspace_id=ws_uuid,
+                    type="vault_sync",
+                    name="Vault Sync",
+                    status="CONNECTED",
+                    config={
+                        "status": "in_sync",
+                        "branch": "main",
+                        "vault_path": "~/Documents/VaeloomVault",
+                        "auto_ingest": True,
+                        "conflicts": [],
+                    },
+                )
+                session.add(connector)
+                await session.flush()
+
+            # 2. Count synced markdown notes
+            doc_stmt = select(Document).where(
+                Document.workspace_id == ws_uuid,
+                Document.deleted_at.is_(None),
+            )
+            docs = (await session.execute(doc_stmt)).scalars().all()
+            markdown_docs = [d for d in docs if d.type == "markdown" or (d.path and d.path.endswith(".md"))]
+            files_synced = len(markdown_docs)
+            files_updated = files_synced if force else 0
+            files_skipped = 0
+
+            # 3. Update connector config
+            now_iso = datetime.now(UTC).isoformat()
+            cfg = dict(connector.config or {})
+            cfg["last_pull_time"] = now_iso
+            cfg["last_push_time"] = now_iso
+            cfg["status"] = "in_sync"
+            logs = list(cfg.get("sync_logs", []))
+            logs.append({
+                "timestamp": now_iso,
+                "event": "tool_sync_vault",
+                "message": f"Vault sync executed via agent tool. Files synced: {files_synced}.",
+                "level": "info",
+            })
+            cfg["sync_logs"] = logs[-50:]
+            connector.config = cfg
+            await session.commit()
+
+            return {
+                "status": "success",
+                "tool": "sync_vault",
+                "result": {
+                    "status": "completed",
+                    "files_synced": files_synced,
+                    "files_updated": files_updated,
+                    "files_skipped": files_skipped,
+                },
+            }
+    except Exception as e:
+        logger.error(f"sync_vault failed: {e}")
+        return {
+            "status": "error",
+            "tool": "sync_vault",
+            "result": {
+                "status": "error",
+                "files_synced": 0,
+                "files_updated": 0,
+                "files_skipped": 0,
+            },
+            "error": str(e),
+        }
+
+
+async def _execute_ingest_vault_notes(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    auto_extract_entities = bool(params.get("auto_extract_entities", True))
+    raw_notes = params.get("notes")
+    try:
+        import uuid as _uuid
+        from datetime import UTC, datetime
+        from sqlalchemy import select
+        from api.models.schema import Document, Folder, Memory
+        from api.schemas.knowledge_graph import CreateNodeRequest, NodeType
+        from api.services.knowledge_graph_service import kg_service
+        from api.services.llm_service import llm_service
+
+        ws_uuid = _uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, _uuid.UUID) else workspace_id
+        async with _ws_session(workspace_id) as session:
+            folder_stmt = select(Folder).where(
+                Folder.workspace_id == ws_uuid,
+                Folder.name == "Vault Notes",
+            )
+            folder = (await session.execute(folder_stmt)).scalar_one_or_none()
+            if not folder:
+                folder = Folder(
+                    id=_uuid.uuid4(),
+                    workspace_id=ws_uuid,
+                    name="Vault Notes",
+                )
+                session.add(folder)
+                await session.flush()
+
+            notes_processed = 0
+            memories_created = 0
+            entities_extracted = 0
+
+            # If notes passed in params directly
+            if raw_notes and isinstance(raw_notes, list):
+                for note_dict in raw_notes:
+                    if not isinstance(note_dict, dict):
+                        continue
+                    # execute_tool sanitizes top-level string params only, so the
+                    # note bodies nested in `notes` would otherwise reach
+                    # Document.content and Memory.content unsanitised - and
+                    # retrieve_memory_and_vault_context concatenates that content
+                    # straight back into the next chat prompt. Sanitise here, at
+                    # the only place the nested values exist.
+                    fname = sanitize_text(note_dict.get("filename") or "note.md")
+                    content = sanitize_text(note_dict.get("content") or "")
+                    if not content.strip():
+                        continue
+                    clean_fname = fname if fname.endswith(".md") else f"{fname}.md"
+                    rel_path = sanitize_text(note_dict.get("relative_path") or clean_fname)
+                    content_bytes = content.encode("utf-8")
+                    lines = content.splitlines()
+                    title = clean_fname.replace(".md", "")
+                    for line in lines:
+                        if line.startswith("# "):
+                            title = line[2:].strip()
+                            break
+                    summary = content[:240].strip().replace("\n", " ")
+
+                    doc_stmt = select(Document).where(
+                        Document.workspace_id == ws_uuid,
+                        Document.path == rel_path,
+                    )
+                    doc = (await session.execute(doc_stmt)).scalar_one_or_none()
+                    if doc:
+                        doc.content = content_bytes
+                        doc.summary = summary
+                        doc.updated_at = datetime.now(UTC)
+                    else:
+                        doc = Document(
+                            id=_uuid.uuid4(),
+                            workspace_id=ws_uuid,
+                            folder_id=folder.id,
+                            path=rel_path,
+                            type="markdown",
+                            content=content_bytes,
+                            summary=summary,
+                            status="ACTIVE",
+                        )
+                        session.add(doc)
+                        await session.flush()
+                    notes_processed += 1
+
+                    content_hash = llm_service.compute_content_hash(content)
+                    mem_stmt = select(Memory).where(
+                        Memory.workspace_id == ws_uuid,
+                        Memory.source_uri == rel_path,
+                    )
+                    existing_mem = (await session.execute(mem_stmt)).scalar_one_or_none()
+                    if existing_mem:
+                        existing_mem.title = title
+                        existing_mem.summary = summary
+                        existing_mem.content = content
+                        existing_mem.content_hash = content_hash
+                        existing_mem.size = len(content_bytes)
+                        existing_mem.updated_at = datetime.now(UTC)
+                    else:
+                        new_mem = Memory(
+                            id=_uuid.uuid4(),
+                            workspace_id=ws_uuid,
+                            title=title,
+                            summary=summary,
+                            content=content,
+                            content_hash=content_hash,
+                            size=len(content_bytes),
+                            type="note",
+                            status="active",
+                            source_type="vault_sync",
+                            source_uri=rel_path,
+                            source_label=f"Vault: {clean_fname}",
+                            tags=note_dict.get("tags") or ["vault", "notes"],
+                            metadata_={"document_id": str(doc.id), "relative_path": rel_path},
+                        )
+                        session.add(new_mem)
+                        memories_created += 1
+
+                    if auto_extract_entities:
+                        try:
+                            node_req = CreateNodeRequest(
+                                label=title,
+                                type=NodeType.DOCUMENT,
+                                description=summary,
+                                properties={"source": "vault_sync", "tags": note_dict.get("tags") or []},
+                            )
+                            await kg_service.create_node(node_req, tenant_id=None, db=session, workspace_id=str(ws_uuid))
+                            entities_extracted += 1
+                        except Exception as e:
+                            logger.warning(f"Could not create KG node for note {clean_fname}: {e}")
+
+            # Process existing markdown documents in workspace
+            doc_stmt = select(Document).where(
+                Document.workspace_id == ws_uuid,
+                Document.deleted_at.is_(None),
+            )
+            all_docs = (await session.execute(doc_stmt)).scalars().all()
+            for doc in all_docs:
+                is_md = doc.type == "markdown" or (doc.path and doc.path.endswith(".md")) or doc.folder_id == folder.id
+                if not is_md:
+                    continue
+                mem_chk = (await session.execute(
+                    select(Memory).where(
+                        Memory.workspace_id == ws_uuid,
+                        Memory.source_uri == doc.path,
+                    )
+                )).scalar_one_or_none()
+                if not mem_chk:
+                    text_content = ""
+                    if doc.content:
+                        try:
+                            text_content = doc.content.decode("utf-8", errors="replace")
+                        except Exception:
+                            text_content = str(doc.content)
+                    elif doc.summary:
+                        text_content = doc.summary
+                    title = doc.path.rsplit("/", 1)[-1].replace(".md", "") if doc.path else "Note"
+                    lines = text_content.splitlines()
+                    for line in lines:
+                        if line.startswith("# "):
+                            title = line[2:].strip()
+                            break
+                    summary = (doc.summary or text_content[:240]).strip().replace("\n", " ")
+                    content_hash = llm_service.compute_content_hash(text_content or title)
+                    new_mem = Memory(
+                        id=_uuid.uuid4(),
+                        workspace_id=ws_uuid,
+                        title=title,
+                        summary=summary,
+                        content=text_content,
+                        content_hash=content_hash,
+                        size=len(text_content.encode("utf-8")),
+                        type="note",
+                        status="active",
+                        source_type="vault_sync",
+                        source_uri=doc.path,
+                        source_label=f"Vault: {doc.path}",
+                        tags=["vault", "notes"],
+                        metadata_={"document_id": str(doc.id)},
+                    )
+                    session.add(new_mem)
+                    memories_created += 1
+                    notes_processed += 1
+
+                    if auto_extract_entities:
+                        try:
+                            node_req = CreateNodeRequest(
+                                label=title,
+                                type=NodeType.DOCUMENT,
+                                description=summary,
+                                properties={"source": "vault_sync", "tags": ["vault"]},
+                            )
+                            await kg_service.create_node(node_req, tenant_id=None, db=session, workspace_id=str(ws_uuid))
+                            entities_extracted += 1
+                        except Exception as e:
+                            logger.warning(f"Could not create KG node for note {doc.path}: {e}")
+
+            await session.commit()
+            return {
+                "status": "success",
+                "tool": "ingest_vault_notes",
+                "result": {
+                    "status": "completed",
+                    "notes_processed": notes_processed,
+                    "memories_created": memories_created,
+                    "entities_extracted": entities_extracted,
+                },
+            }
+    except Exception as e:
+        logger.error(f"ingest_vault_notes failed: {e}")
+        return {
+            "status": "error",
+            "tool": "ingest_vault_notes",
+            "result": {
+                "status": "error",
+                "notes_processed": 0,
+                "memories_created": 0,
+                "entities_extracted": 0,
+            },
+            "error": str(e),
+        }
+
+
+async def _execute_search_memories(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    query = params.get("query", "")
+    category = params.get("category", "all")
+    limit = int(params.get("limit", 10))
+
+    try:
+        import uuid as _uuid
+        from sqlalchemy import or_, select
+        from api.models.schema import Memory
+
+        ws_uuid = _uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, _uuid.UUID) else workspace_id
+        async with _ws_session(workspace_id) as session:
+            stmt = (
+                select(Memory)
+                .where(Memory.workspace_id == ws_uuid)
+                .where(Memory.deleted_at.is_(None))
+            )
+
+            if category and category != "all":
+                stmt = stmt.where(
+                    or_(
+                        Memory.type == category,
+                        Memory.source_type == category,
+                    )
+                )
+
+            if query:
+                stmt = stmt.where(
+                    or_(
+                        Memory.title.ilike(f"%{query}%"),
+                        Memory.summary.ilike(f"%{query}%"),
+                        Memory.content.ilike(f"%{query}%"),
+                    )
+                )
+
+            stmt = stmt.order_by(Memory.updated_at.desc(), Memory.created_at.desc()).limit(limit)
+            result = await session.execute(stmt)
+            memories = result.scalars().all()
+
+            mem_list = [
+                {
+                    "id": str(m.id),
+                    "title": m.title or "",
+                    "summary": m.summary or "",
+                    "content": m.content if isinstance(m.content, str) else str(m.content or ""),
+                    "category": m.type or "preference",
+                    "source_type": m.source_type or "agent",
+                    "tags": m.tags or [],
+                    "created_at": m.created_at.isoformat() if m.created_at else None,
+                }
+                for m in memories
+            ]
+
+            return {
+                "status": "success",
+                "tool": "search_memories",
+                "result": mem_list,
+                "count": len(mem_list),
+            }
+    except Exception as e:
+        logger.error(f"search_memories failed: {e}")
+        return {
+            "status": "error",
+            "tool": "search_memories",
+            "result": [],
+            "error": str(e),
+        }
+
+
+async def _execute_create_memory(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
+    content = params.get("content", "").strip()
+    category = params.get("category", "preference").strip()
+    confidence = float(params.get("confidence", 1.0))
+
+    if not content:
+        return {
+            "status": "error",
+            "tool": "create_memory",
+            "result": {"id": "", "status": "failed"},
+            "error": "content is required",
+        }
+
+    try:
+        import uuid as _uuid
+        from api.models.schema import Memory
+        from api.services.llm_service import llm_service
+        from api.utils.sanitize import sanitize_text
+
+        ws_uuid = _uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, _uuid.UUID) else workspace_id
+        async with _ws_session(workspace_id) as session:
+            sanitized_content = sanitize_text(content)
+            first_line = sanitized_content.splitlines()[0] if sanitized_content else "Memory"
+            title = first_line[:100].strip()
+            summary = sanitized_content[:240].strip().replace("\n", " ")
+            content_hash = llm_service.compute_content_hash(sanitized_content)
+
+            new_mem = Memory(
+                id=_uuid.uuid4(),
+                workspace_id=ws_uuid,
+                type=category or "preference",
+                status="active",
+                title=title,
+                summary=summary,
+                content=sanitized_content,
+                content_hash=content_hash,
+                size=len(sanitized_content.encode("utf-8")),
+                source_type="agent",
+                source_label="Agent Memory",
+                tags=[category] if category else [],
+                metadata_={"confidence": confidence},
+            )
+            session.add(new_mem)
+            await session.commit()
+
+            return {
+                "status": "success",
+                "tool": "create_memory",
+                "result": {
+                    "id": str(new_mem.id),
+                    "status": "created",
+                },
+            }
+    except Exception as e:
+        logger.error(f"create_memory failed: {e}")
+        return {
+            "status": "error",
+            "tool": "create_memory",
+            "result": {"id": "", "status": "failed"},
+            "error": str(e),
+        }
 
 
 async def _execute_notify_user(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
@@ -3134,6 +3580,10 @@ TOOL_DISPATCH: dict[str, Any] = {
     "get_entity": _execute_get_entity,
     "create_entity": _execute_create_entity,
     "categorize_document": _execute_categorize_document,
+    "sync_vault": _execute_sync_vault,
+    "ingest_vault_notes": _execute_ingest_vault_notes,
+    "search_memories": _execute_search_memories,
+    "create_memory": _execute_create_memory,
     "notify_user": _execute_notify_user,
     "compile_resume_pdf": _execute_compile_resume_pdf,
     "compile_resume_docx": _execute_compile_resume_docx,

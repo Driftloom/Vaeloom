@@ -66,6 +66,23 @@ GET_ENTITY = ToolDefinition(
     category="memory_read",
 )
 
+SEARCH_MEMORIES = ToolDefinition(
+    name="search_memories",
+    description="Search workspace semantic memories and user knowledge base facts",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string"},
+            "category": {"type": "string", "default": "all"},
+            "limit": {"type": "integer", "default": 10},
+        },
+        "required": ["query"],
+    },
+    output_schema={"type": "array", "items": {"type": "object"}},
+    required_scope="memory.read",
+    category="memory_read",
+)
+
 
 # ── Memory Write Tools ─────────────────────────────────────────────
 
@@ -98,6 +115,75 @@ MERGE_ENTITIES = ToolDefinition(
         "required": ["source_id", "target_id"],
     },
     output_schema={"$ref": "GraphNode"},
+    required_scope="memory.write",
+    category="memory_write",
+)
+
+CREATE_MEMORY = ToolDefinition(
+    name="create_memory",
+    description="Create or store a persistent memory, fact, or user preference in the workspace",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "content": {"type": "string"},
+            "category": {"type": "string", "default": "preference"},
+            "confidence": {"type": "number", "default": 1.0},
+        },
+        "required": ["content"],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "id": {"type": "string"},
+            "status": {"type": "string"},
+        },
+    },
+    required_scope="memory.write",
+    category="memory_write",
+)
+
+SYNC_VAULT = ToolDefinition(
+    name="sync_vault",
+    description="Sync Obsidian/local Markdown vault files into the workspace document store and memory index",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "force": {"type": "boolean", "default": False},
+        },
+        "required": [],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "status": {"type": "string"},
+            "files_synced": {"type": "integer"},
+            "files_updated": {"type": "integer"},
+            "files_skipped": {"type": "integer"},
+        },
+    },
+    required_scope="memory.write",
+    category="memory_write",
+)
+
+INGEST_VAULT_NOTES = ToolDefinition(
+    name="ingest_vault_notes",
+    description="Parse and ingest vault markdown notes into structured memories and entities",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "auto_extract_entities": {"type": "boolean", "default": True},
+        },
+        "required": [],
+    },
+    output_schema={
+        "type": "object",
+        "properties": {
+            "status": {"type": "string"},
+            "notes_processed": {"type": "integer"},
+            "memories_created": {"type": "integer"},
+            "entities_extracted": {"type": "integer"},
+        },
+    },
     required_scope="memory.write",
     category="memory_write",
 )
@@ -1249,6 +1335,7 @@ ALL_TOOLS: dict[str, ToolDefinition] = {
     for t in [
         SEARCH_DOCUMENTS, QUERY_GRAPH, GET_ENTITY,
         CREATE_ENTITY, MERGE_ENTITIES, CATEGORIZE_DOCUMENT,
+        SEARCH_MEMORIES, CREATE_MEMORY, SYNC_VAULT, INGEST_VAULT_NOTES,
         GET_DOCUMENT_CONTENT, LIST_WORKSPACE_FOLDERS, CREATE_WORKSPACE_FOLDER,
         GET_DOCUMENT_VERSION, RESTORE_DOCUMENT_VERSION, SHARE_WORKSPACE_DOCUMENT,
         GET_DOCUMENT_AUDIT_HISTORY,

@@ -24,11 +24,12 @@ logger = logging.getLogger(__name__)
 
 def _is_complex_multi_agent(message: str) -> bool:
     """Quick check without importing supervisor (avoids circular)."""
-    if len(message.split()) < 8:
+    clean_message = message.split("\n\n[")[0].strip() if "\n\n[" in message else message
+    if len(clean_message.split()) < 8:
         return False
     try:
         from .capability_registry import capability_registry
-        candidates = capability_registry.resolve_candidate_capabilities(message, top_k=5)
+        candidates = capability_registry.resolve_candidate_capabilities(clean_message, top_k=5)
         unique_agents = {c.agent_id for c in candidates}
         return len(unique_agents) >= 2
     except Exception:
@@ -62,7 +63,7 @@ CATEGORY_KEYWORDS = {
     "job_search": ["job", "search", "apply", "application", "internship", "fellowship", "co-op", "career", "role", "position"],
     "communication": ["email", "gmail", "inbox", "draft", "reply", "mail"],
     "schedule_time": ["schedule", "deadline", "calendar", "reminder", "conflict", "event", "meeting", "availability", "slot"],
-    "memory_extraction": ["extract", "memory", "entity", "knowledge", "graph", "remember"],
+    "memory_extraction": ["extract", "memory", "entity", "knowledge", "graph", "remember", "vault", "obsidian", "second brain", "notes", "sync vault"],
     "planning_research": ["plan", "planning", "roadmap", "research", "strategy", "milestone", "goal", "research"],
     "career_development": ["career", "path", "skill", "course", "learn", "training", "certification"],
     "research_github": ["company", "industry", "trend", "github", "repository", "profile"],
@@ -265,10 +266,11 @@ async def _llm_classify_intent(message: str) -> tuple[str, float] | None:
 
 async def route_intent_and_plan(message: str, workspace_id: str | None = None) -> tuple[str, float, Any | None]:
     """Primary zero-trust cognitive routing returning (selected_agent, confidence, execution_plan)."""
+    clean_message = message.split("\n\n[")[0].strip() if "\n\n[" in message else message
     try:
         from .routing import routing_engine
         env, plan = await routing_engine.route(
-            query=message,
+            query=clean_message,
             workspace_id=workspace_id or "00000000-0000-0000-0000-000000000001",
         )
         if env and env.selected_agent:
@@ -276,7 +278,7 @@ async def route_intent_and_plan(message: str, workspace_id: str | None = None) -
     except Exception as exc:
         logger.debug(f"ROUTER_ENGINE: routing_engine fallback to legacy heuristics: {exc}")
 
-    ag, conf = await classify_intent(message, workspace_id=workspace_id)
+    ag, conf = await classify_intent(clean_message, workspace_id=workspace_id)
     return ag, conf, None
 
 
@@ -286,11 +288,12 @@ async def classify_intent(message: str, workspace_id: str | None = None) -> tupl
     Combines TypeSafe AI Jev System 1 with Gemma / LLM System 2.
     Falls back to legacy heuristic scoring if cognitive engine is offline.
     """
+    clean_message = message.split("\n\n[")[0].strip() if "\n\n[" in message else message
     # ── Primary: Zero-Trust 6-Layer Cognitive Routing Engine ─────────
     try:
         from .routing import routing_engine
         env, plan = await routing_engine.route(
-            query=message,
+            query=clean_message,
             workspace_id=workspace_id or "00000000-0000-0000-0000-000000000001",
         )
         if env and env.selected_agent:
@@ -298,7 +301,7 @@ async def classify_intent(message: str, workspace_id: str | None = None) -> tupl
     except Exception as exc:
         logger.debug(f"ROUTER_ENGINE: routing_engine fallback to legacy heuristics: {exc}")
 
-    msg_lower = message.lower()
+    msg_lower = clean_message.lower()
 
     # ── Stage 0: Conversational greeting / small-talk fast-path ──────────────
     # Short social messages score zero keyword hits → fall into the low-confidence
