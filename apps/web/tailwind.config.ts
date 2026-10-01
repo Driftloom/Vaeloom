@@ -35,6 +35,51 @@ const config: Config = {
     './src/trigger/**/*.{js,ts,jsx,tsx,mdx}',
     './src/__tests__/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  /**
+   * Agent dot colours, served to the browser as class *strings*.
+   *
+   * `AGENT_COLOR_PALETTE` lives in `apps/api/src/api/routers/agent_commands.py`
+   * and reaches the client through `GET /agents/commands` as the `color` field.
+   * A `.py` file is outside every `content` glob above, so Tailwind's scanner never
+   * sees these names and purges all 26 — an agent avatar dot then renders with no
+   * background at all. The backend stays the single source of truth for the
+   * palette; this list only guarantees the utilities it names survive the purge.
+   *
+   * Duplication risk: adding an agent or recolouring one in Python will NOT add the
+   * class here, and the new dot ships colourless with nothing to fail a build. A
+   * shared token set (CSS variables keyed by agent) would remove the duplication,
+   * but it is a cross-stack change to the palette contract, not a config fix, so it
+   * is deliberately not taken here. `tailwind.config.ts` is also the only place in
+   * the frontend that knows these values, so grep for `bg-slate-700` to audit.
+   */
+  safelist: [
+    'bg-accent',
+    'bg-amber-500',
+    'bg-amber-600',
+    'bg-blue-400',
+    'bg-blue-500',
+    'bg-cyan-500',
+    'bg-emerald-500',
+    'bg-emerald-600',
+    'bg-emerald-700',
+    'bg-fuchsia-500',
+    'bg-gray-500',
+    'bg-indigo-500',
+    'bg-lime-600',
+    'bg-orange-500',
+    'bg-pink-500',
+    'bg-primary',
+    'bg-purple-500',
+    'bg-red-500',
+    'bg-red-600',
+    'bg-rose-500',
+    'bg-sky-500',
+    'bg-slate-700',
+    'bg-teal-500',
+    'bg-violet-500',
+    'bg-warning',
+    'bg-yellow-500',
+  ],
   theme: {
     extend: {
       colors: {

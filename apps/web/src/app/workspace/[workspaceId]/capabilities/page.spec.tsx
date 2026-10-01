@@ -578,13 +578,19 @@ describe('CapabilitiesPage', () => {
     );
   });
 
-  it('never round-trips config.parameters, which the client camel-cases', async () => {
+  it('sends only the doc on a save, so the stored JSON Schema is never rewritten', async () => {
+    const storedSchema = {
+      type: 'object',
+      properties: { resume_text: { type: 'string' }, max_results: { type: 'integer' } },
+      required: ['resume_text'],
+    };
     fakeDb.skills = [
       installedSkill({
         id: 'srv-skill-1',
         name: 'acceptance-criteria-review',
-        // What the client actually hands back after transformKeys().
-        config: { parameters: { properties: { resumeText: { type: 'string' } } } },
+        // The schema subtree is on OPAQUE_DATA_KEYS, so these property names
+        // arrive exactly as the server wrote them.
+        config: { parameters: storedSchema },
       }),
     ];
     await renderSkills();
@@ -592,9 +598,13 @@ describe('CapabilitiesPage', () => {
     await userClickRow('acceptance-criteria-review');
     await userEditDoc('# Schema must survive');
 
-    const bodies = fakeDb.updates.map((entry) => entry.body);
-    // The stored schema still has the property the client mangled on the way in.
-    expect(JSON.stringify(bodies)).not.toContain('parameters');
+    expect(fakeDb.updates).toEqual([
+      { id: 'srv-skill-1', body: { config: { doc: '# Schema must survive' } } },
+    ]);
+    // Nothing that could rename a property reached the server, and the stored
+    // schema still has the author's spelling.
+    const stored = fakeDb.skills[0]?.config['parameters'] as { properties: object };
+    expect(Object.keys(stored.properties)).toEqual(['resume_text', 'max_results']);
   });
 
   it('falls back to the browser and says so when the skill has no server row', async () => {
@@ -748,6 +758,91 @@ describe('CapabilitiesPage', () => {
     expect(fakeDb.creates[0]).toEqual(
       expect.objectContaining({ name: 'catalog-only-skill', category: 'skill' }),
     );
+  });
+
+  it('keeps the scope the catalog declares when it installs the skill', async () => {
+    // POST stores only what it is handed, so an install that omits the scope
+    // registers a capability with no scope at all -- and nothing reads it back.
+    fakeDb.skills = [
+      catalogSkill({
+        name: 'catalog-only-skill',
+        slug: 'catalog-only-skill',
+        requiredScope: 'memory.read,memory.write',
+      }),
+    ];
+    await renderSkills();
+    await openBrowse();
+
+    await act(async () => {
+      fireEvent.click(installButtonFor('catalog-only-skill'));
+    });
+
+    await waitFor(() => expect(fakeDb.creates.length).toBeGreaterThanOrEqual(1));
+    expect((fakeDb.creates[0]?.['config'] as Record<string, unknown>)['required_scope']).toBe(
+      'memory.read,memory.write',
+    );
+  });
+
+  it('writes the scope the user chose into the create payload, under the key the server reads', async () => {
+    await renderSkills();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('tab', { name: /Tools/i }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'New Tool' }));
+    });
+
+    const dialog = screen.getByRole('dialog');
+    fireEvent.change(within(dialog).getByPlaceholderText(/e\.g\. code-synthesizer/i), {
+      target: { value: 'contract-review' },
+    });
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole('button', { name: /Create Capability/i }));
+    });
+
+    await waitFor(() => expect(fakeDb.creates.length).toBeGreaterThanOrEqual(1));
+    // `CreateCapabilityRequest` has no top-level `required_scope` and Pydantic
+    // drops unknown fields, so a POST can only carry it inside `config`.
+    expect(fakeDb.creates[0]).not.toHaveProperty('requiredScope');
+    const config = fakeDb.creates[0]?.['config'] as Record<string, unknown>;
+    expect(config['required_scope']).toBe('memory.read');
+  });
+
+  // ─── Import: one layer owns the failure ────────────────────────────────────
+
+  it('shows the import failure inline, registers nothing and leaves the URL on screen', async () => {
+    await renderSkills();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('tab', { name: /MCP/i }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'New MCP Server' }));
+    });
+
+    const dialog = screen.getByRole('dialog');
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole('tab', { name: /Import Git \/ File/i }));
+    });
+    fireEvent.change(within(dialog).getByLabelText('Repository URL / endpoint'), {
+      target: { value: 'https://github.com/acme/skills' },
+    });
+    capsApi()['create'].mockRejectedValueOnce(httpError(409, 'Capability already exists'));
+
+    await act(async () => {
+      fireEvent.submit(within(dialog).getByRole('button', { name: /Import & activate/i }));
+    });
+
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert).toHaveTextContent('Nothing was registered for https://github.com/acme/skills.');
+    expect(alert).toHaveTextContent('Capability already exists');
+    // Still open, so the URL the user typed is not lost.
+    expect(within(dialog).getByLabelText('Repository URL / endpoint')).toHaveValue(
+      'https://github.com/acme/skills',
+    );
+    // The page produces the message and the modal presents it: one report, not two.
+    expect(mockToast).not.toHaveBeenCalledWith(expect.objectContaining({ title: 'Import failed' }));
   });
 
   // ─── F: selection is keyboard reachable ────────────────────────────────────
