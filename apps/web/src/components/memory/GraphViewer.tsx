@@ -21,6 +21,8 @@ function nodeColor(type: string): string {
   return m[type] ?? '#818cf8';
 }
 
+export type GraphLayoutMode = 'radial' | 'type-cluster' | 'grid';
+
 export function GraphViewer({ workspaceId }: { workspaceId: string }) {
   const [nodes, setNodes] = useState<KnowledgeGraphNode[]>([]);
   const [edges, setEdges] = useState<KnowledgeGraphEdge[]>([]);
@@ -28,6 +30,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [layoutMode, setLayoutMode] = useState<GraphLayoutMode>('radial');
   const [selected, setSelected] = useState<KnowledgeGraphNode | null>(null);
   const [isListMode, setIsListMode] = useState(false);
   const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 });
@@ -103,14 +106,96 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
     return edges.filter((e) => ids.has(e.sourceId) && ids.has(e.targetId));
   }, [edges, filteredNodes]);
 
-  // Radial layout computation
+  // Layout computation supporting 'radial', 'type-cluster', and 'grid' modes
   const layout = useMemo(() => {
     const n = filteredNodes.length;
     if (n === 0) return new Map<string, { x: number; y: number }>();
     const cx = 400;
     const cy = 260;
-    const radius = Math.min(220, Math.max(120, n * 12));
     const map = new Map<string, { x: number; y: number }>();
+
+    if (layoutMode === 'grid') {
+      // Compact rectangular matrix layout
+      const cols = Math.min(8, Math.max(3, Math.ceil(Math.sqrt(n * 1.4))));
+      const rows = Math.ceil(n / cols);
+      const cellWidth = Math.min(110, Math.max(70, 680 / cols));
+      const cellHeight = Math.min(90, Math.max(60, 420 / rows));
+      const startX = cx - ((cols - 1) * cellWidth) / 2;
+      const startY = cy - ((rows - 1) * cellHeight) / 2;
+
+      filteredNodes.forEach((node, i) => {
+        const r = Math.floor(i / cols);
+        const c = i % cols;
+        map.set(node.id, {
+          x: startX + c * cellWidth,
+          y: startY + r * cellHeight,
+        });
+      });
+      return map;
+    }
+
+    if (layoutMode === 'type-cluster') {
+      // Groups nodes into distinct circular clusters based on node.type
+      const clusters = new Map<string, KnowledgeGraphNode[]>();
+      filteredNodes.forEach((node) => {
+        const t = node.type || 'other';
+        if (!clusters.has(t)) clusters.set(t, []);
+        clusters.get(t)!.push(node);
+      });
+
+      const clusterTypes = Array.from(clusters.keys());
+      const numClusters = clusterTypes.length;
+
+      if (numClusters <= 1) {
+        // Single type cluster or no types: circular arrangement around center
+        const firstType = clusterTypes[0];
+        const clusterNodes = (firstType ? clusters.get(firstType) : undefined) || filteredNodes;
+        const m = clusterNodes.length;
+        const radius = Math.min(220, Math.max(100, m * 14));
+        clusterNodes.forEach((node, i) => {
+          if (m === 1) {
+            map.set(node.id, { x: cx, y: cy });
+          } else {
+            const angle = (2 * Math.PI * i) / m - Math.PI / 2;
+            const jitter = (node.importance ?? 0.5) * 20;
+            map.set(node.id, {
+              x: cx + (radius + jitter) * Math.cos(angle),
+              y: cy + (radius + jitter) * Math.sin(angle),
+            });
+          }
+        });
+      } else {
+        // Multiple clusters: arrange cluster centers in an ellipse around (cx, cy)
+        const outerRadiusX = 220;
+        const outerRadiusY = 140;
+
+        clusterTypes.forEach((type, clusterIdx) => {
+          const clusterAngle = (2 * Math.PI * clusterIdx) / numClusters - Math.PI / 2;
+          const clusterCenterX = cx + outerRadiusX * Math.cos(clusterAngle);
+          const clusterCenterY = cy + outerRadiusY * Math.sin(clusterAngle);
+          const clusterNodes = clusters.get(type)!;
+          const m = clusterNodes.length;
+          const innerRadius = Math.min(70, Math.max(30, m * 9));
+
+          clusterNodes.forEach((node, nodeIdx) => {
+            if (m === 1) {
+              map.set(node.id, { x: clusterCenterX, y: clusterCenterY });
+            } else {
+              const nodeAngle = (2 * Math.PI * nodeIdx) / m - Math.PI / 2;
+              const jitter = (node.importance ?? 0.5) * 10;
+              map.set(node.id, {
+                x: clusterCenterX + (innerRadius + jitter) * Math.cos(nodeAngle),
+                y: clusterCenterY + (innerRadius + jitter) * Math.sin(nodeAngle),
+              });
+            }
+          });
+        });
+      }
+      return map;
+    }
+
+    // Default: 'radial' circular layout
+    const radius = Math.min(220, Math.max(120, n * 12));
     filteredNodes.forEach((node, i) => {
       if (n === 1) {
         map.set(node.id, { x: cx, y: cy });
@@ -122,7 +207,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
       }
     });
     return map;
-  }, [filteredNodes]);
+  }, [filteredNodes, layoutMode]);
 
   const nodeMap = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
 
@@ -223,6 +308,51 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
 
   const resetView = useCallback(() => setTransform({ x: 0, y: 0, k: 1 }), []);
 
+  const handleExportJson = useCallback(() => {
+    const payload = {
+      workspaceId,
+      exportedAt: new Date().toISOString(),
+      nodeCount: nodes.length,
+      edgeCount: edges.length,
+      nodes,
+      edges,
+    };
+    const jsonStr = JSON.stringify(payload, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `knowledge-graph-${workspaceId}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [workspaceId, nodes, edges]);
+
+  const handleExportSvg = useCallback(() => {
+    const svgEl = containerRef.current?.querySelector('svg');
+    if (!svgEl) return;
+    const serializer = new XMLSerializer();
+    let source = serializer.serializeToString(svgEl);
+
+    if (!source.match(/^<svg[^>]+xmlns="http:\/\/www\.w3\.org\/2000\/svg"/)) {
+      source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+    }
+    if (!source.match(/^<svg[^>]+xmlns:xlink="http:\/\/www\.w3\.org\/1999\/xlink"/)) {
+      source = source.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
+    }
+
+    const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `knowledge-graph-${workspaceId}.svg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [workspaceId]);
+
   const focusNodeInView = useCallback(
     (node: KnowledgeGraphNode) => {
       const p = layout.get(node.id);
@@ -318,6 +448,64 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
               </option>
             ))}
           </select>
+
+          {/* Layout Selector */}
+          <select
+            value={layoutMode}
+            onChange={(e) => setLayoutMode(e.target.value as GraphLayoutMode)}
+            aria-label="Layout engine"
+            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-sunken)] px-3 py-1.5 text-xs text-[var(--color-text-primary)]"
+          >
+            <option value="radial">Radial Circle</option>
+            <option value="type-cluster">Type Clusters</option>
+            <option value="grid">Grid Matrix</option>
+          </select>
+
+          {/* Export Actions */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handleExportJson}
+              title="Export Knowledge Graph data as JSON"
+              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-sunken)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors flex items-center gap-1.5"
+            >
+              <svg
+                className="w-3.5 h-3.5 text-[var(--color-text-muted)]"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+              Export JSON
+            </button>
+            <button
+              type="button"
+              onClick={handleExportSvg}
+              title="Export Knowledge Graph canvas as SVG"
+              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-sunken)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors flex items-center gap-1.5"
+            >
+              <svg
+                className="w-3.5 h-3.5 text-[var(--color-text-muted)]"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+              Export SVG
+            </button>
+          </div>
 
           {/* Zoom & Reset Buttons */}
           <div className="flex items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-0.5">

@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Modal } from '@vaeloom/ui-kit';
 import type { DocumentResponse } from '@/lib/api-client';
@@ -34,17 +34,83 @@ export function DocumentPreviewModal({
   workspaceId,
 }: DocumentPreviewModalProps) {
   const [imageZoom, setImageZoom] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  if (!document) return null;
-
-  const fileName = getFileName(document.path);
+  const fileName = document ? getFileName(document.path) : '';
   const ext = fileName.split('.').pop()?.toLowerCase() || '';
-  const type = document.type?.toLowerCase() || '';
+  const type = document?.type?.toLowerCase() || '';
 
   const isMarkdown = type === 'markdown' || ext === 'md' || ext === 'markdown';
   const isPdf = type === 'pdf' || ext === 'pdf';
   const isImage =
     type === 'image' || ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp', 'ico'].includes(ext);
+  const isCsv = type === 'csv' || ext === 'csv' || ext === 'tsv';
+  const isCode = [
+    'js',
+    'ts',
+    'tsx',
+    'jsx',
+    'py',
+    'json',
+    'yaml',
+    'yml',
+    'sql',
+    'sh',
+    'bash',
+    'html',
+    'css',
+    'go',
+    'rs',
+    'cpp',
+    'c',
+    'h',
+  ].includes(ext);
+  const isVideo = ['mp4', 'mov', 'webm'].includes(ext);
+  const isAudio = ['mp3', 'wav', 'ogg'].includes(ext);
+
+  const parsedCsv = useMemo(() => {
+    if (!isCsv || !content?.text) return null;
+    const lines = content.text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+    if (lines.length === 0) return null;
+    const delimiter = ext === 'tsv' ? '\t' : ',';
+    const parseLine = (line: string): string[] => {
+      const result: string[] = [];
+      let cur = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"') {
+          inQuotes = !inQuotes;
+        } else if (c === delimiter && !inQuotes) {
+          result.push(cur.trim());
+          cur = '';
+        } else {
+          cur += c;
+        }
+      }
+      result.push(cur.trim());
+      return result;
+    };
+    const firstLine = lines[0] ?? '';
+    const headers = parseLine(firstLine);
+    const rows = lines.slice(1, 101).map((r) => parseLine(r ?? ''));
+    return { headers, rows, totalRows: lines.length - 1 };
+  }, [isCsv, content?.text, ext]);
+
+  const codeLines = useMemo(() => {
+    if (!isCode || !content?.text) return [];
+    return content.text.split(/\r?\n/);
+  }, [isCode, content?.text]);
+
+  const handleCopy = () => {
+    if (content?.text) {
+      void navigator.clipboard.writeText(content.text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  if (!document) return null;
 
   const isVaultNote =
     document.metadata?.['category'] === 'vault_note' ||
@@ -153,6 +219,82 @@ export function DocumentPreviewModal({
               <div className="w-full max-h-[68vh] overflow-y-auto p-4 sm:p-6 rounded-lg bg-surface/80 border border-border/60 prose prose-invert prose-sm max-w-none">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{content.text}</ReactMarkdown>
               </div>
+            ) : isCsv && parsedCsv ? (
+              <div className="w-full max-h-[68vh] overflow-y-auto space-y-2 p-2 rounded-lg bg-surface/80 border border-border/60">
+                <div className="flex items-center justify-between text-xs text-text-muted px-2 py-1">
+                  <span>
+                    {parsedCsv.headers.length} columns · {parsedCsv.totalRows} rows
+                    {parsedCsv.totalRows > 100 && ' (previewing first 100)'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCopy}
+                    className="text-primary hover:underline font-medium text-xs"
+                  >
+                    {copied ? 'Copied CSV' : 'Copy CSV Text'}
+                  </button>
+                </div>
+                <div className="overflow-x-auto border border-border/70 rounded-md">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-surface-200 sticky top-0 border-b border-border text-text font-semibold">
+                      <tr>
+                        <th className="p-2 w-10 text-center text-text-dim border-r border-border/50">
+                          #
+                        </th>
+                        {parsedCsv.headers.map((h, i) => (
+                          <th key={i} className="p-2 border-r border-border/50 whitespace-nowrap">
+                            {h || `Col ${i + 1}`}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/40 font-mono text-[11px]">
+                      {parsedCsv.rows.map((r, rIdx) => (
+                        <tr key={rIdx} className="hover:bg-surface-hover/50 odd:bg-surface/20">
+                          <td className="p-2 text-center text-text-dim border-r border-border/50">
+                            {rIdx + 1}
+                          </td>
+                          {r.map((cell, cIdx) => (
+                            <td
+                              key={cIdx}
+                              className="p-2 border-r border-border/50 whitespace-nowrap max-w-xs truncate text-text"
+                            >
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : isCode && codeLines.length > 0 ? (
+              <div className="w-full max-h-[68vh] overflow-hidden rounded-lg bg-surface-sunken border border-border/80 font-mono text-xs">
+                <div className="flex items-center justify-between px-3 py-1.5 bg-surface-200 border-b border-border text-[11px] text-text-muted">
+                  <span>
+                    {fileName} ({codeLines.length} lines)
+                  </span>
+                  <button type="button" onClick={handleCopy} className="hover:text-text font-sans">
+                    {copied ? 'Copied!' : 'Copy Code'}
+                  </button>
+                </div>
+                <div className="overflow-auto max-h-[62vh] p-2">
+                  <table className="w-full border-collapse">
+                    <tbody>
+                      {codeLines.map((line, idx) => (
+                        <tr key={idx} className="hover:bg-surface-elevated/40">
+                          <td className="w-10 text-right pr-3 select-none text-text-dim text-[10px] py-0.5 border-r border-border/40">
+                            {idx + 1}
+                          </td>
+                          <td className="pl-3 py-0.5 text-text whitespace-pre font-mono">
+                            {line || ' '}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             ) : (
               <pre className="w-full max-h-[68vh] overflow-auto p-4 rounded-lg bg-background font-mono text-xs text-text leading-relaxed whitespace-pre-wrap break-words border border-border/50">
                 {content.text}
@@ -181,6 +323,24 @@ export function DocumentPreviewModal({
                   onClick={() => setImageZoom((prev) => !prev)}
                 />
               </div>
+            </div>
+          ) : isVideo && content?.url ? (
+            <div className="w-full flex flex-col items-center justify-center p-2">
+              <video
+                controls
+                src={content.url}
+                className="max-h-[62vh] max-w-full rounded-lg shadow-lg border border-border bg-black"
+              >
+                Your browser does not support HTML5 video preview.
+              </video>
+            </div>
+          ) : isAudio && content?.url ? (
+            <div className="w-full flex flex-col items-center justify-center p-8 bg-surface-100 rounded-xl border border-border">
+              <div className="text-3xl mb-3">🎵</div>
+              <p className="text-sm font-semibold text-text mb-4">{fileName}</p>
+              <audio controls src={content.url} className="w-full max-w-md">
+                Your browser does not support HTML5 audio playback.
+              </audio>
             </div>
           ) : isPdf && content?.url ? (
             <div className="w-full flex-1 flex flex-col h-[65vh] sm:h-[70vh]">

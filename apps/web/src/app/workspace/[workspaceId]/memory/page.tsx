@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useState, useCallback, useMemo, Suspense } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import useSWR from 'swr';
 import {
@@ -50,13 +50,15 @@ const TYPE_FILTERS: FilterOption[] = [
   { id: 'task', label: 'Tasks' },
 ];
 
-export default function MemoryGraphPage() {
+function MemoryGraphPageContent() {
   const params = useParams<{ workspaceId: string }>();
   const workspaceId = params.workspaceId;
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get('query') || searchParams.get('q') || '';
 
   const [activeTab, setActiveTab] = useState('list');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [selectedType, setSelectedType] = useState('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showLineage, setShowLineage] = useState(false);
@@ -84,13 +86,13 @@ export default function MemoryGraphPage() {
     () => memoryFeedApi.lineage(selectedId!),
   );
 
-  // Memories query
+  // Memories query with explicit workspace scoping
   const {
     data: memoriesRes,
     isLoading: memoriesLoading,
     mutate: mutateMemories,
   } = useSWR(workspaceId ? `memories-${workspaceId}` : null, () =>
-    memoryApi.list({ page_size: 100 }),
+    memoryApi.list({ page_size: 100, workspace_id: workspaceId }),
   );
 
   const memItems: Memory[] = useMemo(() => {
@@ -429,7 +431,7 @@ export default function MemoryGraphPage() {
 
       {/* Tab 5: Memory Corrections */}
       <TabPanel id="corrections" activeTab={activeTab}>
-        <MemoryCorrectionPanel />
+        <MemoryCorrectionPanel workspaceId={workspaceId} />
       </TabPanel>
 
       {/* Tab 6: Vaeloom Vault Git Sync */}
@@ -581,5 +583,19 @@ export default function MemoryGraphPage() {
         </form>
       </Modal>
     </div>
+  );
+}
+
+export default function MemoryGraphPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="py-24 flex flex-col items-center justify-center gap-3">
+          <LoadingSpinner size="lg" text="Loading second brain..." />
+        </div>
+      }
+    >
+      <MemoryGraphPageContent />
+    </Suspense>
   );
 }

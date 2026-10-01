@@ -37,7 +37,7 @@ export default function MemoryCorrectionsPage() {
       />
 
       {/* Main Memory Correction & Supersession Panel */}
-      <MemoryCorrectionPanel />
+      <MemoryCorrectionPanel workspaceId={workspaceId} />
 
       {/* Governance & Provenance Rules */}
       <Card

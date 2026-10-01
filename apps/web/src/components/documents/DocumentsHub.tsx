@@ -137,6 +137,8 @@ export function DocumentsHub({
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
   const [folderBusy, setFolderBusy] = useState(false);
   const [autoOrganizeBusy, setAutoOrganizeBusy] = useState(false);
+  const [syncingDocId, setSyncingDocId] = useState<string | null>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   // Version History Modal
   const [versionDoc, setVersionDoc] = useState<DocumentResponse | null>(null);
@@ -221,12 +223,13 @@ export function DocumentsHub({
             page: pageNum,
             page_size: PAGE_SIZE,
           });
-          let docs = res.documents;
+          let docs =
+            res?.documents ?? (res as unknown as { items?: DocumentResponse[] })?.items ?? [];
           if (folderId) {
             docs = docs.filter((d) => d.folder_id === folderId);
           }
           setDocuments(docs);
-          setTotal(res.total);
+          setTotal(res?.total ?? docs.length);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load documents');
@@ -420,6 +423,150 @@ export function DocumentsHub({
       setAutoOrganizeBusy(false);
     }
   }, [currentWorkspaceId, fetchFolders, fetchDocuments, toast]);
+
+  // Synchronize a single document into Second Brain (Memory Store)
+  const handleSyncMemory = useCallback(
+    async (doc: DocumentResponse) => {
+      if (!currentWorkspaceId) return;
+      setSyncingDocId(doc.id);
+      try {
+        const res = await documentApi.syncMemory(doc.id, currentWorkspaceId);
+        toast({
+          tone: 'success',
+          title: 'Synced to Second Brain',
+          detail: `Document "${getFileName(doc.path)}" is indexed into workspace memory.`,
+        });
+        setDocuments((prev) =>
+          prev.map((d) =>
+            d.id === doc.id
+              ? {
+                  ...d,
+                  metadata: {
+                    ...(d.metadata || {}),
+                    sync_status: 'synced',
+                    memory_id: res.memoryId,
+                    synced_at: new Date().toISOString(),
+                  },
+                }
+              : d,
+          ),
+        );
+      } catch (err) {
+        toast({
+          tone: 'error',
+          title: 'Memory sync failed',
+          detail: err instanceof Error ? err.message : 'Error syncing document to memory',
+        });
+      } finally {
+        setSyncingDocId(null);
+      }
+    },
+    [currentWorkspaceId, toast],
+  );
+
+  // Bulk Synchronize all selected documents into Second Brain
+  const handleBulkSyncMemory = useCallback(async () => {
+    if (!currentWorkspaceId || selectedDocIds.size === 0) return;
+    setBulkBusy(true);
+    try {
+      const res = await documentApi.bulkSyncMemory(currentWorkspaceId, Array.from(selectedDocIds));
+      toast({
+        tone: 'success',
+        title: 'Bulk Memory Sync Complete',
+        detail: `Successfully indexed ${res.syncedCount} document(s) into Second Brain.`,
+      });
+      void fetchDocuments();
+    } catch (err) {
+      toast({
+        tone: 'error',
+        title: 'Bulk memory sync failed',
+        detail: err instanceof Error ? err.message : 'Error syncing documents to memory',
+      });
+    } finally {
+      setBulkBusy(false);
+    }
+  }, [currentWorkspaceId, selectedDocIds, fetchDocuments, toast]);
+
+  // Upload an entire folder hierarchy
+  const handleFolderUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files || files.length === 0 || !currentWorkspaceId) return;
+
+      const fileList = Array.from(files);
+      toast({
+        tone: 'info',
+        title: 'Folder Upload Started',
+        detail: `Uploading ${fileList.length} files with directory hierarchy...`,
+      });
+
+      const folderMap = new Map<string, string>();
+
+      async function getOrCreatePath(parts: string[]): Promise<string | null> {
+        let currentParent: string | null = selectedFolderId || null;
+        let accumulated = currentParent ? `${currentParent}:` : '';
+        for (const part of parts) {
+          if (!part.trim()) continue;
+          accumulated += `/${part.trim()}`;
+          if (folderMap.has(accumulated)) {
+            currentParent = folderMap.get(accumulated)!;
+            continue;
+          }
+          try {
+            const created = await documentApi.createFolder(
+              currentWorkspaceId,
+              part.trim(),
+              currentParent,
+            );
+            currentParent = created.id;
+            folderMap.set(accumulated, created.id);
+          } catch {
+            try {
+              const list = await documentApi.listFolders(
+                currentWorkspaceId,
+                currentParent || undefined,
+              );
+              const found = list.find((f) => f.name.toLowerCase() === part.trim().toLowerCase());
+              if (found) {
+                currentParent = found.id;
+                folderMap.set(accumulated, found.id);
+              }
+            } catch {
+              // fallback
+            }
+          }
+        }
+        return currentParent;
+      }
+
+      let successCount = 0;
+      for (const file of fileList) {
+        try {
+          const relativePath = file.webkitRelativePath || file.name;
+          let targetFolder: string | null = selectedFolderId || null;
+          if (relativePath.includes('/')) {
+            const parts = relativePath.split('/');
+            parts.pop(); // remove file name
+            targetFolder = await getOrCreatePath(parts);
+          }
+          await documentApi.upload(file, currentWorkspaceId, targetFolder);
+          successCount++;
+        } catch (err) {
+          console.error('Failed to upload file from folder:', file.name, err);
+        }
+      }
+
+      toast({
+        tone: 'success',
+        title: 'Folder Upload Complete',
+        detail: `Successfully uploaded ${successCount} of ${fileList.length} files.`,
+      });
+      if (folderInputRef.current) folderInputRef.current.value = '';
+      void fetchFolders();
+      void fetchDocuments();
+    },
+    [currentWorkspaceId, selectedFolderId, fetchFolders, fetchDocuments, toast],
+  );
 
   // Versions Modal
   const openVersions = useCallback(
@@ -737,9 +884,10 @@ export function DocumentsHub({
 
   // Filtered documents by category
   const filteredDocuments = useMemo(() => {
-    if (selectedCategory === 'all') return documents;
+    const list = documents || [];
+    if (selectedCategory === 'all') return list;
     if (selectedCategory === 'vault_notes') {
-      return documents.filter((d) => {
+      return list.filter((d) => {
         const cat = d.metadata?.['category'];
         const isVault = cat === 'vault_note' || d.type === 'vault_note';
         const inVaultFolder = folders.find((f) => f.id === d.folder_id)?.name === 'Vault Notes';
@@ -747,8 +895,8 @@ export function DocumentsHub({
       });
     }
     const allowed = CATEGORY_EXTENSIONS[selectedCategory];
-    if (!allowed) return documents;
-    return documents.filter((d) => {
+    if (!allowed) return list;
+    return list.filter((d) => {
       const ext = d.path.split('.').pop()?.toLowerCase() ?? '';
       return allowed.has(ext) || allowed.has(d.type?.toLowerCase());
     });
@@ -783,6 +931,39 @@ export function DocumentsHub({
                 />
               </svg>
               <span>{autoOrganizeBusy ? 'Organizing...' : 'Auto-Organize Files'}</span>
+            </button>
+
+            <input
+              ref={folderInputRef}
+              type="file"
+              // @ts-expect-error webkitdirectory is standard in all modern browsers
+              webkitdirectory=""
+              directory=""
+              multiple
+              className="hidden"
+              onChange={handleFolderUpload}
+            />
+
+            <button
+              type="button"
+              onClick={() => folderInputRef.current?.click()}
+              className="btn-secondary text-sm flex items-center gap-2 hover:border-primary/50 text-text transition-colors"
+              title="Upload an entire directory structure with automatic nested folder creation"
+            >
+              <svg
+                className="w-4 h-4 text-primary"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                />
+              </svg>
+              <span>Upload Folder</span>
             </button>
 
             <button
@@ -978,6 +1159,28 @@ export function DocumentsHub({
                   className="btn-secondary text-xs px-3 py-1.5"
                 >
                   Download (.zip)
+                </button>
+                <button
+                  type="button"
+                  disabled={bulkBusy}
+                  onClick={handleBulkSyncMemory}
+                  className="btn-secondary text-xs px-3 py-1.5 text-primary hover:bg-primary/10 hover:border-primary/40 flex items-center gap-1.5"
+                  title="Index selected documents into Second Brain"
+                >
+                  <svg
+                    className={`w-3.5 h-3.5 text-primary ${bulkBusy ? 'animate-spin' : ''}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                  <span>Sync to Memory</span>
                 </button>
                 <button
                   type="button"
@@ -1195,13 +1398,44 @@ export function DocumentsHub({
                               )}
 
                               {/* Memory Sync status badge */}
-                              <span
-                                className="inline-flex items-center gap-1 text-[10px] text-primary/90 bg-primary/10 border border-primary/25 px-1.5 py-0.5 rounded font-mono shrink-0"
-                                title="Dynamically synchronized with Workspace Memory & Knowledge Graph"
-                              >
-                                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                                Memory Synced
-                              </span>
+                              {doc.metadata?.['sync_status'] === 'synced' || isVaultNote ? (
+                                <Link
+                                  href={`/workspace/${currentWorkspaceId}/memory?query=${encodeURIComponent(fileName)}`}
+                                  className="inline-flex items-center gap-1 text-[10px] text-primary/90 hover:text-primary bg-primary/10 hover:bg-primary/20 border border-primary/25 px-1.5 py-0.5 rounded font-mono shrink-0 transition-colors"
+                                  title="Dynamically indexed in Second Brain. Click to view in Memory."
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                                  Memory Synced
+                                </Link>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled={syncingDocId === doc.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void handleSyncMemory(doc);
+                                  }}
+                                  className="inline-flex items-center gap-1 text-[10px] text-text-muted hover:text-primary bg-surface hover:bg-surface-hover border border-border px-1.5 py-0.5 rounded font-mono shrink-0 transition-colors disabled:opacity-50"
+                                  title="Click to sync document into Second Brain"
+                                >
+                                  <svg
+                                    className={`w-2.5 h-2.5 ${syncingDocId === doc.id ? 'animate-spin' : ''}`}
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                    />
+                                  </svg>
+                                  <span>
+                                    {syncingDocId === doc.id ? 'Syncing...' : 'Sync Memory'}
+                                  </span>
+                                </button>
+                              )}
                             </div>
 
                             {/* Tags display */}
@@ -1398,6 +1632,30 @@ export function DocumentsHub({
                                   />
                                 </svg>
                               </Link>
+
+                              {/* Sync with Second Brain */}
+                              <button
+                                type="button"
+                                disabled={syncingDocId === doc.id}
+                                onClick={() => void handleSyncMemory(doc)}
+                                className="p-1.5 text-text-muted hover:text-primary rounded hover:bg-primary/10 transition-colors"
+                                title="Sync with Second Brain (Memory Store)"
+                                aria-label={`Sync ${fileName} to Memory`}
+                              >
+                                <svg
+                                  className={`w-4 h-4 text-primary ${syncingDocId === doc.id ? 'animate-spin' : ''}`}
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                  />
+                                </svg>
+                              </button>
 
                               {/* More (Rename) */}
                               <button

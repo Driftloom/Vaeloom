@@ -1,5 +1,5 @@
 'use client';
-import React, { useCallback, useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
@@ -115,6 +115,7 @@ export function DocumentDetailView({
   const [tags, setTags] = useState<string[]>([]);
   const [newTagInput, setNewTagInput] = useState('');
   const [tagBusy, setTagBusy] = useState(false);
+  const [syncingMemory, setSyncingMemory] = useState(false);
 
   // Active Tab
   const [activeTab, setActiveTab] = useState<
@@ -194,6 +195,41 @@ export function DocumentDetailView({
       setLoading(false);
     }
   }, [workspaceId, documentId]);
+
+  // Synchronize document into Second Brain (Memory Store)
+  const handleSyncMemory = useCallback(async () => {
+    if (!doc || !workspaceId) return;
+    setSyncingMemory(true);
+    try {
+      const res = await documentApi.syncMemory(doc.id, workspaceId);
+      toast({
+        tone: 'success',
+        title: 'Synced to Second Brain',
+        detail: `Document "${getFileName(doc.path)}" is synchronized with workspace memory.`,
+      });
+      setDoc((prev) =>
+        prev
+          ? {
+              ...prev,
+              metadata: {
+                ...(prev.metadata as Record<string, unknown> | undefined),
+                sync_status: 'synced',
+                memory_id: res.memoryId,
+                synced_at: new Date().toISOString(),
+              },
+            }
+          : null,
+      );
+    } catch (err) {
+      toast({
+        tone: 'error',
+        title: 'Memory sync failed',
+        detail: err instanceof Error ? err.message : 'Error syncing document to memory',
+      });
+    } finally {
+      setSyncingMemory(false);
+    }
+  }, [doc, workspaceId, toast]);
 
   // Fetch history / actions
   const fetchActions = useCallback(async () => {
@@ -461,6 +497,76 @@ export function DocumentDetailView({
     }
   };
 
+  const fileName = doc ? getFileName(doc.path) : '';
+  const size = (doc?.metadata as Record<string, unknown> | undefined)?.['size'];
+  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+  const type = (doc?.type || '').toLowerCase();
+  const isImage =
+    IMAGE_TYPES.has(type) ||
+    ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp', 'ico'].includes(ext);
+  const isPdf = type === 'pdf' || ext === 'pdf';
+  const isMarkdown = type === 'markdown' || ext === 'md' || ext === 'markdown';
+  const isCsv = type === 'csv' || ext === 'csv' || ext === 'tsv';
+  const isCode = [
+    'js',
+    'ts',
+    'tsx',
+    'jsx',
+    'py',
+    'json',
+    'yaml',
+    'yml',
+    'sql',
+    'sh',
+    'bash',
+    'html',
+    'css',
+    'go',
+    'rs',
+    'cpp',
+    'c',
+    'h',
+  ].includes(ext);
+  const isVideo = ['mp4', 'mov', 'webm'].includes(ext);
+  const isAudio = ['mp3', 'wav', 'ogg'].includes(ext);
+  const createdAt = doc ? field<string>(doc, 'created_at', 'createdAt') : undefined;
+  const scanStatus = doc?.scan_status;
+  const versionNum =
+    (doc ? field<number | string>(doc.metadata, 'version', 'version_number') : null) ?? 1;
+
+  const parsedCsv = useMemo(() => {
+    if (!isCsv || !textContent) return null;
+    const lines = textContent.split(/\r?\n/).filter((l) => l.trim().length > 0);
+    if (lines.length === 0) return null;
+    const delimiter = ext === 'tsv' ? '\t' : ',';
+    const parseLine = (line: string): string[] => {
+      const result: string[] = [];
+      let cur = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"') {
+          inQuotes = !inQuotes;
+        } else if (c === delimiter && !inQuotes) {
+          result.push(cur.trim());
+          cur = '';
+        } else {
+          cur += c;
+        }
+      }
+      result.push(cur.trim());
+      return result;
+    };
+    const headers = parseLine(lines[0] || '');
+    const rows = lines.slice(1, 101).map((r) => parseLine(r));
+    return { headers, rows, totalRows: lines.length - 1 };
+  }, [isCsv, textContent, ext]);
+
+  const codeLines = useMemo(() => {
+    if (!isCode || !textContent) return [];
+    return textContent.split(/\r?\n/);
+  }, [isCode, textContent]);
+
   if (loading) {
     return (
       <div className="py-24 flex flex-col items-center justify-center gap-3">
@@ -478,19 +584,6 @@ export function DocumentDetailView({
       />
     );
   }
-
-  const fileName = getFileName(doc.path);
-  const size = (doc.metadata as Record<string, unknown> | undefined)?.['size'];
-  const ext = fileName.split('.').pop()?.toLowerCase() || '';
-  const type = (doc.type || '').toLowerCase();
-  const isImage =
-    IMAGE_TYPES.has(type) ||
-    ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp', 'ico'].includes(ext);
-  const isPdf = type === 'pdf' || ext === 'pdf';
-  const isMarkdown = type === 'markdown' || ext === 'md' || ext === 'markdown';
-  const createdAt = field<string>(doc, 'created_at', 'createdAt');
-  const scanStatus = doc.scan_status;
-  const versionNum = field<number | string>(doc.metadata, 'version', 'version_number') ?? 1;
 
   return (
     <div className="flex flex-col gap-6">
@@ -654,8 +747,37 @@ export function DocumentDetailView({
             title="Dynamically synchronized with Workspace Memory & Knowledge Graph"
           >
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            Memory Synced
+            {doc.metadata?.['sync_status'] === 'synced' ? 'Memory Synced' : 'Memory Integration'}
           </span>
+
+          <button
+            type="button"
+            disabled={syncingMemory}
+            onClick={() => void handleSyncMemory()}
+            className="inline-flex items-center gap-1.5 text-xs text-text hover:text-primary transition-colors border border-border/60 bg-surface px-2.5 py-1 rounded-lg font-medium hover:border-primary/40 disabled:opacity-50"
+            title="Trigger dynamic synchronization with workspace memory"
+          >
+            <svg
+              className={`w-3.5 h-3.5 text-primary ${syncingMemory ? 'animate-spin' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            <span>
+              {syncingMemory
+                ? 'Syncing...'
+                : doc.metadata?.['sync_status'] === 'synced'
+                  ? 'Re-sync Memory'
+                  : 'Sync with Memory'}
+            </span>
+          </button>
 
           {/* Deep link to Memory Graph */}
           <Link
@@ -793,6 +915,89 @@ export function DocumentDetailView({
                 <div className="prose prose-invert prose-sm max-w-none p-4 leading-relaxed">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{textContent}</ReactMarkdown>
                 </div>
+              ) : isCsv && parsedCsv ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-xs text-text-muted px-1">
+                    <span>
+                      {parsedCsv.headers.length} columns · {parsedCsv.totalRows} rows
+                      {parsedCsv.totalRows > 100 && ' (previewing first 100)'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleCopyText}
+                      className="text-primary hover:underline font-medium"
+                    >
+                      {copied ? 'Copied CSV' : 'Copy CSV Text'}
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto max-h-[65vh] border border-border/80 rounded-lg">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="bg-surface-200 sticky top-0 border-b border-border text-text font-semibold">
+                        <tr>
+                          <th className="p-2.5 w-10 text-center text-text-dim border-r border-border/50">
+                            #
+                          </th>
+                          {parsedCsv.headers.map((h: string, i: number) => (
+                            <th
+                              key={i}
+                              className="p-2.5 border-r border-border/50 whitespace-nowrap"
+                            >
+                              {h || `Col ${i + 1}`}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/40 font-mono text-[11px]">
+                        {parsedCsv.rows.map((r: string[], rIdx: number) => (
+                          <tr key={rIdx} className="hover:bg-surface-hover/50 odd:bg-surface/20">
+                            <td className="p-2 text-center text-text-dim border-r border-border/50">
+                              {rIdx + 1}
+                            </td>
+                            {r.map((cell: string, cIdx: number) => (
+                              <td
+                                key={cIdx}
+                                className="p-2 border-r border-border/50 whitespace-nowrap max-w-xs truncate text-text"
+                              >
+                                {cell}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : isCode && codeLines.length > 0 ? (
+                <div className="rounded-lg border border-border/80 bg-surface-sunken overflow-hidden font-mono text-xs">
+                  <div className="flex items-center justify-between px-3 py-1.5 bg-surface-200 border-b border-border text-[11px] text-text-muted">
+                    <span>
+                      {fileName} ({codeLines.length} lines)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleCopyText}
+                      className="hover:text-text font-sans"
+                    >
+                      {copied ? 'Copied!' : 'Copy Code'}
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto max-h-[65vh] p-2">
+                    <table className="w-full border-collapse">
+                      <tbody>
+                        {codeLines.map((line: string, idx: number) => (
+                          <tr key={idx} className="hover:bg-surface-elevated/40">
+                            <td className="w-10 text-right pr-3 select-none text-text-dim text-[10px] py-0.5 border-r border-border/40">
+                              {idx + 1}
+                            </td>
+                            <td className="pl-3 py-0.5 text-text whitespace-pre font-mono">
+                              {line || ' '}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               ) : (
                 <pre className="font-mono text-xs text-text leading-relaxed whitespace-pre-wrap break-words p-4">
                   {textContent}
@@ -827,6 +1032,24 @@ export function DocumentDetailView({
                     className="max-h-[65vh] max-w-full rounded-lg shadow-lg object-contain"
                   />
                 </div>
+              </div>
+            ) : isVideo && blobUrl ? (
+              <div className="flex flex-col items-center justify-center p-4">
+                <video
+                  controls
+                  src={blobUrl}
+                  className="max-h-[65vh] max-w-full rounded-lg shadow-lg border border-border bg-black"
+                >
+                  Your browser does not support HTML5 video preview.
+                </video>
+              </div>
+            ) : isAudio && blobUrl ? (
+              <div className="flex flex-col items-center justify-center p-8 bg-surface-100 rounded-xl border border-border">
+                <div className="text-3xl mb-3">🎵</div>
+                <p className="text-sm font-semibold text-text mb-4">{fileName}</p>
+                <audio controls src={blobUrl} className="w-full max-w-md">
+                  Your browser does not support HTML5 audio playback.
+                </audio>
               </div>
             ) : isPdf && blobUrl ? (
               <div className="flex flex-col w-full min-h-[60vh] max-h-[78vh]">

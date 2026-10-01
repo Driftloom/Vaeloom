@@ -7,7 +7,11 @@ import { DiffViewer } from '@/components/shared/DiffViewer';
 import { useToast } from '@/components/shared/Toast';
 import type { Memory } from '@vaeloom/shared-types';
 
-export function MemoryCorrectionPanel() {
+interface MemoryCorrectionPanelProps {
+  workspaceId?: string;
+}
+
+export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProps = {}) {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -24,7 +28,10 @@ export function MemoryCorrectionPanel() {
     setLoading(true);
     setLoadError(null);
     try {
-      const res = await memoryApi.list({ page_size: 100 });
+      const res = await memoryApi.list({
+        page_size: 100,
+        ...(workspaceId ? { workspace_id: workspaceId } : {}),
+      });
       const rows = Array.isArray(res)
         ? res
         : ((res as { memories?: Memory[]; items?: Memory[] }).memories ??
@@ -41,7 +48,7 @@ export function MemoryCorrectionPanel() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [workspaceId]);
 
   useEffect(() => {
     void load();
