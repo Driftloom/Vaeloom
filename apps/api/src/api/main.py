@@ -93,6 +93,7 @@ from .routers import (
     cognition,
     connectors,
     council,
+    conversations,
     documents,
     events,
     feature_flags,
@@ -503,6 +504,12 @@ _safe_include(encryption_router, "/api/v1", ["security"])
 _safe_include(health.router, "/health", ["health"])
 _safe_include(auth.router, "/api/v1/auth", ["auth"])
 _safe_include(workspaces.router, "/api/v1/workspaces", ["workspaces"])
+# Conversations cannot share the bare `/api/v1/workspaces` prefix: workspaces.router
+# already owns `""` and `/{workspace_id}` there, and FastAPI matches routes in
+# registration order, so conversation GETs would resolve to the workspace route.
+# Anchoring `{workspace_id}` in the prefix yields the identical public paths with
+# no collision. Same shape as the applications router below.
+_safe_include(conversations.router, "/api/v1/workspaces/{workspace_id}/conversations", ["conversations"])
 _safe_include(memory.router, "/api/v1/memories", ["memory"])
 _safe_include(agents.router, "/api/v1/agents", ["agents"])
 _safe_include(events.router, "/api/v1/events", ["events"])

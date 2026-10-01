@@ -234,6 +234,7 @@ class Workspace(Base):
     agents: Mapped[list["Agent"]] = relationship("Agent", back_populates="workspace", cascade="all, delete-orphan")
     folders: Mapped[list["Folder"]] = relationship("Folder", back_populates="workspace", cascade="all, delete-orphan")
     capabilities: Mapped[list["WorkspaceCapability"]] = relationship("WorkspaceCapability", back_populates="workspace", cascade="all, delete-orphan")
+    conversations: Mapped[list["Conversation"]] = relationship("Conversation", back_populates="workspace", cascade="all, delete-orphan")
 
     __table_args__ = (Index("idx_workspaces_user_id", "user_id"),)
 
@@ -904,6 +905,87 @@ class AgentAction(Base):
         Index("idx_agent_actions_workspace_created", "workspace_id", "created_at"),
         Index("idx_agent_actions_workspace_agent", "workspace_id", "agent_name"),
     )
+
+
+class Conversation(Base):
+    """A server-side chat transcript.
+
+    The transcript used to live only in the browser origin's localStorage, which
+    made it single-device, destructible by a site-data clear, and stored resume
+    PII in plaintext outside any access control. Moving it here puts it behind the
+    same workspace authorization and RLS posture as every other tenant row.
+    """
+
+    __tablename__ = "conversations"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    title: Mapped[str | None] = mapped_column(String(200))
+    agent_name: Mapped[str | None] = mapped_column(String(100))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="conversations")
+    messages: Mapped[list["ChatMessage"]] = relationship("ChatMessage", back_populates="conversation", cascade="all, delete-orphan", order_by="ChatMessage.seq")
+
+    __table_args__ = (Index("idx_conversations_workspace_updated", "workspace_id", "updated_at"),)
+
+
+class ChatMessage(Base):
+    """One persisted turn of a conversation.
+
+    `client_id` is frontend-generated and unique per conversation: the client
+    retries writes, so the unique constraint plus an upsert is what stops a retry
+    from producing a second row. `reply_to` holds the paired user message's
+    client_id (not its UUID) so the pairing survives cross-device replay.
+
+    No relationship to Workspace, matching ResumeArtifact: the column is there for
+    RLS, and adding a second ORM path to the same parent invites write conflicts.
+    """
+
+    __tablename__ = "chat_messages"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    conversation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False)
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    # Per-conversation insertion counter. `created_at` alone cannot order turns:
+    # now() has microsecond resolution but two turns written inside the same
+    # millisecond tie, and a tie means a transcript that renders out of order.
+    seq: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    client_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    role: Mapped[str] = mapped_column(String(20), nullable=False)  # user | agent
+    text: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(20), default="complete")
+    agent_name: Mapped[str | None] = mapped_column(String(100))
+    confidence: Mapped[float | None] = mapped_column(Float)
+    tool_calls: Mapped[list | None] = mapped_column(JSON, default=list)
+    citations: Mapped[list | None] = mapped_column(JSON, default=list)
+    proposals: Mapped[list | None] = mapped_column(JSON, default=list)
+    questions: Mapped[list | None] = mapped_column(JSON, default=list)
+    action_chips: Mapped[list | None] = mapped_column(JSON, default=list)
+    attachments: Mapped[list | None] = mapped_column(JSON, default=list)
+    plan: Mapped[dict | None] = mapped_column(JSON)
+    phases: Mapped[list | None] = mapped_column(JSON, default=list)
+    error_: Mapped[dict | None] = mapped_column("error", JSON)
+    latency_ms: Mapped[int | None] = mapped_column(Integer)
+    highway: Mapped[str | None] = mapped_column(String(50))
+    s1_latency_ms: Mapped[int | None] = mapped_column(Integer)
+    s2_latency_ms: Mapped[int | None] = mapped_column(Integer)
+    workflow_id: Mapped[str | None] = mapped_column(String(100))
+    reply_to: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    conversation: Mapped["Conversation"] = relationship("Conversation", back_populates="messages")
+
+    __table_args__ = (
+        Index("idx_chat_messages_conversation_created", "conversation_id", "created_at"),
+        Index("idx_chat_messages_workspace_id", "workspace_id"),
+        UniqueConstraint("conversation_id", "client_id", name="uq_chat_messages_conversation_client"),
+    )
+    # seq is an implementation detail for ordering, not part of the wire contract,
+    # so it is absent from MessageResponse.
 
 
 class IdempotencyRecord(Base):

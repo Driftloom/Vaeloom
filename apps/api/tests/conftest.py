@@ -119,7 +119,7 @@ def _build_test_app(db_session):
         webhooks, gmail, provider_keys, profile, opportunities, council,
         cognition, sovereignty, anticipation, federation,
         marketplace, organizations, realtime, onboarding, orchestrator, career,
-        vault_sync,
+        vault_sync, conversations,
     )
     from api.services.gdpr import router as gdpr_router
     from api.services.consent import router as consent_router
@@ -155,6 +155,7 @@ def _build_test_app(db_session):
     test_app.include_router(health.router, prefix="/health")
     test_app.include_router(auth.router, prefix="/api/v1/auth")
     test_app.include_router(workspaces.router, prefix="/api/v1/workspaces")
+    test_app.include_router(conversations.router, prefix="/api/v1/workspaces/{workspace_id}/conversations")
     test_app.include_router(memory.router, prefix="/api/v1/memories")
     test_app.include_router(agents.router, prefix="/api/v1/agents")
     test_app.include_router(provider_keys.router, prefix="/api/v1/provider-keys")

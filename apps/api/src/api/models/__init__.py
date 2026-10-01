@@ -6,7 +6,9 @@ from .schema import (
     ApiKey,
     Application,
     AuthSession,
+    ChatMessage,
     Connector,
+    Conversation,
     CrdtSyncDelta,
     DeadLetterEvent,
     Document,
@@ -52,7 +54,7 @@ from .registries import (
 
 __all__ = [
     "Agent", "AgentAction", "AgentExecution", "AgentSchedule", "ApiKey",
-    "Application", "AuthSession", "Connector", "CrdtSyncDelta", "DeadLetterEvent",
+    "Application", "AuthSession", "ChatMessage", "Connector", "Conversation", "CrdtSyncDelta", "DeadLetterEvent",
     "Document", "DocumentVersion", "Embedding", "Entity", "Event",
     "EventSubscription", "GmailWatch", "Integration", "LearningEvent", "Memory", "MemoryRecord",
     "Notification", "OutboxEvent", "PasswordResetToken", "Permission", "Plugin", "PluginExecution", "ProactiveProposal",
