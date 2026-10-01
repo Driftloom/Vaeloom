@@ -353,16 +353,23 @@ paths:
       tags:
         - auth
       summary: Logout
-      description: "Revoke the caller's own session.
+      description: 'Revoke the caller''s own session.
 
 
-        Scoped to this token's `jti`. The previous implementation revoked every
+        Scoped to this token''s `jti`. The previous implementation revoked every
 
         ACTIVE session for the user, so signing out on one device silently signed
 
         the user out of all of them. Bulk revocation belongs to
 
-        `POST /auth/sessions/revoke-others`."
+        `POST /auth/sessions/revoke-others`.
+
+
+        The cookies are cleared unconditionally, including when the session was
+
+        already expired. Otherwise a stale cookie would survive a "successful"
+
+        logout and the user would appear signed in until it aged out.'
       operationId: logout_api_v1_auth_logout_post
       responses:
         '204':
@@ -615,33 +622,17 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429': *id001
   /api/v1/workspaces:
-    get:
-      tags:
-        - workspaces
-      summary: List Workspaces
-      operationId: list_workspaces_api_v1_workspaces_get
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                items:
-                  $ref: '#/components/schemas/WorkspaceResponse'
-                type: array
-                title: Response List Workspaces Api V1 Workspaces Get
-        '429': *id001
     post:
       tags:
         - workspaces
       summary: Create Workspace
       operationId: create_workspace_api_v1_workspaces_post
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/CreateWorkspaceRequest'
-        required: true
       responses:
         '201':
           description: Successful Response
@@ -649,6 +640,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WorkspaceResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+    get:
+      tags:
+        - workspaces
+      summary: List Workspaces
+      operationId: list_workspaces_api_v1_workspaces_get
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 500
+            minimum: 1
+            default: 100
+            title: Limit
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+            title: Offset
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkspaceResponse'
+                title: Response List Workspaces Api V1 Workspaces Get
         '422':
           description: Validation Error
           content:
@@ -892,6 +923,299 @@ paths:
           content:
             application/json:
               schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/workspaces/{workspace_id}/conversations:
+    get:
+      tags:
+        - conversations
+      summary: List Conversations
+      operationId: list_conversations_api_v1_workspaces__workspace_id__conversations_get
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            title: Page
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            minimum: 1
+            default: 20
+            title: Page Size
+        - name: limit
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                maximum: 100
+                minimum: 1
+              - type: 'null'
+            description: Standard pagination page size (wins over page/page_size)
+            title: Limit
+          description: Standard pagination page size (wins over page/page_size)
+        - name: offset
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                minimum: 0
+              - type: 'null'
+            description: Standard pagination rows to skip
+            title: Offset
+          description: Standard pagination rows to skip
+        - name: search
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: Case-insensitive substring match on title
+            title: Search
+          description: Case-insensitive substring match on title
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Conversations Api V1 Workspaces  Workspace Id  Conversations
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+    post:
+      tags:
+        - conversations
+      summary: Create Conversation
+      operationId: create_conversation_api_v1_workspaces__workspace_id__conversations_post
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversationCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/workspaces/{workspace_id}/conversations/{conversation_id}:
+    get:
+      tags:
+        - conversations
+      summary: Get Conversation
+      operationId: get_conversation_api_v1_workspaces__workspace_id__conversations__conversation_id__get
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Conversation Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationWithMessages'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+    patch:
+      tags:
+        - conversations
+      summary: Update Conversation
+      operationId: update_conversation_api_v1_workspaces__workspace_id__conversations__conversation_id__patch
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Conversation Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversationUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+    delete:
+      tags:
+        - conversations
+      summary: Delete Conversation
+      operationId: delete_conversation_api_v1_workspaces__workspace_id__conversations__conversation_id__delete
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Conversation Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/workspaces/{workspace_id}/conversations/{conversation_id}/messages:
+    post:
+      tags:
+        - conversations
+      summary: Create Message
+      description: 'Persist one turn.
+
+
+        A repeated `client_id` returns the stored row with **200** rather than 201:
+
+        the frontend retries writes and accepts either, but 201 would claim a new
+        row
+
+        was created when nothing was written.'
+      operationId: create_message_api_v1_workspaces__workspace_id__conversations__conversation_id__messages_post
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Conversation Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '200':
+          description: Duplicate client_id — the stored row is returned unchanged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+    delete:
+      tags:
+        - conversations
+      summary: Clear Messages
+      operationId: clear_messages_api_v1_workspaces__workspace_id__conversations__conversation_id__messages_delete
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Conversation Id
+      responses:
+        '204':
+          description: Successful Response
         '422':
           description: Validation Error
           content:
@@ -1495,7 +1819,17 @@ paths:
       tags:
         - agents
       summary: Test Capability
-      description: Interactive capability test runner endpoint for workspace playground.
+      description: "Validate a capability's real configuration. Executes nothing
+        by default.
+
+
+        Every response carries ``executed``. Nothing on this endpoint invents a
+
+        result: a tool is schema-checked but not run, an agent's contract is read
+
+        from the registry but no plan is produced, and an MCP capability reports a
+
+        real discovery round trip or says that nothing was contacted."
       operationId: test_capability_api_v1_agents_capabilities_test_post
       requestBody:
         content:
@@ -2335,7 +2669,7 @@ paths:
       tags:
         - documents
       summary: Bulk Upload Documents
-      operationId: bulk_upload_documents_api_v1_documents_bulk_post
+      operationId: bulk_upload_documents_alias
       parameters:
         - name: workspace_id
           in: query
@@ -2356,7 +2690,7 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Body_bulk_upload_documents_api_v1_documents_bulk_post'
+              $ref: '#/components/schemas/Body_bulk_upload_documents_alias'
       responses:
         '200':
           description: Successful Response
@@ -2417,7 +2751,7 @@ paths:
       tags:
         - documents
       summary: Bulk Download Documents
-      operationId: bulk_download_documents_api_v1_documents_bulk_download_post
+      operationId: bulk_download_documents_alias
       parameters:
         - name: workspace_id
           in: query
@@ -2484,25 +2818,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429': *id001
-  /api/v1/documents/{document_id}/content:
-    get:
+  /api/v1/documents/bulk-delete:
+    post:
       tags:
         - documents
-      summary: Get Document Content
-      operationId: get_document_content_api_v1_documents__document_id__content_get
+      summary: Bulk Delete Documents
+      operationId: bulk_delete_documents_alias
       parameters:
-        - name: document_id
-          in: path
-          required: true
-          schema:
-            type: string
-            title: Document Id
         - name: workspace_id
           in: query
           required: true
           schema:
             type: string
             title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - $ref: '#/components/schemas/BulkDownloadRequest'
+                - type: object
+                  additionalProperties: true
+              title: Payload
       responses:
         '200':
           description: Successful Response
@@ -2516,19 +2854,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429': *id001
-  /api/v1/documents/{document_id}:
-    patch:
+  /api/v1/documents/bulk/delete:
+    post:
       tags:
         - documents
-      summary: Rename Document
-      operationId: rename_document_api_v1_documents__document_id__patch
+      summary: Bulk Delete Documents
+      operationId: bulk_delete_documents_api_v1_documents_bulk_delete_post
       parameters:
-        - name: document_id
-          in: path
-          required: true
-          schema:
-            type: string
-            title: Document Id
         - name: workspace_id
           in: query
           required: true
@@ -2540,14 +2872,17 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DocumentRenameRequest'
+              anyOf:
+                - $ref: '#/components/schemas/BulkDownloadRequest'
+                - type: object
+                  additionalProperties: true
+              title: Payload
       responses:
         '200':
           description: Successful Response
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/DocumentResponse'
+              schema: {}
         '422':
           description: Validation Error
           content:
@@ -2555,32 +2890,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429': *id001
-  /api/v1/documents/{document_id}/archive:
+  /api/v1/documents/bulk-sync-memory:
     post:
       tags:
         - documents
-      summary: Archive Document
-      operationId: archive_document_api_v1_documents__document_id__archive_post
+      summary: Bulk Sync Documents To Memory
+      operationId: bulk_sync_documents_to_memory_alias
       parameters:
-        - name: document_id
-          in: path
-          required: true
-          schema:
-            type: string
-            title: Document Id
         - name: workspace_id
           in: query
           required: true
           schema:
             type: string
             title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - $ref: '#/components/schemas/BulkSyncMemoryRequest'
+                - type: object
+                  additionalProperties: true
+              title: Payload
       responses:
         '200':
           description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DocumentResponse'
+                $ref: '#/components/schemas/BulkSyncMemoryResponse'
         '422':
           description: Validation Error
           content:
@@ -2588,32 +2927,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429': *id001
-  /api/v1/documents/{document_id}/restore:
+  /api/v1/documents/bulk/sync-memory:
     post:
       tags:
         - documents
-      summary: Restore Document
-      operationId: restore_document_api_v1_documents__document_id__restore_post
+      summary: Bulk Sync Documents To Memory
+      operationId: bulk_sync_documents_to_memory_api_v1_documents_bulk_sync_memory_post
       parameters:
-        - name: document_id
-          in: path
-          required: true
-          schema:
-            type: string
-            title: Document Id
         - name: workspace_id
           in: query
           required: true
           schema:
             type: string
             title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - $ref: '#/components/schemas/BulkSyncMemoryRequest'
+                - type: object
+                  additionalProperties: true
+              title: Payload
       responses:
         '200':
           description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DocumentResponse'
+                $ref: '#/components/schemas/BulkSyncMemoryResponse'
         '422':
           description: Validation Error
           content:
@@ -2621,52 +2964,15 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429': *id001
-  /api/v1/documents/{document_id}/actions:
-    get:
-      tags:
-        - documents
-      summary: List Document Actions
-      operationId: list_document_actions_api_v1_documents__document_id__actions_get
-      parameters:
-        - name: document_id
-          in: path
-          required: true
-          schema:
-            type: string
-            title: Document Id
-        - name: workspace_id
-          in: query
-          required: true
-          schema:
-            type: string
-            title: Workspace Id
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DocumentActionListResponse'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '429': *id001
-  /api/v1/documents/actions/{action_id}/undo:
+  /api/v1/documents/auto-organize:
     post:
       tags:
         - documents
-      summary: Undo Document Action
-      operationId: undo_document_action_api_v1_documents_actions__action_id__undo_post
+      summary: Auto Organize Documents
+      description: Auto-organize root/unorganized documents into categorized smart
+        folders.
+      operationId: auto_organize_documents_api_v1_documents_auto_organize_post
       parameters:
-        - name: action_id
-          in: path
-          required: true
-          schema:
-            type: string
-            title: Action Id
         - name: workspace_id
           in: query
           required: true
@@ -2678,8 +2984,7 @@ paths:
           description: Successful Response
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/DocumentResponse'
+              schema: {}
         '422':
           description: Validation Error
           content:
@@ -2847,6 +3152,358 @@ paths:
       responses:
         '204':
           description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/{document_id}/content:
+    get:
+      tags:
+        - documents
+      summary: Get Document Content
+      operationId: get_document_content_api_v1_documents__document_id__content_get
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+        - name: inline
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+            title: Inline
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/{document_id}:
+    get:
+      tags:
+        - documents
+      summary: Get Document
+      operationId: get_document_api_v1_documents__document_id__get
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+    patch:
+      tags:
+        - documents
+      summary: Rename Document
+      operationId: rename_document_api_v1_documents__document_id__patch
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentRenameRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+    delete:
+      tags:
+        - documents
+      summary: Delete Document
+      description: Permanently delete a document and clean up associated storage and
+        memory.
+      operationId: delete_document_api_v1_documents__document_id__delete
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/{document_id}/move:
+    post:
+      tags:
+        - documents
+      summary: Move Document
+      description: Move document to a different folder or to workspace root.
+      operationId: move_document_api_v1_documents__document_id__move_post
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentMoveRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/{document_id}/tags:
+    patch:
+      tags:
+        - documents
+      summary: Update Document Tags
+      description: Update semantic tags on a document.
+      operationId: update_document_tags_api_v1_documents__document_id__tags_patch
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentTagsRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/{document_id}/archive:
+    post:
+      tags:
+        - documents
+      summary: Archive Document
+      operationId: archive_document_api_v1_documents__document_id__archive_post
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/{document_id}/restore:
+    post:
+      tags:
+        - documents
+      summary: Restore Document
+      operationId: restore_document_api_v1_documents__document_id__restore_post
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/{document_id}/actions:
+    get:
+      tags:
+        - documents
+      summary: List Document Actions
+      operationId: list_document_actions_api_v1_documents__document_id__actions_get
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentActionListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/actions/{action_id}/undo:
+    post:
+      tags:
+        - documents
+      summary: Undo Document Action
+      operationId: undo_document_action_api_v1_documents_actions__action_id__undo_post
+      parameters:
+        - name: action_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Action Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
         '422':
           description: Validation Error
           content:
@@ -3221,6 +3878,41 @@ paths:
       responses:
         '204':
           description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/documents/{document_id}/sync-memory:
+    post:
+      tags:
+        - documents
+      summary: Sync Document To Memory
+      description: Synchronize document content into the workspace second brain /
+        memory store.
+      operationId: sync_document_to_memory_api_v1_documents__document_id__sync_memory_post
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Document Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentSyncMemoryResponse'
         '422':
           description: Validation Error
           content:
@@ -4834,12 +5526,62 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429': *id001
+  /api/v1/capabilities/catalog:
+    get:
+      tags:
+        - capabilities
+      summary: List Catalog Capabilities
+      description: 'Server-side skills catalog.
+
+
+        Declared before ``/{cap_id}`` so the literal path segment ``catalog`` is not
+
+        matched as a capability id. The catalog is global, so no workspace row is
+
+        read; authentication alone gates it.'
+      operationId: list_catalog_capabilities_api_v1_capabilities_catalog_get
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            default: skill
+            title: Category
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Catalog Capabilities Api V1 Capabilities Catalog
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/capabilities:
     get:
       tags:
         - capabilities
       summary: List Capabilities
-      description: List all sovereign workspace capabilities.
+      description: 'List all sovereign workspace capabilities.
+
+
+        With ``include_catalog=true`` and ``category=skill`` the response also carries
+
+        every bundled catalog skill the workspace has not installed, marked
+
+        ``installed: false`` / ``enabled: false`` with no ``id``.'
       operationId: list_capabilities_api_v1_capabilities_get
       parameters:
         - name: category
@@ -4850,6 +5592,13 @@ paths:
               - type: string
               - type: 'null'
             title: Category
+        - name: include_catalog
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+            title: Include Catalog
       responses:
         '200':
           description: Successful Response
@@ -4858,7 +5607,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/CapabilityResponse'
+                  $ref: '#/components/schemas/SkillListItem'
                 title: Response List Capabilities Api V1 Capabilities Get
         '422':
           description: Validation Error
@@ -4985,8 +5734,13 @@ paths:
       tags:
         - capabilities
       summary: Test Capability
-      description: Execute a real diagnostic test against a capability (no fake synthetic
+      description: 'Execute a real diagnostic test against a capability (no fake synthetic
         mocks).
+
+
+        ``TestCapabilityResponse.executed`` states plainly whether anything was run,
+
+        so a validation-only result can never be rendered as a live one.'
       operationId: test_capability_api_v1_capabilities__cap_id__test_post
       parameters:
         - name: cap_id
@@ -6099,14 +6853,6 @@ paths:
                 pattern: ^(PENDING|APPROVED|REJECTED|EXPIRED)$
               - type: 'null'
             title: Status
-        - name: workspace_id
-          in: query
-          required: false
-          schema:
-            anyOf:
-              - type: string
-              - type: 'null'
-            title: Workspace Id
         - name: page
           in: query
           required: false
@@ -6536,6 +7282,79 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/PushNotificationRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/gmail/messages:
+    get:
+      tags:
+        - gmail
+      summary: List Gmail Messages
+      operationId: list_gmail_messages_api_v1_gmail_messages_get
+      parameters:
+        - name: max_results
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 50
+            minimum: 1
+            default: 20
+            title: Max Results
+        - name: query
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Query
+        - name: workspace_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/gmail/status:
+    get:
+      tags:
+        - gmail
+      summary: Get Gmail Status
+      operationId: get_gmail_status_api_v1_gmail_status_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Workspace Id
       responses:
         '200':
           description: Successful Response
@@ -8841,6 +9660,62 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429': *id001
+  /api/v1/realtime/ws-ticket:
+    post:
+      tags:
+        - realtime
+        - realtime
+      summary: Mint Ws Ticket
+      description: 'Mint a single-use ticket for the WebSocket handshake.
+
+
+        The browser `WebSocket` constructor cannot attach an `Authorization` header,
+
+        so the socket has to authenticate in the URL. Passing the long-lived access
+
+        JWT there kept that credential readable by JavaScript — which is exactly what
+
+        the HttpOnly migration removes — and wrote it into every access and proxy
+        log
+
+        along the way.
+
+
+        A ticket is an opaque random value with a 60-second life that is destroyed
+
+        on first use. It carries no claims of its own, so it cannot be decoded,
+
+        forged or replayed.
+
+
+        The ticket is bound to the caller resolved here, so a ticket stolen from a
+        log
+
+        cannot be redeemed as somebody else even before it expires.'
+      operationId: mint_ws_ticket_api_v1_realtime_ws_ticket_post
+      parameters:
+        - name: workspace_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WsTicketResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/realtime/broadcast:
     post:
       tags:
@@ -9651,6 +10526,41 @@ paths:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
         '429': *id001
+  /api/v1/career/strategy:
+    get:
+      tags:
+        - career
+        - career
+      summary: Get Career Strategy
+      description: Synthesize dynamic career strategy, skill gap analysis, and progression
+        roadmap.
+      operationId: get_career_strategy_api_v1_career_strategy_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Career Strategy Api V1 Career Strategy Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
   /api/v1/orchestrator/execute:
     post:
       tags:
@@ -10137,6 +11047,283 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EvaluationRecordResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/vault-sync/status:
+    get:
+      tags:
+        - vault-sync
+      summary: Get Vault Sync Status
+      description: Retrieve the current vault synchronization status and cognitive
+        stats for this workspace.
+      operationId: get_vault_sync_status_api_v1_vault_sync_status_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Vault Sync Status Api V1 Vault Sync Status Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/vault-sync/config:
+    post:
+      tags:
+        - vault-sync
+      summary: Update Vault Config
+      description: Update vault sync settings for the workspace.
+      operationId: update_vault_config_api_v1_vault_sync_config_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VaultConfigUpdate'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Update Vault Config Api V1 Vault Sync Config Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/vault-sync/sync:
+    post:
+      tags:
+        - vault-sync
+      summary: Trigger Vault Sync
+      description: Execute an immediate manual sync cycle (rebase pull + trailing
+        commit & push).
+      operationId: trigger_vault_sync_api_v1_vault_sync_sync_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VaultSyncTriggerRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Trigger Vault Sync Api V1 Vault Sync Sync Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/vault-sync/logs:
+    get:
+      tags:
+        - vault-sync
+      summary: Get Vault Sync Logs
+      description: Retrieve recent sync activity and watcher daemon logs.
+      operationId: get_vault_sync_logs_api_v1_vault_sync_logs_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response Get Vault Sync Logs Api V1 Vault Sync Logs Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/vault-sync/ingest:
+    post:
+      tags:
+        - vault-sync
+      summary: Ingest Vault Notes
+      description: "Ingest Markdown notes from a synced vault.
+
+        Creates or updates documents in the 'Vault Notes' folder (category='vault_note',
+        mime_type='text/markdown'),
+
+        extracts memories with source_type='vault_note', content_hash=sha256(content),
+
+        and generates Knowledge Graph entities & bidirectional relationships."
+      operationId: ingest_vault_notes_api_v1_vault_sync_ingest_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VaultIngestRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Ingest Vault Notes Api V1 Vault Sync Ingest Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/vault-sync/conflicts:
+    get:
+      tags:
+        - vault-sync
+      summary: List Vault Conflicts
+      description: List any active rebase conflict files recorded for this vault.
+      operationId: list_vault_conflicts_api_v1_vault_sync_conflicts_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+                title: Response List Vault Conflicts Api V1 Vault Sync Conflicts Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/vault-sync/conflicts/{conflict_id}/resolve:
+    post:
+      tags:
+        - vault-sync
+      summary: Resolve Vault Conflict
+      description: Mark a conflict resolved using either 'keep-local' or 'accept-incoming'
+        strategy.
+      operationId: resolve_vault_conflict_api_v1_vault_sync_conflicts__conflict_id__resolve_post
+      parameters:
+        - name: conflict_id
+          in: path
+          required: true
+          schema:
+            type: string
+            title: Conflict Id
+        - name: workspace_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Workspace ID
+            title: Workspace Id
+          description: Workspace ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConflictResolveRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Resolve Vault Conflict Api V1 Vault Sync Conflicts  Conflict
+                  Id  Resolve Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '429': *id001
+  /api/v1/vault-sync/download-client:
+    get:
+      tags:
+        - vault-sync
+      summary: Download Client Installer
+      description: Serve the companion vaultsync installer script or distribution
+        config.
+      operationId: download_client_installer_api_v1_vault_sync_download_client_get
+      parameters:
+        - name: os
+          in: query
+          required: false
+          schema:
+            type: string
+            description: windows, darwin, or linux
+            default: windows
+            title: Os
+          description: windows, darwin, or linux
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
         '422':
           description: Validation Error
           content:
@@ -11062,7 +12249,7 @@ components:
         - id
         - company_name
       title: BlacklistItem
-    Body_bulk_upload_documents_api_v1_documents_bulk_post:
+    Body_bulk_upload_documents_alias:
       properties:
         files:
           items:
@@ -11073,7 +12260,7 @@ components:
       type: object
       required:
         - files
-      title: Body_bulk_upload_documents_api_v1_documents_bulk_post
+      title: Body_bulk_upload_documents_alias
     Body_bulk_upload_documents_api_v1_documents_bulk_upload_post:
       properties:
         files:
@@ -11190,6 +12377,38 @@ components:
       required:
         - document_ids
       title: BulkDownloadRequest
+    BulkSyncMemoryRequest:
+      properties:
+        document_ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          minItems: 1
+          title: Document Ids
+      type: object
+      required:
+        - document_ids
+      title: BulkSyncMemoryRequest
+    BulkSyncMemoryResponse:
+      properties:
+        synced_count:
+          type: integer
+          title: Synced Count
+        failed_count:
+          type: integer
+          title: Failed Count
+        items:
+          items:
+            $ref: '#/components/schemas/DocumentSyncMemoryResponse'
+          type: array
+          title: Items
+      type: object
+      required:
+        - synced_count
+        - failed_count
+        - items
+      title: BulkSyncMemoryResponse
     BulkUploadResponse:
       properties:
         total_attempted:
@@ -11285,6 +12504,20 @@ components:
             - type: string
             - type: 'null'
           title: Updated At
+        usage_count:
+          type: integer
+          title: Usage Count
+          default: 0
+        last_used_at:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Last Used At
+        installed_at:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Installed At
       type: object
       required:
         - id
@@ -11498,6 +12731,16 @@ components:
         - skill_name
         - workspace_id
       title: ConfirmSkillRequest
+    ConflictResolveRequest:
+      properties:
+        strategy:
+          type: string
+          pattern: ^(keep-local|accept-incoming)$
+          title: Strategy
+      type: object
+      required:
+        - strategy
+      title: ConflictResolveRequest
     ConnectorResponse:
       properties:
         id:
@@ -11574,6 +12817,116 @@ components:
         - email_marketing
         - terms_and_privacy
       title: ConsentScope
+    ConversationCreate:
+      properties:
+        title:
+          anyOf:
+            - type: string
+              maxLength: 200
+            - type: 'null'
+          title: Title
+        agent_name:
+          anyOf:
+            - type: string
+              maxLength: 100
+            - type: 'null'
+          title: Agent Name
+      type: object
+      title: ConversationCreate
+    ConversationResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        title:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Title
+        agent_name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Agent Name
+        message_count:
+          type: integer
+          title: Message Count
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+        - id
+        - workspace_id
+        - created_at
+        - updated_at
+      title: ConversationResponse
+    ConversationUpdate:
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          minLength: 1
+          title: Title
+      type: object
+      required:
+        - title
+      title: ConversationUpdate
+    ConversationWithMessages:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        title:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Title
+        agent_name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Agent Name
+        message_count:
+          type: integer
+          title: Message Count
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+        messages:
+          items:
+            $ref: '#/components/schemas/MessageResponse'
+          type: array
+          title: Messages
+      type: object
+      required:
+        - id
+        - workspace_id
+        - created_at
+        - updated_at
+      title: ConversationWithMessages
     CouncilCertifyRequest:
       properties:
         workspace_id:
@@ -11581,10 +12934,14 @@ components:
           format: uuid
           title: Workspace Id
         agent_name:
-          type: string
+          anyOf:
+            - type: string
+            - type: 'null'
           title: Agent Name
         execution_id:
-          type: string
+          anyOf:
+            - type: string
+            - type: 'null'
           title: Execution Id
         artifact:
           type: string
@@ -11606,8 +12963,6 @@ components:
       type: object
       required:
         - workspace_id
-        - agent_name
-        - execution_id
         - artifact
       title: CouncilCertifyRequest
     CouncilReviewRequest:
@@ -12617,6 +13972,16 @@ components:
         - documents
         - total
       title: DocumentListResponse
+    DocumentMoveRequest:
+      properties:
+        folder_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Folder Id
+          description: Target folder ID, or null to move to workspace root
+      type: object
+      title: DocumentMoveRequest
     DocumentRenameRequest:
       properties:
         path:
@@ -12780,6 +14145,55 @@ components:
         - permission
         - created_at
       title: DocumentShareResponse
+    DocumentSyncMemoryResponse:
+      properties:
+        success:
+          type: boolean
+          title: Success
+          default: true
+        document_id:
+          type: string
+          format: uuid
+          title: Document Id
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        memory_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Memory Id
+        title:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Title
+        summary:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Summary
+        status:
+          type: string
+          title: Status
+          default: synced
+      type: object
+      required:
+        - document_id
+        - workspace_id
+      title: DocumentSyncMemoryResponse
+    DocumentTagsRequest:
+      properties:
+        tags:
+          items:
+            type: string
+          type: array
+          title: Tags
+          description: List of semantic tags
+      type: object
+      title: DocumentTagsRequest
     DocumentVersionResponse:
       properties:
         id:
@@ -14346,6 +15760,11 @@ components:
           type: string
           minLength: 1
           title: Query
+        workspace_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Workspace Id
         type:
           anyOf:
             - type: string
@@ -14492,6 +15911,265 @@ components:
           title: Supersedes Id
       type: object
       title: MemoryUpdate
+    MessageCreate:
+      properties:
+        role:
+          type: string
+          enum:
+            - user
+            - agent
+          title: Role
+        text:
+          type: string
+          maxLength: 100000
+          title: Text
+        client_id:
+          type: string
+          maxLength: 64
+          minLength: 1
+          title: Client Id
+        status:
+          type: string
+          enum:
+            - streaming
+            - complete
+            - error
+            - stopped
+            - background
+          title: Status
+          default: complete
+        agent_name:
+          anyOf:
+            - type: string
+              maxLength: 100
+            - type: 'null'
+          title: Agent Name
+        confidence:
+          anyOf:
+            - type: number
+              maximum: 1.0
+              minimum: 0.0
+            - type: 'null'
+          title: Confidence
+        tool_calls:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Tool Calls
+        citations:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Citations
+        proposals:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Proposals
+        questions:
+          items:
+            type: string
+          type: array
+          title: Questions
+        action_chips:
+          items:
+            type: string
+          type: array
+          title: Action Chips
+        attachments:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Attachments
+        plan:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Plan
+        phases:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Phases
+        error:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Error
+        latency_ms:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Latency Ms
+        highway:
+          anyOf:
+            - type: string
+              maxLength: 50
+            - type: 'null'
+          title: Highway
+        s1_latency_ms:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: S1 Latency Ms
+        s2_latency_ms:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: S2 Latency Ms
+        workflow_id:
+          anyOf:
+            - type: string
+              maxLength: 100
+            - type: 'null'
+          title: Workflow Id
+        reply_to:
+          anyOf:
+            - type: string
+              maxLength: 64
+            - type: 'null'
+          title: Reply To
+      type: object
+      required:
+        - role
+        - text
+        - client_id
+      title: MessageCreate
+    MessageResponse:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        conversation_id:
+          type: string
+          format: uuid
+          title: Conversation Id
+        client_id:
+          type: string
+          title: Client Id
+        role:
+          type: string
+          title: Role
+        text:
+          type: string
+          title: Text
+        status:
+          type: string
+          title: Status
+        agent_name:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Agent Name
+        confidence:
+          anyOf:
+            - type: number
+            - type: 'null'
+          title: Confidence
+        tool_calls:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Tool Calls
+        citations:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Citations
+        proposals:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Proposals
+        questions:
+          items:
+            type: string
+          type: array
+          title: Questions
+        action_chips:
+          items:
+            type: string
+          type: array
+          title: Action Chips
+        attachments:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Attachments
+        plan:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Plan
+        phases:
+          items:
+            additionalProperties: true
+            type: object
+          type: array
+          title: Phases
+        error:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Error
+        latency_ms:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Latency Ms
+        highway:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Highway
+        s1_latency_ms:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: S1 Latency Ms
+        s2_latency_ms:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: S2 Latency Ms
+        workflow_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Workflow Id
+        reply_to:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Reply To
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+        - id
+        - conversation_id
+        - client_id
+        - role
+        - text
+        - status
+        - created_at
+      title: MessageResponse
     MfaSetupResponse:
       properties:
         secret:
@@ -16078,11 +17756,11 @@ components:
     RefreshRequest:
       properties:
         refresh_token:
-          type: string
+          anyOf:
+            - type: string
+            - type: 'null'
           title: Refresh Token
       type: object
-      required:
-        - refresh_token
       title: RefreshRequest
     ResendVerificationRequest:
       properties:
@@ -16918,6 +18596,138 @@ components:
       required:
         - name
       title: SkillItem
+    SkillListItem:
+      properties:
+        id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Id
+        workspace_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Workspace Id
+        name:
+          type: string
+          title: Name
+        category:
+          type: string
+          title: Category
+        description:
+          type: string
+          title: Description
+        version:
+          type: string
+          title: Version
+        status:
+          type: string
+          title: Status
+        enabled:
+          type: boolean
+          title: Enabled
+        author:
+          type: string
+          title: Author
+        type:
+          type: string
+          title: Type
+        runtime:
+          type: string
+          title: Runtime
+        config:
+          additionalProperties: true
+          type: object
+          title: Config
+        created_at:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Created At
+        updated_at:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Updated At
+        usage_count:
+          type: integer
+          title: Usage Count
+          default: 0
+        last_used_at:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Last Used At
+        installed_at:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Installed At
+        installed:
+          type: boolean
+          title: Installed
+          default: false
+        tags:
+          items:
+            type: string
+          type: array
+          title: Tags
+        markdown_doc:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Markdown Doc
+        required_scope:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Required Scope
+        trust_class:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Trust Class
+        autonomy:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Autonomy
+        triggers:
+          items:
+            type: string
+          type: array
+          title: Triggers
+        bundled:
+          type: boolean
+          title: Bundled
+          default: false
+        slug:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Slug
+      type: object
+      required:
+        - name
+        - category
+        - description
+        - version
+        - status
+        - enabled
+        - author
+        - type
+        - runtime
+        - config
+        - created_at
+        - updated_at
+      title: SkillListItem
+      description: 'A workspace capability row, or a catalog entry the workspace has
+        not installed.
+
+
+        Superset of :class:`CapabilityResponse`: every field a plain capability
+
+        response carries is present here, so existing clients keep working.'
     SubscribeRequest:
       properties:
         url:
@@ -17132,6 +18942,10 @@ components:
             - type: string
             - type: 'null'
           title: Error
+        executed:
+          type: boolean
+          title: Executed
+          default: false
       type: object
       required:
         - status
@@ -17536,6 +19350,27 @@ components:
               type: object
             - type: 'null'
           title: Config
+        autonomy:
+          anyOf:
+            - type: string
+              enum:
+                - suggest
+                - autonomous
+                - approval_required
+            - type: 'null'
+          title: Autonomy
+        required_scope:
+          anyOf:
+            - type: string
+              maxLength: 255
+            - type: 'null'
+          title: Required Scope
+        workspace_id:
+          anyOf:
+            - type: string
+              maxLength: 64
+            - type: 'null'
+          title: Workspace Id
       type: object
       title: UpdateCapabilityRequest
     UpdateCareerEntryRequest:
@@ -18028,6 +19863,93 @@ components:
         - msg
         - type
       title: ValidationError
+    VaultConfigUpdate:
+      properties:
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        remote_url:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Remote Url
+        branch:
+          type: string
+          title: Branch
+          default: main
+        vault_path:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Vault Path
+        auto_ingest:
+          type: boolean
+          title: Auto Ingest
+          default: true
+        daemon_status:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Daemon Status
+      type: object
+      required:
+        - workspace_id
+      title: VaultConfigUpdate
+    VaultIngestRequest:
+      properties:
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        notes:
+          items:
+            $ref: '#/components/schemas/VaultNoteItem'
+          type: array
+          title: Notes
+      type: object
+      required:
+        - workspace_id
+        - notes
+      title: VaultIngestRequest
+    VaultNoteItem:
+      properties:
+        filename:
+          type: string
+          title: Filename
+        content:
+          type: string
+          title: Content
+        relative_path:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Relative Path
+        tags:
+          items:
+            type: string
+          type: array
+          title: Tags
+        last_modified:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Last Modified
+      type: object
+      required:
+        - filename
+        - content
+      title: VaultNoteItem
+    VaultSyncTriggerRequest:
+      properties:
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+      type: object
+      required:
+        - workspace_id
+      title: VaultSyncTriggerRequest
     VerificationResult:
       properties:
         is_valid:
@@ -18191,6 +20113,21 @@ components:
         - created_at
         - updated_at
       title: WorkspaceResponse
+    WsTicketResponse:
+      properties:
+        ticket:
+          type: string
+          title: Ticket
+          description: Opaque single-use ticket for the WS handshake
+        expires_in:
+          type: integer
+          title: Expires In
+          description: Ticket lifetime in seconds
+      type: object
+      required:
+        - ticket
+        - expires_in
+      title: WsTicketResponse
   securitySchemes:
     BearerAuth:
       type: http
