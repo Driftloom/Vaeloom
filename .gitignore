@@ -388,6 +388,39 @@ kubeconfig
 # the scratch_* wildcard above; force-add if one ever needs to be shared
 scratch_audit/
 
+# ---------------------------------------------------------------------------
+# Personal verification harnesses
+# ---------------------------------------------------------------------------
+# These are not product tooling. They mint a JWT and talk to the local dev
+# database or drive Playwright against a running dev server, with one
+# developer's user id, tenant id, workspace id and mailbox hardcoded at the top
+# of the file. Twenty-odd of them appeared while generating one report; each is
+# a single-run probe that would be rewritten next time rather than reused.
+# Committing them publishes those identifiers, and 13 of them carry a real
+# personal email address.
+scripts/capture_*.py
+scripts/seed_*.py
+scripts/inspect_*.py
+scripts/diagnose_*.py
+scripts/test_*.py
+scripts/check_rls_counts.py
+scripts/generate_all_report_figures.py
+scripts/build_full_report_docx.py
+scripts/update_app_statuses.py
+apps/web/capture_*.mjs
+
+# ---------------------------------------------------------------------------
+# Report artefacts (generated, not source)
+# ---------------------------------------------------------------------------
+# The project report and its figures are build output of the scripts above plus
+# a browser pass. They are regenerated on demand and carry no information the
+# repository does not already have. The .docx form of the report was already
+# ignored by name; the markdown and the figures were not.
+VAELOOM_*.md
+VAELOOM_*.docx
+docs/report-assets/
+original_report-assets/
+
 
 # Isolated production build output (see apps/web/scripts/build-isolated.cjs)
 apps/web/.next-build/
