@@ -11,6 +11,10 @@ license = {text = "MIT"}
 dependencies = [
     "fastapi==0.141.1",
     "uvicorn[standard]>=0.29.0",
+    # vault_sync imports yaml for note frontmatter. It resolves transitively via
+    # langchain-core today, which means the whole router fails to import - and
+    # with it api.main - if that transitive edge ever moves.
+    "pyyaml>=6.0",
     "pydantic>=2.7.0",
     "pydantic-settings>=2.3.0",
     "httpx>=0.27.0",

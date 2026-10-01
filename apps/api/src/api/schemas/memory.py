@@ -98,6 +98,7 @@ class MemoryQuery(BaseModel):
 
 class MemorySearch(BaseModel):
     query: str = Field(..., min_length=1)
+    workspace_id: str | None = None
     type: str | None = None
     domain: str | None = None
     tags: list[str] | None = None

@@ -148,6 +148,8 @@ class SearchService:
                         "summary": getattr(mem, "summary", "") or "",
                         "created_at": getattr(mem, "created_at", None),
                         "tags": mem_tags,
+                        "source_type": getattr(mem, "source_type", None),
+                        "category": (getattr(mem, "metadata_", {}) or {}).get("category"),
                         "author": str(mem.user_id) if getattr(mem, "user_id", None) else None,
                         "importance": getattr(mem, "importance", None),
                     },
@@ -240,6 +242,7 @@ class SearchService:
                 or_(
                     Document.path.ilike(pattern),
                     Document.summary.ilike(pattern),
+                    cast(Document.metadata_, String).ilike(pattern),
                 ),
             )
             if ws_uuid:
@@ -277,6 +280,8 @@ class SearchService:
                         "summary": getattr(doc, "summary", "") or "",
                         "status": getattr(doc, "status", "ACTIVE"),
                         "created_at": getattr(doc, "created_at", None),
+                        "category": (getattr(doc, "metadata_", {}) or {}).get("category"),
+                        "tags": (getattr(doc, "metadata_", {}) or {}).get("tags", []),
                     },
                 })
 
