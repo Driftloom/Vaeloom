@@ -21,6 +21,8 @@ from ..dependencies import get_current_user
 from ..models.schema import Workspace, WorkspaceUser
 from ..schemas.document import (
     BulkDownloadRequest,
+    BulkSyncMemoryRequest,
+    BulkSyncMemoryResponse,
     BulkUploadResponse,
     DocumentActionListResponse,
     DocumentActionResponse,
@@ -31,9 +33,10 @@ from ..schemas.document import (
     DocumentMoveRequest,
     DocumentRenameRequest,
     DocumentResponse,
-    DocumentTagsRequest,
     DocumentShareCreate,
     DocumentShareResponse,
+    DocumentSyncMemoryResponse,
+    DocumentTagsRequest,
     DocumentVersionResponse,
     FolderCreate,
     FolderResponse,
@@ -287,7 +290,7 @@ async def search_documents(
 # ============================================================================
 
 @router.post("/bulk/upload", response_model=BulkUploadResponse, status_code=200)
-@router.post("/bulk", response_model=BulkUploadResponse, status_code=200)
+@router.post("/bulk", response_model=BulkUploadResponse, status_code=200, operation_id="bulk_upload_documents_alias")
 async def bulk_upload_documents(
     files: list[UploadFile] = File(...),
     workspace_id: str = Query(...),
@@ -312,7 +315,7 @@ async def bulk_upload_documents(
 
 
 @router.post("/bulk/download")
-@router.post("/bulk-download")
+@router.post("/bulk-download", operation_id="bulk_download_documents_alias")
 async def bulk_download_documents(
     payload: BulkDownloadRequest | dict = Body(...),
     workspace_id: str = Query(...),
@@ -338,7 +341,7 @@ async def bulk_download_documents(
 
 
 @router.post("/bulk/delete", status_code=200)
-@router.post("/bulk-delete", status_code=200)
+@router.post("/bulk-delete", status_code=200, operation_id="bulk_delete_documents_alias")
 async def bulk_delete_documents(
     payload: BulkDownloadRequest | dict = Body(...),
     workspace_id: str = Query(...),
@@ -358,6 +361,29 @@ async def bulk_delete_documents(
         db=db,
     )
     return res
+
+
+@router.post("/bulk/sync-memory", response_model=BulkSyncMemoryResponse)
+@router.post("/bulk-sync-memory", response_model=BulkSyncMemoryResponse, operation_id="bulk_sync_documents_to_memory_alias")
+async def bulk_sync_documents_to_memory(
+    payload: BulkSyncMemoryRequest | dict = Body(...),
+    workspace_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    doc_ids = payload.document_ids if hasattr(payload, "document_ids") else payload.get("document_ids", [])
+    res = await document_service.bulk_sync_documents_to_memory(
+        document_ids=[str(i) for i in doc_ids],
+        workspace_id=workspace_id,
+        user_id=_user_id(current_user),
+        tenant_id=current_user.get("tenant_id"),
+        db=db,
+    )
+    return BulkSyncMemoryResponse.model_validate(res)
 
 
 @router.post("/auto-organize")
@@ -950,3 +976,29 @@ async def revoke_document_share(
     await _verify_workspace_access(workspace_id, _user_id(current_user), db)
     await document_service.revoke_share(share_id, workspace_id, db)
     return Response(status_code=204)
+
+
+@router.post("/{document_id}/sync-memory", response_model=DocumentSyncMemoryResponse)
+async def sync_document_to_memory(
+    document_id: str,
+    workspace_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Synchronize document content into the workspace second brain / memory store."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    try:
+        res = await document_service.sync_document_to_memory(
+            document_id=document_id,
+            workspace_id=workspace_id,
+            user_id=_user_id(current_user),
+            tenant_id=current_user.get("tenant_id"),
+            db=db,
+        )
+        return DocumentSyncMemoryResponse.model_validate(res)
+    except DocumentNotFound:
+        raise HTTPException(status_code=404, detail="Document not found")
+

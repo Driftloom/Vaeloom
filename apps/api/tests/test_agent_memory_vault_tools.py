@@ -12,8 +12,13 @@ import uuid
 import pytest
 from sqlalchemy import select
 
+from api.agents.conversation_agent.handler import ConversationAgent
+from api.agents.memory_agent.handler import MemoryAgentHandler
 from api.models.schema import Connector, Document, Folder, Memory, Workspace, User
 from api.orchestrator.card_registry import MEMORY_CARD, get_agent_card
+from api.orchestrator.contracts.capability import RiskClass
+from api.orchestrator.contracts.proposals import ProposalType
+from api.orchestrator.proposals_engine import action_proposal_engine
 from api.orchestrator.router import (
     CATEGORY_KEYWORDS,
     classify_intent,
@@ -346,3 +351,107 @@ async def test_retrieve_memory_and_vault_context(db_session):
         db=db_session,
     )
     assert context_empty == ""
+
+
+# ── 6. Conversation & Memory Agent Scaffolding & Dynamic Proposals ───────────
+
+async def test_conversation_agent_second_brain_scaffolding():
+    """Verify ConversationAgent tools, greetings text, and action chips for second brain."""
+    agent = ConversationAgent()
+
+    # 1. search_memories in ConversationAgent.tools
+    tool_names = [t.name for t in agent.tools]
+    assert "search_memories" in tool_names
+    search_tool = next(t for t in agent.tools if t.name == "search_memories")
+    assert "personal Second Brain memories and synced vault notes" in search_tool.description
+
+    # 2. Greeting response mentions Second Brain
+    res = await agent.execute("hi")
+    expected_greeting = (
+        "Hello! 👋 I'm Vaeloom, your executive career partner and second brain. "
+        "I can help you build an ATS-proof resume, sync and query your Obsidian vault and notes, "
+        "discover target roles, track deadlines, and synthesize long-term career memory.\n\n"
+        "What would you like to focus on today?"
+    )
+    assert res["result"]["summary"] == expected_greeting
+
+    # 3. Action chips include second brain notes and sync vault
+    chips = res["result"]["action_chips"]
+    assert "🧠 Second Brain Notes" in chips
+    assert "🔄 Sync Vault" in chips
+
+    # 4. Fallback action chips include second brain notes and sync vault
+    fb = await agent.fallback()
+    fb_chips = fb["result"]["action_chips"]
+    assert "🧠 Second Brain Notes" in fb_chips
+    assert "🔄 Sync Vault" in fb_chips
+
+
+async def test_memory_agent_handler_tools():
+    """Verify MemoryAgentHandler includes all 4 new vault & memory tools."""
+    handler = MemoryAgentHandler()
+    tool_names = [t.name for t in handler.tools]
+    for required in ["sync_vault", "ingest_vault_notes", "search_memories", "create_memory"]:
+        assert required in tool_names, f"{required} missing from MemoryAgentHandler.tools"
+
+    sync_t = next(t for t in handler.tools if t.name == "sync_vault")
+    assert "2-way Git pull/rebase" in sync_t.description
+
+    ingest_t = next(t for t in handler.tools if t.name == "ingest_vault_notes")
+    assert "Ingest and index Markdown notes" in ingest_t.description
+
+    search_t = next(t for t in handler.tools if t.name == "search_memories")
+    assert "Search across memory items" in search_t.description
+
+    create_t = next(t for t in handler.tools if t.name == "create_memory")
+    assert "Store explicit learned fact" in create_t.description
+
+
+async def test_action_proposal_engine_vault_conflict_and_graph(db_session):
+    """Verify ActionProposalEngine generates proposals for vault conflicts and second brain graph."""
+    ws_id, user_id = await _create_test_workspace(db_session, name="Proposal WS")
+
+    # 1. Create a vault_sync connector with active conflicts
+    conn = Connector(
+        id=uuid.uuid4(),
+        workspace_id=ws_id,
+        type="vault_sync",
+        name="Vault Sync",
+        status="CONNECTED",
+        config={
+            "status": "conflict",
+            "branch": "main",
+            "conflicts": [{"file": "Career_Notes.md", "type": "content_diverged"}],
+        },
+    )
+    db_session.add(conn)
+    await db_session.commit()
+
+    proposals = await action_proposal_engine.generate_proposals(
+        query="what should I do?",
+        workspace_id=str(ws_id),
+        db=db_session,
+        limit=6,
+    )
+
+    # Verify conflict resolution proposal
+    vault_prop = next((p for p in proposals if p.binding and p.binding.tool_name == "sync_vault"), None)
+    assert vault_prop is not None, "Vault conflict proposal not generated"
+    assert vault_prop.proposal_id.startswith("prop_vault_")
+    assert vault_prop.title == "⚡ Resolve 1 Vault Conflict"
+    assert vault_prop.description == "Vault sync detected remote rebase conflicts requiring resolution."
+    assert vault_prop.proposal_type == ProposalType.WORKFLOW
+    assert vault_prop.risk_class == RiskClass.MEDIUM
+    assert vault_prop.requires_approval is True
+    assert vault_prop.binding.tool_name == "sync_vault"
+    assert vault_prop.binding.arguments == {"force": True, "workspace_id": str(ws_id)}
+    assert vault_prop.binding.required_scope == "memory.write"
+
+    # Verify second brain graph exploration proposal
+    graph_prop = next((p for p in proposals if p.binding and p.binding.tool_name == "query_graph"), None)
+    assert graph_prop is not None, "Second brain graph proposal not generated"
+    assert graph_prop.title == "🧠 Explore Second Brain Graph"
+    assert graph_prop.description == "Query multi-hop knowledge ontology linking your documents and Obsidian notes."
+    assert graph_prop.binding.tool_name == "query_graph"
+    assert graph_prop.binding.arguments == {"query": "", "workspace_id": str(ws_id)}
+    assert graph_prop.binding.required_scope == "memory.read"

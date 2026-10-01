@@ -329,6 +329,7 @@ CONVERSATION_CARD = AgentCard(
         "search_documents",
         "query_graph",
         "web_search",
+        "search_memories",
     ],
     output_schema={
         "type": "object",

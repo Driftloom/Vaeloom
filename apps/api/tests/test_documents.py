@@ -535,5 +535,62 @@ class TestDocumentMoveAndTags:
         assert "legal" in doc_meta["tags"]
         assert "confidential" in doc_meta["tags"]
 
+    async def test_sync_document_to_memory(self, client: AsyncClient):
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+
+        # Upload document
+        files = {"file": ("architecture_overview.md", io.BytesIO(b"# System Architecture\nDistributed microservices with RLS multi-tenancy."), "text/markdown")}
+        up_res = await client.post(f"/api/v1/documents?workspace_id={ws_id}", files=files, headers=headers)
+        assert up_res.status_code == 201
+        doc_id = up_res.json()["id"]
+
+        # Call sync-memory
+        sync_res = await client.post(
+            f"/api/v1/documents/{doc_id}/sync-memory?workspace_id={ws_id}",
+            headers=headers,
+        )
+        assert sync_res.status_code == 200
+        sync_data = sync_res.json()
+        assert sync_data["success"] is True
+        assert sync_data["status"] == "synced"
+        assert sync_data["document_id"] == doc_id
+        assert sync_data["memory_id"] is not None
+
+        # Verify document metadata has been updated
+        get_res = await client.get(f"/api/v1/documents/{doc_id}?workspace_id={ws_id}", headers=headers)
+        assert get_res.status_code == 200
+        meta = get_res.json().get("metadata") or {}
+        assert meta.get("sync_status") == "synced"
+        assert meta.get("memory_id") == sync_data["memory_id"]
+
+    async def test_bulk_sync_documents_to_memory(self, client: AsyncClient):
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+
+        # Upload 2 documents
+        f1 = {"file": ("doc1.txt", io.BytesIO(b"Document 1 Content for Second Brain"), "text/plain")}
+        r1 = await client.post(f"/api/v1/documents?workspace_id={ws_id}", files=f1, headers=headers)
+        assert r1.status_code == 201
+        doc1_id = r1.json()["id"]
+
+        f2 = {"file": ("doc2.txt", io.BytesIO(b"Document 2 Content for Second Brain"), "text/plain")}
+        r2 = await client.post(f"/api/v1/documents?workspace_id={ws_id}", files=f2, headers=headers)
+        assert r2.status_code == 201
+        doc2_id = r2.json()["id"]
+
+        # Call bulk/sync-memory
+        bulk_res = await client.post(
+            f"/api/v1/documents/bulk/sync-memory?workspace_id={ws_id}",
+            json={"document_ids": [doc1_id, doc2_id]},
+            headers=headers,
+        )
+        assert bulk_res.status_code == 200
+        bulk_data = bulk_res.json()
+        assert bulk_data["synced_count"] == 2
+        assert bulk_data["failed_count"] == 0
+        assert len(bulk_data["items"]) == 2
+
+
 
 

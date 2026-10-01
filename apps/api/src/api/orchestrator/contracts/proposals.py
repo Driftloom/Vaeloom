@@ -22,6 +22,7 @@ class ProposalType(str, Enum):
     EXTERNAL_INTEGRATION = "external_integration"  # Proposed connector action (e.g. Gmail draft)
     SCHEDULE_EVENT = "schedule_event"              # Proposed calendar booking
     APPROVAL_REQUEST = "approval_request"          # High-risk action awaiting human consent
+    WORKFLOW = "workflow"                          # Proposed multi-step workflow / rebase / sync
 
 
 class ProposalActionBinding(BaseModel):

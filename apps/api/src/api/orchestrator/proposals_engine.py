@@ -42,10 +42,12 @@ class ActionProposalEngine:
         pending_approvals_count = 0
         documents_count = 0
         resumes_count = 0
+        vault_connector_active = False
+        vault_conflicts: list[Any] = []
 
         if db is not None:
             try:
-                from ..models.schema import ApprovalRequest, Document, Resume
+                from ..models.schema import ApprovalRequest, Connector, Document, Resume
 
                 wid = uuid.UUID(str(workspace_id))
                 # Pending approvals
@@ -68,6 +70,23 @@ class ActionProposalEngine:
                     select(func.count(Resume.id)).where(Resume.workspace_id == wid)
                 )
                 resumes_count = res_res.scalar() or 0
+
+                # Vault sync connector
+                conn_res = await db.execute(
+                    select(Connector).where(
+                        Connector.workspace_id == wid,
+                        Connector.type == "vault_sync",
+                    )
+                )
+                vault_connector = conn_res.scalars().first()
+                if vault_connector is not None:
+                    cfg = vault_connector.config or {}
+                    vault_conflicts = cfg.get("conflicts", [])
+                    vault_connector_active = (
+                        vault_connector.status in ("CONNECTED", "ACTIVE", "synced")
+                        or cfg.get("status") in ("in_sync", "synced", "active")
+                        or vault_connector.status != "DISCONNECTED"
+                    )
             except Exception as e:
                 logger.debug(f"PROPOSAL_ENGINE: DB inspection skipped: {e}")
 
@@ -85,6 +104,24 @@ class ActionProposalEngine:
                         tool_name="list_approvals",
                         arguments={"status": "PENDING", "workspace_id": workspace_id},
                         required_scope="workspace.approval.read",
+                    ),
+                )
+            )
+
+        if len(vault_conflicts) > 0:
+            conflicts = vault_conflicts
+            proposals.append(
+                ActionProposal(
+                    proposal_id=f"prop_vault_{uuid.uuid4().hex[:6]}",
+                    title=f"⚡ Resolve {len(conflicts)} Vault Conflict{'s' if len(conflicts) > 1 else ''}",
+                    description="Vault sync detected remote rebase conflicts requiring resolution.",
+                    proposal_type=ProposalType.WORKFLOW,
+                    risk_class=RiskClass.MEDIUM,
+                    requires_approval=True,
+                    binding=ProposalActionBinding(
+                        tool_name="sync_vault",
+                        arguments={"force": True, "workspace_id": workspace_id},
+                        required_scope="memory.write",
                     ),
                 )
             )
@@ -120,6 +157,22 @@ class ActionProposalEngine:
             )
 
         # 4. State-Driven Functional Proposals
+        if documents_count > 0 or vault_connector_active:
+            proposals.append(
+                ActionProposal(
+                    proposal_id=f"prop_graph_{uuid.uuid4().hex[:6]}",
+                    title="🧠 Explore Second Brain Graph",
+                    description="Query multi-hop knowledge ontology linking your documents and Obsidian notes.",
+                    proposal_type=ProposalType.ACTION_CHIP,
+                    risk_class=RiskClass.LOW,
+                    binding=ProposalActionBinding(
+                        tool_name="query_graph",
+                        arguments={"query": "", "workspace_id": workspace_id},
+                        required_scope="memory.read",
+                    ),
+                )
+            )
+
         if resumes_count > 0:
             proposals.append(
                 ActionProposal(
@@ -194,6 +247,8 @@ class ActionProposalEngine:
 
         # Ensure at least 3 high-leverage default chips if list is short
         fallback_titles = [
+            ("🧠 Second Brain Notes", "memory.read"),
+            ("🔄 Sync Vault", "memory.write"),
             ("🎯 Tailor Resume for a Target Role", "career.resume.write"),
             ("📈 Quantify Career Achievements", "career.resume.write"),
             ("🔍 Discover Remote Roles", "career.jobs.read"),

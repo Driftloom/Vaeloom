@@ -196,3 +196,23 @@ class DocumentCompareResponse(BaseModel):
     diff_snippet: str
     summary: str
 
+
+class DocumentSyncMemoryResponse(BaseModel):
+    success: bool = True
+    document_id: uuid.UUID
+    workspace_id: uuid.UUID
+    memory_id: uuid.UUID | None = None
+    title: str | None = None
+    summary: str | None = None
+    status: str = "synced"
+
+
+class BulkSyncMemoryRequest(BaseModel):
+    document_ids: list[uuid.UUID] = Field(..., min_length=1)
+
+
+class BulkSyncMemoryResponse(BaseModel):
+    synced_count: int
+    failed_count: int
+    items: list[DocumentSyncMemoryResponse]
+
