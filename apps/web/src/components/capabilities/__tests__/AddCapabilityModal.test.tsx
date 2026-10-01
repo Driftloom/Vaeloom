@@ -20,7 +20,8 @@
  *    (which has no form and no submit button) could still be submitted.
  *  - `fileParseSuccess` was set and never rendered.
  *  - `onImport` was awaited, caught and re-thrown by a handler nobody awaits, while
- *    the page re-threw too: two layers, one unhandled rejection.
+ *    the page re-threw too: two layers, one unhandled rejection. It now reports an
+ *    outcome instead, so the page produces the message and this layer presents it.
  *
  * Status codes are asserted exactly. This repo bans `expect(x).toBe(y || z)`.
  */
@@ -66,7 +67,7 @@ function renderModal(
   const harness: Harness = {
     onCreate: jest.fn(),
     onClose: jest.fn(),
-    onImport: jest.fn().mockResolvedValue(undefined),
+    onImport: jest.fn().mockResolvedValue({ ok: true }),
   };
   render(
     <AddCapabilityModal
@@ -741,11 +742,13 @@ describe('AddCapabilityModal file import', () => {
 // ─── Import error ownership ──────────────────────────────────────────────────
 
 describe('AddCapabilityModal remote import', () => {
-  it('keeps the modal open and does not re-throw when onImport rejects', async () => {
+  it('renders the caller message, keeps the form open and does not reject', async () => {
     const unhandled = jest.fn();
     process.on('unhandledRejection', unhandled);
-    const onImport = jest.fn().mockRejectedValue(new Error('409 duplicate'));
-    renderModal({ initialMode: 'import', onImport });
+    const onImport = jest
+      .fn()
+      .mockResolvedValue({ ok: false, message: 'Nothing was registered: 409 duplicate' });
+    const harness = renderModal({ initialMode: 'import', onImport });
 
     fireEvent.change(within(dialog()).getByLabelText('Repository URL / endpoint'), {
       target: { value: 'https://github.com/acme/skills' },
@@ -755,17 +758,18 @@ describe('AddCapabilityModal remote import', () => {
     });
 
     expect(onImport).toHaveBeenCalledWith('https://github.com/acme/skills', 'skills');
-    expect(await screen.findByRole('alert')).toHaveTextContent('409 duplicate');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Nothing was registered: 409 duplicate',
+    );
+    // A closed dialog on a failed import is how the URL the user typed was lost.
+    expect(harness.onClose).not.toHaveBeenCalled();
 
-    // The page's onImport also re-throws after toasting. This layer used to
-    // re-throw too, and nothing awaited this handler: one unhandled rejection for
-    // a single failed import.
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(unhandled).not.toHaveBeenCalled();
     process.off('unhandledRejection', unhandled);
   });
 
-  it('closes on success', async () => {
+  it('closes only on a success outcome', async () => {
     const harness = renderModal({ initialMode: 'import' });
     fireEvent.change(within(dialog()).getByLabelText('Repository URL / endpoint'), {
       target: { value: 'https://github.com/acme/skills' },
@@ -774,6 +778,7 @@ describe('AddCapabilityModal remote import', () => {
       fireEvent.submit(within(dialog()).getByRole('button', { name: /Import & activate/i }));
     });
     await waitFor(() => expect(harness.onClose).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });
 

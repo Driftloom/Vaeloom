@@ -2122,7 +2122,21 @@ export function AddCapabilityModal({
       if (!target) return;
       setImportLoading(true);
       setImportError(null);
-      const outcome = await onImport(target, importCategory);
+      // The contract is that onImport resolves with an outcome and never
+      // throws - the page's handler owns the message for exactly that reason.
+      // Treated as advisory rather than enforced: a handler that rejects would
+      // otherwise skip setImportLoading, so the button stays stuck on
+      // "Registering..." forever and the rejection escapes a handler nobody
+      // awaits. A UI boundary should not depend on every caller remembering.
+      let outcome: ImportOutcome;
+      try {
+        outcome = await onImport(target, importCategory);
+      } catch (error) {
+        outcome = {
+          ok: false,
+          message: error instanceof Error ? error.message : String(error),
+        };
+      }
       setImportLoading(false);
       if (!outcome.ok) {
         setImportError(outcome.message);
