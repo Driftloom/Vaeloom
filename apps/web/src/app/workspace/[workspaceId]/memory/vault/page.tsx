@@ -2,8 +2,7 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
-import { Badge, Card } from '@vaeloom/ui-kit';
+import { Badge, Card, Breadcrumb } from '@vaeloom/ui-kit';
 import { PageHeader } from '@/components/shared/Page';
 import { VaultSyncPanel } from '@/components/memory/VaultSyncPanel';
 
@@ -11,30 +10,21 @@ export default function MemoryVaultPage() {
   const params = useParams<{ workspaceId: string }>();
   const workspaceId = params.workspaceId;
 
+  const breadcrumbItems = [
+    {
+      label: 'Second Brain',
+      href: `/workspace/${workspaceId}/memory`,
+    },
+    {
+      label: 'Vault Git Sync',
+      current: true,
+    },
+  ];
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-      {/* Breadcrumb Navigation */}
-      <nav
-        aria-label="Breadcrumb"
-        className="flex items-center space-x-2 text-sm text-[var(--color-text-secondary)]"
-      >
-        <Link
-          href={`/workspace/${workspaceId}/memory`}
-          className="hover:text-[var(--color-text-primary)] transition-colors inline-flex items-center gap-1.5"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-          Second Brain
-        </Link>
-        <span>/</span>
-        <span className="text-[var(--color-text-primary)] font-medium">Vault Sync</span>
-      </nav>
+      {/* Standard Breadcrumb */}
+      <Breadcrumb items={breadcrumbItems} />
 
       {/* Page Header */}
       <PageHeader
@@ -56,9 +46,12 @@ export default function MemoryVaultPage() {
       <VaultSyncPanel workspaceId={workspaceId} />
 
       {/* Built-in Architecture Summary */}
-      <Card className="p-6 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl space-y-4">
+      <Card
+        padding="md"
+        className="p-6 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl space-y-4"
+      >
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold text-[var(--color-text-primary)]">
+          <h3 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wider">
             How Vaeloom Vault Sync Works (Default Built-in Architecture)
           </h3>
           <Badge variant="mono">Enterprise Plumbing</Badge>

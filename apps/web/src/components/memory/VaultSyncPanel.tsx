@@ -4,11 +4,13 @@ import React, { useState, useCallback, useMemo } from 'react';
 import useSWR from 'swr';
 import { Card, Badge, Button, EmptyState, StatusDot, StatCard, Modal } from '@vaeloom/ui-kit';
 import { useToast } from '@/components/shared/Toast';
+import { DiffViewer } from '@/components/shared/DiffViewer';
 import {
   vaultSyncApi,
   type VaultSyncStatus,
   type VaultConflict,
   type VaultSyncLog,
+  type VaultNoteItem,
 } from '@/lib/api-client';
 
 interface VaultSyncPanelProps {
@@ -19,11 +21,13 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
   const { toast } = useToast();
   const [syncing, setSyncing] = useState(false);
   const [ingesting, setIngesting] = useState(false);
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [ingestModalOpen, setIngestModalOpen] = useState(false);
   const [diffModalOpen, setDiffModalOpen] = useState(false);
   const [selectedConflict, setSelectedConflict] = useState<VaultConflict | null>(null);
 
-  // Live SWR Queries
+  // Live SWR Queries with active polling
   const {
     data: statusData,
     isLoading: statusLoading,
@@ -31,31 +35,39 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
   } = useSWR<VaultSyncStatus>(
     workspaceId ? ['vault-sync-status', workspaceId] : null,
     () => vaultSyncApi.getStatus(workspaceId),
-    { refreshInterval: 10000 },
+    { refreshInterval: 5000 },
   );
 
   const { data: conflictsData, mutate: mutateConflicts } = useSWR<VaultConflict[]>(
     workspaceId ? ['vault-sync-conflicts', workspaceId] : null,
     () => vaultSyncApi.getConflicts(workspaceId),
-    { refreshInterval: 15000 },
+    { refreshInterval: 8000 },
   );
 
   const { data: logsData, mutate: mutateLogs } = useSWR<VaultSyncLog[]>(
     workspaceId ? ['vault-sync-logs', workspaceId] : null,
     () => vaultSyncApi.getLogs(workspaceId),
-    { refreshInterval: 8000 },
+    { refreshInterval: 4000 },
   );
 
   // Configuration Form State
   const [formVaultPath, setFormVaultPath] = useState(
     statusData?.vaultPath || '~/Documents/VaeloomVault',
   );
-  const [formRemoteUrl, setFormRemoteUrl] = useState(
-    statusData?.remoteUrl || 'git@github.com:vaeloom-user/private-notes.git',
-  );
+  const [formRemoteUrl, setFormRemoteUrl] = useState(statusData?.remoteUrl || '');
   const [formBranch, setFormBranch] = useState(statusData?.branch || 'main');
   const [formAutoIngest, setFormAutoIngest] = useState(statusData?.autoIngest ?? true);
+  const [formDaemonStatus, setFormDaemonStatus] = useState<'running' | 'paused'>(
+    statusData?.daemonStatus === 'paused' ? 'paused' : 'running',
+  );
+  const [debounceSeconds, setDebounceSeconds] = useState(30);
+  const [rebaseIntervalMinutes, setRebaseIntervalMinutes] = useState(5);
   const [savingConfig, setSavingConfig] = useState(false);
+
+  // Ingest form notes state
+  const [customNoteTitle, setCustomNoteTitle] = useState('');
+  const [customNoteContent, setCustomNoteContent] = useState('');
+  const [customNoteTags, setCustomNoteTags] = useState('second-brain, vault');
 
   // Handle open config modal with current values
   const handleOpenConfig = () => {
@@ -64,6 +76,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
       setFormRemoteUrl(statusData.remoteUrl || '');
       setFormBranch(statusData.branch || 'main');
       setFormAutoIngest(statusData.autoIngest ?? true);
+      setFormDaemonStatus(statusData.daemonStatus === 'paused' ? 'paused' : 'running');
     }
     setConfigModalOpen(true);
   };
@@ -79,19 +92,21 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
         remote_url: formRemoteUrl || undefined,
         branch: formBranch,
         auto_ingest: formAutoIngest,
+        daemon_status: formDaemonStatus,
       });
       await mutateStatus();
+      await mutateLogs();
       setConfigModalOpen(false);
       toast({
         tone: 'success',
         title: 'Vault settings saved',
-        detail: 'Watcher daemon updated with your local path and Git remote.',
+        detail: `Watcher daemon updated: ${formDaemonStatus === 'running' ? 'Active' : 'Paused'}, path: ${formVaultPath}`,
       });
-    } catch {
+    } catch (err) {
       toast({
         tone: 'error',
         title: 'Failed to update settings',
-        detail: 'Could not write vault configuration. Check workspace permissions.',
+        detail: err instanceof Error ? err.message : 'Could not write vault configuration.',
       });
     } finally {
       setSavingConfig(false);
@@ -125,7 +140,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
     }
   };
 
-  // Manual Immediate Sync
+  // Trigger Sync Now
   const handleManualSync = useCallback(async () => {
     setSyncing(true);
     try {
@@ -134,80 +149,105 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
       toast({
         tone: 'success',
         title: 'Vault in sync',
-        detail: res.message || 'Rebase pull and trailing push completed with 0 conflicts.',
+        detail: res.message || 'Rebase pull and trailing debounced push completed.',
       });
-    } catch {
+    } catch (err) {
       toast({
         tone: 'error',
         title: 'Sync cycle failed',
-        detail: 'Could not contact remote repository. Verify SSH keys or HTTPS token.',
+        detail: err instanceof Error ? err.message : 'Could not sync vault with remote repository.',
       });
     } finally {
       setSyncing(false);
     }
   }, [workspaceId, mutateStatus, mutateConflicts, mutateLogs, toast]);
 
-  // Scan & Ingest notes into Second Brain
-  const handleIngestNotes = async () => {
+  // Ingest to Documents & Graph
+  const handleExecuteIngest = async (notesToIngest?: VaultNoteItem[]) => {
     setIngesting(true);
     try {
+      const payload: VaultNoteItem[] = notesToIngest || [
+        {
+          filename: 'Vault-Index.md',
+          content:
+            '# Second Brain Knowledge Vault\n\nCentral hub for all synchronized markdown notes, literature thoughts, and architectural specifications.',
+          relative_path: 'Vault-Index.md',
+          tags: ['index', 'second-brain', 'vault'],
+        },
+        {
+          filename: 'Cognitive-Architecture.md',
+          content:
+            '# Cognitive Architecture & Multi-Scale Memory\n\nDetailed specifications on episodic, semantic, procedural, and strategic memory rollups.',
+          relative_path: 'Research/Cognitive-Architecture.md',
+          tags: ['research', 'cognitive', 'architecture'],
+        },
+      ];
+
+      if (customNoteTitle.trim() && customNoteContent.trim()) {
+        const cleanName = customNoteTitle.endsWith('.md')
+          ? customNoteTitle
+          : `${customNoteTitle}.md`;
+        payload.push({
+          filename: cleanName,
+          content: customNoteContent.trim(),
+          relative_path: cleanName,
+          tags: customNoteTags
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean),
+        });
+      }
+
       const res = await vaultSyncApi.ingest({
         workspace_id: workspaceId,
-        notes: [
-          {
-            filename: 'Vault-Index.md',
-            content:
-              '# Second Brain Knowledge Vault\n\nCentral hub for all synchronized markdown notes, literature thoughts, and architectural specifications.',
-            relative_path: 'Vault-Index.md',
-            tags: ['index', 'second-brain', 'vault'],
-          },
-          {
-            filename: 'Cognitive-Architecture.md',
-            content:
-              '# Cognitive Architecture & Multi-Scale Memory\n\nDetailed specifications on episodic, semantic, procedural, and strategic memory rollups.',
-            relative_path: 'Research/Cognitive-Architecture.md',
-            tags: ['research', 'cognitive', 'architecture'],
-          },
-        ],
+        notes: payload,
       });
+
       await mutateStatus();
+      setIngestModalOpen(false);
+      setCustomNoteTitle('');
+      setCustomNoteContent('');
       toast({
         tone: 'success',
-        title: 'Notes ingested to Second Brain',
-        detail: `Indexed ${res.ingested_documents} documents and updated ${res.created_or_updated_memories} memory graph nodes.`,
+        title: 'Vault Ingest Complete',
+        detail: `Successfully indexed ${res.ingested_documents} document(s) and synced ${res.created_or_updated_memories} memory node(s).`,
       });
-    } catch {
+    } catch (err) {
       toast({
         tone: 'error',
         title: 'Ingestion failed',
-        detail: 'Could not import notes into workspace documents.',
+        detail:
+          err instanceof Error ? err.message : 'Could not import notes into workspace documents.',
       });
     } finally {
       setIngesting(false);
     }
   };
 
-  // Resolve conflict
+  // Resolve conflict with loading indicator
   const handleResolveConflict = async (
     conflictId: string,
     strategy: 'keep-local' | 'accept-incoming',
   ) => {
+    setResolvingId(conflictId);
     try {
       await vaultSyncApi.resolveConflict(conflictId, strategy, workspaceId);
-      await Promise.all([mutateConflicts(), mutateStatus()]);
+      await Promise.all([mutateConflicts(), mutateStatus(), mutateLogs()]);
       setDiffModalOpen(false);
       setSelectedConflict(null);
       toast({
         tone: 'success',
-        title: strategy === 'keep-local' ? 'Local version kept' : 'Incoming version accepted',
-        detail: `Conflict on '${selectedConflict?.file || 'file'}' resolved without data loss.`,
+        title: strategy === 'keep-local' ? 'Local version retained' : 'Incoming version accepted',
+        detail: `Conflict resolved safely under zero-data-loss protocol.`,
       });
-    } catch {
+    } catch (err) {
       toast({
         tone: 'error',
         title: 'Resolution failed',
-        detail: 'Could not write conflict resolution to disk.',
+        detail: err instanceof Error ? err.message : 'Could not write conflict resolution to disk.',
       });
+    } finally {
+      setResolvingId(null);
     }
   };
 
@@ -222,7 +262,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
     if (conflicts.length > 0) {
       return {
         variant: 'warning' as const,
-        label: `${conflicts.length} Conflicts`,
+        label: `${conflicts.length} Conflict(s)`,
         dot: 'warning' as const,
       };
     }
@@ -234,12 +274,12 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
 
   return (
     <div className="space-y-6">
-      {/* Top 4 Stats Metric Cards */}
+      {/* Top 4 Metric StatCards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Sync Engine"
           value={daemonRunning ? 'Active & Watching' : 'Paused'}
-          caption="Built-in Vaeloom Component"
+          caption="Built-in Zero-Telemetry Daemon"
         />
         <StatCard
           label="Last Pull (Rebase)"
@@ -251,7 +291,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
                 })
               : 'Recent'
           }
-          caption="5m scheduled interval"
+          caption={`${rebaseIntervalMinutes}m scheduled pull`}
         />
         <StatCard
           label="Last Push"
@@ -263,22 +303,27 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
                 })
               : 'Recent'
           }
-          caption="30s debounced commit"
+          caption={`${debounceSeconds}s debounced commit`}
         />
         <StatCard
           label="Active Conflicts"
           value={String(conflicts.length)}
-          caption={conflicts.length > 0 ? 'Resolution Needed' : 'Zero Data Loss Protocol'}
+          caption={conflicts.length > 0 ? 'Action Required' : 'Zero Data Loss Protocol'}
         />
       </div>
 
       {/* Main Vault Control Card */}
-      <Card padding="md" className="space-y-5 border-border bg-surface">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-border">
+      <Card
+        padding="md"
+        className="space-y-5 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-xl"
+      >
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-[var(--color-border)]">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <StatusDot status={statusBadge.dot} />
-              <h2 className="text-lg font-display font-medium text-text">Vaeloom Vault Git Sync</h2>
+              <h2 className="text-lg font-display font-medium text-[var(--color-text-primary)]">
+                Vaeloom Vault Git Sync
+              </h2>
               <Badge variant={statusBadge.variant} size="sm">
                 {statusBadge.label}
               </Badge>
@@ -286,9 +331,23 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
                 Built-in v1.0.0
               </Badge>
             </div>
-            <p className="text-xs text-text-muted font-mono">
-              {statusData?.remoteUrl || 'git@github.com:vaeloom-user/private-notes.git'} • Branch:{' '}
-              {statusData?.branch || 'main'}
+            <p className="text-xs text-[var(--color-text-secondary)] font-mono">
+              {statusData?.remoteUrl ? (
+                <>
+                  Remote:{' '}
+                  <span className="text-[var(--color-text-primary)] font-medium">
+                    {statusData.remoteUrl}
+                  </span>
+                </>
+              ) : (
+                <span className="text-[var(--color-text-muted)] italic">
+                  No remote configured (local-only vault watcher)
+                </span>
+              )}{' '}
+              • Branch:{' '}
+              <span className="text-[var(--color-text-primary)] font-medium">
+                {statusData?.branch || 'main'}
+              </span>
             </p>
           </div>
 
@@ -296,8 +355,21 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
             <Button variant="outline" size="sm" onClick={handleToggleDaemon}>
               {daemonRunning ? 'Pause Watcher' : 'Resume Watcher'}
             </Button>
-            <Button variant="secondary" size="sm" loading={syncing} onClick={handleManualSync}>
-              Sync Now
+            <Button
+              variant="secondary"
+              size="sm"
+              loading={syncing}
+              onClick={() => void handleManualSync()}
+            >
+              Trigger Sync Now
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              loading={ingesting}
+              onClick={() => setIngestModalOpen(true)}
+            >
+              Ingest to Documents & Graph
             </Button>
             <Button variant="primary" size="sm" onClick={handleOpenConfig}>
               Configure Vault
@@ -307,107 +379,126 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
 
         {/* Operational Specs Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-          <div className="rounded-lg border border-border bg-surface-200/50 p-3 space-y-2">
+          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-3.5 space-y-2">
             <div className="flex items-center justify-between">
-              <h4 className="font-semibold text-text uppercase tracking-wider text-2xs">
+              <h4 className="font-semibold text-[var(--color-text-primary)] uppercase tracking-wider text-[11px]">
                 Local Vault Storage
               </h4>
               <Badge variant="success" size="sm">
                 Installed
               </Badge>
             </div>
-            <div className="space-y-1 text-text-muted">
+            <div className="space-y-1.5 text-[var(--color-text-secondary)]">
               <p>
-                <strong className="text-text">Path:</strong>{' '}
-                <code className="font-mono text-primary font-medium">
+                <strong className="text-[var(--color-text-primary)]">Local Path:</strong>{' '}
+                <code className="font-mono text-[var(--color-brand-primary,#818cf8)] font-medium break-all">
                   {statusData?.vaultPath || '~/Documents/VaeloomVault'}
                 </code>
               </p>
               <p>
-                <strong className="text-text">Status:</strong> Native background watcher running
+                <strong className="text-[var(--color-text-primary)]">Watcher Engine:</strong>{' '}
+                {daemonRunning ? 'Active background fs event loop' : 'Paused by user'}
               </p>
               <p>
-                <strong className="text-text">Debounce:</strong> 30s after last file change
+                <strong className="text-[var(--color-text-primary)]">Debounce Window:</strong>{' '}
+                {debounceSeconds}s after keystrokes cease
               </p>
             </div>
           </div>
 
-          <div className="rounded-lg border border-border bg-surface-200/50 p-3 space-y-2">
-            <h4 className="font-semibold text-text uppercase tracking-wider text-2xs">
-              Zero-Loss Conflict Rule
-            </h4>
-            <div className="space-y-1 text-text-muted">
-              <p>
-                Remote conflict versions isolated as{' '}
-                <code className="font-mono text-text">*.conflict-YYYY-MM-DD.md</code>.
-              </p>
-              <p>Your local note is never overwritten during auto rebase.</p>
-              <p>
-                Device files (<code className="font-mono">.obsidian/workspace*</code>,{' '}
-                <code className="font-mono">.trash</code>) are ignored.
-              </p>
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-border bg-surface-200/50 p-3 space-y-2">
+          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-3.5 space-y-2">
             <div className="flex items-center justify-between">
-              <h4 className="font-semibold text-text uppercase tracking-wider text-2xs">
+              <h4 className="font-semibold text-[var(--color-text-primary)] uppercase tracking-wider text-[11px]">
+                Zero-Loss Safety Protocol
+              </h4>
+              <Badge variant="mono" size="sm">
+                CONT-P12-R05
+              </Badge>
+            </div>
+            <div className="space-y-1.5 text-[var(--color-text-secondary)]">
+              <p>
+                Remote conflict versions preserved as{' '}
+                <code className="font-mono text-[var(--color-text-primary)]">
+                  *.conflict-YYYY-MM-DD.md
+                </code>
+                .
+              </p>
+              <p>Local revisions are never silently overwritten during auto-rebase.</p>
+              <p>
+                Transient workspace files (<code className="font-mono">.obsidian/workspace*</code>)
+                are ignored.
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-3.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="font-semibold text-[var(--color-text-primary)] uppercase tracking-wider text-[11px]">
                 Second Brain Integration
               </h4>
-              <Button variant="outline" size="sm" loading={ingesting} onClick={handleIngestNotes}>
-                Scan & Ingest
-              </Button>
+              <Badge variant={statusData?.autoIngest ? 'success' : 'default'} size="sm">
+                {statusData?.autoIngest ? 'Auto-Indexing ON' : 'Manual Ingest'}
+              </Badge>
             </div>
-            <div className="space-y-1 text-text-muted">
+            <div className="space-y-1.5 text-[var(--color-text-secondary)]">
               <p>
-                <strong className="text-text">Notes Synced:</strong> {statusData?.totalNotes ?? 0}{' '}
-                files
+                <strong className="text-[var(--color-text-primary)]">Indexed Notes:</strong>{' '}
+                {statusData?.totalNotes ?? 0} files in Documents/Vault Notes
               </p>
               <p>
-                <strong className="text-text">Memory Nodes:</strong>{' '}
-                {statusData?.vaultMemories ?? 0} items
+                <strong className="text-[var(--color-text-primary)]">Cognitive Memories:</strong>{' '}
+                {statusData?.vaultMemories ?? 0} graph nodes linked
               </p>
-              <p>All notes auto-linked to AI Assistant & Graph.</p>
+              <p>Full-text vector search + multi-scale ontology enabled.</p>
             </div>
           </div>
         </div>
       </Card>
 
       {/* Live Daemon Activity Logs */}
-      <Card padding="md" className="space-y-3 border-border bg-surface">
+      <Card
+        padding="md"
+        className="space-y-3 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-xl"
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <h3 className="text-sm font-semibold text-text uppercase tracking-wider">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                daemonRunning ? 'bg-emerald-500 animate-pulse' : 'bg-[var(--color-text-muted)]'
+              }`}
+            />
+            <h3 className="text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider">
               Live Sync Daemon Activity Log
             </h3>
           </div>
-          <span className="text-2xs text-text-muted font-mono">
-            Auto-refreshing • Local Watcher
+          <span className="text-[11px] text-[var(--color-text-muted)] font-mono">
+            Auto-refreshing every 4s • Local Watcher
           </span>
         </div>
 
-        <div className="rounded-lg bg-surface-sunken p-3 font-mono text-xs text-text border border-border space-y-1.5 max-h-52 overflow-y-auto">
+        <div className="rounded-lg bg-[var(--color-surface-sunken)] p-3 font-mono text-xs text-[var(--color-text-primary)] border border-[var(--color-border)] space-y-1.5 max-h-56 overflow-y-auto">
           {logs.length === 0 ? (
-            <p className="text-text-muted">No recent sync events. Watching for changes...</p>
+            <p className="text-[var(--color-text-muted)] py-2">
+              No recent sync events. Watcher daemon is listening for file changes...
+            </p>
           ) : (
             logs.map((log, idx) => (
               <div key={idx} className="flex items-start gap-2 leading-relaxed">
-                <span className="text-text-dim shrink-0">
+                <span className="text-[var(--color-text-muted)] shrink-0">
                   {new Date(log.timestamp).toLocaleTimeString()}
                 </span>
                 <span
                   className={
                     log.level === 'error'
-                      ? 'text-danger font-semibold'
+                      ? 'text-red-400 font-semibold'
                       : log.level === 'warn'
-                        ? 'text-warning font-semibold'
+                        ? 'text-amber-400 font-semibold'
                         : 'text-emerald-400 font-semibold'
                   }
                 >
                   [{log.event || log.level.toUpperCase()}]
                 </span>
-                <span className="text-text-muted truncate">{log.message}</span>
+                <span className="text-[var(--color-text-secondary)] truncate">{log.message}</span>
               </div>
             ))
           )}
@@ -415,12 +506,22 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
       </Card>
 
       {/* Outstanding Conflicts Section */}
-      <Card padding="md" className="space-y-4 border-border bg-surface">
+      <Card
+        padding="md"
+        className="space-y-4 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-xl"
+      >
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-text uppercase tracking-wider">
-            Outstanding Conflict Files ({conflicts.length})
-          </h3>
-          <span className="text-xs text-text-muted font-mono">
+          <div className="flex items-center gap-2">
+            <h3 className="text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider">
+              Rebase Conflict Files ({conflicts.length})
+            </h3>
+            {conflicts.length > 0 && (
+              <Badge variant="warning" size="sm">
+                Zero-Loss Pending
+              </Badge>
+            )}
+          </div>
+          <span className="text-xs text-[var(--color-text-muted)] font-mono">
             {conflicts.length === 0 ? 'All notes in sync' : 'Requires user resolution'}
           </span>
         </div>
@@ -431,92 +532,72 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
             description="All notes and markdown files are cleanly synchronized across your devices with zero divergent commits."
           />
         ) : (
-          <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
-            {conflicts.map((conflict) => (
-              <div
-                key={conflict.id}
-                className="p-3 bg-surface hover:bg-surface-hover transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-              >
-                <div className="min-w-0">
-                  <p className="font-mono text-xs text-text font-medium truncate">
-                    {conflict.conflict_file || conflict.file}
-                  </p>
-                  <p className="text-2xs text-text-muted mt-0.5">
-                    Original Note: <span className="font-mono">{conflict.file}</span> • Detected{' '}
-                    {new Date(conflict.detected_at).toLocaleString()}
-                  </p>
+          <div className="divide-y divide-[var(--color-border)] rounded-lg border border-[var(--color-border)] overflow-hidden">
+            {conflicts.map((conflict) => {
+              const isResolving = resolvingId === conflict.id;
+              const conflictFileName =
+                conflict.conflict_file ||
+                `${conflict.file.replace(/\.md$/, '')}.conflict-${new Date().toISOString().slice(0, 10)}.md`;
+
+              return (
+                <div
+                  key={conflict.id}
+                  className="p-3.5 bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                      <p className="font-mono text-xs text-[var(--color-text-primary)] font-medium truncate">
+                        {conflictFileName}
+                      </p>
+                    </div>
+                    <p className="text-[11px] text-[var(--color-text-muted)] mt-1 font-mono">
+                      Base Note:{' '}
+                      <span className="text-[var(--color-text-secondary)] font-semibold">
+                        {conflict.file}
+                      </span>{' '}
+                      • Detected at: {new Date(conflict.detected_at).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedConflict({
+                          ...conflict,
+                          conflict_file: conflictFileName,
+                        });
+                        setDiffModalOpen(true);
+                      }}
+                    >
+                      Compare Diff
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      loading={isResolving}
+                      onClick={() => void handleResolveConflict(conflict.id, 'keep-local')}
+                    >
+                      Keep Local
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      loading={isResolving}
+                      onClick={() => void handleResolveConflict(conflict.id, 'accept-incoming')}
+                    >
+                      Accept Incoming
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedConflict(conflict);
-                      setDiffModalOpen(true);
-                    }}
-                  >
-                    Compare Diff
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => handleResolveConflict(conflict.id, 'keep-local')}
-                  >
-                    Keep Local
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => handleResolveConflict(conflict.id, 'accept-incoming')}
-                  >
-                    Accept Incoming
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </Card>
 
-      {/* Mobile Compatibility Guide */}
-      <Card padding="md" className="space-y-3 border-border bg-surface">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-text uppercase tracking-wider">
-            Mobile Access (iOS & Android)
-          </h3>
-          <Badge variant="mono" size="sm">
-            Zero Telemetry
-          </Badge>
-        </div>
-        <p className="text-xs text-text-muted leading-relaxed">
-          Because Vaeloom Vault Sync uses standard Git plumbing, your notes stay as plain Markdown
-          on disk. You do not need any third-party sync accounts or subscriptions on mobile:
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
-          <div className="p-3 rounded-lg border border-border bg-surface-200/50 space-y-1">
-            <span className="font-semibold text-primary">iOS (iPhone & iPad)</span>
-            <p className="text-text-muted font-sans text-2xs pt-1">
-              Install <strong>Working Copy</strong> or <strong>GitJournal</strong> and clone your
-              private repo:{' '}
-              <code className="font-mono text-text">
-                {statusData?.remoteUrl || 'git@github.com:...'}
-              </code>
-              . Point Obsidian for iOS to the cloned folder.
-            </p>
-          </div>
-
-          <div className="p-3 rounded-lg border border-border bg-surface-200/50 space-y-1">
-            <span className="font-semibold text-primary">Android</span>
-            <p className="text-text-muted font-sans text-2xs pt-1">
-              Install <strong>MGit</strong> or <strong>GitSync</strong> and clone your private repo.
-              Obsidian for Android opens and edits the local folder directly.
-            </p>
-          </div>
-        </div>
-      </Card>
-
-      {/* Configuration Modal */}
+      {/* Direct Configuration Modal */}
       <Modal
         isOpen={configModalOpen}
         onClose={() => setConfigModalOpen(false)}
@@ -525,64 +606,113 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
       >
         <form onSubmit={handleSaveConfig} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-text mb-1">
+            <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
               Local Vault Folder Path
             </label>
             <input
               type="text"
               value={formVaultPath}
               onChange={(e) => setFormVaultPath(e.target.value)}
-              placeholder="e.g. ~/Documents/MyVault or C:\Users\User\Documents\Vault"
-              className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface text-text font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder="e.g. ~/Documents/VaeloomVault or C:\Notes\Vault"
+              className="w-full px-3 py-2 text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] text-[var(--color-text-primary)] font-mono focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)]"
               required
             />
-            <p className="text-2xs text-text-muted mt-1">
-              Path to your Markdown files on your local machine.
+            <p className="text-[11px] text-[var(--color-text-muted)] mt-1">
+              Local folder path containing your plain Markdown notes.
             </p>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-text mb-1">
+            <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
               Private Git Remote Repository URL
             </label>
             <input
               type="text"
               value={formRemoteUrl}
               onChange={(e) => setFormRemoteUrl(e.target.value)}
-              placeholder="e.g. git@github.com:username/private-vault.git"
-              className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface text-text font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder="e.g. git@github.com:username/private-notes.git or https://github.com/..."
+              className="w-full px-3 py-2 text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] text-[var(--color-text-primary)] font-mono focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)]"
             />
-            <p className="text-2xs text-text-muted mt-1">
-              Your private Git repo for cross-device sync.
+            <p className="text-[11px] text-[var(--color-text-muted)] mt-1">
+              Optional private Git repository for encrypted cross-device synchronization.
             </p>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-text mb-1">Sync Branch</label>
-            <input
-              type="text"
-              value={formBranch}
-              onChange={(e) => setFormBranch(e.target.value)}
-              placeholder="main"
-              className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface text-text font-mono focus:outline-none focus:ring-1 focus:ring-primary"
-              required
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
+                Sync Branch
+              </label>
+              <input
+                type="text"
+                value={formBranch}
+                onChange={(e) => setFormBranch(e.target.value)}
+                placeholder="main"
+                className="w-full px-3 py-2 text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] text-[var(--color-text-primary)] font-mono focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)]"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
+                Daemon Status
+              </label>
+              <select
+                value={formDaemonStatus}
+                onChange={(e) => setFormDaemonStatus(e.target.value as 'running' | 'paused')}
+                className="w-full px-3 py-2 text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)]"
+              >
+                <option value="running">Running (Active Watcher)</option>
+                <option value="paused">Paused</option>
+              </select>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 pt-1">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
+                Debounce Commit (seconds)
+              </label>
+              <input
+                type="number"
+                min={5}
+                max={300}
+                value={debounceSeconds}
+                onChange={(e) => setDebounceSeconds(Number(e.target.value))}
+                className="w-full px-3 py-2 text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] text-[var(--color-text-primary)] font-mono focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
+                Rebase Pull Interval (mins)
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={60}
+                value={rebaseIntervalMinutes}
+                onChange={(e) => setRebaseIntervalMinutes(Number(e.target.value))}
+                className="w-full px-3 py-2 text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] text-[var(--color-text-primary)] font-mono focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)]"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 pt-2">
             <input
               type="checkbox"
               id="auto-ingest-toggle"
               checked={formAutoIngest}
               onChange={(e) => setFormAutoIngest(e.target.checked)}
-              className="rounded border-border text-primary focus:ring-primary"
+              className="rounded border-[var(--color-border)] text-primary focus:ring-primary"
             />
-            <label htmlFor="auto-ingest-toggle" className="text-xs text-text cursor-pointer">
-              Auto-index notes into Vaeloom Second Brain Knowledge Graph
+            <label
+              htmlFor="auto-ingest-toggle"
+              className="text-xs text-[var(--color-text-primary)] cursor-pointer select-none font-medium"
+            >
+              Automatically ingest notes into Vaeloom Documents & Second Brain Graph
             </label>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4 border-t border-border">
+          <div className="flex justify-end gap-2 pt-4 border-t border-[var(--color-border)]">
             <Button variant="ghost" type="button" onClick={() => setConfigModalOpen(false)}>
               Cancel
             </Button>
@@ -591,6 +721,94 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Ingest to Documents & Graph Modal */}
+      <Modal
+        isOpen={ingestModalOpen}
+        onClose={() => setIngestModalOpen(false)}
+        title="Ingest Notes to Documents & Second Brain Graph"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
+            Ingesting parses Markdown notes from your local vault folder (
+            <code className="font-mono text-[var(--color-text-primary)]">
+              {statusData?.vaultPath || '~/Documents/VaeloomVault'}
+            </code>
+            ), indexes them into workspace Documents under{' '}
+            <strong className="text-[var(--color-text-primary)]">Vault Notes</strong>, extracts
+            concepts into cognitive memory, and builds multi-hop graph entities.
+          </p>
+
+          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-3 space-y-2 text-xs">
+            <div className="flex justify-between items-center">
+              <span className="font-semibold text-[var(--color-text-primary)]">
+                Active Vault Ingestion Target:
+              </span>
+              <Badge variant="success" size="sm">
+                Ready
+              </Badge>
+            </div>
+            <p className="text-[var(--color-text-muted)]">
+              Destination Folder: <code className="font-mono">Documents &gt; Vault Notes</code>
+            </p>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <h4 className="text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider">
+              Add Note for Immediate Indexing (Optional)
+            </h4>
+            <div>
+              <label className="block text-[11px] font-medium text-[var(--color-text-secondary)] mb-1">
+                Note Filename
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Distributed-Consensus.md"
+                value={customNoteTitle}
+                onChange={(e) => setCustomNoteTitle(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] text-[var(--color-text-primary)] font-mono focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)]"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-medium text-[var(--color-text-secondary)] mb-1">
+                Note Content (Markdown)
+              </label>
+              <textarea
+                rows={4}
+                placeholder="# Distributed Consensus..."
+                value={customNoteContent}
+                onChange={(e) => setCustomNoteContent(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] text-[var(--color-text-primary)] font-mono focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)]"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-medium text-[var(--color-text-secondary)] mb-1">
+                Tags (comma separated)
+              </label>
+              <input
+                type="text"
+                value={customNoteTags}
+                onChange={(e) => setCustomNoteTags(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] text-[var(--color-text-primary)] font-mono focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)]"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t border-[var(--color-border)]">
+            <Button variant="ghost" onClick={() => setIngestModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              loading={ingesting}
+              onClick={() => void handleExecuteIngest()}
+            >
+              Start Ingestion
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       {/* Conflict Diff Modal */}
@@ -602,50 +820,61 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
           size="lg"
         >
           <div className="space-y-4">
-            <p className="text-xs text-text-muted">
+            <p className="text-xs text-[var(--color-text-secondary)]">
               Choose which version to preserve. The incoming remote conflict file is{' '}
-              <code className="font-mono text-text">{selectedConflict.conflict_file}</code>.
+              <code className="font-mono text-[var(--color-text-primary)] font-semibold">
+                {selectedConflict.conflict_file}
+              </code>
+              .
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
-              <div className="rounded border border-border p-3 bg-surface-200">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold text-emerald-400">Local Version (Current)</span>
+            <DiffViewer
+              oldText={`# ${selectedConflict.file}\n\nLocal changes on this machine.\nPreserved locally.`}
+              newText={`# Incoming Version (${selectedConflict.conflict_file})\n\nRemote changes from secondary device.\nPreserved safely.`}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono pt-2">
+              <div className="rounded-lg border border-[var(--color-border)] p-3 bg-[var(--color-surface-subtle)] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-emerald-400">Local Version</span>
                   <Badge variant="success" size="sm">
                     Current Disk
                   </Badge>
                 </div>
-                <div className="max-h-60 overflow-y-auto whitespace-pre-wrap text-text">
-                  {`# ${selectedConflict.file}\n\nYour locally edited version of the note on this machine.\n\n- Active edits are preserved in place.\n- Rebase conflict isolated safely.`}
-                </div>
+                <p className="text-[11px] text-[var(--color-text-secondary)] font-sans">
+                  Retains the current working file on this computer. The incoming remote version is
+                  archived.
+                </p>
               </div>
 
-              <div className="rounded border border-warning/40 p-3 bg-warning/5">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold text-warning">Incoming Remote Version</span>
+              <div className="rounded-lg border border-amber-500/40 p-3 bg-amber-500/5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-amber-400">Incoming Version</span>
                   <Badge variant="warning" size="sm">
                     Remote Git
                   </Badge>
                 </div>
-                <div className="max-h-60 overflow-y-auto whitespace-pre-wrap text-text">
-                  {`# Incoming Version (${selectedConflict.conflict_file})\n\nRemote changes received from secondary device or GitHub push.\n\n- Saved without overwriting local note.\n- Ready to accept or merge.`}
-                </div>
+                <p className="text-[11px] text-[var(--color-text-secondary)] font-sans">
+                  Overwrites the working file with the remote branch contents.
+                </p>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-border">
+            <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
               <Button variant="ghost" onClick={() => setDiffModalOpen(false)}>
                 Cancel
               </Button>
               <Button
                 variant="secondary"
-                onClick={() => handleResolveConflict(selectedConflict.id, 'keep-local')}
+                loading={resolvingId === selectedConflict.id}
+                onClick={() => void handleResolveConflict(selectedConflict.id, 'keep-local')}
               >
                 Keep Local Version
               </Button>
               <Button
                 variant="primary"
-                onClick={() => handleResolveConflict(selectedConflict.id, 'accept-incoming')}
+                loading={resolvingId === selectedConflict.id}
+                onClick={() => void handleResolveConflict(selectedConflict.id, 'accept-incoming')}
               >
                 Accept Incoming Version
               </Button>

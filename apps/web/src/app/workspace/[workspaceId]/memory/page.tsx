@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useCallback, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import useSWR from 'swr';
 import {
   Tabs,
@@ -52,6 +53,8 @@ const TYPE_FILTERS: FilterOption[] = [
 export default function MemoryGraphPage() {
   const params = useParams<{ workspaceId: string }>();
   const workspaceId = params.workspaceId;
+  const router = useRouter();
+
   const [activeTab, setActiveTab] = useState('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState('all');
@@ -204,7 +207,7 @@ export default function MemoryGraphPage() {
         id: `${f.kind}-${f.timestamp}-${mem?.['id'] || ''}`,
         action,
         title,
-        source: f.agentName ? `@${f.agentName}` : f.action?.actionType || 'Direct User Ingest',
+        source: f.agentName ? `@${f.agentName}` : f.action?.actionType || 'Direct Ingest',
         timestamp: formatRelative(f.timestamp),
       };
     });
@@ -220,10 +223,10 @@ export default function MemoryGraphPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
       <PageHeader
         title="Second Brain & Memory"
-        eyebrow={`Workspace ${workspaceId.slice(0, 8)}`}
+        eyebrow={`WORKSPACE ${workspaceId.slice(0, 8).toUpperCase()}`}
         description="Autonomous second brain combining plain Markdown vault sync, cognitive embeddings, multiscale hierarchy, and provenance."
         actions={
           <div className="flex items-center gap-2">
@@ -262,6 +265,57 @@ export default function MemoryGraphPage() {
           caption="Immutable version audit trail"
         />
         <StatCard label="Vault Git Sync" value="Healthy" caption="30s debounce & 5m rebase" />
+      </div>
+
+      {/* Dedicated Workbench Quick Navigation Links */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Link
+          href={`/workspace/${workspaceId}/memory/vault`}
+          className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] transition flex items-center justify-between group shadow-sm"
+        >
+          <div>
+            <p className="text-xs font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-brand-primary,#818cf8)]">
+              Vault Git Sync →
+            </p>
+            <p className="text-[11px] text-[var(--color-text-muted)]">30s auto-push & rebase</p>
+          </div>
+        </Link>
+
+        <Link
+          href={`/workspace/${workspaceId}/memory/graph`}
+          className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] transition flex items-center justify-between group shadow-sm"
+        >
+          <div>
+            <p className="text-xs font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-brand-primary,#818cf8)]">
+              Graph Workbench →
+            </p>
+            <p className="text-[11px] text-[var(--color-text-muted)]">Interactive ontology view</p>
+          </div>
+        </Link>
+
+        <Link
+          href={`/workspace/${workspaceId}/memory/scale`}
+          className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] transition flex items-center justify-between group shadow-sm"
+        >
+          <div>
+            <p className="text-xs font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-brand-primary,#818cf8)]">
+              SCALE Hierarchy →
+            </p>
+            <p className="text-[11px] text-[var(--color-text-muted)]">Multiscale rollups</p>
+          </div>
+        </Link>
+
+        <Link
+          href={`/workspace/${workspaceId}/memory/corrections`}
+          className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] transition flex items-center justify-between group shadow-sm"
+        >
+          <div>
+            <p className="text-xs font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-brand-primary,#818cf8)]">
+              Corrections Ledger →
+            </p>
+            <p className="text-[11px] text-[var(--color-text-muted)]">Audit trail & diffs</p>
+          </div>
+        </Link>
       </div>
 
       {/* Main Tabs Navigation */}
@@ -313,17 +367,26 @@ export default function MemoryGraphPage() {
                 const relTime = formatRelative(m.createdAt);
 
                 return (
-                  <MemoryCard
+                  <div
                     key={m.id}
-                    id={m.id}
-                    content={contentStr}
-                    confidence={confScore}
-                    source={sourceText}
-                    timestamp={relTime}
-                    entityCount={Array.isArray(m.tags) ? m.tags.length : undefined}
-                    onEdit={() => openLineage(m.id)}
-                    onDelete={handleDeleteMemory}
-                  />
+                    className="relative group cursor-pointer"
+                    onClick={() => router.push(`/workspace/${workspaceId}/memory/${m.id}`)}
+                  >
+                    <MemoryCard
+                      id={m.id}
+                      content={contentStr}
+                      confidence={confScore}
+                      source={sourceText}
+                      timestamp={relTime}
+                      entityCount={Array.isArray(m.tags) ? m.tags.length : undefined}
+                      onEdit={(id) => {
+                        openLineage(id);
+                      }}
+                      onDelete={(id) => {
+                        void handleDeleteMemory(id);
+                      }}
+                    />
+                  </div>
                 );
               })}
             </div>
@@ -343,8 +406,8 @@ export default function MemoryGraphPage() {
             description="Agentic actions, synthesis rollups, and memory corrections will appear here in chronological order with provenance."
           />
         ) : (
-          <div className="rounded-xl border border-border bg-surface p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-text uppercase tracking-wider mb-4">
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm">
+            <h3 className="text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-4">
               Memory Lifecycle & Agent Trajectory
             </h3>
             <MemoryTimeline items={timelineItems} />
@@ -359,7 +422,9 @@ export default function MemoryGraphPage() {
 
       {/* Tab 4: Knowledge Graph */}
       <TabPanel id="graph" activeTab={activeTab}>
-        <DynamicGraphViewer workspaceId={workspaceId} />
+        <div className="min-h-[600px] h-[70vh] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden relative shadow-sm">
+          <DynamicGraphViewer workspaceId={workspaceId} />
+        </div>
       </TabPanel>
 
       {/* Tab 5: Memory Corrections */}
@@ -390,11 +455,13 @@ export default function MemoryGraphPage() {
         ) : lineage ? (
           <div className="space-y-4">
             <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-2">
                 Supersession Lineage Chain
               </h4>
               {lineage.chainBackwards.length === 0 ? (
-                <p className="text-xs text-text-muted">Origin record (no previous versions).</p>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  Origin record (no previous versions).
+                </p>
               ) : (
                 <div className="flex gap-2 overflow-x-auto pb-2">
                   {lineage.chainBackwards.map((m: unknown, idx: number) => {
@@ -404,17 +471,17 @@ export default function MemoryGraphPage() {
                         key={String(mem['id'])}
                         className={`shrink-0 w-52 rounded-lg border p-3 ${
                           idx === 0
-                            ? 'border-primary bg-primary/5 text-primary'
-                            : 'border-border bg-surface-hover text-text'
+                            ? 'border-[var(--color-brand-primary,#818cf8)] bg-[var(--color-brand-primary,#818cf8)]/10 text-[var(--color-text-primary)]'
+                            : 'border-[var(--color-border)] bg-[var(--color-surface-subtle)] text-[var(--color-text-secondary)]'
                         }`}
                       >
-                        <p className="font-mono text-2xs uppercase">
+                        <p className="font-mono text-[10px] uppercase font-semibold">
                           {idx === 0 ? 'Current Active' : `v-${idx} Superseded`}
                         </p>
                         <p className="text-xs font-medium truncate mt-1">
                           {String(mem['title'] || mem['id']).slice(0, 32)}
                         </p>
-                        <p className="text-2xs text-text-muted line-clamp-2 mt-0.5">
+                        <p className="text-[11px] text-[var(--color-text-muted)] line-clamp-2 mt-0.5">
                           {String(mem['summary'] || '')}
                         </p>
                       </div>
@@ -424,14 +491,16 @@ export default function MemoryGraphPage() {
               )}
             </div>
 
-            <div className="pt-2 border-t border-border flex justify-end">
+            <div className="pt-2 border-t border-[var(--color-border)] flex justify-end">
               <Button variant="secondary" onClick={() => setShowLineage(false)}>
                 Close
               </Button>
             </div>
           </div>
         ) : (
-          <p className="text-sm text-text-muted">No lineage available for this record.</p>
+          <p className="text-sm text-[var(--color-text-muted)]">
+            No lineage available for this record.
+          </p>
         )}
       </Modal>
 
@@ -444,7 +513,7 @@ export default function MemoryGraphPage() {
       >
         <form onSubmit={handleCreateMemory} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1">
+            <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
               Title / Concept
             </label>
             <input
@@ -453,18 +522,18 @@ export default function MemoryGraphPage() {
               placeholder="e.g. Distributed Consensus in Second Brain"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              className="w-full rounded-md border border-border bg-surface-sunken p-2.5 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)] font-sans"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1">
+            <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
               Memory Type
             </label>
             <select
               value={newType}
               onChange={(e) => setNewType(e.target.value)}
-              className="w-full rounded-md border border-border bg-surface-sunken p-2.5 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)] font-sans"
             >
               <option value="note">Note</option>
               <option value="document">Document</option>
@@ -475,7 +544,7 @@ export default function MemoryGraphPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1">
+            <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
               Content & Insights
             </label>
             <textarea
@@ -484,12 +553,12 @@ export default function MemoryGraphPage() {
               placeholder="Enter note or markdown content..."
               value={newContent}
               onChange={(e) => setNewContent(e.target.value)}
-              className="w-full rounded-md border border-border bg-surface-sunken p-2.5 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)] font-sans"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1">
+            <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
               Tags (comma separated)
             </label>
             <input
@@ -497,11 +566,11 @@ export default function MemoryGraphPage() {
               placeholder="e.g. second-brain, architecture, notes"
               value={newTags}
               onChange={(e) => setNewTags(e.target.value)}
-              className="w-full rounded-md border border-border bg-surface-sunken p-2.5 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)] font-mono"
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-2 border-t border-border">
+          <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
             <Button variant="ghost" onClick={() => setCreateModalOpen(false)}>
               Cancel
             </Button>

@@ -2,8 +2,7 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
-import { Card, Badge } from '@vaeloom/ui-kit';
+import { Card, Badge, Breadcrumb } from '@vaeloom/ui-kit';
 import { PageHeader } from '@/components/shared/Page';
 import { DynamicGraphViewer } from '@/lib/dynamic-imports';
 
@@ -11,34 +10,30 @@ export default function MemoryGraphWorkbenchPage() {
   const params = useParams<{ workspaceId: string }>();
   const workspaceId = params.workspaceId;
 
+  const breadcrumbItems = [
+    {
+      label: 'Second Brain',
+      href: `/workspace/${workspaceId}/memory`,
+    },
+    {
+      label: 'Knowledge Graph Workbench',
+      current: true,
+    },
+  ];
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
       {/* Breadcrumb Navigation */}
-      <nav
-        aria-label="Breadcrumb"
-        className="flex items-center space-x-2 text-sm text-[var(--color-text-secondary)]"
-      >
-        <Link
-          href={`/workspace/${workspaceId}/memory`}
-          className="hover:text-[var(--color-text-primary)] transition-colors inline-flex items-center gap-1.5"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-          Memory Second Brain
-        </Link>
-        <span>/</span>
-        <span className="text-[var(--color-text-primary)] font-medium">Knowledge Graph</span>
-      </nav>
+      <Breadcrumb items={breadcrumbItems} />
 
       <PageHeader
         title="Knowledge Graph Workbench"
         description="Multi-hop semantic ontology connecting vault notes, cognitive memories, extracted skills, and verified entities."
+        actions={
+          <Badge variant="mono" size="sm">
+            Semantic Graph Engine v2
+          </Badge>
+        }
       />
 
       {/* Main Full-Height Graph Workbench */}
@@ -47,12 +42,17 @@ export default function MemoryGraphWorkbenchPage() {
       </div>
 
       {/* Conceptual Legend Card */}
-      <Card className="p-5 border border-[var(--color-border)] rounded-xl bg-[var(--color-surface)]">
+      <Card
+        padding="md"
+        className="p-5 border border-[var(--color-border)] rounded-xl bg-[var(--color-surface)]"
+      >
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider">
             Semantic Node Taxonomy
           </h3>
-          <Badge variant="mono">Knowledge Graph Engine v2</Badge>
+          <Badge variant="mono" size="sm">
+            Entity Types
+          </Badge>
         </div>
         <div className="flex flex-wrap gap-4 text-xs">
           <div className="flex items-center gap-1.5">
