@@ -86,7 +86,24 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
     return map;
   }, [store.commands]);
 
-  const handleSend = useCallback(() => void store.send(), [store]);
+  /* `ChatMessageItem` is memoised, so every callback that reaches it must keep its
+     identity across renders — an inline arrow here re-renders the entire transcript
+     on each streamed token, which is the exact cost the memo boundary removes. The
+     store's own actions are already `useCallback`-stable; only the three that need
+     a different signature need wrapping. */
+  const { copyMessage, decideProposal, send } = store;
+
+  const handleSend = useCallback((text?: string) => void send(text), [send]);
+
+  const handleCopy = useCallback((messageId: string) => void copyMessage(messageId), [copyMessage]);
+
+  const handleDecide = useCallback(
+    (messageId: string, index: number, decision: 'approve' | 'reject') => {
+      void decideProposal(messageId, index, decision);
+    },
+    [decideProposal],
+  );
+
   const handlePickCommand = useCallback(
     (trigger: string, agent: string) => {
       store.setSelectedAgent(agent);
@@ -153,14 +170,12 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                 onSend={(text) => void store.send(text)}
               />
             }
-            onCopy={(id) => void store.copyMessage(id)}
+            onCopy={handleCopy}
             onRetry={store.retry}
             onEdit={store.editUserMessage}
             onDelete={store.deleteMessage}
-            onDecide={(messageId, index, decision) => {
-              void store.decideProposal(messageId, index, decision);
-            }}
-            onSend={(text) => void store.send(text)}
+            onDecide={handleDecide}
+            onSend={handleSend}
           />
         </div>
 

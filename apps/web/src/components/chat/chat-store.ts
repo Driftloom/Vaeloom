@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import useSWR from 'swr';
 import {
   agentApi,
   approvalApi,
@@ -10,6 +11,15 @@ import {
 } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 import { fetchAgentCatalog, fetchSlashCommands, type LoadState } from './chat-api';
+import {
+  ConversationApi,
+  conversationsKey,
+  messageToCreate,
+  normaliseOnRead,
+  recordToMessage,
+  type ConversationListPage,
+  type MessageCreate,
+} from './conversation-api';
 import {
   applyStreamEvent,
   emptyAccumulator,
@@ -46,16 +56,65 @@ import {
  * So: `threads` is the only state. `messages` is derived. `patchThread` is the
  * only writer. If it compiles, it is consistent.
  *
+ * ## The server is the source of truth
+ *
+ * The transcript used to live only in `localStorage['vaeloom.threads.<ws>']` —
+ * plaintext PII (resumes, salary figures, pasted job descriptions) with no
+ * workspace boundary, no cross-device access and no survival past "clear site
+ * data". `lib/api.ts` removed auth tokens from `localStorage` on exactly those
+ * grounds; the transcript was the larger prize and got no equivalent treatment.
+ * It is now loaded from and written to the API, and localStorage survives only
+ * for two honest reasons: a one-time migration of pre-existing history, and the
+ * write-behind queue of messages that have NOT yet reached the server.
+ *
+ * Every write is optimistic and then reconciled. Nothing is dropped silently:
+ * a message write that fails stays queued and is reported as unsynced, and a
+ * destructive mutation that fails is rolled back and reported.
+ *
  * ## Honesty
  *
  * No fabricated telemetry. `confidence` comes from the wire or is absent.
  * `ToolCall.latencyMs` comes from the wire or is absent. When the durable poll
  * loop runs out of attempts we say the run is still live server-side, because
  * that is the truth — the old code said "in progress" when the client had simply
- * given up.
+ * given up. Symmetrically, "saved" is only ever claimed for writes the server
+ * confirmed.
  */
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
+
+/** Write-behind debounce. Long enough to coalesce a burst, short enough to feel immediate. */
+const PERSIST_DEBOUNCE_MS = 400;
+const RETRY_MAX_MS = 30_000;
+
+/** Pre-server era key. Read once for the migration, cleared only on a confirmed upload. */
+const legacyThreadsKey = (workspaceId: string): string => `vaeloom.threads.${workspaceId}`;
+/** Versioned so the migration runs exactly once per workspace, and only on success. */
+const migratedMarkerKey = (workspaceId: string): string => `vaeloom.chat.migrated.${workspaceId}`;
+/**
+ * Write-behind queue. Holds *only* messages the server has not confirmed, which
+ * is what makes keeping it in localStorage defensible: it is a bounded,
+ * disclosed outbox rather than a second copy of the transcript.
+ */
+const pendingKey = (workspaceId: string): string => `vaeloom.chat.pending.${workspaceId}`;
+
+export type MigrationState =
+  | { state: 'idle' }
+  | { state: 'running'; uploaded: number; total: number }
+  | { state: 'done'; uploaded: number; total: number }
+  | { state: 'failed'; uploaded: number; total: number; error: string };
+
+interface PendingWrite {
+  conversationId: string;
+  body: MessageCreate;
+  attempts: number;
+  lastError?: string;
+}
+
+/** A message is worth persisting once it can no longer change on its own. */
+function isTerminalStatus(status: ChatMessage['status']): boolean {
+  return status !== 'streaming';
+}
 
 let idCounter = 0;
 function nextId(prefix: string): string {
@@ -119,6 +178,46 @@ async function writeClipboard(text: string): Promise<boolean> {
   }
 }
 
+function safeStorage(): Storage | null {
+  try {
+    return typeof window === 'undefined' ? null : window.localStorage;
+  } catch {
+    // Private browsing or a disabled storage partition.
+    return null;
+  }
+}
+
+/** Reads must never throw into a render. */
+function readPending(workspaceId: string): PendingWrite[] {
+  const store = safeStorage();
+  if (!store) return [];
+  try {
+    const raw = store.getItem(pendingKey(workspaceId));
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((p): p is PendingWrite => {
+      if (typeof p !== 'object' || p === null) return false;
+      const entry = p as Partial<PendingWrite>;
+      return typeof entry.conversationId === 'string' && typeof entry.body === 'object';
+    });
+  } catch {
+    return [];
+  }
+}
+
+function writePending(workspaceId: string, pending: PendingWrite[]): string | null {
+  const store = safeStorage();
+  if (!store) return 'This browser blocked local storage, so unsynced messages cannot be retried.';
+  try {
+    if (pending.length === 0) store.removeItem(pendingKey(workspaceId));
+    else store.setItem(pendingKey(workspaceId), JSON.stringify(pending));
+    return null;
+  } catch {
+    return 'Local storage rejected the unsynced-message queue.';
+  }
+}
+
 export interface ChatStore {
   threads: Thread[];
   activeId: string | null;
@@ -135,10 +234,24 @@ export interface ChatStore {
   catalog: CatalogAgent[];
   catalogState: LoadState;
   catalogError?: string;
-  /** Set when history can no longer be persisted. Surfaced, never swallowed. */
+  /** Set when history cannot be persisted to the server. Surfaced, never swallowed. */
   persistenceError: string | null;
   /** File staged in the composer, not yet uploaded. */
   attachment: File | null;
+  // ── additive, so `ChatWindow.tsx` keeps compiling without edits ──────────────
+  /** Server-side load state for the conversation list. */
+  conversationsState: LoadState;
+  conversationsError?: string;
+  /** Messages written locally that the server has not confirmed. */
+  unsyncedCount: number;
+  /** Last sync failure, or `null` when nothing is outstanding. */
+  syncError: string | null;
+  /** `navigator.onLine === false`. Distinct from "the API rejected a write". */
+  isOffline: boolean;
+  /** One-time upload of pre-server history. */
+  migration: MigrationState;
+  /** Force a re-read of the conversation list. */
+  reload: () => Promise<void>;
   setInput: (v: string) => void;
   setAttachment: (f: File | null) => void;
   setSelectedAgent: (v: string) => void;
@@ -179,7 +292,12 @@ export function useChatStore(workspaceId: string): ChatStore {
   const [catalog, setCatalog] = useState<CatalogAgent[]>([]);
   const [catalogState, setCatalogState] = useState<LoadState>('loading');
   const [catalogError, setCatalogError] = useState<string | undefined>();
-  const [persistenceError, setPersistenceError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [pending, setPending] = useState<PendingWrite[]>([]);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
+  const [migration, setMigration] = useState<MigrationState>({ state: 'idle' });
+  const [localOnlyNotice, setLocalOnlyNotice] = useState<string | null>(null);
 
   // Ref mirrors so the async send pipeline always reads current values instead of
   // closing over a stale render (the old `handleSend` had `messages` in its dep
@@ -192,20 +310,52 @@ export function useChatStore(workspaceId: string): ChatStore {
   const abortRef = useRef<AbortController | null>(null);
   const stoppedRef = useRef(false);
   const mountedRef = useRef(true);
-  const hydratedRef = useRef(false);
   const attachmentRef = useRef<File | null>(null);
   // `stop` is memoised on stable deps, so reading `workflowId` from its closure
   // returned the value from the very first render — always null — and the durable
   // cancellation was never issued.
   const workflowIdRef = useRef<string | null>(null);
 
+  const workspaceIdRef = useRef(workspaceId);
+  workspaceIdRef.current = workspaceId;
+  /** Local thread id → server conversation id. Identity entries are harmless. */
+  const idMapRef = useRef<Map<string, string>>(new Map());
+  const inflightCreateRef = useRef<Map<string, Promise<string | null>>>(new Map());
+  /** Conversations whose transcript has been read this session. */
+  const loadedRef = useRef<Set<string>>(new Set());
+  const pendingRef = useRef<PendingWrite[]>([]);
+  const flushingRef = useRef(false);
+  const offlineRef = useRef(false);
+  const mutateListRef = useRef<(() => Promise<unknown>) | null>(null);
+  const migrationStartedRef = useRef(false);
+
+  // `threadsRef` and `pendingRef` are updated synchronously by the writers below, not
+  // during render. Assigning them from render left them one commit behind the state,
+  // which meant a streamed turn's terminal patch could not find the message it was
+  // patching and the turn was never queued for the server. The async send pipeline
+  // reads these refs, so they have to be current the moment the write happens.
   activeIdRef.current = activeId;
-  threadsRef.current = threads;
   inputRef.current = input;
   selectedRef.current = selectedAgent;
   durableRef.current = durableMode;
   attachmentRef.current = attachment;
   workflowIdRef.current = workflowId;
+  offlineRef.current =
+    isOffline || (typeof navigator !== 'undefined' && navigator.onLine === false);
+
+  /** Single writer for `threads`: React state and the sync mirror move together. */
+  const commitThreads = useCallback((updater: (prev: Thread[]) => Thread[]) => {
+    const next = updater(threadsRef.current);
+    threadsRef.current = next;
+    setThreads(next);
+  }, []);
+
+  /** Single writer for the outbox, for the same reason. */
+  const commitPending = useCallback((updater: (prev: PendingWrite[]) => PendingWrite[]) => {
+    const next = updater(pendingRef.current);
+    pendingRef.current = next;
+    setPending(next);
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -220,26 +370,165 @@ export function useChatStore(workspaceId: string): ChatStore {
     };
   }, []);
 
+  // ── The conversation list (SWR — server is the source of truth) ─────────────
+  // The fetcher rejects rather than `.catch(() => [])`: an empty list returned
+  // for a failed request would make the store report "no history" as fact, and
+  // would also make the migration fire against a workspace that already has data.
+  const {
+    data: listData,
+    error: listError,
+    isLoading: listLoading,
+    mutate: mutateList,
+  } = useSWR<ConversationListPage, Error>(
+    workspaceId ? conversationsKey(workspaceId) : null,
+    async () => {
+      const res = await ConversationApi.list(workspaceId, { pageSize: MAX_THREADS });
+      if (!res.ok) throw new Error(res.error);
+      return res.data;
+    },
+    { revalidateOnFocus: false },
+  );
+  mutateListRef.current = mutateList;
+
+  const conversationsState: LoadState = listError
+    ? 'error'
+    : listData
+      ? 'ready'
+      : listLoading || !workspaceId
+        ? 'loading'
+        : 'ready';
+  const conversationsError = listError?.message;
+  const serverTotal = listData?.total ?? 0;
+
+  useEffect(() => {
+    setLoadError(listError ? listError.message : null);
+  }, [listError]);
+
+  const serverIdFor = useCallback(
+    (localId: string): string => idMapRef.current.get(localId) ?? localId,
+    [],
+  );
+
   // ── The only writer ────────────────────────────────────────────────────────
-  const patchThread = useCallback((id: string, fn: (t: Thread) => Thread) => {
-    setThreads((prev) => prev.map((t) => (t.id === id ? { ...fn(t), updatedAt: nowIso() } : t)));
-  }, []);
+  const patchThread = useCallback(
+    (id: string, fn: (t: Thread) => Thread) => {
+      const target = serverIdFor(id);
+      commitThreads((prev) =>
+        prev.map((t) => (t.id === id || t.id === target ? { ...fn(t), updatedAt: nowIso() } : t)),
+      );
+    },
+    [commitThreads, serverIdFor],
+  );
+
+  /**
+   * Swap a provisional local id for the server's. The local id is what the UI
+   * and the send pipeline hold, so every holder is rewritten at once: the rail,
+   * `activeId` and the outbox. Identity entries (`server → server`) make the
+   * lookup idempotent, so a second remap is a no-op.
+   */
+  const remapThreadId = useCallback(
+    (from: string, to: string) => {
+      idMapRef.current.set(to, to);
+      idMapRef.current.set(from, to);
+      commitThreads((prev) => prev.map((t) => (t.id === from ? { ...t, id: to } : t)));
+      activeIdRef.current = activeIdRef.current === from ? to : activeIdRef.current;
+      setActiveId((cur) => (cur === from ? to : cur));
+      commitPending((prev) =>
+        prev.map((p) => (p.conversationId === from ? { ...p, conversationId: to } : p)),
+      );
+    },
+    [commitPending, commitThreads],
+  );
+
+  /**
+   * Resolve a local thread id to a server conversation, creating the row if it does
+   * not exist yet. `seed` covers the case where the thread has not rendered yet —
+   * without it a `newThread` immediately followed by a create would find nothing in
+   * `threadsRef` and silently skip the row.
+   */
+  const ensureServerThread = useCallback(
+    async (
+      localId: string,
+      seed?: { title?: string; agentName?: string },
+    ): Promise<string | null> => {
+      const mapped = idMapRef.current.get(localId);
+      if (mapped) return mapped;
+      if (!localId.startsWith('th_') && !localId.startsWith('th-')) {
+        idMapRef.current.set(localId, localId);
+        return localId;
+      }
+      const inflight = inflightCreateRef.current.get(localId);
+      if (inflight) return inflight;
+      const local = threadsRef.current.find((t) => t.id === localId);
+      const title = seed?.title ?? local?.title;
+      const agentName = seed?.agentName ?? local?.agentName;
+      if (!local && !seed) return null;
+
+      const task = (async () => {
+        const res = await ConversationApi.create(workspaceIdRef.current, {
+          ...(title ? { title } : {}),
+          ...(agentName ? { agentName } : {}),
+        });
+        if (!res.ok) {
+          setSyncError((prev) => prev ?? res.error);
+          return null;
+        }
+        remapThreadId(localId, res.data.id);
+        void mutateListRef.current?.();
+        return res.data.id;
+      })();
+      inflightCreateRef.current.set(localId, task);
+      try {
+        return await task;
+      } finally {
+        inflightCreateRef.current.delete(localId);
+      }
+    },
+    [remapThreadId],
+  );
+
+  /** Queue a terminal message for the write-behind outbox. Idempotent per `client_id`. */
+  const queuePersist = useCallback(
+    (conversationId: string, message: ChatMessage) => {
+      if (!isTerminalStatus(message.status)) return;
+      const target = serverIdFor(conversationId);
+      const body = messageToCreate(message);
+      commitPending((prev) => {
+        const idx = prev.findIndex((p) => p.body.client_id === body.client_id);
+        const attempts = idx >= 0 ? (prev[idx]?.attempts ?? 0) : 0;
+        const entry: PendingWrite = { conversationId: target, body, attempts };
+        if (idx < 0) return [...prev, entry];
+        const next = [...prev];
+        next[idx] = entry;
+        return next;
+      });
+    },
+    [commitPending, serverIdFor],
+  );
 
   const patchMessage = useCallback(
     (threadId: string, messageId: string, patch: Partial<ChatMessage>) => {
-      patchThread(threadId, (t) => ({
+      const target = serverIdFor(threadId);
+      const thread = threadsRef.current.find((t) => t.id === threadId || t.id === target);
+      const resolvedId = thread?.id ?? target ?? threadId;
+      const existing = thread?.messages.find((m) => m.id === messageId);
+      const next = existing ? { ...existing, ...patch } : undefined;
+      patchThread(resolvedId, (t) => ({
         ...t,
         messages: t.messages.map((m) => (m.id === messageId ? { ...m, ...patch } : m)),
       }));
+      if (next) queuePersist(resolvedId, next);
     },
-    [patchThread],
+    [patchThread, queuePersist, serverIdFor],
   );
 
   const appendToThread = useCallback(
     (threadId: string, ...msgs: ChatMessage[]) => {
-      patchThread(threadId, (t) => ({ ...t, messages: [...t.messages, ...msgs] }));
+      const target = serverIdFor(threadId);
+      patchThread(target, (t) => ({ ...t, messages: [...t.messages, ...msgs] }));
+      for (const m of msgs) queuePersist(target, m);
     },
-    [patchThread],
+    [patchThread, queuePersist, serverIdFor],
   );
 
   // ── Derived: the transcript ────────────────────────────────────────────────
@@ -249,66 +538,360 @@ export function useChatStore(workspaceId: string): ChatStore {
   );
   const messages = activeThread?.messages ?? EMPTY_MESSAGES;
 
-  // ── Persistence ────────────────────────────────────────────────────────────
-  // Threads are capped and messages are capped, and the write is debounced: the
-  // old version re-serialised the entire history on every streamed token.
+  // ── Merge the server list into local state ─────────────────────────────────
+  // Server rows own the metadata; local state owns the messages (optimistic and
+  // streamed ones are not on the server yet). Threads the server has not echoed
+  // are kept rather than dropped, so a create in flight does not blink out of the
+  // rail.
   useEffect(() => {
-    const key = `vaeloom.threads.${workspaceId}`;
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        const parsed: unknown = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length) {
-          const restored = (parsed as Thread[])
-            .filter((t) => t && typeof t.id === 'string' && Array.isArray(t.messages))
-            .slice(0, MAX_THREADS)
-            .map((t) => ({
-              ...t,
-              updatedAt: t.updatedAt ?? t.createdAt ?? nowIso(),
-              // A page reload must never resurrect a placeholder as a live stream.
-              messages: t.messages.map((m) =>
-                m.status === 'streaming'
-                  ? {
-                      ...m,
-                      status: m.text ? ('complete' as const) : ('error' as const),
-                      error: m.text
-                        ? undefined
-                        : { message: 'Interrupted by a page reload before any output arrived.' },
-                    }
-                  : m,
-              ),
-            }));
-          setThreads(restored);
-          setActiveId(restored[0]?.id ?? null);
-        }
+    if (conversationsState !== 'ready' || !listData) return;
+    // A conversation the server listed already exists. Registering the id stops
+    // `ensureServerThread` from creating a second, empty row for it on the first
+    // write — and that would have split one transcript across two conversations.
+    for (const item of listData.conversations) idMapRef.current.set(item.id, item.id);
+    commitThreads((prev) => {
+      if (prev.length === 0) {
+        return listData.conversations.slice(0, MAX_THREADS).map((item) => ({
+          id: item.id,
+          title: item.title,
+          ...(item.agentName ? { agentName: item.agentName } : {}),
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+          messages: [] as ChatMessage[],
+        }));
       }
-    } catch {
-      // Corrupt payload — start clean rather than wedging the page.
-    } finally {
-      hydratedRef.current = true;
-    }
-  }, [workspaceId]);
+      const known = new Map(prev.map((t) => [t.id, t]));
+      const merged = listData.conversations.slice(0, MAX_THREADS).map((item) => {
+        const existing = known.get(item.id);
+        known.delete(item.id);
+        return {
+          id: item.id,
+          title: item.title,
+          ...(item.agentName ? { agentName: item.agentName } : {}),
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+          messages: existing?.messages ?? [],
+        };
+      });
+      return [...known.values(), ...merged].slice(0, MAX_THREADS);
+    });
+  }, [conversationsState, listData, commitThreads]);
 
   useEffect(() => {
-    if (!hydratedRef.current) return;
-    const key = `vaeloom.threads.${workspaceId}`;
-    const handle = setTimeout(() => {
-      const trimmed = threads
-        .slice(0, MAX_THREADS)
-        .map((t) => ({ ...t, messages: t.messages.slice(-MAX_MESSAGES_PER_THREAD) }));
-      try {
-        localStorage.setItem(key, JSON.stringify(trimmed));
-        setPersistenceError(null);
-      } catch {
-        // Old code did `catch {}` here, so a QuotaExceededError silently killed
-        // persistence forever while the user kept typing into the void.
-        setPersistenceError(
-          'Chat history is full — new messages are not being saved. Delete an old thread to free space.',
-        );
+    if (threads.length === 0) return;
+    setActiveId((cur) => {
+      if (cur && threads.some((t) => t.id === cur)) return cur;
+      const first = threads[0];
+      return first ? first.id : null;
+    });
+  }, [threads]);
+
+  // ── Transcript read ────────────────────────────────────────────────────────
+  const loadMessages = useCallback(
+    async (conversationId: string) => {
+      // Set before the await so a rapid thread switch cannot fire two reads of
+      // the same conversation; a failure clears it so the next visit retries.
+      if (loadedRef.current.has(conversationId)) return;
+      loadedRef.current.add(conversationId);
+      const res = await ConversationApi.get(workspaceIdRef.current, conversationId);
+      if (!mountedRef.current) return;
+      if (!res.ok) {
+        if (!res.aborted) {
+          loadedRef.current.delete(conversationId);
+          setLoadError((prev) => prev ?? `Could not load this conversation: ${res.error}`);
+        }
+        return;
       }
-    }, 400);
+      // A message still marked `streaming` was persisted by a tab that closed
+      // mid-run. Nothing is producing tokens now, so it is normalised on read —
+      // the same rule the old localStorage hydration applied.
+      const loaded = res.data.messages.map((r) => normaliseOnRead(recordToMessage(r)));
+      // Anything written locally while the read was in flight survives: a read must
+      // not discard an optimistic message the user is looking at.
+      const local = threadsRef.current.find((t) => t.id === conversationId)?.messages ?? [];
+      const fromServer = new Set(loaded.map((m) => m.id));
+      const extra = local.filter((m) => !fromServer.has(m.id));
+      patchThread(conversationId, (t) => ({
+        ...t,
+        title: res.data.conversation.title || t.title,
+        updatedAt: res.data.conversation.updatedAt || t.updatedAt,
+        messages: [...loaded, ...extra].slice(-MAX_MESSAGES_PER_THREAD),
+      }));
+    },
+    [patchThread],
+  );
+
+  useEffect(() => {
+    if (!activeId) return;
+    // Never let a read clobber writes that have not reached the server yet.
+    if (pendingRef.current.some((p) => serverIdFor(p.conversationId) === activeId)) return;
+    void loadMessages(activeId);
+  }, [activeId, loadMessages, serverIdFor]);
+
+  // ── Write-behind flush ─────────────────────────────────────────────────────
+  const markFailed = useCallback(
+    (clientId: string, message: string) => {
+      commitPending((prev) =>
+        prev.map((p) =>
+          p.body.client_id === clientId
+            ? { ...p, attempts: p.attempts + 1, lastError: message }
+            : p,
+        ),
+      );
+      setSyncError((prev) => prev ?? message);
+    },
+    [commitPending],
+  );
+
+  /**
+   * Drain the outbox.
+   *
+   * A retried POST is safe because `client_id` is the server's idempotency key, so
+   * a message that landed before the failure is not duplicated by the retry.
+   */
+  const flushPending = useCallback(async () => {
+    if (flushingRef.current) return;
+    if (offlineRef.current || (typeof navigator !== 'undefined' && navigator.onLine === false))
+      return;
+    const batch = pendingRef.current;
+    if (batch.length === 0) return;
+    flushingRef.current = true;
+    try {
+      for (const entry of batch) {
+        if (!mountedRef.current) break;
+        const serverId = await ensureServerThread(entry.conversationId);
+        if (!serverId) {
+          markFailed(entry.body.client_id, 'Could not create the conversation on the server.');
+          continue;
+        }
+        const res = await ConversationApi.appendMessage(
+          workspaceIdRef.current,
+          serverId,
+          entry.body,
+        );
+        if (!res.ok) {
+          if (!res.aborted) markFailed(entry.body.client_id, res.error);
+          continue;
+        }
+        commitPending((prev) => prev.filter((p) => p.body.client_id !== entry.body.client_id));
+        // Reconcile: the server's row is authoritative for ids and timestamps.
+        patchThread(serverId, (t) => ({
+          ...t,
+          messages: t.messages.map((m) =>
+            m.id === res.data.clientId ? recordToMessage(res.data) : m,
+          ),
+        }));
+      }
+      if (mountedRef.current) void mutateListRef.current?.();
+    } finally {
+      flushingRef.current = false;
+    }
+  }, [commitPending, ensureServerThread, markFailed, patchThread]);
+
+  /** A dropped message must not be resurrected by a retry of its queued POST. */
+  const dropPending = useCallback(
+    (clientId: string) => {
+      commitPending((prev) => prev.filter((p) => p.body.client_id !== clientId));
+    },
+    [commitPending],
+  );
+
+  // A closed tab must not lose an in-flight message: rehydrate the outbox so the
+  // retry survives a reload, not just an in-session failure.
+  useEffect(() => {
+    commitPending(() => readPending(workspaceId).map((p) => ({ ...p, attempts: 0 })));
+  }, [commitPending, workspaceId]);
+
+  // Mirror the queue into localStorage so an unsynced message survives a tab
+  // close. This is the only transcript-shaped thing left in storage, and each entry
+  // is removed the moment the server confirms it.
+  useEffect(() => {
+    const problem = writePending(workspaceId, pending);
+    if (problem) setSyncError((prev) => prev ?? problem);
+  }, [pending, workspaceId]);
+
+  useEffect(() => {
+    if (pending.length === 0) return;
+    const worst = pending.reduce((max, p) => Math.max(max, p.attempts), 0);
+    // First attempt is the debounce; later attempts back off so a down server is
+    // not hammered once every 400ms for as long as the tab is open.
+    const delay = Math.min(RETRY_MAX_MS, PERSIST_DEBOUNCE_MS * 2 ** worst);
+    const handle = setTimeout(() => void flushPending(), delay);
     return () => clearTimeout(handle);
-  }, [threads, workspaceId]);
+  }, [pending, flushPending]);
+
+  // "Saved" is only claimed for a confirmed write, so the error clears when the
+  // queue drains — never on a timer.
+  useEffect(() => {
+    if (pending.length === 0 && !isOffline) setSyncError(null);
+  }, [pending.length, isOffline]);
+
+  useEffect(() => {
+    const onOnline = () => {
+      offlineRef.current = false;
+      setIsOffline(false);
+      commitPending((prev) => prev.map((p) => ({ ...p, attempts: 0, lastError: undefined })));
+    };
+    const onOffline = () => {
+      offlineRef.current = true;
+      setIsOffline(true);
+    };
+    const initial = typeof navigator !== 'undefined' && navigator.onLine === false;
+    offlineRef.current = initial;
+    setIsOffline(initial);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, [commitPending]);
+
+  /**
+   * Flush on the way out.
+   *
+   * `visibilitychange → hidden` is the only event iOS Safari reliably fires before
+   * a tab is discarded, so it is the one that matters. A message still streaming is
+   * sent with `status: 'streaming'` — that is what was true — and the read path
+   * normalises it. `keepalive` lets the POST outlive the document. Best effort
+   * only: the page is going away and there is nobody left to report to.
+   */
+  useEffect(() => {
+    const onHide = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'hidden') return;
+      const outgoing = [...pendingRef.current];
+      for (const thread of threadsRef.current) {
+        for (const m of thread.messages) {
+          if (m.status !== 'streaming') continue;
+          if (outgoing.some((p) => p.body.client_id === m.id)) continue;
+          outgoing.push({ conversationId: thread.id, body: messageToCreate(m), attempts: 0 });
+        }
+      }
+      for (const entry of outgoing) {
+        const target = idMapRef.current.get(entry.conversationId) ?? entry.conversationId;
+        void ConversationApi.appendMessage(workspaceIdRef.current, target, entry.body, {
+          keepalive: true,
+        });
+      }
+    };
+    document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('pagehide', onHide);
+    return () => {
+      document.removeEventListener('visibilitychange', onHide);
+      window.removeEventListener('pagehide', onHide);
+    };
+  }, []);
+
+  // ── One-time migration of pre-server history ───────────────────────────────
+  const runMigration = useCallback(async () => {
+    const store = safeStorage();
+    const ws = workspaceIdRef.current;
+    if (!store) return;
+    const raw = store.getItem(legacyThreadsKey(ws));
+    if (!raw) {
+      setMigration({ state: 'done', uploaded: 0, total: 0 });
+      return;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      // Corrupt payload — nothing to upload, so do not leave a marker claiming a
+      // migration that never happened.
+      setMigration({ state: 'done', uploaded: 0, total: 0 });
+      return;
+    }
+    const legacy = (Array.isArray(parsed) ? parsed : [])
+      .filter((t): t is Thread => {
+        if (typeof t !== 'object' || t === null) return false;
+        const thread = t as Partial<Thread>;
+        return typeof thread.id === 'string' && Array.isArray(thread.messages);
+      })
+      .slice(0, MAX_THREADS);
+    if (legacy.length === 0) {
+      setMigration({ state: 'done', uploaded: 0, total: 0 });
+      return;
+    }
+
+    const total = legacy.reduce((sum, t) => sum + t.messages.length, 0);
+    let uploaded = 0;
+    let failure: string | null = null;
+    setMigration({ state: 'running', uploaded, total });
+
+    for (const thread of legacy) {
+      if (failure) break;
+      const created = await ConversationApi.create(ws, {
+        ...(thread.title ? { title: thread.title } : {}),
+        ...(thread.agentName ? { agentName: thread.agentName } : {}),
+      });
+      if (!created.ok) {
+        failure = created.error;
+        break;
+      }
+      const conversationId = created.data.id;
+      for (const message of thread.messages) {
+        // Local ids are already the `client_id`s, so a retried upload de-duplicates.
+        const saved = await ConversationApi.appendMessage(ws, conversationId, {
+          ...messageToCreate(message),
+          client_id: message.id,
+        });
+        if (!saved.ok) {
+          failure = saved.error;
+          break;
+        }
+        uploaded += 1;
+        setMigration({ state: 'running', uploaded, total });
+      }
+    }
+
+    if (failure) {
+      // Deliberately no `removeItem` and no marker: the key stays so the next load
+      // retries, and the client_id idempotency means the rows that did land are
+      // not duplicated by the retry.
+      setMigration({ state: 'failed', uploaded, total, error: failure });
+      return;
+    }
+    store.removeItem(legacyThreadsKey(ws));
+    store.setItem(migratedMarkerKey(ws), new Date().toISOString());
+    setMigration({ state: 'done', uploaded, total });
+    void mutateListRef.current?.();
+  }, []);
+
+  useEffect(() => {
+    if (migrationStartedRef.current) return;
+    if (conversationsState !== 'ready') return;
+    // Only when the server reports zero real conversation history. A workspace
+    // that already has active conversations is not migrated, or the upload would
+    // duplicate real history.
+    const hasRealHistory = listData?.conversations.some((c) => (c.messageCount ?? 0) > 0);
+    if (hasRealHistory) return;
+    const store = safeStorage();
+    if (!store) return;
+    if (store.getItem(migratedMarkerKey(workspaceId)) !== null) return;
+    migrationStartedRef.current = true;
+    void runMigration();
+  }, [conversationsState, listData, workspaceId, runMigration]);
+
+  // ── The one honest error channel ───────────────────────────────────────────
+  const persistenceError = useMemo(() => {
+    if (localOnlyNotice) return localOnlyNotice;
+    if (pending.length > 0) {
+      const noun = pending.length === 1 ? 'message is' : 'messages are';
+      const head = isOffline
+        ? `Offline — ${pending.length} ${noun} saved on this device only and not yet sent to the server.`
+        : `Sync problem — ${pending.length} ${noun} saved on this device but not confirmed by the server.`;
+      const detail = syncError ? ` Last error: ${syncError}` : '';
+      return `${head} They will be sent automatically once the connection recovers.${detail}`;
+    }
+    if (loadError) return `Chat history could not be read from the server. ${loadError}`;
+    if (migration.state === 'failed') {
+      return `Uploading your old chat history failed after ${migration.uploaded} of ${migration.total} messages. The old data is still on this device and will be retried. (${migration.error})`;
+    }
+    // A rename, delete or clear the server refused. The store rolled it back, and
+    // saying so is the difference between "it failed" and "nothing happened".
+    if (syncError) return `The last change was not saved to the server: ${syncError}`;
+    return null;
+  }, [pending.length, isOffline, syncError, localOnlyNotice, loadError, migration]);
 
   // ── Catalog + command loading (abortable, honest about failure) ────────────
   useEffect(() => {
@@ -350,52 +933,142 @@ export function useChatStore(workspaceId: string): ChatStore {
     setRagStatus(null);
   }, [activeId]);
 
+  const reload = useCallback(async () => {
+    await mutateListRef.current?.();
+  }, []);
+
   // ── Thread operations ──────────────────────────────────────────────────────
-  const newThread = useCallback((opts?: { agent?: string; seedInput?: string }) => {
-    const agent = opts?.agent;
-    const id = nextId('th');
-    const thread: Thread = {
-      id,
-      title: opts?.seedInput
+  const newThread = useCallback(
+    (opts?: { agent?: string; seedInput?: string }) => {
+      const agent = opts?.agent;
+      const id = nextId('th');
+      const title = opts?.seedInput
         ? opts.seedInput.slice(0, 40)
         : agent && agent !== 'auto'
           ? `${agent} chat`
-          : 'New conversation',
-      agentName: agent && agent !== 'auto' ? agent : undefined,
-      createdAt: nowIso(),
-      updatedAt: nowIso(),
-      messages: [],
-    };
-    setThreads((p) => [thread, ...p].slice(0, MAX_THREADS));
-    setActiveId(id);
-    if (agent) setSelectedAgent(agent);
-    if (opts?.seedInput) setInput(opts.seedInput);
-  }, []);
+          : 'New conversation';
+      const agentName = agent && agent !== 'auto' ? agent : undefined;
+      const thread: Thread = {
+        id,
+        title,
+        ...(agentName ? { agentName } : {}),
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+        messages: [],
+      };
+      activeIdRef.current = id;
+      setActiveId(id);
+      commitThreads((p) => [thread, ...p].slice(0, MAX_THREADS));
+      if (agent) setSelectedAgent(agent);
+      if (opts?.seedInput) setInput(opts.seedInput);
+      // The row is created up front so the thread exists server-side from the
+      // moment the user sees it, rather than only once a message needs an id.
+      void ensureServerThread(id, { title, ...(agentName ? { agentName } : {}) });
+    },
+    [commitThreads, ensureServerThread],
+  );
 
-  const selectThread = useCallback((id: string) => setActiveId(id), []);
+  const selectThread = useCallback((id: string) => {
+    activeIdRef.current = id;
+    setActiveId(id);
+  }, []);
 
   const renameThread = useCallback(
     (id: string, title: string) => {
       const clean = title.trim().slice(0, 80);
       if (!clean) return;
+      const previous = threadsRef.current.find((t) => t.id === id)?.title;
       patchThread(id, (t) => ({ ...t, title: clean }));
+      const serverId = serverIdFor(id);
+      void ConversationApi.rename(workspaceIdRef.current, serverId, clean).then((res) => {
+        if (!mountedRef.current) return;
+        if (res.ok) {
+          patchThread(serverId, (t) => ({ ...t, title: res.data.title }));
+          void mutateListRef.current?.();
+          return;
+        }
+        if (res.aborted) return;
+        // Roll back: a rename the user saw succeed but that never landed is worse
+        // than an explicit failure.
+        if (previous) patchThread(id, (t) => ({ ...t, title: previous }));
+        setSyncError(`Rename not saved: ${res.error}`);
+        toast({
+          tone: 'error',
+          title: 'Rename failed',
+          detail: `${res.error} The title was not changed.`,
+        });
+      });
     },
-    [patchThread],
+    [patchThread, serverIdFor, toast],
   );
 
-  const deleteThread = useCallback((id: string) => {
-    setThreads((p) => {
-      const next = p.filter((t) => t.id !== id);
-      setActiveId((cur) => (cur === id ? (next[0]?.id ?? null) : cur));
-      return next;
-    });
-  }, []);
+  const deleteThread = useCallback(
+    (id: string) => {
+      const all = threadsRef.current;
+      const index = all.findIndex((t) => t.id === id);
+      const removed = index >= 0 ? all[index] : undefined;
+      const remaining = all.filter((t) => t.id !== id);
+      const nextActive =
+        activeIdRef.current === id ? (remaining[0]?.id ?? null) : activeIdRef.current;
+      activeIdRef.current = nextActive;
+      setActiveId(nextActive);
+      commitThreads(() => remaining);
+      const serverId = serverIdFor(id);
+      commitPending((prev) => prev.filter((p) => serverIdFor(p.conversationId) !== serverId));
+      loadedRef.current.delete(serverId);
+
+      void ConversationApi.remove(workspaceIdRef.current, serverId).then((res) => {
+        if (!mountedRef.current) return;
+        if (res.ok) {
+          void mutateListRef.current?.();
+          return;
+        }
+        if (res.aborted || !removed) return;
+        // Restore at the original position, so a failed delete does not also
+        // reorder the rail.
+        commitThreads((prev) => {
+          if (prev.some((t) => t.id === removed.id)) return prev;
+          const next = [...prev];
+          next.splice(Math.min(index, next.length), 0, removed);
+          return next;
+        });
+        setSyncError(`Delete not saved: ${res.error}`);
+        toast({
+          tone: 'error',
+          title: 'Delete failed',
+          detail: `${res.error} The conversation was restored.`,
+        });
+      });
+    },
+    [serverIdFor, toast],
+  );
 
   const clearThread = useCallback(
     (id: string) => {
+      const previous = threadsRef.current.find((t) => t.id === id)?.messages ?? [];
       patchThread(id, (t) => ({ ...t, messages: [], title: 'New conversation' }));
+      commitPending((prev) =>
+        prev.filter((p) => serverIdFor(p.conversationId) !== serverIdFor(id)),
+      );
+      const serverId = serverIdFor(id);
+      void ConversationApi.clearMessages(workspaceIdRef.current, serverId).then((res) => {
+        if (!mountedRef.current) return;
+        if (res.ok) {
+          loadedRef.current.add(serverId);
+          void mutateListRef.current?.();
+          return;
+        }
+        if (res.aborted) return;
+        patchThread(id, (t) => ({ ...t, messages: previous }));
+        setSyncError(`Clear not saved: ${res.error}`);
+        toast({
+          tone: 'error',
+          title: 'Clear failed',
+          detail: `${res.error} The messages were restored.`,
+        });
+      });
     },
-    [patchThread],
+    [patchThread, serverIdFor, toast],
   );
 
   // ── Copy ───────────────────────────────────────────────────────────────────
@@ -514,17 +1187,23 @@ export function useChatStore(workspaceId: string): ChatStore {
 
     const threadId = activeIdRef.current;
     if (threadId) {
-      patchThread(threadId, (t) => ({
-        ...t,
-        messages: t.messages.map((m) => {
-          if (m.status !== 'streaming') return m;
-          return {
-            ...m,
-            status: 'stopped',
-            text: m.text || 'Stopped before any output arrived.',
-          };
-        }),
-      }));
+      // Computed from the ref, not inside the state updater: a side effect in an
+      // updater runs twice under StrictMode and would double-queue the write.
+      const settled = (threadsRef.current.find((t) => t.id === threadId)?.messages ?? [])
+        .filter((m) => m.status === 'streaming')
+        .map<ChatMessage>((m) => ({
+          ...m,
+          status: 'stopped',
+          text: m.text || 'Stopped before any output arrived.',
+        }));
+      if (settled.length > 0) {
+        patchThread(threadId, (t) => ({
+          ...t,
+          messages: t.messages.map((m) => settled.find((s) => s.id === m.id) ?? m),
+        }));
+        // `stopped` is terminal, so each stopped turn is now worth persisting.
+        for (const m of settled) queuePersist(threadId, m);
+      }
     }
     setBusy(false);
     setWorkflowId(null);
@@ -533,7 +1212,7 @@ export function useChatStore(workspaceId: string): ChatStore {
       title: 'Generation stopped',
       detail: hadStream ? undefined : 'The server-side run was cancelled too.',
     });
-  }, [patchThread, toast]);
+  }, [patchThread, queuePersist, toast]);
 
   // ── The send pipeline ──────────────────────────────────────────────────────
   const send = useCallback(
@@ -590,13 +1269,21 @@ export function useChatStore(workspaceId: string): ChatStore {
         const thread: Thread = {
           id: threadId,
           title: promptText.slice(0, 40),
-          agentName: agentForCall,
+          ...(agentForCall ? { agentName: agentForCall } : {}),
           createdAt: nowIso(),
           updatedAt: nowIso(),
           messages: [],
         };
-        setThreads((p) => [thread, ...p].slice(0, MAX_THREADS));
+        activeIdRef.current = threadId;
         setActiveId(threadId);
+        commitThreads((p) => [thread, ...p].slice(0, MAX_THREADS));
+        // Created before the run starts, not on first flush: the turn is about to
+        // be long, and a message POST with no conversation to attach it to would be
+        // lost. `seed` is required — `threadsRef` has not rendered this thread yet.
+        void ensureServerThread(threadId, {
+          title: thread.title,
+          ...(agentForCall ? { agentName: agentForCall } : {}),
+        });
       }
 
       const userMessage: ChatMessage = {
@@ -626,6 +1313,10 @@ export function useChatStore(workspaceId: string): ChatStore {
         title: t.messages.length === 0 ? promptText.slice(0, 40) : t.title,
         messages: [...t.messages, userMessage, agentMessage],
       }));
+      // The user turn is already terminal, so it can be persisted immediately. The
+      // agent turn is not: it is patched locally at stream speed and queued only
+      // when it settles.
+      queuePersist(threadId, userMessage);
 
       setInput('');
       setBusy(true);
@@ -677,7 +1368,7 @@ export function useChatStore(workspaceId: string): ChatStore {
         }
       }
     },
-    [busy, patchMessage, patchThread, toast, workspaceId],
+    [busy, ensureServerThread, patchMessage, patchThread, queuePersist, toast, workspaceId],
   );
 
   // ── Retry / edit / delete ──────────────────────────────────────────────────
@@ -706,6 +1397,7 @@ export function useChatStore(workspaceId: string): ChatStore {
         ...t,
         messages: t.messages.filter((m) => m.id !== messageId),
       }));
+      dropPending(messageId);
       void send(source.text);
     },
     [patchThread, send, toast],
@@ -727,6 +1419,12 @@ export function useChatStore(workspaceId: string): ChatStore {
         const edited: ChatMessage = { ...original, text: clean, edited: true };
         return { ...t, messages: [...t.messages.slice(0, idx), edited] };
       });
+      // The truncated tail and the edited text have no server endpoint: the
+      // contract has no message-level PATCH or DELETE. Say so rather than let the
+      // rail imply the branch was rewritten everywhere.
+      setLocalOnlyNotice(
+        'Edits are applied in this tab only — the API has no endpoint for rewriting a stored message yet, so other devices still show the original branch.',
+      );
       void send(clean);
     },
     [patchThread, send],
@@ -736,20 +1434,25 @@ export function useChatStore(workspaceId: string): ChatStore {
     (messageId: string) => {
       const threadId = activeIdRef.current;
       if (!threadId) return;
-      patchThread(threadId, (t) => {
-        const idx = t.messages.findIndex((m) => m.id === messageId);
-        if (idx < 0) return t;
-        // Deleting a user message invalidates its answer too.
-        const drop = new Set([messageId]);
-        const reply = t.messages[idx + 1];
-        const target = t.messages[idx];
-        if (target?.role === 'user' && reply?.role === 'agent' && reply.replyTo === messageId) {
-          drop.add(reply.id);
-        }
-        return { ...t, messages: t.messages.filter((m) => !drop.has(m.id)) };
-      });
+      const existing = threadsRef.current.find((t) => t.id === threadId)?.messages ?? [];
+      const idx = existing.findIndex((m) => m.id === messageId);
+      if (idx < 0) return;
+      // Deleting a user message invalidates its answer too.
+      const drop = new Set([messageId]);
+      const reply = existing[idx + 1];
+      const target = existing[idx];
+      if (target?.role === 'user' && reply?.role === 'agent' && reply.replyTo === messageId) {
+        drop.add(reply.id);
+      }
+      patchThread(threadId, (t) => ({ ...t, messages: t.messages.filter((m) => !drop.has(m.id)) }));
+      for (const id of drop) dropPending(id);
+      // The contract has no per-message DELETE, so the rows survive server-side.
+      // Say so rather than let the rail imply they are gone everywhere.
+      setLocalOnlyNotice(
+        'Deleted messages are removed in this tab only — the API has no per-message delete endpoint yet, so other devices still show them.',
+      );
     },
-    [patchThread],
+    [patchThread, dropPending],
   );
 
   return {
@@ -770,6 +1473,13 @@ export function useChatStore(workspaceId: string): ChatStore {
     catalogError,
     persistenceError,
     attachment,
+    conversationsState,
+    ...(conversationsError ? { conversationsError } : {}),
+    unsyncedCount: pending.length,
+    syncError,
+    isOffline,
+    migration,
+    reload,
     setInput,
     setAttachment,
     setSelectedAgent,
@@ -860,6 +1570,14 @@ async function runStreamedTurn(args: StreamedArgs): Promise<void> {
   }
 
   if (signal.aborted) return;
+  if (!acc.sawToken && !acc.text.trim()) {
+    const fallback = await runBufferedTurn({ workspaceId, text, agentForCall });
+    finalize(patchMessage, threadId, agentMessageId, {
+      ...fallback,
+      latencyMs: Math.round(performance.now() - startedAt),
+    });
+    return;
+  }
   finalize(patchMessage, threadId, agentMessageId, {
     ...acc,
     latencyMs: Math.round(performance.now() - startedAt),
@@ -999,6 +1717,7 @@ function finalize(
       ? (acc.terminalMessage ?? 'The run failed without producing output.')
       : 'No response — try rephrasing, or @mention a specific agent.';
 
+  // A terminal status, so `patchMessage` queues this turn for the server.
   patchMessage(threadId, messageId, {
     text,
     status: failed ? 'error' : 'complete',
@@ -1126,3 +1845,15 @@ async function runDurableTurn(args: DurableArgs): Promise<void> {
     finalize(patchMessage, threadId, agentMessageId, acc);
   }
 }
+
+/** Rehydrate the write-behind outbox for a workspace. Exported for tests. */
+export function pendingQueueKey(workspaceId: string): string {
+  return pendingKey(workspaceId);
+}
+
+/** Read the outbox from storage. Exported for tests and for a future replay button. */
+export function readPendingQueue(workspaceId: string): PendingWrite[] {
+  return readPending(workspaceId);
+}
+
+export type { PendingWrite };

@@ -69,9 +69,18 @@ export function ChatMessageList({
         tabIndex={0}
         className="min-h-0 flex-1 space-y-8 overflow-y-auto scroll-contain"
       >
-        {/* Past ~60 messages this renders every node. Virtualisation is out of
-            scope for this pass, so the map is kept as-is rather than silently
-            changing what is in the DOM. */}
+        {/* Every message stays mounted: the scrollbar keeps describing the whole
+            thread, and the live region keeps announcing the real order. The render
+            cost is bounded one level down, by the memo boundary on `ChatMessageItem`.
+
+            Windowing was rejected, not deferred. Spacer-based windowing resizes the
+            transcript body on every scroll, and `useChatAutoScroll` treats any resize
+            of the element it observes as "content grew" — so scrolling up through
+            history would raise the "New messages" pill with no new message at all.
+            Correcting that means changing the hook's contract, which its own suite
+            pins, so the honest fix here was the render boundary instead. The cost
+            this leaves open is the one-time mount of 200 markdown trees; the cost it
+            removes is re-parsing them on every streamed frame. */}
         {messages.map((m) => (
           <ChatMessageItem
             key={m.id}

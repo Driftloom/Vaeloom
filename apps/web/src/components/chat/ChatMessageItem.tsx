@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { ChatMarkdown } from './ChatMarkdown';
 import type { Attachment, ChatMessage, ExecutionPlan, PhaseEvent, ProposalStatus } from './types';
 
@@ -37,6 +37,59 @@ function agentLabel(name?: string): string {
 
 function isProposalResolved(status: ProposalStatus): boolean {
   return status === 'approved' || status === 'rejected' || status === 'expired';
+}
+
+export interface GroundedContextInfo {
+  context: string;
+  content: string;
+  hasDocuments: boolean;
+  hasMemories: boolean;
+}
+
+function parseGroundedContext(text: string): GroundedContextInfo | null {
+  const trimmed = text.trimStart();
+  const patterns = [
+    '[Background Context from Workspace Memories & Vault Notes]',
+    '[Background Context from Workspace Documents & Second Brain Memories]',
+    '[Background Context',
+    '[Hierarchical Cognitive Context',
+    '[CONTEXT & MEMORY GROUNDING]',
+  ];
+
+  const matchedPattern = patterns.find((p) => trimmed.startsWith(p));
+  if (!matchedPattern) {
+    return null;
+  }
+
+  const afterHeader = trimmed.slice(matchedPattern.length);
+  const doubleNewlineIdx = afterHeader.indexOf('\n\n');
+  let context = '';
+  let content = '';
+
+  if (doubleNewlineIdx !== -1) {
+    context = trimmed.slice(0, matchedPattern.length + doubleNewlineIdx).trim();
+    content = afterHeader.slice(doubleNewlineIdx + 2).trim();
+  } else {
+    context = trimmed;
+    content = '';
+  }
+
+  const hasDocuments =
+    context.includes('Active Grounding Documents') ||
+    context.includes('Active Document') ||
+    context.includes('<active_grounding_context>') ||
+    context.includes('Vault Note') ||
+    context.includes('.md') ||
+    context.includes('.pdf') ||
+    context.includes('.docx');
+
+  const hasMemories =
+    context.includes('Second Brain Memories') ||
+    context.includes('Memory (') ||
+    context.includes('<second_brain_memory_context>') ||
+    context.includes('Workspace Memories');
+
+  return { context, content, hasDocuments, hasMemories };
 }
 
 function AttachmentChip({ attachment }: { attachment: Attachment }) {
@@ -119,7 +172,7 @@ function PlanBlock({ plan }: { plan: ExecutionPlan }) {
   );
 }
 
-export function ChatMessageItem({
+function ChatMessageItemComponent({
   message,
   agentColor,
   onCopy,
@@ -172,6 +225,17 @@ export function ChatMessageItem({
   const isUser = message.role === 'user';
   const isError = message.status === 'error';
   const confidence = message.confidence;
+  const groundedContext = !isUser ? parseGroundedContext(message.text) : null;
+  const isGroundedInDocument =
+    (message.citations && message.citations.length > 0) ||
+    Boolean(message.metadata?.['grounded_in_documents']) ||
+    Boolean(message.metadata?.['grounded_in_document']) ||
+    (groundedContext?.hasDocuments ?? false) ||
+    message.text.includes('Active Grounding Documents');
+  const isGroundedInMemory =
+    message.text.includes('[Background Context from Workspace Memories') ||
+    Boolean(message.metadata?.['grounded_in_memory']) ||
+    (groundedContext?.hasMemories ?? false);
 
   return (
     <article className={`flex gap-3 ${isUser ? 'justify-end' : ''}`}>
@@ -266,6 +330,22 @@ export function ChatMessageItem({
                 S2 Gen: {message.s2LatencyMs}ms
               </span>
             )}
+            {isGroundedInDocument && (
+              <span
+                className="inline-flex items-center gap-1 text-2xs font-mono px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                title="Authoritative grounding on active workspace documents and files (Claude-style active grounding)"
+              >
+                📄 Grounded in Document
+              </span>
+            )}
+            {isGroundedInMemory && (
+              <span
+                className="inline-flex items-center gap-1 text-2xs font-mono px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                title="Enriched by your personal Second Brain memories and synced notes (ChatGPT-style memory)"
+              >
+                🧠 Second Brain Grounded
+              </span>
+            )}
             {message.latencyMs !== undefined && (
               <span className="ml-auto text-2xs font-mono text-text-dim" title="Round trip time">
                 {message.latencyMs}ms
@@ -310,7 +390,41 @@ export function ChatMessageItem({
           </div>
         ) : (
           <div className="relative">
-            <ChatMarkdown>{message.text}</ChatMarkdown>
+            {groundedContext ? (
+              <>
+                <details className="mb-2 text-xs bg-surface-50 border border-border/40 rounded-lg p-2.5 text-text-dim">
+                  <summary className="cursor-pointer font-medium select-none hover:text-text flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      {isGroundedInDocument && (
+                        <span className="text-blue-400 font-semibold">📄 Active Documents</span>
+                      )}
+                      {isGroundedInDocument && isGroundedInMemory && (
+                        <span className="text-text-muted">+</span>
+                      )}
+                      {isGroundedInMemory && (
+                        <span className="text-purple-400 font-semibold">
+                          🧠 Second Brain Memory
+                        </span>
+                      )}
+                      {!isGroundedInDocument && !isGroundedInMemory && (
+                        <span>🧠 Grounded Background Context</span>
+                      )}
+                    </span>
+                    <span className="text-2xs text-text-dim uppercase tracking-wider font-mono">
+                      Hierarchical Grounding
+                    </span>
+                  </summary>
+                  <pre className="mt-2 whitespace-pre-wrap font-mono text-2xs text-text-muted leading-relaxed max-h-60 overflow-y-auto">
+                    {groundedContext.context}
+                  </pre>
+                </details>
+                {groundedContext.content ? (
+                  <ChatMarkdown>{groundedContext.content}</ChatMarkdown>
+                ) : null}
+              </>
+            ) : (
+              <ChatMarkdown>{message.text}</ChatMarkdown>
+            )}
             {message.status === 'streaming' && (
               <>
                 {/* A bare styled span announces nothing. The caret carries the
@@ -614,3 +728,20 @@ export function ChatMessageItem({
     </article>
   );
 }
+
+/**
+ * The transcript render boundary.
+ *
+ * A restored thread holds up to `MAX_MESSAGES_PER_THREAD` (200) messages, and each
+ * agent message mounts a full react-markdown tree. Without this boundary a single
+ * streamed token re-rendered the whole transcript, so every message re-parsed its
+ * markdown on every frame of the response — the dominant cost while an agent is
+ * answering, and the reason the store coalesces renders at 40ms as a workaround
+ * rather than a fix.
+ *
+ * Memo compares props shallowly, so it only pays off while every prop is
+ * referentially stable: `chat-store` already replaces only the message being
+ * patched, and `ChatWindow` memoises the callbacks it passes. An inline arrow in
+ * either place silently disables this.
+ */
+export const ChatMessageItem = memo(ChatMessageItemComponent);

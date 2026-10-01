@@ -120,6 +120,10 @@ export interface ChatMessage {
   /** Temporal workflow id when this turn ran durably. */
   workflowId?: string;
   edited?: boolean;
+  metadata?: {
+    grounded_in_memory?: boolean;
+    [key: string]: unknown;
+  };
 }
 
 export interface Thread {

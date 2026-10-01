@@ -28,6 +28,10 @@ const EXAMPLE_PROMPTS: ReadonlyArray<{ label: string; prompt: string }> = [
     prompt: 'What can you do here? Which agents are available to me?',
   },
   {
+    label: 'Query Second Brain & Vault',
+    prompt: 'What key insights, projects, and notes are in my Second Brain and Obsidian vault?',
+  },
+  {
     label: 'Summarise a document I upload',
     prompt: 'Summarise the document I upload as key entities and action items.',
   },
