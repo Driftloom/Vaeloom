@@ -78,14 +78,69 @@ function toCamelCase(str: string): string {
   return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
 }
 
-export function transformKeys<T>(obj: unknown): T {
+/**
+ * Key names whose values are opaque data, not API fields.
+ *
+ * WHY: the backend reads `config.parameters` and `config.returns` straight back
+ * into a `ToolDefinition.input_schema` / `output_schema`
+ * (`routers/capabilities.py`, the dynamic-tool registration path), and serves
+ * `McpToolInfoResponse.input_schema` verbatim from the MCP server. The property
+ * names inside a JSON Schema belong to whoever authored the tool, so a schema
+ * with `properties: { resume_text: ... }` is a contract: a caller passing
+ * `resume_text` is correct, and the backend reads that exact key back.
+ * CamelCasing it to `resumeText` corrupts the contract on read, and because
+ * request bodies are `JSON.stringify`-ed verbatim while responses are
+ * transformed, the next write sends the *right* shape for a *different* key --
+ * an asymmetric corruption, which is the worst one to debug because the value
+ * looks right until it is used.
+ *
+ * WHY a name-based list instead of a path list (`config.parameters`) or a
+ * per-call-site opt-out:
+ *  - The corruption is a property of the field NAME, not of the endpoint. A
+ *    path list has to be extended every time the same schema field surfaces
+ *    under a new parent (`input_schema` on `McpToolInfoResponse` is not under
+ *    `config` at all), and each omission is silent.
+ *  - A per-call-site opt-out has to be threaded through `request()`, every
+ *    `api.*` verb and `apiClient`, so a new wrapper that forgets the flag
+ *    silently re-enables the corruption. There is no compile-time way to
+ *    notice a forgotten flag; there is a compile-time way to notice a missing
+ *    entry in one exported set.
+ *  - A global convention change (snake_case everywhere, or a per-type mapper
+ *    registry) would be a much larger blast radius than one exported constant,
+ *    across 241 API paths and every consumer of them.
+ * The trade-off taken: behaviour changes only for fields whose contents are
+ * schema documents. No web consumer reads a camelCase key out of one --
+ * `inputSchema` / `outputSchema` in `api-client.ts` are read as whole schemas and
+ * rendered.
+ *
+ * Both spellings are listed because the membership test runs on the raw key, and
+ * these fields have both names in this codebase: `input_schema` from the wire and
+ * `inputSchema` in `McpToolInfo`. A caller that assembles a body from those types
+ * gets the same guarantee as one that echoes the wire.
+ */
+export const OPAQUE_DATA_KEYS: ReadonlySet<string> = new Set([
+  'parameters',
+  'returns',
+  'input_schema',
+  'output_schema',
+  'inputSchema',
+  'outputSchema',
+]);
+
+export function transformKeys<T>(
+  obj: unknown,
+  opaqueKeys: ReadonlySet<string> = OPAQUE_DATA_KEYS,
+): T {
   if (obj === null || obj === undefined) return obj as T;
-  if (Array.isArray(obj)) return obj.map(transformKeys) as T;
+  if (Array.isArray(obj)) return obj.map((entry) => transformKeys(entry, opaqueKeys)) as T;
   if (typeof obj === 'object') {
     return Object.fromEntries(
-      Object.entries(obj as Record<string, unknown>).map(([k, v]) => [
-        toCamelCase(k),
-        transformKeys(v),
+      Object.entries(obj as Record<string, unknown>).map(([key, value]) => [
+        toCamelCase(key),
+        // Verbatim, not re-walked: everything below this key is data whose
+        // spelling is the contract, including nested `inputSchema` keys that
+        // would otherwise be re-entered on a second pass.
+        opaqueKeys.has(key) ? value : transformKeys(value, opaqueKeys),
       ]),
     ) as T;
   }

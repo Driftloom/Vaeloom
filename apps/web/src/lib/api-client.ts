@@ -236,6 +236,7 @@ export const memoryApi = {
     tags?: string;
     page?: number;
     page_size?: number;
+    workspace_id?: string;
   }): Promise<MemoryListResponse> {
     return apiClient.get<MemoryListResponse>(
       '/memories',
@@ -431,6 +432,80 @@ export interface ChatMessage {
   agentName?: string;
 }
 
+/** One decoded SSE block: the lines between two blank lines. */
+export interface SseBlock {
+  event: string;
+  /** `data:` lines joined with `\n`, exactly as the spec defines the data buffer. */
+  data: string;
+  /** Last `id:` field seen in the block. Carried for spec fidelity; the chat
+   *  transport never resumes, so nothing consumes it yet. */
+  lastEventId?: string;
+}
+
+/**
+ * Parse a single SSE block per the WHATWG event-stream rules.
+ *
+ * The inline parser this replaced concatenated every `data:` line with no separator
+ * and `.trim()`ed each one, so a payload split across two `data:` lines — which a
+ * server does whenever a JSON body contains a newline — became unparseable and the
+ * whole event degraded to `{ raw: … }`. It also let the LAST `event:` line win and
+ * read comment lines as fields.
+ *
+ * Returns null when the block carries no `data:` line, which the spec defines as
+ * "dispatch nothing" — a keep-alive comment or a bare `retry:` must not surface as
+ * an event.
+ */
+export function parseSseBlock(raw: string): SseBlock | null {
+  if (!raw.trim()) return null;
+
+  let event = '';
+  let sawEvent = false;
+  let data = '';
+  let lastEventId: string | undefined;
+
+  // CRLF, a lone CR and LF all terminate a line; a server on Windows, or behind a
+  // proxy that rewrites line endings, emits the first two.
+  for (const line of raw.split(/\r\n|\r|\n/)) {
+    /* A comment is a keep-alive. It carries no field, and treating it as one
+       corrupts the next field's name/value split. */
+    if (line.startsWith(':')) continue;
+
+    const colon = line.indexOf(':');
+    const field = colon === -1 ? line : line.slice(0, colon);
+    let value = colon === -1 ? '' : line.slice(colon + 1);
+    /* Exactly one optional leading space belongs to the framing. `.trim()` here
+       would eat whitespace that is part of a token payload. */
+    if (value.startsWith(' ')) value = value.slice(1);
+
+    switch (field) {
+      case 'event':
+        /* The first `event:` wins. A conforming server sends one name per block, so
+           a second one means the block is malformed and the later value is the
+           suspect — which is what the previous last-wins parser adopted. */
+        if (!sawEvent) {
+          event = value;
+          sawEvent = true;
+        }
+        break;
+      case 'data':
+        /* The newline separator is the whole point: it is what lets a JSON payload
+           split across several `data:` lines be reassembled byte-for-byte. */
+        data += `${value}\n`;
+        break;
+      case 'id':
+        if (!value.includes('\u0000')) lastEventId = value;
+        break;
+      case 'retry':
+        break;
+      default:
+        break;
+    }
+  }
+
+  if (data === '') return null;
+  return { event: event || 'message', data: data.slice(0, -1), lastEventId };
+}
+
 export const agentApi = {
   register(body: AgentCreateRequest): Promise<Agent> {
     return apiClient.post<Agent>('/agents', body);
@@ -512,27 +587,38 @@ export const agentApi = {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buf = '';
+    /* Line terminators are normalised to `\n` as bytes arrive so block splitting has
+       one shape to look for. A trailing CR is held back because the LF half of a
+       CRLF pair can land in the next chunk. */
+    let pendingCr = false;
+    const feed = (chunk: string): void => {
+      let text = chunk;
+      if (pendingCr) {
+        pendingCr = false;
+        buf += '\n';
+        if (text.startsWith('\n')) text = text.slice(1);
+      }
+      if (text.endsWith('\r')) {
+        pendingCr = true;
+        text = text.slice(0, -1);
+      }
+      buf += text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    };
     const emit = (raw: string) => {
-      if (!raw.trim()) return;
-      const lines = raw.split('\n');
-      let ev = 'message';
-      let dataStr = '';
-      for (const line of lines) {
-        if (line.startsWith('event:')) ev = line.slice(6).trim();
-        else if (line.startsWith('data:')) dataStr += line.slice(5).trim();
-      }
-      if (!dataStr) return;
+      const block = parseSseBlock(raw);
+      if (!block) return;
+      let data: Record<string, unknown>;
       try {
-        const data = JSON.parse(dataStr) as Record<string, unknown>;
-        onEvent(ev, data);
+        data = JSON.parse(block.data) as Record<string, unknown>;
       } catch {
-        onEvent(ev, { raw: dataStr });
+        data = { raw: block.data };
       }
+      onEvent(block.event, data);
     };
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      buf += decoder.decode(value, { stream: true });
+      feed(decoder.decode(value, { stream: true }));
       let idx: number;
       while ((idx = buf.indexOf('\n\n')) !== -1) {
         const chunk = buf.slice(0, idx);
@@ -540,6 +626,7 @@ export const agentApi = {
         emit(chunk);
       }
     }
+    if (pendingCr) buf += '\n';
     if (buf.trim()) emit(buf);
   },
 };
@@ -834,6 +921,22 @@ export interface DocumentCompareResponse {
   diffSnippet: string;
   diff_snippet?: string;
   summary: string;
+}
+
+export interface DocumentSyncMemoryResponse {
+  success: boolean;
+  documentId: string;
+  workspaceId: string;
+  memoryId?: string | null;
+  title?: string | null;
+  summary?: string | null;
+  status: string;
+}
+
+export interface BulkSyncMemoryResponse {
+  syncedCount: number;
+  failedCount: number;
+  items: DocumentSyncMemoryResponse[];
 }
 
 function contentUrl(documentId: string, workspaceId: string): string {
@@ -1247,6 +1350,19 @@ export const documentApi = {
     return apiClient.post<DocumentCompareResponse>(
       `/documents/${encodeURIComponent(documentId)}/compare?workspace_id=${encodeURIComponent(workspaceId)}`,
       { version_a: versionA, version_b: versionB },
+    );
+  },
+  syncMemory(documentId: string, workspaceId: string): Promise<DocumentSyncMemoryResponse> {
+    return apiClient.postQuery<DocumentSyncMemoryResponse>(
+      `/documents/${encodeURIComponent(documentId)}/sync-memory`,
+      { workspace_id: workspaceId },
+    );
+  },
+  bulkSyncMemory(workspaceId: string, documentIds: string[]): Promise<BulkSyncMemoryResponse> {
+    return apiClient.postQuery<BulkSyncMemoryResponse>(
+      '/documents/bulk/sync-memory',
+      { workspace_id: workspaceId },
+      { document_ids: documentIds },
     );
   },
 };
@@ -2548,9 +2664,20 @@ export const agentCatalogApi = {
  * the same quantity as `execution_duration_ms` above and is measured with a
  * different clock. They are separate types so a page cannot read one field name
  * off a response that carries the other.
+ *
+ * `status` is the union of every branch of the handler, not one branch's
+ * vocabulary. The `tool` branch emits `success`, `error` and `not_registered`
+ * (the last when the process-local dynamic registration is gone after a restart);
+ * the `mcp` branch forwards `probe_mcp_endpoint`'s `connected` / `skipped` /
+ * `timeout` / `error`. `warning` was never emitted here -- it belongs to
+ * `POST /agents/capabilities/test` below -- so it is gone rather than left as a
+ * value no caller can ever observe.
  */
+export type TestCapabilityStatus =
+  'success' | 'not_registered' | 'connected' | 'skipped' | 'timeout' | 'error';
+
 export interface TestCapabilityByIdResponse {
-  status: 'success' | 'warning' | 'error';
+  status: TestCapabilityStatus;
   latencyMs: number;
   output: unknown;
   error: string | null;
@@ -3720,11 +3847,14 @@ export const marketplaceApi = {
  * The backend stores `parameters` / `returns` as JSON Schema (see
  * `routers/capabilities.py`, which reads them straight back when building a
  * synthetic ToolDefinition), so those two stay `Record<string, unknown>` on
- * purpose: their keys are schema property names, not field names, and must be
- * preserved verbatim.
+ * purpose: their keys are schema property names, not field names, and
+ * `transformKeys` preserves them verbatim via `OPAQUE_DATA_KEYS`.
  *
- * The index signature is an escape hatch for genuinely open data, not an
- * invitation to index blindly. Use the getters below instead.
+ * The rest of the bag is still camelCased, so `markdown_doc` arrives as
+ * `markdownDoc` and `required_scope` as `requiredScope` -- which is why the typed
+ * readers below are declared in camelCase. The index signature is an escape
+ * hatch for genuinely open data, not an invitation to index blindly. Use the
+ * getters below instead.
  */
 export interface CapabilityConfig {
   doc?: string;
@@ -3773,10 +3903,10 @@ const CAPABILITY_AUTONOMY: ReadonlySet<string> = new Set<CapabilityAutonomy>([
  * `transformKeys()` recurses over the whole response body, so it arrives already
  * camelCased. `doc` is kept for rows written before the field was renamed.
  *
- * NOTE: `transformKeys()` also recurses *into* `parameters` and `returns`, so
- * JSON Schema property names inside them are camelCased on the way in
- * (`resume_text` arrives as `resumeText`). Do not round-trip `config.parameters`
- * back to the server through this client without de-camelCasing it first.
+ * `config.parameters` and `config.returns` are on `OPAQUE_DATA_KEYS`, so JSON
+ * Schema property names inside them are NOT camelCased and round-trip verbatim --
+ * which is what `routers/capabilities.py` needs, because it reads them straight
+ * back into a `ToolDefinition`.
  */
 export function capabilityConfigMarkdownDoc(config?: CapabilityConfig | null): string | undefined {
   if (!config) return undefined;
@@ -4039,6 +4169,22 @@ export interface McpToolInfo {
   readOnly?: boolean;
 }
 
+/**
+ * The operator-invoked MCP tool result.
+ *
+ * `isError` and `structuredTruncated` are the camelCase spellings the response
+ * transform produces for the service's `is_error` / `structured_truncated`.
+ * `isError` means the MCP server reported a tool-level failure, which is a 200
+ * with an error in it -- not a transport failure, which arrives as a 502.
+ */
+export interface McpToolCallResult {
+  tool: string;
+  text: string;
+  isError: boolean;
+  structured?: unknown;
+  structuredTruncated?: boolean;
+}
+
 export interface BuiltinMcpServer {
   id: string;
   name: string;
@@ -4148,8 +4294,25 @@ export const connectorsApi = {
         workspaceId ? { workspace_id: workspaceId } : undefined,
       );
     },
-    call(connectorId: string, toolName: string, args: Record<string, unknown> = {}): Promise<any> {
-      return apiClient.post(`/connectors/${connectorId}/mcp/call`, {
+    /**
+     * `POST /connectors/{id}/mcp/call`, from `mcp_client_service.call_tool`.
+     *
+     * `structured` is the MCP server's own `structuredContent`, so it is `unknown`
+     * rather than a record with named fields -- and it is served under the
+     * name the server chose, which is why `structuredContent` is not reachable
+     * through `transformKeys` either (it is not on `OPAQUE_DATA_KEYS`: the
+     * service truncates it into a string when it is oversized, and a value whose
+     * type depends on its length is not something a typed field can promise).
+     * `structuredTruncated` is the flag that says the string is a prefix, so a
+     * renderer can refuse to parse it instead of reporting a half-document as a
+     * complete one.
+     */
+    call(
+      connectorId: string,
+      toolName: string,
+      args: Record<string, unknown> = {},
+    ): Promise<McpToolCallResult> {
+      return apiClient.post<McpToolCallResult>(`/connectors/${connectorId}/mcp/call`, {
         tool_name: toolName,
         arguments: args,
       });
