@@ -262,21 +262,25 @@ describe('generated token JSON is in sync with globals.css', () => {
 
   it('pins the size of the runtime palette so silent divergence is visible', () => {
     const runtimeNames = declaredNames(globalsCss);
-    // 112 = 99 token-system properties + 13 --landing-* (3D scene colours, which
+    // 113 = 100 token-system properties + 13 --landing-* (3D scene colours, which
     // live in the same file but are deliberately outside the token system).
     //
     // History of this pin, so the next bump is not a guess:
-    //   88  original count
-    //   89  + --error-active (pressed destructive state, referenced by
-    //        semantic.json and component.json but declared nowhere)
-    //   104 + the 15 --ai-* semantic states, which had existed only as
-    //        design-record JSON with no runtime counterpart
-    //   112 + 8 further properties that arrived in the same stylesheet via
-    //        concurrent work. HEAD and the working tree agree, so 112 is the
-    //        measured count, not an estimate.
+    //   88   original count
+    //   89   + --error-active (pressed destructive state, referenced by
+    //         semantic.json and component.json but declared nowhere)
+    //   104  + the 15 --ai-* semantic states, which had existed only as
+    //         design-record JSON with no runtime counterpart
+    //   112  + 8 further properties that arrived in the same stylesheet via
+    //         concurrent work. HEAD and the working tree agree, so 112 is the
+    //         measured count, not an estimate.
+    //   113  + --switch-knob (the Switch resting-fill, added in all three theme
+    //         blocks). counted once, not three times, because declaredNames()
+    //         dedupes — the three per-theme values are asserted individually by
+    //         the Switch theme-parity test in components.test.tsx.
     //
     // Bump deliberately, and note the delta in the commit.
-    expect(runtimeNames).toHaveLength(112);
+    expect(runtimeNames).toHaveLength(113);
     expect(runtimeNames).toContain('--primary-fg');
     expect(runtimeNames).toContain('--primary-700');
     expect(runtimeNames).toContain('--error-active');

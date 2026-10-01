@@ -12,26 +12,34 @@ export interface AlertProps {
   children?: React.ReactNode;
 }
 
+// Same alpha-tinted status ramp Badge uses, so Alert and Badge cannot drift:
+// a 10% status fill, a 30% status border, the status hue for body text and the
+// lighter `-fg` slot for the icon. Every family clears WCAG AA for text on its
+// own /10 tint in all three themes (worst case: light `info` at 5.13:1).
 const variantConfig = {
   info: {
-    bg: 'bg-blue-950/30 border-blue-800/40 text-blue-200',
-    iconColor: 'text-blue-400',
+    bg: 'bg-info/10 text-info border-info/30',
+    iconColor: 'text-info-fg',
     icon: InfoIcon,
+    urgent: false,
   },
   success: {
-    bg: 'bg-emerald-950/30 border-emerald-800/40 text-emerald-200',
-    iconColor: 'text-emerald-400',
+    bg: 'bg-success/10 text-success border-success/30',
+    iconColor: 'text-success-fg',
     icon: CheckIcon,
+    urgent: false,
   },
   warning: {
-    bg: 'bg-amber-950/30 border-amber-800/40 text-amber-200',
-    iconColor: 'text-amber-400',
+    bg: 'bg-warning/10 text-warning border-warning/30',
+    iconColor: 'text-warning-fg',
     icon: AlertTriangleIcon,
+    urgent: true,
   },
   danger: {
-    bg: 'bg-red-950/30 border-red-800/40 text-red-200',
-    iconColor: 'text-red-400',
+    bg: 'bg-error/10 text-error border-error/30',
+    iconColor: 'text-error-fg',
     icon: AlertCircleIcon,
+    urgent: true,
   },
 };
 
@@ -47,8 +55,14 @@ export const Alert: React.FC<AlertProps> = ({
   const IconComponent = config.icon;
 
   return (
+    // `info` and `success` report state the user can wait for, so they announce
+    // politely via role="status" and queue behind whatever is being read.
+    // `warning` and `danger` need to interrupt, which is what role="alert"
+    // (implicit aria-live="assertive") is for. All four were assertive before,
+    // so a passive confirmation cut off the screen reader mid-sentence.
     <div
-      role="alert"
+      role={config.urgent ? 'alert' : 'status'}
+      aria-live={config.urgent ? 'assertive' : 'polite'}
       className={`relative flex items-start gap-3 rounded-lg border p-3.5 text-sm ${config.bg} ${className}`.trim()}
     >
       <div className={`mt-0.5 shrink-0 ${config.iconColor}`}>

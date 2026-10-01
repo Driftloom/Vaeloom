@@ -79,6 +79,10 @@
   --action-hover: 67 56 202;    /* #4338CA */
   --action-active: 55 48 163;   /* #3730A3 */
   --action-fg: 255 255 255;
+  /* Resting fill for a Switch knob sitting on the unchecked --border-subtle
+     track. Needs the opposite of the canvas, so it is light here and dark in
+     light/high-contrast below. The checked knob uses --action-fg instead. */
+  --switch-knob: 255 255 255;
 
   /* Accent */
   --accent: 129 140 248;
@@ -193,6 +197,7 @@
   --action-hover: 67 56 202;
   --action-active: 55 48 163;
   --action-fg: 255 255 255;
+  --switch-knob: 23 26 43;       /* #171A2B — dark knob; the unchecked track is near-white here */
 
   --accent: 67 56 202;
   --accent-300: 79 70 229;
@@ -300,6 +305,9 @@ html.high-contrast,
   --action-hover: 99 102 241;
   --action-active: 129 140 248;
   --action-fg: 255 255 255;
+  /* High-contrast --border-subtle is a light grey (#B4B4C3), so a white knob
+     would sit at 2.05:1 against it. Pure black reaches 10.3:1. */
+  --switch-knob: 0 0 0;
 
   --accent: 255 255 0;          /* #FFFF00 */
   --accent-300: 255 255 100;

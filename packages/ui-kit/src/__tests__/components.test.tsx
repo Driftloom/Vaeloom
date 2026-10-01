@@ -655,10 +655,15 @@ describe('Feedback and layout primitives', () => {
     expect(onDismiss).toHaveBeenCalledWith('t-1');
   });
 
-  it('Alert is assertive and dismisses', () => {
+  // CHANGED from "Alert is assertive and dismisses": this rendered the default
+  // `info` variant and asserted role="alert", pinning the old behaviour where
+  // every variant announced assertively. `info` is now a polite status region,
+  // so the role assertion moved to the urgent variants (see the a11y block
+  // below). Dismissal coverage is unchanged.
+  it('Alert is a live region and dismisses', () => {
     const onClose = jest.fn();
     render(<Alert title="Heads up" description="Token refresh failed" onClose={onClose} />);
-    expect(screen.getByRole('alert').textContent).toContain('Token refresh failed');
+    expect(screen.getByRole('status').textContent).toContain('Token refresh failed');
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss alert' }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -687,6 +692,12 @@ describe('Feedback and layout primitives', () => {
     expect(control.getAttribute('aria-checked')).toBe('false');
     expect(control.getAttribute('id')).toBe(screen.getByText('Dark mode').getAttribute('for'));
     fireEvent.click(control);
+    // CHANGED: added the call count. This asserted only the argument, so it
+    // passed against the double-firing label as readily as against the fix —
+    // the call count is what actually pins the regression. Per-path coverage
+    // (label click, disabled on both paths, knob token) lives in
+    // components/__tests__/Switch.test.tsx.
+    expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith(true);
   });
 
