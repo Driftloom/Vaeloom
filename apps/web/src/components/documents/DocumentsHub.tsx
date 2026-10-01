@@ -20,6 +20,7 @@ import { DocumentFolderTree } from './DocumentFolderTree';
 import { DocumentUploadQueue } from './DocumentUploadQueue';
 import { DocumentShareDialog } from './DocumentShareDialog';
 import { DocumentPreviewModal } from './DocumentPreviewModal';
+import { DocumentMoveDialog } from './DocumentMoveDialog';
 
 function getFileName(path: string): string {
   const parts = path.split('/');
@@ -145,6 +146,10 @@ export function DocumentsHub({
 
   // Document Sharing Modal
   const [shareDoc, setShareDoc] = useState<DocumentResponse | null>(null);
+
+  // Document Move Modal
+  const [moveDoc, setMoveDoc] = useState<DocumentResponse | null>(null);
+  const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
 
   // Document Content Viewer
   const [viewer, setViewer] = useState<DocumentResponse | null>(null);
@@ -733,13 +738,21 @@ export function DocumentsHub({
   // Filtered documents by category
   const filteredDocuments = useMemo(() => {
     if (selectedCategory === 'all') return documents;
+    if (selectedCategory === 'vault_notes') {
+      return documents.filter((d) => {
+        const cat = d.metadata?.['category'];
+        const isVault = cat === 'vault_note' || d.type === 'vault_note';
+        const inVaultFolder = folders.find((f) => f.id === d.folder_id)?.name === 'Vault Notes';
+        return isVault || inVaultFolder;
+      });
+    }
     const allowed = CATEGORY_EXTENSIONS[selectedCategory];
     if (!allowed) return documents;
     return documents.filter((d) => {
       const ext = d.path.split('.').pop()?.toLowerCase() ?? '';
       return allowed.has(ext) || allowed.has(d.type?.toLowerCase());
     });
-  }, [documents, selectedCategory]);
+  }, [documents, selectedCategory, folders]);
 
   return (
     <div className="space-y-6">
@@ -832,22 +845,78 @@ export function DocumentsHub({
 
         {/* Document Content Area */}
         <div className="lg:col-span-3 space-y-4">
+          {/* Active Folder Filter Banner */}
+          {selectedFolderId && (
+            <div className="flex items-center justify-between p-3 rounded-xl border border-primary/30 bg-primary/5 text-xs text-text">
+              <div className="flex items-center gap-2">
+                <svg
+                  className="w-4 h-4 text-primary shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                  />
+                </svg>
+                <span className="font-semibold">Viewing folder:</span>
+                <span className="px-2 py-0.5 rounded bg-surface border border-border font-medium text-primary">
+                  {folders.find((f) => f.id === selectedFolderId)?.name || 'Selected Folder'}
+                </span>
+                <span className="text-text-muted">({filteredDocuments.length} files)</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedFolderId(null)}
+                className="text-primary hover:underline font-medium text-xs flex items-center gap-1"
+              >
+                <span>Show All Files</span>
+                <span aria-hidden="true">✕</span>
+              </button>
+            </div>
+          )}
+
           {/* Search & Category Filter Toolbar */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-xl border border-border/70 bg-surface/40">
             {/* Category tabs */}
             <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
-              {(['all', 'documents', 'spreadsheets', 'images', 'code'] as const).map((cat) => (
+              {[
+                { id: 'all', label: 'All Files' },
+                { id: 'vault_notes', label: 'Vault Notes' },
+                { id: 'documents', label: 'Documents' },
+                { id: 'spreadsheets', label: 'Spreadsheets' },
+                { id: 'images', label: 'Images' },
+                { id: 'code', label: 'Code' },
+              ].map(({ id, label }) => (
                 <button
-                  key={cat}
+                  key={id}
                   type="button"
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors whitespace-nowrap ${
-                    selectedCategory === cat
+                  onClick={() => setSelectedCategory(id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+                    selectedCategory === id
                       ? 'bg-primary text-primary-fg shadow-sm'
                       : 'text-text-muted hover:text-text hover:bg-surface-hover/60'
                   }`}
                 >
-                  {cat}
+                  {id === 'vault_notes' && (
+                    <svg
+                      className="w-3 h-3 text-purple-400"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <polygon
+                        points="12,2 20,9 17,21 7,21 4,9"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                  <span>{label}</span>
                 </button>
               ))}
             </div>
@@ -917,6 +986,28 @@ export function DocumentsHub({
                   className="btn-secondary text-xs px-3 py-1.5 text-warning hover:bg-warning/10 hover:border-warning/30"
                 >
                   Archive Selected
+                </button>
+                <button
+                  type="button"
+                  disabled={bulkBusy}
+                  onClick={() => setBulkMoveOpen(true)}
+                  className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
+                  title="Move selected documents to a folder"
+                >
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                    />
+                  </svg>
+                  Move Selected
                 </button>
                 <button
                   type="button"
@@ -1023,6 +1114,10 @@ export function DocumentsHub({
                       const docVersion = documentVersionOf(doc);
                       const size = (doc.metadata as Record<string, unknown> | undefined)?.['size'];
                       const isArchived = Boolean(doc.deleted_at);
+                      const isVaultNote =
+                        doc.metadata?.['category'] === 'vault_note' ||
+                        doc.type === 'vault_note' ||
+                        folders.find((f) => f.id === doc.folder_id)?.name === 'Vault Notes';
 
                       return (
                         <tr
@@ -1076,6 +1171,29 @@ export function DocumentsHub({
                                 </svg>
                               </Link>
 
+                              {/* Vault Synced badge */}
+                              {isVaultNote && (
+                                <span
+                                  className="inline-flex items-center gap-1 text-[10px] text-purple-400 bg-purple-500/10 border border-purple-500/30 px-1.5 py-0.5 rounded font-mono shrink-0 shadow-sm"
+                                  title="Synchronized with Obsidian Vault"
+                                >
+                                  <svg
+                                    className="w-3 h-3 text-purple-400"
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                  >
+                                    <polygon
+                                      points="12,2 20,9 17,21 7,21 4,9"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                  Vault Synced
+                                </span>
+                              )}
+
                               {/* Memory Sync status badge */}
                               <span
                                 className="inline-flex items-center gap-1 text-[10px] text-primary/90 bg-primary/10 border border-primary/25 px-1.5 py-0.5 rounded font-mono shrink-0"
@@ -1085,6 +1203,26 @@ export function DocumentsHub({
                                 Memory Synced
                               </span>
                             </div>
+
+                            {/* Tags display */}
+                            {Array.isArray(doc.metadata?.['tags']) &&
+                              (doc.metadata['tags'] as string[]).length > 0 && (
+                                <div className="flex items-center gap-1 flex-wrap mt-1">
+                                  {(doc.metadata['tags'] as string[]).slice(0, 3).map((tag) => (
+                                    <span
+                                      key={tag}
+                                      className="text-[10px] px-1.5 py-0.5 rounded-md bg-surface border border-border/70 text-text-muted font-medium"
+                                    >
+                                      #{tag}
+                                    </span>
+                                  ))}
+                                  {(doc.metadata['tags'] as string[]).length > 3 && (
+                                    <span className="text-[10px] text-text-dim">
+                                      +{(doc.metadata['tags'] as string[]).length - 3}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
 
                             {/* Mobile metadata summary when table columns are hidden on small screens */}
                             <div className="flex sm:hidden items-center gap-2 text-[11px] text-text-dim mt-1">
@@ -1239,6 +1377,28 @@ export function DocumentsHub({
                                 </svg>
                               </Link>
 
+                              {/* Chat with Document (@document) */}
+                              <Link
+                                href={`/workspace/${currentWorkspaceId}/chat?docId=${doc.id}&docName=${encodeURIComponent(fileName)}`}
+                                className="p-1.5 text-text-muted hover:text-primary rounded hover:bg-primary/10 transition-colors"
+                                title="Chat with Document (@document)"
+                                aria-label={`Chat with ${fileName}`}
+                              >
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                                  />
+                                </svg>
+                              </Link>
+
                               {/* More (Rename) */}
                               <button
                                 type="button"
@@ -1261,6 +1421,29 @@ export function DocumentsHub({
                                     strokeLinejoin="round"
                                     strokeWidth={2}
                                     d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                  />
+                                </svg>
+                              </button>
+
+                              {/* Move to Folder */}
+                              <button
+                                type="button"
+                                onClick={() => setMoveDoc(doc)}
+                                className="p-1.5 text-text-muted hover:text-text rounded hover:bg-surface-active"
+                                title="Move to Folder"
+                                aria-label={`Move ${fileName}`}
+                              >
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
                                   />
                                 </svg>
                               </button>
@@ -1366,6 +1549,7 @@ export function DocumentsHub({
         document={viewer}
         content={viewerContent}
         loading={viewerLoading}
+        workspaceId={currentWorkspaceId}
       />
 
       {/* Integrated Document Share Dialog */}
@@ -1532,6 +1716,75 @@ export function DocumentsHub({
             </div>
           </form>
         </Modal>
+      )}
+
+      {/* Single Document Move Dialog */}
+      {moveDoc && (
+        <DocumentMoveDialog
+          isOpen={Boolean(moveDoc)}
+          onClose={() => setMoveDoc(null)}
+          document={moveDoc}
+          workspaceId={currentWorkspaceId}
+          folders={folders}
+          onMoved={(_targetFolderId, _newPath) => {
+            toast({
+              tone: 'success',
+              title: 'Document moved',
+              detail: 'Document moved successfully.',
+            });
+            void fetchFolders();
+            void fetchDocuments();
+          }}
+        />
+      )}
+
+      {/* Bulk Move Dialog */}
+      {bulkMoveOpen && (
+        <DocumentMoveDialog
+          isOpen={bulkMoveOpen}
+          onClose={() => setBulkMoveOpen(false)}
+          document={{
+            id: 'bulk-placeholder',
+            workspace_id: currentWorkspaceId,
+            path: `${selectedDocIds.size} Selected Documents`,
+            folder_id: selectedFolderId,
+            type: 'folder',
+            status: 'AVAILABLE',
+            scan_status: 'CLEAN',
+            metadata: {},
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            deleted_at: null,
+          }}
+          workspaceId={currentWorkspaceId}
+          folders={folders}
+          onMove={async (targetFolderId) => {
+            setBulkBusy(true);
+            try {
+              await Promise.all(
+                Array.from(selectedDocIds).map((id) =>
+                  documentApi.move(id, currentWorkspaceId, targetFolderId),
+                ),
+              );
+              toast({
+                tone: 'success',
+                title: 'Documents moved',
+                detail: `Moved ${selectedDocIds.size} document(s) successfully.`,
+              });
+              setSelectedDocIds(new Set());
+              void fetchFolders();
+              void fetchDocuments();
+            } catch (err) {
+              toast({
+                tone: 'error',
+                title: 'Bulk move failed',
+                detail: err instanceof Error ? err.message : 'Error moving documents',
+              });
+            } finally {
+              setBulkBusy(false);
+            }
+          }}
+        />
       )}
 
       {/* Confirmation Dialog */}

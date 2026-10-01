@@ -113,10 +113,9 @@ export const DocumentMoveDialog: React.FC<DocumentMoveDialogProps> = ({
       if (onMove) {
         await onMove(selectedFolderId);
       } else if (effectiveWorkspaceId) {
+        await documentApi.move(document.id, effectiveWorkspaceId, selectedFolderId);
         const targetFolder = folders.find((f) => f.id === selectedFolderId);
         const newPath = targetFolder ? `${targetFolder.name}/${fileName}` : fileName;
-
-        await documentApi.rename(document.id, effectiveWorkspaceId, newPath);
         onMoved?.(selectedFolderId, newPath);
       }
       onClose();

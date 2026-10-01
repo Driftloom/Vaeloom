@@ -1,5 +1,6 @@
 'use client';
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Modal } from '@vaeloom/ui-kit';
 import type { DocumentResponse } from '@/lib/api-client';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -16,6 +17,7 @@ interface DocumentPreviewModalProps {
     unsupported?: boolean;
   } | null;
   loading: boolean;
+  workspaceId?: string;
 }
 
 function getFileName(path: string): string {
@@ -29,6 +31,7 @@ export function DocumentPreviewModal({
   document,
   content,
   loading,
+  workspaceId,
 }: DocumentPreviewModalProps) {
   const [imageZoom, setImageZoom] = useState(false);
 
@@ -43,6 +46,20 @@ export function DocumentPreviewModal({
   const isImage =
     type === 'image' || ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp', 'ico'].includes(ext);
 
+  const isVaultNote =
+    document.metadata?.['category'] === 'vault_note' ||
+    document.type === 'vault_note' ||
+    document.detected_mime_type === 'text/markdown' ||
+    isMarkdown;
+
+  const noteTitle = (document.metadata?.['title'] as string) || fileName.replace(/\.md$/i, '');
+
+  const targetWsId =
+    workspaceId ||
+    (document as unknown as Record<string, string>)?.['workspace_id'] ||
+    (document as unknown as Record<string, string>)?.['workspaceId'] ||
+    '';
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={fileName} size="xl">
       <div className="w-full flex flex-col min-h-[350px] max-h-[82vh] overflow-hidden">
@@ -56,9 +73,37 @@ export function DocumentPreviewModal({
               <span className="px-1.5 py-0.5 rounded text-[10px] font-mono uppercase bg-surface text-text-dim border border-border/50">
                 {ext || type || 'file'}
               </span>
+              {isVaultNote && (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono text-purple-400 bg-purple-500/15 border border-purple-500/30 inline-flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+                  Vault Synced
+                </span>
+              )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {isVaultNote && targetWsId && (
+                <Link
+                  href={`/workspace/${targetWsId}/memory?query=${encodeURIComponent(noteTitle)}`}
+                  className="px-2.5 py-1 rounded-md bg-purple-500/15 text-purple-300 hover:bg-purple-500/25 border border-purple-500/40 font-medium inline-flex items-center gap-1.5 transition-colors text-xs shadow-sm"
+                  title="View in Second Brain Graph"
+                >
+                  <svg
+                    className="w-3.5 h-3.5 text-purple-400"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <polygon
+                      points="12,2 20,9 17,21 7,21 4,9"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span>View in Second Brain Graph</span>
+                </Link>
+              )}
               <a
                 href={content.url}
                 target="_blank"

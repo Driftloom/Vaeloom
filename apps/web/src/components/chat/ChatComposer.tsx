@@ -155,7 +155,13 @@ export function ChatComposer(props: ChatComposerProps): JSX.Element {
   // An ARIA combobox may only report `expanded`/`aria-controls` when it truly
   // controls a listbox. The loading/error/empty render is a plain status line
   // instead, so the combobox stays collapsed and that line announces itself.
-  const listboxActive = hasOptions;
+  //
+  // `commandsState` gates this as well as `hasOptions`, matching the precedence
+  // `statusLine` already uses a few lines below and that `ChatEmptyState` uses for
+  // the same data. Without the gate, a retained non-empty `commands` array renders a
+  // stale listbox while a failed load is reported nowhere — the palette looks
+  // authoritative and the user is told nothing.
+  const listboxActive = hasOptions && (popup?.kind === 'mention' || commandsState === 'ready');
 
   const statusLine = ((): string | null => {
     if (!popup) return null;

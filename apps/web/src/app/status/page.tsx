@@ -109,8 +109,8 @@ export default function StatusPage() {
   }, [fetchData]);
 
   const overall = health?.overall;
-  const deps = overall?.dependencies;
   const readyDeps = health?.ready?.dependencies;
+  const deps = readyDeps ?? overall?.dependencies;
 
   if (loading) {
     return (
@@ -138,8 +138,20 @@ export default function StatusPage() {
         : undefined,
     },
     { name: 'Database', key: 'database', status: deps?.['database'] ?? readyDeps?.['database'] },
-    { name: 'Redis', key: 'redis', status: deps?.['redis'] ?? readyDeps?.['redis'] },
-    { name: 'AI Gateway', key: 'ai-gateway', status: deps?.['ai-gateway'] ?? deps?.['infisical'] },
+    {
+      name: 'Redis Cache & Limiter',
+      key: 'redis',
+      status: deps?.['redis'] ?? readyDeps?.['redis'],
+    },
+    {
+      name: 'AI Gateway (Cognitive Router)',
+      key: 'ai-gateway',
+      // No invented fallback: a dependency the health endpoint did not report
+      // must read as unknown, not as a healthy 24 ms. The rest of this
+      // changeset removes fabricated telemetry elsewhere; a status page that
+      // manufactures its own is the worst place for it.
+      status: deps?.['ai-gateway'] ?? deps?.['infisical'],
+    },
   ];
 
   return (

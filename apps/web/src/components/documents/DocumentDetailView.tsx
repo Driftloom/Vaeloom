@@ -21,6 +21,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { DocumentAuditPanel } from './DocumentAuditPanel';
 import { DocumentCompareView } from './DocumentCompareView';
 import { DocumentShareDialog } from './DocumentShareDialog';
+import { DocumentMoveDialog } from './DocumentMoveDialog';
 
 function getFileName(path: string): string {
   const parts = path.split('/');
@@ -107,6 +108,14 @@ export function DocumentDetailView({
   const [sharesLoading, setSharesLoading] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
+  // Move Dialog state
+  const [moveDialogOpen, setMoveDialogOpen] = useState(false);
+
+  // Tags state
+  const [tags, setTags] = useState<string[]>([]);
+  const [newTagInput, setNewTagInput] = useState('');
+  const [tagBusy, setTagBusy] = useState(false);
+
   // Active Tab
   const [activeTab, setActiveTab] = useState<
     'preview' | 'audit' | 'compare' | 'revisions' | 'history' | 'sharing'
@@ -131,6 +140,8 @@ export function DocumentDetailView({
       const found = await documentApi.getById(documentId, workspaceId);
       if (!found) throw new Error('Document not found in workspace');
       setDoc(found);
+      const rawTags = (found.metadata?.['tags'] as string[] | undefined) || [];
+      setTags(rawTags);
 
       const blob = await documentApi.getContent(found.id, workspaceId);
       const ext = found.path.split('.').pop()?.toLowerCase() || '';
@@ -383,6 +394,73 @@ export function DocumentDetailView({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Tag management
+  const handleAddTag = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = newTagInput
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, '');
+    if (!clean || tags.includes(clean) || !doc) return;
+    setTagBusy(true);
+    const updated = [...tags, clean];
+    try {
+      await documentApi.updateTags(doc.id, workspaceId, updated);
+      setTags(updated);
+      setDoc((prev) =>
+        prev
+          ? {
+              ...prev,
+              metadata: {
+                ...(prev.metadata as Record<string, unknown> | undefined),
+                tags: updated,
+              },
+            }
+          : null,
+      );
+      setNewTagInput('');
+      toast({ tone: 'success', title: 'Tag added', detail: `#${clean}` });
+    } catch (err) {
+      toast({
+        tone: 'error',
+        title: 'Failed to add tag',
+        detail: err instanceof Error ? err.message : 'Error adding tag',
+      });
+    } finally {
+      setTagBusy(false);
+    }
+  };
+
+  const handleRemoveTag = async (tagToRemove: string) => {
+    if (!doc) return;
+    setTagBusy(true);
+    const updated = tags.filter((t) => t !== tagToRemove);
+    try {
+      await documentApi.updateTags(doc.id, workspaceId, updated);
+      setTags(updated);
+      setDoc((prev) =>
+        prev
+          ? {
+              ...prev,
+              metadata: {
+                ...(prev.metadata as Record<string, unknown> | undefined),
+                tags: updated,
+              },
+            }
+          : null,
+      );
+      toast({ tone: 'success', title: 'Tag removed', detail: `#${tagToRemove}` });
+    } catch (err) {
+      toast({
+        tone: 'error',
+        title: 'Failed to remove tag',
+        detail: err instanceof Error ? err.message : 'Error removing tag',
+      });
+    } finally {
+      setTagBusy(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="py-24 flex flex-col items-center justify-center gap-3">
@@ -463,6 +541,41 @@ export function DocumentDetailView({
               </a>
             )}
 
+            {/* Chat with Document */}
+            <Link
+              href={`/workspace/${workspaceId}/chat?docId=${doc.id}&docName=${encodeURIComponent(fileName)}`}
+              className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 text-primary hover:bg-primary/10 transition-colors"
+              title="Chat with Document (@document)"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                />
+              </svg>
+              <span>Chat</span>
+            </Link>
+
+            {/* Move to Folder */}
+            <button
+              type="button"
+              onClick={() => setMoveDialogOpen(true)}
+              className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
+              title="Move to Folder"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                />
+              </svg>
+              <span>Move</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setShareDialogOpen(true)}
@@ -531,6 +644,87 @@ export function DocumentDetailView({
           </div>
         }
       />
+
+      {/* Dynamic Metadata & Enterprise Integration Strip */}
+      <div className="flex flex-wrap items-center justify-between gap-4 p-3.5 rounded-xl border border-border/70 bg-surface/40 backdrop-blur-sm">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Dynamic Memory Sync indicator */}
+          <span
+            className="inline-flex items-center gap-1.5 text-xs text-primary bg-primary/10 border border-primary/30 px-2.5 py-1 rounded-lg font-medium"
+            title="Dynamically synchronized with Workspace Memory & Knowledge Graph"
+          >
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            Memory Synced
+          </span>
+
+          {/* Deep link to Memory Graph */}
+          <Link
+            href={`/workspace/${workspaceId}/memory?query=${encodeURIComponent(fileName)}`}
+            className="inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-primary transition-colors border border-border/60 bg-surface px-2.5 py-1 rounded-lg font-medium hover:border-primary/40"
+            title="Explore entity relationships and contextual notes in Memory Graph"
+          >
+            <svg
+              className="w-3.5 h-3.5 text-primary"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 10V3L4 14h7v7l9-11h-7z"
+              />
+            </svg>
+            <span>View in Second Brain</span>
+          </Link>
+        </div>
+
+        {/* Dynamic Tag Editor Strip */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mr-1">
+            Tags:
+          </span>
+          {tags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-md bg-surface-200 border border-border text-text font-medium"
+            >
+              <span>#{tag}</span>
+              <button
+                type="button"
+                disabled={tagBusy}
+                onClick={() => void handleRemoveTag(tag)}
+                className="text-text-dim hover:text-error ml-0.5 rounded-full"
+                title={`Remove tag #${tag}`}
+              >
+                ✕
+              </button>
+            </span>
+          ))}
+
+          <form onSubmit={handleAddTag} className="inline-flex items-center gap-1">
+            <input
+              type="text"
+              value={newTagInput}
+              onChange={(e) => setNewTagInput(e.target.value)}
+              placeholder="+ add tag"
+              aria-label="Add document tag"
+              disabled={tagBusy}
+              className="px-2 py-0.5 text-xs rounded-md bg-surface border border-border/70 text-text placeholder:text-text-dim focus:outline-none focus:border-primary w-24"
+            />
+            {newTagInput.trim() && (
+              <button
+                type="submit"
+                disabled={tagBusy}
+                className="text-[11px] px-2 py-0.5 rounded bg-primary text-primary-fg font-medium hover:opacity-90"
+              >
+                Add
+              </button>
+            )}
+          </form>
+        </div>
+      </div>
 
       {/* Tabs Navigation */}
       <div
@@ -983,6 +1177,22 @@ export function DocumentDetailView({
         documentName={fileName}
         onShareCreated={(s) => setShares((prev) => [s, ...prev])}
         onShareRevoked={(sId) => setShares((prev) => prev.filter((s) => s.id !== sId))}
+      />
+
+      {/* Document Move Dialog */}
+      <DocumentMoveDialog
+        isOpen={moveDialogOpen}
+        onClose={() => setMoveDialogOpen(false)}
+        document={doc}
+        workspaceId={workspaceId}
+        onMoved={() => {
+          toast({
+            tone: 'success',
+            title: 'Document moved',
+            detail: 'Document location updated.',
+          });
+          void fetchDocAndContent();
+        }}
       />
 
       {/* Confirm Dialog */}

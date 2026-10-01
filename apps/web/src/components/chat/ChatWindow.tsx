@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ExecutionTimeline } from '@/components/execution/ExecutionTimeline';
 import { useRealtime } from '@/components/providers/RealtimeProvider';
 import { useChatAutoScroll } from '@/hooks/useChatAutoScroll';
@@ -27,6 +28,9 @@ import { MAX_INPUT_LENGTH, type MentionTarget } from './types';
  */
 export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   const store = useChatStore(workspaceId);
+  const searchParams = useSearchParams();
+  const docId = searchParams?.get('docId');
+  const docName = searchParams?.get('docName');
   const { status: connectionStatus } = useRealtime();
 
   // Mobile drawer. Defaults closed: the old component defaulted it open, so a
@@ -35,11 +39,25 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // Deep-link integration from Documents Hub / Detail page
+  useEffect(() => {
+    if (docName && store.catalogState === 'ready') {
+      const hasDocumentAgent = store.catalog.some((a) => a.name === 'document');
+      if (hasDocumentAgent) {
+        store.setSelectedAgent('document');
+      }
+      if (!store.input) {
+        store.setInput(`Analyze document "${docName}" (id: ${docId || ''}): `);
+        inputRef.current?.focus();
+      }
+    }
+  }, [docName, docId, store.catalogState]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const streaming = store.messages.some((m) => m.status === 'streaming');
   const { handleScroll, scrollToBottom, showNewMessages } = useChatAutoScroll(
     scrollRef,
     [store.messages, store.busy],
-    { streaming },
+    { streaming, resetKey: store.activeId },
   );
 
   const canonicalAgents = useMemo(

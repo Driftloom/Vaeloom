@@ -14,6 +14,16 @@ export interface UseChatAutoScrollOptions {
   enabled?: boolean;
   /** While tokens stream in, jumps must be 'instant' — see the deps effect. */
   streaming?: boolean;
+  /**
+   * Identity of the conversation being displayed. When it changes the hook drops its
+   * scroll model and re-anchors to the bottom.
+   *
+   * Without this, the near-bottom flag leaks across conversations: scroll up in one
+   * thread, switch to another, and the new thread inherits "user is scrolled away",
+   * so auto-scroll stays off and a "New messages" pill appears over a thread the
+   * user never scrolled up in.
+   */
+  resetKey?: string | number | null;
 }
 
 export interface UseChatAutoScrollResult {
@@ -36,7 +46,7 @@ export function useChatAutoScroll(
   deps: DependencyList,
   options: UseChatAutoScrollOptions = {},
 ): UseChatAutoScrollResult {
-  const { threshold = 120, enabled = true, streaming = false } = options;
+  const { threshold = 120, enabled = true, streaming = false, resetKey = null } = options;
 
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [showNewMessages, setShowNewMessages] = useState(false);
@@ -106,9 +116,21 @@ export function useChatAutoScroll(
   }, [enabled, streaming, threshold, ...deps]);
 
   useEffect(() => {
+    if (resetKey === null) return;
+    // Re-anchoring to the incoming thread's bottom is the correct default: a
+    // conversation is read from the newest turn backwards, and a thread restored
+    // from localStorage renders at scrollTop 0 otherwise.
+    commitNearBottom(true);
+    setShowNewMessages(false);
+    // 'instant' rather than 'smooth': the old conversation is being replaced, so
+    // animating the jump just shows the user scrolling through content that is
+    // about to be unmounted.
+    scrollToBottom('instant');
+  }, [resetKey, commitNearBottom, scrollToBottom]);
+
+  useEffect(() => {
     const el = scrollRef.current;
     if (!el || !enabled || typeof ResizeObserver === 'undefined') return;
-
     const observer = new ResizeObserver(() => {
       // ResizeObserver always delivers one notification straight after observe().
       // Acting on it would re-introduce exactly the mount-time forced scroll the deps

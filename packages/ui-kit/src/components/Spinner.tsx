@@ -5,17 +5,45 @@ export interface SpinnerProps {
   className?: string;
 }
 
+const PIXEL_SIZES: Record<'sm' | 'md' | 'lg', number> = {
+  sm: 16,
+  md: 24,
+  lg: 32,
+};
+
+const CLASS_SIZES: Record<'sm' | 'md' | 'lg', string> = {
+  sm: 'w-4 h-4',
+  md: 'w-6 h-6',
+  lg: 'w-8 h-8',
+};
+
 export const Spinner: React.FC<SpinnerProps> = ({ size = 'md', className = '' }) => {
-  const sizes: Record<string, string> = {
-    sm: 'w-4 h-4',
-    md: 'w-6 h-6',
-    lg: 'w-8 h-8',
-  };
+  const px = PIXEL_SIZES[size] ?? 24;
+  const sizeClass = CLASS_SIZES[size] ?? 'w-6 h-6';
 
   return (
-    <svg className={`animate-spin ${sizes[size]} ${className}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+    <svg
+      width={px}
+      height={px}
+      style={{
+        width: `${px}px`,
+        height: `${px}px`,
+        maxWidth: `${px}px`,
+        maxHeight: `${px}px`,
+        flexShrink: 0,
+      }}
+      className={`animate-spin shrink-0 ${sizeClass} ${className}`}
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+      />
     </svg>
   );
 };

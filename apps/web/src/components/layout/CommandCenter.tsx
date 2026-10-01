@@ -46,6 +46,7 @@ interface SearchResultItem {
   text: string;
   source: string;
   score: number;
+  metadata?: Record<string, unknown>;
 }
 
 const RECENT_KEY = 'vaeloom.commandCenter.recent';
@@ -405,18 +406,46 @@ export function CommandCenter({
   const searchCommands = useMemo<CommandItem[]>(() => {
     return searchResults.map((r) => {
       const matchScore = Math.round(r.score * 100);
+      const isVault =
+        r.source === 'vault_note' ||
+        r.metadata?.['category'] === 'vault_note' ||
+        r.metadata?.['source_type'] === 'vault_note';
+
+      const sourceLabel = isVault ? 'VAULT NOTE' : r.source.toUpperCase();
+      const badgeLabel = isVault ? 'Vault Synced' : `${matchScore}%`;
+
       return {
         id: `search-${r.source}-${r.id}`,
         title: r.text,
-        subtitle: `${r.source.toUpperCase()} · Match ${matchScore}%`,
+        subtitle: `${sourceLabel} · Match ${matchScore}%`,
         category: 'search',
-        badge: `${matchScore}%`,
-        icon: <SearchIcon size={16} className="text-accent" />,
+        badge: badgeLabel,
+        icon: isVault ? (
+          <svg className="w-4 h-4 text-purple-400" viewBox="0 0 24 24" fill="currentColor">
+            <polygon
+              points="12,2 20,9 17,21 7,21 4,9"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinejoin="round"
+            />
+          </svg>
+        ) : (
+          <SearchIcon size={16} className="text-accent" />
+        ),
         perform: () => {
-          if (r.source === 'memory') router.push(ws('/memory'));
-          else if (r.source === 'document') router.push(ws('/files'));
-          else if (r.source === 'agent') router.push(ws('/capabilities?category=agents'));
-          else router.push(ws('/schedule'));
+          if (isVault) {
+            if (r.source === 'document') router.push(ws(`/documents/${r.id}`));
+            else router.push(ws(`/memory?query=${encodeURIComponent(r.text)}`));
+          } else if (r.source === 'memory') {
+            router.push(ws(`/memory?query=${encodeURIComponent(r.text)}`));
+          } else if (r.source === 'document') {
+            router.push(ws('/documents'));
+          } else if (r.source === 'agent') {
+            router.push(ws('/capabilities?category=agents'));
+          } else {
+            router.push(ws('/schedule'));
+          }
           onClose();
         },
       };

@@ -399,4 +399,86 @@ describe('useChatAutoScroll', () => {
       expect(result.current.isNearBottom).toBe(true);
     });
   });
+
+  describe('resetKey (conversation switch)', () => {
+    it('re-anchors to the bottom when the conversation changes', () => {
+      // A conversation is read from its newest turn backwards, and a thread restored
+      // from storage renders at scrollTop 0, so a switch must land at the bottom.
+      const scroller = createScroller({ scrollTop: 0 });
+
+      const { result, rerender } = renderAutoScroll({
+        deps: [1],
+        ref: { current: scroller.el },
+        options: { resetKey: 'thread-a' },
+      });
+
+      scroller.scrollTo.mockClear();
+
+      act(() => {
+        rerender({ deps: [1], ref: { current: scroller.el }, options: { resetKey: 'thread-b' } });
+      });
+
+      expect(scroller.scrollTo).toHaveBeenCalledWith(
+        expect.objectContaining({ top: scroller.geometry.scrollHeight, behavior: 'instant' }),
+      );
+      expect(result.current.isNearBottom).toBe(true);
+      expect(result.current.showNewMessages).toBe(false);
+    });
+
+    it('does not leak a scrolled-up position into the next conversation', () => {
+      // The regression this guards: scroll up in one thread, switch, and the new
+      // thread inherits "user is scrolled away" — auto-scroll stays off and a
+      // "New messages" pill appears over a thread the user never scrolled up in.
+      const scroller = createScroller();
+      const ref = { current: scroller.el };
+
+      const { result, rerender } = renderAutoScroll({
+        deps: [1],
+        ref,
+        options: { resetKey: 'thread-a' },
+      });
+
+      // User scrolls up: 1200 - 200 - 400 = 600px from the bottom.
+      act(() => {
+        scroller.geometry.scrollTop = 200;
+        result.current.handleScroll();
+      });
+
+      expect(result.current.isNearBottom).toBe(false);
+
+      // Switch conversations. The new thread's content is short and starts at the top.
+      act(() => {
+        scroller.geometry.scrollTop = 0;
+        scroller.geometry.scrollHeight = 600;
+        rerender({ deps: [2], ref, options: { resetKey: 'thread-b' } });
+      });
+
+      expect(result.current.isNearBottom).toBe(true);
+      expect(result.current.showNewMessages).toBe(false);
+    });
+
+    it('does not re-anchor when the resetKey is unchanged', () => {
+      // Only the resetKey effect jumps with behavior 'instant'; the deps effect uses
+      // 'smooth'. Asserting on the behaviour distinguishes "the reset effect did not
+      // fire" from "nothing happened at all", which a bare call-count check cannot.
+      const scroller = createScroller();
+      const ref = { current: scroller.el };
+
+      const { rerender } = renderAutoScroll({
+        deps: [1],
+        ref,
+        options: { resetKey: 'thread-a' },
+      });
+
+      scroller.scrollTo.mockClear();
+
+      act(() => {
+        rerender({ deps: [2], ref, options: { resetKey: 'thread-a' } });
+      });
+
+      expect(scroller.scrollTo).not.toHaveBeenCalledWith(
+        expect.objectContaining({ behavior: 'instant' }),
+      );
+    });
+  });
 });
