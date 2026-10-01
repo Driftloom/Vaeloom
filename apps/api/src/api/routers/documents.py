@@ -28,8 +28,10 @@ from ..schemas.document import (
     DocumentCompareRequest,
     DocumentCompareResponse,
     DocumentListResponse,
+    DocumentMoveRequest,
     DocumentRenameRequest,
     DocumentResponse,
+    DocumentTagsRequest,
     DocumentShareCreate,
     DocumentShareResponse,
     DocumentVersionResponse,
@@ -560,6 +562,66 @@ async def rename_document(
         )
     except DocumentNotFound:
         raise HTTPException(status_code=404, detail="Document not found")
+
+    await db.commit()
+    await db.refresh(doc)
+    return DocumentResponse.model_validate(doc)
+
+
+@router.post("/{document_id}/move", response_model=DocumentResponse)
+async def move_document(
+    document_id: str,
+    dto: DocumentMoveRequest,
+    workspace_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Move document to a different folder or to workspace root."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_MUTATE)
+    try:
+        doc = await document_service.move_document(
+            document_id=document_id,
+            workspace_id=workspace_id,
+            target_folder_id=dto.folder_id,
+            actor_id=_user_id(current_user),
+            tenant_id=current_user.get("tenant_id"),
+            db=db,
+        )
+    except DocumentNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    await db.commit()
+    await db.refresh(doc)
+    return DocumentResponse.model_validate(doc)
+
+
+@router.patch("/{document_id}/tags", response_model=DocumentResponse)
+async def update_document_tags(
+    document_id: str,
+    dto: DocumentTagsRequest,
+    workspace_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Update semantic tags on a document."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_MUTATE)
+    try:
+        doc = await document_service.update_tags(
+            document_id=document_id,
+            workspace_id=workspace_id,
+            tags=dto.tags,
+            actor_id=_user_id(current_user),
+            tenant_id=current_user.get("tenant_id"),
+            db=db,
+        )
+    except DocumentNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
     await db.commit()
     await db.refresh(doc)

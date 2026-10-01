@@ -457,3 +457,83 @@ class TestDocumentDelete:
             assert r.status_code == 404
 
 
+class TestDocumentMoveAndTags:
+    """Tests for moving documents to folders/root and updating tags."""
+
+    async def _auth_header(self, client: AsyncClient) -> dict[str, str]:
+        email = f"doc_move_{uuid.uuid4().hex[:8]}@example.com"
+        res = await client.post("/api/v1/auth/signup", json={"email": email, "password": "TestPassword123!"})
+        token = res.json()["access_token"]
+        return {"Authorization": f"Bearer {token}"}
+
+    async def _create_workspace(self, client: AsyncClient, headers: dict[str, str]) -> str:
+        res = await client.post(
+            "/api/v1/workspaces",
+            json={"name": "Move Test Workspace"},
+            headers=headers,
+        )
+        assert res.status_code == 201
+        return res.json()["id"]
+
+    async def test_move_document_to_folder_and_root(self, client: AsyncClient):
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+
+        # Create folder
+        f_res = await client.post(
+            f"/api/v1/documents/folders?workspace_id={ws_id}",
+            json={"name": "Finance"},
+            headers=headers,
+        )
+        assert f_res.status_code == 201
+        folder_id = f_res.json()["id"]
+
+        # Upload document in root
+        files = {"file": ("invoice.txt", io.BytesIO(b"invoice content"), "text/plain")}
+        up_res = await client.post(f"/api/v1/documents?workspace_id={ws_id}", files=files, headers=headers)
+        assert up_res.status_code == 201
+        doc_id = up_res.json()["id"]
+        assert up_res.json()["folder_id"] is None
+
+        # Move to Finance folder
+        move_res = await client.post(
+            f"/api/v1/documents/{doc_id}/move?workspace_id={ws_id}",
+            json={"folder_id": folder_id},
+            headers=headers,
+        )
+        assert move_res.status_code == 200
+        assert move_res.json()["folder_id"] == folder_id
+
+        # Move back to root (null)
+        move_root_res = await client.post(
+            f"/api/v1/documents/{doc_id}/move?workspace_id={ws_id}",
+            json={"folder_id": None},
+            headers=headers,
+        )
+        assert move_root_res.status_code == 200
+        assert move_root_res.json()["folder_id"] is None
+
+    async def test_update_document_tags(self, client: AsyncClient):
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+
+        # Upload document
+        files = {"file": ("contract.txt", io.BytesIO(b"contract content"), "text/plain")}
+        up_res = await client.post(f"/api/v1/documents?workspace_id={ws_id}", files=files, headers=headers)
+        assert up_res.status_code == 201
+        doc_id = up_res.json()["id"]
+
+        # Update tags
+        tags_res = await client.patch(
+            f"/api/v1/documents/{doc_id}/tags?workspace_id={ws_id}",
+            json={"tags": ["Legal", "Confidential", "Q3"]},
+            headers=headers,
+        )
+        assert tags_res.status_code == 200
+        doc_meta = tags_res.json().get("metadata") or {}
+        assert "tags" in doc_meta
+        assert "legal" in doc_meta["tags"]
+        assert "confidential" in doc_meta["tags"]
+
+
+

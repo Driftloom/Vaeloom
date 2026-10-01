@@ -37,6 +37,15 @@ class DocumentRenameRequest(BaseModel):
     path: str = Field(..., min_length=1, max_length=1000)
 
 
+class DocumentMoveRequest(BaseModel):
+    folder_id: str | None = Field(default=None, description="Target folder ID, or null to move to workspace root")
+
+
+class DocumentTagsRequest(BaseModel):
+    tags: list[str] = Field(default_factory=list, description="List of semantic tags")
+
+
+
 class DocumentActionResponse(BaseModel):
     id: uuid.UUID
     document_id: uuid.UUID

@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import func, select, or_, and_
+from sqlalchemy import func, select, or_, and_, String, cast
 from sqlalchemy.exc import IntegrityError
 
 from ..models.schema import Document, DocumentAction, DocumentVersion, DocumentShare, Folder
@@ -686,6 +686,59 @@ class DocumentService:
         )
         return doc
 
+    async def move_document(
+        self,
+        document_id: str,
+        workspace_id: str,
+        target_folder_id: str | None,
+        actor_id: str | None = None,
+        tenant_id: str | None = None,
+        db=None,
+    ) -> Document:
+        doc = await self.get_document(document_id, workspace_id, db, required_permission="write")
+        target_fid = uuid.UUID(str(target_folder_id)) if target_folder_id else None
+
+        if target_fid:
+            f_res = await db.execute(
+                select(Folder).where(
+                    Folder.id == target_fid,
+                    Folder.workspace_id == uuid.UUID(str(workspace_id)),
+                )
+            )
+            folder = f_res.scalar_one_or_none()
+            if not folder:
+                raise DocumentNotFound(f"Target folder {target_folder_id} not found in workspace")
+
+        doc.folder_id = target_fid
+        u_id = uuid.UUID(str(actor_id)) if actor_id else None
+        t_id = uuid.UUID(str(tenant_id)) if tenant_id else None
+        await self._record_action(
+            db=db,
+            doc=doc,
+            action_type="document_move",
+            old_path=str(doc.path),
+            new_path=str(doc.path),
+            actor_id=u_id,
+            tenant_id=t_id,
+        )
+        return doc
+
+    async def update_tags(
+        self,
+        document_id: str,
+        workspace_id: str,
+        tags: list[str],
+        actor_id: str | None = None,
+        tenant_id: str | None = None,
+        db=None,
+    ) -> Document:
+        doc = await self.get_document(document_id, workspace_id, db, required_permission="write")
+        clean_tags = sorted(list({t.strip().lower() for t in tags if t.strip()}))[:20]
+        meta = dict(doc.metadata_ or {})
+        meta["tags"] = clean_tags
+        doc.metadata_ = meta
+        return doc
+
     async def archive(
         self,
         document_id: str,
@@ -973,6 +1026,7 @@ class DocumentService:
         search_filter = or_(
             Document.path.ilike(f"%{clean_q}%"),
             Document.summary.ilike(f"%{clean_q}%"),
+            cast(Document.metadata_, String).ilike(f"%{clean_q}%"),
         )
         stmt = (
             select(Document)
