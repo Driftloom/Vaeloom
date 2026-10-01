@@ -1,0 +1,35 @@
+{
+  "name": "@vaeloom/vault-sync",
+  "version": "0.1.0",
+  "description": "Vaeloom Vault Sync — Git-backed local Markdown vault sync engine and CLI for Second Brain notes",
+  "private": true,
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "bin": {
+    "vaeloom-sync": "./dist/src/cli.js",
+    "vaultsync": "./dist/src/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "test": "node --test dist/tests/*.test.js",
+    "start": "node dist/src/cli.js start"
+  },
+  "keywords": [
+    "vaeloom",
+    "second-brain",
+    "vault-sync",
+    "obsidian",
+    "git",
+    "markdown"
+  ],
+  "author": "Vaeloom Core Team",
+  "license": "MIT",
+  "dependencies": {
+    "chokidar": "^3.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.0"
+  }
+}
