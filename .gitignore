@@ -419,7 +419,7 @@ apps/web/capture_*.mjs
 VAELOOM_*.md
 VAELOOM_*.docx
 docs/report-assets/
-original_report-assets/
+original_report_assets/
 
 
 # Isolated production build output (see apps/web/scripts/build-isolated.cjs)
