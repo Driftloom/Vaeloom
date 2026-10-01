@@ -29,7 +29,7 @@ class MemoryCreate(BaseModel):
     content: str | None = None
     metadata: dict[str, Any] | None = None
     tags: list[str] | None = None
-    workspace_id: str | None = None
+    workspace_id: str | uuid.UUID | None = None
     source_type: str | None = None
     source_uri: str | None = None
     source_label: str | None = None
@@ -90,7 +90,7 @@ class MemoryQuery(BaseModel):
     domain: str | None = None
     status: str | None = "active"
     tags: list[str] | None = None
-    workspace_id: str | None = None
+    workspace_id: str | uuid.UUID | None = None
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=20, ge=1, le=100)
     include_superseded: bool = Field(default=False, description="If true, includes superseded memories in list")
@@ -98,7 +98,7 @@ class MemoryQuery(BaseModel):
 
 class MemorySearch(BaseModel):
     query: str = Field(..., min_length=1)
-    workspace_id: str | None = None
+    workspace_id: str | uuid.UUID | None = None
     type: str | None = None
     domain: str | None = None
     tags: list[str] | None = None

@@ -840,17 +840,20 @@ async def _assemble_rag_context(
                 _items.append(_CI(kind="memory", content=f"{e.get('name','')} ({e.get('type','')})",
                                   relevance=0.7, confidence=0.6, freshness=0.5,
                                   provenance=f"ws:{workspace_id}:{e.get('id','')}",
-                                  permission_scope="workspace"))
+                                  permission_scope="workspace",
+                                  priority="P3_DYNAMIC_MEMORY"))
             for d in documents:
                 _items.append(_CI(kind="evidence", content=f"{d.get('path','')} — {(d.get('summary','') or '')[:500]}",
                                   relevance=0.6, confidence=0.6, freshness=0.5,
                                   provenance=f"ws:{workspace_id}:{d.get('id','')}",
-                                  permission_scope="workspace"))
+                                  permission_scope="workspace",
+                                  priority="P1_ACTIVE_GROUNDING"))
             for p in preferences:
                 _items.append(_CI(kind="user", content=str(p.get("name", "")),
                                   relevance=0.5, confidence=0.7, freshness=0.6,
                                   provenance=f"ws:{workspace_id}:{p.get('id','')}",
-                                  permission_scope="workspace"))
+                                  permission_scope="workspace",
+                                  priority="P3_DYNAMIC_MEMORY"))
             _kept, _excluded = _filter(_items, workspace_id=str(workspace_id or ""))
             _ranked = _rank_items(_kept, limit=16)
             _compressed, _dropped = _compress(_ranked, token_budget=2000)
@@ -955,7 +958,7 @@ async def plan_phase(request: AgentRequest, state: LoopState) -> dict[str, Any]:
 
 
 def _build_context_prompt(rag: dict[str, Any]) -> str:
-    """Turn RAG bundles into XML fenced context string via ContextAssembler."""
+    """Turn RAG bundles into XML fenced context string via ContextAssembler (Documents First, Memories Second)."""
     try:
         from .context.context_assembler import context_assembler
         xml_prompt = context_assembler.assemble_rag_prompt(rag)
@@ -965,14 +968,16 @@ def _build_context_prompt(rag: dict[str, Any]) -> str:
         pass
 
     parts: list[str] = []
-    for ent in (rag.get("entities") or [])[:5]:
-        parts.append(f"Entity: {ent.get('name')} ({ent.get('type')})")
+    # 1. P1 Active Grounding Documents (Authoritative)
     for doc in (rag.get("documents") or [])[:3]:
         doc_text = doc.get("summary", "")[:500]
         chunk = doc.get("chunk_content", "")
         if chunk:
             doc_text += f"\nRelevant excerpt: {chunk[:800]}"
-        parts.append(f"Doc: {doc.get('path')} — {doc_text}")
+        parts.append(f"Active Document: {doc.get('path')} — {doc_text}")
+    # 2. P3 Dynamic Second Brain Memories (Personalization & Preferences)
+    for ent in (rag.get("entities") or [])[:5]:
+        parts.append(f"Memory Entity: {ent.get('name')} ({ent.get('type')})")
     for pref in (rag.get("preferences") or [])[:3]:
         parts.append(f"Preference: {pref.get('name')}")
     return "\n".join(parts) if parts else ""

@@ -34,6 +34,10 @@ class MemoryAgentHandler(BaseAgent):
         Tool(name="create_entity", description="Create knowledge graph entity"),
         Tool(name="merge_entities", description="Merge duplicate entities"),
         Tool(name="query_graph", description="Query knowledge graph"),
+        Tool(name="sync_vault", description="Trigger 2-way Git pull/rebase and commit/push for workspace Obsidian vault"),
+        Tool(name="ingest_vault_notes", description="Ingest and index Markdown notes from vault into documents, memory, and knowledge graph"),
+        Tool(name="search_memories", description="Search across memory items by query and category"),
+        Tool(name="create_memory", description="Store explicit learned fact or memory item"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["profile", "document"],

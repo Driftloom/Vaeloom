@@ -27,6 +27,7 @@ class ConversationAgent(BaseAgent):
         Tool(name="search_documents", description="Search workspace career documents and resumes"),
         Tool(name="query_graph", description="Query long-term knowledge graph for career entities and skills"),
         Tool(name="web_search", description="Real-time web search for company news, market trends, and salaries"),
+        Tool(name="search_memories", description="Search across personal Second Brain memories and synced vault notes"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["career", "skills", "education", "experience", "timeline"],
@@ -54,6 +55,8 @@ class ConversationAgent(BaseAgent):
                     "🔍 Find Target Roles",
                     "📊 ATS Health Audit",
                     "📅 Calendar & Deadlines",
+                    "🧠 Second Brain Notes",
+                    "🔄 Sync Vault",
                 ],
             },
         }
@@ -66,8 +69,14 @@ class ConversationAgent(BaseAgent):
         workspace_id: str | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
-        # Strip RAG context block if appended by orchestrator loop
-        user_raw = re.split(r"\n\n\[Context from", content, maxsplit=1)[0].strip()
+        # Extract user input and background/hierarchical grounding context if appended
+        extracted_context = ""
+        if "\n\n[" in content:
+            parts = content.split("\n\n[", 1)
+            user_raw = parts[0].strip()
+            extracted_context = "[" + parts[1].strip()
+        else:
+            user_raw = re.split(r"\n\n\[Context from", content, maxsplit=1)[0].strip()
         msg = user_raw
         msg_lower = msg.lower()
 
@@ -91,6 +100,7 @@ class ConversationAgent(BaseAgent):
         dyn_proposals = await action_proposal_engine.generate_proposals(
             query=msg,
             workspace_id=str(workspace_id) if workspace_id else "00000000-0000-0000-0000-000000000000",
+            db=kwargs.get("db"),
         )
         dynamic_chips = [p.title for p in dyn_proposals]
         proposals_payload = [p.model_dump() for p in dyn_proposals]
@@ -124,6 +134,10 @@ class ConversationAgent(BaseAgent):
             }
 
         if _stripped in _GREETINGS or any(_stripped.startswith(p) for p in ("good morning", "good afternoon", "good evening", "good night", "how are", "how's")):
+            greeting_chips = list(dynamic_chips)
+            for c in ["🧠 Second Brain Notes", "🔄 Sync Vault"]:
+                if c not in greeting_chips:
+                    greeting_chips.append(c)
             return {
                 "agent_name": "conversation",
                 "action": "suggest",
@@ -131,14 +145,14 @@ class ConversationAgent(BaseAgent):
                 "result": {
                     "summary": (
                         "Hello! 👋 I'm Vaeloom, your executive career partner and second brain. "
-                        "I can help you build an ATS-proof resume, discover and analyze target roles, "
-                        "track deadlines, and prepare for high-stakes interviews.\n\n"
+                        "I can help you build an ATS-proof resume, sync and query your Obsidian vault and notes, "
+                        "discover target roles, track deadlines, and synthesize long-term career memory.\n\n"
                         "What would you like to focus on today?"
                     ),
                     "details": None,
                     "proposals": proposals_payload,
                     "questions": [],
-                    "action_chips": dynamic_chips,
+                    "action_chips": greeting_chips,
                 },
             }
 
@@ -179,6 +193,15 @@ class ConversationAgent(BaseAgent):
                     "a clear, low-friction micro-step.\n"
                     "4. Zero Internal Telemetry: Never mention bot names, confidence scores, or routing algorithms."
                 )
+                if extracted_context:
+                    system_prompt += (
+                        f"\n\n[CONTEXT & MEMORY GROUNDING]\n{extracted_context}\n\n"
+                        "[COGNITIVE PRECEDENCE DIRECTIVE]\n"
+                        "1. Active Grounding Documents represent current authoritative facts. "
+                        "You MUST inspect and ground your answers on active documents first.\n"
+                        "2. Second Brain Memories (personal preferences, historical facts) are for personalization and enrichment only. "
+                        "NEVER allow historical memories to override factual statements in active grounding documents."
+                    )
 
                 resp = await llm_service.generate_completion(
                     messages=[

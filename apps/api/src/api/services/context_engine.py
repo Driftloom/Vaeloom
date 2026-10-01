@@ -26,6 +26,36 @@ ContextKind = Literal[
     "tool", "environmental", "evidence", "historical", "evaluation",
 ]
 
+CognitivePriority = Literal[
+    "P0_CRITICAL_DIRECTIVE",  # System, security, policy, explicit task instruction
+    "P1_ACTIVE_GROUNDING",    # Primary active document, code snippet, attached file (Claude-style)
+    "P2_WORKING_EPISODE",     # Immediate chat conversation turns, recent tool results
+    "P3_DYNAMIC_MEMORY",      # Second brain facts, extracted user preferences, knowledge graph (ChatGPT-style)
+    "P4_BACKGROUND_ARCHIVE",  # Global corpus, historical archives
+]
+
+COGNITIVE_PRIORITY_ORDER: dict[str, int] = {
+    "P0_CRITICAL_DIRECTIVE": 0,
+    "P1_ACTIVE_GROUNDING": 1,
+    "P2_WORKING_EPISODE": 2,
+    "P3_DYNAMIC_MEMORY": 3,
+    "P4_BACKGROUND_ARCHIVE": 4,
+}
+
+KIND_TO_PRIORITY: dict[str, CognitivePriority] = {
+    "system": "P0_CRITICAL_DIRECTIVE",
+    "agent": "P0_CRITICAL_DIRECTIVE",
+    "task": "P0_CRITICAL_DIRECTIVE",
+    "evidence": "P1_ACTIVE_GROUNDING",
+    "working": "P2_WORKING_EPISODE",
+    "tool": "P2_WORKING_EPISODE",
+    "memory": "P3_DYNAMIC_MEMORY",
+    "user": "P3_DYNAMIC_MEMORY",
+    "historical": "P4_BACKGROUND_ARCHIVE",
+    "environmental": "P4_BACKGROUND_ARCHIVE",
+    "evaluation": "P4_BACKGROUND_ARCHIVE",
+}
+
 RetrievalStrategy = Literal[
     "vector", "keyword", "graph", "structured", "temporal",
     "metadata", "hybrid", "iterative", "multi_hop",
@@ -57,10 +87,13 @@ class ContextItem:
     classification: str = "INTERNAL"
     created_at: float = field(default_factory=time.time)
     token_estimate: int = 0
+    priority: CognitivePriority | None = None
 
     def __post_init__(self):
         if not self.token_estimate:
             self.token_estimate = estimate_tokens(self.content)
+        if not self.priority:
+            self.priority = KIND_TO_PRIORITY.get(self.kind, "P3_DYNAMIC_MEMORY")
         # clamp scores
         for attr in ("relevance", "confidence", "freshness"):
             v = getattr(self, attr)
@@ -140,16 +173,35 @@ def filter_items(
 
 
 def rank_items(items: list[ContextItem], limit: int = 8) -> list[ContextItem]:
-    return sorted(items, key=lambda i: (-i.score, i.token_estimate))[:limit]
+    """Hierarchical cognitive ranking:
+    1. Cognitive priority (P0 Directives -> P1 Active Grounding Document -> P2 Working Context -> P3 Second Brain Memory -> P4 Archive)
+    2. Score within same priority tier (-i.score)
+    3. Token compactness (i.token_estimate)
+    """
+    return sorted(
+        items,
+        key=lambda i: (
+            COGNITIVE_PRIORITY_ORDER.get(getattr(i, "priority", None) or KIND_TO_PRIORITY.get(i.kind, "P3_DYNAMIC_MEMORY"), 3),
+            -i.score,
+            i.token_estimate,
+        ),
+    )[:limit]
 
 
 def compress_to_budget(items: list[ContextItem], token_budget: int) -> tuple[list[ContextItem], list[str]]:
-    """Keep highest-score items; truncate the tail item instead of dropping
-    everything when slightly over budget."""
+    """Keep highest cognitive priority and highest-score items; truncate the tail item instead of dropping
+    everything when slightly over budget. Active Grounding (P0/P1) is preserved before Background Memory (P3/P4)."""
     kept: list[ContextItem] = []
     used = 0
     compressed: list[str] = []
-    for it in sorted(items, key=lambda i: -i.score):
+    sorted_candidates = sorted(
+        items,
+        key=lambda i: (
+            COGNITIVE_PRIORITY_ORDER.get(getattr(i, "priority", None) or KIND_TO_PRIORITY.get(i.kind, "P3_DYNAMIC_MEMORY"), 3),
+            -i.score,
+        ),
+    )
+    for it in sorted_candidates:
         if used + it.token_estimate <= token_budget:
             kept.append(it)
             used += it.token_estimate
@@ -161,6 +213,7 @@ def compress_to_budget(items: list[ContextItem], token_budget: int) -> tuple[lis
                 relevance=it.relevance, confidence=it.confidence, freshness=it.freshness,
                 provenance=it.provenance, permission_scope=it.permission_scope,
                 classification=it.classification, created_at=it.created_at,
+                priority=getattr(it, "priority", None),
             ))
             compressed.append(it.kind)
             break
@@ -170,12 +223,13 @@ def compress_to_budget(items: list[ContextItem], token_budget: int) -> tuple[lis
 
 
 def assemble(items: list[ContextItem]) -> str:
-    """Typed sections — never one undifferentiated blob."""
+    """Typed sections in strict cognitive order: Grounding Evidence First, Memory Second."""
     by_kind: dict[str, list[ContextItem]] = {}
     for it in items:
         by_kind.setdefault(it.kind, []).append(it)
     sections: list[str] = []
-    for kind in ("task", "evidence", "memory", "historical", "working", "tool", "environmental", "user", "evaluation", "agent", "system"):
+    # Strict order: directives & task -> evidence (active document) -> working -> memory & user -> archives
+    for kind in ("task", "evidence", "working", "tool", "memory", "user", "historical", "environmental", "evaluation", "agent", "system"):
         group = by_kind.get(kind, [])
         if not group:
             continue
@@ -184,6 +238,74 @@ def assemble(items: list[ContextItem]) -> str:
         )
         sections.append(f"## {kind}\n{body}")
     return "\n\n".join(sections)
+
+
+def assemble_hierarchical(
+    items: list[ContextItem],
+    *,
+    task_instructions: str = "",
+    include_hierarchy_preamble: bool = True,
+) -> str:
+    """Enterprise Dual-Tier Cognitive Assembler (Claude-Style Grounding + ChatGPT-Style Memory).
+
+    Generates structured XML context fencing:
+      - <active_grounding_context>: Authoritative primary files, attached documents, and direct code.
+      - <second_brain_memory_context>: User preferences, cross-session facts, and personal memory cards.
+      - Explicit Precedence Directive: Grounding context takes precedence over memory in case of conflict.
+    """
+    by_priority: dict[str, list[ContextItem]] = {}
+    for it in items:
+        p = getattr(it, "priority", None) or KIND_TO_PRIORITY.get(it.kind, "P3_DYNAMIC_MEMORY")
+        by_priority.setdefault(p, []).append(it)
+
+    blocks: list[str] = []
+
+    if include_hierarchy_preamble:
+        blocks.append(
+            "[COGNITIVE PRECEDENCE DIRECTIVE]\n"
+            "1. <active_grounding_context> represents current authoritative files and active documents. "
+            "You MUST inspect and ground your answer on active grounding information first.\n"
+            "2. <second_brain_memory_context> represents extracted personal memories and user preferences. "
+            "Use it to enrich tone, personal facts, and style, but NEVER allow historical memory to override "
+            "factual statements in the active grounding document."
+        )
+
+    # 1. P0 Directives & Task
+    p0_items = by_priority.get("P0_CRITICAL_DIRECTIVE", [])
+    if p0_items or task_instructions:
+        p0_content = (task_instructions + "\n" if task_instructions else "") + "\n".join(it.content for it in p0_items)
+        blocks.append(f"<task_directives>\n{p0_content.strip()}\n</task_directives>")
+
+    # 2. P1 Active Grounding (Claude style)
+    p1_items = by_priority.get("P1_ACTIVE_GROUNDING", [])
+    if p1_items:
+        doc_excerpts = []
+        for it in p1_items:
+            clean = it.content.replace("<document", "&lt;document").replace("</document>", "&lt;/document&gt;")
+            doc_excerpts.append(f'<document provenance="{it.provenance}" confidence="{it.confidence:.2f}">\n{clean}\n</document>')
+        blocks.append(f"<active_grounding_context priority=\"high\">\n" + "\n".join(doc_excerpts) + "\n</active_grounding_context>")
+
+    # 3. P2 Working Session Context
+    p2_items = by_priority.get("P2_WORKING_EPISODE", [])
+    if p2_items:
+        working_excerpts = "\n---\n".join(it.content for it in p2_items)
+        blocks.append(f"<working_context>\n{working_excerpts}\n</working_context>")
+
+    # 4. P3 Dynamic Second Brain Memory (ChatGPT style)
+    p3_items = by_priority.get("P3_DYNAMIC_MEMORY", [])
+    if p3_items:
+        mem_excerpts = []
+        for it in p3_items:
+            mem_excerpts.append(f'<memory_card kind="{it.kind}" provenance="{it.provenance}">\n{it.content}\n</memory_card>')
+        blocks.append(f"<second_brain_memory_context priority=\"enrichment\">\n" + "\n".join(mem_excerpts) + "\n</second_brain_memory_context>")
+
+    # 5. P4 Background Archive
+    p4_items = by_priority.get("P4_BACKGROUND_ARCHIVE", [])
+    if p4_items:
+        arch_excerpts = "\n---\n".join(it.content for it in p4_items)
+        blocks.append(f"<background_archive>\n{arch_excerpts}\n</background_archive>")
+
+    return "\n\n".join(blocks)
 
 
 def validate_assembly(

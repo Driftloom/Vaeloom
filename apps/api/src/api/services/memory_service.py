@@ -474,17 +474,11 @@ async def retrieve_memory_and_vault_context(
         mem_res = await db.execute(mem_stmt)
         memories = mem_res.scalars().all()
 
-        # 2. Search relevant or recent vault notes (markdown documents)
+        # 2. Search relevant workspace documents (uploaded documents, resumes, markdown vault notes)
         doc_stmt = (
             select(Document)
             .where(Document.workspace_id == ws_uuid)
             .where(Document.deleted_at.is_(None))
-            .where(
-                or_(
-                    Document.type == "markdown",
-                    Document.path.ilike("%.md"),
-                )
-            )
         )
         if terms:
             doc_filters = [
@@ -503,14 +497,24 @@ async def retrieve_memory_and_vault_context(
         if not memories and not documents:
             return ""
 
-        context_lines = ["[Background Context from Workspace Memories & Vault Notes]"]
-        for m in memories:
-            snippet = (m.summary or m.content or "").strip()[:200]
-            context_lines.append(f"- Memory ({m.type or 'fact'}): {m.title} — {snippet}")
-        for d in documents:
-            snippet = (d.summary or "").strip()[:200]
-            title = d.path.rsplit("/", 1)[-1] if d.path else "Note"
-            context_lines.append(f"- Vault Note ({title}): {snippet}")
+        context_lines = [
+            "[Background Context from Workspace Memories & Vault Notes]",
+            "[COGNITIVE PRECEDENCE DIRECTIVE]: Grounding Documents represent current authoritative facts. Inspect and ground on Active Grounding Documents first. Second Brain Memories represent user preferences and background; do not allow historical memory to override active documents.",
+        ]
+        # Active Grounding Documents FIRST (Claude-style authoritative grounding)
+        if documents:
+            context_lines.append("\n### 📄 Active Grounding Documents (Authoritative)")
+            for d in documents:
+                snippet = (d.summary or "").strip()[:350]
+                title = d.path.rsplit("/", 1)[-1] if d.path else "Document"
+                context_lines.append(f"- Active Document ({title}): {snippet}")
+
+        # Dynamic Second Brain Memories SECOND (ChatGPT-style personalization & memory cards)
+        if memories:
+            context_lines.append("\n### 🧠 Second Brain Memories (Enrichment)")
+            for m in memories:
+                snippet = (m.summary or m.content or "").strip()[:250]
+                context_lines.append(f"- Memory ({m.type or 'fact'}): {m.title} — {snippet}")
 
         return "\n".join(context_lines)
     except Exception as e:
