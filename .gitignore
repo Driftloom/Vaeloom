@@ -121,6 +121,15 @@ _netrc
 *.secrets
 .secrets/
 secrets/
+# Google Cloud / GCP service-account key files. `gcloud auth activate-service-account
+# --key-file` and the `gcloud` SDK copy these into the working directory, and the
+# repo does ship GCP infra (infra/terraform/, infra/kubernetes/), so the credential
+# for that stack is the one most likely to be dropped next to it. Both patterns are
+# scoped to a JSON key file by name, which is the only shape GCP issues; nothing
+# tracked matches either (checked), and infra/kubernetes' service-accounts.yaml is a
+# K8s manifest rather than key material, so it is unaffected.
+*service-account*.json
+*-sa-key.json
 
 # Logs
 logs/
@@ -236,6 +245,14 @@ pip-wheel-metadata/
 .Python
 .tox/
 .nox/
+# Jupyter checkpoint/undo history. `.ipynb_checkpoints/<name>-checkpoint.ipynb` is a
+# sibling copy of the notebook written on every autosave, and it captures the state
+# of the last *executed* cell - so a key printed into a cell or a row pulled from a
+# live table is preserved there even after being cleared from the notebook itself.
+# The directory is rebuilt by Jupyter from the .ipynb on open, so nothing in it is
+# ever the only copy of anything. (No .ipynb is tracked today.)
+.ipynb_checkpoints/
+
 
 # Coverage
 .nyc_output/
