@@ -323,6 +323,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             request.state.user = payload
             request.state.user_id = user_id
             request.state.tenant_id = payload.get("tenant_id")
+            request.state.workspace_id = payload.get("workspace_id")
         except jwt.ExpiredSignatureError:
             return _denial(401, "Token expired", request)
         except jwt.InvalidTokenError:

@@ -158,11 +158,23 @@ class TenantMiddleware(BaseHTTPMiddleware):
             or request.headers.get("X-WORKSPACE-ID", "")
             or request.headers.get("x-workspace-id", "")
         )
+        workspace_from_path = False
         path_workspace_id = (
             request.path_params.get("workspace_id")
             if hasattr(request, "path_params") and request.path_params
             else None
         )
+        if not path_workspace_id:
+            import re
+            # case-insensitive: an uppercase UUID in the path is still a UUID,
+            # and silently ignoring it would fall through to the router's own
+            # check rather than failing closed here.
+            _m = re.search(r"/workspaces/([a-fA-F0-9-]{36})", path)
+            if _m:
+                path_workspace_id = _m.group(1)
+                workspace_from_path = True
+        else:
+            workspace_from_path = True
         query_workspace_id = (
             request.query_params.get("workspace_id")
             or request.query_params.get("workspaceId")
@@ -218,6 +230,18 @@ class TenantMiddleware(BaseHTTPMiddleware):
                     has_access = await check_user_workspace_access(session, str(requested_workspace_id), str(jwt_user_id), tenant_id)
                     if not has_access:
                         if path in {"/api/v1/auth/me", "/api/v1/workspaces", "/api/v1/workspaces/"}:
+                            workspace_id = None
+                        elif workspace_from_path:
+                            # The workspace id IS the resource address here, and
+                            # the router owning that resource already answers 404
+                            # for both "no such workspace" and "not yours". Denying
+                            # from the middleware would answer 403 for the second
+                            # case, so the status code alone would tell a caller
+                            # whether the workspace exists. Fall through with no
+                            # workspace claim and let the router decide, which is
+                            # exactly what happened before ids were read from the
+                            # path - the only thing this adds is correct RLS
+                            # scoping when the caller does own it.
                             workspace_id = None
                         else:
                             from .exception_handler import denial as _denial
