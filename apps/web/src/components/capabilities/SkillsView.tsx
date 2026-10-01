@@ -1,481 +1,682 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Button, EmptyState } from '@vaeloom/ui-kit';
-import { CapabilityItem, saveCustomCapability } from '@/lib/capabilities-data';
-import { useToast } from '@/components/shared/Toast';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Badge,
+  Button,
+  ButtonGroup,
+  ConfirmationDialog,
+  EmptyState,
+  FormField,
+  IconButton,
+  Select,
+  Skeleton,
+  Spinner,
+  StatusDot,
+  Switch,
+  Tabs,
+  TabPanel,
+  Textarea,
+  Tooltip,
+} from '@vaeloom/ui-kit';
+import type { CapabilityItem } from '@/lib/capabilities-data';
+import { formatRelativeTime } from '@/lib/capabilities-data';
+
+export type SkillTab = 'installed' | 'browse';
+export type SkillSort = 'most-used' | 'alphabetical' | 'recent';
+
+/**
+ * One row as the page resolved it. The page owns the merge and owns every write,
+ * so this component never decides what is true about a skill: it only renders.
+ *
+ * `installed` is the single definition used for the tab counts, the tab badge and
+ * the row's affordances. It is NOT `enabled`: a disabled skill is still installed,
+ * and conflating the two is what used to make disabling look like deletion.
+ */
+export interface SkillRow {
+  key: string;
+  item: CapabilityItem;
+  installed: boolean;
+  bundled: boolean;
+  slug: string | null;
+  /** False when the skill exists only in this browser: there is no row to write to. */
+  serverBacked: boolean;
+}
+
+export type SkillSaveOutcome = 'server' | 'local' | 'failed';
 
 interface SkillsViewProps {
-  skills: CapabilityItem[];
-  workspaceId: string;
-  searchQuery?: string;
-  onToggleSkill: (id: string) => void;
+  rows: SkillRow[];
+  installedCount: number;
+  browseCount: number;
+  searchQuery: string;
+  onClearSearch: () => void;
+  tab: SkillTab;
+  onTabChange: (tab: SkillTab) => void;
+  sort: SkillSort;
+  onSortChange: (sort: SkillSort) => void;
+  selectedKey: string;
+  onSelect: (key: string) => void;
+  onToggleEnabled: (key: string, next: boolean) => void;
+  onInstall: (key: string) => void;
+  onSaveDoc: (key: string, doc: string) => Promise<SkillSaveOutcome>;
+  onDelete: (key: string) => void;
+  onCopyDoc: (key: string) => void;
   onOpenCreate: () => void;
-  onUpdateSkill?: (item: CapabilityItem) => void;
-  onDeleteSkill?: (id: string) => void;
+  isLoading: boolean;
+  error?: Error;
+  onRetry: () => void;
+  pendingKey: string | null;
+}
+
+const SORT_OPTIONS = [
+  { value: 'most-used', label: 'Most used' },
+  { value: 'alphabetical', label: 'Alphabetical' },
+  { value: 'recent', label: 'Recently used' },
+];
+
+/**
+ * Whether the list pane is actually hidden by CSS at the current width.
+ *
+ * The Tailwind `hidden lg:flex` classes mean only one pane is in the a11y tree at
+ * a time, so the audit note that "both panes are simultaneously present" was not
+ * quite the defect: the real one is focus loss, because a control inside a pane
+ * that just became `display:none` drops focus to <body>. Whether focus has to be
+ * moved therefore depends on the viewport, and jsdom reports `matches: false` for
+ * every query, so an unavailable or non-matching `matchMedia` is treated as narrow
+ * -- the side where losing focus strands the user.
+ */
+function isNarrowViewport(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true;
+  return !window.matchMedia('(min-width: 1024px)').matches;
+}
+
+function isBundledSource(item: CapabilityItem): boolean {
+  return item.source === 'built-in' || item.source === 'learned';
+}
+
+function SkillListSkeleton() {
+  return (
+    <div className="p-3 space-y-2" aria-hidden="true">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div key={index} className="flex items-center gap-3">
+          <Skeleton rounded="md" className="h-9 flex-1" />
+          <Skeleton rounded="full" className="h-5 w-9" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DetailSkeleton() {
+  return (
+    <div className="flex-1 p-5 space-y-4" aria-hidden="true">
+      <Skeleton rounded="md" className="h-6 w-56" />
+      <Skeleton rounded="md" className="h-3 w-full" />
+      <Skeleton rounded="md" className="h-3 w-4/5" />
+      <Skeleton rounded="lg" className="h-64 w-full" />
+    </div>
+  );
 }
 
 export const SkillsView: React.FC<SkillsViewProps> = ({
-  skills,
-  workspaceId,
-  searchQuery = '',
-  onToggleSkill,
+  rows,
+  installedCount,
+  browseCount,
+  searchQuery,
+  onClearSearch,
+  tab,
+  onTabChange,
+  sort,
+  onSortChange,
+  selectedKey,
+  onSelect,
+  onToggleEnabled,
+  onInstall,
+  onSaveDoc,
+  onDelete,
+  onCopyDoc,
   onOpenCreate,
-  onUpdateSkill,
-  onDeleteSkill,
+  isLoading,
+  error,
+  onRetry,
+  pendingKey,
 }) => {
-  const { toast } = useToast();
-  const [selectedSkillId, setSelectedSkillId] = useState<string>(
-    skills[0]?.id || 'skill-acceptance-criteria-review',
-  );
-  const [sortBy, setSortBy] = useState<'most-used' | 'alphabetical' | 'recent'>('most-used');
-  const [tabView, setTabView] = useState<'installed' | 'browse'>('installed');
-  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
-
-  // Editable instruction state
   const [isEditing, setIsEditing] = useState(false);
   const [editedDoc, setEditedDoc] = useState('');
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [detailPane, setDetailPane] = useState<'doc' | 'schema'>('doc');
+  const [confirmDelete, setConfirmDelete] = useState<SkillRow | null>(null);
 
-  const installedCount = skills.filter((s) => s.enabled).length;
-  const browseCount = skills.filter((s) => !s.enabled).length;
+  // Presentation-only: on a narrow viewport the two panes cannot share the
+  // screen, so the list is removed from the a11y tree while the detail is open.
+  // The page deliberately does not own this, because nothing about the data
+  // depends on it and duplicating it is how the two components drifted apart.
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
 
-  const effectiveQuery = searchQuery.trim().toLowerCase();
-  const filteredSkills = skills.filter((item) => {
-    if (tabView === 'installed' && !item.enabled) return false;
-    if (tabView === 'browse' && item.enabled) return false;
-    if (!effectiveQuery) return true;
+  const selectedRow = useMemo(
+    () => rows.find((row) => row.key === selectedKey) ?? rows[0] ?? null,
+    [rows, selectedKey],
+  );
+
+  const detailRef = useRef<HTMLDivElement>(null);
+  const selectedButtonRef = useRef<HTMLButtonElement>(null);
+  const previouslyFocusedWasDetail = useRef(false);
+
+  const selectedDoc = selectedRow?.item.markdownDoc ?? '';
+
+  // The edit buffer belongs to the selection. Depending on the doc as well means a
+  // successful save re-seeds the buffer from what the server now holds.
+  useEffect(() => {
+    setEditedDoc(selectedDoc);
+    setIsEditing(false);
+    setSaveError(null);
+    setDetailPane('doc');
+  }, [selectedRow?.key, selectedDoc]);
+
+  // On a narrow viewport the list is removed from the a11y tree the moment a row
+  // is chosen, so focus has to follow the selection or it lands on <body> and
+  // strands a keyboard or screen-reader user at the top of the document. At lg and
+  // above the list stays visible, so focus is left on the row where arrow-free Tab
+  // navigation between rows still works.
+  useEffect(() => {
+    if (!mobileDetailOpen || !isNarrowViewport()) return;
+    detailRef.current?.focus();
+  }, [mobileDetailOpen]);
+
+  useEffect(() => {
+    if (mobileDetailOpen || !previouslyFocusedWasDetail.current) return;
+    selectedButtonRef.current?.focus();
+    previouslyFocusedWasDetail.current = false;
+  }, [mobileDetailOpen]);
+
+  const closeMobileDetail = useCallback(() => {
+    previouslyFocusedWasDetail.current = true;
+    setMobileDetailOpen(false);
+  }, []);
+
+  const handleSelect = useCallback(
+    (key: string) => {
+      onSelect(key);
+      setMobileDetailOpen(true);
+    },
+    [onSelect],
+  );
+
+  const handleSave = useCallback(async () => {
+    if (!selectedRow) return;
+    setIsSaving(true);
+    setSaveError(null);
+    const outcome = await onSaveDoc(selectedRow.key, editedDoc);
+    setIsSaving(false);
+    if (outcome === 'failed') {
+      setSaveError('Nothing was written. The text below is still your edit, not the saved skill.');
+      return;
+    }
+    setIsEditing(false);
+  }, [selectedRow, editedDoc, onSaveDoc]);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditedDoc(selectedRow?.item.markdownDoc ?? '');
+    setSaveError(null);
+    setIsEditing(false);
+  }, [selectedRow]);
+
+  if (error) {
     return (
-      item.name.toLowerCase().includes(effectiveQuery) ||
-      item.description.toLowerCase().includes(effectiveQuery) ||
-      item.tags.some((t) => t.toLowerCase().includes(effectiveQuery))
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div role="alert" className="flex flex-col items-center gap-3 text-center max-w-md">
+          <h2 className="text-base font-semibold text-text">Skills could not be loaded</h2>
+          <p className="text-sm text-text-muted">{error.message}</p>
+          <Button variant="outline" size="sm" onClick={onRetry}>
+            Try again
+          </Button>
+        </div>
+      </div>
     );
-  });
+  }
 
-  // Dynamic sorting based on sortBy selection
-  const sortedSkills = [...filteredSkills].sort((a, b) => {
-    if (sortBy === 'alphabetical') {
-      return a.name.localeCompare(b.name);
+  const hasQuery = searchQuery.trim().length > 0;
+  const nothingAtAll = installedCount === 0 && browseCount === 0;
+
+  const listEmpty = (() => {
+    if (nothingAtAll) {
+      return (
+        <EmptyState
+          title="No skills available"
+          description="This workspace has no skills and the server catalog returned nothing for the skill category."
+          action={{ label: 'Create a skill', onClick: onOpenCreate }}
+        />
+      );
     }
-    if (sortBy === 'recent') {
-      return (b.lastUsedAt || '').localeCompare(a.lastUsedAt || '');
+    if (hasQuery) {
+      return (
+        <EmptyState
+          title="No skills match this search"
+          description={`Nothing in ${tab === 'installed' ? 'Installed' : 'Browse'} matches "${searchQuery.trim()}".`}
+          action={{ label: 'Reset search', onClick: onClearSearch }}
+        />
+      );
     }
-    return (b.usageCount || 0) - (a.usageCount || 0);
-  });
-
-  const selectedItem =
-    sortedSkills.find((s) => s.id === selectedSkillId) || sortedSkills[0] || null;
-
-  useEffect(() => {
-    if (sortedSkills.length > 0) {
-      if (!selectedSkillId || !sortedSkills.some((i) => i.id === selectedSkillId)) {
-        setSelectedSkillId(sortedSkills[0]?.id || '');
-      }
-    } else {
-      setSelectedSkillId('');
+    if (tab === 'installed') {
+      return (
+        <EmptyState
+          title="No skills installed"
+          description={`${browseCount} skill${browseCount === 1 ? '' : 's'} in the catalog are not installed in this workspace yet.`}
+          action={{ label: 'Browse the catalog', onClick: () => onTabChange('browse') }}
+        />
+      );
     }
-  }, [sortedSkills, selectedSkillId]);
+    return (
+      <EmptyState
+        title="Nothing left to browse"
+        description={`All ${installedCount} known skill${installedCount === 1 ? '' : 's'} ${installedCount === 1 ? 'is' : 'are'} already installed.`}
+        action={{
+          label: 'View installed',
+          onClick: () => onTabChange('installed'),
+          variant: 'secondary',
+        }}
+      />
+    );
+  })();
 
-  // Sync instruction doc when selected item changes
-  useEffect(() => {
-    if (selectedItem) {
-      setEditedDoc(selectedItem.markdownDoc || '');
-      setIsEditing(false);
-    }
-  }, [selectedItem?.id]);
-
-  const handleCopyInstructions = () => {
-    if (!selectedItem) return;
-    const textToCopy = isEditing ? editedDoc : selectedItem.markdownDoc;
-    navigator.clipboard.writeText(textToCopy);
-    toast({ tone: 'info', title: `Copied instructions for ${selectedItem.name}` });
-  };
-
-  const handleSave = () => {
-    if (!selectedItem) return;
-    const updated: CapabilityItem = {
-      ...selectedItem,
-      markdownDoc: editedDoc,
-    };
-    saveCustomCapability(workspaceId, updated);
-    if (onUpdateSkill) {
-      onUpdateSkill(updated);
-    }
-    setIsEditing(false);
-    toast({
-      tone: 'success',
-      title: `Saved instructions for ${selectedItem.name}`,
-      detail: 'Changes persisted to workspace configuration.',
-    });
-  };
-
-  const handleCancel = () => {
-    if (selectedItem) {
-      setEditedDoc(selectedItem.markdownDoc || '');
-    }
-    setIsEditing(false);
-  };
+  const detailMeta: Array<{ label: string; value: string | null; fallback: string }> = selectedRow
+    ? [
+        { label: 'Version', value: selectedRow.item.version ?? null, fallback: 'Not declared' },
+        { label: 'Author', value: selectedRow.item.author ?? null, fallback: 'Not declared' },
+        {
+          label: 'Required scope',
+          value: selectedRow.item.requiredScope ?? null,
+          fallback: 'Not declared by the server',
+        },
+        {
+          label: 'Trust class',
+          value: selectedRow.item.trustClass ?? null,
+          fallback: 'Not declared by the server',
+        },
+        {
+          label: 'Autonomy',
+          value: selectedRow.item.autonomy ?? null,
+          fallback: 'Not declared by the server',
+        },
+        {
+          label: 'Last used',
+          value: null,
+          fallback: formatRelativeTime(selectedRow.item.lastUsedAt),
+        },
+        {
+          label: 'Executions',
+          value: null,
+          fallback:
+            selectedRow.item.usageCount === 0 ? 'Never run' : String(selectedRow.item.usageCount),
+        },
+      ]
+    : [];
 
   return (
     <div className="flex-1 flex min-h-0 min-w-0 bg-background text-text overflow-hidden">
-      {/* No heading here. `capabilities/page.tsx` renders the route's single
-          <h1> via <PageHeader>, and this view's own section heading is the
-          <h2> below. A previous `sr-only` <h1> existed only because the route
-          had no heading at all; keeping it would now render two <h1>s. */}
-      {/* Left Column: Capability List with 1 Most used sort */}
+      {/* No heading here. `capabilities/page.tsx` renders the route's single <h1>
+          via <PageHeader>, so this column's own heading is the <h2> on the detail
+          side. A second <h1> here would make the route's heading structure
+          ambiguous to assistive tech. */}
       <div
         className={`w-full lg:w-[320px] xl:w-[350px] shrink-0 border-r border-border bg-surface flex flex-col min-h-0 ${
           mobileDetailOpen ? 'hidden lg:flex' : 'flex'
         }`}
       >
-        {/* Top Toolbar */}
-        <div className="p-3 border-b border-border bg-surface shrink-0">
+        <div className="p-3 border-b border-border bg-surface shrink-0 space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'most-used' | 'alphabetical' | 'recent')}
-              className="bg-surface-elevated border border-border rounded px-2 py-1 text-xs font-sans text-text focus:outline-none focus:border-primary cursor-pointer"
-            >
-              <option value="most-used">Most used</option>
-              <option value="alphabetical">Alphabetical</option>
-              <option value="recent">Recently used</option>
-            </select>
-
-            <div className="flex items-center gap-2">
-              <div className="flex items-center p-0.5 rounded bg-surface-elevated border border-border text-xs font-sans">
-                <button
-                  type="button"
-                  onClick={() => setTabView('installed')}
-                  className={`px-2 py-0.5 rounded text-xs transition-colors ${
-                    tabView === 'installed'
-                      ? 'bg-primary/10 text-primary font-semibold'
-                      : 'text-text-muted hover:text-text'
-                  }`}
-                >
-                  Installed ({installedCount})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTabView('browse')}
-                  className={`px-2 py-0.5 rounded text-xs transition-colors ${
-                    tabView === 'browse'
-                      ? 'bg-primary/10 text-primary font-semibold'
-                      : 'text-text-muted hover:text-text'
-                  }`}
-                >
-                  Browse ({browseCount})
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={onOpenCreate}
-                aria-label="Create Skill"
-                title="Create Skill"
-                className="w-6 h-6 rounded bg-surface border border-border hover:bg-surface-hover hover:text-text text-text-secondary flex items-center justify-center transition-colors shrink-0 cursor-pointer"
+            <Select
+              aria-label="Sort skills"
+              options={SORT_OPTIONS}
+              value={sort}
+              onChange={(value) => onSortChange(value as SkillSort)}
+              className="text-xs py-1"
+            />
+            <ButtonGroup attached>
+              <Button
+                size="sm"
+                variant={tab === 'installed' ? 'primary' : 'ghost'}
+                aria-pressed={tab === 'installed'}
+                onClick={() => onTabChange('installed')}
               >
-                <svg
-                  className="w-3.5 h-3.5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-              </button>
-            </div>
+                {`Installed (${installedCount})`}
+              </Button>
+              <Button
+                size="sm"
+                variant={tab === 'browse' ? 'primary' : 'ghost'}
+                aria-pressed={tab === 'browse'}
+                onClick={() => onTabChange('browse')}
+              >
+                {`Browse (${browseCount})`}
+              </Button>
+            </ButtonGroup>
           </div>
         </div>
 
-        {/* Scrollable Capability Items */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain divide-y divide-border p-1.5 pb-12 space-y-0.5">
-          {sortedSkills.length === 0 ? (
-            <div className="p-8">
-              <EmptyState
-                title="No skills found"
-                description={`Try adjusting your search query or switching from "${tabView}" to "${
-                  tabView === 'installed' ? 'Browse' : 'Installed'
-                }".`}
-              />
-            </div>
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-1.5 pb-12">
+          {isLoading ? (
+            <SkillListSkeleton />
+          ) : rows.length === 0 ? (
+            <div className="p-4">{listEmpty}</div>
           ) : (
-            sortedSkills.map((item) => {
-              const isSelected = item.id === selectedSkillId;
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => {
-                    setSelectedSkillId(item.id);
-                    setMobileDetailOpen(true);
-                  }}
-                  className={`group relative flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-all duration-120 ${
-                    isSelected
-                      ? 'bg-primary/10 border-l-2 border-primary border-y border-r border-border shadow-xs text-primary'
-                      : 'hover:bg-surface-hover border border-transparent text-text'
-                  }`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`text-xs font-sans font-medium tracking-tight truncate ${
-                          isSelected
-                            ? 'text-primary font-semibold'
-                            : 'text-text group-hover:text-primary'
-                        }`}
-                      >
-                        {item.name}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1 mt-1 flex-wrap">
-                      {item.source && (
-                        <span className="px-1.5 py-0.2 rounded text-2xs font-sans font-medium capitalize bg-surface-elevated text-text-secondary border border-border">
-                          {item.source}
-                        </span>
-                      )}
-                      {item.tags
-                        ?.filter(
-                          (t) =>
-                            t.toLowerCase() !== item.source.toLowerCase() &&
-                            t.toLowerCase() !== 'general' &&
-                            t.toLowerCase() !== 'learned' &&
-                            t.toLowerCase() !== 'built-in',
-                        )
-                        .slice(0, 2)
-                        .map((tag) => (
-                          <span
-                            key={tag}
-                            className="px-1.5 py-0.2 rounded text-2xs font-sans font-medium bg-surface-elevated text-text-muted border border-border-subtle"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                    </div>
-                  </div>
-
-                  <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={item.enabled}
-                      aria-label={`Toggle ${item.name}`}
-                      onClick={() => onToggleSkill(item.id)}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        item.enabled ? 'bg-success' : 'bg-surface-active'
+            <ul aria-label="Skills" className="divide-y divide-border-subtle">
+              {rows.map((row) => {
+                const isSelected = row.key === selectedRow?.key;
+                const isPending = pendingKey === row.key;
+                return (
+                  <li key={row.key}>
+                    <div
+                      className={`flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors ${
+                        isSelected
+                          ? 'bg-primary/10 border-l-2 border-primary text-primary'
+                          : 'hover:bg-surface-hover border-l-2 border-transparent'
                       }`}
                     >
-                      <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out mt-[1px] ml-[1px] ${
-                          item.enabled ? 'translate-x-4' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-              );
-            })
+                      <button
+                        type="button"
+                        ref={isSelected ? selectedButtonRef : undefined}
+                        aria-current={isSelected ? 'true' : undefined}
+                        aria-label={row.item.name}
+                        onClick={() => handleSelect(row.key)}
+                        className="flex-1 min-w-0 text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-surface py-1"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          {!row.installed && (
+                            <StatusDot status="idle" size="sm" label="Not installed" />
+                          )}
+                          <span className="text-xs font-medium truncate text-text">
+                            {row.item.name}
+                          </span>
+                        </span>
+                        <span className="mt-1 flex items-center gap-1 flex-wrap">
+                          {row.installed && !row.item.enabled && (
+                            <Badge variant="warning" size="sm">
+                              Disabled
+                            </Badge>
+                          )}
+                          {row.bundled && (
+                            <Badge variant="default" size="sm">
+                              Bundled
+                            </Badge>
+                          )}
+                          {!row.serverBacked && (
+                            <Badge variant="info" size="sm">
+                              Local only
+                            </Badge>
+                          )}
+                          {row.item.tags.slice(0, 2).map((tag) => (
+                            <Badge key={tag} variant="default" size="sm">
+                              {tag}
+                            </Badge>
+                          ))}
+                          {row.item.tags.length === 0 && (
+                            <span className="text-2xs text-text-muted">No tags</span>
+                          )}
+                        </span>
+                      </button>
+                      {row.installed ? (
+                        <Switch
+                          checked={row.item.enabled}
+                          onChange={(next) => onToggleEnabled(row.key, next)}
+                          label={<span className="sr-only">{`Enable ${row.item.name}`}</span>}
+                          disabled={isPending}
+                        />
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={isPending}
+                          onClick={() => onInstall(row.key)}
+                        >
+                          {isPending ? <Spinner size="sm" /> : 'Install'}
+                        </Button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
       </div>
 
-      {/* Right Column: Deep Detail Inspector */}
       <div
         className={`flex-1 flex flex-col min-h-0 min-w-0 bg-background overflow-hidden ${
           mobileDetailOpen ? 'flex' : 'hidden lg:flex'
         }`}
       >
-        {selectedItem ? (
-          <div className="flex-1 flex flex-col min-h-0 min-w-0">
-            {/* Detail Header & Action Links */}
-            <div className="p-4 sm:p-5 border-b border-border bg-surface shrink-0 font-sans shadow-xs">
-              <div className="flex flex-col gap-2">
-                {/* Back button on mobile */}
-                <div className="lg:hidden">
-                  <button
-                    type="button"
-                    onClick={() => setMobileDetailOpen(false)}
-                    className="text-xs text-text-muted hover:text-text inline-flex items-center gap-1 mb-1"
-                  >
-                    <span>← Back to list</span>
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-base sm:text-lg font-semibold tracking-tight text-text font-sans truncate">
-                    {selectedItem.name}
-                  </h2>
-                  {selectedItem.source && (
-                    <span className="px-1.5 py-0.5 text-2xs font-sans font-medium rounded capitalize bg-surface-elevated text-text-secondary border border-border">
-                      {selectedItem.source}
-                    </span>
-                  )}
-                  {selectedItem.tags
-                    ?.filter(
-                      (t) =>
-                        t.toLowerCase() !== selectedItem.source.toLowerCase() &&
-                        t.toLowerCase() !== 'general' &&
-                        t.toLowerCase() !== 'learned' &&
-                        t.toLowerCase() !== 'built-in',
-                    )
-                    .slice(0, 3)
-                    .map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-1.5 py-0.5 text-2xs font-sans font-medium rounded bg-surface-elevated text-text-muted border border-border-subtle"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                </div>
-
-                <p className="text-xs text-text-secondary leading-relaxed max-w-2xl mt-0.5 font-sans">
-                  {selectedItem.description}
-                </p>
-
-                {/* Action Links Bar */}
-                <div className="flex items-center gap-4 mt-2 text-xs font-sans font-medium">
-                  {isEditing ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={handleSave}
-                        className="text-primary hover:text-primary-hover font-semibold transition-colors flex items-center gap-1 cursor-pointer"
-                      >
-                        <span>Save Changes</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleCancel}
-                        className="text-text-muted hover:text-text transition-colors cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setIsEditing(true)}
-                        className="text-text-secondary hover:text-text transition-colors cursor-pointer"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onToggleSkill(selectedItem.id)}
-                        className="text-error hover:underline transition-colors cursor-pointer"
-                      >
-                        {selectedItem.enabled ? 'Archive' : 'Restore'}
-                      </button>
-                      {onDeleteSkill &&
-                        (selectedItem.source === 'custom' ||
-                          selectedItem.id.startsWith('custom-')) && (
-                          <button
-                            type="button"
-                            onClick={() => onDeleteSkill(selectedItem.id)}
-                            className="text-text-muted hover:text-error transition-colors text-xs cursor-pointer"
-                          >
-                            Delete
-                          </button>
-                        )}
-                    </>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleCopyInstructions}
-                    title="Copy full instructions to clipboard"
-                    className="text-text-muted hover:text-text transition-colors ml-auto text-2xs flex items-center gap-1 cursor-pointer"
-                    aria-label="Copy full instructions"
-                  >
-                    <svg
-                      className="w-3.5 h-3.5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={1.75}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                      />
-                    </svg>
-                    <span>Copy Spec</span>
-                  </button>
-                </div>
+        {!selectedRow ? (
+          <div className="flex-1 flex items-center justify-center p-8">
+            <EmptyState
+              title="Select a skill"
+              description="Choose a skill from the list to read its operating rules, scope and documentation."
+              action={{ label: 'Author a new skill', onClick: onOpenCreate, variant: 'secondary' }}
+            />
+          </div>
+        ) : (
+          <div
+            ref={detailRef}
+            tabIndex={-1}
+            className="flex-1 flex flex-col min-h-0 min-w-0 focus:outline-none"
+          >
+            <div className="p-4 sm:p-5 border-b border-border bg-surface shrink-0 space-y-2">
+              <div className="lg:hidden">
+                <Button variant="ghost" size="sm" onClick={closeMobileDetail}>
+                  Back to list
+                </Button>
               </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base sm:text-lg font-semibold tracking-tight text-text truncate">
+                  {selectedRow.item.name}
+                </h2>
+                {selectedRow.bundled && <Badge variant="default">Bundled</Badge>}
+                {selectedRow.installed ? (
+                  selectedRow.item.enabled ? (
+                    <Badge variant="success">Enabled</Badge>
+                  ) : (
+                    <Badge variant="warning">Disabled</Badge>
+                  )
+                ) : (
+                  <Badge variant="info">Not installed</Badge>
+                )}
+                {!selectedRow.serverBacked && <Badge variant="info">Local only</Badge>}
+              </div>
+
+              <p className="text-xs text-text-secondary leading-relaxed max-w-2xl font-sans">
+                {selectedRow.item.description || 'The server sent no description for this skill.'}
+              </p>
+
+              <div className="flex items-center gap-2 flex-wrap pt-1">
+                {isEditing ? (
+                  <>
+                    <Button size="sm" variant="primary" loading={isSaving} onClick={handleSave}>
+                      Save changes
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setEditedDoc(selectedRow.item.markdownDoc);
+                        setSaveError(null);
+                        setIsEditing(true);
+                      }}
+                    >
+                      Edit instructions
+                    </Button>
+                    {selectedRow.installed && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onToggleEnabled(selectedRow.key, !selectedRow.item.enabled)}
+                      >
+                        {selectedRow.item.enabled ? 'Disable' : 'Enable'}
+                      </Button>
+                    )}
+                    {!selectedRow.installed && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => onInstall(selectedRow.key)}
+                      >
+                        Install
+                      </Button>
+                    )}
+                    {selectedRow.serverBacked && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setConfirmDelete(selectedRow)}
+                      >
+                        Delete
+                      </Button>
+                    )}
+                  </>
+                )}
+                <Tooltip content="Copy the full markdown instructions">
+                  <IconButton
+                    aria-label={`Copy full instructions for ${selectedRow.item.name}`}
+                    size="sm"
+                    onClick={() => onCopyDoc(selectedRow.key)}
+                  >
+                    Copy
+                  </IconButton>
+                </Tooltip>
+              </div>
+
+              <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 pt-2 text-2xs">
+                {detailMeta.map((entry) => (
+                  <div key={entry.label} className="min-w-0">
+                    <dt className="text-text-muted">{entry.label}</dt>
+                    <dd
+                      className={`font-mono truncate ${
+                        entry.value === null && entry.fallback.startsWith('Not declared')
+                          ? 'text-text-muted italic'
+                          : 'text-text-secondary'
+                      }`}
+                    >
+                      {entry.value ?? entry.fallback}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
             </div>
 
-            {/* Detail Content Body: Clean Monospace Instructions */}
-            <div className="flex-1 overflow-y-auto overscroll-y-contain p-4 sm:p-5 pb-16 bg-background min-h-0 space-y-3.5">
-              {isEditing ? (
-                <div className="rounded-xl border border-border bg-surface p-4 shadow-md space-y-3">
-                  <div className="flex items-center justify-between text-2xs font-sans text-text-secondary pb-2 border-b border-border">
-                    <span className="flex items-center gap-1.5 text-warning font-medium">
-                      <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
-                      Editing Instructions (Markdown)
-                    </span>
-                    <span className="font-mono text-text-muted">
-                      Ctrl+Enter to save • Esc to cancel
-                    </span>
-                  </div>
-                  <textarea
-                    value={editedDoc}
-                    onChange={(e) => setEditedDoc(e.target.value)}
-                    onKeyDown={(e) => {
-                      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                        e.preventDefault();
-                        handleSave();
-                      } else if (e.key === 'Escape') {
-                        handleCancel();
-                      }
-                    }}
-                    aria-label="Skill Instructions"
-                    rows={20}
-                    className="w-full font-mono text-xs text-text bg-surface-elevated border border-border focus:border-primary focus:ring-1 focus:ring-primary/30 rounded-lg p-3.5 leading-relaxed outline-none resize-y"
-                    placeholder="# Enter skill rules, triggers and instructions in markdown..."
-                  />
-                  <div className="flex items-center justify-between pt-1 text-2xs font-sans">
-                    <span className="text-text-muted font-mono">
-                      {editedDoc.split('\n').length} lines • {editedDoc.length} characters
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={handleCancel}
-                        className="text-xs font-sans"
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={handleSave}
-                        className="text-xs font-sans font-medium shadow-xs"
-                      >
-                        Save Changes
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+            <Tabs
+              className="shrink-0 rounded-none border-0 border-b border-border-subtle bg-surface"
+              ariaLabel="Skill detail sections"
+              size="sm"
+              tabs={[
+                { id: 'doc', label: 'Instructions' },
+                { id: 'schema', label: 'Input schema' },
+              ]}
+              activeTab={detailPane}
+              onTabChange={(id) => setDetailPane(id as 'doc' | 'schema')}
+            />
+
+            <div className="flex-1 overflow-y-auto overscroll-y-contain p-4 sm:p-5 pb-16 bg-background min-h-0">
+              {isLoading ? (
+                <DetailSkeleton />
               ) : (
-                <div className="rounded-xl border border-border bg-surface p-4 sm:p-5 shadow-xs">
-                  <pre className="font-mono text-xs text-text leading-relaxed whitespace-pre-wrap select-text font-normal">
-                    {selectedItem.markdownDoc}
-                  </pre>
-                </div>
+                <>
+                  <TabPanel id="doc" activeTab={detailPane}>
+                    {isEditing ? (
+                      <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
+                        <FormField
+                          label="Skill instructions (Markdown)"
+                          error={saveError ?? undefined}
+                          hint="Saved to the workspace capability row when this skill is installed; stored in this browser only when it is not."
+                        >
+                          {({ id, errorId }) => (
+                            <Textarea
+                              id={id}
+                              aria-describedby={saveError ? errorId : undefined}
+                              value={editedDoc}
+                              onChange={(event) => setEditedDoc(event.target.value)}
+                              onKeyDown={(event) => {
+                                if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+                                  event.preventDefault();
+                                  void handleSave();
+                                } else if (event.key === 'Escape') {
+                                  handleCancelEdit();
+                                }
+                              }}
+                              rows={20}
+                              className="font-mono text-xs leading-relaxed resize-y"
+                              placeholder="# Enter skill rules, triggers and instructions in markdown"
+                            />
+                          )}
+                        </FormField>
+                        <p className="text-2xs text-text-muted font-mono">
+                          {editedDoc.split('\n').length} lines &middot; {editedDoc.length}{' '}
+                          characters
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-border bg-surface p-4 sm:p-5">
+                        {selectedRow.item.markdownDoc ? (
+                          <pre className="font-mono text-xs text-text leading-relaxed whitespace-pre-wrap select-text font-normal">
+                            {selectedRow.item.markdownDoc}
+                          </pre>
+                        ) : (
+                          <p className="text-xs text-text-muted">
+                            The server sent no markdown for this skill.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </TabPanel>
+
+                  <TabPanel id="schema" activeTab={detailPane}>
+                    <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
+                      <p className="text-2xs text-text-muted">
+                        Read only. The HTTP client camel-cases response keys, so a JSON Schema
+                        round-tripped through this page would corrupt its property names. The raw
+                        schema stays on the server.
+                      </p>
+                      {selectedRow.item.inputSchema ? (
+                        <pre className="font-mono text-xs text-text leading-relaxed whitespace-pre-wrap select-text font-normal">
+                          {JSON.stringify(selectedRow.item.inputSchema, null, 2)}
+                        </pre>
+                      ) : (
+                        <p className="text-xs text-text-muted">
+                          This skill declares no input schema.
+                        </p>
+                      )}
+                    </div>
+                  </TabPanel>
+                </>
               )}
             </div>
           </div>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <EmptyState
-              title="Select a skill"
-              description="Select a skill from the list to view its operating rules, mission, and documentation."
-            />
-          </div>
         )}
       </div>
+
+      <ConfirmationDialog
+        isOpen={confirmDelete !== null}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={() => {
+          const target = confirmDelete;
+          setConfirmDelete(null);
+          if (target) onDelete(target.key);
+        }}
+        title="Delete this skill?"
+        description={
+          confirmDelete?.bundled
+            ? 'Bundled skills cannot be deleted. The server answers 409 for them; disable the skill instead if you want it out of an agent run.'
+            : 'This removes the skill from this workspace. It cannot be undone from here.'
+        }
+        confirmLabel="Delete skill"
+        variant="destructive"
+      />
     </div>
   );
 };

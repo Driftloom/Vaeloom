@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import useSWR from 'swr';
-import { CapabilityCategory } from '@/lib/capabilities-data';
-import type { CapabilityItem } from '@/lib/capabilities-data';
+import { Banner, Button, SearchField, TabPanel, Tabs } from '@vaeloom/ui-kit';
+import type { TabItem } from '@vaeloom/ui-kit';
+import { CapabilityCategory, getStorageHealth } from '@/lib/capabilities-data';
+import type { CapabilityItem, CapabilityAutonomy } from '@/lib/capabilities-data';
 import {
   getStoredCapabilities,
   setStoredCapabilityEnabled,
@@ -15,97 +15,324 @@ import {
 } from '@/lib/capabilities-data';
 import { useToast } from '@/components/shared/Toast';
 import { PageHeader } from '@/components/shared/Page';
-import { agentCatalogApi, capabilitiesApi } from '@/lib/api-client';
+import {
+  agentCatalogApi,
+  capabilitiesApi,
+  connectorsApi,
+  capabilityConfigMarkdownDoc,
+  capabilityConfigTags,
+  capabilityConfigRequiredScope,
+  type SkillListItem,
+} from '@/lib/api-client';
 import { useWorkspaceConnectors } from '../../../../hooks/useWorkspace';
 import { AddCapabilityModal } from '@/components/capabilities/AddCapabilityModal';
+import type { ImportOutcome } from '@/components/capabilities/AddCapabilityModal';
 import { SkillsView } from '@/components/capabilities/SkillsView';
+import type {
+  SkillRow,
+  SkillSaveOutcome,
+  SkillSort,
+  SkillTab,
+} from '@/components/capabilities/SkillsView';
 import { AgentsView } from '@/components/capabilities/AgentsView';
 import { ToolsView } from '@/components/capabilities/ToolsView';
 import { McpView } from '@/components/capabilities/McpView';
 import { PluginsView } from '@/components/capabilities/PluginsView';
 import { ConnectorsView } from '@/components/capabilities/ConnectorsView';
+import { CapabilitiesWorkbenchSkeleton } from '@/components/capabilities/CapabilitiesWorkbenchSkeleton';
 
-type TabView = 'installed' | 'browse';
-type SortOption = 'most-used' | 'alphabetical' | 'recent';
-type DetailSubTab = 'doc' | 'schema' | 'test';
+// ─── Category vocabulary (defect B) ──────────────────────────────────────────
 
 /**
- * The single place the server's category vocabulary is mapped onto the UI's.
- * It used to be copied three times in this file (twice as the inverse map), and
- * the three copies could disagree about where a capability belongs.
+ * The one place the server's category vocabulary is reconciled with the UI's.
+ *
+ * WHY two tables instead of one plus an inverse scan: the exported
+ * `CapabilityCategory` is PLURAL ('skills') because five sibling views and the
+ * URL contract depend on it, and it is not mine to rename. The backend's
+ * `VALID_CATEGORIES` is SINGULAR ('skill'). A single table plus a reverse scan
+ * has to break ties between `skill` and `skills` by insertion order, which is
+ * invisible at the definition site and silently changes behaviour if anyone
+ * reorders the object -- so `toServerCategory` could send a plural category the
+ * server rejects, while `item.category === 'skills'` matched no stored row at
+ * all. Both directions are now written out, so the singular value the server
+ * accepts is readable at the call site instead of inferred.
  */
-const SERVER_CATEGORY_TO_UI: Record<string, CapabilityCategory> = {
+const UI_TO_SERVER_CATEGORY: Record<CapabilityCategory, string> = {
+  agents: 'agent',
+  skills: 'skill',
+  tools: 'tool',
+  mcp: 'mcp',
+  plugins: 'plugin',
+  connectors: 'connector',
+};
+
+const SERVER_TO_UI_CATEGORY: Record<string, CapabilityCategory> = {
+  agent: 'agents',
+  agents: 'agents',
   skill: 'skills',
   skills: 'skills',
-  connector: 'connectors',
-  connectors: 'connectors',
+  tool: 'tools',
+  tools: 'tools',
   mcp: 'mcp',
   plugin: 'plugins',
   plugins: 'plugins',
-  tool: 'tools',
-  tools: 'tools',
-  agent: 'agents',
-  agents: 'agents',
+  connector: 'connectors',
+  connectors: 'connectors',
 };
 
-function toUiCategory(serverCategory: string): CapabilityCategory {
-  return SERVER_CATEGORY_TO_UI[serverCategory] ?? 'skills';
+const UI_CATEGORY_ORDER: CapabilityCategory[] = [
+  'skills',
+  'connectors',
+  'mcp',
+  'tools',
+  'plugins',
+  'agents',
+];
+
+const CATEGORY_TAB_LABEL: Record<CapabilityCategory, string> = {
+  skills: 'Skills',
+  connectors: 'Connectors',
+  mcp: 'MCP',
+  tools: 'Tools',
+  plugins: 'Plugins',
+  agents: 'Agents',
+};
+
+const CATEGORY_CTA_LABEL: Record<CapabilityCategory, string> = {
+  skills: 'New Skill',
+  connectors: 'Add Connector',
+  mcp: 'New MCP Server',
+  tools: 'New Tool',
+  plugins: 'New Plugin',
+  agents: 'New Agent',
+};
+
+const CATEGORY_SEARCH_PLACEHOLDER: Record<CapabilityCategory, string> = {
+  skills: 'Filter installed skills',
+  connectors: 'Search connectors',
+  mcp: 'Search MCP servers',
+  tools: 'Search tools and suites',
+  plugins: 'Search plugins',
+  agents: 'Search agents',
+};
+
+/**
+ * Unrecognised categories are not silently absorbed into 'skills': a row the
+ * server sent under a vocabulary this build does not know is a contract change,
+ * and reporting it as a skill would file a server regression under the wrong
+ * category's counts.
+ */
+function toUiCategory(serverCategory: string | null | undefined): CapabilityCategory | null {
+  if (typeof serverCategory !== 'string') return null;
+  return SERVER_TO_UI_CATEGORY[serverCategory] ?? null;
 }
 
 function toServerCategory(uiCategory: CapabilityCategory): string {
-  const entry = Object.entries(SERVER_CATEGORY_TO_UI).find(([, ui]) => ui === uiCategory);
-  return entry ? entry[0] : 'skill';
+  return UI_TO_SERVER_CATEGORY[uiCategory];
 }
 
 function isNotFound(err: unknown): boolean {
   return (err as { status?: number } | null)?.status === 404;
 }
 
-function getSamplePayloadForCapability(item: CapabilityItem | null): string {
-  if (!item) return '{\n  "query": "example test run",\n  "limit": 5\n}';
+function isConflict(err: unknown): boolean {
+  return (err as { status?: number } | null)?.status === 409;
+}
 
-  if (item.inputSchema && typeof item.inputSchema === 'object') {
-    const props = (
-      item.inputSchema as { properties?: Record<string, { type?: string; default?: unknown }> }
-    ).properties;
-    if (props && Object.keys(props).length > 0) {
-      const sample: Record<string, unknown> = {};
-      for (const [key, val] of Object.entries(props)) {
-        if (val.default !== undefined) {
-          sample[key] = val.default;
-        } else if (val.type === 'string') {
-          sample[key] = key.includes('query') ? 'example inquiry' : `sample_${key}`;
-        } else if (val.type === 'integer' || val.type === 'number') {
-          sample[key] = 10;
-        } else if (val.type === 'boolean') {
-          sample[key] = true;
-        } else if (val.type === 'array') {
-          sample[key] = [];
-        } else {
-          sample[key] = {};
-        }
-      }
-      return JSON.stringify(sample, null, 2);
+function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error && err.message ? err.message : fallback;
+}
+
+// ─── Skill row mapping (defects C, D, E) ─────────────────────────────────────
+
+const VALID_SOURCES = new Set<CapabilityItem['source']>([
+  'built-in',
+  'learned',
+  'custom',
+  'mcp',
+  'community',
+]);
+
+function toSource(raw: string | null | undefined): CapabilityItem['source'] {
+  return typeof raw === 'string' && VALID_SOURCES.has(raw as CapabilityItem['source'])
+    ? (raw as CapabilityItem['source'])
+    : 'custom';
+}
+
+const VALID_AUTONOMY = new Set<string>(['suggest', 'autonomous', 'approval_required']);
+
+const VALID_TRUST_CLASSES = new Set<string>([
+  'core_trusted',
+  'first_party',
+  'community',
+  'mcp.read',
+  'mcp.workspace.write',
+  'mcp.external.write',
+  'untrusted',
+]);
+
+/**
+ * Trust class and autonomy are `string | null` on the wire precisely so an
+ * undeclared value stays undeclared. Converting null here is how the UI ended up
+ * presenting a hard-coded 'first_party' / 'autonomous' as if the server had
+ * classified the capability; the detail pane prints "Not declared by the server"
+ * instead.
+ */
+function toAutonomy(raw: string | null | undefined): CapabilityAutonomy | undefined {
+  return typeof raw === 'string' && VALID_AUTONOMY.has(raw)
+    ? (raw as CapabilityAutonomy)
+    : undefined;
+}
+
+function readTags(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((tag): tag is string => typeof tag === 'string' && tag.trim() !== '');
+}
+
+/**
+ * `installed` -- not `enabled` -- is the single definition of "this workspace has
+ * this skill". The catalog contributes rows with `installed: false` and a null id,
+ * so every branch that needs a row to exist server-side must check `installed`
+ * before it touches `id`.
+ */
+function mapSkillRow(server: SkillListItem): SkillRow {
+  const installed = server.installed === true;
+  const config = server.config as Record<string, unknown> | undefined;
+  const slug = server.slug ?? (typeof server.name === 'string' ? server.name : null);
+  const parameters = config?.['parameters'];
+
+  const item: CapabilityItem = {
+    id: server.id ?? `catalog:${slug ?? server.name}`,
+    name: server.name,
+    category: 'skills',
+    tags: readTags(server.tags).length
+      ? readTags(server.tags)
+      : capabilityConfigTags(server.config),
+    description: server.description ?? '',
+    // A catalog row has no workspace enablement to report, so it renders as
+    // not-enabled rather than borrowing the seed's flag.
+    enabled: installed ? server.enabled : false,
+    source: toSource(server.type),
+    usageCount: typeof server.usageCount === 'number' ? server.usageCount : 0,
+    lastUsedAt: server.lastUsedAt ?? null,
+    markdownDoc: server.markdownDoc ?? capabilityConfigMarkdownDoc(server.config) ?? '',
+    triggers: Array.isArray(server.triggers) ? server.triggers : [],
+    inputSchema:
+      parameters && typeof parameters === 'object' && !Array.isArray(parameters)
+        ? (parameters as Record<string, unknown>)
+        : undefined,
+  };
+
+  if (server.requiredScope) item.requiredScope = server.requiredScope;
+  // `CapabilityItem.trustClass` is a closed union, so an unrecognised server value
+  // is dropped rather than widened into a claim the runtime does not support.
+  if (server.trustClass && VALID_TRUST_CLASSES.has(server.trustClass)) {
+    item.trustClass = server.trustClass as CapabilityItem['trustClass'];
+  }
+  const autonomy = toAutonomy(server.autonomy);
+  if (autonomy) item.autonomy = autonomy;
+  if (server.version) item.version = server.version;
+  if (server.author) item.author = server.author;
+
+  return {
+    key: installed ? (server.id as string) : `catalog:${slug ?? server.name}`,
+    item,
+    installed,
+    bundled: server.bundled === true,
+    slug,
+    serverBacked: installed && typeof server.id === 'string',
+  };
+}
+
+/**
+ * The merge direction is the defect: `{...existing, ...serverRow}` let the DB
+ * row win every field, which erased a doc the user had just written whenever the
+ * list refetched. The server owns identity, enablement and telemetry; the local
+ * store only gets to supply what the server does not have.
+ */
+function mergeSkillRows(localRows: CapabilityItem[], serverRows: SkillListItem[]): SkillRow[] {
+  const byId = new Map<string, CapabilityItem>();
+  const byName = new Map<string, CapabilityItem>();
+  for (const row of localRows) {
+    byId.set(row.id, row);
+    byName.set(row.name, row);
+  }
+
+  const consumed = new Set<string>();
+  const merged: SkillRow[] = serverRows.map((server) => {
+    const local = (server.id !== null ? byId.get(server.id) : undefined) ?? byName.get(server.name);
+    if (local) consumed.add(local.id);
+
+    const row = mapSkillRow(server);
+    if (!local) return row;
+
+    const item = row.item;
+    const localTriggers = local.triggers ?? [];
+    if (item.markdownDoc === '' && local.markdownDoc) item.markdownDoc = local.markdownDoc;
+    if (item.inputSchema === undefined && local.inputSchema) item.inputSchema = local.inputSchema;
+    if ((item.triggers?.length ?? 0) === 0 && localTriggers.length > 0) {
+      item.triggers = localTriggers;
     }
+    row.item = item;
+    return row;
+  });
+
+  // Local-only capabilities have no server row at all. They are reported as
+  // NOT installed rather than optimistically counted: the definition of
+  // installed is "the workspace registry holds a row", and a localStorage entry
+  // is not that registry.
+  for (const local of localRows) {
+    if (consumed.has(local.id)) continue;
+    merged.push({
+      key: local.id,
+      item: local,
+      installed: false,
+      bundled: isSeedSkill(local),
+      slug: local.id.startsWith('skill-') ? local.id.slice('skill-'.length) : null,
+      serverBacked: false,
+    });
   }
 
-  if (item.category === 'tools') {
-    return JSON.stringify({ query: 'master resume skills graph', limit: 5 }, null, 2);
+  return merged;
+}
+
+function isSeedSkill(item: CapabilityItem): boolean {
+  return item.source === 'built-in' || item.source === 'learned';
+}
+
+function isSkill(item: CapabilityItem): boolean {
+  return item.category === 'skills';
+}
+
+const isInstalledRow = (row: SkillRow): boolean => row.installed;
+const countInstalled = (rows: SkillRow[]): number => rows.filter(isInstalledRow).length;
+
+function matchesQuery(row: SkillRow, query: string): boolean {
+  if (!query) return true;
+  const needle = query.toLowerCase();
+  const { name, description, tags, triggers } = row.item;
+  return (
+    name.toLowerCase().includes(needle) ||
+    description.toLowerCase().includes(needle) ||
+    tags.some((tag) => tag.toLowerCase().includes(needle)) ||
+    (triggers ?? []).some((trigger) => trigger.toLowerCase().includes(needle))
+  );
+}
+
+function sortSkillRows(rows: SkillRow[], sort: SkillSort): SkillRow[] {
+  const sorted = [...rows];
+  if (sort === 'alphabetical') {
+    sorted.sort((a, b) => a.item.name.localeCompare(b.item.name));
+    return sorted;
   }
-  if (item.category === 'agents') {
-    return JSON.stringify(
-      {
-        message: `Run diagnostic check for ${item.name} agent`,
-        autonomyMode: item.autonomy || 'suggest',
-      },
-      null,
-      2,
-    );
+  if (sort === 'recent') {
+    sorted.sort((a, b) => (b.item.lastUsedAt ?? '').localeCompare(a.item.lastUsedAt ?? ''));
+    return sorted;
   }
-  if (item.category === 'mcp') {
-    return JSON.stringify({ action: 'list_resources', parameters: { filter: 'active' } }, null, 2);
-  }
-  return JSON.stringify({ task: `Evaluate rules for ${item.name}`, dryRun: true }, null, 2);
+  sorted.sort(
+    (a, b) => b.item.usageCount - a.item.usageCount || a.item.name.localeCompare(b.item.name),
+  );
+  return sorted;
 }
 
 function CapabilitiesContent() {
@@ -114,23 +341,30 @@ function CapabilitiesContent() {
   const workspaceId = (params?.['workspaceId'] as string) || 'default-workspace';
   const { toast } = useToast();
 
-  // Primary State initialized synchronously from stored data
-  const [capabilities, setCapabilities] = useState<CapabilityItem[]>(() =>
+  const [localCapabilities, setLocalCapabilities] = useState<CapabilityItem[]>(() =>
     getStoredCapabilities(workspaceId),
   );
+  const [storageHealth, setStorageHealth] = useState(() => getStorageHealth());
 
   const urlCategory = searchParams?.get('category') || searchParams?.get('tab');
   const validUrlCategory =
-    urlCategory &&
-    ['skills', 'connectors', 'agents', 'tools', 'mcp', 'plugins'].includes(urlCategory)
+    urlCategory && (UI_CATEGORY_ORDER as string[]).includes(urlCategory)
       ? (urlCategory as CapabilityCategory)
       : null;
 
   const initialAgentParam = searchParams?.get('agent') || undefined;
 
   const [selectedCategory, setSelectedCategory] = useState<CapabilityCategory>(
-    validUrlCategory || 'skills',
+    validUrlCategory ?? 'skills',
   );
+  const [searchQuery, setSearchQuery] = useState('');
+  const [skillTab, setSkillTab] = useState<SkillTab>('installed');
+  const [skillSort, setSkillSort] = useState<SkillSort>('most-used');
+  const [selectedSkillKey, setSelectedSkillKey] = useState('');
+  const [pendingSkillKey, setPendingSkillKey] = useState<string | null>(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [connectorsAddTrigger, setConnectorsAddTrigger] = useState(0);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   useEffect(() => {
     if (validUrlCategory && validUrlCategory !== selectedCategory) {
@@ -138,37 +372,6 @@ function CapabilitiesContent() {
     }
   }, [validUrlCategory, selectedCategory]);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [tabView, setTabView] = useState<TabView>('installed');
-  const [selectedTag, setSelectedTag] = useState<string>('All');
-  const [sortBy, setSortBy] = useState<SortOption>('most-used');
-  const [selectedId, setSelectedId] = useState<string>('');
-  const [detailSubTab, setDetailSubTab] = useState<DetailSubTab>('doc');
-
-  // Mobile detail view toggle
-  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
-
-  // Modals
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [connectorsAddTrigger, setConnectorsAddTrigger] = useState(0);
-  const [newCapName, setNewCapName] = useState('');
-  const [newCapCategory, setNewCapCategory] = useState<CapabilityCategory>('skills');
-  const [newCapDescription, setNewCapDescription] = useState('');
-  const [newCapTags, setNewCapTags] = useState('');
-  const [newCapDoc, setNewCapDoc] = useState('');
-
-  // Remote Git / Registry Import Modal
-  const [importModalOpen, setImportModalOpen] = useState(false);
-
-  // Interactive Test State
-  const [testInputJson, setTestInputJson] = useState(
-    '{\n  "query": "example test run",\n  "limit": 5\n}',
-  );
-  const [testRunning, setTestRunning] = useState(false);
-  const [testOutput, setTestOutput] = useState<string | null>(null);
-  const [testLatency, setTestLatency] = useState<number | null>(null);
-
-  // Live Backend Data Fetching via SWR
   const {
     data: liveCatalog,
     error: catalogError,
@@ -180,800 +383,695 @@ function CapabilitiesContent() {
 
   const { connectors: liveConnectors } = useWorkspaceConnectors(workspaceId);
 
-  // Live Sovereign Capabilities Fetching via SWR
-  const { data: dbCapabilities, mutate: mutateCapabilities } = useSWR(
+  /**
+   * Installed skills and the catalog in one response. The backend owns this merge,
+   * so the page never re-implements it -- a client-side join is how the two lists
+   * came to disagree about what was installed.
+   */
+  const {
+    data: serverSkills,
+    error: skillsError,
+    isLoading: skillsLoading,
+    mutate: mutateSkills,
+  } = useSWR(
+    workspaceId ? ['workspace-skills', workspaceId] : null,
+    () => capabilitiesApi.listSkills(workspaceId),
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  );
+
+  const { data: serverRows, mutate: mutateServerRows } = useSWR(
     workspaceId ? ['workspace-capabilities', workspaceId] : null,
     () => capabilitiesApi.list(undefined, workspaceId),
     { revalidateOnFocus: false, shouldRetryOnError: false },
   );
 
-  useEffect(() => {
-    if (!dbCapabilities || !Array.isArray(dbCapabilities) || dbCapabilities.length === 0) return;
-    setCapabilities((prev) => {
-      const merged = [...prev];
-      dbCapabilities.forEach((dbCap) => {
-        const mappedCat = toUiCategory(dbCap.category);
-        const existingIdx = merged.findIndex(
-          (c) => c.id === dbCap.id || (c.name === dbCap.name && c.category === mappedCat),
-        );
-        const item: CapabilityItem = {
-          id: dbCap.id,
-          name: dbCap.name,
-          category: mappedCat,
-          tags: (dbCap.config?.['tags'] as string[]) || ['Workspace', 'Custom'],
-          description: dbCap.description || '',
-          enabled: dbCap.enabled,
-          source: 'custom',
-          usageCount: (dbCap.config?.['usageCount'] as number) || 0,
-          lastUsedAt: null,
-          requiredScope:
-            (dbCap.config?.['requiredScope'] as string) ||
-            (mappedCat === 'mcp' ? 'connector.mcp.execute' : 'system.execute'),
-          trustClass: mappedCat === 'mcp' ? 'mcp.workspace.write' : 'first_party',
-          version: dbCap.version || '1.0.0',
-          author: dbCap.author || 'Workspace Member',
-          autonomy: (dbCap.config?.['autonomy'] as any) || 'autonomous',
-          markdownDoc:
-            (dbCap.config?.['doc'] as string) || `# ${dbCap.name}\n\n${dbCap.description}\n`,
-          inputSchema: (dbCap.config?.['parameters'] as any) || undefined,
-        };
-        if (existingIdx >= 0) {
-          merged[existingIdx] = { ...merged[existingIdx], ...item };
-        } else {
-          merged.push(item);
-        }
-      });
-      return merged;
-    });
-  }, [dbCapabilities]);
-
-  const liveConnectorsKey = useMemo(
-    () => liveConnectors?.map((c) => `${c.id}:${c.status}`).join(',') || '',
-    [liveConnectors],
+  // MCP has no row in `capabilities`; McpView reads the connectors endpoint
+  // directly. This only produces the tab badge, and it reads a real `type`
+  // rather than pattern-matching a provider name for the substring "mcp".
+  const { data: mcpConnectors } = useSWR(
+    workspaceId ? ['workspace-mcp-count', workspaceId] : null,
+    () => connectorsApi.list(workspaceId, 'mcp'),
+    { revalidateOnFocus: false, shouldRetryOnError: false },
   );
+
+  const localSkills = useMemo(() => localCapabilities.filter(isSkill), [localCapabilities]);
+
+  const allSkills = useMemo(
+    () => mergeSkillRows(localSkills, serverSkills ?? []),
+    [localSkills, serverSkills],
+  );
+
+  const installedCount = useMemo(() => countInstalled(allSkills), [allSkills]);
+  const browseCount = allSkills.length - installedCount;
+
+  const visibleSkillRows = useMemo(() => {
+    const scoped = allSkills.filter((row) =>
+      skillTab === 'installed' ? row.installed : !row.installed,
+    );
+    return sortSkillRows(
+      scoped.filter((row) => matchesQuery(row, searchQuery.trim())),
+      skillSort,
+    );
+  }, [allSkills, skillTab, searchQuery, skillSort]);
+
+  const activeSkillKey = useMemo(() => {
+    if (visibleSkillRows.some((row) => row.key === selectedSkillKey)) return selectedSkillKey;
+    return visibleSkillRows[0]?.key ?? '';
+  }, [visibleSkillRows, selectedSkillKey]);
+
+  // Rows for the non-skill categories keep the seed + workspace-row shape the
+  // sibling views already consume. They are untouched by the skill merge.
+  const [nonSkillRows, setNonSkillRows] = useState<CapabilityItem[]>(() =>
+    getStoredCapabilities(workspaceId).filter((item) => !isSkill(item)),
+  );
+
+  /**
+   * Rows the server filed under a category this build does not know.
+   *
+   * Counted outside the `setState` updater on purpose: an updater body runs during
+   * React's render phase, so a counter mutated inside it is still 0 when the code
+   * right after it tries to read it.
+   */
+  const unknownCategoryCount = useMemo(
+    () => (serverRows ?? []).filter((row) => !toUiCategory(row.category)).length,
+    [serverRows],
+  );
+
+  useEffect(() => {
+    if (!serverRows || !Array.isArray(serverRows) || serverRows.length === 0) return;
+    setNonSkillRows((prev) => {
+      const next = [...prev];
+      for (const row of serverRows) {
+        const mapped = toUiCategory(row.category);
+        // An unrecognised category is not filed under one it does not belong to.
+        // `unknownCategoryCount` reports it, because dropping it silently is how a
+        // server vocabulary change looks like data loss on the user's side.
+        if (!mapped) continue;
+        const item: CapabilityItem = {
+          id: row.id,
+          name: row.name,
+          category: mapped,
+          tags: capabilityConfigTags(row.config),
+          description: row.description ?? '',
+          enabled: row.enabled,
+          source: toSource(row.type),
+          usageCount: typeof row.usageCount === 'number' ? row.usageCount : 0,
+          lastUsedAt: row.lastUsedAt ?? null,
+          markdownDoc: capabilityConfigMarkdownDoc(row.config) ?? '',
+        };
+        const requiredScope = capabilityConfigRequiredScope(row.config);
+        if (requiredScope) item.requiredScope = requiredScope;
+        if (row.version) item.version = row.version;
+        if (row.author) item.author = row.author;
+        const index = next.findIndex((existing) => existing.id === row.id);
+        if (index >= 0) {
+          // The server row owns the doc when it has one; the local copy only fills
+          // the gap for a seeded capability the server has no documentation for.
+          const localDoc = next[index]?.markdownDoc ?? '';
+          next[index] = { ...next[index], ...item, markdownDoc: item.markdownDoc || localDoc };
+        } else {
+          next.push(item);
+        }
+      }
+      return next;
+    });
+  }, [serverRows]);
+
   const liveCatalogKey = useMemo(
-    () => liveCatalog?.agents?.map((a) => a.name).join(',') || '',
+    () => liveCatalog?.agents?.map((agent) => agent.name).join(',') ?? '',
     [liveCatalog],
   );
 
-  // Reconcile live backend catalog and connectors with stored state
+  /**
+   * Agents get their scopes and autonomy from the agent catalog, which is the
+   * only place those values exist for a built-in agent. Nothing else is
+   * synthesized here: the MCP-connector block that used to live in this effect
+   * invented `mcp-*` capabilities, their usage counts and their markdown from the
+   * connectors hook, and duplicated McpView's real endpoint with numbers nobody
+   * measured.
+   */
   useEffect(() => {
-    const hasCatalogData = Boolean(liveCatalog?.agents && liveCatalog.agents.length > 0);
-    const hasConnectorsData = Boolean(liveConnectors && liveConnectors.length > 0);
-    if (!hasCatalogData && !hasConnectorsData) return;
+    const agents = liveCatalog?.agents;
+    if (!agents || !Array.isArray(agents) || agents.length === 0) return;
+    setNonSkillRows((prev) =>
+      prev.map((item) => {
+        if (item.category !== 'agents') return item;
+        const live = agents.find(
+          (agent) => agent.name === item.name || item.id === `agent-${agent.name}`,
+        );
+        if (!live) return item;
+        return {
+          ...item,
+          requiredScope: live.tools?.[0]?.requiredScope ?? item.requiredScope,
+          autonomy: toAutonomy(live.defaultAutonomy) ?? item.autonomy,
+          toolsUsed: live.toolNames ?? item.toolsUsed,
+        };
+      }),
+    );
+    // `liveCatalogKey` rather than the object so a stable SWR reference does not
+    // re-run this on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveCatalogKey]);
 
-    setCapabilities((prev) => {
-      const merged = [...prev];
-
-      // Enrich from live catalog if available
-      if (liveCatalog?.agents && Array.isArray(liveCatalog.agents)) {
-        liveCatalog.agents.forEach((liveAgent) => {
-          const existingIdx = merged.findIndex(
-            (c) =>
-              c.category === 'agents' &&
-              (c.name === liveAgent.name || c.id === `agent-${liveAgent.name}`),
-          );
-          const currentItem = merged[existingIdx];
-          if (existingIdx >= 0 && currentItem) {
-            merged[existingIdx] = {
-              ...currentItem,
-              requiredScope: liveAgent.tools?.[0]?.requiredScope || currentItem.requiredScope,
-              autonomy:
-                (liveAgent.defaultAutonomy as 'suggest' | 'autonomous' | 'approval_required') ||
-                currentItem.autonomy,
-              toolsUsed: liveAgent.toolNames || currentItem.toolsUsed,
-            };
-          }
-        });
-      }
-
-      // Enrich live MCP connectors if present
-      if (liveConnectors && Array.isArray(liveConnectors) && liveConnectors.length > 0) {
-        liveConnectors.forEach((conn) => {
-          const providerName = conn.provider || 'unknown';
-          if (providerName.toLowerCase().includes('mcp')) {
-            const mcpId = `mcp-${conn.id}`;
-            const existing = merged.find((c) => c.id === mcpId);
-            if (!existing) {
-              merged.push({
-                id: mcpId,
-                name: providerName,
-                category: 'mcp',
-                tags: ['MCP', 'Live Connector', providerName],
-                description: `Live Model Context Protocol connector (${providerName}) attached to workspace.`,
-                enabled: conn.status === 'connected',
-                source: 'mcp',
-                usageCount: 12,
-                lastUsedAt: conn.lastSyncAt ?? null,
-                requiredScope: 'connector.mcp.execute',
-                trustClass: 'mcp.workspace.write',
-                version: '1.0.0',
-                author: providerName,
-                markdownDoc: `# MCP Server: ${providerName}\n\nLive Model Context Protocol bridge providing dynamic tools into agent reasoning loop.\n\nStatus: ${conn.status}\nProvider: ${providerName}\n`,
-              });
-            }
-          }
-        });
-      }
-
-      return merged;
-    });
-  }, [liveCatalogKey, liveConnectorsKey]);
-
-  // Compute live category counts
   const categoryCounts = useMemo(() => {
     const counts: Record<CapabilityCategory, number> = {
-      skills: 0,
-      // The real attached-connector count. This used to fall back to 14, which
-      // told every workspace with zero connectors that it had 14.
+      skills: installedCount,
       connectors: liveConnectors?.length ?? 0,
-      mcp: 0,
-      plugins: 0,
+      mcp: (mcpConnectors ?? []).filter((connector) => connector.type === 'mcp').length,
       tools: 0,
+      plugins: 0,
       agents: 0,
     };
-    capabilities.forEach((c) => {
-      if (counts[c.category] !== undefined && c.category !== 'connectors') {
-        counts[c.category]++;
-      }
+    nonSkillRows.forEach((item) => {
+      if (item.category === 'connectors') return;
+      counts[item.category] += 1;
     });
     return counts;
-  }, [capabilities, liveConnectors]);
+  }, [installedCount, liveConnectors, mcpConnectors, nonSkillRows]);
 
-  // Dynamic search input placeholder based on active tab
-  const searchPlaceholder = useMemo(() => {
-    switch (selectedCategory) {
-      case 'skills':
-        return 'Filter installed skills...';
-      case 'connectors':
-        return 'Search connectors...';
-      case 'mcp':
-        return 'Search MCP servers...';
-      case 'plugins':
-        return 'Search plugins...';
-      case 'tools':
-        return 'Search tools & suites...';
-      case 'agents':
-        return 'Search agents...';
-      default:
-        return 'Search capabilities...';
-    }
-  }, [selectedCategory]);
+  const tabs = useMemo<TabItem[]>(
+    () =>
+      UI_CATEGORY_ORDER.map((category) => ({
+        id: category,
+        label: CATEGORY_TAB_LABEL[category],
+        badge: categoryCounts[category],
+      })),
+    [categoryCounts],
+  );
 
-  // Filter & Sort capabilities for the active category
-  const filteredItems = useMemo(() => {
-    return capabilities
-      .filter((item) => {
-        // Category check
-        if (item.category !== selectedCategory) return false;
+  const findSkillRow = useCallback(
+    (key: string): SkillRow | undefined => allSkills.find((row) => row.key === key),
+    [allSkills],
+  );
 
-        // Installed vs Browse view
-        if (tabView === 'installed' && !item.enabled) return false;
-
-        // Tag filter
-        if (selectedTag !== 'All' && !item.tags.includes(selectedTag)) return false;
-
-        return true;
-      })
-      .sort((a, b) => {
-        if (sortBy === 'alphabetical') {
-          return a.name.localeCompare(b.name);
-        }
-        if (sortBy === 'recent') {
-          return (b.lastUsed || '').localeCompare(a.lastUsed || '');
-        }
-        return b.usageCount - a.usageCount;
-      });
-  }, [capabilities, selectedCategory, tabView, selectedTag, sortBy]);
-
-  // Default selected item selection
-  useEffect(() => {
-    if (filteredItems.length > 0) {
-      if (!selectedId || !filteredItems.some((i) => i.id === selectedId)) {
-        setSelectedId(filteredItems[0]?.id || '');
-      }
-    } else {
-      setSelectedId('');
-    }
-  }, [filteredItems, selectedId]);
-
-  // Selected Item reference
-  const selectedItem = useMemo(() => {
-    return capabilities.find((c) => c.id === selectedId) || filteredItems[0] || null;
-  }, [capabilities, selectedId, filteredItems]);
-
-  // Auto-fill realistic sample payload when switching items
-  useEffect(() => {
-    if (selectedItem) {
-      setTestInputJson(getSamplePayloadForCapability(selectedItem));
-      setTestOutput(null);
-      setTestLatency(null);
-    }
-  }, [selectedItem?.id]);
-
-  // Available tags in current category
-  const availableTags = useMemo(() => {
-    const set = new Set<string>();
-    capabilities
-      .filter((c) => c.category === selectedCategory)
-      .forEach((c) => c.tags.forEach((t) => set.add(t)));
-    return ['All', ...Array.from(set)];
-  }, [capabilities, selectedCategory]);
-
-  // Update Skill definition / instructions
-  const handleUpdateSkill = useCallback(
-    (updatedItem: CapabilityItem) => {
-      saveCustomCapability(workspaceId, updatedItem);
-      setCapabilities((prev) => prev.map((c) => (c.id === updatedItem.id ? updatedItem : c)));
+  /**
+   * The storage helpers disagree about their return type: the enable/delete
+   * helpers hand back the re-read merged list, `saveCustomCapability` returns
+   * nothing. Both are re-read here so the local mirror and the banner always come
+   * from the same source rather than from a partially updated snapshot.
+   *
+   * Health is captured immediately after the write and BEFORE the re-read, because
+   * `getStoredCapabilities()` clears the recorded error as its first statement --
+   * reading afterwards would erase a failed write and report success.
+   */
+  const syncLocalStorage = useCallback(
+    (mutate: (workspaceId: string) => unknown) => {
+      mutate(workspaceId);
+      const writeHealth = getStorageHealth();
+      const merged = getStoredCapabilities(workspaceId);
+      const readHealth = getStorageHealth();
+      setLocalCapabilities(merged);
+      setStorageHealth(writeHealth.ok ? readHealth : writeHealth);
     },
     [workspaceId],
   );
 
-  // Delete Custom Skill
-  const handleDeleteSkill = useCallback(
-    async (id: string) => {
+  const handleToggleSkill = useCallback(
+    async (key: string, next: boolean) => {
+      const row = findSkillRow(key);
+      if (!row) return;
+      const name = row.item.name;
+
+      if (!row.serverBacked || row.item.id === null) {
+        // Nothing to write server-side. Say so rather than reporting a workspace
+        // change that did not happen.
+        syncLocalStorage((id) => setStoredCapabilityEnabled(id, row.item.id, next));
+        toast({
+          tone: 'warning',
+          title: `${next ? 'Enabled' : 'Disabled'} ${name} in this browser only`,
+          detail:
+            'This skill has no workspace capability row, so nothing was written to the server.',
+        });
+        return;
+      }
+
+      setPendingSkillKey(key);
       try {
-        await capabilitiesApi.delete(id);
-        void mutateCapabilities();
+        await capabilitiesApi.update(row.item.id, { enabled: next });
+        syncLocalStorage((id) => setStoredCapabilityEnabled(id, row.item.id, next));
+        void mutateSkills();
+        toast({
+          tone: next ? 'success' : 'warning',
+          title: `${next ? 'Enabled' : 'Disabled'} ${name}`,
+          detail: 'Saved to the workspace capability row.',
+        });
       } catch (err) {
-        // 404 means the record was never in the database (a locally created
-        // item), so the local delete below is the whole operation. Any other
-        // failure means the server row is still there, and deleting only the
-        // local copy would leave the two permanently out of step.
+        if (!isNotFound(err)) {
+          toast({
+            tone: 'error',
+            title: `Could not ${next ? 'enable' : 'disable'} ${name}`,
+            detail: errorMessage(err, 'The workspace was not changed.'),
+          });
+          return;
+        }
+        syncLocalStorage((id) => setStoredCapabilityEnabled(id, row.item.id, next));
+        toast({
+          tone: 'warning',
+          title: `${next ? 'Enabled' : 'Disabled'} ${name} in this browser only`,
+          detail: 'The server has no row for this skill (404), so nothing was written remotely.',
+        });
+      } finally {
+        setPendingSkillKey(null);
+      }
+    },
+    [findSkillRow, mutateSkills, syncLocalStorage, toast],
+  );
+
+  const handleInstallSkill = useCallback(
+    async (key: string) => {
+      const row = findSkillRow(key);
+      if (!row || row.installed) return;
+
+      setPendingSkillKey(key);
+      try {
+        const created = await capabilitiesApi.create({
+          name: row.item.name,
+          category: toServerCategory('skills'),
+          description: row.item.description,
+          version: row.item.version ?? '1.0.0',
+          author: row.item.author ?? 'Catalog',
+          type: row.item.source,
+          config: {
+            doc: row.item.markdownDoc,
+            tags: row.item.tags,
+            autonomy: row.item.autonomy,
+            // The catalog entry declares the scope this skill runs under, and
+            // POST stores only what it is given, so a bare register installs a
+            // capability with no scope at all.
+            ...(row.item.requiredScope ? { required_scope: row.item.requiredScope } : {}),
+          },
+        });
+        void mutateSkills();
+        toast({
+          tone: 'success',
+          title: `Installed ${row.item.name}`,
+          detail: `Registered in this workspace as ${created.id}.`,
+        });
+      } catch (err) {
+        toast({
+          tone: 'error',
+          title: `Could not install ${row.item.name}`,
+          detail: errorMessage(err, 'The workspace was not changed.'),
+        });
+      } finally {
+        setPendingSkillKey(null);
+      }
+    },
+    [findSkillRow, mutateSkills, toast],
+  );
+
+  /**
+   * Saving a doc used to write localStorage and then report "Changes persisted
+   * to workspace configuration", which was false. A skill that has a server row is
+   * now written with PATCH; only a genuinely local capability falls back to the
+   * browser, and the toast says which of the two happened.
+   */
+  const handleSaveSkillDoc = useCallback(
+    async (key: string, doc: string): Promise<SkillSaveOutcome> => {
+      const row = findSkillRow(key);
+      if (!row) return 'failed';
+
+      if (row.serverBacked && row.item.id !== null) {
+        try {
+          // Only `doc` is sent. `config` is merged server-side, and sending the
+          // camel-cased `parameters` back would corrupt the stored JSON Schema.
+          await capabilitiesApi.update(row.item.id, { config: { doc } });
+          syncLocalStorage((id) => saveCustomCapability(id, { ...row.item, markdownDoc: doc }));
+          void mutateSkills();
+          toast({
+            tone: 'success',
+            title: `Saved instructions for ${row.item.name}`,
+            detail: 'Written to the workspace capability row.',
+          });
+          return 'server';
+        } catch (err) {
+          if (!isNotFound(err)) {
+            toast({
+              tone: 'error',
+              title: `Could not save ${row.item.name}`,
+              detail: errorMessage(err, 'The workspace was not changed.'),
+            });
+            return 'failed';
+          }
+          toast({
+            tone: 'warning',
+            title: `Saved ${row.item.name} in this browser only`,
+            detail: 'The server has no row for this skill (404).',
+          });
+        }
+      }
+
+      syncLocalStorage((id) => saveCustomCapability(id, { ...row.item, markdownDoc: doc }));
+      toast({
+        tone: 'warning',
+        title: `Saved instructions for ${row.item.name} in this browser only`,
+        detail:
+          'This skill has no workspace capability row, so it was not persisted to the workspace.',
+      });
+      return 'local';
+    },
+    [findSkillRow, mutateSkills, syncLocalStorage, toast],
+  );
+
+  const handleDeleteSkill = useCallback(
+    async (key: string) => {
+      const row = findSkillRow(key);
+      if (!row || row.item.id === null) {
+        syncLocalStorage((id) => deleteCustomCapability(id, key));
+        toast({
+          tone: 'info',
+          title: 'Removed from this browser',
+          detail: 'The skill had no workspace capability row to delete.',
+        });
+        return;
+      }
+
+      try {
+        await capabilitiesApi.delete(row.item.id);
+      } catch (err) {
+        if (isConflict(err)) {
+          toast({
+            tone: 'error',
+            title: 'Bundled skills cannot be deleted',
+            detail:
+              'The server answers 409 for any capability that is not custom. Disable it instead if you want it out of an agent run.',
+          });
+          return;
+        }
         if (!isNotFound(err)) {
           toast({
             tone: 'error',
             title: 'Delete failed',
-            detail: `${err instanceof Error ? err.message : 'The capability was not deleted.'}`,
+            detail: errorMessage(err, 'The capability was not deleted.'),
           });
           return;
         }
       }
-      const updated = deleteCustomCapability(workspaceId, id);
-      setCapabilities(updated);
+
+      syncLocalStorage((id) => deleteCustomCapability(id, row.item.id));
+      setSelectedSkillKey('');
+      void mutateSkills();
       toast({
         tone: 'info',
         title: 'Skill deleted',
-        detail: 'Removed from workspace capabilities.',
+        detail: 'Removed from this workspace.',
       });
     },
-    [workspaceId, toast, mutateCapabilities],
+    [findSkillRow, mutateSkills, syncLocalStorage, toast],
   );
 
-  // Toggle Item Enabled Status
-  const handleToggle = useCallback(
-    async (id: string, e?: React.MouseEvent) => {
-      e?.stopPropagation();
-      const item = capabilities.find((c) => c.id === id);
+  const handleCopySkillDoc = useCallback(
+    (key: string) => {
+      const row = findSkillRow(key);
+      if (!row) return;
+      const text = row.item.markdownDoc;
+      if (!text) {
+        toast({
+          tone: 'warning',
+          title: `Nothing to copy for ${row.item.name}`,
+          detail: 'The server sent no markdown for this skill.',
+        });
+        return;
+      }
+      const clipboard = navigator.clipboard;
+      if (!clipboard?.writeText) {
+        toast({
+          tone: 'error',
+          title: 'Clipboard unavailable',
+          detail: 'This browser blocked clipboard access.',
+        });
+        return;
+      }
+      clipboard
+        .writeText(text)
+        .then(() =>
+          toast({
+            tone: 'info',
+            title: `Copied instructions for ${row.item.name}`,
+          }),
+        )
+        .catch(() =>
+          toast({
+            tone: 'error',
+            title: 'Copy failed',
+            detail: 'The browser refused clipboard access.',
+          }),
+        );
+    },
+    [findSkillRow, toast],
+  );
+
+  const handleToggleCapability = useCallback(
+    async (id: string, event?: React.MouseEvent) => {
+      event?.stopPropagation();
+      const item = nonSkillRows.find((row) => row.id === id);
       if (!item) return;
       const nextState = !item.enabled;
-      const updated = setStoredCapabilityEnabled(workspaceId, id, nextState);
-      setCapabilities(updated);
 
+      syncLocalStorage((workspace) => setStoredCapabilityEnabled(workspace, id, nextState));
       try {
-        await capabilitiesApi.toggleCapability(id, nextState);
-        void mutateCapabilities();
+        await capabilitiesApi.update(id, { enabled: nextState });
+        void mutateServerRows();
       } catch (err) {
-        // A 404 is the static-capability case the old bare `catch` was papering
-        // over: there is no server row to update, so the local flag is correct.
-        // Anything else is a real write failure and must not be reported as a
-        // success, nor left as a local flag the server disagrees with.
         if (!isNotFound(err)) {
-          const reverted = setStoredCapabilityEnabled(workspaceId, id, item.enabled);
-          setCapabilities(reverted);
+          syncLocalStorage((workspace) => setStoredCapabilityEnabled(workspace, id, item.enabled));
           toast({
             tone: 'error',
             title: nextState ? `Could not enable ${item.name}` : `Could not disable ${item.name}`,
-            detail: err instanceof Error ? err.message : 'The change was not saved.',
+            detail: errorMessage(err, 'The change was not saved.'),
           });
           return;
         }
       }
-
       toast({
         tone: nextState ? 'success' : 'warning',
-        title: nextState ? `Enabled ${item.name}` : `Disabled ${item.name}`,
-        detail: `Changes apply to new agent sessions in workspace`,
+        title: `${nextState ? 'Enabled' : 'Disabled'} ${item.name}`,
+        detail: 'Applies to new agent sessions in this workspace.',
       });
     },
-    [capabilities, workspaceId, toast, mutateCapabilities],
+    [nonSkillRows, syncLocalStorage, mutateServerRows, toast],
   );
 
-  // Copy Definition / Spec
-  const handleCopyDefinition = useCallback(() => {
-    if (!selectedItem) return;
-    const contentToCopy =
-      selectedItem.markdownDoc ||
-      JSON.stringify(
-        {
-          name: selectedItem.name,
-          category: selectedItem.category,
-          description: selectedItem.description,
-          tags: selectedItem.tags,
-          schema: selectedItem.inputSchema,
-        },
-        null,
-        2,
-      );
-    navigator.clipboard.writeText(contentToCopy);
-    toast({
-      tone: 'info',
-      title: 'Copied definition',
-      detail: `${selectedItem.name} specification copied to clipboard`,
-    });
-  }, [selectedItem, toast]);
+  const handleCategoryChange = useCallback((id: string) => {
+    setSelectedCategory(id as CapabilityCategory);
+  }, []);
 
-  // Execute Interactive Test Runner
-  const handleRunTest = useCallback(async () => {
-    if (!selectedItem) return;
-    setTestRunning(true);
-    setTestOutput(null);
+  const handleOpenCreate = useCallback(() => {
+    setCreateModalOpen(true);
+  }, []);
 
-    let parsedInput: Record<string, unknown> = {};
-    try {
-      parsedInput = JSON.parse(testInputJson);
-    } catch {
-      parsedInput = { query: testInputJson };
-    }
-
-    try {
-      const liveRes = await capabilitiesApi.test({
-        workspaceId,
-        capabilityName: selectedItem.name,
-        category: selectedItem.category,
-        inputPayload: parsedInput,
-      });
-
-      setTestOutput(JSON.stringify(liveRes, null, 2));
-      setTestLatency(liveRes.executionDurationMs);
-      setTestRunning(false);
-      toast({
-        tone: liveRes.status === 'warning' ? 'warning' : 'success',
-        title: `Test completed: ${selectedItem.name}`,
-        detail: `Execution finished with ${liveRes.status} (${liveRes.executionDurationMs}ms)`,
-      });
-    } catch (err: unknown) {
-      setTestRunning(false);
-      const errMsg = err instanceof Error ? err.message : 'Execution failed';
-      setTestOutput(
-        JSON.stringify(
-          {
-            status: 'error',
-            capability: selectedItem.name,
-            category: selectedItem.category,
-            timestamp: new Date().toISOString(),
-            error: errMsg,
-          },
-          null,
-          2,
-        ),
-      );
-      toast({
-        tone: 'error',
-        title: `Test failed: ${selectedItem.name}`,
-        detail: errMsg,
-      });
-    }
-  }, [selectedItem, testInputJson, workspaceId, toast]);
-
-  // Create New Capability Handler
-  const handleCreateSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!newCapName.trim()) return;
-
-      const slug = newCapName.toLowerCase().replace(/[^a-z0-9-_]/g, '-');
-      const tagsList = newCapTags
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean);
-
-      const newCap: CapabilityItem = {
-        id: `custom-${slug}-${Date.now()}`,
-        name: slug,
-        category: newCapCategory,
-        tags: tagsList.length > 0 ? tagsList : ['Custom', 'User-Defined'],
-        description: newCapDescription || `Custom capability added to ${newCapCategory}.`,
-        enabled: true,
-        source: 'custom',
-        usageCount: 1,
-        lastUsedAt: new Date().toISOString(),
-        requiredScope: 'system.execute',
-        trustClass: 'first_party',
-        version: '1.0.0',
-        author: 'Workspace Custom',
-        markdownDoc:
-          newCapDoc ||
-          `# ${newCapName}\n\n## Overview\n${newCapDescription}\n\n## Instructions\n- Custom capability definition created by user.\n`,
-      };
-
-      saveCustomCapability(workspaceId, newCap);
-      const updated = setStoredCapabilityEnabled(workspaceId, newCap.id, true);
-      setCapabilities(updated);
-      setSelectedCategory(newCapCategory);
-      setSelectedId(newCap.id);
-      setCreateModalOpen(false);
-
-      // Reset form
-      setNewCapName('');
-      setNewCapDescription('');
-      setNewCapTags('');
-      setNewCapDoc('');
-
-      toast({
-        tone: 'success',
-        title: `Created ${slug}`,
-        detail: `New capability added under ${newCapCategory}`,
-      });
-    },
-    [newCapName, newCapCategory, newCapDescription, newCapTags, newCapDoc, workspaceId, toast],
-  );
+  const ctaLabel = CATEGORY_CTA_LABEL[selectedCategory];
 
   return (
-    <div className="flex flex-col h-full min-h-0 bg-background text-text antialiased selection:bg-primary/25 selection:text-primary overflow-hidden">
+    <div className="flex flex-col h-full min-h-0 bg-background text-text antialiased overflow-hidden">
       <div className="shrink-0 px-4 sm:px-6 pt-4">
         <PageHeader
           title="Capabilities"
           description="Author, install and govern the skills, agents, tools, MCP servers, plugins and connectors available to this workspace's agents."
           actions={
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
+              data-new-item
               onClick={() => {
                 void mutateCatalog();
-                void mutateCapabilities();
+                void mutateSkills();
+                void mutateServerRows();
               }}
-              className="btn-secondary text-xs"
             >
               Refresh from server
-            </button>
+            </Button>
           }
         />
       </div>
+
+      {/*
+        A corrupt or over-quota local store used to fall back to the seed with an
+        empty catch, so custom capabilities silently vanished and the user was
+        told nothing. `getStorageHealth()` records why; this says so out loud.
+      */}
+      {!storageHealth.ok && (
+        <div className="shrink-0 px-4 sm:px-6 pt-3">
+          <Banner
+            variant="danger"
+            title="Local capability store is unreadable"
+            description={storageHealth.error ?? 'The browser store could not be read.'}
+          />
+        </div>
+      )}
+
       {/* A catalog fetch failure only costs live agent enrichment, so it is a
           notice rather than a page-level error: the stored and workspace
           capabilities below are still real. */}
-      {catalogError && (
-        <div
-          role="status"
-          className="shrink-0 mx-4 sm:mx-6 mt-3 flex items-center justify-between gap-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning"
-        >
-          <span>
-            Live agent catalog unavailable, so agents are shown without server-supplied scopes and
-            autonomy defaults. {catalogError.message}
-          </span>
-          <button
-            type="button"
-            onClick={() => void mutateCatalog()}
-            className="shrink-0 font-medium underline"
-          >
-            Retry
-          </button>
+      {unknownCategoryCount > 0 && (
+        <div className="shrink-0 px-4 sm:px-6 pt-3">
+          <Banner
+            variant="warning"
+            title={`${unknownCategoryCount} capabilit${unknownCategoryCount === 1 ? 'y is' : 'ies are'} not shown`}
+            description="The server returned rows in a category this build does not recognise, so they are not filed under a category they do not belong to."
+          />
         </div>
       )}
-      {/* ────────────────────────────────────────────────────────────────────────── */}
-      {/* 1. Header: Enterprise Unified Command Ribbon                               */}
-      {/* ────────────────────────────────────────────────────────────────────────── */}
-      <header className="border-b border-border-subtle bg-surface/95 backdrop-blur-md px-4 sm:px-6 py-2.5 shrink-0 z-10 shadow-xs">
+
+      {catalogError && (
+        <div className="shrink-0 px-4 sm:px-6 pt-3">
+          <Banner
+            variant="warning"
+            title="Live agent catalog unavailable"
+            description={`Agents are shown without server-supplied scopes and autonomy. ${catalogError.message}`}
+            action={{ label: 'Retry', onClick: () => void mutateCatalog() }}
+          />
+        </div>
+      )}
+
+      <header className="border-b border-border-subtle bg-surface px-4 sm:px-6 py-2.5 shrink-0">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 min-w-0">
-          {/* Left: Omni-Search Bar with Shortcut Hint (NO Breadcrumbs) */}
-          <div className="relative w-full sm:w-56 md:w-60 lg:w-52 xl:w-56 shrink-0">
-            <svg
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35" />
-            </svg>
-            <input
-              type="text"
+          <div className="w-full sm:w-56 md:w-60 lg:w-52 xl:w-56 shrink-0">
+            <SearchField
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={searchPlaceholder}
-              className="w-full bg-surface-elevated border border-border rounded-lg pl-8 pr-9 py-1.5 text-xs text-text placeholder:text-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all font-sans"
+              onChange={setSearchQuery}
+              onClear={() => setSearchQuery('')}
+              placeholder={CATEGORY_SEARCH_PLACEHOLDER[selectedCategory]}
+              // The placeholder changes with the category, so it cannot be the
+              // accessible name: an unstable name breaks voice control and makes
+              // the field unlabelled for screen readers on 5 of 6 tabs.
+              aria-label="Search capabilities"
+              // `useKeyboardShortcuts` focuses `[data-search-input]` for the `/`
+              // shortcut. The attribute existed nowhere, so the advertised key
+              // did nothing.
+              data-search-input
+              className="text-xs"
             />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
-              {searchQuery ? (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="text-text-muted hover:text-text p-0.5 pointer-events-auto cursor-pointer"
-                  title="Clear search"
-                  aria-label="Clear search"
-                >
-                  <svg
-                    className="w-3.5 h-3.5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              ) : (
-                <kbd className="hidden sm:inline-block font-mono text-xs text-text-muted border border-border rounded px-1.5 py-0.5 bg-surface">
-                  /
-                </kbd>
-              )}
-            </div>
           </div>
 
-          {/* Right: Segmented Category Selector & Primary CTA Button */}
           <div className="flex items-center gap-2 min-w-0 justify-between lg:justify-end">
             <div className="overflow-x-auto no-scrollbar min-w-0">
-              <div
-                role="tablist"
-                aria-label="Capability category"
-                className="flex items-center gap-1 p-0.5 rounded-lg bg-surface-elevated border border-border-subtle w-max"
-              >
-                {(
-                  [
-                    {
-                      id: 'skills',
-                      label: 'Skills',
-                      count: categoryCounts.skills,
-                      icon: (
-                        <svg
-                          className="w-3.5 h-3.5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                        >
-                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                        </svg>
-                      ),
-                    },
-                    {
-                      id: 'connectors',
-                      label: 'Connectors',
-                      count: categoryCounts.connectors,
-                      icon: (
-                        <svg
-                          className="w-3.5 h-3.5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                        >
-                          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                        </svg>
-                      ),
-                    },
-                    {
-                      id: 'mcp',
-                      label: 'MCP',
-                      count: categoryCounts.mcp,
-                      icon: (
-                        <svg
-                          className="w-3.5 h-3.5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                        >
-                          <rect x="4" y="4" width="16" height="16" rx="2" />
-                          <rect x="9" y="9" width="6" height="6" />
-                          <line x1="9" y1="1" x2="9" y2="4" />
-                          <line x1="15" y1="1" x2="15" y2="4" />
-                          <line x1="9" y1="20" x2="9" y2="23" />
-                          <line x1="15" y1="20" x2="15" y2="23" />
-                        </svg>
-                      ),
-                    },
-                    {
-                      id: 'tools',
-                      label: 'Tools',
-                      count: categoryCounts.tools,
-                      icon: (
-                        <svg
-                          className="w-3.5 h-3.5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                        >
-                          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-                        </svg>
-                      ),
-                    },
-                    {
-                      id: 'plugins',
-                      label: 'Plugins',
-                      count: categoryCounts.plugins,
-                      icon: (
-                        <svg
-                          className="w-3.5 h-3.5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                        >
-                          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                        </svg>
-                      ),
-                    },
-                    {
-                      id: 'agents',
-                      label: 'Agents',
-                      count: categoryCounts.agents,
-                      icon: (
-                        <svg
-                          className="w-3.5 h-3.5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                        >
-                          <rect x="3" y="11" width="18" height="10" rx="2" />
-                          <circle cx="12" cy="5" r="2" />
-                          <path d="M12 7v4" />
-                          <line x1="8" y1="16" x2="8" y2="16" />
-                          <line x1="16" y1="16" x2="16" y2="16" />
-                        </svg>
-                      ),
-                    },
-                  ] as const
-                ).map((tab) => {
-                  const isActive = selectedCategory === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      role="tab"
-                      aria-selected={isActive}
-                      onClick={() => {
-                        setSelectedCategory(tab.id);
-                        setSelectedTag('All');
-                      }}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-sans font-medium transition-all duration-150 cursor-pointer whitespace-nowrap ${
-                        isActive
-                          ? 'bg-primary/10 text-primary font-semibold shadow-xs border border-primary/30'
-                          : 'text-text-secondary hover:text-text hover:bg-surface-hover'
-                      }`}
-                    >
-                      <span className={isActive ? 'text-primary' : 'text-text-muted'}>
-                        {tab.icon}
-                      </span>
-                      <span>{tab.label}</span>
-                      <span
-                        className={`text-xs font-mono px-1.5 py-0.5 rounded-full ${
-                          isActive
-                            ? 'bg-primary/20 text-primary font-semibold border border-primary/30'
-                            : 'text-text-muted bg-surface'
-                        }`}
-                      >
-                        {tab.count}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              <Tabs
+                ariaLabel="Capability category"
+                size="sm"
+                tabs={tabs}
+                activeTab={selectedCategory}
+                onTabChange={handleCategoryChange}
+              />
             </div>
 
-            {/* Header Right Action: Primary CTA Button */}
-            <button
-              type="button"
+            {/*
+              No `aria-label`: it would override the visible words and leave
+              voice-control users with a name they cannot see on screen.
+            */}
+            <Button
+              data-new-item
+              size="sm"
               onClick={() => {
                 if (selectedCategory === 'connectors') {
                   setConnectorsAddTrigger((prev) => prev + 1);
                   return;
                 }
-                setNewCapCategory(selectedCategory);
                 setCreateModalOpen(true);
               }}
-              aria-label="New Capability"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-action hover:bg-action/90 active:scale-[0.98] text-xs font-semibold text-action-fg transition-all shadow-sm shrink-0 cursor-pointer whitespace-nowrap"
             >
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2.2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-              <span>
-                {selectedCategory === 'skills'
-                  ? 'New Skill'
-                  : selectedCategory === 'connectors'
-                    ? 'Add Connector'
-                    : selectedCategory === 'agents'
-                      ? 'New Agent'
-                      : selectedCategory === 'tools'
-                        ? 'New Tool'
-                        : selectedCategory === 'mcp'
-                          ? 'New MCP Server'
-                          : 'New Plugin'}
-              </span>
-            </button>
+              {ctaLabel}
+            </Button>
           </div>
         </div>
       </header>
 
-      {/* ────────────────────────────────────────────────────────────────────────── */}
-      {/* 2. Adaptive Multi-Paradigm Main Workbench View                             */}
-      {/* ────────────────────────────────────────────────────────────────────────── */}
       <section className="flex-1 flex flex-col min-h-0 min-w-0 relative overflow-hidden bg-background">
-        {selectedCategory === 'skills' && (
+        <TabPanel
+          id="skills"
+          activeTab={selectedCategory}
+          className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden"
+        >
           <SkillsView
-            skills={capabilities.filter((c) => c.category === 'skills')}
-            workspaceId={workspaceId}
+            rows={visibleSkillRows}
+            installedCount={installedCount}
+            browseCount={browseCount}
             searchQuery={searchQuery}
-            onToggleSkill={handleToggle}
-            onUpdateSkill={handleUpdateSkill}
-            onDeleteSkill={handleDeleteSkill}
-            onOpenCreate={() => {
-              setNewCapCategory('skills');
-              setCreateModalOpen(true);
-            }}
+            onClearSearch={() => setSearchQuery('')}
+            tab={skillTab}
+            onTabChange={setSkillTab}
+            sort={skillSort}
+            onSortChange={setSkillSort}
+            selectedKey={activeSkillKey}
+            onSelect={setSelectedSkillKey}
+            onToggleEnabled={(key, next) => void handleToggleSkill(key, next)}
+            onInstall={(key) => void handleInstallSkill(key)}
+            onSaveDoc={handleSaveSkillDoc}
+            onDelete={(key) => void handleDeleteSkill(key)}
+            onCopyDoc={handleCopySkillDoc}
+            onOpenCreate={handleOpenCreate}
+            isLoading={skillsLoading}
+            error={skillsError as Error | undefined}
+            onRetry={() => void mutateSkills()}
+            pendingKey={pendingSkillKey}
           />
-        )}
+        </TabPanel>
 
-        {selectedCategory === 'connectors' && (
+        <TabPanel
+          id="connectors"
+          activeTab={selectedCategory}
+          className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden"
+        >
           <ConnectorsView
             workspaceId={workspaceId}
             searchQuery={searchQuery}
             openAddTrigger={connectorsAddTrigger}
           />
-        )}
+        </TabPanel>
 
-        {selectedCategory === 'agents' && (
+        <TabPanel
+          id="agents"
+          activeTab={selectedCategory}
+          className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden"
+        >
           <AgentsView
-            agents={capabilities.filter((c) => c.category === 'agents')}
+            agents={nonSkillRows.filter((item) => item.category === 'agents')}
             workspaceId={workspaceId}
             searchQuery={searchQuery}
             initialAgentName={initialAgentParam}
-            onToggleAgent={handleToggle}
+            onToggleAgent={(id) => void handleToggleCapability(id)}
           />
-        )}
+        </TabPanel>
 
-        {selectedCategory === 'tools' && (
+        <TabPanel
+          id="tools"
+          activeTab={selectedCategory}
+          className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden"
+        >
           <ToolsView
-            tools={capabilities.filter((c) => c.category === 'tools')}
+            tools={nonSkillRows.filter((item) => item.category === 'tools')}
             workspaceId={workspaceId}
             searchQuery={searchQuery}
           />
-        )}
+        </TabPanel>
 
-        {selectedCategory === 'mcp' && (
+        <TabPanel
+          id="mcp"
+          activeTab={selectedCategory}
+          className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden"
+        >
           <McpView
             workspaceId={workspaceId}
             searchQuery={searchQuery}
-            onOpenCreateServer={() => {
-              setNewCapCategory('mcp');
-              setCreateModalOpen(true);
-            }}
-            onOpenImport={() => {
-              setImportModalOpen(true);
-            }}
+            onOpenCreateServer={handleOpenCreate}
+            onOpenImport={() => setImportModalOpen(true)}
           />
-        )}
+        </TabPanel>
 
-        {selectedCategory === 'plugins' && (
+        <TabPanel
+          id="plugins"
+          activeTab={selectedCategory}
+          className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden"
+        >
           <PluginsView
-            plugins={capabilities.filter((c) => c.category === 'plugins')}
+            plugins={nonSkillRows.filter((item) => item.category === 'plugins')}
             searchQuery={searchQuery}
-            onTogglePlugin={handleToggle}
-            onOpenGitImport={() => {
-              setImportModalOpen(true);
-            }}
+            onTogglePlugin={(id) => void handleToggleCapability(id)}
+            onOpenGitImport={() => setImportModalOpen(true)}
           />
-        )}
+        </TabPanel>
       </section>
 
-      {/* ────────────────────────────────────────────────────────────────────────── */}
-      {/* Enterprise Capability Authoring & Import Studio                            */}
-      {/* ────────────────────────────────────────────────────────────────────────── */}
       <AddCapabilityModal
         isOpen={createModalOpen || importModalOpen}
         onClose={() => {
@@ -998,38 +1096,42 @@ function CapabilitiesContent() {
                 doc: newCap.markdownDoc || '',
                 tags: newCap.tags || [],
                 autonomy: newCap.autonomy || 'autonomous',
+                // After the metadata spread, and named for the wire, because
+                // `CreateCapabilityRequest` has no top-level `required_scope`
+                // and Pydantic drops unknown fields: `config.required_scope` is
+                // the only place a POST can put it, and it is the only key the
+                // list endpoint reads back (`routers/capabilities.py`). Reading
+                // the field the user chose rather than a metadata entry also
+                // means a scope cannot be lost to a rename on the modal side.
+                ...(newCap.requiredScope ? { required_scope: newCap.requiredScope } : {}),
               },
             });
             newCap.id = created.id;
-            void mutateCapabilities();
+            void mutateServerRows();
+            void mutateSkills();
           } catch (err) {
             // Keep the local record so the authoring is not lost, but say plainly
             // that the workspace copy was not written.
-            console.warn('Backend capability creation failed (using local sync):', err);
-            saveCustomCapability(workspaceId, newCap);
-            const localUpdated = setStoredCapabilityEnabled(workspaceId, newCap.id, true);
-            setCapabilities(localUpdated);
-            setSelectedCategory(newCap.category);
-            setSelectedId(newCap.id);
+            syncLocalStorage((id) => saveCustomCapability(id, newCap));
             toast({
               tone: 'warning',
               title: `Saved locally only: ${newCap.name}`,
-              detail: `${err instanceof Error ? err.message : 'The server write failed.'} It was not registered in this workspace.`,
+              detail: `${errorMessage(err, 'The server write failed.')} It was not registered in this workspace.`,
             });
             return;
           }
-          saveCustomCapability(workspaceId, newCap);
-          const updated = setStoredCapabilityEnabled(workspaceId, newCap.id, true);
-          setCapabilities(updated);
+          syncLocalStorage((id) => saveCustomCapability(id, newCap));
           setSelectedCategory(newCap.category);
-          setSelectedId(newCap.id);
+          // Selecting by the id the server minted: the row only exists once the
+          // refetch lands, and `activeSkillKey` picks it up when it does.
+          setSelectedSkillKey(newCap.id);
           toast({
             tone: 'success',
             title: `Created ${newCap.name}`,
             detail: `New capability added under ${newCap.category}`,
           });
         }}
-        onImport={async (url, category) => {
+        onImport={async (url, category): Promise<ImportOutcome> => {
           const urlParts = url.trim().replace(/\/$/, '').split('/');
           const rawName =
             urlParts[urlParts.length - 1]?.replace(/\.git$/, '') || 'remote-capability';
@@ -1040,6 +1142,11 @@ function CapabilitiesContent() {
           // says exactly that. It must not claim to have compiled anything, and
           // it must not fall back to a local-only record that looks identical to
           // a successful import.
+          //
+          // This layer produces the failure message and the modal presents it.
+          // Nothing awaits the handler that calls this, so a re-throw here would
+          // have no owner: it either becomes an unhandled rejection or, once
+          // swallowed, leaves the modal closing on a failure it cannot see.
           let created;
           try {
             created = await capabilitiesApi.create({
@@ -1057,39 +1164,38 @@ function CapabilitiesContent() {
               },
             });
           } catch (err) {
-            toast({
-              tone: 'error',
-              title: 'Import failed',
-              detail:
-                `Nothing was registered for ${url}. ${err instanceof Error ? err.message : ''}`.trim(),
-            });
-            throw err;
+            return {
+              ok: false,
+              message:
+                `Nothing was registered for ${url}. ${errorMessage(err, 'The server rejected the import.')}`.trim(),
+            };
           }
 
-          void mutateCapabilities();
+          void mutateServerRows();
+          void mutateSkills();
           setSelectedCategory(category);
-          setSelectedId(created.id);
+          setSelectedSkillKey(created.id);
           toast({
             tone: 'success',
             title: `Registered ${cleanName}`,
             detail: `Source URL recorded under ${category}. Nothing was fetched, compiled or executed from ${url}.`,
           });
+          return { ok: true };
         }}
       />
     </div>
   );
 }
 
+/**
+ * The route is a master/detail surface, so the fallback mirrors that shape. It
+ * is the same component `loading.tsx` renders: the two are shown at the same
+ * moment for the same data, so there is nothing for them to independently get
+ * right.
+ */
 export default function CapabilitiesPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="p-6 max-w-6xl mx-auto space-y-6 animate-pulse">
-          <div className="h-12 bg-surface rounded-xl border border-border w-96" />
-          <div className="h-64 bg-surface rounded-2xl border border-border" />
-        </div>
-      }
-    >
+    <Suspense fallback={<CapabilitiesWorkbenchSkeleton />}>
       <CapabilitiesContent />
     </Suspense>
   );

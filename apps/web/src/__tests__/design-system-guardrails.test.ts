@@ -238,7 +238,9 @@ describe('Page heading structure', () => {
    */
   const HEADING_EXEMPT = new Set([
     // Full-bleed workspace surfaces.
-    'app/workspace/[workspaceId]/capabilities/page.tsx',
+    // `capabilities/page.tsx` was listed here and is no longer: it renders its
+    // <h1> through the canonical <PageHeader>, so the exemption hid a page that
+    // already complied and would have let a future hand-rolled <h1> through.
     'app/workspace/[workspaceId]/chat/page.tsx',
     'app/workspace/[workspaceId]/connectors/page.tsx',
     'app/workspace/[workspaceId]/documents/page.tsx',

@@ -1,11 +1,30 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import Link from 'next/link';
-import { Badge, Button } from '@vaeloom/ui-kit';
-import { CapabilityItem } from '@/lib/capabilities-data';
+import useSWR from 'swr';
+import {
+  Badge,
+  Button,
+  ButtonGroup,
+  EmptyState,
+  ErrorState,
+  Skeleton,
+  Switch,
+  Tabs,
+  TabPanel,
+  Textarea,
+  Tooltip,
+} from '@vaeloom/ui-kit';
+import { CapabilityItem, formatRelativeTime } from '@/lib/capabilities-data';
 import { useToast } from '@/components/shared/Toast';
-import { capabilitiesApi } from '@/lib/api-client';
+import {
+  agentCatalogApi,
+  capabilitiesApi,
+  type AgentCatalogResponse,
+  type CatalogAgent,
+  type CapabilityTestResponse,
+} from '@/lib/api-client';
 
 export interface AgentsViewProps {
   agents: CapabilityItem[];
@@ -15,259 +34,112 @@ export interface AgentsViewProps {
   onToggleAgent: (id: string) => void;
 }
 
-interface AgentVisualMeta {
+type AutonomyMode = 'suggest' | 'autonomous' | 'approval_required';
+type DetailSubTab = 'mission' | 'scopes' | 'tools' | 'contract' | 'validate';
+
+/**
+ * Per-agent accent hue.
+ *
+ * `globals.css` declares `--agent-hue-*` once per theme, and it is the only
+ * accent in the app that already has a light and a high-contrast variant. The
+ * previous hard-coded `text-purple-400` / `bg-amber-500/10` palette had neither.
+ * `tailwind.config.ts` is outside this file's scope and has no `agentHue`
+ * namespace, so the vars are consumed directly: `color` for the glyph and
+ * `color-mix()` off the same var for the tint, which keeps the background and
+ * the border on the same theme value as the foreground.
+ *
+ * Only the agents the token set actually names get a hue. Everything else — the
+ * ~20 non-canonical registry agents, `application`, `self_improvement` — renders
+ * in the neutral token surface rather than being assigned a hue that does not
+ * describe it.
+ */
+const AGENT_HUE_BY_NAME: Readonly<Record<string, string>> = {
+  organization: 'organization',
+  memory: 'memory',
+  resume: 'resume',
+  ats: 'ats',
+  job_search: 'jobsearch',
+  gmail: 'gmail',
+  scheduler: 'scheduler',
+};
+
+interface AgentHue {
   color: string;
-  badgeClass: string;
-  iconSvg: React.ReactNode;
-  readableTitle: string;
-  isCanonical: boolean;
-  readScopes: string[];
-  writeScopes: string[];
-  samplePrompts: string[];
+  background: string;
+  border: string;
 }
 
-function getAgentVisualMeta(name: string): AgentVisualMeta {
-  switch (name.toLowerCase()) {
-    case 'organization':
-      return {
-        color: 'text-amber-500',
-        badgeClass: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-        readableTitle: 'Organization Agent',
-        isCanonical: true,
-        readScopes: ['documents', 'metadata', 'hierarchy'],
-        writeScopes: ['collections', 'tags'],
-        samplePrompts: [
-          'Organize all resume drafts and cover letters into designated folders',
-          'Find and clean duplicate document entries in this workspace',
-          'Normalize taxonomy tags across all uploaded artifacts',
-        ],
-        iconSvg: (
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-            />
-          </svg>
-        ),
-      };
-    case 'memory':
-      return {
-        color: 'text-purple-400',
-        badgeClass: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-        readableTitle: 'Memory & Graph Agent',
-        isCanonical: true,
-        readScopes: ['all_entities', 'triples', 'conversations'],
-        writeScopes: ['entities', 'relations', 'episodic_decay'],
-        samplePrompts: [
-          'Extract career entities and technical achievements from recent conversations',
-          'Consolidate workspace knowledge graph around machine learning skills',
-          'Audit orphaned memory nodes and decay stale entities',
-        ],
-        iconSvg: (
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-            />
-          </svg>
-        ),
-      };
-    case 'resume':
-      return {
-        color: 'text-sky-400',
-        badgeClass: 'bg-sky-500/10 text-sky-400 border-sky-500/20',
-        readableTitle: 'Resume Tailoring Agent',
-        isCanonical: true,
-        readScopes: ['profile', 'resumes', 'job_descriptions'],
-        writeScopes: ['tailored_resumes', 'pdf_artifacts'],
-        samplePrompts: [
-          'Tailor my resume summary for a Principal AI Engineer position',
-          'Format my experience bullet points using the STAR methodology',
-          'Compile a publication-ready single-page PDF with modern template',
-        ],
-        iconSvg: (
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-        ),
-      };
-    case 'ats':
-      return {
-        color: 'text-emerald-400',
-        badgeClass: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-        readableTitle: 'ATS Compliance Agent',
-        isCanonical: true,
-        readScopes: ['resumes', 'job_requisitions'],
-        writeScopes: ['ats_scores', 'skill_gaps'],
-        samplePrompts: [
-          'Audit ATS parseability and format score for my latest resume',
-          'Extract missing hard skills compared against cloud architect roles',
-          'Check layout compliance for multi-column and table formatting flags',
-        ],
-        iconSvg: (
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        ),
-      };
-    case 'job_search':
-      return {
-        color: 'text-blue-400',
-        badgeClass: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-        readableTitle: 'Job Discovery Agent',
-        isCanonical: true,
-        readScopes: ['jobs', 'market_rates', 'search_preferences'],
-        writeScopes: ['discovered_leads', 'job_matches'],
-        samplePrompts: [
-          'Search for remote Staff Software Engineer openings in North America',
-          'Rank matching opportunities by compensation and tech stack compatibility',
-          'Verify application URLs and flag expired postings',
-        ],
-        iconSvg: (
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
-        ),
-      };
-    case 'application':
-      return {
-        color: 'text-pink-400',
-        badgeClass: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
-        readableTitle: 'Job Application Agent',
-        isCanonical: true,
-        readScopes: ['resumes', 'job_descriptions'],
-        writeScopes: ['cover_letters', 'approval_tokens'],
-        samplePrompts: [
-          'Draft a targeted cover letter for a Senior Platform Engineer role',
-          'Prepare application package answers with human approval gating',
-          'Stage outbound application packet in the Sovereign Vault',
-        ],
-        iconSvg: (
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-            />
-          </svg>
-        ),
-      };
-    case 'gmail':
-      return {
-        color: 'text-rose-400',
-        badgeClass: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-        readableTitle: 'Gmail & Communication Agent',
-        isCanonical: true,
-        readScopes: ['recruiter_threads', 'inbox_metadata'],
-        writeScopes: ['draft_replies', 'interview_slots'],
-        samplePrompts: [
-          'Scan inbox for recruiter responses and interview invitation deadlines',
-          'Extract proposed interview dates and stage them for calendar sync',
-          'Draft a thank-you note to the hiring manager awaiting my approval',
-        ],
-        iconSvg: (
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-            />
-          </svg>
-        ),
-      };
-    case 'scheduler':
-      return {
-        color: 'text-amber-400',
-        badgeClass: 'bg-amber-600/10 text-amber-400 border-amber-600/20',
-        readableTitle: 'Scheduler & Temporal Agent',
-        isCanonical: true,
-        readScopes: ['calendar_events', 'interview_schedules'],
-        writeScopes: ['temporal_jobs', 'calendar_holds'],
-        samplePrompts: [
-          'Identify conflicting calendar appointments and suggest optimal interview blocks',
-          'Dispatch reminder notification for upcoming technical interview',
-          'Schedule recurring weekly resume optimization audit',
-        ],
-        iconSvg: (
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-            />
-          </svg>
-        ),
-      };
-    case 'self_improvement':
-      return {
-        color: 'text-indigo-400',
-        badgeClass: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
-        readableTitle: 'Self Improvement Agent',
-        isCanonical: false,
-        readScopes: ['telemetry', 'execution_traces'],
-        writeScopes: ['prompt_refinements', 'eval_scores'],
-        samplePrompts: [
-          'Audit recent agent failure trajectories and identify root causes',
-          'Propose optimized Jinja2 system prompt instructions based on execution feedback',
-          'Benchmark model tool calling accuracy against ground truth',
-        ],
-        iconSvg: (
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M13 10V3L4 14h7v7l9-11h-7z"
-            />
-          </svg>
-        ),
-      };
-    default:
-      return {
-        color: 'text-primary',
-        badgeClass: 'bg-primary/10 text-primary border-primary/20',
-        readableTitle: `${name.replace(/[_-]/g, ' ')} Agent`,
-        isCanonical: false,
-        readScopes: ['workspace.read'],
-        writeScopes: ['workspace.write'],
-        samplePrompts: [
-          `Run a diagnostic check with ${name}`,
-          `Explain capabilities and declared tool scopes for ${name}`,
-        ],
-        iconSvg: (
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M13 10V3L4 14h7v7l9-11h-7z"
-            />
-          </svg>
-        ),
-      };
-  }
+const NEUTRAL_HUE: AgentHue = {
+  color: 'var(--text-secondary)',
+  background: 'var(--surface-elevated)',
+  border: 'var(--border)',
+};
+
+function agentHue(name: string): AgentHue {
+  const key = AGENT_HUE_BY_NAME[name.toLowerCase()];
+  if (!key) return NEUTRAL_HUE;
+  const color = `var(--agent-hue-${key})`;
+  return {
+    color,
+    background: `color-mix(in srgb, ${color} 12%, transparent)`,
+    border: `color-mix(in srgb, ${color} 32%, transparent)`,
+  };
+}
+
+function formatAgentTitle(name: string): string {
+  const words = name.replace(/[_-]+/g, ' ').trim();
+  if (!words) return 'Agent';
+  return `${words.charAt(0).toUpperCase()}${words.slice(1)} Agent`;
+}
+
+function AgentGlyph({ name, className = 'w-4 h-4' }: { name: string; className?: string }) {
+  const paths: Record<string, string> = {
+    organization: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z',
+    memory:
+      'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z',
+    resume:
+      'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+    ats: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+    job_search: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
+    gmail:
+      'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
+    scheduler:
+      'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+  };
+  const d = paths[name.toLowerCase()] ?? 'M13 10V3L4 14h7v7l9-11h-7z';
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d={d} />
+    </svg>
+  );
+}
+
+const AUTONOMY_OPTIONS: { value: AutonomyMode; label: string; hint: string }[] = [
+  { value: 'suggest', label: 'Suggest Only', hint: 'Proposes actions and waits for a human.' },
+  {
+    value: 'approval_required',
+    label: 'Approval Gated',
+    hint: 'Acts, but every consequential step needs explicit approval.',
+  },
+  { value: 'autonomous', label: 'Autonomous', hint: 'Acts without per-step approval.' },
+];
+
+const AUTONOMY_VALUES: ReadonlySet<string> = new Set<AutonomyMode>([
+  'suggest',
+  'autonomous',
+  'approval_required',
+]);
+
+function coerceAutonomy(value: string | undefined, fallback: AutonomyMode): AutonomyMode {
+  return value && AUTONOMY_VALUES.has(value) ? (value as AutonomyMode) : fallback;
+}
+
+const DEFAULT_REACT_ROUNDS = 15;
+
+interface ReactRoundsSetting {
+  value: number;
+  /** True only once `capabilitiesApi.update` confirmed the write. */
+  persisted: boolean;
 }
 
 export const AgentsView: React.FC<AgentsViewProps> = ({
@@ -279,826 +151,868 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
 }) => {
   const { toast } = useToast();
 
-  // Find initial agent by id or name
+  // The same SWR key the page uses, so the catalog request is deduplicated and
+  // both components read one cache entry rather than racing two fetches.
+  const {
+    data: catalog,
+    error: catalogError,
+    isLoading: catalogLoading,
+  } = useSWR('agent-catalog', () => agentCatalogApi.get(), {
+    revalidateOnFocus: false,
+    shouldRetryOnError: false,
+  });
+
+  const catalogByName = useMemo(() => {
+    const map = new Map<string, CatalogAgent>();
+    if (catalog?.agents && Array.isArray(catalog.agents)) {
+      for (const agent of catalog.agents) map.set(agent.name.toLowerCase(), agent);
+    }
+    return map;
+  }, [catalog]);
+
   const defaultAgentId = useMemo(() => {
     if (initialAgentName) {
+      const wanted = initialAgentName.toLowerCase();
       const match = agents.find(
         (a) =>
-          a.name.toLowerCase() === initialAgentName.toLowerCase() ||
+          a.name.toLowerCase() === wanted ||
           a.id === initialAgentName ||
-          a.id === `agent-${initialAgentName}`,
+          a.id === `agent-${wanted}`,
       );
       if (match) return match.id;
     }
-    return agents[0]?.id || 'agent-organization';
+    return agents[0]?.id ?? null;
   }, [agents, initialAgentName]);
 
-  const [selectedAgentId, setSelectedAgentId] = useState<string>(defaultAgentId);
-  const [activeTypeFilter, setActiveTypeFilter] = useState<'all' | 'canonical' | 'specialist'>(
-    'all',
-  );
-  const [detailSubTab, setDetailSubTab] = useState<'card' | 'scopes' | 'tools' | 'schema' | 'test'>(
-    'card',
-  );
-  const [copiedSchema, setCopiedSchema] = useState(false);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(defaultAgentId);
+  const [activeTypeFilter, setActiveTypeFilter] = useState<'all' | 'canonical' | 'other'>('all');
+  const [detailSubTab, setDetailSubTab] = useState<DetailSubTab>('mission');
+  const [copiedContract, setCopiedContract] = useState(false);
 
-  // ReAct Iteration Limit
-  const [maxRounds, setMaxRounds] = useState<number>(15);
-
-  // Test Playground State & Execution Trace
   const [testPrompt, setTestPrompt] = useState('');
   const [testRunning, setTestRunning] = useState(false);
-  const [testEvents, setTestEvents] = useState<string[]>([]);
-  const [testOutput, setTestOutput] = useState<string | null>(null);
-  const [testLatency, setTestLatency] = useState<number | null>(null);
+  const [testResult, setTestResult] = useState<CapabilityTestResponse | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
 
-  const selectedAgent = useMemo(() => {
-    return agents.find((a) => a.id === selectedAgentId) || agents[0] || null;
-  }, [agents, selectedAgentId]);
-
-  const visual = useMemo(() => {
-    return getAgentVisualMeta(selectedAgent?.name || 'organization');
-  }, [selectedAgent?.name]);
-
-  // Autonomy Mode state (synced to current agent)
-  const [autonomyMode, setAutonomyMode] = useState<'autonomous' | 'suggest' | 'approval_required'>(
-    selectedAgent?.autonomy || 'autonomous',
+  const selectedAgent = useMemo(
+    () => agents.find((a) => a.id === selectedAgentId) ?? agents[0] ?? null,
+    [agents, selectedAgentId],
   );
 
-  // Sync state with selected agent
-  React.useEffect(() => {
-    if (selectedAgent?.autonomy) {
-      setAutonomyMode(selectedAgent.autonomy);
-    }
-  }, [selectedAgent?.id, selectedAgent?.autonomy]);
+  const selectedCatalogEntry = useMemo(
+    () => (selectedAgent ? (catalogByName.get(selectedAgent.name.toLowerCase()) ?? null) : null),
+    [catalogByName, selectedAgent],
+  );
 
-  // Filter Agents
+  // Autonomy and round budget are per-agent server state, so they are re-seeded
+  // whenever the selection changes rather than leaking across agents.
+  const [autonomyMode, setAutonomyMode] = useState<AutonomyMode>('autonomous');
+  const [reactRounds, setReactRounds] = useState<ReactRoundsSetting>({
+    value: DEFAULT_REACT_ROUNDS,
+    persisted: false,
+  });
+  // The last value the server confirmed, so a blur that changed nothing does not
+  // issue a PATCH.
+  const [savedRounds, setSavedRounds] = useState<number | null>(null);
+  const [savingAutonomy, setSavingAutonomy] = useState(false);
+
+  useEffect(() => {
+    if (!selectedAgent) return;
+    setAutonomyMode(
+      coerceAutonomy(
+        selectedCatalogEntry?.defaultAutonomy,
+        coerceAutonomy(selectedAgent.autonomy, 'autonomous'),
+      ),
+    );
+    setTestResult(null);
+    setTestError(null);
+    setCopiedContract(false);
+  }, [selectedAgent, selectedCatalogEntry]);
+
+  // `maxReActRounds` lives in the capability's `config` bag, which is only
+  // readable once the agent is a real workspace capability row. Until a catalog
+  // entry is attached the setting is presented as unset rather than defaulted.
+  useEffect(() => {
+    const stored = selectedAgent?.metadata?.['maxReActRounds'];
+    const parsed = typeof stored === 'number' && Number.isFinite(stored) ? stored : null;
+    setReactRounds(
+      parsed === null
+        ? { value: DEFAULT_REACT_ROUNDS, persisted: false }
+        : { value: parsed, persisted: true },
+    );
+    setSavedRounds(parsed);
+  }, [selectedAgent]);
+
+  const isCanonical = selectedCatalogEntry?.isCanonical ?? null;
+
   const filteredAgents = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return agents.filter((agent) => {
-      const meta = getAgentVisualMeta(agent.name);
-      if (activeTypeFilter === 'canonical' && !meta.isCanonical) return false;
-      if (activeTypeFilter === 'specialist' && meta.isCanonical) return false;
+      const entry = catalogByName.get(agent.name.toLowerCase());
+      const canonical = entry?.isCanonical ?? false;
+      if (activeTypeFilter === 'canonical' && !canonical) return false;
+      if (activeTypeFilter === 'other' && canonical) return false;
 
       if (!q) return true;
       return (
         agent.name.toLowerCase().includes(q) ||
-        meta.readableTitle.toLowerCase().includes(q) ||
+        formatAgentTitle(agent.name).toLowerCase().includes(q) ||
         agent.description.toLowerCase().includes(q) ||
-        agent.tags.some((t) => t.toLowerCase().includes(q))
+        agent.tags.some((t) => t.toLowerCase().includes(q)) ||
+        (entry?.mission ?? '').toLowerCase().includes(q)
       );
     });
-  }, [agents, searchQuery, activeTypeFilter]);
+  }, [agents, catalogByName, searchQuery, activeTypeFilter]);
 
-  // Copy AgentCard JSON helper
-  const handleCopyAgentCard = useCallback(() => {
+  const handleToggleAutonomy = useCallback(
+    async (next: AutonomyMode) => {
+      if (!selectedAgent) return;
+      const previous = autonomyMode;
+      setAutonomyMode(next);
+      setSavingAutonomy(true);
+      try {
+        await capabilitiesApi.update(selectedAgent.id, { autonomy: next });
+        toast({
+          tone: 'success',
+          title: `Autonomy set to ${next.replace('_', ' ')}`,
+          detail: `Saved on the ${selectedAgent.name} capability row.`,
+        });
+      } catch (err) {
+        setAutonomyMode(previous);
+        toast({
+          tone: 'error',
+          title: 'Autonomy not saved',
+          detail: `${err instanceof Error ? err.message : 'The server write failed.'} Reverted to ${previous.replace('_', ' ')}.`,
+        });
+      } finally {
+        setSavingAutonomy(false);
+      }
+    },
+    [selectedAgent, autonomyMode, toast],
+  );
+
+  const handleCommitRounds = useCallback(
+    async (next: number) => {
+      if (!selectedAgent) return;
+      const previous = reactRounds;
+      setReactRounds({ value: next, persisted: false });
+      try {
+        await capabilitiesApi.update(selectedAgent.id, { config: { maxReActRounds: next } });
+        setReactRounds({ value: next, persisted: true });
+        setSavedRounds(next);
+        toast({
+          tone: 'success',
+          title: `ReAct round budget set to ${next}`,
+          detail: 'Stored in the capability config bag. No agent runtime reads it yet.',
+        });
+      } catch (err) {
+        setReactRounds(previous);
+        toast({
+          tone: 'error',
+          title: 'Round budget not saved',
+          detail: err instanceof Error ? err.message : 'The server write failed.',
+        });
+      }
+    },
+    [selectedAgent, reactRounds, toast],
+  );
+  /**
+   * Contract probe. `POST /agents/capabilities/test` reads the agent's declared
+   * contract out of the live registry and executes nothing, so the panel reports
+   * the returned `status`/`executed` pair verbatim and never narrates a run that
+   * did not happen.
+   */
+  const handleRunContractProbe = useCallback(async () => {
     if (!selectedAgent) return;
-    const cardData = {
-      name: selectedAgent.name,
-      version: selectedAgent.version || '2.0.0',
-      autonomy: autonomyMode,
-      maxReActRounds: maxRounds,
-      requiredScopes: selectedAgent.requiredScope?.split(',') || visual.readScopes,
-      memoryScopes: {
-        readTypes: visual.readScopes,
-        writeTypes: visual.writeScopes,
-      },
-      tools: selectedAgent.toolsUsed || ['search_documents', 'query_graph'],
-      trustClass: selectedAgent.trustClass || 'core_trusted',
-      samplePrompts: visual.samplePrompts,
-    };
-
-    navigator.clipboard.writeText(JSON.stringify(cardData, null, 2));
-    setCopiedSchema(true);
-    toast({ tone: 'success', title: `Copied ${selectedAgent.name} AgentCard specification` });
-    setTimeout(() => setCopiedSchema(false), 2000);
-  }, [selectedAgent, autonomyMode, maxRounds, visual, toast]);
-
-  // Run Test in Playground
-  const handleRunTest = async (promptToUse?: string) => {
-    if (!selectedAgent) return;
-    const prompt = (
-      promptToUse ||
-      testPrompt ||
-      visual.samplePrompts[0] ||
-      'Run diagnostic task'
-    ).trim();
     setTestRunning(true);
-    setTestEvents([
-      '[CONNECT] Connecting to agent orchestration runtime...',
-      `[INTENT] Intent classified: ${selectedAgent.name} (99% confidence)`,
-      '[PLAN] Planning phase: generating sub-goals and tool DAG',
-    ]);
-    setTestOutput(null);
-
-    const startTime = Date.now();
-
+    setTestError(null);
+    setTestResult(null);
     try {
-      const firstTool = selectedAgent.toolsUsed?.[0] || 'query_graph';
-      setTestEvents((prev) => [...prev, `[EXEC] Tool execution: ${firstTool}(...)`]);
-
       const res = await capabilitiesApi.test({
         workspaceId,
         capabilityName: selectedAgent.name,
         category: 'agents',
-        inputPayload: {
-          message: prompt,
-          autonomyMode,
-          maxReActRounds: maxRounds,
-        },
+        inputPayload: { message: testPrompt.trim() },
       });
-
-      const latency = Date.now() - startTime;
-      setTestEvents((prev) => [
-        ...prev,
-        `[TOOL_OK] Tool returned structured result`,
-        `[REFLECT] Episodic memory updated`,
-        `[DONE] Execution completed successfully in ${res.executionDurationMs || latency}ms`,
-      ]);
-
-      setTestOutput(
-        JSON.stringify(
-          res.result || {
-            ok: true,
-            status: 'completed',
-            agent: selectedAgent.name,
-            autonomy: autonomyMode,
-          },
-          null,
-          2,
-        ),
-      );
-      setTestLatency(res.executionDurationMs || latency);
-      toast({
-        tone: 'success',
-        title: `Test run succeeded for ${selectedAgent.name}`,
-        detail: `Completed in ${res.executionDurationMs || latency}ms.`,
-      });
-    } catch (err: unknown) {
-      const latency = Date.now() - startTime;
-      const errMsg = err instanceof Error ? err.message : 'Execution failed';
-      setTestEvents((prev) => [
-        ...prev,
-        `[ERROR] Execution error: ${errMsg}`,
-        `[FAIL] Run terminated with failure in ${latency}ms`,
-      ]);
-
-      setTestOutput(
-        JSON.stringify(
-          {
-            status: 'error',
-            agent: selectedAgent.name,
-            error: errMsg,
-            timestamp: new Date().toISOString(),
-          },
-          null,
-          2,
-        ),
-      );
-      setTestLatency(latency);
-      toast({ tone: 'error', title: `Test run failed: ${selectedAgent.name}`, detail: errMsg });
+      setTestResult(res);
+    } catch (err) {
+      setTestError(err instanceof Error ? err.message : 'The request failed.');
     } finally {
       setTestRunning(false);
     }
-  };
+  }, [selectedAgent, testPrompt, workspaceId]);
+
+  const contract = useMemo(() => {
+    if (!selectedAgent) return null;
+    const entry = selectedCatalogEntry;
+    return {
+      name: selectedAgent.name,
+      title: formatAgentTitle(selectedAgent.name),
+      version: selectedAgent.version ?? null,
+      // `null` means the registry has no opinion. It must not be rendered as
+      // `false`, which would claim the server classified the agent.
+      isCanonical: entry ? entry.isCanonical : null,
+      registry: entry ? 'live' : 'not-registered',
+      autonomy: autonomyMode,
+      maxReActRounds: reactRounds.persisted ? reactRounds.value : null,
+      requiredScopes: entry
+        ? Array.from(new Set(entry.tools.map((t) => t.requiredScope).filter(Boolean))).sort()
+        : selectedAgent.requiredScope
+          ? [selectedAgent.requiredScope]
+          : [],
+      requiredScopesSource: entry ? 'registry' : 'workspace-capability-row',
+      memoryScopes: entry ? entry.memoryScopes : null,
+      tools: entry ? entry.toolNames : (selectedAgent.toolsUsed ?? []),
+      toolsSource: entry ? 'registry' : 'workspace-capability-row',
+      trustClass: selectedAgent.trustClass ?? null,
+    };
+  }, [selectedAgent, selectedCatalogEntry, autonomyMode, reactRounds]);
+
+  const handleCopyContract = useCallback(() => {
+    if (!contract) return;
+    navigator.clipboard.writeText(JSON.stringify(contract, null, 2));
+    setCopiedContract(true);
+    toast({ tone: 'success', title: `Copied the ${contract.name} contract as served` });
+    setTimeout(() => setCopiedContract(false), 2000);
+  }, [contract, toast]);
+
+  const detailTabs = useMemo(
+    () => [
+      { id: 'mission' as DetailSubTab, label: 'Mission' },
+      { id: 'scopes' as DetailSubTab, label: 'Memory & Scopes' },
+      {
+        id: 'tools' as DetailSubTab,
+        label: 'Declared Tools',
+        badge: selectedCatalogEntry?.tools.length ?? selectedAgent?.toolsUsed?.length ?? 0,
+      },
+      { id: 'contract' as DetailSubTab, label: 'Contract' },
+      { id: 'validate' as DetailSubTab, label: 'Contract Probe' },
+    ],
+    [selectedCatalogEntry, selectedAgent],
+  );
+
+  if (agents.length === 0) {
+    return (
+      <div className="flex-1 overflow-y-auto bg-background p-6">
+        <EmptyState
+          title="No agents in this workspace"
+          description="The capability list for this workspace contains no agent entries. Agents become available once one is registered as a capability."
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col lg:flex-row min-h-0 min-w-0 bg-background text-text overflow-hidden">
-      {/* ────────────────────────────────────────────────────────────────────────── */}
-      {/* Left Column: Autonomous Agents Directory                                    */}
-      {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="w-full lg:w-[320px] xl:w-[360px] 2xl:w-[410px] shrink-0 border-r border-border bg-surface flex flex-col min-h-0">
-        <div className="p-3 border-b border-border bg-surface shrink-0">
-          {/* Type Filter Pills + Counter */}
-          <div className="flex items-center justify-between gap-1 text-xs">
-            <div className="flex items-center gap-1">
-              {(
-                [
-                  { id: 'all', label: 'All' },
-                  { id: 'canonical', label: 'Canonical' },
-                  { id: 'specialist', label: 'Specialist' },
-                ] as const
-              ).map((tab) => {
-                const isActive = activeTypeFilter === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTypeFilter(tab.id)}
-                    className={`px-2 py-0.5 rounded text-xs font-sans font-medium transition-colors cursor-pointer ${
-                      isActive
-                        ? 'bg-primary/10 text-primary font-semibold'
-                        : 'text-text-muted hover:text-text'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
+      <section
+        className="w-full lg:w-[320px] xl:w-[360px] 2xl:w-[410px] shrink-0 border-r border-border bg-surface flex flex-col min-h-0"
+        aria-labelledby="agents-directory-heading"
+      >
+        <div className="p-3 border-b border-border bg-surface shrink-0 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <h2
+              id="agents-directory-heading"
+              className="text-xs font-semibold text-text uppercase tracking-wider font-sans"
+            >
+              Agents
+            </h2>
             <span className="text-2xs font-sans text-text-muted">
-              {filteredAgents.length} agents
+              {filteredAgents.length} of {agents.length}
             </span>
           </div>
-        </div>
 
-        {/* Scrollable Agent Items List */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain divide-y divide-border p-1.5 pb-12 space-y-0.5">
-          {filteredAgents.map((agent) => {
-            const isSelected = agent.id === selectedAgent?.id;
-            const meta = getAgentVisualMeta(agent.name);
-            return (
-              <div
-                key={agent.id}
-                onClick={() => setSelectedAgentId(agent.id)}
-                className={`group flex items-start justify-between p-3 rounded-lg cursor-pointer transition-all ${
-                  isSelected
-                    ? 'bg-primary/10 border-l-2 border-primary border-y border-r border-border shadow-xs text-primary'
-                    : 'hover:bg-surface-hover border border-transparent text-text'
+          <ButtonGroup
+            attached
+            className="w-full [&>button]:flex-1 [&>button]:text-xs [&>button]:px-2"
+            aria-label="Filter agents by registry classification"
+          >
+            {(
+              [
+                { id: 'all', label: 'All' },
+                { id: 'canonical', label: 'Canonical' },
+                { id: 'other', label: 'Other' },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTypeFilter(tab.id)}
+                aria-pressed={activeTypeFilter === tab.id}
+                className={`py-1 rounded-md text-xs font-sans font-medium transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${
+                  activeTypeFilter === tab.id
+                    ? 'bg-primary/10 text-primary font-semibold'
+                    : 'text-text-muted hover:text-text'
                 }`}
               >
-                <div className="flex items-start gap-2.5 min-w-0 flex-1 pr-2">
-                  <div
-                    className={`p-2 rounded-md shrink-0 ${meta.badgeClass} flex items-center justify-center`}
-                    aria-hidden="true"
-                  >
-                    {meta.iconSvg}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span
-                        className={`text-xs font-sans font-medium tracking-tight truncate ${
-                          isSelected
-                            ? 'text-primary font-semibold'
-                            : 'text-text group-hover:text-primary'
-                        }`}
-                      >
-                        {meta.readableTitle}
-                      </span>
-                      <span className="text-2xs font-mono text-text-muted bg-surface-elevated px-1 py-0.5 rounded border border-border">
-                        {agent.name}
-                      </span>
-                      {meta.isCanonical && (
-                        <span className="px-1.5 py-0.2 rounded text-[9px] font-sans font-medium bg-primary/10 text-primary border border-primary/20">
-                          Canonical
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-text-secondary font-sans line-clamp-2 mt-0.5 leading-relaxed">
-                      {agent.description}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <span className="text-2xs font-mono text-text-muted">
-                        {agent.toolsUsed?.length || 4} tools
-                      </span>
-                      <span className="text-text-muted">•</span>
-                      <span className="text-2xs font-sans text-text-secondary capitalize">
-                        {agent.autonomy || 'autonomous'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                {tab.label}
+              </button>
+            ))}
+          </ButtonGroup>
 
-                <div className="shrink-0 pt-1" onClick={(e) => e.stopPropagation()}>
+          {catalogError && (
+            <p role="status" className="text-2xs font-sans text-warning leading-relaxed">
+              Agent registry unavailable: {catalogError.message}. Scopes and tools below come from
+              the workspace capability row, not the registry.
+            </p>
+          )}
+        </div>
+
+        <ul className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain divide-y divide-border p-1.5 pb-12">
+          {filteredAgents.length === 0 && (
+            <li className="p-2">
+              <EmptyState
+                title="No agents match"
+                description={
+                  searchQuery.trim()
+                    ? `Nothing in this workspace matches “${searchQuery.trim()}”.`
+                    : 'No agent has this registry classification.'
+                }
+              />
+            </li>
+          )}
+
+          {filteredAgents.map((agent) => {
+            const entry = catalogByName.get(agent.name.toLowerCase());
+            const isSelected = agent.id === selectedAgent?.id;
+            const hue = agentHue(agent.name);
+            const toolCount = entry?.tools.length ?? agent.toolsUsed?.length ?? 0;
+            return (
+              <li key={agent.id}>
+                <div
+                  className={`group flex items-start justify-between gap-2 p-3 rounded-lg transition-colors border ${
+                    isSelected
+                      ? 'bg-primary/10 border-l-2 border-l-primary border-primary/30 text-primary'
+                      : 'hover:bg-surface-hover border-transparent text-text'
+                  }`}
+                >
                   <button
                     type="button"
-                    role="switch"
-                    aria-checked={agent.enabled}
-                    aria-label={`Toggle ${agent.name}`}
-                    onClick={() => onToggleAgent(agent.id)}
-                    className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      agent.enabled ? 'bg-success' : 'bg-surface-active'
-                    }`}
+                    onClick={() => setSelectedAgentId(agent.id)}
+                    aria-current={isSelected ? 'true' : undefined}
+                    className="flex items-start gap-2.5 min-w-0 flex-1 text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
                   >
                     <span
-                      className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out mt-[0.5px] ml-[0.5px] ${
-                        agent.enabled ? 'translate-x-3' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ────────────────────────────────────────────────────────────────────────── */}
-      {/* Right Column: AgentCard Studio & Orchestration Inspector                   */}
-      {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-background overflow-hidden">
-        {selectedAgent && (
-          <>
-            <div className="p-5 border-b border-border bg-surface shrink-0 font-sans shadow-xs">
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-start gap-3">
-                    <div
-                      className={`p-2.5 rounded-lg border shrink-0 ${visual.badgeClass} flex items-center justify-center`}
+                      className="p-2 rounded-md shrink-0 border flex items-center justify-center"
+                      style={{
+                        color: hue.color,
+                        backgroundColor: hue.background,
+                        borderColor: hue.border,
+                      }}
                       aria-hidden="true"
                     >
-                      {visual.iconSvg}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h2 className="text-base sm:text-lg font-semibold tracking-tight text-text font-sans">
-                          {visual.readableTitle}
-                        </h2>
-                        <span className="px-1.5 py-0.5 text-xs font-mono text-text-muted bg-surface-elevated border border-border rounded">
-                          {selectedAgent.name}
+                      <AgentGlyph name={agent.name} />
+                    </span>
+                    <span className="min-w-0 flex-1 block">
+                      <span className="flex items-center gap-1.5 flex-wrap">
+                        <span
+                          className={`text-xs font-sans font-semibold tracking-tight truncate ${
+                            isSelected ? 'text-primary' : 'text-text'
+                          }`}
+                        >
+                          {formatAgentTitle(agent.name)}
                         </span>
-                        {visual.isCanonical ? (
-                          <span className="px-2 py-0.5 text-xs font-medium rounded bg-primary/10 text-primary border border-primary/20">
-                            Canonical Core Agent
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 text-xs font-medium rounded bg-surface-elevated text-text-secondary border border-border">
-                            Specialist Agent
-                          </span>
+                        <span className="text-2xs font-mono text-text-muted bg-surface-elevated px-1 py-0.5 rounded border border-border">
+                          {agent.name}
+                        </span>
+                        {entry?.isCanonical === true && (
+                          <Badge variant="primary" size="sm">
+                            Canonical
+                          </Badge>
                         )}
-                      </div>
-                      <p className="text-xs text-text-secondary mt-1 leading-relaxed max-w-2xl">
-                        {selectedAgent.description}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Header Actions: Chat with Agent Button + Autonomy Pill */}
-                  <div className="flex items-center gap-2.5 flex-wrap shrink-0">
-                    <Link
-                      href={`/workspace/${workspaceId}/chat?agent=${selectedAgent.name}`}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-action hover:bg-action/90 text-action-fg font-medium text-xs transition-colors shadow-xs"
-                      aria-label={`Chat with ${visual.readableTitle}`}
-                    >
-                      <span>Chat with Agent</span>
-                      <svg
-                        className="w-3.5 h-3.5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        aria-hidden="true"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
-                        />
-                      </svg>
-                    </Link>
-
-                    {/* Autonomy Level Pill Selector */}
-                    <div className="flex items-center p-0.5 rounded-lg bg-surface-elevated border border-border text-xs font-sans">
-                      <button
-                        type="button"
-                        onClick={() => setAutonomyMode('suggest')}
-                        className={`px-2 py-1 rounded-md transition-colors cursor-pointer ${
-                          autonomyMode === 'suggest'
-                            ? 'bg-primary/10 text-primary font-semibold shadow-xs'
-                            : 'text-text-muted hover:text-text'
-                        }`}
-                      >
-                        Suggest Only
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAutonomyMode('approval_required')}
-                        className={`px-2 py-1 rounded-md transition-colors cursor-pointer ${
-                          autonomyMode === 'approval_required'
-                            ? 'bg-primary/10 text-primary font-semibold shadow-xs'
-                            : 'text-text-muted hover:text-text'
-                        }`}
-                      >
-                        Approval Gated
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAutonomyMode('autonomous')}
-                        className={`px-2 py-1 rounded-md transition-colors cursor-pointer ${
-                          autonomyMode === 'autonomous'
-                            ? 'bg-primary/10 text-primary font-semibold shadow-xs'
-                            : 'text-text-muted hover:text-text'
-                        }`}
-                      >
-                        Autonomous
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Subtabs Bar */}
-                <div className="flex items-center gap-4 border-b border-border mt-2 overflow-x-auto no-scrollbar">
-                  <button
-                    type="button"
-                    onClick={() => setDetailSubTab('card')}
-                    className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px shrink-0 cursor-pointer ${
-                      detailSubTab === 'card'
-                        ? 'border-primary text-primary font-semibold'
-                        : 'border-transparent text-text-muted hover:text-text'
-                    }`}
-                  >
-                    Mission &amp; Prompts
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDetailSubTab('scopes')}
-                    className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px shrink-0 cursor-pointer ${
-                      detailSubTab === 'scopes'
-                        ? 'border-primary text-primary font-semibold'
-                        : 'border-transparent text-text-muted hover:text-text'
-                    }`}
-                  >
-                    Memory &amp; Scopes
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDetailSubTab('tools')}
-                    className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px shrink-0 cursor-pointer ${
-                      detailSubTab === 'tools'
-                        ? 'border-primary text-primary font-semibold'
-                        : 'border-transparent text-text-muted hover:text-text'
-                    }`}
-                  >
-                    Declared Tools ({selectedAgent.toolsUsed?.length || 4})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDetailSubTab('schema')}
-                    className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px shrink-0 cursor-pointer ${
-                      detailSubTab === 'schema'
-                        ? 'border-primary text-primary font-semibold'
-                        : 'border-transparent text-text-muted hover:text-text'
-                    }`}
-                  >
-                    Contract (AgentCard)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDetailSubTab('test')}
-                    className={`pb-2 text-xs font-medium transition-colors border-b-2 -mb-px shrink-0 cursor-pointer ${
-                      detailSubTab === 'test'
-                        ? 'border-primary text-primary font-semibold'
-                        : 'border-transparent text-text-muted hover:text-text'
-                    }`}
-                  >
-                    Test Playground
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Subtab Content Panels */}
-            <div className="flex-1 overflow-y-auto overscroll-y-contain p-5 pb-16 bg-background min-h-0 font-sans">
-              {/* 1. MISSION & PROMPTS SUBTAB */}
-              {detailSubTab === 'card' && (
-                <div className="space-y-5 max-w-3xl">
-                  {/* Interactive Sample Prompts */}
-                  <div className="p-4 rounded-xl bg-surface border border-border space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs font-semibold uppercase tracking-wider text-text-secondary font-sans">
-                        Sample Task Prompts
-                      </div>
-                      <span className="text-xs text-text-muted">Click to load into playground</span>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      {visual.samplePrompts.map((prompt, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center justify-between p-2.5 rounded-lg bg-surface-elevated border border-border hover:border-primary/50 transition-all text-xs"
-                        >
-                          <span className="text-text leading-relaxed flex-1 pr-3">
-                            &ldquo;{prompt}&rdquo;
-                          </span>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setTestPrompt(prompt);
-                                setDetailSubTab('test');
-                              }}
-                              className="px-2 py-1 rounded text-xs font-medium bg-surface text-primary hover:bg-surface-hover transition-colors border border-border cursor-pointer"
-                            >
-                              Test ↗
-                            </button>
-                            <Link
-                              href={`/workspace/${workspaceId}/chat?agent=${selectedAgent.name}&prompt=${encodeURIComponent(prompt)}`}
-                              className="px-2 py-1 rounded text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors border border-primary/20"
-                            >
-                              Chat ↗
-                            </Link>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Jinja2 System Prompt Template */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="text-xs font-semibold uppercase tracking-wider text-text-muted font-sans">
-                        Jinja2 System Prompt Specification
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs font-mono text-text-muted">
-                        <span>Tokens:</span>
-                        <span className="px-1.5 py-0.2 rounded bg-surface-elevated text-primary border border-border">
-                          {`{{ profile }}`}
+                        {entry === undefined && catalog && (
+                          <Badge variant="warning" size="sm">
+                            Not in registry
+                          </Badge>
+                        )}
+                      </span>
+                      <span className="block text-xs text-text-secondary font-sans line-clamp-2 mt-0.5 leading-relaxed">
+                        {agent.description}
+                      </span>
+                      <span className="flex items-center gap-2 mt-1.5">
+                        <span className="text-2xs font-mono text-text-muted">
+                          {toolCount} {toolCount === 1 ? 'tool' : 'tools'}
                         </span>
-                        <span className="px-1.5 py-0.2 rounded bg-surface-elevated text-primary border border-border">
-                          {`{{ tools }}`}
+                        <span className="text-text-muted" aria-hidden="true">
+                          •
                         </span>
-                        <span className="px-1.5 py-0.2 rounded bg-surface-elevated text-primary border border-border">
-                          {`{{ memory_context }}`}
+                        <span className="text-2xs font-sans text-text-secondary">
+                          {coerceAutonomy(
+                            entry?.defaultAutonomy,
+                            selectedAgent?.autonomy ?? 'autonomous',
+                          )}
                         </span>
-                      </div>
-                    </div>
-                    <div className="bg-surface-elevated border border-border rounded-xl p-4 overflow-x-auto font-mono text-xs text-text leading-relaxed">
-                      <pre className="whitespace-pre-wrap">{selectedAgent.markdownDoc}</pre>
-                    </div>
-                  </div>
+                      </span>
+                    </span>
+                  </button>
 
-                  {/* ReAct Iteration Limit Guardrail */}
-                  <div className="p-4 rounded-xl bg-surface border border-border flex items-center justify-between">
-                    <div>
-                      <div className="text-xs font-semibold text-text">
-                        ReAct Reasoning Iteration Guardrail
-                      </div>
-                      <div className="text-xs text-text-muted mt-0.5">
-                        Maximum recursive reasoning and tool execution loops allowed before
-                        demanding user confirmation.
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min={1}
-                        max={50}
-                        value={maxRounds}
-                        onChange={(e) => setMaxRounds(Number(e.target.value))}
-                        className="w-16 bg-surface-elevated border border-border rounded px-2 py-1 text-xs font-mono text-text text-center focus:outline-none focus:border-primary"
-                      />
-                      <span className="text-xs text-text-muted">rounds</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 2. MEMORY & SCOPES SUBTAB */}
-              {detailSubTab === 'scopes' && (
-                <div className="space-y-5 max-w-3xl font-sans">
-                  {/* Read Memory Scopes */}
-                  <div className="p-4 rounded-xl bg-surface border border-border space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs font-semibold uppercase tracking-wider text-success">
-                        Read Scopes (Memory &amp; Knowledge Graph)
-                      </div>
-                      <span className="text-xs text-text-muted">Authorized read entities</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {visual.readScopes.map((scope) => (
-                        <span
-                          key={scope}
-                          className="px-2.5 py-1 rounded-md text-xs font-mono bg-success/15 border border-success/30 text-success"
-                        >
-                          read:{scope}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Write Memory Scopes */}
-                  <div className="p-4 rounded-xl bg-surface border border-border space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs font-semibold uppercase tracking-wider text-warning">
-                        Write Scopes (Mutations &amp; Storage)
-                      </div>
-                      <span className="text-xs text-text-muted">State persist authorization</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {visual.writeScopes.map((scope) => (
-                        <span
-                          key={scope}
-                          className="px-2.5 py-1 rounded-md text-xs font-mono bg-warning/15 border border-warning/30 text-warning"
-                        >
-                          write:{scope}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Knowledge Graph Retention Policy */}
-                  <div className="p-4 rounded-xl bg-surface border border-border space-y-2">
-                    <div className="text-xs font-semibold text-text">
-                      Sovereign Graph Retention Policy
-                    </div>
-                    <p className="text-xs text-text-secondary leading-relaxed">
-                      Triples written by this agent inherit cryptographic workspace isolation. Nodes
-                      decay according to an exponential half-life curve unless reinforced in
-                      subsequent reasoning turns.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* 3. DECLARED TOOLS SUBTAB */}
-              {detailSubTab === 'tools' && (
-                <div className="space-y-4 max-w-3xl font-sans">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-                      Assigned Tool Capabilities ({selectedAgent.toolsUsed?.length || 4})
-                    </div>
-                    <span className="text-xs text-text-muted">Function calling enabled</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {(
-                      selectedAgent.toolsUsed || [
-                        'search_documents',
-                        'query_graph',
-                        'create_entity',
-                        'merge_entities',
-                      ]
-                    ).map((tool) => (
-                      <div
-                        key={tool}
-                        className="p-3.5 rounded-xl bg-surface border border-border flex flex-col justify-between space-y-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-mono font-semibold text-primary">
-                            {tool}
-                          </span>
-                          <span className="text-2xs font-sans px-1.5 py-0.5 rounded bg-surface-elevated text-text-secondary border border-border">
-                            Built-in
-                          </span>
-                        </div>
-                        <p className="text-xs text-text-secondary leading-relaxed">
-                          Autonomous function-calling capability exposed to {selectedAgent.name}{' '}
-                          during ReAct loop.
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 4. CONTRACT & AGENTCARD SUBTAB */}
-              {detailSubTab === 'schema' && (
-                <div className="space-y-4 max-w-3xl font-sans">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-                      AgentCard JSON Contract Specification
-                    </h4>
-                    <button
-                      type="button"
-                      onClick={handleCopyAgentCard}
-                      className="px-2.5 py-1 rounded text-xs font-medium bg-surface hover:bg-surface-hover text-primary transition-colors border border-border cursor-pointer"
-                    >
-                      {copiedSchema ? '✓ Copied!' : 'Copy AgentCard JSON'}
-                    </button>
-                  </div>
-
-                  <div className="bg-surface-elevated border border-border rounded-xl p-4 overflow-x-auto font-mono text-xs text-text leading-relaxed">
-                    <pre>
-                      {JSON.stringify(
-                        {
-                          name: selectedAgent.name,
-                          title: visual.readableTitle,
-                          version: selectedAgent.version || '2.0.0',
-                          canonical: visual.isCanonical,
-                          autonomy: autonomyMode,
-                          maxReActRounds: maxRounds,
-                          requiredScopes:
-                            selectedAgent.requiredScope?.split(',') || visual.readScopes,
-                          memoryScopes: {
-                            readTypes: visual.readScopes,
-                            writeTypes: visual.writeScopes,
-                          },
-                          tools: selectedAgent.toolsUsed || ['search_documents', 'query_graph'],
-                          trustClass: selectedAgent.trustClass || 'core_trusted',
-                          samplePrompts: visual.samplePrompts,
-                        },
-                        null,
-                        2,
-                      )}
-                    </pre>
-                  </div>
-                </div>
-              )}
-
-              {/* 5. TEST PLAYGROUND & STREAM TRACE */}
-              {detailSubTab === 'test' && (
-                <div className="space-y-5 max-w-3xl font-sans">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted">
-                        Test Prompt / Message
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setTestPrompt(visual.samplePrompts[0] || '')}
-                        className="text-xs text-primary hover:underline cursor-pointer"
-                      >
-                        Reset to Sample Prompt
-                      </button>
-                    </div>
-
-                    <textarea
-                      rows={4}
-                      value={testPrompt || visual.samplePrompts[0] || ''}
-                      onChange={(e) => setTestPrompt(e.target.value)}
-                      placeholder="Type a test task message for the agent..."
-                      className="w-full bg-surface border border-border rounded-xl p-3.5 font-mono text-xs text-text focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
+                  <div className="shrink-0 pt-0.5">
+                    <Switch
+                      checked={agent.enabled}
+                      onChange={() => onToggleAgent(agent.id)}
+                      label={<span className="sr-only">{`Toggle ${agent.name}`}</span>}
                     />
                   </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
 
-                  {/* Run Button */}
-                  <div>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => handleRunTest()}
-                      disabled={testRunning}
-                      className="shadow-xs font-medium inline-flex items-center gap-2 text-xs"
-                    >
-                      {testRunning ? (
-                        <>
-                          <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span>Executing Agent Run…</span>
-                        </>
+      <section className="flex-1 flex flex-col min-h-0 min-w-0 bg-background overflow-hidden">
+        {selectedAgent && selectedCatalogEntry === undefined && catalogLoading && (
+          <div className="p-5 space-y-3 border-b border-border bg-surface shrink-0">
+            <Skeleton className="h-5 w-56" />
+            <Skeleton className="h-3 w-full max-w-xl" />
+          </div>
+        )}
+
+        {selectedAgent ? (
+          <>
+            <div className="p-5 border-b border-border bg-surface shrink-0 font-sans shadow-xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                <div className="flex items-start gap-3 min-w-0">
+                  <span
+                    className="p-2.5 rounded-lg border shrink-0 flex items-center justify-center"
+                    style={{
+                      color: agentHue(selectedAgent.name).color,
+                      backgroundColor: agentHue(selectedAgent.name).background,
+                      borderColor: agentHue(selectedAgent.name).border,
+                    }}
+                    aria-hidden="true"
+                  >
+                    <AgentGlyph name={selectedAgent.name} className="w-5 h-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-base sm:text-lg font-semibold tracking-tight text-text font-sans">
+                        {formatAgentTitle(selectedAgent.name)}
+                      </h3>
+                      <span className="px-1.5 py-0.5 text-xs font-mono text-text-muted bg-surface-elevated border border-border rounded">
+                        {selectedAgent.name}
+                      </span>
+                      {isCanonical === true ? (
+                        <Badge variant="primary" size="sm">
+                          Canonical core agent
+                        </Badge>
+                      ) : isCanonical === false ? (
+                        <Badge variant="default" size="sm">
+                          Non-canonical
+                        </Badge>
                       ) : (
-                        <>
-                          <svg
-                            className="w-3.5 h-3.5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"
-                            />
-                          </svg>
-                          <span>Execute Agent Run</span>
-                        </>
+                        <Badge variant="warning" size="sm">
+                          Classification not served
+                        </Badge>
                       )}
-                    </Button>
+                    </div>
+                    <p className="text-xs text-text-secondary mt-1 leading-relaxed max-w-2xl">
+                      {selectedCatalogEntry?.mission || selectedAgent.description}
+                    </p>
+                    {selectedCatalogEntry ? (
+                      <p className="text-2xs font-mono text-text-muted mt-1">
+                        mission from GET /agents/catalog
+                      </p>
+                    ) : (
+                      <p className="text-2xs font-mono text-warning mt-1">
+                        Not in the live agent registry &mdash; the text above is this
+                        workspace&apos;s capability description, not the server&apos;s agent
+                        mission.
+                      </p>
+                    )}
                   </div>
+                </div>
 
-                  {/* Live Execution Stream Event Trace */}
-                  {testEvents.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-                        Execution Stream Trace
-                      </div>
-                      <div className="bg-surface-elevated border border-border rounded-xl p-3.5 space-y-1.5 font-mono text-xs">
-                        {testEvents.map((evt, idx) => (
-                          <div key={idx} className="text-text-secondary flex items-center gap-2">
-                            <span className="text-2xs text-text-muted">#{idx + 1}</span>
-                            <span>{evt}</span>
-                          </div>
+                <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+                  {/* A Link styled to match Button's primary variant. Button renders a
+                      <button>, and nesting the anchor inside it is invalid interactive
+                      content, so the two are not composed here. */}
+                  <Link
+                    href={`/workspace/${workspaceId}/chat?agent=${selectedAgent.name}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-action hover:bg-action-hover active:bg-action-active text-action-fg font-medium text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                  >
+                    <span>Chat with Agent</span>
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+                      />
+                    </svg>
+                  </Link>
+
+                  <fieldset
+                    className="flex items-center p-0.5 rounded-lg bg-surface-elevated border border-border"
+                    aria-label="Agent autonomy"
+                  >
+                    <legend className="sr-only">Agent autonomy</legend>
+                    {AUTONOMY_OPTIONS.map((option) => {
+                      const isActive = autonomyMode === option.value;
+                      return (
+                        <Tooltip key={option.value} content={option.hint}>
+                          <button
+                            type="button"
+                            role="radio"
+                            aria-checked={isActive}
+                            disabled={savingAutonomy}
+                            onClick={() => void handleToggleAutonomy(option.value)}
+                            className={`px-2 py-1 rounded-md transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-surface-elevated disabled:opacity-60 ${
+                              isActive
+                                ? 'bg-primary/10 text-primary font-semibold shadow-xs'
+                                : 'text-text-muted hover:text-text'
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        </Tooltip>
+                      );
+                    })}
+                  </fieldset>
+                </div>
+              </div>
+
+              <Tabs
+                tabs={detailTabs}
+                activeTab={detailSubTab}
+                onTabChange={(id) => setDetailSubTab(id as DetailSubTab)}
+                variant="underline"
+                size="sm"
+                ariaLabel={`${formatAgentTitle(selectedAgent.name)} detail`}
+              />
+            </div>
+
+            <div className="flex-1 overflow-y-auto overscroll-y-contain p-5 pb-16 bg-background min-h-0 font-sans">
+              <TabPanel id="mission" activeTab={detailSubTab}>
+                <div className="space-y-5 max-w-3xl">
+                  {selectedCatalogEntry && selectedCatalogEntry.skills.length > 0 && (
+                    <div className="p-4 rounded-xl bg-surface border border-border space-y-2.5">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-text-secondary font-sans">
+                        Registry capability labels
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedCatalogEntry.skills.map((skill) => (
+                          <Badge key={skill} variant="default" size="sm">
+                            {skill}
+                          </Badge>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  {/* Structured Output Result */}
-                  {testOutput && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-                          Structured Execution Output
-                        </h4>
-                        <div className="flex items-center gap-2">
-                          {testLatency && (
-                            <span className="text-xs font-mono text-text-muted">
-                              {testLatency}ms latency
-                            </span>
-                          )}
-                          <Badge variant="success" size="sm">
-                            200 OK
-                          </Badge>
-                        </div>
+                  <div className="p-4 rounded-xl bg-surface border border-border space-y-2.5">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-text-secondary font-sans">
+                      Workspace capability document
+                    </h4>
+                    {selectedAgent.markdownDoc ? (
+                      <div className="bg-surface-elevated border border-border rounded-xl p-4 overflow-x-auto font-mono text-xs text-text leading-relaxed">
+                        <pre className="whitespace-pre-wrap">{selectedAgent.markdownDoc}</pre>
                       </div>
-                      <div className="bg-surface-elevated border border-border rounded-xl p-4 overflow-x-auto font-mono text-xs text-success leading-relaxed">
-                        <pre>{testOutput}</pre>
+                    ) : (
+                      <p className="text-xs text-text-muted">
+                        This capability row carries no document. The server&apos;s agent mission is
+                        above.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-surface border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-semibold text-text">ReAct round budget</div>
+                      <div className="text-xs text-text-muted mt-0.5">
+                        Stored in the capability config bag. No agent runtime reads this field yet,
+                        so it is a recorded setting, not an enforced guardrail.
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <label
+                        htmlFor="agent-react-rounds"
+                        className="text-2xs font-sans text-text-muted"
+                      >
+                        Max rounds
+                      </label>
+                      <input
+                        id="agent-react-rounds"
+                        type="number"
+                        min={1}
+                        max={50}
+                        value={reactRounds.value}
+                        onChange={(e) => {
+                          const next = Number(e.target.value);
+                          if (Number.isFinite(next)) {
+                            setReactRounds({
+                              value: Math.min(50, Math.max(1, Math.trunc(next))),
+                              persisted: false,
+                            });
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const next = Number(e.target.value);
+                          if (Number.isFinite(next) && next !== savedRounds) {
+                            void handleCommitRounds(Math.min(50, Math.max(1, Math.trunc(next))));
+                          }
+                        }}
+                        className="w-16 bg-surface-elevated border border-border rounded px-2 py-1 text-xs font-mono text-text text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus:border-primary"
+                      />
+                      <Badge variant={reactRounds.persisted ? 'success' : 'warning'} size="sm">
+                        {reactRounds.persisted ? 'Saved' : 'Not saved'}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </TabPanel>
+
+              <TabPanel id="scopes" activeTab={detailSubTab}>
+                <div className="space-y-5 max-w-3xl font-sans">
+                  <ScopeList
+                    title="Read Scopes"
+                    description="memory_scopes.read_types from the live registry"
+                    scopes={selectedCatalogEntry?.memoryScopes?.readTypes ?? []}
+                    emptyText="The registry declares no read memory scopes for this agent."
+                    variant="success"
+                  />
+                  <ScopeList
+                    title="Write Scopes"
+                    description="memory_scopes.write_types from the live registry"
+                    scopes={selectedCatalogEntry?.memoryScopes?.writeTypes ?? []}
+                    emptyText="The registry declares no write memory scopes for this agent."
+                    variant="warning"
+                  />
+                  <ScopeList
+                    title="Required Tool Scopes"
+                    description={
+                      selectedCatalogEntry
+                        ? 'union of required_scope across the tools the registry declares'
+                        : 'fallback: the required scope on this workspace capability row'
+                    }
+                    scopes={contract?.requiredScopes ?? []}
+                    emptyText="No required scope is declared anywhere for this agent."
+                    variant="primary"
+                  />
+                </div>
+              </TabPanel>
+
+              <TabPanel id="tools" activeTab={detailSubTab}>
+                <div className="space-y-4 max-w-3xl font-sans">
+                  {selectedCatalogEntry && selectedCatalogEntry.tools.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {selectedCatalogEntry.tools.map((tool) => (
+                        <div
+                          key={tool.name}
+                          className="p-3.5 rounded-xl bg-surface border border-border flex flex-col justify-between space-y-2"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-mono font-semibold text-primary">
+                              {tool.name}
+                            </span>
+                            <span className="text-2xs font-sans px-1.5 py-0.5 rounded bg-surface-elevated text-text-secondary border border-border">
+                              {tool.category}
+                            </span>
+                          </div>
+                          <p className="text-xs text-text-secondary leading-relaxed">
+                            {tool.description ||
+                              'The registry returned no description for this tool.'}
+                          </p>
+                          <span className="text-2xs font-mono text-text-muted">
+                            scope: {tool.requiredScope}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <EmptyState
+                      title="No declared tools"
+                      description={
+                        selectedCatalogEntry
+                          ? 'The live registry reports this agent declares no tools.'
+                          : 'This agent is not in the live registry. The names below come from the workspace capability row, which is a stored list and is not verified against the server.'
+                      }
+                    />
+                  )}
+                </div>
+              </TabPanel>
+
+              <TabPanel id="contract" activeTab={detailSubTab}>
+                <div className="space-y-4 max-w-3xl font-sans">
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                      Contract as served
+                    </h4>
+                    <Button variant="secondary" size="sm" onClick={handleCopyContract}>
+                      {copiedContract ? 'Copied' : 'Copy JSON'}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-text-muted leading-relaxed">
+                    Every field below is either read from <code>GET /agents/catalog</code> or is
+                    explicitly <code>null</code> because no source supplied it. Unset values are not
+                    defaulted into something that looks configured.
+                  </p>
+                  <div className="bg-surface-elevated border border-border rounded-xl p-4 overflow-x-auto font-mono text-xs text-text leading-relaxed">
+                    <pre>{contract ? JSON.stringify(contract, null, 2) : ''}</pre>
+                  </div>
+                </div>
+              </TabPanel>
+
+              <TabPanel id="validate" activeTab={detailSubTab}>
+                <div className="space-y-5 max-w-3xl font-sans">
+                  <div className="space-y-2">
+                    <Textarea
+                      label="Probe message (sent for validation only)"
+                      rows={3}
+                      value={testPrompt}
+                      onChange={(e) => setTestPrompt(e.target.value)}
+                      placeholder="Optional. This endpoint validates the agent's contract; it never sends the message to an LLM."
+                      helperText="POST /api/v1/agents/capabilities/test validates the agent's declared contract against the live registry. It performs no planning run and no LLM call."
+                    />
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleRunContractProbe}
+                      loading={testRunning}
+                    >
+                      Read contract from registry
+                    </Button>
+                  </div>
+
+                  {testError && (
+                    <ErrorState
+                      title="Contract probe failed"
+                      message={testError}
+                      onRetry={handleRunContractProbe}
+                      actionText="Retry probe"
+                    />
+                  )}
+
+                  {testResult && (
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge
+                          variant={
+                            testResult.status === 'success'
+                              ? 'success'
+                              : testResult.status === 'error'
+                                ? 'error'
+                                : 'warning'
+                          }
+                          size="sm"
+                        >
+                          {testResult.status}
+                        </Badge>
+                        <Badge variant={testResult.executed ? 'success' : 'default'} size="sm">
+                          {testResult.executed
+                            ? 'executed: true'
+                            : 'executed: false — nothing was run'}
+                        </Badge>
+                        <span className="text-2xs font-mono text-text-muted">
+                          {testResult.executionDurationMs}ms server-side
+                        </span>
+                      </div>
+
+                      {testResult.validationErrors.length > 0 && (
+                        <ul className="space-y-1 text-xs text-error font-sans list-disc list-inside">
+                          {testResult.validationErrors.map((err) => (
+                            <li key={err}>{err}</li>
+                          ))}
+                        </ul>
+                      )}
+
+                      <div className="rounded-xl border border-border bg-surface p-4 space-y-2">
+                        <div className="flex items-center justify-between border-b border-border-subtle pb-2">
+                          <span className="text-2xs font-sans font-semibold uppercase tracking-wider text-text-muted">
+                            Response body
+                          </span>
+                          <span className="text-2xs font-mono text-text-muted">
+                            {testResult.timestamp}
+                          </span>
+                        </div>
+                        <pre className="p-3 rounded-lg bg-surface-elevated border border-border text-xs font-mono text-text overflow-x-auto max-h-80">
+                          {JSON.stringify(testResult.result, null, 2)}
+                        </pre>
                       </div>
                     </div>
                   )}
+
+                  {!testResult && !testError && !testRunning && (
+                    <p className="text-xs text-text-muted font-sans leading-relaxed">
+                      No probe has been run. This pane will show only what the server returns.
+                    </p>
+                  )}
                 </div>
-              )}
+              </TabPanel>
             </div>
 
-            {/* Footer Status Bar */}
-            <footer className="px-5 py-2.5 border-t border-border bg-surface flex items-center justify-between text-xs font-sans text-text-muted shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-success" />
-                <span>Active in workspace sessions • ReAct Loop Guarded</span>
-              </div>
-              <span className="font-mono text-2xs">v{selectedAgent.version || '2.0.0'}</span>
+            <footer className="px-5 py-2.5 border-t border-border bg-surface flex flex-wrap items-center justify-between gap-2 text-xs font-sans text-text-muted shrink-0">
+              <span className="inline-flex items-center gap-2">
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${selectedAgent.enabled ? 'bg-success' : 'bg-text-muted'}`}
+                  aria-hidden="true"
+                />
+                {selectedAgent.enabled ? 'Enabled in this workspace' : 'Disabled in this workspace'}
+              </span>
+              <span className="inline-flex items-center gap-3 font-mono text-2xs">
+                <span>runs: {selectedAgent.usageCount}</span>
+                <span>last used: {formatRelativeTime(selectedAgent.lastUsedAt)}</span>
+                {selectedAgent.version && <span>v{selectedAgent.version}</span>}
+              </span>
             </footer>
           </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center p-6">
+            <EmptyState
+              title="No agent selected"
+              description="Pick an agent from the directory to inspect its registry contract."
+            />
+          </div>
         )}
-      </div>
+      </section>
     </div>
   );
 };
+
+function ScopeList({
+  title,
+  description,
+  scopes,
+  emptyText,
+  variant,
+}: {
+  title: string;
+  description: string;
+  scopes: string[];
+  emptyText: string;
+  variant: 'primary' | 'success' | 'warning';
+}) {
+  const tone: Record<'primary' | 'success' | 'warning', string> = {
+    primary: 'bg-primary/10 text-primary border-primary/30',
+    success: 'bg-success/10 text-success border-success/30',
+    warning: 'bg-warning/10 text-warning border-warning/30',
+  };
+  return (
+    <div className="p-4 rounded-xl bg-surface border border-border space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-text font-sans">
+          {title}
+        </h4>
+        <span className="text-2xs font-mono text-text-muted">{description}</span>
+      </div>
+      {scopes.length === 0 ? (
+        <p className="text-xs text-text-muted font-sans">{emptyText}</p>
+      ) : (
+        <ul className="flex flex-wrap gap-2">
+          {scopes.map((scope) => (
+            <li key={scope}>
+              <Badge variant={variant} size="sm" className="font-mono">
+                {scope}
+              </Badge>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

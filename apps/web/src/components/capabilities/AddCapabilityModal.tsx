@@ -1,72 +1,864 @@
 'use client';
 
-import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Button, Badge } from '@vaeloom/ui-kit';
+import {
+  Badge,
+  Button,
+  EmptyState,
+  FormField,
+  Input,
+  SearchField,
+  Select,
+  TabPanel,
+  Tabs,
+  Textarea,
+  Tooltip,
+} from '@vaeloom/ui-kit';
 import { capabilitiesApi } from '@/lib/api-client';
+import type { CapabilityTestResponse } from '@/lib/api-client';
+import { getStoredCapabilities } from '@/lib/capabilities-data';
 import type { CapabilityCategory, CapabilityItem } from '@/lib/capabilities-data';
 
-export interface AddCapabilityModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  defaultCategory?: CapabilityCategory;
-  initialMode?: 'builder' | 'templates' | 'import';
-  onCreate: (capability: CapabilityItem) => void;
-  onImport: (url: string, category: CapabilityCategory) => Promise<void>;
-  installedNames?: Set<string>;
-  workspaceId?: string;
+// ─── Enumerated option types ─────────────────────────────────────────────────
+//
+// Every one of these replaces a former `as any` at a `<select onChange>` or a
+// preset cast. The server validates the autonomy set and `validate_mcp_config`
+// validates the transport set, so a value outside the union is rejected here
+// rather than asserted.
+
+const AUTONOMY_VALUES = ['suggest', 'autonomous', 'approval_required'] as const;
+const MCP_TRANSPORTS = ['stdio', 'http'] as const;
+const PLUGIN_HOOKS = ['on_tool_call', 'on_agent_start', 'on_agent_complete'] as const;
+const PLUGIN_SANDBOXES = ['isolated_subprocess', 'wasm_sandbox', 'safe_thread'] as const;
+const PLUGIN_TARGETS = ['both', 'desktop', 'agent'] as const;
+const AGENT_ARCHETYPES = ['specialist', 'supervisor', 'auditor'] as const;
+const AGENT_MODEL_TIERS = ['pro', 'flash', 'open_weights'] as const;
+const TOOL_PARAM_TYPES = ['string', 'number', 'boolean', 'object', 'array'] as const;
+const SECURITY_SCOPES = [
+  'memory.read',
+  'memory.write',
+  'connector.mcp.execute',
+  'system.execute',
+] as const;
+const TOOL_GROUPS = [
+  'memory_read',
+  'memory_write',
+  'connector_read',
+  'connector_write',
+  'system',
+] as const;
+
+type Autonomy = (typeof AUTONOMY_VALUES)[number];
+type McpTransport = (typeof MCP_TRANSPORTS)[number];
+type PluginHook = (typeof PLUGIN_HOOKS)[number];
+type PluginSandbox = (typeof PLUGIN_SANDBOXES)[number];
+type PluginTarget = (typeof PLUGIN_TARGETS)[number];
+type AgentArchetype = (typeof AGENT_ARCHETYPES)[number];
+type AgentModelTier = (typeof AGENT_MODEL_TIERS)[number];
+type ToolParamType = (typeof TOOL_PARAM_TYPES)[number];
+type SecurityScope = (typeof SECURITY_SCOPES)[number];
+type ToolGroup = (typeof TOOL_GROUPS)[number];
+
+/**
+ * Narrow a raw `<select>` string to a union, falling back instead of casting.
+ *
+ * A preset authored outside this build, a stale localStorage row or a hand-typed
+ * value must not be able to place an unvalidated string in a field the server
+ * rejects with a 400 or 422.
+ */
+function option<T extends string>(raw: string, allowed: readonly T[], fallback: T): T {
+  return (allowed as readonly string[]).includes(raw) ? (raw as T) : fallback;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Production-Ready Enterprise Presets / Scaffolds (Vaeloom Sovereign Standards)
-// ─────────────────────────────────────────────────────────────────────────────
-interface PresetTemplate {
+function asOptions<T extends string>(values: readonly T[]) {
+  return values.map((value) => ({ value, label: value }));
+}
+
+// ─── Server contracts mirrored for instant feedback ──────────────────────────
+
+/** The name pattern `routers/capabilities.py` validates on create. */
+const NAME_PATTERN = /^[a-zA-Z0-9_\-. ]{1,255}$/;
+
+/**
+ * `validate_mcp_config`, clause by clause, so the form can say *why* a config will
+ * be rejected instead of awarding points for having filled the field in. The
+ * server re-checks every rule; this is a mirror, not the authority.
+ */
+const MCP_DENIED_COMMANDS = new Set([
+  'sh',
+  'bash',
+  'dash',
+  'zsh',
+  'cmd',
+  'cmd.exe',
+  'powershell',
+  'powershell.exe',
+  'pwsh',
+  'pwsh.exe',
+]);
+const MCP_SHELL_METACHARS = /[;&|`$><\r\n^%!]/;
+const MCP_INLINE_EXEC_FLAGS = new Set(['-c', '-e', '--eval', '-r']);
+const MCP_SCRIPT_INTERPRETERS = new Set([
+  'python',
+  'python3',
+  'node',
+  'deno',
+  'bun',
+  'ruby',
+  'perl',
+  'php',
+]);
+/**
+ * Commands that only work through a Windows batch shim.
+ *
+ * `_resolve_command` in `mcp_client_service.py` documents this directly: Windows
+ * CreateProcess cannot execute the `.cmd`/`.bat` shim these resolve to, so they are
+ * wrapped in `cmd.exe /c` and that requires `allow_windows_batch=true`. The
+ * resolution happens server-side, so the client cannot observe it -- the names are
+ * listed here instead of being guessed per platform.
+ */
+const MCP_WINDOWS_SHIMS = new Set([
+  'npx',
+  'uvx',
+  'pnpm',
+  'yarn',
+  'pipx',
+  'pipx.cmd',
+  'uvx.cmd',
+  'npx.cmd',
+  'pnpm.cmd',
+  'yarn.cmd',
+]);
+
+/** `${NAME}`: an unsubstituted reference. A real credential never has this shape. */
+const VAULT_REFERENCE = /^\$\{[A-Za-z_][A-Za-z0-9_]*\}$/;
+
+/** JSON Schema property names have to be identifiers. */
+const JSON_PROPERTY_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/** Calls that step outside the plugin sandbox entirely. */
+const SANDBOX_ESCAPE = /\b(os\.system|os\.popen|subprocess\.|eval\s*\(|exec\s*\()/;
+
+const AGENT_TOOLS = [
+  { id: 'search_documents', name: 'search_documents' },
+  { id: 'query_graph', name: 'query_graph' },
+  { id: 'calculate_semantic_ats_score', name: 'calculate_semantic_ats_score' },
+  { id: 'browse_job_page', name: 'browse_job_page' },
+  { id: 'run_command', name: 'run_command' },
+  { id: 'http_request', name: 'http_request' },
+];
+const AGENT_TOOL_IDS = new Set(AGENT_TOOLS.map((tool) => tool.id));
+
+const QUICK_TAGS = ['Review', 'Engineering', 'QA', 'Design', 'DevOps', 'Memory', 'MCP', 'AI'];
+
+/**
+ * Privilege ranking for the autonomy/scope consistency check.
+ *
+ * Written out rather than inferred from `<select>` order, because the ordering is
+ * the claim: `suggest` acquires nothing, `approval_required` puts a human in
+ * front of everything except raw process execution, and only `autonomous` reaches
+ * `system.execute`.
+ */
+const SCOPE_RANK: Record<SecurityScope, number> = {
+  'memory.read': 1,
+  'memory.write': 2,
+  'connector.mcp.execute': 3,
+  'system.execute': 4,
+};
+const AUTONOMY_CEILING: Record<Autonomy, SecurityScope | null> = {
+  suggest: null,
+  approval_required: 'connector.mcp.execute',
+  autonomous: 'system.execute',
+};
+
+const slugify = (raw: string) =>
+  raw
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9\-_.]/g, '');
+
+const splitArgs = (raw: string) =>
+  raw
+    .split(/[\s\n]+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+
+const countHeadings = (markdown: string) =>
+  markdown.split('\n').filter((line) => /^#{1,6}\s+\S/.test(line)).length;
+
+// ─── Lexical scan of the plugin handler ──────────────────────────────────────
+
+interface BracketVerdict {
+  balanced: boolean;
+  detail: string;
+}
+
+/**
+ * Bracket balance for Python source, ignoring comments and string literals.
+ *
+ * Deliberately not called "compiles": it is a real lexical scan that catches the
+ * unbalanced-delimiter class of syntax error, and the label says exactly that.
+ */
+function scanBrackets(code: string): BracketVerdict {
+  const closers: Record<string, string> = { ')': '(', ']': '[', '}': '{' };
+  const stack: string[] = [];
+  let quote: string | null = null;
+  let escaped = false;
+
+  for (let i = 0; i < code.length; i += 1) {
+    const char = code[i] ?? '';
+    const prev = code[i - 1] ?? '';
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === quote) quote = null;
+      continue;
+    }
+    if (char === '#' && (prev === '' || prev === ' ' || prev === '\t')) {
+      while (i < code.length && code[i] !== '\n') i += 1;
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      quote = char;
+      continue;
+    }
+    if (char === '(' || char === '[' || char === '{') stack.push(char);
+    const expected = closers[char];
+    if (expected) {
+      const open = stack.pop();
+      if (open !== expected) {
+        return {
+          balanced: false,
+          detail: `Unbalanced: '${char}' at offset ${i} closes '${open ?? 'nothing'}'.`,
+        };
+      }
+    }
+  }
+  return stack.length > 0
+    ? { balanced: false, detail: `${stack.length} unclosed bracket(s): ${stack.join(' ')}.` }
+    : { balanced: true, detail: 'Brackets and string literals balance.' };
+}
+
+/** First line carrying a sandbox-escape construct, or null. */
+function findSandboxEscape(code: string): { line: number; match: string } | null {
+  const lines = code.split('\n');
+  for (let i = 0; i < lines.length; i += 1) {
+    const hit = SANDBOX_ESCAPE.exec(lines[i] ?? '');
+    if (hit) return { line: i + 1, match: hit[0] };
+  }
+  return null;
+}
+
+// ─── Readiness audit ─────────────────────────────────────────────────────────
+
+interface ReadinessCheck {
+  id: string;
+  label: string;
+  passed: boolean;
+  /** Not applicable: counted as neither a pass nor a failure. */
+  skipped: boolean;
+  weight: number;
+  /** What the scan actually found. Reported whether or not it passed. */
+  detail: string;
+  /** A failure the submit path refuses to pass. */
+  blocking: boolean;
+}
+
+interface Readiness {
+  checks: ReadinessCheck[];
+  applicable: number;
+  passedCount: number;
+  failureCount: number;
+  earnedWeight: number;
+  applicableWeight: number;
+  blockingFailures: ReadinessCheck[];
+}
+
+/**
+ * One row per check.
+ *
+ * The detail describes the state of the field either way, so a single string
+ * carries the evidence and the mark carries the verdict. No caller can construct
+ * a passing row without also supplying a reason derived from the form.
+ */
+function row(
+  id: string,
+  label: string,
+  weight: number,
+  passed: boolean,
+  detail: string,
+  blocking = false,
+): ReadinessCheck {
+  return { id, label, passed, skipped: false, weight, detail, blocking };
+}
+
+function skippedRow(id: string, label: string, weight: number, detail: string): ReadinessCheck {
+  return { id, label, passed: false, skipped: true, weight, detail, blocking: false };
+}
+
+interface ToolParam {
+  name: string;
+  type: ToolParamType;
+  description: string;
+  required: boolean;
+}
+
+/**
+ * Everything the audit and the submit path both need.
+ *
+ * One snapshot type so the two cannot drift: a check the badge shows as passing
+ * but the submit ignores (or the reverse) is the same defect as a fabricated one.
+ */
+interface Draft {
+  category: CapabilityCategory;
+  name: string;
+  description: string;
+  tags: string[];
+  triggers: string;
+  doc: string;
+  autonomy: Autonomy;
+  transport: McpTransport;
+  command: string;
+  args: string[];
+  url: string;
+  allowWindowsBatch: boolean;
+  allowInsecure: boolean;
+  envList: Array<{ key: string; val: string }>;
+  toolParams: ToolParam[];
+  toolScope: SecurityScope;
+  toolGroup: ToolGroup;
+  archetype: AgentArchetype;
+  modelTier: AgentModelTier;
+  maxTurns: number;
+  agentTools: string[];
+  prompt: string;
+  hook: PluginHook;
+  sandbox: PluginSandbox;
+  pluginTarget: PluginTarget;
+  pluginCode: string;
+  pluginAuthor: string;
+  pluginLicense: string;
+  pluginPermissions: string;
+  minAppVersion: string;
+  /** Lower-cased names already taken in this workspace, from every source. */
+  collisions: ReadonlySet<string>;
+}
+
+interface ParsedJson {
+  ok: boolean;
+  value: Record<string, unknown>;
+  reason: string;
+}
+
+/** JSON object parser with a reason, used for permissions and import payloads. */
+function parseJsonObject(raw: string, what: string): ParsedJson {
+  const trimmed = raw.trim();
+  if (!trimmed) return { ok: true, value: {}, reason: '' };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch (err) {
+    return { ok: false, value: {}, reason: err instanceof Error ? err.message : 'Not valid JSON.' };
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return { ok: false, value: {}, reason: `${what} must be a JSON object, not an array.` };
+  }
+  return { ok: true, value: parsed as Record<string, unknown>, reason: '' };
+}
+
+/**
+ * The identity check, shared by every category.
+ *
+ * Collision is compared against the slug that will actually be submitted, because
+ * the API dedupes on `(workspace_id, name, category)` and the modal slugifies
+ * first: `My Tool` and `my-tool` are one row to the server and two strings here.
+ */
+function identityRow(draft: Draft): ReadinessCheck {
+  const label = 'Identifier accepted by the API';
+  const trimmed = draft.name.trim();
+  if (!trimmed) return row('identity', label, 20, false, 'Empty.', true);
+  if (trimmed.length > 255) {
+    return row(
+      'identity',
+      label,
+      20,
+      false,
+      `${trimmed.length} chars; the API caps it at 255.`,
+      true,
+    );
+  }
+  if (!NAME_PATTERN.test(trimmed)) {
+    const detail = 'Contains a character outside the API set (letters, digits, _ - . and space).';
+    return row('identity', label, 20, false, detail, true);
+  }
+  const slug = slugify(trimmed);
+  if (!slug) return row('identity', label, 20, false, 'Slugifies to nothing.', true);
+  if (draft.collisions.has(slug.toLowerCase())) {
+    const detail = `"${slug}" already exists here; the API returns 409 for a duplicate.`;
+    return row('identity', label, 20, false, detail, true);
+  }
+  return row('identity', label, 20, true, `"${slug}" is free in this workspace.`);
+}
+
+function schemaRow(params: ToolParam[]): ReadinessCheck {
+  const label = 'JSON Schema input contract';
+  const named = params.filter((param) => param.name.trim() !== '');
+  if (named.length === 0) {
+    const detail = 'No parameter names. A tool with an empty properties map takes no arguments.';
+    return row('schema', label, 30, false, detail, true);
+  }
+  const badToken = named.find((param) => !JSON_PROPERTY_NAME.test(param.name.trim()));
+  if (badToken) {
+    return row(
+      'schema',
+      label,
+      30,
+      false,
+      `"${badToken.name.trim()}" is not a JSON identifier.`,
+      true,
+    );
+  }
+  const seen = new Set<string>();
+  const duplicate = named.find((param) => {
+    const key = param.name.trim();
+    if (seen.has(key)) return true;
+    seen.add(key);
+    return false;
+  });
+  if (duplicate) {
+    const detail = `Duplicate property "${duplicate.name.trim()}"; JSON cannot repeat a key.`;
+    return row('schema', label, 30, false, detail, true);
+  }
+  const badType = named.find((p) => !(TOOL_PARAM_TYPES as readonly string[]).includes(p.type));
+  if (badType) {
+    return row(
+      'schema',
+      label,
+      30,
+      false,
+      `Type "${badType.type}" is outside the allowed set.`,
+      true,
+    );
+  }
+  const count = named.filter((p) => p.required).length;
+  const detail = `${named.length} propert${named.length === 1 ? 'y' : 'ies'}, ${count} required, all names unique.`;
+  return row('schema', label, 30, true, detail);
+}
+
+/**
+ * Declared autonomy against declared scope.
+ *
+ * Both values are chosen in this form, so their inconsistency is knowable here.
+ * An agent deliberately has no such check: its effective scopes come from the
+ * `required_scope` of each tool it holds, which the client cannot read, and a
+ * check against a scope nobody declared would be invented.
+ */
+function privilegeRow(draft: Draft, scope: SecurityScope): ReadinessCheck {
+  const label = 'Scope is reachable under the declared autonomy';
+  const ceiling = AUTONOMY_CEILING[draft.autonomy];
+  if (ceiling === null) {
+    return row('privilege', label, 25, false, `Autonomy "suggest" cannot acquire ${scope}.`, true);
+  }
+  if (SCOPE_RANK[scope] > SCOPE_RANK[ceiling]) {
+    const detail = `${scope} outranks the ceiling for "${draft.autonomy}" (${ceiling}). Raise the autonomy or lower the scope.`;
+    return row('privilege', label, 25, false, detail, true);
+  }
+  return row('privilege', label, 25, true, `"${draft.autonomy}" permits up to ${ceiling}.`);
+}
+
+/**
+ * MCP checks.
+ *
+ * These replace the two rows that used to return `passed: true` regardless of
+ * input -- "MCP v2 Protocol Contract" and "Encrypted Secrets" -- which is how an
+ * otherwise empty form still scored 40. Every weight here is tied to something
+ * this form can actually verify.
+ */
+function mcpRows(draft: Draft): ReadinessCheck[] {
+  const endpoint = draft.url.trim();
+  const shapeOk = draft.transport === 'stdio' ? draft.command.trim() !== '' : endpoint !== '';
+  const endpointWord = draft.transport === 'stdio' ? 'a command' : 'an endpoint URL';
+
+  const base = draft.command.trim().replace(/^"|"$/g, '').toLowerCase().replace(/\\/g, '/');
+  const baseName = base.split('/').pop() ?? '';
+  const interpreter = baseName.split('.')[0] ?? '';
+  const metachar = [draft.command.trim(), ...draft.args].find((p) => MCP_SHELL_METACHARS.test(p));
+  const inlineFlag = MCP_SCRIPT_INTERPRETERS.has(interpreter)
+    ? draft.args.find((arg) => MCP_INLINE_EXEC_FLAGS.has(arg.trim().toLowerCase()))
+    : undefined;
+  const isExplicitBatch = /\.(cmd|bat)$/.test(baseName);
+  const isWindowsShim = MCP_WINDOWS_SHIMS.has(baseName);
+
+  let argvOk = baseName !== '';
+  let argvDetail = baseName ? `${baseName} with ${draft.args.length} argument(s).` : 'No command.';
+  if (!baseName) argvOk = false;
+  else if (MCP_DENIED_COMMANDS.has(baseName)) {
+    argvOk = false;
+    argvDetail = `"${baseName}" is a shell interpreter; validate_mcp_config refuses it.`;
+  } else if (metachar !== undefined) {
+    argvOk = false;
+    argvDetail = `Shell metacharacters in "${metachar.trim()}"; the server refuses command/args containing [;&|\`$><^%!].`;
+  } else if (inlineFlag !== undefined) {
+    argvOk = false;
+    argvDetail = `Inline code flag "${inlineFlag}" is refused for ${interpreter}.`;
+  } else if (isExplicitBatch && !draft.allowWindowsBatch) {
+    argvOk = false;
+    argvDetail = `"${baseName}" is a Windows batch wrapper and needs allow_windows_batch=true.`;
+  } else if (isWindowsShim && !draft.allowWindowsBatch) {
+    argvOk = false;
+    argvDetail = `"${baseName}" resolves to a .cmd shim on Windows, which needs allow_windows_batch=true.`;
+  }
+
+  const literals = draft.envList.filter(
+    (entry) => entry.key.trim() !== '' && !VAULT_REFERENCE.test(entry.val.trim()),
+  );
+  const secretsDetail =
+    draft.envList.length === 0
+      ? 'No environment variables declared; nothing to leak.'
+      : literals.length === 0
+        ? `All ${draft.envList.length} value(s) are \${VAR} references.`
+        : `${literals.length} literal value(s) (${literals
+            .map((entry) => entry.key)
+            .join(', ')}). This form would write them to the workspace row in clear text.`;
+
+  const urlCheck =
+    draft.transport === 'stdio'
+      ? skippedRow(
+          'endpoint',
+          'HTTP endpoint',
+          15,
+          'stdio launches a local process; no URL is used.',
+        )
+      : endpoint === ''
+        ? row('endpoint', 'HTTP endpoint', 15, false, 'Empty.', true)
+        : /^https:\/\//i.test(endpoint)
+          ? row('endpoint', 'HTTP endpoint', 15, true, 'https:// endpoint.')
+          : /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?/i.test(endpoint)
+            ? row(
+                'endpoint',
+                'HTTP endpoint',
+                15,
+                true,
+                'Loopback http://. The server still requires allow_insecure=true.',
+              )
+            : row(
+                'endpoint',
+                'HTTP endpoint',
+                15,
+                false,
+                'Not https:// and not loopback; the SSRF guard rejects it.',
+                true,
+              );
+
+  return [
+    identityRow(draft),
+    row(
+      'transport',
+      'Transport declared',
+      20,
+      shapeOk,
+      shapeOk
+        ? `"${draft.transport}" with a matching ${endpointWord}.`
+        : `Transport "${draft.transport}" needs ${endpointWord}.`,
+      !shapeOk,
+    ),
+    row('argv', 'Command passes the server argv policy', 30, argvOk, argvDetail, !argvOk),
+    urlCheck,
+    row(
+      'secrets',
+      'Credentials are references, not literals',
+      15,
+      literals.length === 0,
+      secretsDetail,
+      literals.length > 0,
+    ),
+  ];
+}
+
+function pluginRows(draft: Draft): ReadinessCheck[] {
+  const brackets = scanBrackets(draft.pluginCode);
+  const escape = findSandboxEscape(draft.pluginCode);
+  const hasEntryPoint = /^def\s+run\s*\(/m.test(draft.pluginCode);
+  const permissions = parseJsonObject(draft.pluginPermissions, 'Permissions');
+  const attributed = Boolean(draft.pluginAuthor.trim() && draft.pluginLicense.trim());
+
+  return [
+    identityRow(draft),
+    row(
+      'handler',
+      'Sandbox handler shape',
+      25,
+      hasEntryPoint && brackets.balanced,
+      hasEntryPoint
+        ? brackets.detail
+        : 'No top-level `def run(` entry point; the sandbox calls nothing.',
+      !hasEntryPoint,
+    ),
+    row(
+      'isolation',
+      'No sandbox escape in the handler',
+      25,
+      escape === null,
+      escape
+        ? `Line ${escape.line} calls ${escape.match.trim()}. A subprocess hook must not open its own process.`
+        : 'No os.system / os.popen / subprocess / eval / exec call in the source.',
+      escape !== null,
+    ),
+    row(
+      'attribution',
+      'Author and license',
+      10,
+      attributed,
+      attributed
+        ? `${draft.pluginAuthor.trim()} / ${draft.pluginLicense.trim()}.`
+        : 'The plugin registry requires both author and license.',
+    ),
+    row(
+      'surface',
+      'Hook, isolation and target declared',
+      10,
+      Boolean(draft.hook && draft.sandbox && draft.pluginTarget),
+      `${draft.hook} · ${draft.sandbox} · ${draft.pluginTarget}.`,
+    ),
+    row(
+      'permissions',
+      'Declared permissions parse',
+      15,
+      permissions.ok,
+      permissions.ok
+        ? `${Object.keys(permissions.value).length} declared permission(s) as a JSON object.`
+        : permissions.reason,
+      !permissions.ok,
+    ),
+  ];
+}
+
+function buildReadiness(draft: Draft): Readiness {
+  let checks: ReadinessCheck[];
+
+  if (draft.category === 'connectors') {
+    // Connectors are registered through the connectors API. The category stays
+    // selectable so a wrong `defaultCategory` is visible instead of silently
+    // rewritten, and the form states plainly that it will not write here.
+    checks = [
+      row(
+        'scope',
+        'This form does not create connectors',
+        100,
+        false,
+        'A connector needs a type-specific row in POST /api/v1/connectors plus a credential flow. This form would write a capability with no working secret.',
+        true,
+      ),
+    ];
+  } else if (draft.category === 'skills') {
+    const headings = countHeadings(draft.doc);
+    const docLength = draft.doc.trim().length;
+    const triggerCount = draft.triggers.split(',').filter((t) => t.trim() !== '').length;
+    const authoredTags = draft.tags.filter((tag) => tag !== 'Custom').length;
+    checks = [
+      identityRow(draft),
+      row(
+        'activation',
+        'Activation context',
+        25,
+        draft.description.trim() !== '',
+        draft.description.trim() === ''
+          ? 'Empty, so the runtime has nothing to match an incoming request against.'
+          : `${draft.description.trim().length} characters for the matcher.`,
+      ),
+      row(
+        'playbook',
+        'Playbook operating rules',
+        30,
+        docLength >= 20 && headings > 0,
+        docLength < 20
+          ? `${docLength} characters; a stub is not a playbook.`
+          : headings === 0
+            ? `${docLength} characters but no Markdown heading, so there is no structure to follow.`
+            : `${docLength} characters, ${headings} heading(s).`,
+      ),
+      row(
+        'routing',
+        'Routing triggers',
+        25,
+        triggerCount + authoredTags > 0,
+        triggerCount + authoredTags === 0
+          ? 'No trigger phrase and no tag beyond the default "Custom", so nothing selects this skill.'
+          : `${triggerCount} trigger(s), ${authoredTags} authored tag(s).`,
+      ),
+    ];
+  } else if (draft.category === 'agents') {
+    const unknown = draft.agentTools.filter((id) => !AGENT_TOOL_IDS.has(id));
+    const turnsOk = Number.isInteger(draft.maxTurns) && draft.maxTurns >= 1 && draft.maxTurns <= 30;
+    checks = [
+      identityRow(draft),
+      row(
+        'policy',
+        'Role and autonomy policy',
+        25,
+        turnsOk,
+        turnsOk
+          ? `${draft.archetype}, "${draft.autonomy}", ${draft.maxTurns} ReAct round(s).`
+          : `maxTurns=${draft.maxTurns}; the runtime accepts 1 to 30.`,
+      ),
+      row(
+        'prompt',
+        'System template',
+        20,
+        draft.prompt.trim().length >= 20,
+        `${draft.prompt.trim().length} characters in the system template.`,
+      ),
+      row(
+        'tools',
+        'Tool fleet resolves',
+        30,
+        unknown.length === 0 && draft.agentTools.length > 0,
+        unknown.length > 0
+          ? `Unknown tool id(s): ${unknown.join(', ')}. The registry has no such tool.`
+          : draft.agentTools.length === 0
+            ? 'No tools assigned, so the agent cannot read or change anything.'
+            : `${draft.agentTools.length} tool(s), all in the workspace registry.`,
+        unknown.length > 0,
+      ),
+    ];
+  } else if (draft.category === 'mcp') {
+    checks = mcpRows(draft);
+  } else if (draft.category === 'plugins') {
+    checks = pluginRows(draft);
+  } else {
+    const systemClass = draft.toolGroup === 'system';
+    checks = [
+      identityRow(draft),
+      schemaRow(draft.toolParams),
+      privilegeRow(draft, draft.toolScope),
+      row(
+        'classification',
+        'Classification agrees with the scope',
+        10,
+        systemClass === (draft.toolScope === 'system.execute'),
+        `"${draft.toolGroup}" paired with ${draft.toolScope}. A system class needs system.execute.`,
+      ),
+      skippedRow(
+        'output',
+        'Output schema',
+        15,
+        'This form has no field for an authored output schema. The envelope in the preview is generated here and is not stored.',
+      ),
+    ];
+  }
+
+  const applicable = checks.filter((check) => !check.skipped);
+  const applicableWeight = applicable.reduce((total, check) => total + check.weight, 0);
+  const earnedWeight = applicable.reduce(
+    (total, check) => total + (check.passed ? check.weight : 0),
+    0,
+  );
+  return {
+    checks,
+    applicable: applicable.length,
+    passedCount: applicable.filter((check) => check.passed).length,
+    failureCount: applicable.filter((check) => !check.passed).length,
+    applicableWeight,
+    earnedWeight,
+    blockingFailures: checks.filter((check) => !check.skipped && !check.passed && check.blocking),
+  };
+}
+
+// ─── Submit validation ───────────────────────────────────────────────────────
+
+interface FieldIssue {
+  field: string;
+  message: string;
+}
+
+/**
+ * Only the checks the audit marked blocking are enforced here, and both read the
+ * same snapshot, so the badge cannot promise a submit the form then refuses.
+ *
+ * `workspaceId` is deliberately not required: the page owns the server write and
+ * already reports a failed one, so a client-side requirement would block the
+ * offline save for no gain.
+ */
+function validateDraft(draft: Draft, readiness: Readiness): FieldIssue[] {
+  const issues = readiness.blockingFailures.map((check) => ({
+    field: check.id,
+    message: check.detail,
+  }));
+  if (
+    draft.category === 'mcp' &&
+    draft.transport === 'http' &&
+    !draft.allowInsecure &&
+    /^http:\/\//i.test(draft.url.trim())
+  ) {
+    issues.push({
+      field: 'allowInsecure',
+      message: 'An http:// endpoint requires allow_insecure=true, a development-only opt-in.',
+    });
+  }
+  return issues;
+}
+
+// ─── Presets ─────────────────────────────────────────────────────────────────
+
+interface Preset {
   id: string;
   name: string;
   category: CapabilityCategory;
   title: string;
   description: string;
   tags: string[];
-  autonomy: 'autonomous' | 'approval_required' | 'suggest';
+  autonomy: Autonomy;
   triggers?: string[];
-  parameters?: Array<{ name: string; type: string; description: string; required: boolean }>;
-  mcpConfig?: { transport: 'stdio' | 'sse'; command: string; env: Record<string, string> };
-  pluginConfig?: { hook: string; sandbox: string; code: string; author?: string; license?: string };
-  agentConfig?: {
-    archetype: string;
-    modelTier: string;
+  doc?: string;
+  parameters?: ToolParam[];
+  mcp?: {
+    transport: McpTransport;
+    command: string;
+    args: string[];
+    allowWindowsBatch?: boolean;
+    env: Record<string, string>;
+  };
+  plugin?: {
+    hook: PluginHook;
+    sandbox: PluginSandbox;
+    target: PluginTarget;
+    code: string;
+    author: string;
+    license: string;
+  };
+  agent?: {
+    archetype: AgentArchetype;
+    modelTier: AgentModelTier;
     maxTurns: number;
     tools: string[];
     prompt: string;
   };
-  doc?: string;
 }
 
-const PRESET_TEMPLATES: PresetTemplate[] = [
+const PRESETS: Preset[] = [
   {
     id: 'pr-code-reviewer',
     name: 'pr-code-reviewer',
     category: 'skills',
     title: 'PR & Forensic Code Reviewer',
     description:
-      'Autonomous pull request review skill with AST safety analysis, security linting, and regression checks.',
-    tags: ['Review', 'Engineering', 'Security', 'QA'],
+      'Diff review with security regression checks, coverage checks and concrete replacements.',
+    tags: ['Review', 'Engineering', 'Security'],
     autonomy: 'autonomous',
-    triggers: ['/review', 'review this pull request', 'audit code changes'],
+    triggers: ['/review', 'audit code changes'],
     doc: `# PR & Forensic Code Reviewer
 
 ## Mission
-Performs deep structural and security code reviews on pull request diffs, checks test coverage, and flags anti-patterns.
-
-## When to Use
-- User triggers \`/review\` or requests PR validation.
-- Agent analyzes modified files before committing or landing changes.
+Review a diff for security regressions, confirm new logic is tested, and propose
+concrete replacements for anything unsafe.
 
 ## Operating Rules
-1. Inspect all touched files for security regressions (SQL injection, XSS, insecure deserialization).
-2. Validate that automated tests accompany new logic.
-3. Suggest concrete diff replacements for any identified issues.
+1. Read every touched file before judging the change.
+2. Flag SQL injection, XSS and insecure deserialization with a file and line.
+3. Do not approve a change whose new branches have no test.
 `,
   },
   {
@@ -74,20 +866,19 @@ Performs deep structural and security code reviews on pull request diffs, checks
     name: 'agentic-workflow-orchestrator',
     category: 'skills',
     title: 'Agentic Workflow Orchestrator',
-    description:
-      'Multi-step ReAct loop with sub-goal decomposition, deterministic fallback, and error self-healing.',
-    tags: ['Workflow', 'Agentic', 'Reasoning', 'Orchestration'],
+    description: 'Multi-step ReAct decomposition with per-step verification and a fallback.',
+    tags: ['Workflow', 'Agentic', 'Reasoning'],
     autonomy: 'autonomous',
-    triggers: ['/orchestrate', 'break down task', 'plan and execute'],
+    triggers: ['/orchestrate', 'plan and execute'],
     doc: `# Agentic Workflow Orchestrator
 
-## Overview
-Coordinates complex multi-turn problem-solving workflows with step-level critiques and backtracking.
+## Mission
+Turn a multi-turn objective into verified sub-goals and stop when a step cannot be verified.
 
 ## Execution Policy
-- Maximum ReAct iterations: 12
-- Evaluation criteria: Sub-goal progress verification after every tool call.
-- Fallback: Gracefully fallback to deterministic heuristics if an external tool is unreachable.
+1. At most 12 ReAct iterations.
+2. Verify sub-goal progress after every tool call.
+3. Fall back to deterministic heuristics when a tool is unreachable.
 `,
   },
   {
@@ -95,29 +886,13 @@ Coordinates complex multi-turn problem-solving workflows with step-level critiqu
     name: 'rest-api-webhook',
     category: 'tools',
     title: 'REST API Webhook Tool',
-    description:
-      'Configurable HTTP tool that dispatches authenticated JSON payloads to external webhooks.',
-    tags: ['Webhook', 'API', 'Integration', 'HTTP'],
+    description: 'Dispatch an authenticated JSON payload to an external webhook.',
+    tags: ['Webhook', 'API', 'Integration'],
     autonomy: 'approval_required',
     parameters: [
-      {
-        name: 'endpoint_url',
-        type: 'string',
-        description: 'HTTPS destination URL',
-        required: true,
-      },
-      {
-        name: 'payload',
-        type: 'object',
-        description: 'JSON data object to dispatch',
-        required: true,
-      },
-      {
-        name: 'idempotency_key',
-        type: 'string',
-        description: 'Unique idempotency token',
-        required: false,
-      },
+      { name: 'endpoint_url', type: 'string', description: 'HTTPS URL', required: true },
+      { name: 'payload', type: 'object', description: 'Body to dispatch', required: true },
+      { name: 'idempotency_key', type: 'string', description: 'Retry token', required: false },
     ],
   },
   {
@@ -125,43 +900,32 @@ Coordinates complex multi-turn problem-solving workflows with step-level critiqu
     name: 'vector-semantic-search',
     category: 'tools',
     title: 'Vector Semantic Search Tool',
-    description:
-      'Retrieves top-k relevant knowledge nodes and documents via cosine embedding similarity.',
-    tags: ['Search', 'Embeddings', 'Memory', 'RAG'],
+    description: 'Top-k workspace knowledge by cosine similarity over the memory index.',
+    tags: ['Search', 'Embeddings', 'Memory'],
     autonomy: 'autonomous',
     parameters: [
-      {
-        name: 'query',
-        type: 'string',
-        description: 'Natural language search query',
-        required: true,
-      },
-      {
-        name: 'top_k',
-        type: 'number',
-        description: 'Maximum number of matches (default: 5)',
-        required: false,
-      },
-      {
-        name: 'threshold',
-        type: 'number',
-        description: 'Minimum cosine similarity score (0.0 - 1.0)',
-        required: false,
-      },
+      { name: 'query', type: 'string', description: 'Search query', required: true },
+      { name: 'top_k', type: 'number', description: 'Max matches (default 5)', required: false },
+      { name: 'threshold', type: 'number', description: 'Min similarity', required: false },
     ],
   },
   {
-    id: 'filesystem-mcp-connector',
-    name: 'filesystem-mcp-connector',
+    id: 'filesystem-mcp',
+    name: 'filesystem-mcp',
     category: 'mcp',
     title: 'Local Filesystem MCP Server',
     description:
-      'Official Model Context Protocol server for scoped local filesystem access and file tools.',
-    tags: ['MCP', 'Filesystem', 'Local', 'Connector'],
+      'Community MCP reference server for scoped filesystem access. Third-party code, not audited here.',
+    tags: ['MCP', 'Filesystem', 'Local'],
     autonomy: 'approval_required',
-    mcpConfig: {
+    mcp: {
       transport: 'stdio',
-      command: 'npx -y @modelcontextprotocol/server-filesystem /workspace',
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-filesystem', '/workspace'],
+      // npx resolves to npx.cmd on Windows, which validate_mcp_config refuses
+      // without an explicit opt-in. Preset it rather than shipping a config that
+      // cannot start.
+      allowWindowsBatch: true,
       env: {},
     },
   },
@@ -170,14 +934,15 @@ Coordinates complex multi-turn problem-solving workflows with step-level critiqu
     name: 'github-cloud-mcp',
     category: 'mcp',
     title: 'GitHub Cloud MCP Server',
-    description:
-      'Model Context Protocol integration for managing pull requests, issues, and repositories.',
-    tags: ['MCP', 'GitHub', 'Cloud', 'DevOps'],
+    description: 'Community MCP reference server for pull requests, issues and repositories.',
+    tags: ['MCP', 'GitHub', 'DevOps'],
     autonomy: 'approval_required',
-    mcpConfig: {
+    mcp: {
       transport: 'stdio',
-      command: 'npx -y @modelcontextprotocol/server-github',
-      env: { GITHUB_PERSONAL_ACCESS_TOKEN: '${VAULT_GITHUB_PAT}' },
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-github'],
+      allowWindowsBatch: true,
+      env: { GITHUB_PERSONAL_ACCESS_TOKEN: '${GITHUB_PAT}' },
     },
   },
   {
@@ -185,78 +950,749 @@ Coordinates complex multi-turn problem-solving workflows with step-level critiqu
     name: 'research-analyst-agent',
     category: 'agents',
     title: 'Autonomous Research Analyst',
-    description:
-      'Dedicated investigation agent that plans, gathers citations, and writes comprehensive briefs.',
-    tags: ['Agent', 'Research', 'Synthesis', 'Autonomous'],
+    description: 'Investigates a topic, gathers citations, writes a cited brief.',
+    tags: ['Agent', 'Research', 'Synthesis'],
     autonomy: 'autonomous',
-    agentConfig: {
+    agent: {
       archetype: 'specialist',
       modelTier: 'pro',
       maxTurns: 15,
       tools: ['search_documents', 'browse_job_page', 'query_graph'],
-      prompt: `You are Research Analyst, an enterprise AI agent in Vaeloom.
-Role: Investigate topics, synthesize cross-document findings, and format executive briefs.
+      prompt: `You are Research Analyst, an enterprise agent in Vaeloom.
+Role: investigate a topic, synthesise findings, format a brief.
 
 OPERATIONAL BOUNDARIES:
-- Never fabricate claims, credentials, or tool returns.
-- Ground every assertion in retrieved context or memory citations.
+- Never fabricate a claim, a citation or a tool result.
+- Every assertion must reference retrieved context or memory.
 `,
     },
   },
   {
-    id: 'security-audit-plugin',
-    name: 'security-audit-plugin',
+    id: 'egress-dlp-hook',
+    name: 'egress-dlp-hook',
     category: 'plugins',
-    title: 'Zero-Trust Security Audit Hook',
-    description:
-      'Lifecycle plugin that validates outbound payloads, inspects SSRF vectors, and enforces DLP token masking.',
-    tags: ['Plugin', 'Security', 'Lifecycle', 'DLP'],
+    title: 'Egress DLP Hook',
+    description: 'on_tool_call hook that blocks private-address egress. Opens no subprocess.',
+    tags: ['Plugin', 'Security', 'Egress'],
     autonomy: 'autonomous',
-    pluginConfig: {
+    plugin: {
       hook: 'on_tool_call',
       sandbox: 'isolated_subprocess',
+      target: 'agent',
       author: 'Vaeloom Security Team',
       license: 'MIT',
       code: `def run(input: dict, context: dict) -> dict:
-    """Zero-trust security inspection hook."""
-    payload = input.get("payload", {})
-    endpoint = str(payload.get("url", ""))
-
-    # Guard against private network SSRF
-    denylist = ["127.0.0.1", "localhost", "169.254.169.254"]
+    """Block egress to private and metadata addresses."""
+    endpoint = str(input.get("payload", {}).get("url", ""))
+    denylist = ("127.0.0.1", "localhost", "169.254.169.254")
     if any(blocked in endpoint for blocked in denylist):
-        return {"status": "BLOCKED", "reason": "SSRF to private address prohibited"}
-
-    return {"status": "PASSED", "verified": True}
+        return {"status": "BLOCKED", "reason": "private address egress prohibited"}
+    return {"status": "PASSED"}
 `,
     },
   },
 ];
 
-const QUICK_TAG_SUGGESTIONS = [
-  'Review',
-  'Engineering',
-  'QA',
-  'Design',
-  'DevOps',
-  'Career',
-  'Core',
-  'MCP',
-  'Memory',
-  'AI',
-];
+/**
+ * Derived artefacts, as pure functions of the snapshot.
+ *
+ * These were `useMemo`s with 30-line dependency arrays listing the same twenty
+ * identifiers three times. One snapshot in, one artefact out: no list to forget to
+ * update, and the functions are testable without rendering the modal.
+ */
+function buildInputSchema(draft: Draft) {
+  const properties: Record<string, { type: string; description: string }> = {};
+  const required: string[] = [];
+  for (const param of draft.toolParams) {
+    const key = param.name.trim();
+    if (!key) continue;
+    properties[key] = { type: param.type, description: param.description || `${key} input` };
+    if (param.required) required.push(key);
+  }
+  return { type: 'object', properties, required };
+}
 
-const AVAILABLE_AGENT_TOOLS = [
-  { id: 'search_documents', name: 'search_documents', desc: 'Semantic search across user vault' },
-  { id: 'query_graph', name: 'query_graph', desc: 'Query sovereign knowledge graph' },
-  {
-    id: 'calculate_ats_score',
-    name: 'calculate_ats_score',
-    desc: 'Cosine similarity ATS evaluator',
+type InputSchema = ReturnType<typeof buildInputSchema>;
+
+const json = (value: unknown) => JSON.stringify(value, null, 2);
+
+/** What the right-hand pane shows, and what would be copied out of the form. */
+function buildSpec(draft: Draft, inputSchema: InputSchema): string {
+  const { category } = draft;
+  if (category === 'mcp') {
+    // Mirrors validate_mcp_config: stdio carries command + args[], http a url.
+    const server =
+      draft.transport === 'stdio'
+        ? {
+            transport: 'stdio',
+            command: draft.command.trim(),
+            args: draft.args,
+            ...(draft.allowWindowsBatch ? { allow_windows_batch: true } : {}),
+            env: Object.fromEntries(draft.envList.map((entry) => [entry.key, entry.val])),
+          }
+        : {
+            transport: 'http',
+            url: draft.url.trim(),
+            ...(draft.allowInsecure ? { allow_insecure: true } : {}),
+            env: Object.fromEntries(draft.envList.map((entry) => [entry.key, entry.val])),
+          };
+    return json({ mcpServers: { [draft.name.trim() || 'mcp-server']: server } });
+  }
+  if (category === 'tools') {
+    return json({
+      name: draft.name,
+      description: draft.description,
+      inputSchema,
+      // Generated for review only: nothing on this path stores it, and the form
+      // has no field for an authored output schema.
+      outputSchemaPreview: { type: 'object', properties: { result: { type: 'string' } } },
+      category: draft.toolGroup,
+      required_scope: draft.toolScope,
+      autonomy: draft.autonomy,
+    });
+  }
+  if (category === 'agents') {
+    return json({
+      name: draft.name,
+      role: draft.archetype,
+      model_tier: draft.modelTier,
+      max_react_rounds: draft.maxTurns,
+      autonomy: draft.autonomy,
+      tools: draft.agentTools,
+    });
+  }
+  // Skills and plugins render an editable source panel instead. The old frontmatter
+  // and manifest previews for them were never stored by any write path, so showing
+  // them as "the spec" would describe an artifact nothing produces.
+  return '';
+}
+
+/** The markdown document the create request stores, per category. */
+function buildMarkdownDoc(draft: Draft, inputSchema: InputSchema): string {
+  const { category, name } = draft;
+  if (category === 'skills') return draft.doc;
+  if (category === 'connectors') return '';
+  if (category === 'mcp') {
+    const endpoint =
+      draft.transport === 'stdio'
+        ? `Command \`${draft.command}\` with args \`${draft.args.join(' ')}\``
+        : `Endpoint \`${draft.url}\``;
+    return `# ${name}\n\nTransport \`${draft.transport}\`\n\n${endpoint}\n`;
+  }
+  if (category === 'plugins') {
+    return `# ${name}\n\nHook \`${draft.hook}\` on ${draft.pluginTarget}, isolated as ${draft.sandbox}.\n\n\`\`\`python\n${draft.pluginCode}\n\`\`\`\n`;
+  }
+  if (category === 'agents') {
+    return `# ${name}\n\nRole: ${draft.archetype}. Tools: ${draft.agentTools.join(', ') || 'none'}.\n`;
+  }
+  return `# ${name}\n\nRequired scope: ${draft.toolScope}. ${Object.keys(inputSchema.properties).length} parameter(s).\n`;
+}
+
+/**
+ * The create payload.
+ *
+ * `metadata` keys are the server's own snake_case because request bodies are
+ * `JSON.stringify`-ed verbatim (`transformKeys` runs on responses only). The page
+ * spreads `metadata` into `config` and drops `CapabilityItem.requiredScope`, so the
+ * scope has to travel here or it is silently lost. Skills get no invented
+ * `required_scope`: this form never asks for one.
+ */
+function buildCapability(draft: Draft, inputSchema: InputSchema): CapabilityItem {
+  const { category, name } = draft;
+  const slug = slugify(name);
+  const scope =
+    category === 'tools'
+      ? draft.toolScope
+      : category === 'mcp'
+        ? 'connector.mcp.execute'
+        : category === 'skills'
+          ? undefined
+          : 'system.execute';
+  const metadata: Record<string, unknown> = {
+    autonomy: draft.autonomy,
+    markdown_doc: buildMarkdownDoc(draft, inputSchema),
+    ...(scope ? { required_scope: scope } : {}),
+  };
+
+  if (category === 'mcp') {
+    metadata['transport'] = draft.transport;
+    metadata['env'] = Object.fromEntries(draft.envList.map((entry) => [entry.key, entry.val]));
+    if (draft.transport === 'stdio') {
+      metadata['command'] = draft.command.trim();
+      metadata['args'] = draft.args;
+      if (draft.allowWindowsBatch) metadata['allow_windows_batch'] = true;
+    } else {
+      metadata['url'] = draft.url.trim();
+      if (draft.allowInsecure) metadata['allow_insecure'] = true;
+    }
+  } else if (category === 'plugins') {
+    Object.assign(metadata, {
+      hook: draft.hook,
+      sandbox: draft.sandbox,
+      target: draft.pluginTarget,
+      entry_point: `${slug || 'plugin'}.py`,
+      code: draft.pluginCode,
+      min_app_version: draft.minAppVersion,
+      permissions: parseJsonObject(draft.pluginPermissions, 'Permissions').value,
+    });
+  } else if (category === 'agents') {
+    Object.assign(metadata, {
+      archetype: draft.archetype,
+      model_tier: draft.modelTier,
+      max_turns: draft.maxTurns,
+      system_prompt: draft.prompt,
+      tools: draft.agentTools,
+    });
+  } else if (category === 'tools') {
+    Object.assign(metadata, {
+      tool_category: draft.toolGroup,
+      returns: { type: 'object', properties: { result: { type: 'string' } } },
+    });
+  }
+
+  const triggers = draft.triggers
+    .split(',')
+    .map((trigger) => trigger.trim())
+    .filter(Boolean);
+
+  return {
+    id: `${category}-${slug}-${Date.now()}`,
+    name: slug,
+    category,
+    tags: draft.tags,
+    description: draft.description,
+    enabled: true,
+    source: 'custom',
+    usageCount: 0,
+    lastUsedAt: null,
+    ...(scope ? { requiredScope: scope } : {}),
+    trustClass: category === 'mcp' ? 'mcp.workspace.write' : 'first_party',
+    version: '1.0.0',
+    author: category === 'plugins' ? draft.pluginAuthor : 'Workspace Member',
+    autonomy: draft.autonomy,
+    ...(triggers.length > 0 ? { triggers } : {}),
+    ...(category === 'agents' ? { toolsUsed: draft.agentTools } : {}),
+    ...(category === 'tools' ? { inputSchema } : {}),
+    metadata,
+    markdownDoc: String(metadata['markdown_doc']),
+  };
+}
+
+// ─── Server validation outcome ───────────────────────────────────────────────
+
+interface RuleViolation {
+  rule: string;
+  message: string;
+  line: number | null;
+  severity: string;
+}
+
+/**
+ * The skill branch of `POST /agents/capabilities/test` reports the server's own
+ * `rules_checked` and `violations`. `CapabilityTestResponse` pins the envelope but
+ * not `result`, so this is read as open data rather than asserted into a type.
+ */
+function readViolations(result: unknown): { checked: number | null; violations: RuleViolation[] } {
+  if (result === null || typeof result !== 'object') return { checked: null, violations: [] };
+  const src = result as Record<string, unknown>;
+  const raw = Array.isArray(src['violations']) ? src['violations'] : [];
+  return {
+    checked: typeof src['rulesChecked'] === 'number' ? src['rulesChecked'] : null,
+    violations: raw.flatMap((entry): RuleViolation[] => {
+      if (entry === null || typeof entry !== 'object') return [];
+      const item = entry as Record<string, unknown>;
+      return [
+        {
+          rule: typeof item['rule'] === 'string' ? item['rule'] : 'unknown rule',
+          message: typeof item['message'] === 'string' ? item['message'] : '(no message)',
+          line: typeof item['line'] === 'number' ? item['line'] : null,
+          severity: typeof item['severity'] === 'string' ? item['severity'] : 'unknown',
+        },
+      ];
+    }),
+  };
+}
+
+type TestOutcome =
+  | { kind: 'idle' }
+  | { kind: 'running' }
+  | { kind: 'done'; response: CapabilityTestResponse }
+  | { kind: 'request_failed'; error: string };
+
+const STATUS_TONE: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
+  success: 'success',
+  warning: 'warning',
+  error: 'error',
+  skipped: 'warning',
+  not_registered: 'warning',
+};
+
+const stringify = (value: unknown) => {
+  try {
+    return JSON.stringify(value, null, 2) ?? String(value);
+  } catch {
+    return String(value);
+  }
+};
+
+/**
+ * The API's verdict, verbatim.
+ *
+ * `executed` appears on every row because `status: 'success'` from this endpoint
+ * means "the declared contract validated", not "something ran". The previous
+ * plugin panel omitted that distinction and printed an error string inside a
+ * success-coloured block.
+ */
+function ValidationOutcome({
+  outcome,
+  isSkill,
+}: {
+  outcome: CapabilityTestResponse;
+  isSkill: boolean;
+}) {
+  const { checked, violations } = isSkill
+    ? readViolations(outcome.result)
+    : { checked: null, violations: [] };
+
+  return (
+    <div className="space-y-2 border border-border rounded-lg p-2.5 bg-surface">
+      <div className="flex items-center gap-2 flex-wrap">
+        <Badge variant={STATUS_TONE[outcome.status] ?? 'default'} size="sm">
+          {outcome.status}
+        </Badge>
+        <Badge variant={outcome.executed ? 'warning' : 'default'} size="sm">
+          {outcome.executed
+            ? 'executed: true — the server really ran something'
+            : 'executed: false — nothing was run'}
+        </Badge>
+        <span className="text-2xs font-mono text-text-muted">
+          {outcome.executionDurationMs}ms server-side
+        </span>
+      </div>
+
+      {outcome.validationErrors.length > 0 && (
+        <ul className="space-y-1">
+          {outcome.validationErrors.map((message, index) => (
+            <li key={index} className="text-2xs text-warning font-mono">
+              {message}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {checked !== null && (
+        <p className="text-2xs text-text-secondary">
+          The server ran {checked} rule{checked === 1 ? '' : 's'} and reported {violations.length}{' '}
+          violation{violations.length === 1 ? '' : 's'}.
+        </p>
+      )}
+
+      {violations.map((violation, index) => (
+        <p key={index} className="text-2xs font-mono text-warning">
+          [{violation.severity}] {violation.rule}
+          {violation.line !== null ? ` (line ${violation.line})` : ''}: {violation.message}
+        </p>
+      ))}
+
+      {outcome.result != null && (
+        <pre className="p-2 rounded bg-surface-elevated border border-border font-mono text-2xs text-text max-h-40 overflow-auto whitespace-pre-wrap break-all">
+          {stringify(outcome.result)}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+// ─── Shared form pieces ──────────────────────────────────────────────────────
+
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * The tag editor, rendered once.
+ *
+ * It used to be copy-pasted into all five category branches verbatim, which is
+ * how five `cap-tag-input-*` ids and five copies of the same handlers came to
+ * exist.
+ */
+function TagEditor({
+  tags,
+  input,
+  onInput,
+  onAdd,
+  onRemove,
+}: {
+  tags: string[];
+  input: string;
+  onInput: (value: string) => void;
+  onAdd: (tag: string) => void;
+  onRemove: (tag: string) => void;
+}) {
+  const suggestions = QUICK_TAGS.filter((tag) => !tags.includes(tag)).slice(0, 6);
+  return (
+    <FormField label="Tags & taxonomy">
+      <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-surface border border-border min-h-[38px]">
+        {tags.map((tag) => (
+          <span
+            key={tag}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium bg-surface-elevated text-text border border-border"
+          >
+            {tag}
+            <button
+              type="button"
+              onClick={() => onRemove(tag)}
+              aria-label={`Remove tag ${tag}`}
+              className="text-text-muted hover:text-text ml-0.5 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        <input
+          type="text"
+          aria-label="Add a tag"
+          value={input}
+          onChange={(event) => onInput(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ',') {
+              event.preventDefault();
+              onAdd(input);
+            }
+          }}
+          placeholder="+ Type tag and press Enter"
+          className="bg-transparent text-xs text-text placeholder:text-text-muted focus:outline-none flex-1 min-w-[120px] px-1"
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-1">
+        {suggestions.map((tag) => (
+          <button
+            key={tag}
+            type="button"
+            onClick={() => onAdd(tag)}
+            className="text-2xs px-1.5 py-0.5 rounded bg-surface-elevated text-text-muted hover:text-text hover:bg-surface-hover border border-border"
+          >
+            + {tag}
+          </button>
+        ))}
+      </div>
+    </FormField>
+  );
+}
+
+const DESCRIPTION_LABEL: Record<CapabilityCategory, string> = {
+  skills: 'When to activate',
+  agents: 'Role mission & specialization',
+  tools: 'Function description',
+  mcp: 'Server description & scope',
+  plugins: 'Summary description',
+  connectors: 'Description',
+};
+
+function ReadinessPanel({ readiness }: { readiness: Readiness }) {
+  const blocked = readiness.blockingFailures.length > 0;
+  return (
+    <div className="space-y-2">
+      <div role="status" aria-live="polite" className="flex items-center justify-between gap-2">
+        <span className="text-xs font-semibold text-text">Form checks</span>
+        <Badge variant={blocked ? 'error' : 'info'} size="sm">
+          {readiness.passedCount} of {readiness.applicable} applicable checks passed
+        </Badge>
+      </div>
+      {readiness.applicableWeight > 0 && (
+        <p className="text-2xs text-text-muted font-mono">
+          {readiness.earnedWeight} of {readiness.applicableWeight} weight points
+        </p>
+      )}
+      <ul className="space-y-1">
+        {readiness.checks.map((check) => (
+          <li
+            key={check.id}
+            className="p-2 rounded-lg bg-surface border border-border flex items-start gap-2"
+          >
+            <Badge
+              variant={
+                check.skipped
+                  ? 'default'
+                  : check.passed
+                    ? 'success'
+                    : check.blocking
+                      ? 'error'
+                      : 'warning'
+              }
+              size="sm"
+            >
+              <span aria-hidden="true">{check.skipped ? '–' : check.passed ? '✓' : '✗'}</span>{' '}
+              {check.label}
+            </Badge>
+            <span className="text-2xs text-text-secondary leading-relaxed min-w-0 flex-1">
+              {check.detail}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function SpecPanel({
+  title,
+  badge,
+  spec,
+  children,
+}: {
+  title: string;
+  badge: string;
+  spec: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="p-2.5 rounded-xl border border-border bg-surface-elevated space-y-2">
+      <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-border">
+        <span className="font-semibold text-text text-xs">{title}</span>
+        <Badge variant="mono" size="sm">
+          {badge}
+        </Badge>
+      </div>
+      <div className="p-2.5 rounded-lg bg-surface border border-border text-primary font-mono text-xs overflow-auto max-h-[260px] whitespace-pre select-all">
+        {spec}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Editable source panel.
+ *
+ * One component for the three long-form editors (skill playbook, agent system
+ * template, plugin handler) so the header, monospace styling and optional preview
+ * toggle are defined once. All three are genuinely editable: rendering the
+ * document read-only would leave the user with a field they can see and cannot
+ * change.
+ */
+function EditorPanel({
+  label,
+  badge,
+  value,
+  onChange,
+  placeholder,
+  note,
+  preview,
+  onTogglePreview,
+  renderPreview,
+}: {
+  label: string;
+  badge: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  note: string;
+  preview: boolean;
+  onTogglePreview?: () => void;
+  renderPreview?: (value: string) => React.ReactNode;
+}) {
+  return (
+    <div className="p-2.5 rounded-xl border border-border bg-surface-elevated space-y-2">
+      <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-border">
+        <span className="font-semibold text-text text-xs">{label}</span>
+        <Badge variant="mono" size="sm">
+          {badge}
+        </Badge>
+      </div>
+
+      {preview && renderPreview ? (
+        <div className="p-2.5 rounded-lg bg-surface border border-border max-h-56 overflow-y-auto text-text">
+          {renderPreview(value)}
+        </div>
+      ) : (
+        <Textarea
+          aria-label={label}
+          rows={11}
+          spellCheck={false}
+          value={value}
+          placeholder={placeholder}
+          onChange={(event) => onChange(event.target.value)}
+          className="font-mono text-xs leading-relaxed resize-none"
+        />
+      )}
+
+      <div className="flex items-center justify-between gap-2 text-2xs text-text-muted">
+        {onTogglePreview ? (
+          <button
+            type="button"
+            onClick={onTogglePreview}
+            className="text-primary hover:underline rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+          >
+            {preview ? 'Edit source' : 'Preview rendered'}
+          </button>
+        ) : (
+          <span />
+        )}
+        <span>{note}</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One-line constructors for the two most repeated control shapes.
+ *
+ * Ten of each would otherwise be forty lines of label/value/onChange/options
+ * boilerplate. Both narrow the incoming string through `option`, so a stale value
+ * can never reach a union-typed field. `ariaLabel` drops the visible label for
+ * inputs that live inside a labelled group, which is why they are distinct.
+ */
+function pickField<T extends string>(
+  label: string,
+  value: T,
+  allowed: readonly T[],
+  onChange: (value: T) => void,
+  extra: {
+    helperText?: string;
+    error?: string;
+    className?: string;
+    ariaLabel?: string;
+  } = {},
+) {
+  return (
+    <Select
+      label={extra.ariaLabel ? undefined : label}
+      aria-label={extra.ariaLabel ?? label}
+      value={value}
+      onChange={(next) => onChange(option(next, allowed, value))}
+      options={asOptions(allowed)}
+      helperText={extra.helperText}
+      error={extra.error}
+      className={extra.className}
+    />
+  );
+}
+
+function textField(
+  label: string,
+  value: string,
+  onChange: (value: string) => void,
+  extra: {
+    placeholder?: string;
+    helperText?: string;
+    error?: string;
+    className?: string;
+    ariaLabel?: string;
+  } = {},
+) {
+  return (
+    <Input
+      label={extra.ariaLabel ? undefined : label}
+      aria-label={extra.ariaLabel ?? label}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      placeholder={extra.placeholder}
+      helperText={extra.helperText}
+      error={extra.error}
+      className={extra.className}
+    />
+  );
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
+export type ImportOutcome = { ok: true } | { ok: false; message: string };
+
+export interface AddCapabilityModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  defaultCategory?: CapabilityCategory;
+  /**
+   * `'templates'` was in this union but the page never passed it: it opens the
+   * modal either on the builder or on import, and Presets is reachable from the
+   * in-modal tab bar. Removed so the initial view cannot be something the only
+   * caller cannot ask for.
+   */
+  initialMode?: 'builder' | 'import';
+  onCreate: (capability: CapabilityItem) => void;
+  /**
+   * Reports the outcome instead of rejecting.
+   *
+   * A rejected promise had no owner: the submit handler is awaited by nothing,
+   * so a re-throw became an unhandled rejection, and a resolved promise closed
+   * the dialog even when the server had registered nothing. Returning the outcome
+   * makes the page the single producer of the message and this component its
+   * presenter, so the form stays open only when there is something to fix.
+   */
+  onImport: (url: string, category: CapabilityCategory) => Promise<ImportOutcome>;
+  /**
+   * Names already taken in this workspace.
+   *
+   * Previously declared and never read, which is why the create path checked only
+   * for a non-empty name and let the server answer 409. The page does not pass it
+   * today, so the modal falls back to the names in the workspace's local store
+   * and the check is live either way.
+   */
+  installedNames?: Set<string>;
+  workspaceId?: string;
+}
+
+type ModalTab = 'templates' | 'builder' | 'import';
+
+const DEFAULT_DOC = `# Operational Playbook
+
+## Mission
+Execute the designated task with verifiable evidence and a clear audit trail.
+
+## Operating Rules
+1. Check assumptions against workspace context before acting.
+2. Produce output in the project's declared format.
+3. Fall back to deterministic heuristics when a tool is unreachable.
+`;
+
+const DEFAULT_PLUGIN_CODE = `def run(input: dict, context: dict) -> dict:
+    """Vaeloom Python sandbox transform."""
+    text = input.get("text", "")
+    return {"length": len(text), "tokens_approx": len(text.split())}
+`;
+
+const DEFAULT_AGENT_PROMPT = `You are {{ name }}, an enterprise agent in Vaeloom.
+Role: {{ description }}
+
+OPERATIONAL BOUNDARIES:
+- Never fabricate a claim, a credential or a tool result.
+- Verify every claim against memory or an available tool.
+`;
+
+const STUDIO: Record<CapabilityCategory, { title: string; blurb: string }> = {
+  skills: {
+    title: 'Skill Studio',
+    blurb: 'Reasoning playbooks injected into agent context. No code execution, no approval gate.',
   },
-  { id: 'browse_job_page', name: 'browse_job_page', desc: 'Headless browser page scraper' },
-  { id: 'run_command', name: 'run_command', desc: 'Execute sandboxed terminal command' },
-  { id: 'http_request', name: 'http_request', desc: 'Outbound HTTP client request' },
+  agents: {
+    title: 'Agent Studio',
+    blurb: 'AgentCard contracts with an autonomy policy and a tool fleet that resolves.',
+  },
+  tools: {
+    title: 'Tool Studio',
+    blurb: 'Typed functions with a JSON Schema input contract and a required security scope.',
+  },
+  mcp: {
+    title: 'MCP Studio',
+    blurb: 'Protocol endpoints. Every rule here mirrors validate_mcp_config.',
+  },
+  plugins: {
+    title: 'Plugin Studio',
+    blurb: 'Python lifecycle hooks validated against the registry manifest contract.',
+  },
+  connectors: {
+    title: 'Connectors',
+    blurb: 'Connectors are registered through the connectors API, not through this form.',
+  },
+};
+
+const CATEGORY_CHOICES: Array<{ id: CapabilityCategory; label: string; desc: string }> = [
+  { id: 'skills', label: 'Skills', desc: 'Reasoning loop' },
+  { id: 'agents', label: 'Agents', desc: 'Autonomous actor' },
+  { id: 'tools', label: 'Tools', desc: 'Typed function' },
+  { id: 'mcp', label: 'MCP', desc: 'Protocol bridge' },
+  { id: 'plugins', label: 'Plugins', desc: 'Lifecycle hook' },
+  { id: 'connectors', label: 'Connectors', desc: 'SaaS & API' },
 ];
 
 export function AddCapabilityModal({
@@ -266,671 +1702,783 @@ export function AddCapabilityModal({
   initialMode = 'builder',
   onCreate,
   onImport,
+  installedNames,
   workspaceId,
 }: AddCapabilityModalProps) {
-  // Navigation Mode: 'templates' | 'builder' | 'import'
-  const [activeTab, setActiveTab] = useState<'templates' | 'builder' | 'import'>(initialMode);
+  const [activeTab, setActiveTab] = useState<ModalTab>(initialMode);
+  const [category, setCategory] = useState<CapabilityCategory>(defaultCategory);
 
-  // Common Metadata State
-  const [capName, setCapName] = useState('');
-  const [capCategory, setCapCategory] = useState<CapabilityCategory>(defaultCategory);
-  const [capTags, setCapTags] = useState<string[]>(['Custom']);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [tags, setTags] = useState<string[]>(['Custom']);
   const [tagInput, setTagInput] = useState('');
-  const [capDescription, setCapDescription] = useState('');
-  const [capAutonomy, setCapAutonomy] = useState<'autonomous' | 'approval_required' | 'suggest'>(
-    'autonomous',
-  );
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const [autonomy, setAutonomy] = useState<Autonomy>('autonomous');
+  const [triggers, setTriggers] = useState('');
+  const [doc, setDoc] = useState(DEFAULT_DOC);
+  const [docPreview, setDocPreview] = useState(false);
 
-  // 1. Skill Specific State
-  const [capDoc, setCapDoc] = useState(
-    `# Operational Playbook & Guidelines\n\n## Mission\nExecute designated tasks with verifiable evidence, zero hallucinations, and clear audit trails.\n\n## Operating Rules\n1. Always analyze assumptions against workspace context before proceeding.\n2. Produce structured outputs following project-specific formatting standards.\n3. Fall back to safe heuristics when tools or network resources are unavailable.\n`,
-  );
-  const [capTriggers, setCapTriggers] = useState('');
-  const [skillPreviewOpen, setSkillPreviewOpen] = useState(false);
+  const [toolParams, setToolParams] = useState<ToolParam[]>([
+    { name: 'query', type: 'string', description: 'Primary input query', required: true },
+  ]);
+  const [toolScope, setToolScope] = useState<SecurityScope>('memory.read');
+  const [toolGroup, setToolGroup] = useState<ToolGroup>('memory_read');
 
-  // 2. Tool Specific State
-  const [toolParams, setToolParams] = useState<
-    Array<{ name: string; type: string; description: string; required: boolean }>
-  >([{ name: 'query', type: 'string', description: 'Primary input query', required: true }]);
-  const [toolScope, setToolScope] = useState('memory.read');
-  const [toolCategoryGroup, setToolCategoryGroup] = useState('memory_read');
+  const [transport, setTransport] = useState<McpTransport>('stdio');
+  const [command, setCommand] = useState('npx');
+  const [argsText, setArgsText] = useState('-y @modelcontextprotocol/server-example');
+  const [url, setUrl] = useState('');
+  const [allowWindowsBatch, setAllowWindowsBatch] = useState(false);
+  const [allowInsecure, setAllowInsecure] = useState(false);
+  const [envKey, setEnvKey] = useState('');
+  const [envVal, setEnvVal] = useState('');
+  const [envList, setEnvList] = useState<Array<{ key: string; val: string }>>([]);
 
-  // 3. MCP Specific State
-  const [mcpTransport, setMcpTransport] = useState<'stdio' | 'sse'>('stdio');
-  const [mcpCommand, setMcpCommand] = useState('npx -y @modelcontextprotocol/server-example');
-  const [mcpEnvKey, setMcpEnvKey] = useState('');
-  const [mcpEnvVal, setMcpEnvVal] = useState('');
-  const [mcpEnvList, setMcpEnvList] = useState<Array<{ key: string; val: string }>>([]);
-  const [mcpRightTab, setMcpRightTab] = useState<'manifest' | 'tools' | 'audit'>('manifest');
-
-  // 4. Plugin Specific State
   const [pluginAuthor, setPluginAuthor] = useState('Workspace Member');
   const [pluginLicense, setPluginLicense] = useState('MIT');
-  const [pluginHook, setPluginHook] = useState<
-    'on_tool_call' | 'on_agent_start' | 'on_agent_complete'
-  >('on_tool_call');
-  const [pluginSandbox, setPluginSandbox] = useState<
-    'isolated_subprocess' | 'wasm_sandbox' | 'safe_thread'
-  >('isolated_subprocess');
-  const [pluginTarget, setPluginTarget] = useState<'both' | 'desktop' | 'agent'>('both');
-  const [pluginCode, setPluginCode] = useState<string>(`def run(input: dict, context: dict) -> dict:
-    """Vaeloom Python sandbox transform."""
-    text = input.get("text", "")
-    return {"length": len(text), "tokens_approx": len(text.split())}
-`);
-  const [pluginRightTab, setPluginRightTab] = useState<'code' | 'test' | 'manifest'>('code');
-  const [pluginTestPayload, setPluginTestPayload] = useState(
-    '{\n  "text": "Hello Vaeloom enterprise agent"\n}',
-  );
-  const [pluginTestResult, setPluginTestResult] = useState<string | null>(null);
+  const [pluginHook, setPluginHook] = useState<PluginHook>('on_tool_call');
+  const [pluginSandbox, setPluginSandbox] = useState<PluginSandbox>('isolated_subprocess');
+  const [pluginTarget, setPluginTarget] = useState<PluginTarget>('both');
+  const [pluginCode, setPluginCode] = useState(DEFAULT_PLUGIN_CODE);
+  const [pluginPermissions, setPluginPermissions] = useState('{\n  "egress.inspect": true\n}');
+  const [minAppVersion, setMinAppVersion] = useState('1.0.0');
+  const [testPayload, setTestPayload] = useState('{\n  "text": "Hello Vaeloom"\n}');
+  const [testPayloadIssue, setTestPayloadIssue] = useState<string | null>(null);
 
-  // 5. Agent Specific State
-  const [agentArchetype, setAgentArchetype] = useState<'supervisor' | 'specialist' | 'auditor'>(
-    'specialist',
-  );
-  const [agentModelTier, setAgentModelTier] = useState<'pro' | 'flash' | 'open_weights'>('pro');
-  const [agentMaxTurns, setAgentMaxTurns] = useState<number>(12);
-  const [agentSelectedTools, setAgentSelectedTools] = useState<string[]>([
-    'search_documents',
-    'query_graph',
-  ]);
-  const [agentPromptTemplate, setAgentPromptTemplate] =
-    useState(`You are {{ name }}, an enterprise AI agent in Vaeloom.
-Role: {{ description }}
+  const [archetype, setArchetype] = useState<AgentArchetype>('specialist');
+  const [modelTier, setModelTier] = useState<AgentModelTier>('pro');
+  const [maxTurns, setMaxTurns] = useState(12);
+  const [agentTools, setAgentTools] = useState<string[]>(['search_documents', 'query_graph']);
+  const [agentPrompt, setAgentPrompt] = useState(DEFAULT_AGENT_PROMPT);
 
-OPERATIONAL BOUNDARIES:
-- Never fabricate claims, credentials, or tool results.
-- Verify every claim using memory or available tools.
-`);
-  const [agentRightTab, setAgentRightTab] = useState<'prompt' | 'schema' | 'guardrails' | 'card'>(
-    'prompt',
-  );
-
-  // Import Mode State
   const [importUrl, setImportUrl] = useState('');
   const [importCategory, setImportCategory] = useState<CapabilityCategory>('skills');
   const [importLoading, setImportLoading] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [fileParseSuccess, setFileParseSuccess] = useState<string | null>(null);
+  const [fileReport, setFileReport] = useState<{ name: string; detail: string } | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
 
-  // Preset filter state
   const [presetSearch, setPresetSearch] = useState('');
-  const [presetCategoryFilter, setPresetCategoryFilter] = useState<string>('all');
+  const [presetFilter, setPresetFilter] = useState('all');
+  const [testOutcome, setTestOutcome] = useState<TestOutcome>({ kind: 'idle' });
+  const [issues, setIssues] = useState<FieldIssue[]>([]);
+  const [collisions, setCollisions] = useState<ReadonlySet<string>>(() => new Set<string>());
 
-  const nameInputRef = useRef<HTMLInputElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
+  const submittingRef = useRef(false);
+
+  // Names already taken, read once per open. `getStoredCapabilities` parses JSON
+  // and can write a migration envelope, which is not something to do on every
+  // character typed into the name field.
+  useEffect(() => {
+    if (!isOpen) return;
+    const names = new Set<string>();
+    installedNames?.forEach((entry) => names.add(entry.toLowerCase()));
+    if (workspaceId) {
+      try {
+        for (const item of getStoredCapabilities(workspaceId)) {
+          names.add(item.name.toLowerCase());
+          names.add(slugify(item.name).toLowerCase());
+        }
+      } catch {
+        // getStoredCapabilities records the reason on the storage-health channel,
+        // which the page surfaces. The set simply stays short here and the
+        // server's 409 remains the backstop.
+      }
+    }
+    setCollisions(names);
+  }, [isOpen, installedNames, workspaceId]);
 
   useEffect(() => {
-    if (isOpen) {
-      setActiveTab(initialMode);
-      setCapCategory(defaultCategory);
-      setValidationError(null);
-    }
+    if (!isOpen) return;
+    setActiveTab(initialMode);
+    setCategory(defaultCategory);
+    setIssues([]);
+    setImportError(null);
+    setTestOutcome({ kind: 'idle' });
+    submittingRef.current = false;
+    lastFocusedRef.current = document.activeElement as HTMLElement | null;
+    return () => lastFocusedRef.current?.focus?.();
   }, [isOpen, initialMode, defaultCategory]);
 
-  // Enterprise Readiness Score (0 - 100%)
-  const readinessAudit = useMemo(() => {
-    let checks: Array<{ id: string; label: string; passed: boolean; weight: number }> = [];
+  useEffect(() => {
+    if (!isOpen) return;
+    const first = dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE);
+    (first ?? dialogRef.current)?.focus();
+  }, [isOpen]);
 
-    if (capCategory === 'skills') {
-      checks = [
-        {
-          id: 'slug',
-          label: 'Skill Identifier Defined',
-          passed: Boolean(capName.trim()),
-          weight: 25,
-        },
-        {
-          id: 'desc',
-          label: 'Activation Context & Description',
-          passed: Boolean(capDescription.trim()),
-          weight: 20,
-        },
-        {
-          id: 'playbook',
-          label: 'Playbook Operating Rules',
-          passed: Boolean(capDoc.trim().length >= 20),
-          weight: 35,
-        },
-        {
-          id: 'triggers',
-          label: 'Taxonomy & Routing Triggers',
-          passed: capTags.length > 0 || Boolean(capTriggers.trim()),
-          weight: 20,
-        },
-      ];
-    } else if (capCategory === 'agents') {
-      checks = [
-        {
-          id: 'slug',
-          label: 'Agent Identifier Defined',
-          passed: Boolean(capName.trim()),
-          weight: 25,
-        },
-        {
-          id: 'role',
-          label: 'Role & Autonomy Policy',
-          passed: Boolean(agentArchetype && capAutonomy),
-          weight: 25,
-        },
-        {
-          id: 'prompt',
-          label: 'System Template & Boundaries',
-          passed: Boolean(agentPromptTemplate.trim().length >= 20),
-          weight: 25,
-        },
-        {
-          id: 'tools',
-          label: 'Tool Fleet Assigned',
-          passed: agentSelectedTools.length > 0,
-          weight: 25,
-        },
-      ];
-    } else if (capCategory === 'mcp') {
-      checks = [
-        {
-          id: 'slug',
-          label: 'Server Identifier Defined',
-          passed: Boolean(capName.trim()),
-          weight: 25,
-        },
-        {
-          id: 'transport',
-          label: 'Transport & Execution Command',
-          passed: Boolean(mcpCommand.trim()),
-          weight: 35,
-        },
-        { id: 'protocol', label: 'MCP v2 Protocol Contract', passed: true, weight: 20 },
-        { id: 'env', label: 'Encrypted Secrets / Configuration', passed: true, weight: 20 },
-      ];
-    } else if (capCategory === 'plugins') {
-      checks = [
-        {
-          id: 'slug',
-          label: 'Plugin Identifier Defined',
-          passed: Boolean(capName.trim()),
-          weight: 25,
-        },
-        {
-          id: 'code',
-          label: 'Python Sandbox Handler',
-          passed: Boolean(pluginCode.includes('def run')),
-          weight: 35,
-        },
-        {
-          id: 'hook',
-          label: 'Target & Lifecycle Hook',
-          passed: Boolean(pluginHook && pluginTarget),
-          weight: 20,
-        },
-        {
-          id: 'license',
-          label: 'Author & SPDX License',
-          passed: Boolean(pluginAuthor && pluginLicense),
-          weight: 20,
-        },
-      ];
-    } else {
-      // tools
-      checks = [
-        {
-          id: 'slug',
-          label: 'Tool Function Name Defined',
-          passed: Boolean(capName.trim()),
-          weight: 25,
-        },
-        {
-          id: 'params',
-          label: 'Parameter Schema Defined',
-          passed: toolParams.length > 0 && toolParams.some((p) => Boolean(p.name.trim())),
-          weight: 35,
-        },
-        { id: 'scope', label: 'Required Security Scope', passed: Boolean(toolScope), weight: 20 },
-        { id: 'envelope', label: 'JSONSchema 2020-12 Output Envelope', passed: true, weight: 20 },
-      ];
-    }
+  /**
+   * Escape and the focus trap live on the dialog element, not on `window`.
+   *
+   * A window listener fired for keystrokes aimed anywhere on the page, which is
+   * how Ctrl+Enter used to submit the Presets view: a view with no form and no
+   * submit button, in a modal whose footer hid the submit control.
+   */
+  const onDialogKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        onClose();
+        return;
+      }
+      if (event.key !== 'Tab' || !dialogRef.current) return;
+      const nodes = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
+      const firstNode = nodes[0];
+      const lastNode = nodes[nodes.length - 1];
+      if (!firstNode || !lastNode) {
+        event.preventDefault();
+        dialogRef.current.focus();
+      } else if (event.shiftKey && document.activeElement === firstNode) {
+        event.preventDefault();
+        lastNode.focus();
+      } else if (!event.shiftKey && document.activeElement === lastNode) {
+        event.preventDefault();
+        firstNode.focus();
+      }
+    },
+    [onClose],
+  );
 
-    const total = checks.reduce((acc, c) => acc + (c.passed ? c.weight : 0), 0);
-    return { checks, score: total };
-  }, [
-    capCategory,
-    capName,
-    capDescription,
-    capDoc,
-    capTags,
-    capTriggers,
-    agentArchetype,
-    capAutonomy,
-    agentPromptTemplate,
-    agentSelectedTools,
-    mcpCommand,
-    pluginCode,
-    pluginHook,
-    pluginTarget,
-    pluginAuthor,
-    pluginLicense,
+  const addTag = useCallback((tag: string) => {
+    const trimmed = tag.trim().replace(/^#/, '');
+    if (!trimmed) return;
+    setTags((previous) => (previous.includes(trimmed) ? previous : [...previous, trimmed]));
+    setTagInput('');
+  }, []);
+
+  const patchParam = useCallback((index: number, patch: Partial<ToolParam>) => {
+    setToolParams((prev) => prev.map((param, i) => (i === index ? { ...param, ...patch } : param)));
+  }, []);
+
+  /**
+   * Derived values, computed plainly.
+   *
+   * Memoising these cost five dependency arrays listing the same thirty
+   * identifiers, which is thirty lines to protect a few microseconds of work in a
+   * form that re-renders on every keystroke anyway. A bracket scan over a few
+   * hundred characters of plugin source is not what makes this dialog slow.
+   */
+  const args = splitArgs(argsText);
+  const triggerList = triggers
+    .split(',')
+    .map((trigger) => trigger.trim())
+    .filter(Boolean);
+
+  const draft: Draft = {
+    category,
+    name,
+    description,
+    tags,
+    triggers,
+    doc,
+    autonomy,
+    transport,
+    command,
+    args,
+    url,
+    allowWindowsBatch,
+    allowInsecure,
+    envList,
     toolParams,
     toolScope,
-  ]);
+    toolGroup,
+    archetype,
+    modelTier,
+    maxTurns,
+    agentTools,
+    prompt: agentPrompt,
+    hook: pluginHook,
+    sandbox: pluginSandbox,
+    pluginTarget,
+    pluginCode,
+    pluginAuthor,
+    pluginLicense,
+    pluginPermissions,
+    minAppVersion,
+    collisions,
+  };
 
-  // Select Preset Template
-  const handleSelectTemplate = useCallback((template: PresetTemplate) => {
-    setCapName(template.name);
-    setCapCategory(template.category);
-    setCapTags(template.tags);
-    setCapDescription(template.description);
-    setCapAutonomy(template.autonomy);
+  const inputSchema = buildInputSchema(draft);
+  const readiness = buildReadiness(draft);
+  const spec = buildSpec(draft, inputSchema);
+  const markdownDoc = buildMarkdownDoc(draft, inputSchema);
+  const nameIssue =
+    readiness.blockingFailures.find((check) => check.id === 'identity')?.detail ?? null;
+  const permissionsIssue =
+    readiness.blockingFailures.find((check) => check.id === 'permissions')?.detail ?? null;
+  const argvIssue = readiness.blockingFailures.find((check) => check.id === 'argv')?.detail ?? null;
+  const endpointIssue =
+    readiness.blockingFailures.find((check) => check.id === 'endpoint')?.detail ?? null;
 
-    if (template.doc) {
-      setCapDoc(template.doc);
+  /**
+   * The one submit path.
+   *
+   * Ctrl+Enter, the footer's Create button and the browser's own form submit all
+   * land here. `submittingRef` stays set until the modal is reopened, so a second
+   * keystroke or a double click cannot produce two `onCreate` calls.
+   *
+   * Not wrapped in `useCallback`: it closes over the freshly-built `draft`, and
+   * memoising it would only mean listing every field again.
+   */
+  function submit() {
+    if (submittingRef.current) return;
+    const found = validateDraft(draft, readiness);
+    if (found.length > 0) {
+      setIssues(found);
+      nameRef.current?.focus();
+      return;
     }
-    if (template.triggers) {
-      setCapTriggers(template.triggers.join(', '));
+    submittingRef.current = true;
+    setIssues([]);
+    onCreate(buildCapability(draft, inputSchema));
+    onClose();
+  }
+
+  function onFormSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    submit();
+  }
+
+  function onFormKeyDown(event: React.KeyboardEvent<HTMLFormElement>) {
+    if (event.key !== 'Enter' || (!event.ctrlKey && !event.metaKey)) return;
+    // Scoped to the form. The previous window-level listener fired from any view in
+    // the modal, including Presets, which has no form to submit.
+    event.preventDefault();
+    submit();
+  }
+
+  const applyPreset = useCallback((preset: Preset) => {
+    setName(preset.name);
+    setCategory(preset.category);
+    setTags(preset.tags);
+    setDescription(preset.description);
+    setAutonomy(preset.autonomy);
+    setIssues([]);
+    setTestOutcome({ kind: 'idle' });
+    if (preset.doc) setDoc(preset.doc);
+    if (preset.triggers) setTriggers(preset.triggers.join(', '));
+    if (preset.parameters) setToolParams(preset.parameters);
+    if (preset.mcp) {
+      setTransport(preset.mcp.transport);
+      setCommand(preset.mcp.command);
+      setArgsText(preset.mcp.args.join(' '));
+      setAllowWindowsBatch(preset.mcp.allowWindowsBatch ?? false);
+      setEnvList(Object.entries(preset.mcp.env).map(([key, val]) => ({ key, val })));
     }
-    if (template.parameters) {
-      setToolParams(template.parameters);
+    if (preset.plugin) {
+      setPluginHook(option(preset.plugin.hook, PLUGIN_HOOKS, 'on_tool_call'));
+      setPluginSandbox(option(preset.plugin.sandbox, PLUGIN_SANDBOXES, 'isolated_subprocess'));
+      setPluginTarget(option(preset.plugin.target, PLUGIN_TARGETS, 'both'));
+      setPluginCode(preset.plugin.code);
+      setPluginAuthor(preset.plugin.author);
+      setPluginLicense(preset.plugin.license);
     }
-    if (template.mcpConfig) {
-      setMcpTransport(template.mcpConfig.transport);
-      setMcpCommand(template.mcpConfig.command);
-      setMcpEnvList(Object.entries(template.mcpConfig.env).map(([key, val]) => ({ key, val })));
-    }
-    if (template.pluginConfig) {
-      setPluginHook(template.pluginConfig.hook as any);
-      setPluginSandbox(template.pluginConfig.sandbox as any);
-      setPluginCode(template.pluginConfig.code);
-      if (template.pluginConfig.author) setPluginAuthor(template.pluginConfig.author);
-      if (template.pluginConfig.license) setPluginLicense(template.pluginConfig.license);
-    }
-    if (template.agentConfig) {
-      setAgentArchetype(template.agentConfig.archetype as any);
-      setAgentModelTier(template.agentConfig.modelTier as any);
-      setAgentMaxTurns(template.agentConfig.maxTurns);
-      setAgentSelectedTools(template.agentConfig.tools);
-      setAgentPromptTemplate(template.agentConfig.prompt);
+    if (preset.agent) {
+      setArchetype(option(preset.agent.archetype, AGENT_ARCHETYPES, 'specialist'));
+      setModelTier(option(preset.agent.modelTier, AGENT_MODEL_TIERS, 'pro'));
+      setMaxTurns(preset.agent.maxTurns);
+      setAgentTools(preset.agent.tools);
+      setAgentPrompt(preset.agent.prompt);
     }
     setActiveTab('builder');
   }, []);
 
-  // Tag Management
-  const handleAddTag = useCallback((tag: string) => {
-    const trimmed = tag.trim().replace(/^#/, '');
-    if (!trimmed) return;
-    setCapTags((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
-    setTagInput('');
-  }, []);
-
-  const handleRemoveTag = useCallback((tagToRemove: string) => {
-    setCapTags((prev) => prev.filter((t) => t !== tagToRemove));
-  }, []);
-
-  // Tool Parameter Management
-  const handleAddParam = useCallback(() => {
-    setToolParams((prev) => [
-      ...prev,
-      { name: `param_${prev.length + 1}`, type: 'string', description: '', required: false },
-    ]);
-  }, []);
-
-  const handleRemoveParam = useCallback((index: number) => {
-    setToolParams((prev) => prev.filter((_, i) => i !== index));
-  }, []);
-
-  // MCP Env Management
-  const handleAddEnvVar = useCallback(() => {
-    if (!mcpEnvKey.trim()) return;
-    setMcpEnvList((prev) => [...prev, { key: mcpEnvKey.trim(), val: mcpEnvVal.trim() }]);
-    setMcpEnvKey('');
-    setMcpEnvVal('');
-  }, [mcpEnvKey, mcpEnvVal]);
-
-  // Handle local file upload (markdown, json, yaml)
-  const handleFileUpload = useCallback((file: File) => {
+  /**
+   * Parse a dropped or browsed capability file into the builder.
+   *
+   * `parsed.category` is accepted only when it names a category this form can
+   * author. The previous version wrote an arbitrary string straight from the file
+   * into a `CapabilityCategory` field, so a file saying `"category":
+   * "everything"` put a value in a union the compiler believed was closed.
+   */
+  const handleFile = useCallback((file: File) => {
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      if (!content) return;
-      const fileName = file.name.replace(/\.[^/.]+$/, '');
-      setCapName(fileName.toLowerCase().replace(/[^a-z0-9_-]/g, '-'));
+    const notes: string[] = [];
 
-      if (file.name.endsWith('.json')) {
+    reader.onerror = () => {
+      setFileReport(null);
+      setFileError(`Could not read ${file.name}.`);
+    };
+
+    reader.onload = (event) => {
+      const content = typeof event.target?.result === 'string' ? event.target.result : '';
+      if (!content) {
+        setFileReport(null);
+        setFileError(`${file.name} is empty.`);
+        return;
+      }
+      setName(
+        file.name
+          .replace(/\.[^/.]+$/, '')
+          .toLowerCase()
+          .replace(/[^a-z0-9_-]/g, '-'),
+      );
+
+      if (file.name.toLowerCase().endsWith('.json')) {
+        let parsed: Record<string, unknown> | null = null;
         try {
-          const parsed = JSON.parse(content);
-          if (parsed.name) setCapName(parsed.name);
-          if (parsed.description) setCapDescription(parsed.description);
-          if (parsed.category) setCapCategory(parsed.category);
-          if (parsed.tags && Array.isArray(parsed.tags)) setCapTags(parsed.tags);
-          if (parsed.mcpServers || parsed.transport) {
-            setCapCategory('mcp');
-            if (parsed.command) setMcpCommand(parsed.command);
-            if (parsed.transport) setMcpTransport(parsed.transport);
+          const candidate: unknown = JSON.parse(content);
+          if (candidate !== null && typeof candidate === 'object' && !Array.isArray(candidate)) {
+            parsed = candidate as Record<string, unknown>;
           }
         } catch {
-          // Keep raw content in doc
+          parsed = null;
         }
-        setCapDoc(content);
+        if (!parsed) {
+          notes.push('not a JSON object, so it was loaded as raw documentation');
+          setDoc(content);
+        } else {
+          const declaredName = parsed['name'];
+          if (typeof declaredName === 'string') {
+            if (NAME_PATTERN.test(declaredName.trim()) && declaredName.trim() !== '') {
+              setName(declaredName.trim());
+            } else {
+              notes.push(
+                'the file name was empty or outside the API pattern, so the filename was used',
+              );
+            }
+          }
+          if (typeof parsed['description'] === 'string') {
+            setDescription((parsed['description'] as string).trim());
+          }
+          if (Array.isArray(parsed['tags'])) {
+            const found = parsed['tags'].filter((tag): tag is string => typeof tag === 'string');
+            if (found.length > 0) setTags(found);
+          }
+          const servers = parsed['mcpServers'];
+          const isMcp =
+            (servers !== null && typeof servers === 'object') || parsed['transport'] !== undefined;
+          const declaredCategory = parsed['category'];
+          if (isMcp) {
+            setCategory('mcp');
+            if (typeof parsed['command'] === 'string') setCommand(parsed['command']);
+            if (Array.isArray(parsed['args'])) {
+              setArgsText(
+                parsed['args'].filter((arg): arg is string => typeof arg === 'string').join(' '),
+              );
+            }
+            if (typeof parsed['url'] === 'string' && parsed['url'].trim() !== '') {
+              setUrl(parsed['url']);
+              setTransport('http');
+            }
+            if (parsed['transport'] === 'stdio' || parsed['transport'] === 'http') {
+              setTransport(parsed['transport']);
+            }
+            notes.push('read as an MCP server definition');
+          } else if (typeof declaredCategory === 'string') {
+            const known = CATEGORY_CHOICES.find((choice) => choice.id === declaredCategory);
+            if (known && known.id !== 'skills') {
+              setCategory(known.id);
+              notes.push(`category set to "${known.id}"`);
+            } else if (!known) {
+              notes.push(
+                `category "${declaredCategory}" is not one this form authors, so it was left alone`,
+              );
+            }
+          }
+          setDoc(content);
+        }
       } else {
-        setCapDoc(content);
-        const titleMatch = content.match(/^#\s+(.+)$/m);
-        if (titleMatch && titleMatch[1]) {
-          setCapName(
-            titleMatch[1]
+        setCategory('skills');
+        setDoc(content);
+        const title = /^#\s+(.+)$/m.exec(content);
+        if (title?.[1]) {
+          setName(
+            title[1]
               .trim()
               .toLowerCase()
               .replace(/[^a-z0-9_-]/g, '-'),
           );
         }
-        const descMatch = content.match(/##\s+(?:Mission|Description|Overview)\s*\n+([^#\n]+)/i);
-        if (descMatch && descMatch[1]) {
-          setCapDescription(descMatch[1].trim());
-        }
-        setCapCategory('skills');
+        const summary = /^##\s+(?:Mission|Description|Overview)\s*\n+([^#\n]+)/im.exec(content);
+        if (summary?.[1]) setDescription(summary[1].trim());
+        notes.push('read as a Markdown playbook');
       }
+
+      setFileError(null);
+      setFileReport({
+        name: file.name,
+        detail: [`${content.length} characters`, ...notes].join(' · '),
+      });
       setActiveTab('builder');
     };
+
     reader.readAsText(file);
   }, []);
 
-  // Generated JSON Schema for Tools
-  const generatedInputSchema = useMemo(() => {
-    if (capCategory !== 'tools') return undefined;
-    const properties: Record<string, { type: string; description: string }> = {};
-    const required: string[] = [];
-    toolParams.forEach((p) => {
-      if (p.name.trim()) {
-        properties[p.name.trim()] = {
-          type: p.type,
-          description: p.description || `${p.name} input parameter`,
-        };
-        if (p.required) required.push(p.name.trim());
-      }
-    });
-    return {
-      type: 'object',
-      properties,
-      required,
-    };
-  }, [capCategory, toolParams]);
-
-  // Live Spec Generator for Spec Tab
-  const generatedSpecString = useMemo(() => {
-    if (capCategory === 'mcp') {
-      const manifest = {
-        mcpServers: {
-          [capName || 'mcp-server']: {
-            transport: mcpTransport,
-            command: mcpCommand,
-            env: Object.fromEntries(mcpEnvList.map((e) => [e.key, e.val])),
-            protocolVersion: '2024-11-05',
-          },
-        },
-      };
-      return JSON.stringify(manifest, null, 2);
-    }
-    if (capCategory === 'tools') {
-      return JSON.stringify(
-        {
-          name: capName || 'tool_name',
-          description: capDescription || 'Tool description',
-          inputSchema: generatedInputSchema || { type: 'object', properties: {} },
-          outputSchema: { type: 'object', properties: { result: { type: 'string' } } },
-          category: toolCategoryGroup,
-          requiredScope: toolScope,
-        },
-        null,
-        2,
-      );
-    }
-    if (capCategory === 'plugins') {
-      return JSON.stringify(
-        {
-          name: capName || 'custom-plugin',
-          version: '1.0.0',
-          author: pluginAuthor,
-          license: pluginLicense,
-          hookPoint: pluginHook,
-          isolation: pluginSandbox,
-          target: pluginTarget,
-          permissions: ['workspace.read', 'transform.data'],
-        },
-        null,
-        2,
-      );
-    }
-    if (capCategory === 'agents') {
-      return JSON.stringify(
-        {
-          name: capName || 'custom-agent',
-          role: agentArchetype,
-          modelTier: agentModelTier,
-          maxReActRounds: agentMaxTurns,
-          tools: agentSelectedTools,
-          outputContract: { type: 'object', required: ['summary'] },
-        },
-        null,
-        2,
-      );
-    }
-    // Default SKILL.md Frontmatter Spec
-    const frontmatter = `---
-name: "${capName || 'custom-capability'}"
-description: "${capDescription || 'Capability description'}"
-category: "${capCategory}"
-autonomy: "${capAutonomy}"
-tags: [${capTags.map((t) => `"${t}"`).join(', ')}]
-triggers: [${capTriggers
-      .split(',')
-      .map((t) => `"${t.trim()}"`)
-      .filter(Boolean)
-      .join(', ')}]
----
-
-${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
-`;
-    return frontmatter;
-  }, [
-    capCategory,
-    capName,
-    capDescription,
-    capAutonomy,
-    capTags,
-    capTriggers,
-    capDoc,
-    mcpTransport,
-    mcpCommand,
-    mcpEnvList,
-    generatedInputSchema,
-    toolCategoryGroup,
-    toolScope,
-    pluginAuthor,
-    pluginLicense,
-    pluginHook,
-    pluginSandbox,
-    pluginTarget,
-    agentArchetype,
-    agentModelTier,
-    agentMaxTurns,
-    agentSelectedTools,
-  ]);
-
-  // Form Submit Handler
-  const handleFinalSubmit = useCallback(
-    (e?: React.FormEvent) => {
-      if (e) e.preventDefault();
-
-      const rawName = capName.trim();
-      if (!rawName) {
-        setValidationError('Capability name / identifier is required.');
-        nameInputRef.current?.focus();
+  /**
+   * The page already toasts an import failure and re-throws it so a caller could
+   * react. This layer swallows the rejection: re-throwing here produced an
+   * unhandled rejection, because nothing awaits this handler either. The outcome
+   * carries the message instead, so a failure keeps the form open with the reason
+   * on screen and only a real success closes the dialog.
+   */
+  const onImportSubmit = useCallback(
+    async (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const target = importUrl.trim();
+      if (!target) return;
+      setImportLoading(true);
+      setImportError(null);
+      const outcome = await onImport(target, importCategory);
+      setImportLoading(false);
+      if (!outcome.ok) {
+        setImportError(outcome.message);
         return;
       }
-
-      const slug = rawName
-        .toLowerCase()
-        .replace(/\s+/g, '-')
-        .replace(/[^a-z0-9-_]/g, '');
-
-      const triggerList = capTriggers
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean);
-
-      const newCap: CapabilityItem = {
-        id: `${capCategory}-${slug}-${Date.now()}`,
-        name: slug,
-        category: capCategory,
-        tags: capTags.length > 0 ? capTags : ['Custom', 'User-Defined'],
-        description: capDescription || `Custom capability added to ${capCategory}.`,
-        enabled: true,
-        source: 'custom',
-        usageCount: 0,
-        lastUsedAt: null,
-        requiredScope:
-          capCategory === 'mcp'
-            ? 'connector.mcp.execute'
-            : capCategory === 'tools'
-              ? toolScope
-              : 'system.execute',
-        trustClass: capCategory === 'mcp' ? 'mcp.workspace.write' : 'first_party',
-        version: '1.0.0',
-        author: capCategory === 'plugins' ? pluginAuthor : 'Workspace Member',
-        autonomy: capAutonomy,
-        triggers: triggerList.length > 0 ? triggerList : undefined,
-        toolsUsed: capCategory === 'agents' ? agentSelectedTools : undefined,
-        inputSchema: generatedInputSchema,
-        metadata:
-          capCategory === 'mcp'
-            ? {
-                transport: mcpTransport,
-                command: mcpCommand,
-                env: Object.fromEntries(mcpEnvList.map((e) => [e.key, e.val])),
-                protocolVersion: '2024-11-05',
-              }
-            : capCategory === 'plugins'
-              ? {
-                  hook: pluginHook,
-                  sandbox: pluginSandbox,
-                  target: pluginTarget,
-                  code: pluginCode,
-                  license: pluginLicense,
-                }
-              : capCategory === 'agents'
-                ? {
-                    archetype: agentArchetype,
-                    modelTier: agentModelTier,
-                    maxTurns: agentMaxTurns,
-                    systemPrompt: agentPromptTemplate,
-                  }
-                : undefined,
-        markdownDoc:
-          capCategory === 'skills'
-            ? capDoc ||
-              `# ${capName}\n\n## Mission\n${capDescription || 'Execute designated tasks.'}\n\n## Operating Rules\n1. Enforce boundaries.\n`
-            : capCategory === 'mcp'
-              ? `# ${capName} (MCP Server)\n\n## Transport\n\`${mcpTransport}\`\n\n## Command\n\`${mcpCommand}\`\n`
-              : capCategory === 'plugins'
-                ? `# ${capName} (Plugin)\n\n\`\`\`python\n${pluginCode}\n\`\`\`\n`
-                : capCategory === 'agents'
-                  ? `# ${capName} (Agent)\n\nRole: ${agentArchetype}\nTools: ${agentSelectedTools.join(', ')}\n`
-                  : `# ${capName} (Tool)\n\nScope: ${toolScope}\n`,
-      };
-
-      onCreate(newCap);
       onClose();
-    },
-    [
-      capName,
-      capCategory,
-      capTags,
-      capDescription,
-      capDoc,
-      capAutonomy,
-      capTriggers,
-      generatedInputSchema,
-      toolScope,
-      mcpTransport,
-      mcpCommand,
-      mcpEnvList,
-      pluginHook,
-      pluginSandbox,
-      pluginTarget,
-      pluginCode,
-      pluginLicense,
-      pluginAuthor,
-      agentArchetype,
-      agentModelTier,
-      agentMaxTurns,
-      agentSelectedTools,
-      agentPromptTemplate,
-      onCreate,
-      onClose,
-    ],
-  );
-
-  // Keyboard shortcut: Escape to close, Ctrl+Enter to submit
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        handleFinalSubmit();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, handleFinalSubmit, onClose]);
-
-  // Submit Git / URL Import
-  const handleImportSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!importUrl.trim()) return;
-      setImportLoading(true);
-      try {
-        await onImport(importUrl.trim(), importCategory);
-        setImportLoading(false);
-        onClose();
-      } catch (err) {
-        setImportLoading(false);
-        throw err;
-      }
     },
     [importUrl, importCategory, onImport, onClose],
   );
 
-  const filteredPresets = useMemo(() => {
-    return PRESET_TEMPLATES.filter((tmpl) => {
-      if (presetCategoryFilter !== 'all' && tmpl.category !== presetCategoryFilter) {
-        return false;
+  const canValidate = Boolean(workspaceId);
+
+  const runValidation = useCallback(async () => {
+    if (!workspaceId) return;
+    if (category === 'plugins') {
+      const payload = parseJsonObject(testPayload, 'The payload');
+      if (!payload.ok) {
+        setTestPayloadIssue(payload.reason);
+        return;
       }
-      if (presetSearch.trim()) {
-        const q = presetSearch.toLowerCase();
-        return (
-          tmpl.title.toLowerCase().includes(q) ||
-          tmpl.description.toLowerCase().includes(q) ||
-          tmpl.tags.some((t) => t.toLowerCase().includes(q))
-        );
+      setTestPayloadIssue(null);
+      setTestOutcome({ kind: 'running' });
+      try {
+        setTestOutcome({
+          kind: 'done',
+          // With no row registered under this name the handler falls back to
+          // `input_payload`, so this validates the draft manifest rather than a
+          // stored one. That fallback is the server's behaviour, not an
+          // assumption this form makes about it.
+          response: await capabilitiesApi.test({
+            workspaceId,
+            capabilityName: name || 'plugin-under-authoring',
+            category: 'plugin',
+            inputPayload: {
+              ...payload.value,
+              name,
+              version: '1.0.0',
+              min_app_version: minAppVersion,
+              author: pluginAuthor,
+              description,
+              license: pluginLicense,
+              entry_point: `${slugify(name) || 'plugin'}.py`,
+              tags,
+              permissions: parseJsonObject(pluginPermissions, 'Permissions').value,
+            },
+          }),
+        });
+      } catch (err) {
+        setTestOutcome({
+          kind: 'request_failed',
+          error: err instanceof Error ? err.message : 'The validation request failed.',
+        });
       }
-      return true;
-    });
-  }, [presetCategoryFilter, presetSearch]);
+      return;
+    }
+
+    setTestOutcome({ kind: 'running' });
+    try {
+      setTestOutcome({
+        kind: 'done',
+        response: await capabilitiesApi.test({
+          workspaceId,
+          capabilityName: name || 'unnamed-draft',
+          category: category === 'skills' ? 'skill' : category === 'agents' ? 'agent' : category,
+        }),
+      });
+    } catch (err) {
+      setTestOutcome({
+        kind: 'request_failed',
+        error: err instanceof Error ? err.message : 'The validation request failed.',
+      });
+    }
+  }, [
+    workspaceId,
+    category,
+    name,
+    description,
+    tags,
+    testPayload,
+    minAppVersion,
+    pluginAuthor,
+    pluginLicense,
+    pluginPermissions,
+  ]);
+
+  const filteredPresets = PRESETS.filter((preset) => {
+    if (presetFilter !== 'all' && preset.category !== presetFilter) return false;
+    const query = presetSearch.trim().toLowerCase();
+    if (!query) return true;
+    return (
+      preset.title.toLowerCase().includes(query) ||
+      preset.description.toLowerCase().includes(query) ||
+      preset.tags.some((tag) => tag.toLowerCase().includes(query))
+    );
+  });
+
+  /**
+   * Category-specific field groups.
+   *
+   * Plain functions returning JSX, called as `{mcpFields()}`, rather than JSX
+   * components: a component defined in the render body is a new type on every
+   * render, which remounts its subtree and drops focus out of the field being
+   * typed into.
+   */
+
+  const mcpFields = () => (
+    <>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        {pickField('Transport', transport, MCP_TRANSPORTS, setTransport)}
+        {transport === 'stdio' ? (
+          <>
+            {textField('Command', command, setCommand, { placeholder: 'npx' })}
+            {textField(`Arguments (${args.length})`, argsText, setArgsText, {
+              placeholder: '-y @modelcontextprotocol/server-filesystem /data',
+            })}
+          </>
+        ) : (
+          <div className="sm:col-span-2">
+            {textField('Endpoint URL', url, setUrl, {
+              placeholder: 'https://api.example.internal/mcp',
+              error: endpointIssue ?? undefined,
+            })}
+          </div>
+        )}
+      </div>
+
+      {argvIssue && (
+        <p role="alert" className="text-xs text-error">
+          {argvIssue}
+        </p>
+      )}
+
+      <div className="space-y-1.5">
+        <label className="flex items-start gap-2 text-xs text-text-secondary cursor-pointer">
+          <input
+            type="checkbox"
+            checked={allowWindowsBatch}
+            onChange={(event) => setAllowWindowsBatch(event.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            Allow Windows batch wrapper (<code className="font-mono">.cmd</code>/
+            <code className="font-mono">.bat</code>)
+            <span className="block text-2xs text-text-muted">
+              Required for <code className="font-mono">npx</code> and{' '}
+              <code className="font-mono">uvx</code> on Windows: they resolve to a shim
+              CreateProcess cannot run, and validate_mcp_config refuses the connector without this
+              opt-in.
+            </span>
+          </span>
+        </label>
+        {transport === 'http' && (
+          <label className="flex items-start gap-2 text-xs text-text-secondary cursor-pointer">
+            <input
+              type="checkbox"
+              checked={allowInsecure}
+              onChange={(event) => setAllowInsecure(event.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              Allow plain http:// endpoint (development only)
+              <span className="block text-2xs text-text-muted">
+                An http:// URL is refused by validate_mcp_config unless this is set.
+              </span>
+            </span>
+          </label>
+        )}
+      </div>
+
+      <FormField
+        label="Environment variables"
+        hint="Values must be ${VAR} references. A literal is written to the workspace row in clear text."
+      >
+        <div className="flex items-center gap-1.5">
+          {textField('KEY', envKey, setEnvKey, { ariaLabel: 'Environment variable name' })}
+          {textField('${VAULT_KEY}', envVal, setEnvVal, {
+            ariaLabel: 'Environment variable value reference',
+          })}
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              if (!envKey.trim()) return;
+              setEnvList((prev) => [...prev, { key: envKey.trim(), val: envVal.trim() }]);
+              setEnvKey('');
+              setEnvVal('');
+            }}
+          >
+            + Env
+          </Button>
+        </div>
+      </FormField>
+
+      {envList.length > 0 && (
+        <ul className="flex flex-wrap gap-1.5">
+          {envList.map((entry, index) => (
+            <li
+              key={`${entry.key}-${index}`}
+              className="px-2 py-0.5 rounded bg-surface-elevated border border-border text-2xs font-mono text-primary flex items-center gap-1"
+            >
+              {entry.key}
+              {VAULT_REFERENCE.test(entry.val) ? '=reference' : '=literal'}
+              <button
+                type="button"
+                aria-label={`Remove environment variable ${entry.key}`}
+                onClick={() => setEnvList((prev) => prev.filter((_, idx) => idx !== index))}
+                className="text-text-muted hover:text-text rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+
+  const toolFields = () => (
+    <>
+      <FormField label="Parameter schema (JSON Schema)" required>
+        <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+          {toolParams.map((param, index) => (
+            <div key={index} className="flex items-center gap-1.5">
+              {textField('name', param.name, (value) => patchParam(index, { name: value }), {
+                ariaLabel: `Parameter ${index + 1} name`,
+                className: 'w-28',
+              })}
+              {pickField(
+                'type',
+                param.type,
+                TOOL_PARAM_TYPES,
+                (value) => patchParam(index, { type: value }),
+                {
+                  ariaLabel: `Parameter ${index + 1} type`,
+                  className: 'w-24',
+                },
+              )}
+              {textField(
+                'Description',
+                param.description,
+                (value) => patchParam(index, { description: value }),
+                {
+                  ariaLabel: `Parameter ${index + 1} description`,
+                },
+              )}
+              <label className="flex items-center gap-1 text-2xs text-text-muted shrink-0">
+                <input
+                  type="checkbox"
+                  checked={param.required}
+                  onChange={(event) => patchParam(index, { required: event.target.checked })}
+                />
+                Req
+              </label>
+              <Tooltip content="Remove this parameter">
+                <button
+                  type="button"
+                  aria-label={`Remove parameter ${param.name || index + 1}`}
+                  onClick={() => setToolParams((prev) => prev.filter((_, i) => i !== index))}
+                  className="text-text-muted hover:text-danger rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+                >
+                  ×
+                </button>
+              </Tooltip>
+            </div>
+          ))}
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() =>
+            setToolParams((prev) => [
+              ...prev,
+              {
+                name: `param_${prev.length + 1}`,
+                type: 'string',
+                description: '',
+                required: false,
+              },
+            ])
+          }
+        >
+          + Add parameter
+        </Button>
+      </FormField>
+
+      <div className="grid grid-cols-2 gap-2.5">
+        {pickField('Required security scope', toolScope, SECURITY_SCOPES, setToolScope)}
+        {pickField('Category classification', toolGroup, TOOL_GROUPS, setToolGroup)}
+      </div>
+    </>
+  );
+
+  const pluginFields = () => (
+    <>
+      <div className="grid grid-cols-2 gap-2.5">
+        {pickField('Lifecycle hook', pluginHook, PLUGIN_HOOKS, setPluginHook)}
+        {pickField('Isolation', pluginSandbox, PLUGIN_SANDBOXES, setPluginSandbox)}
+      </div>
+      <div className="grid grid-cols-3 gap-2.5">
+        {pickField('Execution target', pluginTarget, PLUGIN_TARGETS, setPluginTarget)}
+        {textField('Author', pluginAuthor, setPluginAuthor)}
+        {textField('SPDX license', pluginLicense, setPluginLicense)}
+      </div>
+      <div className="grid grid-cols-2 gap-2.5">
+        {textField('Min app version', minAppVersion, setMinAppVersion)}
+        <Textarea
+          label="Sandbox input payload (JSON)"
+          rows={3}
+          spellCheck={false}
+          value={testPayload}
+          onChange={(event) => setTestPayload(event.target.value)}
+        />
+      </div>
+      <Textarea
+        label="Declared permissions (JSON object)"
+        rows={3}
+        spellCheck={false}
+        value={pluginPermissions}
+        onChange={(event) => setPluginPermissions(event.target.value)}
+        error={permissionsIssue ?? undefined}
+        helperText="The registry requires an object. Edit it to match what the hook does; nothing on this form grants it."
+      />
+      {testPayloadIssue && (
+        <p role="alert" className="text-xs text-error">
+          Sandbox payload: {testPayloadIssue}
+        </p>
+      )}
+    </>
+  );
 
   if (!isOpen) return null;
 
+  const studio = STUDIO[category];
+  const pluginEscape = category === 'plugins' ? findSandboxEscape(pluginCode) : null;
+
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="add-capability-modal-title"
-      aria-describedby="add-capability-modal-desc"
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
-    >
-      <div className="w-full max-w-5xl h-[670px] max-h-[90dvh] bg-surface border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden text-text antialiased">
-        {/* ── 1. Top Header: Title, Category Badge, and Mode Navigation ──────── */}
-        <header className="px-5 py-3 border-b border-border bg-surface-elevated flex items-center justify-between gap-4 shrink-0">
-          <div className="flex items-center gap-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-capability-modal-title"
+        aria-describedby="add-capability-modal-desc"
+        tabIndex={-1}
+        onKeyDown={onDialogKeyDown}
+        className="relative w-full max-w-5xl h-[670px] max-h-[90dvh] bg-surface border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden text-text antialiased focus:outline-none"
+      >
+        <header className="px-5 py-3 border-b border-border bg-surface-elevated flex items-start justify-between gap-4 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center text-primary text-xs font-semibold shrink-0">
               <svg
                 className="w-4 h-4"
@@ -942,128 +2490,24 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2
-                  id="add-capability-modal-title"
-                  className="text-sm font-semibold text-text tracking-tight font-sans flex items-center gap-1.5"
-                >
-                  <span>Add Custom Capability</span>
-                  <span className="text-text-muted font-normal">•</span>
-                  <span className="text-primary font-medium">
-                    {capCategory === 'skills'
-                      ? 'Skill Studio'
-                      : capCategory === 'agents'
-                        ? 'Agent Studio'
-                        : capCategory === 'tools'
-                          ? 'Tool Function Studio'
-                          : capCategory === 'mcp'
-                            ? 'MCP Protocol Studio'
-                            : 'Plugin Lifecycle Studio'}
-                  </span>
-                </h2>
-                {activeTab === 'builder' && (
-                  <Badge
-                    variant={readinessAudit.score >= 90 ? 'success' : 'info'}
-                    size="sm"
-                    className="text-2xs font-mono"
-                  >
-                    {readinessAudit.score}% Validated •{' '}
-                    {readinessAudit.score >= 90
-                      ? 'Enterprise Ready'
-                      : readinessAudit.score >= 70
-                        ? 'Production Spec'
-                        : 'Draft Spec'}
-                  </Badge>
-                )}
-              </div>
+            <div className="min-w-0">
+              <h2
+                id="add-capability-modal-title"
+                className="text-sm font-semibold text-text font-sans"
+              >
+                Add Custom Capability <span className="text-text-muted font-normal">•</span>{' '}
+                <span className="text-primary">{studio.title}</span>
+              </h2>
               <p id="add-capability-modal-desc" className="text-xs text-text-muted font-sans">
-                {capCategory === 'skills'
-                  ? 'Author Claude & Codex reasoning playbooks with sovereign operating rules'
-                  : capCategory === 'agents'
-                    ? 'Configure autonomous AgentCards with custom autonomy policies and tool fleets'
-                    : capCategory === 'tools'
-                      ? 'Define typed function schemas and JSON Schema 2020-12 parameter contracts'
-                      : capCategory === 'mcp'
-                        ? 'Register Model Context Protocol (v2) server endpoints and secrets'
-                        : 'Implement isolated Python sandbox lifecycle hooks and transform pipelines'}
+                {studio.blurb}
               </p>
             </div>
           </div>
-
-          {/* Mode Switcher Buttons */}
-          <div className="flex items-center gap-1 p-0.5 rounded-lg bg-surface border border-border text-xs font-sans">
-            <button
-              type="button"
-              onClick={() => setActiveTab('templates')}
-              className={`px-3 py-1 rounded-md transition-all font-medium inline-flex items-center gap-1.5 ${
-                activeTab === 'templates'
-                  ? 'bg-surface-elevated text-text shadow-xs border border-border'
-                  : 'text-text-muted hover:text-text'
-              }`}
-            >
-              <svg
-                className="w-3.5 h-3.5 text-warning"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-              </svg>
-              <span>Presets</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('builder')}
-              className={`px-3 py-1 rounded-md transition-all font-medium inline-flex items-center gap-1.5 ${
-                activeTab === 'builder'
-                  ? 'bg-surface-elevated text-text shadow-xs border border-border'
-                  : 'text-text-muted hover:text-text'
-              }`}
-            >
-              <svg
-                className="w-3.5 h-3.5 text-primary"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-              </svg>
-              <span>Studio Builder</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('import')}
-              className={`px-3 py-1 rounded-md transition-all font-medium inline-flex items-center gap-1.5 ${
-                activeTab === 'import'
-                  ? 'bg-surface-elevated text-text shadow-xs border border-border'
-                  : 'text-text-muted hover:text-text'
-              }`}
-            >
-              <svg
-                className="w-3.5 h-3.5 text-success"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              <span>Import Git / File</span>
-            </button>
-          </div>
-
-          {/* Close Button */}
           <button
             type="button"
             onClick={onClose}
-            className="text-text-muted hover:text-text p-1 rounded-lg hover:bg-surface-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             aria-label="Close modal"
+            className="text-text-muted hover:text-text p-1 rounded-lg hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent shrink-0"
           >
             <svg
               className="w-4 h-4"
@@ -1077,1740 +2521,559 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
           </button>
         </header>
 
-        {/* ── Notification Banners ────────────────────────────────────────── */}
-        {validationError && (
-          <div className="px-5 py-2 bg-danger/10 border-b border-danger/20 flex items-center justify-between text-xs text-danger font-sans shrink-0">
-            <span className="flex items-center gap-2">
-              <svg
-                className="w-3.5 h-3.5 text-danger"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-                />
-              </svg>
-              <span>{validationError}</span>
+        {issues.length > 0 && (
+          <div
+            role="alert"
+            className="px-5 py-2 bg-error/10 border-b border-error/30 flex items-start justify-between gap-3 text-xs text-error shrink-0"
+          >
+            <span>
+              Not submitted. {issues.length} blocking {issues.length === 1 ? 'problem' : 'problems'}
+              : {issues.map((issue) => issue.message).join(' ')}
             </span>
             <button
               type="button"
-              onClick={() => setValidationError(null)}
-              className="text-danger hover:text-danger/80"
+              onClick={() => setIssues([])}
+              aria-label="Dismiss validation problems"
+              className="rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-error"
             >
               ×
             </button>
           </div>
         )}
 
-        {/* ── 2. Content Body (Scrollable, Clean Master-Detail Two-Column Layout) ─── */}
-        <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4">
-          {/* ──────────────────────────────────────────────────────────────── */}
-          {/* TAB 1: Enterprise Production Scaffolds (Presets)                  */}
-          {/* ──────────────────────────────────────────────────────────────── */}
-          {activeTab === 'templates' && (
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-border">
-                <div>
-                  <h3 className="text-sm font-semibold text-text font-sans">
-                    Enterprise Production Scaffolds
-                  </h3>
-                  <p className="text-xs text-text-muted font-sans mt-0.5">
-                    Select a pre-configured template to bootstrap your capability with production
-                    rules and typed schemas.
-                  </p>
-                </div>
+        {/*
+          File-parse notices live outside the tab panels on purpose. A successful
+          parse switches the modal to the builder, so a confirmation rendered inside
+          the Import tab is unmounted by the very action it reports -- which is why
+          `fileParseSuccess` was dead state in the previous version too.
+        */}
+        {fileReport && (
+          <div
+            role="status"
+            className="px-5 py-2 bg-success/10 border-b border-success/30 flex items-start justify-between gap-3 text-xs text-success shrink-0"
+          >
+            <span>
+              <strong>{fileReport.name}</strong> was read into the builder — {fileReport.detail}.
+            </span>
+            <button
+              type="button"
+              onClick={() => setFileReport(null)}
+              aria-label="Dismiss file parse result"
+              className="rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-success"
+            >
+              ×
+            </button>
+          </div>
+        )}
 
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder="Search blueprints..."
-                    value={presetSearch}
-                    onChange={(e) => setPresetSearch(e.target.value)}
-                    className="px-2.5 py-1 text-xs rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary w-44"
-                  />
-                  <select
-                    value={presetCategoryFilter}
-                    onChange={(e) => setPresetCategoryFilter(e.target.value)}
-                    aria-label="Filter presets by category"
-                    className="px-2 py-1 text-xs rounded-lg bg-surface border border-border text-text focus:outline-none focus:border-primary"
-                  >
-                    <option value="all">All Types</option>
-                    <option value="skills">Skills</option>
-                    <option value="tools">Tools</option>
-                    <option value="mcp">MCP</option>
-                    <option value="agents">Agents</option>
-                    <option value="plugins">Plugins</option>
-                  </select>
-                </div>
+        {fileError && (
+          <div
+            role="alert"
+            className="px-5 py-2 bg-error/10 border-b border-error/30 flex items-start justify-between gap-3 text-xs text-error shrink-0"
+          >
+            <span>{fileError}</span>
+            <button
+              type="button"
+              onClick={() => setFileError(null)}
+              aria-label="Dismiss file error"
+              className="rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-error"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain">
+          <Tabs
+            className="sticky top-0 z-10 border-b border-border rounded-none"
+            ariaLabel="Capability source"
+            size="sm"
+            tabs={[
+              { id: 'templates', label: 'Presets' },
+              { id: 'builder', label: 'Studio Builder' },
+              { id: 'import', label: 'Import Git / File' },
+            ]}
+            activeTab={activeTab}
+            onTabChange={(id) => setActiveTab(id as ModalTab)}
+          />
+
+          {/* ── Presets ─────────────────────────────────────────────────── */}
+          <TabPanel id="templates" activeTab={activeTab} className="p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-border">
+              <div>
+                <h3 className="text-sm font-semibold text-text">Production scaffolds</h3>
+                <p className="text-xs text-text-muted">
+                  Each preset seeds the builder. Every field stays editable and every check is
+                  re-run against what you leave in the form.
+                </p>
               </div>
-
-              {/* Presets Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {filteredPresets.map((template) => (
-                  <div
-                    key={template.id}
-                    onClick={() => handleSelectTemplate(template)}
-                    className="group p-3.5 rounded-xl border border-border bg-surface-elevated hover:bg-surface-hover hover:border-primary/50 transition-all cursor-pointer flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-semibold text-text group-hover:text-primary transition-colors">
-                          {template.title}
-                        </span>
-                        <Badge variant="mono" size="sm" className="capitalize text-2xs">
-                          {template.category}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-text-muted line-clamp-2 leading-relaxed">
-                        {template.description}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border text-xs">
-                      <div className="flex flex-wrap gap-1">
-                        {template.tags.slice(0, 3).map((t) => (
-                          <span
-                            key={t}
-                            className="px-1.5 py-0.2 rounded text-2xs bg-surface text-text-muted border border-border"
-                          >
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                      <span className="text-primary font-medium group-hover:translate-x-0.5 transition-transform flex items-center gap-1 text-xs">
-                        Use Template →
-                      </span>
-                    </div>
-                  </div>
-                ))}
+              <div className="flex items-center gap-2">
+                <SearchField
+                  value={presetSearch}
+                  onChange={setPresetSearch}
+                  placeholder="Search blueprints"
+                  aria-label="Search presets"
+                  className="w-44"
+                />
+                <Select
+                  value={presetFilter}
+                  onChange={setPresetFilter}
+                  aria-label="Filter presets by category"
+                  options={[
+                    { value: 'all', label: 'All types' },
+                    ...CATEGORY_CHOICES.filter((choice) => choice.id !== 'connectors').map(
+                      (choice) => ({ value: choice.id, label: choice.label }),
+                    ),
+                  ]}
+                />
               </div>
             </div>
-          )}
 
-          {/* ──────────────────────────────────────────────────────────────── */}
-          {/* TAB 2: Studio Builder (Interactive Master-Detail Authoring)        */}
-          {/* ──────────────────────────────────────────────────────────────── */}
-          {activeTab === 'builder' && (
-            <form onSubmit={handleFinalSubmit} className="space-y-4">
-              {/* Category Segmented Bar */}
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1.5">
-                  Capability Category *
-                </label>
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                  {[
-                    { id: 'skills', label: 'Skills', desc: 'Reasoning loop' },
-                    { id: 'agents', label: 'Agents', desc: 'Autonomous actor' },
-                    { id: 'tools', label: 'Tools', desc: 'Typed function' },
-                    { id: 'mcp', label: 'MCP', desc: 'Protocol bridge' },
-                    { id: 'plugins', label: 'Plugins', desc: 'Lifecycle hook' },
-                    { id: 'connectors', label: 'Connectors', desc: 'SaaS & API' },
-                  ].map((cat) => {
-                    const isSel = capCategory === cat.id;
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => {
-                          setCapCategory(cat.id as CapabilityCategory);
-                          setValidationError(null);
-                        }}
-                        className={`flex flex-col items-center justify-center p-2 rounded-xl border text-xs font-medium transition-all ${
-                          isSel
-                            ? 'bg-primary/15 border-primary text-primary shadow-xs ring-1 ring-primary/40'
-                            : 'bg-surface border-border text-text-muted hover:text-text hover:bg-surface-hover'
-                        }`}
-                      >
-                        <span className="font-semibold text-xs text-text">{cat.label}</span>
-                        <span className="text-2xs text-text-muted font-normal">{cat.desc}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* ──────────────────────────────────────────────────────────── */}
-              {/* STUDIO 1: SKILLS STUDIO (Claude & Codex Playbooks)           */}
-              {/* ──────────────────────────────────────────────────────────── */}
-              {capCategory === 'skills' && (
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
-                  {/* Left Column: Skill Configuration (col-span-6) */}
-                  <div className="md:col-span-6 space-y-3.5">
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label
-                          htmlFor="cap-name-input"
-                          className="block text-xs font-medium text-text-secondary"
-                        >
-                          Skill Name / Identifier *
-                        </label>
-                        <span className="text-2xs font-mono text-text-muted">
-                          slug: lowercase-hyphenated
+            {filteredPresets.length === 0 ? (
+              <EmptyState
+                title="No presets match"
+                description="Clear the search or widen the category filter."
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {filteredPresets.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => applyPreset(preset)}
+                    className="group text-left p-3.5 rounded-xl border border-border bg-surface-elevated hover:bg-surface-hover hover:border-primary/50 transition-all flex flex-col justify-between gap-3"
+                  >
+                    <span className="block">
+                      <span className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className="text-xs font-semibold text-text group-hover:text-primary">
+                          {preset.title}
                         </span>
-                      </div>
-                      <input
-                        ref={nameInputRef}
-                        id="cap-name-input"
-                        type="text"
-                        required
-                        value={capName}
-                        onChange={(e) => {
-                          setCapName(e.target.value);
-                          setValidationError(null);
-                        }}
-                        placeholder="e.g. code-synthesizer or ats-scoring"
-                        className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-primary"
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="cap-desc-input"
-                        className="block text-xs font-medium text-text-secondary mb-1"
-                      >
-                        When to Activate / Skill Description
-                      </label>
-                      <input
-                        id="cap-desc-input"
-                        type="text"
-                        value={capDescription}
-                        onChange={(e) => setCapDescription(e.target.value)}
-                        placeholder="e.g. Activate when reviewing pull requests, evaluating code security, or checking diffs"
-                        className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary text-xs"
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="cap-triggers-input"
-                        className="block text-xs font-medium text-text-secondary mb-1"
-                      >
-                        Routing &amp; Trigger Keywords (comma-separated)
-                      </label>
-                      <input
-                        id="cap-triggers-input"
-                        type="text"
-                        value={capTriggers}
-                        onChange={(e) => setCapTriggers(e.target.value)}
-                        placeholder="e.g. /review, /ats-audit, pr audit, check code quality"
-                        className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary text-xs font-mono"
-                      />
-                    </div>
-
-                    {/* Interactive Tag Manager */}
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label
-                          htmlFor="cap-tag-input-skills"
-                          className="text-xs font-medium text-text-secondary"
-                        >
-                          Tags &amp; Taxonomy
-                        </label>
-                        <span className="text-xs text-text-muted">Click a chip to quickly add</span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-surface border border-border min-h-[38px]">
-                        {capTags.map((tag) => (
+                        <Badge variant="mono" size="sm" className="capitalize text-2xs">
+                          {preset.category}
+                        </Badge>
+                      </span>
+                      <span className="block text-xs text-text-muted line-clamp-2 leading-relaxed">
+                        {preset.description}
+                      </span>
+                    </span>
+                    <span className="flex items-center justify-between gap-2 pt-2.5 border-t border-border text-xs">
+                      <span className="flex flex-wrap gap-1">
+                        {preset.tags.map((tag) => (
                           <span
                             key={tag}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium bg-surface-elevated text-text border border-border"
+                            className="px-1.5 py-0.2 rounded text-2xs bg-surface text-text-muted border border-border"
                           >
-                            <span>{tag}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveTag(tag)}
-                              className="text-text-muted hover:text-text ml-0.5"
-                            >
-                              ×
-                            </button>
+                            {tag}
                           </span>
                         ))}
-                        <input
-                          id="cap-tag-input-skills"
-                          type="text"
-                          value={tagInput}
-                          onChange={(e) => setTagInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ',') {
-                              e.preventDefault();
-                              handleAddTag(tagInput);
-                            }
-                          }}
-                          placeholder="+ Type tag and hit Enter..."
-                          className="bg-transparent text-xs text-text placeholder:text-text-muted focus:outline-none flex-1 min-w-[120px] px-1 font-sans"
-                        />
-                      </div>
-
-                      {/* Quick Suggestion Chips */}
-                      <div className="flex flex-wrap items-center gap-1 mt-1.5">
-                        {QUICK_TAG_SUGGESTIONS.filter((s) => !capTags.includes(s))
-                          .slice(0, 6)
-                          .map((suggest) => (
-                            <button
-                              key={suggest}
-                              type="button"
-                              onClick={() => handleAddTag(suggest)}
-                              className="text-2xs px-1.5 py-0.2 rounded bg-surface-elevated text-text-muted hover:text-text hover:bg-surface-hover border border-border transition-colors"
-                            >
-                              + {suggest}
-                            </button>
-                          ))}
-                      </div>
-                    </div>
-
-                    {/* Claude & Codex Directives Card */}
-                    <div className="p-3 rounded-xl bg-surface-elevated border border-border space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-text">
-                          Claude &amp; Codex Directives
-                        </span>
-                        <Badge variant="mono" size="sm" className="text-2xs">
-                          SKILL.md Spec
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-text-muted leading-relaxed">
-                        Skills inject deterministic prompts and operating rules into agent context
-                        windows. They provide multi-step guidelines without requiring code execution
-                        or approval gates.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Right Column: Playbook Markdown Studio (col-span-6) */}
-                  <div className="md:col-span-6 flex flex-col min-h-[380px] bg-surface-elevated rounded-xl border border-border p-3.5 space-y-2.5">
-                    <div className="flex items-center justify-between pb-2 border-b border-border">
-                      <span className="font-semibold text-text text-xs">
-                        Playbook Documentation &amp; Rules
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => setSkillPreviewOpen(!skillPreviewOpen)}
-                        className="text-xs text-primary hover:underline"
-                      >
-                        {skillPreviewOpen ? 'Edit Raw Markdown' : 'Preview Rendered'}
-                      </button>
-                    </div>
+                      <span className="text-primary font-medium">Use template →</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </TabPanel>
 
-                    {!skillPreviewOpen ? (
-                      <textarea
-                        rows={11}
-                        value={capDoc}
-                        onChange={(e) => setCapDoc(e.target.value)}
-                        placeholder={`# ${capName || 'Skill Title'}\n\n## Mission\nExecute mission with verifiable evidence.\n\n## Operating Rules\n1. Always verify assumptions.`}
-                        className="w-full flex-1 p-2.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary font-mono text-xs leading-relaxed resize-none"
-                      />
-                    ) : (
-                      <div className="markdown-body w-full flex-1 p-3 rounded-lg bg-surface border border-border text-text overflow-y-auto max-h-[290px]">
-                        {capDoc ? (
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{capDoc}</ReactMarkdown>
-                        ) : (
-                          <span className="text-text-muted italic">
-                            No documentation entered yet.
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap items-center gap-1 pt-1 text-2xs text-text-muted">
-                      <span>Insert:</span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setCapDoc(
-                            (prev) =>
-                              `${prev}\n\n## Mission\nExecute mission with verifiable evidence.`,
-                          )
-                        }
-                        className="px-1.5 py-0.5 rounded bg-surface hover:text-text hover:bg-surface-hover border border-border transition-colors"
-                      >
-                        + Mission
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setCapDoc(
-                            (prev) =>
-                              `${prev}\n\n## Operating Rules\n1. Enforce zero-trust boundaries.\n2. Fall back to deterministic heuristics.`,
-                          )
-                        }
-                        className="px-1.5 py-0.5 rounded bg-surface hover:text-text hover:bg-surface-hover border border-border transition-colors"
-                      >
-                        + Rules
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setCapDoc(
-                            (prev) =>
-                              `${prev}\n\n## Security Fence\nRequires supervisor audit before network egress.`,
-                          )
-                        }
-                        className="px-1.5 py-0.5 rounded bg-surface hover:text-text hover:bg-surface-hover border border-border transition-colors"
-                      >
-                        + Security
-                      </button>
-                    </div>
-                  </div>
+          {/* ── Builder ─────────────────────────────────────────────────── */}
+          <TabPanel id="builder" activeTab={activeTab} className="p-5">
+            <form
+              onSubmit={onFormSubmit}
+              onKeyDown={onFormKeyDown}
+              noValidate
+              className="space-y-4"
+            >
+              <FormField label="Capability category" required>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {CATEGORY_CHOICES.map((choice) => (
+                    <button
+                      key={choice.id}
+                      type="button"
+                      aria-pressed={category === choice.id}
+                      onClick={() => {
+                        setCategory(choice.id);
+                        setIssues([]);
+                        setTestOutcome({ kind: 'idle' });
+                      }}
+                      className={`flex flex-col items-center justify-center p-2 rounded-xl border text-xs font-medium transition-all ${
+                        category === choice.id
+                          ? 'bg-primary/15 border-primary text-primary shadow-xs ring-1 ring-primary/40'
+                          : 'bg-surface border-border text-text-muted hover:text-text hover:bg-surface-hover'
+                      }`}
+                    >
+                      <span className="font-semibold text-xs text-text">{choice.label}</span>
+                      <span className="text-2xs text-text-muted font-normal">{choice.desc}</span>
+                    </button>
+                  ))}
                 </div>
-              )}
+              </FormField>
 
-              {/* ──────────────────────────────────────────────────────────── */}
-              {/* STUDIO 2: AGENTS STUDIO (AgentCard Specification)           */}
-              {/* ──────────────────────────────────────────────────────────── */}
-              {capCategory === 'agents' && (
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
-                  {/* Left Column: Agent Persona & Policy (col-span-6) */}
-                  <div className="md:col-span-6 space-y-3.5">
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label
-                          htmlFor="cap-name-input"
-                          className="block text-xs font-medium text-text-secondary"
-                        >
-                          Agent Name / Identifier *
-                        </label>
-                        <Badge variant="mono" size="sm" className="text-2xs">
-                          AgentCard v1.0
-                        </Badge>
-                      </div>
-                      <input
-                        ref={nameInputRef}
-                        id="cap-name-input"
-                        type="text"
-                        required
-                        value={capName}
-                        onChange={(e) => {
-                          setCapName(e.target.value);
-                          setValidationError(null);
-                        }}
-                        placeholder="e.g. code-synthesizer or ats-scoring"
-                        className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-primary"
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="cap-desc-input"
-                        className="block text-xs font-medium text-text-secondary mb-1"
-                      >
-                        Agent Role Mission &amp; Specialization
-                      </label>
-                      <input
-                        id="cap-desc-input"
-                        type="text"
-                        value={capDescription}
-                        onChange={(e) => setCapDescription(e.target.value)}
-                        placeholder="e.g. Autonomous forensic auditor validating zero-trust evidence and pull requests"
-                        className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary text-xs"
-                      />
-                    </div>
-
-                    {/* Role Archetype & Autonomy Policy (Grid 2 cols) */}
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <div>
-                        <label
-                          htmlFor="agent-archetype-select"
-                          className="block text-xs font-medium text-text-secondary mb-1"
-                        >
-                          Role Archetype
-                        </label>
-                        <select
-                          id="agent-archetype-select"
-                          value={agentArchetype}
-                          onChange={(e) => setAgentArchetype(e.target.value as any)}
-                          className="w-full px-2 py-1.5 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
-                        >
-                          <option value="specialist">Specialist Worker</option>
-                          <option value="supervisor">Supervisor Orchestrator</option>
-                          <option value="auditor">Forensic Auditor</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label
-                          htmlFor="cap-autonomy-select"
-                          className="block text-xs font-medium text-text-secondary mb-1"
-                        >
-                          Autonomy Policy
-                        </label>
-                        <select
-                          id="cap-autonomy-select"
-                          value={capAutonomy}
-                          onChange={(e) =>
-                            setCapAutonomy(
-                              e.target.value as 'autonomous' | 'approval_required' | 'suggest',
-                            )
-                          }
-                          className="w-full px-2 py-1.5 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
-                        >
-                          <option value="autonomous">Autonomous Execution</option>
-                          <option value="approval_required">Human Approval Gate</option>
-                          <option value="suggest">Suggest to User Only</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Model Tier & Max ReAct Rounds (Grid 2 cols) */}
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <div>
-                        <label
-                          htmlFor="agent-model-select"
-                          className="block text-xs font-medium text-text-secondary mb-1"
-                        >
-                          Model Tier
-                        </label>
-                        <select
-                          id="agent-model-select"
-                          value={agentModelTier}
-                          onChange={(e) => setAgentModelTier(e.target.value as any)}
-                          className="w-full px-2 py-1.5 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
-                        >
-                          <option value="pro">Pro (Claude 3.7 / GPT-4o)</option>
-                          <option value="flash">Flash (Fast Heuristic)</option>
-                          <option value="open_weights">Open-Weights (Qwen / Ollama)</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label
-                          htmlFor="agent-max-turns"
-                          className="block text-xs font-medium text-text-secondary mb-1"
-                        >
-                          Max ReAct Rounds
-                        </label>
+              {category === 'connectors' ? (
+                <EmptyState
+                  title="Connectors are not authored here"
+                  description="A connector needs a type-specific row in POST /api/v1/connectors plus its own credential flow. This form would write a capability row with no working secret, so it refuses to. Use the Connectors tab, or pick another category."
+                />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+                  {/* Identity, shared by every category */}
+                  <div className="space-y-3.5">
+                    <FormField label="Name / identifier" required error={nameIssue ?? undefined}>
+                      {({ id, errorId }) => (
                         <input
-                          id="agent-max-turns"
+                          ref={nameRef}
+                          id={id}
+                          type="text"
+                          value={name}
+                          aria-invalid={nameIssue ? true : undefined}
+                          aria-describedby={nameIssue ? errorId : undefined}
+                          onChange={(event) => {
+                            setName(event.target.value);
+                            setIssues([]);
+                          }}
+                          placeholder="e.g. code-synthesizer or ats-scoring"
+                          className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-accent"
+                        />
+                      )}
+                    </FormField>
+
+                    {textField(DESCRIPTION_LABEL[category], description, setDescription, {
+                      placeholder: 'What this does, and when the runtime should reach for it',
+                    })}
+
+                    {pickField('Autonomy policy', autonomy, AUTONOMY_VALUES, setAutonomy, {
+                      helperText:
+                        'Validated server-side against suggest | autonomous | approval_required.',
+                    })}
+
+                    <TagEditor
+                      tags={tags}
+                      input={tagInput}
+                      onInput={setTagInput}
+                      onAdd={addTag}
+                      onRemove={(tag) => setTags((prev) => prev.filter((entry) => entry !== tag))}
+                    />
+
+                    {category === 'skills' &&
+                      textField('Routing & trigger keywords', triggers, setTriggers, {
+                        placeholder: '/review, pr audit, check code quality',
+                        helperText:
+                          'Comma separated. The runtime matches incoming work against these.',
+                      })}
+
+                    {category === 'agents' && (
+                      <>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          {pickField('Role archetype', archetype, AGENT_ARCHETYPES, setArchetype)}
+                          {pickField('Model tier', modelTier, AGENT_MODEL_TIERS, setModelTier)}
+                        </div>
+                        <Input
+                          label="Max ReAct rounds"
                           type="number"
                           min={1}
                           max={30}
-                          value={agentMaxTurns}
-                          onChange={(e) => setAgentMaxTurns(parseInt(e.target.value, 10) || 12)}
-                          className="w-full px-2 py-1.5 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
+                          helperText="The runtime accepts 1 to 30."
+                          value={maxTurns}
+                          onChange={(event) =>
+                            setMaxTurns(Number.parseInt(event.target.value, 10) || 0)
+                          }
                         />
-                      </div>
-                    </div>
-
-                    {/* Tool Fleet Assignment Checkboxes */}
-                    <div>
-                      <label className="block text-xs font-medium text-text-secondary mb-1.5">
-                        Assigned Workspace Tools ({agentSelectedTools.length} selected)
-                      </label>
-                      <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto pr-1">
-                        {AVAILABLE_AGENT_TOOLS.map((tool) => {
-                          const checked = agentSelectedTools.includes(tool.id);
-                          return (
-                            <label
-                              key={tool.id}
-                              className={`flex items-center gap-2 p-1.5 rounded border text-xs cursor-pointer transition-colors ${
-                                checked
-                                  ? 'bg-primary/10 border-primary/40 text-primary'
-                                  : 'bg-surface border-border text-text-muted hover:text-text hover:bg-surface-hover'
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={() => {
-                                  setAgentSelectedTools((prev) =>
+                        <FormField
+                          label={`Assigned workspace tools (${agentTools.length} selected)`}
+                        >
+                          <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto pr-1">
+                            {AGENT_TOOLS.map((tool) => {
+                              const checked = agentTools.includes(tool.id);
+                              return (
+                                <label
+                                  key={tool.id}
+                                  className={`flex items-center gap-2 p-1.5 rounded border text-xs cursor-pointer ${
                                     checked
-                                      ? prev.filter((t) => t !== tool.id)
-                                      : [...prev, tool.id],
-                                  );
-                                }}
-                                className="rounded border-border bg-surface text-primary accent-primary"
-                              />
-                              <span className="font-mono text-xs truncate">{tool.name}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Interactive Tag Manager */}
-                    <div>
-                      <label
-                        htmlFor="cap-tag-input-agent"
-                        className="block text-xs font-medium text-text-secondary mb-1"
-                      >
-                        Tags &amp; Archetype Taxonomy
-                      </label>
-                      <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-surface border border-border min-h-[38px]">
-                        {capTags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium bg-surface-elevated text-text border border-border"
-                          >
-                            <span>{tag}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveTag(tag)}
-                              className="text-text-muted hover:text-text ml-0.5"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
-                        <input
-                          id="cap-tag-input-agent"
-                          type="text"
-                          value={tagInput}
-                          onChange={(e) => setTagInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ',') {
-                              e.preventDefault();
-                              handleAddTag(tagInput);
-                            }
-                          }}
-                          placeholder="+ Type tag and hit Enter..."
-                          className="bg-transparent text-xs text-text placeholder:text-text-muted focus:outline-none flex-1 min-w-[120px] px-1 font-sans"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right Column: System Template & AgentCard JSON (col-span-6) */}
-                  <div className="md:col-span-6 flex flex-col min-h-[380px] bg-surface-elevated rounded-xl border border-border p-3.5 space-y-2.5">
-                    <div className="flex items-center justify-between pb-2 border-b border-border">
-                      <div className="flex items-center gap-2 text-xs">
-                        <button
-                          type="button"
-                          onClick={() => setAgentRightTab('prompt')}
-                          className={`font-medium pb-0.5 border-b-2 transition-colors ${
-                            agentRightTab === 'prompt'
-                              ? 'text-primary border-primary'
-                              : 'text-text-muted border-transparent hover:text-text'
-                          }`}
-                        >
-                          System Template (Jinja2)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAgentRightTab('card')}
-                          className={`font-medium pb-0.5 border-b-2 transition-colors ${
-                            agentRightTab === 'card'
-                              ? 'text-primary border-primary'
-                              : 'text-text-muted border-transparent hover:text-text'
-                          }`}
-                        >
-                          AgentCard JSON
-                        </button>
-                      </div>
-                    </div>
-
-                    {agentRightTab === 'prompt' && (
-                      <>
-                        <textarea
-                          rows={11}
-                          value={agentPromptTemplate}
-                          onChange={(e) => setAgentPromptTemplate(e.target.value)}
-                          className="w-full flex-1 p-2.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary font-mono text-xs leading-relaxed resize-none"
-                        />
-                        <div className="flex flex-wrap items-center gap-1 pt-1 text-2xs text-text-muted">
-                          <span>Insert Context:</span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setAgentPromptTemplate(
-                                (prev) => `${prev}\n\nUSER PROFILE:\n{{ profile | tojson }}`,
-                              )
-                            }
-                            className="px-1.5 py-0.5 rounded bg-surface hover:text-text hover:bg-surface-hover border border-border transition-colors"
-                          >
-                            + profile
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setAgentPromptTemplate(
-                                (prev) =>
-                                  `${prev}\n\nRETRIEVED KNOWLEDGE:\n{{ rag_context | tojson }}`,
-                              )
-                            }
-                            className="px-1.5 py-0.5 rounded bg-surface hover:text-text hover:bg-surface-hover border border-border transition-colors"
-                          >
-                            + rag_context
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setAgentPromptTemplate(
-                                (prev) => `${prev}\n\nAVAILABLE TOOLS:\n{{ tools | tojson }}`,
-                              )
-                            }
-                            className="px-1.5 py-0.5 rounded bg-surface hover:text-text hover:bg-surface-hover border border-border transition-colors"
-                          >
-                            + tools
-                          </button>
-                        </div>
+                                      ? 'bg-primary/10 border-primary/40 text-primary'
+                                      : 'bg-surface border-border text-text-muted hover:text-text'
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() =>
+                                      setAgentTools((prev) =>
+                                        checked
+                                          ? prev.filter((entry) => entry !== tool.id)
+                                          : [...prev, tool.id],
+                                      )
+                                    }
+                                  />
+                                  <span className="font-mono text-xs truncate">{tool.name}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </FormField>
                       </>
                     )}
 
-                    {agentRightTab === 'card' && (
-                      <div className="p-2.5 rounded-lg bg-surface border border-border text-primary font-mono text-xs overflow-x-auto max-h-[290px] whitespace-pre select-all">
-                        {generatedSpecString}
-                      </div>
+                    {category === 'mcp' && mcpFields()}
+
+                    {category === 'tools' && toolFields()}
+
+                    {category === 'plugins' && pluginFields()}
+                  </div>
+
+                  {/* Spec, checks and server validation */}
+                  <div className="space-y-3">
+                    {category === 'skills' && (
+                      <EditorPanel
+                        label="Playbook documentation"
+                        badge="SKILL.md"
+                        value={doc}
+                        onChange={setDoc}
+                        placeholder={'# Title\n\n## Mission\nState what the skill does.'}
+                        note={`${doc.trim().length} chars · ${countHeadings(doc)} heading(s)`}
+                        preview={docPreview}
+                        onTogglePreview={() => setDocPreview((open) => !open)}
+                        renderPreview={(value) =>
+                          value ? (
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
+                          ) : (
+                            <span className="text-text-muted italic">No documentation yet.</span>
+                          )
+                        }
+                      />
                     )}
-                  </div>
-                </div>
-              )}
 
-              {/* ──────────────────────────────────────────────────────────── */}
-              {/* STUDIO 3: MCP PROTOCOL STUDIO (Model Context Protocol v2)    */}
-              {/* ──────────────────────────────────────────────────────────── */}
-              {capCategory === 'mcp' && (
-                <div className="space-y-3">
-                  {/* Top Protocol Banner */}
-                  <div className="p-2.5 rounded-xl bg-surface-elevated border border-border flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-semibold text-text text-xs">
-                        MCP Protocol Configuration
-                      </h4>
-                      <span className="text-xs text-text-muted">
-                        Model Context Protocol v2 Connector Bridge
-                      </span>
-                    </div>
-                    <Badge variant="primary" size="sm">
-                      MCP v2 Standard
-                    </Badge>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
-                    {/* Left Column: Server Config (col-span-6) */}
-                    <div className="md:col-span-6 space-y-3.5">
-                      <div>
-                        <label
-                          htmlFor="cap-name-input"
-                          className="block text-xs font-medium text-text-secondary mb-1"
-                        >
-                          MCP Server Identifier *
-                        </label>
-                        <input
-                          ref={nameInputRef}
-                          id="cap-name-input"
-                          type="text"
-                          required
-                          value={capName}
-                          onChange={(e) => {
-                            setCapName(e.target.value);
-                            setValidationError(null);
-                          }}
-                          placeholder="e.g. code-synthesizer or ats-scoring"
-                          className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-primary"
+                    {category === 'agents' && (
+                      <>
+                        <EditorPanel
+                          label="System template"
+                          badge="Jinja2"
+                          value={agentPrompt}
+                          onChange={setAgentPrompt}
+                          placeholder="You are {{ name }}..."
+                          note={`${agentPrompt.trim().length} chars`}
+                          preview={false}
                         />
-                      </div>
+                        <SpecPanel title="AgentCard" badge="v1.0" spec={spec} />
+                      </>
+                    )}
 
-                      <div>
-                        <label
-                          htmlFor="cap-desc-input"
-                          className="block text-xs font-medium text-text-secondary mb-1"
-                        >
-                          Server Description &amp; Scope
-                        </label>
-                        <input
-                          id="cap-desc-input"
-                          type="text"
-                          value={capDescription}
-                          onChange={(e) => setCapDescription(e.target.value)}
-                          placeholder="e.g. Connects local filesystem tools or remote GitHub MCP server"
-                          className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary text-xs"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div>
-                          <label
-                            htmlFor="mcp-transport-select"
-                            className="block text-xs font-medium text-text-secondary mb-1"
-                          >
-                            Transport
-                          </label>
-                          <select
-                            id="mcp-transport-select"
-                            value={mcpTransport}
-                            onChange={(e) => setMcpTransport(e.target.value as 'stdio' | 'sse')}
-                            className="w-full px-2 py-1.5 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
-                          >
-                            <option value="stdio">stdio (Local Command)</option>
-                            <option value="sse">Streamable HTTP / SSE</option>
-                          </select>
-                        </div>
-                        <div className="sm:col-span-2">
-                          <label
-                            htmlFor="mcp-cmd-input"
-                            className="block text-xs font-medium text-text-secondary mb-1"
-                          >
-                            {mcpTransport === 'stdio' ? 'Command & Arguments' : 'SSE Endpoint URL'}
-                          </label>
-                          <input
-                            id="mcp-cmd-input"
-                            type="text"
-                            value={mcpCommand}
-                            onChange={(e) => setMcpCommand(e.target.value)}
-                            placeholder={
-                              mcpTransport === 'stdio'
-                                ? 'e.g. npx -y @modelcontextprotocol/server-filesystem /path'
-                                : 'https://api.my-mcp.internal/sse'
-                            }
-                            className="w-full px-2.5 py-1.5 rounded bg-surface border border-border text-text font-mono text-xs placeholder:text-text-muted focus:outline-none focus:border-primary"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Env Vars */}
-                      <div>
-                        <label className="block text-xs font-medium text-text-secondary mb-1">
-                          Environment Variables &amp; Vault Secrets
-                        </label>
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="text"
-                            placeholder="KEY"
-                            value={mcpEnvKey}
-                            onChange={(e) => setMcpEnvKey(e.target.value)}
-                            className="w-1/3 px-2 py-1 rounded bg-surface border border-border text-text font-mono text-xs placeholder:text-text-muted focus:outline-none focus:border-primary"
-                          />
-                          <input
-                            type="password"
-                            placeholder="SECRET_VAL"
-                            value={mcpEnvVal}
-                            onChange={(e) => setMcpEnvVal(e.target.value)}
-                            className="flex-1 px-2 py-1 rounded bg-surface border border-border text-text font-mono text-xs placeholder:text-text-muted focus:outline-none focus:border-primary"
-                          />
+                    {category === 'mcp' && (
+                      <SpecPanel
+                        title="mcpServers manifest"
+                        badge="validate_mcp_config"
+                        spec={spec}
+                      >
+                        <div className="flex justify-end">
                           <Button
                             type="button"
-                            variant="secondary"
+                            variant="outline"
                             size="sm"
-                            onClick={handleAddEnvVar}
+                            onClick={() => void navigator.clipboard?.writeText(spec)}
                           >
-                            + Env
+                            Copy JSON
                           </Button>
                         </div>
+                      </SpecPanel>
+                    )}
 
-                        {mcpEnvList.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mt-1.5">
-                            {mcpEnvList.map((env, i) => (
-                              <span
-                                key={i}
-                                className="px-2 py-0.5 rounded bg-surface-elevated border border-border text-2xs font-mono text-primary flex items-center gap-1"
-                              >
-                                <span>{env.key}=••••••</span>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setMcpEnvList((prev) => prev.filter((_, idx) => idx !== i))
-                                  }
-                                  className="text-text-muted hover:text-text"
-                                >
-                                  ×
-                                </button>
-                              </span>
-                            ))}
-                          </div>
+                    {category === 'plugins' && (
+                      <EditorPanel
+                        label="Python sandbox handler"
+                        badge="Python"
+                        value={pluginCode}
+                        onChange={setPluginCode}
+                        placeholder={'def run(input: dict, context: dict) -> dict:\n    ...'}
+                        note={
+                          pluginEscape
+                            ? `Sandbox escape on line ${pluginEscape.line}.`
+                            : 'No os.system / os.popen / subprocess / eval / exec call found.'
+                        }
+                        preview={false}
+                      />
+                    )}
+
+                    {category === 'tools' && (
+                      <SpecPanel title="JSON Schema contract" badge="2020-12" spec={spec} />
+                    )}
+
+                    <ReadinessPanel readiness={readiness} />
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="text-xs font-semibold text-text">Server validation</span>
+                        {canValidate ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            loading={testOutcome.kind === 'running'}
+                            onClick={() => void runValidation()}
+                          >
+                            Validate against the API
+                          </Button>
+                        ) : (
+                          <Badge variant="warning" size="sm">
+                            no workspace
+                          </Badge>
                         )}
                       </div>
 
-                      {/* Tag Manager */}
-                      <div>
-                        <label
-                          htmlFor="cap-tag-input-mcp"
-                          className="block text-xs font-medium text-text-secondary mb-1"
+                      {!canValidate && (
+                        <p className="text-2xs text-warning leading-relaxed">
+                          <code className="font-mono">POST /api/v1/agents/capabilities/test</code>{' '}
+                          verifies workspace membership from the request body, so it cannot be
+                          called without one. No result is shown because none was obtained. The
+                          previous version substituted a local character count and labelled it a
+                          sandbox run.
+                        </p>
+                      )}
+
+                      {canValidate && category === 'plugins' && (
+                        <p className="text-2xs text-text-muted leading-relaxed">
+                          Sends this draft as the manifest, so the registry validator reads the
+                          hook, entry point, license, permissions and payload above. It does not
+                          execute the handler: nothing on this API runs plugin code.
+                        </p>
+                      )}
+
+                      {canValidate && category !== 'plugins' && (
+                        <p className="text-2xs text-text-muted leading-relaxed">
+                          Validates the capability <strong>already registered</strong> under this
+                          name in the workspace, or the server catalog when there is none. No
+                          endpoint validates an unsaved draft, so this cannot report on the fields
+                          above until the capability exists.
+                        </p>
+                      )}
+
+                      {testOutcome.kind === 'request_failed' && (
+                        <p
+                          role="alert"
+                          className="p-2.5 rounded bg-error/10 border border-error/30 text-xs text-error font-mono"
                         >
-                          Tags &amp; Taxonomy
-                        </label>
-                        <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-surface border border-border min-h-[38px]">
-                          {capTags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium bg-surface-elevated text-text border border-border"
-                            >
-                              <span>{tag}</span>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveTag(tag)}
-                                className="text-text-muted hover:text-text ml-0.5"
-                              >
-                                ×
-                              </button>
-                            </span>
-                          ))}
-                          <input
-                            id="cap-tag-input-mcp"
-                            type="text"
-                            value={tagInput}
-                            onChange={(e) => setTagInput(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ',') {
-                                e.preventDefault();
-                                handleAddTag(tagInput);
-                              }
-                            }}
-                            placeholder="+ Type tag and hit Enter..."
-                            className="bg-transparent text-xs text-text placeholder:text-text-muted focus:outline-none flex-1 min-w-[120px] px-1 font-sans"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right Column: Manifest, Tools, Audit (col-span-6) */}
-                    <div className="md:col-span-6 flex flex-col min-h-[380px] bg-surface-elevated rounded-xl border border-border p-3.5 space-y-2.5">
-                      <div className="flex items-center justify-between pb-2 border-b border-border">
-                        <div className="flex items-center gap-2 text-xs">
-                          <button
-                            type="button"
-                            onClick={() => setMcpRightTab('manifest')}
-                            className={`font-medium pb-0.5 border-b-2 transition-colors ${
-                              mcpRightTab === 'manifest'
-                                ? 'text-primary border-primary'
-                                : 'text-text-muted border-transparent hover:text-text'
-                            }`}
-                          >
-                            mcp.json Manifest
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setMcpRightTab('tools')}
-                            className={`font-medium pb-0.5 border-b-2 transition-colors ${
-                              mcpRightTab === 'tools'
-                                ? 'text-primary border-primary'
-                                : 'text-text-muted border-transparent hover:text-text'
-                            }`}
-                          >
-                            Exposed Tools
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setMcpRightTab('audit')}
-                            className={`font-medium pb-0.5 border-b-2 transition-colors ${
-                              mcpRightTab === 'audit'
-                                ? 'text-primary border-primary'
-                                : 'text-text-muted border-transparent hover:text-text'
-                            }`}
-                          >
-                            Zero-Trust Audit
-                          </button>
-                        </div>
-                      </div>
-
-                      {mcpRightTab === 'manifest' && (
-                        <div className="flex-1 flex flex-col justify-between">
-                          <div className="p-2.5 rounded-lg bg-surface border border-border text-primary font-mono text-xs overflow-x-auto max-h-[290px] whitespace-pre leading-relaxed select-all">
-                            {generatedSpecString}
-                          </div>
-                          <div className="flex items-center justify-between text-2xs text-text-muted mt-2">
-                            <span>Standard MCP v2 Client configuration schema</span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                navigator.clipboard.writeText(generatedSpecString);
-                              }}
-                              className="text-primary hover:underline"
-                            >
-                              Copy JSON
-                            </button>
-                          </div>
-                        </div>
+                          Request failed: {testOutcome.error}. No validation result was obtained.
+                        </p>
                       )}
 
-                      {mcpRightTab === 'tools' && (
-                        <div className="flex-1 min-h-0 space-y-2 p-1 overflow-y-auto overscroll-y-contain text-xs">
-                          <p className="text-text-secondary text-xs">
-                            Tools discovered dynamically on server startup under scope{' '}
-                            <code className="text-primary">connector.mcp.execute</code>:
-                          </p>
-                          <div className="p-2.5 rounded-lg bg-surface border border-border space-y-2 font-mono text-xs">
-                            <div className="flex items-center justify-between text-text">
-                              <span>mcp__{capName || 'server'}__query</span>
-                              <Badge variant="mono" size="sm">
-                                Read-Only
-                              </Badge>
-                            </div>
-                            <div className="flex items-center justify-between text-text">
-                              <span>mcp__{capName || 'server'}__mutate</span>
-                              <Badge variant="warning" size="sm">
-                                Approval-Gated
-                              </Badge>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {mcpRightTab === 'audit' && (
-                        <div className="flex-1 space-y-2 p-1 text-xs">
-                          <div className="p-2.5 rounded-lg bg-surface border border-border space-y-1.5">
-                            <span className="text-success font-semibold flex items-center gap-1.5">
-                              ✓ Zero-Trust Subprocess Isolation Passed
-                            </span>
-                            <p className="text-xs text-text-secondary">
-                              Shell metacharacters denied; environment variables encrypted
-                              per-workspace key.
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ──────────────────────────────────────────────────────────── */}
-              {/* STUDIO 4: PLUGINS STUDIO (Python Sandbox Lifecycle Hooks)    */}
-              {/* ──────────────────────────────────────────────────────────── */}
-              {capCategory === 'plugins' && (
-                <div className="space-y-3">
-                  {/* Top Scope Banner */}
-                  <div className="p-2.5 rounded-xl bg-surface-elevated border border-border flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-semibold text-text text-xs">
-                        Plugin Sandbox &amp; Scope Architecture
-                      </h4>
-                      <span className="text-xs text-text-muted">
-                        Subprocess-isolated Python lifecycle interceptor
-                      </span>
-                    </div>
-                    <Badge variant="mono" size="sm">
-                      Python Sandbox
-                    </Badge>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
-                    {/* Left Column: Plugin Scope & Target (col-span-6) */}
-                    <div className="md:col-span-6 space-y-3.5">
-                      <div>
-                        <label
-                          htmlFor="cap-name-input"
-                          className="block text-xs font-medium text-text-secondary mb-1"
-                        >
-                          Plugin Name / Identifier *
-                        </label>
-                        <input
-                          ref={nameInputRef}
-                          id="cap-name-input"
-                          type="text"
-                          required
-                          value={capName}
-                          onChange={(e) => {
-                            setCapName(e.target.value);
-                            setValidationError(null);
-                          }}
-                          placeholder="e.g. code-synthesizer or ats-scoring"
-                          className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-primary"
+                      {testOutcome.kind === 'done' && (
+                        <ValidationOutcome
+                          outcome={testOutcome.response}
+                          isSkill={category === 'skills'}
                         />
-                      </div>
-
-                      <div>
-                        <label
-                          htmlFor="cap-desc-input"
-                          className="block text-xs font-medium text-text-secondary mb-1"
-                        >
-                          Summary Description
-                        </label>
-                        <input
-                          id="cap-desc-input"
-                          type="text"
-                          value={capDescription}
-                          onChange={(e) => setCapDescription(e.target.value)}
-                          placeholder="Brief description explaining when agents should activate this capability"
-                          className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary text-xs"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2.5">
-                        <div>
-                          <label
-                            htmlFor="plugin-target-select"
-                            className="block text-xs font-medium text-text-secondary mb-1"
-                          >
-                            Execution Target
-                          </label>
-                          <select
-                            id="plugin-target-select"
-                            value={pluginTarget}
-                            onChange={(e) => setPluginTarget(e.target.value as any)}
-                            className="w-full px-2 py-1.5 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
-                          >
-                            <option value="both">Both (Desktop UI &amp; Agent Runtime)</option>
-                            <option value="desktop">Desktop UI Only</option>
-                            <option value="agent">Agent Runtime Only</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label
-                            htmlFor="plugin-hook-select"
-                            className="block text-xs font-medium text-text-secondary mb-1"
-                          >
-                            Lifecycle Hook Point
-                          </label>
-                          <select
-                            id="plugin-hook-select"
-                            value={pluginHook}
-                            onChange={(e) => setPluginHook(e.target.value as any)}
-                            className="w-full px-2 py-1.5 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
-                          >
-                            <option value="on_tool_call">
-                              on_tool_call (Inspect / Egress DLP)
-                            </option>
-                            <option value="on_agent_start">on_agent_start (Inject Context)</option>
-                            <option value="on_agent_complete">
-                              on_agent_complete (Audit Sink)
-                            </option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2.5 pt-1">
-                        <div>
-                          <label
-                            htmlFor="plugin-author-input"
-                            className="block text-xs font-medium text-text-secondary mb-1"
-                          >
-                            Author / Organization
-                          </label>
-                          <input
-                            id="plugin-author-input"
-                            type="text"
-                            value={pluginAuthor}
-                            onChange={(e) => setPluginAuthor(e.target.value)}
-                            className="w-full px-2 py-1.5 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
-                          />
-                        </div>
-                        <div>
-                          <label
-                            htmlFor="plugin-license-input"
-                            className="block text-xs font-medium text-text-secondary mb-1"
-                          >
-                            SPDX License
-                          </label>
-                          <input
-                            id="plugin-license-input"
-                            type="text"
-                            value={pluginLicense}
-                            onChange={(e) => setPluginLicense(e.target.value)}
-                            className="w-full px-2 py-1.5 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Tag Manager */}
-                      <div>
-                        <label
-                          htmlFor="cap-tag-input-plugin"
-                          className="block text-xs font-medium text-text-secondary mb-1"
-                        >
-                          Tags &amp; Taxonomy
-                        </label>
-                        <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-surface border border-border min-h-[38px]">
-                          {capTags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium bg-surface-elevated text-text border border-border"
-                            >
-                              <span>{tag}</span>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveTag(tag)}
-                                className="text-text-muted hover:text-text ml-0.5"
-                              >
-                                ×
-                              </button>
-                            </span>
-                          ))}
-                          <input
-                            id="cap-tag-input-plugin"
-                            type="text"
-                            value={tagInput}
-                            onChange={(e) => setTagInput(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ',') {
-                                e.preventDefault();
-                                handleAddTag(tagInput);
-                              }
-                            }}
-                            placeholder="+ Type tag and hit Enter..."
-                            className="bg-transparent text-xs text-text placeholder:text-text-muted focus:outline-none flex-1 min-w-[120px] px-1 font-sans"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right Column: Code Editor & Simulator (col-span-6) */}
-                    <div className="md:col-span-6 flex flex-col min-h-[380px] bg-surface-elevated rounded-xl border border-border p-3.5 space-y-2.5">
-                      <div className="flex items-center justify-between pb-2 border-b border-border">
-                        <div className="flex items-center gap-2 text-xs">
-                          <button
-                            type="button"
-                            onClick={() => setPluginRightTab('code')}
-                            className={`font-medium pb-0.5 border-b-2 transition-colors ${
-                              pluginRightTab === 'code'
-                                ? 'text-primary border-primary'
-                                : 'text-text-muted border-transparent hover:text-text'
-                            }`}
-                          >
-                            Python Sandbox Code
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setPluginRightTab('test')}
-                            className={`font-medium pb-0.5 border-b-2 transition-colors ${
-                              pluginRightTab === 'test'
-                                ? 'text-primary border-primary'
-                                : 'text-text-muted border-transparent hover:text-text'
-                            }`}
-                          >
-                            Test Simulator
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setPluginRightTab('manifest')}
-                            className={`font-medium pb-0.5 border-b-2 transition-colors ${
-                              pluginRightTab === 'manifest'
-                                ? 'text-primary border-primary'
-                                : 'text-text-muted border-transparent hover:text-text'
-                            }`}
-                          >
-                            plugin.json
-                          </button>
-                        </div>
-                      </div>
-
-                      {pluginRightTab === 'code' && (
-                        <>
-                          <textarea
-                            rows={11}
-                            value={pluginCode}
-                            onChange={(e) => setPluginCode(e.target.value)}
-                            className="w-full flex-1 p-2.5 rounded-lg bg-surface border border-border text-primary focus:outline-none focus:border-primary font-mono text-xs leading-relaxed resize-none"
-                          />
-                          <div className="flex flex-wrap items-center gap-1 pt-1 text-2xs text-text-muted">
-                            <span>Templates:</span>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setPluginCode(`def run(input: dict, context: dict) -> dict:
-    text = input.get("text", "")
-    words = text.split()
-    return {"words": len(words), "chars": len(text)}
-`)
-                              }
-                              className="px-1.5 py-0.5 rounded bg-surface hover:text-text hover:bg-surface-hover border border-border transition-colors"
-                            >
-                              + Word Count
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setPluginCode(`def run(input: dict, context: dict) -> dict:
-    text = input.get("text", "").lower()
-    pos = sum(1 for w in ["good", "great", "excellent"] if w in text)
-    neg = sum(1 for w in ["bad", "poor", "terrible"] if w in text)
-    return {"sentiment_score": pos - neg}
-`)
-                              }
-                              className="px-1.5 py-0.5 rounded bg-surface hover:text-text hover:bg-surface-hover border border-border transition-colors"
-                            >
-                              + Sentiment
-                            </button>
-                          </div>
-                        </>
-                      )}
-
-                      {pluginRightTab === 'test' && (
-                        <div className="flex-1 flex flex-col gap-2">
-                          <label className="text-xs text-text-secondary">
-                            Simulate Input Payload (JSON):
-                          </label>
-                          <textarea
-                            rows={5}
-                            value={pluginTestPayload}
-                            onChange={(e) => setPluginTestPayload(e.target.value)}
-                            className="p-2 rounded bg-surface border border-border text-text font-mono text-xs"
-                          />
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            onClick={async () => {
-                              try {
-                                const parsed = JSON.parse(pluginTestPayload);
-                                if (workspaceId) {
-                                  setPluginTestResult('Executing sandbox verification...');
-                                  try {
-                                    const res = await capabilitiesApi.test({
-                                      workspaceId,
-                                      capabilityName: capName || 'plugin-sandbox-runner',
-                                      category: 'plugins',
-                                      inputPayload: {
-                                        code: pluginCode,
-                                        hook: pluginHook,
-                                        payload: parsed,
-                                      },
-                                    });
-                                    setPluginTestResult(
-                                      JSON.stringify(
-                                        {
-                                          status: 'SANDBOX_SUCCESS',
-                                          executionDurationMs: res.executionDurationMs,
-                                          result: res.result,
-                                        },
-                                        null,
-                                        2,
-                                      ),
-                                    );
-                                  } catch (backendErr: unknown) {
-                                    setPluginTestResult(
-                                      JSON.stringify(
-                                        {
-                                          status: 'SANDBOX_EXECUTION_ERROR',
-                                          error:
-                                            backendErr instanceof Error
-                                              ? backendErr.message
-                                              : 'Backend execution failed',
-                                        },
-                                        null,
-                                        2,
-                                      ),
-                                    );
-                                  }
-                                } else {
-                                  setPluginTestResult(
-                                    JSON.stringify(
-                                      {
-                                        status: 'VALIDATED_LOCAL_SYNTAX',
-                                        validJson: true,
-                                        codeLength: pluginCode.length,
-                                      },
-                                      null,
-                                      2,
-                                    ),
-                                  );
-                                }
-                              } catch {
-                                setPluginTestResult('Invalid JSON payload');
-                              }
-                            }}
-                          >
-                            Run Sandbox Test
-                          </Button>
-                          {pluginTestResult && (
-                            <pre className="p-2 rounded bg-surface border border-border text-success font-mono text-xs overflow-x-auto">
-                              {pluginTestResult}
-                            </pre>
-                          )}
-                        </div>
-                      )}
-
-                      {pluginRightTab === 'manifest' && (
-                        <div className="p-2.5 rounded-lg bg-surface border border-border text-primary font-mono text-xs overflow-x-auto max-h-[290px] whitespace-pre select-all">
-                          {generatedSpecString}
-                        </div>
                       )}
                     </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ──────────────────────────────────────────────────────────── */}
-              {/* STUDIO 5: TOOLS STUDIO (Typed Functions & JSON Schema)       */}
-              {/* ──────────────────────────────────────────────────────────── */}
-              {capCategory === 'tools' && (
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
-                  {/* Left Column: Parameter Schema & Scope (col-span-6) */}
-                  <div className="md:col-span-6 space-y-3.5">
-                    <div>
-                      <label
-                        htmlFor="cap-name-input"
-                        className="block text-xs font-medium text-text-secondary mb-1"
-                      >
-                        Tool Function Name *
-                      </label>
-                      <input
-                        ref={nameInputRef}
-                        id="cap-name-input"
-                        type="text"
-                        required
-                        value={capName}
-                        onChange={(e) => {
-                          setCapName(e.target.value);
-                          setValidationError(null);
-                        }}
-                        placeholder="e.g. code-synthesizer or ats-scoring"
-                        className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-primary"
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="cap-desc-input"
-                        className="block text-xs font-medium text-text-secondary mb-1"
-                      >
-                        Function Description (Injected in LLM Tool Schema)
-                      </label>
-                      <input
-                        id="cap-desc-input"
-                        type="text"
-                        value={capDescription}
-                        onChange={(e) => setCapDescription(e.target.value)}
-                        placeholder="Brief description explaining what this tool does"
-                        className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary text-xs"
-                      />
-                    </div>
-
-                    {/* Parameter Builder */}
-                    <div className="p-3 rounded-xl bg-surface-elevated border border-border space-y-2.5">
-                      <div className="flex items-center justify-between pb-1.5 border-b border-border">
-                        <h4 className="font-semibold text-text text-xs">
-                          Visual Parameter Builder (JSON Schema)
-                        </h4>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          onClick={handleAddParam}
-                        >
-                          + Add Param
-                        </Button>
-                      </div>
-
-                      <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                        {toolParams.map((p, idx) => (
-                          <div key={idx} className="flex items-center gap-1.5">
-                            <input
-                              type="text"
-                              placeholder="name"
-                              value={p.name}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setToolParams((prev) =>
-                                  prev.map((item, i) =>
-                                    i === idx ? { ...item, name: val } : item,
-                                  ),
-                                );
-                              }}
-                              className="w-28 px-2 py-1 rounded bg-surface border border-border text-text font-mono text-xs focus:outline-none focus:border-primary"
-                            />
-                            <select
-                              value={p.type}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setToolParams((prev) =>
-                                  prev.map((item, i) =>
-                                    i === idx ? { ...item, type: val } : item,
-                                  ),
-                                );
-                              }}
-                              className="w-20 px-2 py-1 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
-                            >
-                              <option value="string">string</option>
-                              <option value="number">number</option>
-                              <option value="boolean">boolean</option>
-                              <option value="object">object</option>
-                              <option value="array">array</option>
-                            </select>
-                            <input
-                              type="text"
-                              placeholder="Description"
-                              value={p.description}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setToolParams((prev) =>
-                                  prev.map((item, i) =>
-                                    i === idx ? { ...item, description: val } : item,
-                                  ),
-                                );
-                              }}
-                              className="flex-1 px-2 py-1 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
-                            />
-                            <label className="flex items-center gap-1 text-2xs text-text-muted shrink-0">
-                              <input
-                                type="checkbox"
-                                checked={p.required}
-                                onChange={(e) => {
-                                  const checked = e.target.checked;
-                                  setToolParams((prev) =>
-                                    prev.map((item, i) =>
-                                      i === idx ? { ...item, required: checked } : item,
-                                    ),
-                                  );
-                                }}
-                                className="rounded border-border bg-surface text-primary accent-primary"
-                              />
-                              <span>Req</span>
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveParam(idx)}
-                              className="text-text-muted hover:text-danger p-0.5"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border">
-                        <div>
-                          <label className="block text-xs font-medium text-text-secondary mb-1">
-                            Required Security Scope
-                          </label>
-                          <select
-                            value={toolScope}
-                            onChange={(e) => setToolScope(e.target.value)}
-                            className="w-full px-2 py-1 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
-                          >
-                            <option value="memory.read">memory.read</option>
-                            <option value="memory.write">memory.write</option>
-                            <option value="connector.mcp.execute">connector.mcp.execute</option>
-                            <option value="system.execute">system.execute</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-text-secondary mb-1">
-                            Category Classification
-                          </label>
-                          <select
-                            value={toolCategoryGroup}
-                            onChange={(e) => setToolCategoryGroup(e.target.value)}
-                            className="w-full px-2 py-1 rounded bg-surface border border-border text-text text-xs focus:outline-none focus:border-primary"
-                          >
-                            <option value="memory_read">memory_read</option>
-                            <option value="memory_write">memory_write</option>
-                            <option value="connector_read">connector_read</option>
-                            <option value="connector_write">connector_write</option>
-                            <option value="system">system</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Tag Manager */}
-                    <div>
-                      <label
-                        htmlFor="cap-tag-input-tools"
-                        className="block text-xs font-medium text-text-secondary mb-1"
-                      >
-                        Tags &amp; Taxonomy
-                      </label>
-                      <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-lg bg-surface border border-border min-h-[38px]">
-                        {capTags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-2xs font-medium bg-surface-elevated text-text border border-border"
-                          >
-                            <span>{tag}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveTag(tag)}
-                              className="text-text-muted hover:text-text ml-0.5"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
-                        <input
-                          id="cap-tag-input-tools"
-                          type="text"
-                          value={tagInput}
-                          onChange={(e) => setTagInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ',') {
-                              e.preventDefault();
-                              handleAddTag(tagInput);
-                            }
-                          }}
-                          placeholder="+ Type tag and hit Enter..."
-                          className="bg-transparent text-xs text-text placeholder:text-text-muted focus:outline-none flex-1 min-w-[120px] px-1 font-sans"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right Column: JSON Schema Specification (col-span-6) */}
-                  <div className="md:col-span-6 flex flex-col min-h-[380px] bg-surface-elevated rounded-xl border border-border p-3.5 space-y-2.5">
-                    <div className="flex items-center justify-between pb-2 border-b border-border">
-                      <span className="font-semibold text-text text-xs">
-                        JSON Schema Input &amp; Output Contract
-                      </span>
-                      <Badge variant="mono" size="sm">
-                        JSONSchema 2020-12
-                      </Badge>
-                    </div>
-
-                    <div className="p-2.5 rounded-lg bg-surface border border-border text-primary font-mono text-xs overflow-x-auto max-h-[290px] whitespace-pre leading-relaxed select-all">
-                      {generatedSpecString}
-                    </div>
-
-                    <p className="text-2xs text-text-muted">
-                      Strict schema contract enforced at tool dispatch and validation gates.
-                    </p>
                   </div>
                 </div>
               )}
             </form>
-          )}
+          </TabPanel>
 
-          {/* ──────────────────────────────────────────────────────────────── */}
-          {/* TAB 3: Remote Git / File Dropzone                                 */}
-          {/* ──────────────────────────────────────────────────────────────── */}
-          {activeTab === 'import' && (
-            <div className="space-y-4 text-xs font-sans">
-              <div>
-                <h3 className="text-sm font-semibold text-text mb-1">
-                  Drag &amp; Drop SKILL.md or Specification File
-                </h3>
-                <p className="text-xs text-text-muted mb-2.5">
-                  Supports <code className="text-primary">SKILL.md</code> with YAML frontmatter,{' '}
-                  <code className="text-primary">mcp.json</code>, or OpenAPI schemas.
-                </p>
+          {/* ── Import ──────────────────────────────────────────────────── */}
+          <TabPanel id="import" activeTab={activeTab} className="p-5 space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-text mb-1">Drop a capability file</h3>
+              <p className="text-xs text-text-muted mb-2.5">
+                Supports <code className="text-primary">SKILL.md</code>,{' '}
+                <code className="text-primary">mcp.json</code> and OpenAPI documents. The file is
+                read into the builder; nothing is fetched, compiled or executed.
+              </p>
 
-                <div
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setDragOver(true);
+              <div
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  setDragOver(false);
+                  const dropped = event.dataTransfer?.files?.[0];
+                  if (dropped) handleFile(dropped);
+                }}
+                className={`border-2 border-dashed rounded-xl p-5 text-center transition-all ${
+                  dragOver
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border bg-surface-elevated hover:border-primary/50 hover:bg-surface-hover'
+                }`}
+              >
+                <p className="text-xs font-semibold text-text">Drop your capability file here</p>
+                <p className="text-2xs text-text-muted mt-0.5">or browse (.md, .json, .yaml)</p>
+                <input
+                  type="file"
+                  accept=".md,.markdown,.json,.yaml,.yml"
+                  className="sr-only"
+                  id="capability-file-input"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) handleFile(file);
                   }}
-                  onDragLeave={() => setDragOver(false)}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setDragOver(false);
-                    const file = e.dataTransfer.files[0];
-                    if (file) {
-                      setFileParseSuccess(`Loaded ${file.name}`);
-                      handleFileUpload(file);
-                    }
-                  }}
-                  className={`border-2 border-dashed rounded-xl p-5 text-center transition-all cursor-pointer ${
-                    dragOver
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border bg-surface-elevated hover:border-primary/50 hover:bg-surface-hover'
-                  }`}
+                />
+                <label
+                  htmlFor="capability-file-input"
+                  className="inline-block mt-2 px-3 py-1 rounded-md bg-surface hover:bg-surface-hover text-xs font-medium text-text border border-border cursor-pointer"
                 >
-                  <div className="w-8 h-8 mx-auto mb-1.5 rounded-lg bg-surface border border-border flex items-center justify-center text-primary">
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
-                      />
-                    </svg>
-                  </div>
-                  <p className="text-xs font-semibold text-text">Drop your capability file here</p>
-                  <p className="text-2xs text-text-muted mt-0.5">
-                    or click to browse local files (.md, .json, .yaml)
-                  </p>
-                  <input
-                    type="file"
-                    accept=".md,.markdown,.json,.yaml,.yml"
-                    className="hidden"
-                    id="capability-file-input"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setFileParseSuccess(`Loaded ${file.name}`);
-                        handleFileUpload(file);
-                      }
-                    }}
-                  />
-                  <label
-                    htmlFor="capability-file-input"
-                    className="inline-block mt-2 px-3 py-1 rounded-md bg-surface hover:bg-surface-hover text-xs font-medium text-text border border-border cursor-pointer transition-colors"
-                  >
-                    Browse Files
-                  </label>
-                </div>
-              </div>
-
-              {/* Git / Remote URL Fetcher */}
-              <div className="pt-3 border-t border-border">
-                <h4 className="text-xs font-semibold text-text mb-1">
-                  Import Capability from Git / URL
-                </h4>
-                <p className="text-xs text-text-muted mb-2.5">
-                  Clone a public GitHub skill directory, raw SKILL.md link, or remote MCP server
-                  endpoint.
-                </p>
-
-                <form onSubmit={handleImportSubmit} className="space-y-3">
-                  <div>
-                    <label
-                      htmlFor="import-url-input"
-                      className="block text-text-secondary font-medium mb-1"
-                    >
-                      Repository URL / Endpoint *
-                    </label>
-                    <input
-                      id="import-url-input"
-                      type="text"
-                      required
-                      value={importUrl}
-                      onChange={(e) => setImportUrl(e.target.value)}
-                      placeholder="https://github.com/vaeloom/skills-community/tree/main/rag-eval"
-                      className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary text-xs font-mono"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label
-                        htmlFor="import-cat-select"
-                        className="block text-text-secondary font-medium mb-1"
-                      >
-                        Target Category
-                      </label>
-                      <select
-                        id="import-cat-select"
-                        value={importCategory}
-                        onChange={(e) => setImportCategory(e.target.value as CapabilityCategory)}
-                        className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-text focus:outline-none focus:border-primary text-xs"
-                      >
-                        <option value="skills">Skills</option>
-                        <option value="plugins">Plugins</option>
-                        <option value="agents">Agents</option>
-                        <option value="mcp">MCP Connector</option>
-                        <option value="tools">Tools</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-end gap-2 pt-2">
-                    <Button type="button" variant="secondary" size="sm" onClick={onClose}>
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      size="sm"
-                      disabled={importLoading}
-                      className="inline-flex items-center gap-2"
-                    >
-                      {importLoading ? (
-                        <>
-                          <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span>Fetching &amp; Importing…</span>
-                        </>
-                      ) : (
-                        <span>Import &amp; Activate</span>
-                      )}
-                    </Button>
-                  </div>
-                </form>
+                  Browse files
+                </label>
               </div>
             </div>
-          )}
+
+            <div className="pt-3 border-t border-border">
+              <h3 className="text-xs font-semibold text-text mb-1">Import from a Git or URL</h3>
+              <p className="text-xs text-text-muted mb-2.5">
+                Records the source URL against a workspace capability row. Vaeloom has no remote
+                fetcher, so nothing at the other end is compiled or run.
+              </p>
+
+              <form onSubmit={onImportSubmit} className="space-y-3">
+                <Input
+                  label="Repository URL / endpoint"
+                  required
+                  value={importUrl}
+                  onChange={(event) => setImportUrl(event.target.value)}
+                  placeholder="https://github.com/vaeloom/skills-community/tree/main/rag-eval"
+                />
+                <Select
+                  label="Target category"
+                  value={importCategory}
+                  onChange={(value) =>
+                    setImportCategory(
+                      option(
+                        value,
+                        CATEGORY_CHOICES.filter((choice) => choice.id !== 'connectors').map(
+                          (choice) => choice.id,
+                        ),
+                        importCategory,
+                      ),
+                    )
+                  }
+                  options={CATEGORY_CHOICES.filter((choice) => choice.id !== 'connectors').map(
+                    (choice) => ({ value: choice.id, label: choice.label }),
+                  )}
+                />
+
+                {importError && (
+                  <p role="alert" className="text-xs text-error">
+                    {importError} The modal stayed open so the URL is not lost.
+                  </p>
+                )}
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <Button type="button" variant="secondary" size="sm" onClick={onClose}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" variant="primary" size="sm" loading={importLoading}>
+                    {importLoading ? 'Registering…' : 'Import & activate'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </TabPanel>
         </div>
 
-        {/* ── 3. Sticky Bottom Footer (ALWAYS 100% VISIBLE & PINNED) ─────────── */}
         <footer className="px-5 py-3 border-t border-border bg-surface-elevated flex items-center justify-between gap-3 shrink-0 z-20 font-sans">
           <div className="flex items-center gap-2">
             <Button type="button" variant="secondary" size="sm" onClick={onClose}>
               Cancel
             </Button>
             <span className="text-xs text-text-muted hidden sm:inline-block">
-              Press{' '}
               <kbd className="px-1 py-0.5 rounded bg-surface text-primary border border-border font-mono text-2xs">
                 Esc
               </kbd>{' '}
@@ -2822,19 +3085,11 @@ ${capDoc || '# Operational Rules\n1. Define sovereign instructions here.'}
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            {activeTab !== 'import' && (
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                onClick={() => handleFinalSubmit()}
-                className="inline-flex items-center gap-1.5 font-medium shadow-sm"
-              >
-                <span>Create Capability</span>
-              </Button>
-            )}
-          </div>
+          {activeTab === 'builder' && category !== 'connectors' && (
+            <Button type="button" variant="primary" size="sm" onClick={submit}>
+              Create Capability
+            </Button>
+          )}
         </footer>
       </div>
     </div>
