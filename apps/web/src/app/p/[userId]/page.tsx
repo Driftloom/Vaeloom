@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import PublicProfileView from './PublicProfileView';
 import { PublicProfileData } from '@/lib/api-client';
 
@@ -78,6 +79,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function PublicProfilePage({ params }: PageProps) {
   const { userId } = await params;
   const initialData = await getProfileData(userId);
+  // E2: stamp the JSON-LD <script> with the request nonce (forwarded as
+  // `x-nonce` by middleware) so the strict, nonce-only script-src lets it run.
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
 
   // Schema.org Person JSON-LD for rich Google Search indexing
   const jsonLd = initialData
@@ -104,6 +108,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
       {jsonLd && (
         <script
           type="application/ld+json"
+          nonce={nonce}
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       )}

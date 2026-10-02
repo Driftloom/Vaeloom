@@ -39,20 +39,20 @@ const siteUrl = process.env['NEXT_PUBLIC_SITE_URL'] ?? 'https://vaeloom.app';
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'Vaeloom | Your second brain for education and career',
+    default: 'Vaeloom | Your memory system for education and career',
     template: '%s | Vaeloom',
   },
   description:
     'A memory-first personal intelligence system for education and career. Connect your files, email, and code; Vaeloom builds a knowledge graph of your work, keeps a living master resume, surfaces matched roles, and organizes your workspace. Agents suggest — you approve.',
   keywords: [
-    'second brain',
+    'memory system',
+    'persistent memory',
     'education',
     'career',
     'knowledge graph',
     'AI agents',
     'resume builder',
     'job search',
-    'memory system',
     'students',
     'Vaeloom',
   ],
@@ -69,7 +69,7 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: siteUrl,
     siteName: 'Vaeloom',
-    title: 'Vaeloom | Your second brain for education and career',
+    title: 'Vaeloom | Your memory system for education and career',
     description:
       'A memory-first personal intelligence system for education and career. Connect your work; Vaeloom builds a knowledge graph, keeps a living resume, and surfaces matched roles. Agents suggest — you approve.',
     images: [
@@ -77,13 +77,13 @@ export const metadata: Metadata = {
         url: `${siteUrl}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: 'Vaeloom — Your second brain for education and career',
+        alt: 'Vaeloom — Your memory system for education and career',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Vaeloom | Your second brain for education and career',
+    title: 'Vaeloom | Your memory system for education and career',
     description:
       'A memory-first personal intelligence system for education and career. Connect your work; Vaeloom builds a knowledge graph and keeps a living resume. Agents suggest — you approve.',
     images: [`${siteUrl}/og-image.png`],

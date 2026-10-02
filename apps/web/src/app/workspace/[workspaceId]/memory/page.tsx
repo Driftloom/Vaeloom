@@ -227,9 +227,9 @@ function MemoryGraphPageContent() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
       <PageHeader
-        title="Second Brain & Memory"
+        title="Memory"
         eyebrow={`WORKSPACE ${workspaceId.slice(0, 8).toUpperCase()}`}
-        description="Autonomous second brain combining plain Markdown vault sync, cognitive embeddings, multiscale hierarchy, and provenance."
+        description="Autonomous dynamic memory combining plain Markdown vault sync, cognitive embeddings, multiscale hierarchy, and provenance."
         actions={
           <div className="flex items-center gap-2">
             <Button
@@ -344,7 +344,7 @@ function MemoryGraphPageContent() {
               title={
                 searchQuery || selectedType !== 'all'
                   ? 'No matching memories'
-                  : 'Your Second Brain is ready'
+                  : 'Your Memory is ready'
               }
               description={
                 searchQuery || selectedType !== 'all'
@@ -521,7 +521,7 @@ function MemoryGraphPageContent() {
             <input
               type="text"
               required
-              placeholder="e.g. Distributed Consensus in Second Brain"
+              placeholder="e.g. Distributed Consensus in Distributed Systems"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)] font-sans"
@@ -565,7 +565,7 @@ function MemoryGraphPageContent() {
             </label>
             <input
               type="text"
-              placeholder="e.g. second-brain, architecture, notes"
+              placeholder="e.g. memory, architecture, notes"
               value={newTags}
               onChange={(e) => setNewTags(e.target.value)}
               className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)] font-mono"
@@ -591,7 +591,7 @@ export default function MemoryGraphPage() {
     <Suspense
       fallback={
         <div className="py-24 flex flex-col items-center justify-center gap-3">
-          <LoadingSpinner size="lg" text="Loading second brain..." />
+          <LoadingSpinner size="lg" text="Loading memory..." />
         </div>
       }
     >

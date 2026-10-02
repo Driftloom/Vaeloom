@@ -29,7 +29,7 @@ import { FinalCTA, LandingFooter } from '@/components/landing/sections/ClosingSe
 // W-14: landing is statically renderable — real page metadata.
 // Page-specific title only; layout `title.template` appends " | Vaeloom".
 export const metadata: Metadata = {
-  title: 'Your second brain for education and career',
+  title: 'Your memory system for education and career',
   description: SEO.description,
   alternates: { canonical: SEO.url },
   openGraph: {
@@ -70,7 +70,7 @@ const jsonLd = {
 };
 
 /**
- * The Living Second Brain — one continuous story:
+ * The Living Memory — one continuous story:
  * fragmentation → understanding → memory → connection →
  * intelligence → action → outcome → compounding.
  *

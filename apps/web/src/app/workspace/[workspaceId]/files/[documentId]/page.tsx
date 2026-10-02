@@ -1,7 +1,18 @@
 'use client';
-import React from 'react';
-import { DocumentDetailView } from '@/components/documents/DocumentDetailView';
+import { useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 
 export default function FileDetailPage() {
-  return <DocumentDetailView basePath="files" />;
+  const params = useParams();
+  const router = useRouter();
+  const workspaceId = params?.['workspaceId'] as string | undefined;
+  const documentId = params?.['documentId'] as string | undefined;
+
+  useEffect(() => {
+    if (workspaceId && documentId) {
+      router.replace(`/workspace/${workspaceId}/documents/${documentId}`);
+    }
+  }, [workspaceId, documentId, router]);
+
+  return null;
 }

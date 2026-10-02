@@ -76,7 +76,7 @@ export default function MemoryDetailPage() {
       toast({
         tone: 'success',
         title: 'Memory updated',
-        detail: 'Changes saved successfully into Second Brain index.',
+        detail: 'Changes saved successfully into memory index.',
       });
       setEditing(false);
       await mutateMemory();
@@ -150,7 +150,7 @@ export default function MemoryDetailPage() {
 
   const breadcrumbItems = [
     {
-      label: 'Second Brain',
+      label: 'Memory',
       href: workspaceId ? `/workspace/${workspaceId}/memory` : '/memory',
     },
     {

@@ -12,7 +12,7 @@ export default function MemoryCorrectionsPage() {
 
   const breadcrumbItems = [
     {
-      label: 'Second Brain',
+      label: 'Memory',
       href: `/workspace/${workspaceId}/memory`,
     },
     {

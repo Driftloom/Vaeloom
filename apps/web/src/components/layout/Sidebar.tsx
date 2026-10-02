@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -35,6 +35,11 @@ import {
 } from '@/lib/route-manifest';
 import { useAppMode } from '@/hooks/useAppMode';
 import { useAuth } from '@/hooks/useAuth';
+
+// D-R5: mirrors the ui-kit Modal focus trap so the shortcuts dialog behaves
+// identically to every other dialog (Tab cycling, initial focus, focus return).
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 interface NavLink {
   id: string;
@@ -140,7 +145,7 @@ function SidebarNavLink({ link, current, collapsed }: SidebarNavLinkProps) {
             {link.dataMode === 'preview' && (
               <span
                 aria-hidden="true"
-                className="ml-auto text-[9px] font-mono uppercase tracking-wider px-1 py-0.2 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
+                className="ml-auto text-[9px] font-mono uppercase tracking-wider px-1 py-0.2 rounded bg-warning/10 text-warning border border-warning/20"
               >
                 preview
               </span>
@@ -180,6 +185,8 @@ export function Sidebar({
   const enterpriseEnabled = me?.capabilities?.enterprise === true;
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   useScrollLock(showShortcutsModal);
+  const shortcutsRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const { mode: contextMode, setMode, cycleMode, currentModeMeta } = useAppMode();
   const effectiveMode = portalMode ?? contextMode;
 
@@ -205,6 +212,45 @@ export function Sidebar({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onToggleCollapse]);
+
+  // D-R5: focus trap, initial focus and focus return for the shortcuts dialog,
+  // matching the accessible behaviour of the ui-kit Modal component.
+  useEffect(() => {
+    if (!showShortcutsModal) return;
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+    const dialog = shortcutsRef.current;
+    const focusTarget = dialog?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR) ?? dialog;
+    focusTarget?.focus();
+
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowShortcutsModal(false);
+        return;
+      }
+      if (e.key !== 'Tab' || !dialog) return;
+      const focusables = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+      if (focusables.length === 0) {
+        e.preventDefault();
+        dialog.focus();
+        return;
+      }
+      const first = focusables[0] as HTMLElement;
+      const last = focusables[focusables.length - 1] as HTMLElement;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('keydown', handleKey);
+      previouslyFocusedRef.current?.focus();
+    };
+  }, [showShortcutsModal]);
 
   return (
     <>
@@ -425,11 +471,9 @@ export function Sidebar({
           aria-label="Keyboard Shortcuts"
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overscroll-contain"
           onClick={() => setShowShortcutsModal(false)}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') setShowShortcutsModal(false);
-          }}
         >
           <div
+            ref={shortcutsRef}
             className="w-full max-w-md max-h-[85dvh] overflow-y-auto overscroll-contain rounded-xl bg-surface border border-border-strong shadow-2xl p-5 space-y-4"
             onClick={(e) => e.stopPropagation()}
             tabIndex={-1}

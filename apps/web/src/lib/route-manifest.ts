@@ -136,14 +136,13 @@ export const WORKSPACE_ROUTES: readonly RouteDefinition[] = [
   {
     id: 'memory',
     subpath: 'memory',
-    label: 'Second Brain',
+    label: 'Memory',
     section: 'Memory',
     dataMode: 'live',
-    breadcrumbTitle: 'Second Brain',
+    breadcrumbTitle: 'Memory',
     primaryAction: 'Explore Knowledge Node',
     mobilePattern: 'drawer',
-    description:
-      'Autonomous Second Brain, dynamic memory feed, knowledge graph, and multiscale hierarchy.',
+    description: 'Autonomous dynamic memory feed, knowledge graph, and multiscale hierarchy.',
   },
   {
     id: 'vault-sync',

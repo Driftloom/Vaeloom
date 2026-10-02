@@ -12,7 +12,7 @@ export default function MemoryGraphWorkbenchPage() {
 
   const breadcrumbItems = [
     {
-      label: 'Second Brain',
+      label: 'Memory',
       href: `/workspace/${workspaceId}/memory`,
     },
     {

@@ -2,22 +2,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { ErrorState } from '@/components/shared/ErrorState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Tabs, TabPanel } from '@/components/shared/Tabs';
 import { PageHeader } from '@/components/shared/Page';
-import { schedulerApi, agentApi, applicationApi, opportunityApi } from '@/lib/api-client';
-import type { JobResponse, OpportunityMatchResult } from '@/lib/api-client';
+import { agentApi, applicationApi, opportunityApi } from '@/lib/api-client';
+import type { OpportunityMatchResult } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
-
-function formatDate(iso?: string): string {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
 
 type MatchMetricKey =
   'cosineSimilarity' | 'decayWeightedConfidence' | 'networkProximity' | 'skillGapPenalty';
@@ -40,21 +30,11 @@ function readMatchMetric(metrics: unknown, key: MatchMetricKey): number | null {
 
 const NOT_REPORTED = 'not reported';
 
-const statusStyles: Record<string, string> = {
-  active: 'border-success/30 text-success bg-success/10',
-  paused: 'border-warning/30 text-warning bg-warning/10',
-  completed: 'border-primary/30 text-primary bg-primary/10',
-  failed: 'border-error/30 text-error bg-error/10',
-};
-
 export default function JobsPage() {
   const params = useParams();
   const workspaceId = params?.['workspaceId'] as string | undefined;
   const { toast } = useToast();
   const [active, setActive] = useState('search');
-  const [jobs, setJobs] = useState<JobResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [searchResult, setSearchResult] = useState<{
@@ -142,24 +122,6 @@ export default function JobsPage() {
       localStorage.setItem(`vaeloom.savedJobs.${workspaceId}`, JSON.stringify(saved));
     } catch {}
   }, [saved, workspaceId]);
-
-  const fetchJobs = useCallback(async () => {
-    if (!workspaceId) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await schedulerApi.listJobs();
-      setJobs(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load jobs');
-    } finally {
-      setLoading(false);
-    }
-  }, [workspaceId]);
-
-  useEffect(() => {
-    fetchJobs();
-  }, [fetchJobs]);
 
   const handleSearch = useCallback(async () => {
     if (!workspaceId || !query.trim()) return;
@@ -307,40 +269,6 @@ export default function JobsPage() {
     [workspaceId, toast],
   );
 
-  const handleJobAction = useCallback(
-    async (job: JobResponse, action: 'pause' | 'resume' | 'trigger' | 'delete') => {
-      try {
-        if (action === 'pause') await schedulerApi.pauseJob(job.id);
-        if (action === 'resume') await schedulerApi.resumeJob(job.id);
-        if (action === 'trigger') await schedulerApi.triggerJob(job.id);
-        if (action === 'delete') {
-          if (!window.confirm(`Delete job ${job.name}?`)) return;
-          await schedulerApi.deleteJob(job.id);
-        }
-        toast({
-          tone: 'success',
-          title:
-            action === 'delete'
-              ? 'Deleted'
-              : action === 'trigger'
-                ? 'Triggered'
-                : action === 'pause'
-                  ? 'Paused'
-                  : 'Resumed',
-          detail: job.name,
-        });
-        await fetchJobs();
-      } catch (err) {
-        toast({
-          tone: 'error',
-          title: `${action} failed`,
-          detail: err instanceof Error ? err.message : 'Please try again.',
-        });
-      }
-    },
-    [fetchJobs, toast],
-  );
-
   const handleRunMatch = useCallback(async () => {
     if (!workspaceId) return;
     setMatching(true);
@@ -424,7 +352,6 @@ export default function JobsPage() {
   const tabs = [
     { id: 'search', label: 'Job Search' },
     { id: 'matcher', label: 'PIOS Matcher' },
-    { id: 'schedule', label: `Scheduled${jobs.length ? ` (${jobs.length})` : ''}` },
     { id: 'saved', label: `Saved${saved.length ? ` (${saved.length})` : ''}` },
   ];
 
@@ -432,7 +359,7 @@ export default function JobsPage() {
     <div className="flex flex-col min-h-full space-y-6">
       <PageHeader
         title="Jobs"
-        description="Search ranked roles (via Job Search agent), save/reject, and apply with approval. Scheduled automations are below."
+        description="Search ranked roles (via Job Search agent), evaluate capability alignment with PIOS Matcher, and manage saved opportunities."
       />
 
       <Tabs tabs={tabs} activeTab={active} onChange={setActive} />
@@ -1076,94 +1003,6 @@ export default function JobsPage() {
             )}
           </div>
         </div>
-      </TabPanel>
-
-      <TabPanel id="schedule" activeTab={active}>
-        {loading ? (
-          <LoadingSpinner text="Loading jobs..." />
-        ) : error ? (
-          <ErrorState title="Failed to load jobs" message={error} onRetry={fetchJobs} />
-        ) : jobs.length === 0 ? (
-          <EmptyState
-            title="No jobs found"
-            description="Scheduled automation tasks will appear here once configured."
-          />
-        ) : (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            {jobs.map((job) => (
-              <div key={job.id} className="card flex flex-col gap-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h2 className="text-xl font-display text-text">{job.name}</h2>
-                    <p className="text-text-muted text-sm">{job.type}</p>
-                  </div>
-                  <span
-                    className={`text-xs font-mono px-2 py-1 rounded border ${statusStyles[job.status] || 'border-border text-text-muted bg-surface'}`}
-                  >
-                    {job.status.toUpperCase()}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-4 text-sm text-text-muted">
-                  {job.cron && (
-                    <div>
-                      <span className="font-mono text-primary text-xs uppercase tracking-wider block mb-1">
-                        Schedule
-                      </span>
-                      <span className="font-mono">{job.cron}</span>
-                    </div>
-                  )}
-                  {job.last_run_at && (
-                    <div>
-                      <span className="font-mono text-primary text-xs uppercase tracking-wider block mb-1">
-                        Last Run
-                      </span>
-                      <span>{formatDate(job.last_run_at)}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center justify-between mt-auto pt-2 border-t border-border">
-                  <span className="text-xs text-text-muted">
-                    Created {formatDate(job.created_at)}
-                  </span>
-                  {job.next_run_at && (
-                    <span className="text-xs text-primary">
-                      Next: {formatDate(job.next_run_at)}
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {job.status === 'active' ? (
-                    <button
-                      onClick={() => handleJobAction(job, 'pause')}
-                      className="rounded-full border border-border px-3 py-1 text-xs hover:bg-surface-hover"
-                    >
-                      Pause
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleJobAction(job, 'resume')}
-                      className="rounded-full border border-border px-3 py-1 text-xs hover:bg-surface-hover"
-                    >
-                      Resume
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleJobAction(job, 'trigger')}
-                    className="rounded-full border border-primary/30 px-3 py-1 text-xs text-primary hover:bg-primary/10"
-                  >
-                    Trigger now
-                  </button>
-                  <button
-                    onClick={() => handleJobAction(job, 'delete')}
-                    className="rounded-full border border-red-500/20 px-3 py-1 text-xs text-red-400 hover:bg-red-500/10"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </TabPanel>
 
       <TabPanel id="saved" activeTab={active}>

@@ -12,7 +12,7 @@ export default function MemoryVaultPage() {
 
   const breadcrumbItems = [
     {
-      label: 'Second Brain',
+      label: 'Memory',
       href: `/workspace/${workspaceId}/memory`,
     },
     {
@@ -29,7 +29,7 @@ export default function MemoryVaultPage() {
       {/* Page Header */}
       <PageHeader
         title="Vault Git Sync"
-        description="Built-in zero-telemetry Git synchronization for local Markdown notes. Replaces Obsidian Sync out of the box with 30s debounce commits, 5m rebase pulls, and automatic Second Brain ingestion."
+        description="Built-in zero-telemetry Git synchronization for local Markdown notes. Replaces Obsidian Sync out of the box with 30s debounce commits, 5m rebase pulls, and automatic Memory ingestion."
         actions={
           <div className="flex items-center gap-2">
             <Badge variant="success" size="sm">
@@ -83,9 +83,7 @@ export default function MemoryVaultPage() {
           </div>
 
           <div className="bg-[var(--color-surface-subtle)] p-4 rounded-lg text-xs space-y-1.5 border border-[var(--color-border)]">
-            <h4 className="font-semibold text-[var(--color-text-primary)]">
-              3. Second Brain Ingestion
-            </h4>
+            <h4 className="font-semibold text-[var(--color-text-primary)]">3. Memory Ingestion</h4>
             <p className="text-[var(--color-text-secondary)]">
               Markdown notes are automatically indexed into Vaeloom Documents and the Multi-Scale
               Memory Graph, making all thoughts queryable by your AI copilot.

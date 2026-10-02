@@ -17,7 +17,7 @@ export const NAV_LINKS = [
 ] as const;
 
 export const HERO = {
-  titleA: 'Your second brain for',
+  titleA: 'Your persistent memory for',
   titleB: 'education and career.',
   subtitle:
     'Connect your mail, code, and files once. Vaeloom turns them into one living memory — then keeps a resume, ranks your roles, and files your workspace from it. Agents suggest; you approve.',
@@ -564,7 +564,7 @@ export const PREVIEW = {
 
 export const FINAL_CTA = {
   title: 'Stop managing your digital life manually.',
-  subtitle: 'Connect once. Let memory compound. Start building your second brain today.',
+  subtitle: 'Connect once. Let memory compound. Start building your memory today.',
   primary: { label: 'Get started — free', href: '/signup' },
   secondary: { label: 'Explore how it works', href: '#how-it-works' },
 } as const;
@@ -603,7 +603,7 @@ export const FAQ = {
     },
     {
       q: 'Is Vaeloom free?',
-      a: 'Vaeloom is in active MVP and free to start building your second brain. Any future plans get announced here first.',
+      a: 'Vaeloom is in active MVP and free to start building your persistent memory. Any future plans get announced here first.',
     },
     {
       q: 'Who is Vaeloom for?',
@@ -613,7 +613,7 @@ export const FAQ = {
 } as const;
 
 export const FOOTER = {
-  // Was "…persistent memory — a second brain for education and career", which
+  // Was "…persistent memory — a memory system for education and career", which
   // is HERO.titleB verbatim. The footer is the last thing read; it should add
   // something rather than echo the headline.
   blurb: 'Your education and career work, held in one memory that compounds instead of resetting.',
@@ -648,7 +648,7 @@ export const FOOTER = {
 } as const;
 
 export const SEO = {
-  title: 'Vaeloom — Your second brain for education and career',
+  title: 'Vaeloom — Your memory system for education and career',
   description:
     'Vaeloom is a memory-first personal intelligence system. Connect Gmail, GitHub, Drive, and more — it builds a knowledge graph of your work, keeps a living master resume, surfaces matched roles, and organizes your workspace. Agents suggest, you approve.',
   siteName: 'Vaeloom',
