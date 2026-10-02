@@ -160,9 +160,21 @@ class AuthResponse(BaseModel):
     mfa_token: str | None = None
 
 
+class MeCapabilities(BaseModel):
+    """Server-attested feature capabilities for the authenticated user.
+
+    The frontend gates navigation and enterprise pages from this payload rather
+    than a build-time environment flag (E6): a browser cannot influence what the
+    server computes here.
+    """
+
+    enterprise: bool = False
+
+
 class MeResponse(BaseModel):
     user: PublicUser
     workspaces: list[Any] = []
+    capabilities: MeCapabilities = MeCapabilities()
 
     model_config = {"from_attributes": True}
 

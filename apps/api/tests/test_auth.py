@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from httpx import AsyncClient
 
@@ -249,4 +251,43 @@ class TestRefreshRotation:
         body = second.json()
         assert body["status"] == 401
         assert "revoked" in str(body["error"]["message"]).lower()
+
+
+class TestMeCapabilities:
+    """E6: enterprise gating is server-derived from the tenant subscription,
+    delivered on /auth/me — the frontend no longer reads a build-time flag."""
+
+    async def test_enterprise_denied_without_tenant_entitlement(self, client: AsyncClient):
+        signup_res = await client.post("/api/v1/auth/signup", json={
+            "email": "cap-free@test.com",
+            "password": "Test1234!",
+        })
+        token = signup_res.json()["access_token"]
+        res = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
+        assert res.status_code == 200
+        # Default tenant ships on the free plan → capability must be attested false.
+        assert res.json()["capabilities"]["enterprise"] is False
+
+    async def test_enterprise_granted_when_tenant_plan_is_enterprise(
+        self, client: AsyncClient, db_session
+    ):
+        from api.models.schema import Tenant, User
+
+        signup_res = await client.post("/api/v1/auth/signup", json={
+            "email": "cap-ent@test.com",
+            "password": "Test1234!",
+        })
+        user = signup_res.json()["user"]
+        token = signup_res.json()["access_token"]
+
+        u = await db_session.get(User, uuid.UUID(user["id"]))
+        tenant_id = u.tenant_id
+        assert tenant_id is not None
+        tenant = await db_session.get(Tenant, tenant_id)
+        tenant.plan = "enterprise"
+        await db_session.commit()
+
+        res = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
+        assert res.status_code == 200
+        assert res.json()["capabilities"]["enterprise"] is True
 

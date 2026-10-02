@@ -51,7 +51,15 @@ export interface JwtPayload {
   email: Email;
 }
 
+/** Server-attested feature capabilities (E6). Gates navigation/enterprise pages. */
+export interface MeCapabilities {
+  /** True when the user's tenant is entitled to enterprise features. */
+  enterprise: boolean;
+}
+
 export interface MeResponse {
   user: PublicUser;
   workspaces: Workspace[];
+  /** Optional for compatibility with backends that predate the capabilities payload. */
+  capabilities?: MeCapabilities;
 }

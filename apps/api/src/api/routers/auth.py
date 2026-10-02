@@ -11,11 +11,12 @@ from ..config import settings
 from ..database import get_db
 from ..dependencies import get_current_user
 from ..middleware.rate_limit import rate_limit
-from ..models.schema import AuthSession
+from ..models.schema import AuthSession, Tenant
 from ..schemas.auth import (
     AuthResponse,
     ForgotPasswordRequest,
     LoginRequest,
+    MeCapabilities,
     MeResponse,
     MfaSetupResponse,
     MfaVerifyRequest,
@@ -342,9 +343,22 @@ async def me(current_user: dict = Depends(get_current_user), db: AsyncSession = 
 
     await db.commit()
 
+    # E6: enterprise gating is server-derived from the tenant's subscription
+    # (plan / entitlement list), not a client build flag. Unknown tenant or
+    # unprefetched relationship fails closed.
+    enterprise_enabled = False
+    tenant_id = getattr(user, "tenant_id", None)
+    if tenant_id:
+        tenant = await db.get(Tenant, tenant_id)
+        if tenant is not None:
+            plan = (tenant.plan or "").strip().lower()
+            features = [str(f).strip().lower() for f in (tenant.features or [])]
+            enterprise_enabled = plan == "enterprise" or "enterprise" in features
+
     return MeResponse(
         user=user,
         workspaces=workspaces,
+        capabilities=MeCapabilities(enterprise=enterprise_enabled),
     )
 
 
