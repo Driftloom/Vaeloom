@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ErrorTracker } from './error-tracking';
+import { ErrorTracker, isReportingEnabled } from './error-tracking';
 
 interface ErrorTrackingBoundaryProps {
   children: React.ReactNode;
@@ -41,11 +41,17 @@ export class ErrorTrackingBoundary extends React.Component<
 
   override render(): React.ReactNode {
     if (this.state.hasError) {
+      // Only claim a report was sent when a real destination is configured —
+      // promising "our team has been notified" while nothing leaves the browser
+      // is a false statement, not a reassurance.
+      const reported = isReportingEnabled();
       return (
         <div className="flex flex-col items-center justify-center min-h-[200px] p-8 text-center">
           <h3 className="text-lg font-semibold text-surface-900">Application Error</h3>
           <p className="mt-1 text-sm text-text-muted">
-            An unexpected error occurred. Our team has been notified.
+            {reported
+              ? "An unexpected error occurred. We've sent a report to our team."
+              : 'An unexpected error occurred. Please try again.'}
           </p>
           <button onClick={() => this.setState({ hasError: false })} className="mt-4 btn-primary">
             Try again

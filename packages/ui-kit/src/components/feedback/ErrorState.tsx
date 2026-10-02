@@ -28,7 +28,9 @@ export function ErrorState({
       <div className="w-12 h-12 rounded-full bg-error/10 text-error flex items-center justify-center mb-4">
         <AlertCircleIcon size={24} />
       </div>
-      <h3 className="text-lg font-medium text-text">{title}</h3>
+      {/* D-R3: route-level error states sit directly under the page <h1>; <h3>
+      skipped a heading level. Same explicit classes, so <h2> renders identically. */}
+      <h2 className="text-lg font-medium text-text">{title}</h2>
       {code && <span className="font-mono text-xs text-text-dim mt-0.5">Error code: {code}</span>}
       <p className="text-sm text-text-muted mt-2 mb-6">{message}</p>
       {onRetry && (

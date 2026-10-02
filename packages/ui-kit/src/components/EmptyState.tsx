@@ -30,7 +30,11 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
           {icon}
         </div>
       )}
-      <h3 className="text-base font-semibold text-text">{title}</h3>
+      {/* D-R3: rendered directly under a route's page-level <h1>, so this is the
+      section level. As <h3> it produced an h1->h3 heading-order skip for every
+      empty route. Tailwind preflight unstyles headings and the explicit classes
+      set size/weight, so the tag change is pixel-identical. */}
+      <h2 className="text-base font-semibold text-text">{title}</h2>
       {description && (
         <p className="mt-1 text-sm text-text-muted max-w-sm leading-relaxed">{description}</p>
       )}

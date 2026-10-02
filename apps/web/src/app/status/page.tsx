@@ -111,24 +111,11 @@ export default function StatusPage() {
   const overall = health?.overall;
   const readyDeps = health?.ready?.dependencies;
   const deps = readyDeps ?? overall?.dependencies;
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <LoadingSpinner text="Checking service status..." />
-      </div>
-    );
-  }
-
-  if (error && !overall) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <ErrorState title="Cannot reach status endpoint" message={error} onRetry={fetchData} />
-      </div>
-    );
-  }
-
   const overallStatus = overall?.status ?? 'down';
+  // Error only when the fetch failed AND we have no prior good data to keep
+  // showing; a transient poll failure after a successful load is not an error.
+  const showError = Boolean(error) && !overall;
+
   const services = [
     {
       name: 'Backend API',
@@ -154,23 +141,36 @@ export default function StatusPage() {
     },
   ];
 
+  // The page-level <h1> is owned by PageHeader and rendered in EVERY state
+  // (loading / error / success) — only the body below it varies. A public
+  // top-level route must always expose a document heading for the outline and
+  // screen readers; the old code early-returned a spinner- or ErrorState-only
+  // screen (ErrorState is an <h3>), leaving loading and error with no <h1>.
+  const headerDescription = loading
+    ? 'Checking service status…'
+    : showError
+      ? 'Unable to reach the status endpoint'
+      : overallStatus === 'ok'
+        ? 'All systems operational'
+        : 'Some systems experiencing issues';
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto px-4 py-8 sm:py-16">
         <div className="text-center mb-8 sm:mb-12">
           <div className="mb-4 flex justify-center">
+            {/* Neutral pulse while loading — a colored ok/degraded/down dot
+                would fabricate a verdict we do not have yet. */}
             <div
-              className={`w-4 h-4 rounded-full ${indicatorColors[overallStatus]} ${overallStatus === 'ok' ? 'animate-pulse' : ''}`}
+              className={`w-4 h-4 rounded-full animate-pulse ${
+                loading ? 'bg-border' : indicatorColors[overallStatus]
+              }`}
               aria-hidden="true"
             />
           </div>
           <PageHeader
             title="Vaeloom Status"
-            description={
-              overallStatus === 'ok'
-                ? 'All systems operational'
-                : 'Some systems experiencing issues'
-            }
+            description={headerDescription}
             className="text-center"
           />
           {overall?.timestamp && (
@@ -180,44 +180,58 @@ export default function StatusPage() {
           )}
         </div>
 
-        <div className="card p-4 sm:p-6 mb-8">
-          <h2 className="text-lg font-display font-medium text-text mb-2">Services</h2>
-          <div className="divide-y divide-border/50">
-            {services.map((s) => (
-              <ServiceRow
-                key={s.key}
-                name={s.name}
-                status={s.status}
-                latency={s.status?.latency_ms}
-              />
-            ))}
-          </div>
-        </div>
+        {loading ? (
+          <LoadingSpinner text="Checking service status..." />
+        ) : showError ? (
+          <ErrorState
+            title="Cannot reach status endpoint"
+            message={error ?? undefined}
+            onRetry={fetchData}
+          />
+        ) : (
+          <>
+            <div className="card p-4 sm:p-6 mb-8">
+              <h2 className="text-lg font-display font-medium text-text mb-2">Services</h2>
+              <div className="divide-y divide-border/50">
+                {services.map((s) => (
+                  <ServiceRow
+                    key={s.key}
+                    name={s.name}
+                    status={s.status}
+                    latency={s.status?.latency_ms}
+                  />
+                ))}
+              </div>
+            </div>
 
-        <div className="card p-4 sm:p-6 mb-8">
-          <h2 className="text-lg font-display font-medium text-text mb-2">Service Information</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-text-muted">Service</span>
-              <p className="text-text font-mono">{overall?.service ?? 'vaeloom-api'}</p>
+            <div className="card p-4 sm:p-6 mb-8">
+              <h2 className="text-lg font-display font-medium text-text mb-2">
+                Service Information
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-text-muted">Service</span>
+                  <p className="text-text font-mono">{overall?.service ?? 'vaeloom-api'}</p>
+                </div>
+                <div>
+                  <span className="text-text-muted">Version</span>
+                  <p className="text-text font-mono">{overall?.version ?? '-'}</p>
+                </div>
+                <div>
+                  <span className="text-text-muted">Uptime</span>
+                  {/* F-02: /health does not report process start time; showing a
+                      computed-from-poll value was always ~0m. Honest state until
+                      the API exposes real uptime. */}
+                  <p className="text-text font-mono">Not reported</p>
+                </div>
+                <div>
+                  <span className="text-text-muted">Auto-refresh</span>
+                  <p className="text-text font-mono">Every 30s</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <span className="text-text-muted">Version</span>
-              <p className="text-text font-mono">{overall?.version ?? '-'}</p>
-            </div>
-            <div>
-              <span className="text-text-muted">Uptime</span>
-              {/* F-02: /health does not report process start time; showing a
-                  computed-from-poll value was always ~0m. Honest state until
-                  the API exposes real uptime. */}
-              <p className="text-text font-mono">Not reported</p>
-            </div>
-            <div>
-              <span className="text-text-muted">Auto-refresh</span>
-              <p className="text-text font-mono">Every 30s</p>
-            </div>
-          </div>
-        </div>
+          </>
+        )}
 
         <p className="text-center text-text-muted text-xs">
           This page is public. No authentication required.
