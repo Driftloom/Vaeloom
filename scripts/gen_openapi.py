@@ -13,6 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "apps" / "api" / "src"))
 
 from api.main import app
+from api.middleware.auth import PUBLIC_PATHS, PUBLIC_PREFIXES
 
 spec = app.openapi()
 
@@ -98,18 +99,50 @@ RATE_LIMIT_429_RESPONSE = {
     },
 }
 
+def is_public_endpoint(p: str) -> bool:
+    norm = p.rstrip("/") or "/"
+    if p in PUBLIC_PATHS or norm in PUBLIC_PATHS:
+        return True
+    return any(p.startswith(prefix) for prefix in PUBLIC_PREFIXES)
+
 for path, path_item in spec.get("paths", {}).items():
-    if path in RATE_LIMIT_SKIP_PATHS:
-        continue
     if not isinstance(path_item, dict):
         continue
+    is_pub = is_public_endpoint(path)
     for method, operation in path_item.items():
         if method.lower() not in HTTP_METHODS:
             continue
         if not isinstance(operation, dict):
             continue
+        
+        # 3. Security schemes injection
+        if is_pub:
+            operation.setdefault("security", [])
+        else:
+            operation.setdefault("security", [{"BearerAuth": []}])
+
         responses = operation.setdefault("responses", {})
-        responses.setdefault("429", RATE_LIMIT_429_RESPONSE)
+        if not is_pub:
+            responses.setdefault("401", {
+                "description": "Unauthorized — missing or invalid Bearer JWT access token.",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "type": {"type": "string"},
+                                "title": {"type": "string"},
+                                "status": {"type": "integer"},
+                                "detail": {"type": "string"},
+                            },
+                            "required": ["detail"],
+                        },
+                    }
+                },
+            })
+
+        if path not in RATE_LIMIT_SKIP_PATHS:
+            responses.setdefault("429", RATE_LIMIT_429_RESPONSE)
 out_path = REPO_ROOT / "specs" / "api" / "openapi.yaml"
 out_path.parent.mkdir(parents=True, exist_ok=True)
 
