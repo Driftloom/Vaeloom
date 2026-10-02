@@ -1898,4 +1898,55 @@ describe('useChatStore', () => {
       });
     });
   });
+  describe('a conversation that has not reached the server yet', () => {
+    it('deletes locally without issuing a doomed server request', async () => {
+      // A freshly created conversation has a local id (`th_<n>_<rand>`), which is not
+      // a UUID. Sending it to a route typed `conversation_id: uuid.UUID` 422s, which
+      // the delete path treats as a failure and rolls back, so the user would watch
+      // their new conversation refuse to delete.
+      const { result } = await renderStore();
+
+      act(() => {
+        result.current.newThread({ agent: 'resume' });
+      });
+      const localId = result.current.activeId;
+      expect(localId).toBeTruthy();
+      expect(result.current.threads.map((t) => t.id)).toContain(localId);
+
+      act(() => {
+        result.current.deleteThread(localId as string);
+      });
+
+      expect(convRemove).not.toHaveBeenCalled();
+      expect(result.current.threads.map((t) => t.id)).not.toContain(localId);
+      expect(result.current.syncError).toBeNull();
+    });
+
+    it('clears locally without issuing a doomed server request', async () => {
+      const { result } = await renderStore();
+
+      act(() => {
+        result.current.newThread();
+      });
+      const localId = result.current.activeId as string;
+      act(() => {
+        result.current.clearThread(localId);
+      });
+
+      expect(convClear).not.toHaveBeenCalled();
+      expect(result.current.syncError).toBeNull();
+    });
+
+    it('still calls the server for a conversation that does have a UUID', async () => {
+      seedThread([msg({ id: 'u1', role: 'user', text: 'q' })], 'cv-real');
+      const { result } = await renderStore();
+
+      act(() => {
+        result.current.deleteThread('cv-real');
+      });
+
+      expect(convRemove).toHaveBeenCalledTimes(1);
+      expect(convRemove.mock.calls[0]?.[1]).toBe('cv-real');
+    });
+  });
 });

@@ -49,6 +49,7 @@ export interface GroundedContextInfo {
 function parseGroundedContext(text: string): GroundedContextInfo | null {
   const trimmed = text.trimStart();
   const patterns = [
+    '[Background Context from Workspace Documents & Dynamic Memories]',
     '[Background Context from Workspace Memories & Vault Notes]',
     '[Background Context from Workspace Documents & Second Brain Memories]',
     '[Background Context',
@@ -84,8 +85,10 @@ function parseGroundedContext(text: string): GroundedContextInfo | null {
     context.includes('.docx');
 
   const hasMemories =
+    context.includes('Dynamic Memories') ||
     context.includes('Second Brain Memories') ||
     context.includes('Memory (') ||
+    context.includes('<memory_context>') ||
     context.includes('<second_brain_memory_context>') ||
     context.includes('Workspace Memories');
 
@@ -341,9 +344,9 @@ function ChatMessageItemComponent({
             {isGroundedInMemory && (
               <span
                 className="inline-flex items-center gap-1 text-2xs font-mono px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20"
-                title="Enriched by your personal Second Brain memories and synced notes (ChatGPT-style memory)"
+                title="Enriched by your personal dynamic memories and synced notes (ChatGPT-style memory)"
               >
-                🧠 Second Brain Grounded
+                🧠 Memory Grounded
               </span>
             )}
             {message.latencyMs !== undefined && (
@@ -402,9 +405,7 @@ function ChatMessageItemComponent({
                         <span className="text-text-muted">+</span>
                       )}
                       {isGroundedInMemory && (
-                        <span className="text-purple-400 font-semibold">
-                          🧠 Second Brain Memory
-                        </span>
+                        <span className="text-purple-400 font-semibold">🧠 Dynamic Memory</span>
                       )}
                       {!isGroundedInDocument && !isGroundedInMemory && (
                         <span>🧠 Grounded Background Context</span>

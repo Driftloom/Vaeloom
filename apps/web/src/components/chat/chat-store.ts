@@ -117,6 +117,8 @@ function isTerminalStatus(status: ChatMessage['status']): boolean {
 }
 
 let idCounter = 0;
+/** Distinguishes a locally-generated id from a server UUID, which is what routes require. */
+const LOCAL_ID_PREFIX = 'th_';
 function nextId(prefix: string): string {
   idCounter += 1;
   const rand =
@@ -408,6 +410,21 @@ export function useChatStore(workspaceId: string): ChatStore {
     (localId: string): string => idMapRef.current.get(localId) ?? localId,
     [],
   );
+
+  /**
+   * True once the conversation exists on the server and has a real UUID.
+   *
+   * `serverIdFor` falls back to the local id, which is `th_<n>_<rand>` and NOT a
+   * UUID. Sending that to a route typed `conversation_id: uuid.UUID` yields a 422,
+   * which the delete/clear paths would then surface as "not saved" and roll back —
+   * so deleting a conversation the user just created, before it had synced, would
+   * appear to fail. Local ids are recognised by their prefix instead of guessed at.
+   */
+  const isServerBacked = useCallback((localId: string): boolean => {
+    const mapped = idMapRef.current.get(localId);
+    if (mapped) return true;
+    return !localId.startsWith(LOCAL_ID_PREFIX);
+  }, []);
 
   // ── The only writer ────────────────────────────────────────────────────────
   const patchThread = useCallback(
@@ -1017,6 +1034,14 @@ export function useChatStore(workspaceId: string): ChatStore {
       commitPending((prev) => prev.filter((p) => serverIdFor(p.conversationId) !== serverId));
       loadedRef.current.delete(serverId);
 
+      // Never created on the server (the user deleted it before the create landed),
+      // so there is nothing to delete remotely. Removing it locally is the correct
+      // outcome, not a failure to report.
+      if (!isServerBacked(id)) {
+        void mutateListRef.current?.();
+        return;
+      }
+
       void ConversationApi.remove(workspaceIdRef.current, serverId).then((res) => {
         if (!mountedRef.current) return;
         if (res.ok) {
@@ -1040,7 +1065,7 @@ export function useChatStore(workspaceId: string): ChatStore {
         });
       });
     },
-    [serverIdFor, toast],
+    [commitPending, commitThreads, isServerBacked, serverIdFor, toast],
   );
 
   const clearThread = useCallback(
@@ -1051,6 +1076,10 @@ export function useChatStore(workspaceId: string): ChatStore {
         prev.filter((p) => serverIdFor(p.conversationId) !== serverIdFor(id)),
       );
       const serverId = serverIdFor(id);
+      if (!isServerBacked(id)) {
+        loadedRef.current.add(serverId);
+        return;
+      }
       void ConversationApi.clearMessages(workspaceIdRef.current, serverId).then((res) => {
         if (!mountedRef.current) return;
         if (res.ok) {
@@ -1068,7 +1097,7 @@ export function useChatStore(workspaceId: string): ChatStore {
         });
       });
     },
-    [patchThread, serverIdFor, toast],
+    [commitPending, isServerBacked, patchThread, serverIdFor, toast],
   );
 
   // ── Copy ───────────────────────────────────────────────────────────────────
@@ -1368,7 +1397,16 @@ export function useChatStore(workspaceId: string): ChatStore {
         }
       }
     },
-    [busy, ensureServerThread, patchMessage, patchThread, queuePersist, toast, workspaceId],
+    [
+      busy,
+      commitThreads,
+      ensureServerThread,
+      patchMessage,
+      patchThread,
+      queuePersist,
+      toast,
+      workspaceId,
+    ],
   );
 
   // ── Retry / edit / delete ──────────────────────────────────────────────────
@@ -1400,7 +1438,7 @@ export function useChatStore(workspaceId: string): ChatStore {
       dropPending(messageId);
       void send(source.text);
     },
-    [patchThread, send, toast],
+    [dropPending, patchThread, send, toast],
   );
 
   const editUserMessage = useCallback(

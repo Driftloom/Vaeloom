@@ -365,8 +365,8 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     }
   }
 
-  // Token refresh logic: ONLY for non-auth endpoints when token is present
-  if (res.status === 401 && token && !isAuthEndpoint) {
+  // Token refresh logic: ONLY for non-auth endpoints when a session exists
+  if (res.status === 401 && hasSession() && !isAuthEndpoint) {
     if (!isRefreshing) {
       isRefreshing = true;
       try {
@@ -375,7 +375,6 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
         isRefreshing = false;
         refreshQueue.forEach((q) => q.resolve(newToken));
         refreshQueue = [];
-        headers['Authorization'] = `Bearer ${newToken}`;
         res = await fetchWith();
       } catch (err) {
         isRefreshing = false;
@@ -441,6 +440,47 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   return (res.status === 204 ? undefined : transformKeys(await res.json())) as T;
 }
 
+/**
+ * LEGACY SDK-STYLE SURFACE — deprecated for application code.
+ *
+ * Vaeloom's frontend has two API layers, and this object is the older one:
+ *
+ *  1. `@/lib/api-client` — the SINGLE, supported entry point for app/feature
+ *     code. It exposes typed, per-domain namespaces (`authApi`, `workspaceApi`,
+ *     `memoryApi`, `agentApi`, `connectorApi`, `documentApi`, `resumeApi`,
+ *     `applicationApi`, `approvalApi`, `notificationApi`, `schedulerApi`, …)
+ *     whose method signatures and return types are the contract. New feature
+ *     code imports from here, never from this module's `api` object.
+ *  2. `api` (below) — a flat, untyped "do anything" SDK surface (raw verbs +
+ *     shortcut namespaces) that predates `api-client` and is retained only for
+ *     backward compatibility.
+ *
+ * WHY IT IS NOT DELETED: it is imported directly by ~19 app modules (auth pages,
+ * workspace pages, onboarding, 2FA, webhooks, sessions, vault, settings,
+ * connectors, chat), and several of its namespaces — `sovereignty`,
+ * `integrations`, the auth/session shortcuts — have no typed equivalent in
+ * `api-client` yet. Removing or rewriting those call sites in one pass would
+ * touch every authentication flow at once for zero functional gain, which is a
+ * worse risk profile than the duplication. So this is a *deprecation*, not a
+ * migration: existing callers keep compiling; new callers are steered to
+ * `api-client`.
+ *
+ * WHAT IS *NOT* DEPRECATED: the transport primitives in this module — `request`,
+ * `ApiError`, `transformKeys`, `OPAQUE_DATA_KEYS`, `API_BASE`, `API_PREFIX`, and
+ * the session-marker helpers — are shared infrastructure that `api-client` is
+ * itself built on (`api-client.ts` delegates every call through `api.request`).
+ * Importing those directly (e.g. `import { request }` for a one-off SSE or
+ * binary download that has no typed wrapper) is legitimate; importing the `api`
+ * verb object for ordinary CRUD is not.
+ *
+ * Migration recipe when you touch a file that still uses this: add (or reuse) a
+ * typed method in `api-client` for the endpoint and call it; if no typed method
+ * exists and adding one is out of scope, leave the call site as-is rather than
+ * introducing new `api`-object usage in fresh files.
+ *
+ * @deprecated Use the typed namespaces exported from `@/lib/api-client` (the
+ * single entry point for application code). See the note above.
+ */
 export const api = {
   /** Low-level request helper for endpoints not yet wrapped above. */
   request<T>(path: string, init?: RequestInit): Promise<T> {

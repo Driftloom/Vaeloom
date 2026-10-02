@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Thread } from './types';
 
 /**
@@ -129,10 +129,15 @@ export function ChatThreadRail({
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, [menuId]);
 
-  const closeDrawer = (): void => {
+  // Memoised because the Escape/focus-trap listener below is registered once per
+  // `open` change. A plain function here is recreated every render, so the
+  // listener would keep calling a `closeDrawer` bound to whatever `onOpenChange`
+  // identity existed when the drawer last opened — closing the drawer through a
+  // dead parent callback, or never restoring focus.
+  const closeDrawer = useCallback((): void => {
     onOpenChange(false);
     document.querySelector<HTMLElement>(DRAWER_TRIGGER_SELECTOR)?.focus();
-  };
+  }, [onOpenChange]);
 
   // Focus must move into the drawer on open, or a screen-reader/keyboard user is
   // left tabbing through the page behind an overlay they cannot perceive.
@@ -171,9 +176,7 @@ export function ChatThreadRail({
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-    // closeDrawer is stable per render only through its two props; both are
-    // listed so the listener never captures a stale parent callback.
-  }, [open, isDesktop, onOpenChange]);
+  }, [open, isDesktop, closeDrawer]);
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();

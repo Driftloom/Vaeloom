@@ -191,6 +191,46 @@ function stubStreamFetch(chunks: readonly string[]): jest.Mock {
   return fetchMock as unknown as jest.Mock;
 }
 
+/**
+ * Serves raw BYTE chunks, so a multi-byte character can be split across a chunk
+ * boundary — the only way to exercise the decoder's held-back sequence, which a
+ * string-chunk reader can never produce.
+ */
+function stubByteStreamFetch(byteChunks: readonly Uint8Array[]): jest.Mock {
+  const fetchMock = jest.fn(() =>
+    Promise.resolve({
+      ok: true,
+      status: 200,
+      body: {
+        getReader: () => {
+          let index = 0;
+          return {
+            read: () => {
+              if (index >= byteChunks.length) {
+                return Promise.resolve({ done: true, value: undefined });
+              }
+              const next = byteChunks[index];
+              index += 1;
+              return Promise.resolve({ done: false, value: next });
+            },
+          };
+        },
+      },
+    }),
+  );
+  Object.defineProperty(globalThis, 'fetch', {
+    writable: true,
+    configurable: true,
+    value: fetchMock,
+  });
+  Object.defineProperty(globalThis, 'TextDecoder', {
+    writable: true,
+    configurable: true,
+    value: NodeTextDecoder,
+  });
+  return fetchMock as unknown as jest.Mock;
+}
+
 interface Seen {
   event: string;
   data: Record<string, unknown>;
@@ -324,5 +364,40 @@ describe('agentApi.chatStream', () => {
     await agentApi.chatStream(BODY, onEvent);
 
     expect(seen).toEqual([{ event: 'token', data: { raw: 'not json' } }]);
+  });
+
+  describe('multi-byte characters across chunk boundaries', () => {
+    it('reassembles a character split across two network reads', async () => {
+      // The decoder holds back an incomplete sequence at a chunk boundary. If the
+      // second read did not complete it, the agent's answer would lose a character
+      // — visible only for non-ASCII output, which is exactly what a user notices.
+      const payload = 'event: token\ndata: {"text":"café ✓ 日"}\n\n';
+      const bytes = new NodeTextEncoder().encode(payload);
+      // Cut inside the three-byte U+65E5.
+      const cutAt = bytes.length - 6;
+
+      stubByteStreamFetch([bytes.slice(0, cutAt), bytes.slice(cutAt)]);
+      const { seen, onEvent } = collector();
+
+      await agentApi.chatStream(BODY, onEvent);
+
+      expect(seen).toEqual([{ event: 'token', data: { text: 'café ✓ 日' } }]);
+    });
+
+    it('flushes a trailing partial sequence when the stream ends mid-character', async () => {
+      // The read loop never calls decode() after `done`, so without the final flush
+      // a sequence still held by the decoder is dropped entirely.
+      const bytes = new NodeTextEncoder().encode('event: token\ndata: {"text":"done ✓"}\n\n');
+      stubByteStreamFetch([bytes.slice(0, bytes.length - 1)]);
+      const { seen, onEvent } = collector();
+
+      await agentApi.chatStream(BODY, onEvent);
+
+      expect(seen).toHaveLength(1);
+      expect(seen[0]?.event).toBe('token');
+      // The truncated tail becomes a replacement character rather than silently
+      // vanishing, so the loss is attributable instead of invisible.
+      expect(String(seen[0]?.data['text'] ?? '')).toContain('done');
+    });
   });
 });
