@@ -438,6 +438,15 @@ VAELOOM_*.docx
 docs/report-assets/
 original_report_assets/
 
+# Assistant-tool run output. Editor plugins (the Qoder "better-harness" bundle is
+# the one that produced this) write each run to downloads/<tool>/<date>/<run>/,
+# including a tmp-render/ copy of the same payload. It is a run log: regenerated
+# per invocation, and its findings.json embeds absolute paths from the machine that
+# ran it. Anchored at the repo root because the directory name is the tool's
+# default and it is not created by any build or test step in this repo.
+/downloads/
+
+
 
 # Isolated production build output (see apps/web/scripts/build-isolated.cjs)
 apps/web/.next-build/
