@@ -181,18 +181,23 @@ async def test_every_orm_model_has_a_table():
 
 
 async def test_head_includes_the_rls_coverage_guard():
-    """The chain must end with `0060_verify_rls_coverage`.
+    """The head migration must re-assert full RLS coverage.
 
     Sixteen migrations carry savepoint helpers that swallow errors and print a
     line, which is the root cause of every migration defect found in this audit.
     Rewriting them is riskier than verifying the outcome, so `0060` is what turns
-    "a statement was skipped" into "the deploy fails". If a future migration is
-    appended after it, the guard stops being last and stops guarding.
+    "a statement was skipped" into "the deploy fails".
+
+    The guard stops guarding the moment a migration is appended after it, so each
+    new head must end with the same end-state assertion. This test therefore
+    asserts the *invariant* — the head re-checks coverage, and `0060` is still an
+    ancestor so the original guard is in the chain — rather than pinning a literal
+    revision id, which any appended migration invalidates.
 
     Alembic's own script directory is used rather than parsing the revision
     strings: a regex over the files reported a second head that does not exist,
     because `down_revision` is annotated in several different forms across the
-    sixty files.
+    sixty-plus files.
     """
     from alembic.config import Config
     from alembic.script import ScriptDirectory
@@ -207,11 +212,29 @@ async def test_head_includes_the_rls_coverage_guard():
         f"expected a single migration head, found {heads}. A forked graph means "
         "`upgrade head` is ambiguous."
     )
-    assert heads[0] == "0060", (
-        f"head is {heads[0]}, so the RLS coverage guard is not the last migration. "
-        "A later migration could skip a statement with nothing after it to notice."
-    )
     assert (api_root / "alembic" / "versions" / "0060_verify_rls_coverage.py").exists()
+
+    # The original guard must still be in the chain, otherwise nothing below it
+    # inherits the "a skipped statement fails the deploy" property.
+    ancestry = {rev.revision for rev in script.walk_revisions()}
+    assert "0060" in ancestry, (
+        "0060_verify_rls_coverage is no longer part of the migration graph."
+    )
+
+    head = script.get_revision(heads[0])
+    head_source = pathlib.Path(head.path) if getattr(head, "path", None) else None
+    if not head_source or not head_source.exists():
+        # Fall back to a directory scan by revision prefix
+        candidates = sorted((api_root / "alembic" / "versions").glob(f"{heads[0]}_*.py"))
+        assert candidates, f"no migration file found for head {heads[0]}"
+        head_source = candidates[0]
+    source = head_source.read_text(encoding="utf-8")
+    assert "incomplete RLS coverage" in source, (
+        f"head migration {heads[0]} ({head_source.name}) does not re-assert RLS "
+        "coverage. A statement skipped in this migration would now have nothing "
+        "after it to notice. Append the coverage check to this migration, or "
+        "chain it behind a new guard."
+    )
 
 
 async def test_strict_exec_reraises_unexpected_errors():

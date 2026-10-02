@@ -137,6 +137,19 @@ def _wrap_lifespan_with_seeding(app) -> None:
 def main() -> None:
     import uvicorn
 
+    # Repo-root `.env` and `apps/api/.env` are loaded by api.config via
+    # load_dotenv(override=False) with explicit VAELOOM_TARGET_URL pointing at
+    # Supabase Postgres. In SQLite mode that leaks the migration engine onto a
+    # different database than the runtime engine, so create_all runs against
+    # Postgres while runtime queries hit SQLite ("no such table" errors).
+    # Force both runtime and migration URLs onto the SQLite target before importing api.
+    _db_url = os.environ.get("DATABASE__URL", "sqlite+aiosqlite:///./dev.db")
+    if _db_url.startswith("sqlite"):
+        os.environ["DATABASE__URL"] = _db_url
+        os.environ["DATABASE_URL"] = _db_url
+        os.environ["VAELOOM_TARGET_URL"] = _db_url
+        os.environ["DATABASE_MIGRATION__URL"] = _db_url
+
     ensure_sqlite_tables()
 
     from api.main import app  # noqa: E402  (path set up by caller)

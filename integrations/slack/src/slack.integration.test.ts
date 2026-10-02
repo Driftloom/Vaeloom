@@ -12,12 +12,19 @@ describe('SlackIntegration', () => {
       clientSecret: 'secret',
       signingSecret: 'signing',
       redirectUri: 'https://example.com/cb',
-      botToken: 'xoxb-test-token',
+      botToken: process.env['SLACK_BOT_TOKEN'] || 'xoxb-test-token',
     },
   };
 
   // Live-API tests: require a real Slack bot token (SLACK_BOT_TOKEN); skipped in CI/local without credentials.
-  const liveIt = process.env['SLACK_BOT_TOKEN'] ? it : it.skip;
+  const token = process.env['SLACK_BOT_TOKEN'];
+  const hasLiveSlackToken =
+    Boolean(token) &&
+    !token?.includes('test') &&
+    !token?.includes('dummy') &&
+    !token?.includes('your-slack-bot-token') &&
+    !token?.startsWith('xoxb-your-');
+  const liveIt = hasLiveSlackToken ? it : it.skip;
 
   liveIt('connects with a bot token and returns a connection id', async () => {
     const integration = new SlackIntegration({ masterKey: MASTER_KEY });

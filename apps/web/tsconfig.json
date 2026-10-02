@@ -11,10 +11,11 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    ".next-build/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
     "trigger.config.ts",
-    ".next-build/types/**/*.ts"
+    ".next-build2/types/**/*.ts"
   ],
   "exclude": ["node_modules", "**/*.spec.ts", "**/*.spec.tsx", "**/*.test.ts", "**/*.test.tsx"]
 }

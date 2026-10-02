@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "echo \"Use pnpm dev:web (frontend) or pnpm dev:be (API) - bare pnpm dev is disabled\" && exit 1",
     "dev:web": "nx run @vaeloom/web:dev",
-    "dev:be": "cd apps/api && uvicorn api.main:app --reload --port 8000",
+    "dev:be": "uv run --project apps/api uvicorn api.main:app --reload --port 8000",
     "build": "nx run-many --target=build --parallel",
     "build:web": "nx run @vaeloom/web:build",
     "test": "nx run-many --target=test --parallel",

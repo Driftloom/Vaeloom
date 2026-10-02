@@ -161,15 +161,14 @@ test.describe('workspace navigation', () => {
         `${target} rendered no page-level h1 matching ${heading}`,
       ).toHaveText(heading, { timeout: 30_000 });
       if (subheading) {
-        await expect(
-          page
-            .locator('main#main-content')
-            .getByRole('heading', { level: 2 })
-            .filter({ hasText: subheading }),
-          `${target} rendered no h2 matching ${subheading}`,
-        )
-          .first()
-          .toBeVisible({ timeout: 30_000 });
+        const sub = page
+          .locator('main#main-content')
+          .getByRole('heading', { level: 2 })
+          .filter({ hasText: subheading })
+          .first();
+        await expect(sub, `${target} rendered no h2 matching ${subheading}`).toBeVisible({
+          timeout: 30_000,
+        });
       }
     }
   });
