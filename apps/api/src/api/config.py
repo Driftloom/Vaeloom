@@ -353,6 +353,26 @@ def validate_settings() -> dict[str, list[str]]:
     elif settings.jwt_secret.lower().strip() in {"secret", "changeme", "change-me", "change-me-in-production", "dev-only", "super-secret", "password", "test", "123456", "mock-key", "test-secret", "test-jwt-secret", "dev-service-auth-secret-not-for-prod-32chars"} or "changeme" in settings.jwt_secret.lower() or "change-me" in settings.jwt_secret.lower() or "mock-key" in settings.jwt_secret.lower():
         errors.append("JWT_SECRET is a known weak/default value — refusing to start")
 
+    # The values shipped in .env.example are real, working secrets for zero-friction
+    # local setup — which is exactly why they must be unusable anywhere else. They
+    # are published in a tracked file, so a deployed instance running them would
+    # sign tokens with a secret every reader of the repo already has. The denylist
+    # above could never catch this by shape: these values are >=32 chars and look
+    # nothing like "changeme". Match them exactly, and only outside `local`.
+    if settings.service_environment != "local":
+        for _published in ("vaeloom-local-auth-secret-key-32chars-minimum!!",):
+            if settings.jwt_secret == _published:
+                errors.append(
+                    "JWT_SECRET is the published .env.example value - refusing to start "
+                    "outside `local` (generate one: openssl rand -hex 32)"
+                )
+        for _published_enc in ("MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=",):
+            if settings.encryption_key == _published_enc:
+                errors.append(
+                    "ENCRYPTION_KEY is the published .env.example value - refusing to start "
+                    "outside `local` (generate one: openssl rand -base64 32)"
+                )
+
     if not settings.storage_secret_key and settings.service_environment != "local":
         errors.append("STORAGE_SECRET_KEY must be set in non-local environments")
 
