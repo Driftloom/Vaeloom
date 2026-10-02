@@ -502,7 +502,7 @@ export default function SovereignVaultPage() {
                 value={evidenceInput}
                 onChange={(e) => setEvidenceInput(e.target.value)}
                 rows={4}
-                placeholder="Passed 37 unit tests&#10;AST static analysis clean&#10;SSRF and RLS verified"
+                placeholder="Passed 37 unit tests&#10;AST static analysis clean&#10;Integration tests green on staging"
                 className="input-field mt-1.5 font-mono"
               />
             </div>
