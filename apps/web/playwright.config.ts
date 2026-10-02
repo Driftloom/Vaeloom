@@ -40,8 +40,9 @@ const E2E_API_ORIGIN = `http://127.0.0.1:${E2E_API_PORT}`;
  *      overwrote the production build, so `next start` afterwards failed with
  *      `PageNotFoundError` / `pages-manifest.json ENOENT` until `.next` was
  *      deleted by hand.
- *   2. Dev serves routes lazily. The first hit on a large route (the 124 kB
- *      /capabilities bundle) took longer than the 45 s `waitForURL` budget in
+ *   2. Dev serves routes lazily. The first hit on a large route (the heavy
+ *      /capabilities bundle — since code-split via next/dynamic in plan E4, but
+ *      still the largest route) took longer than the 45 s `waitForURL` budget in
  *      quality.spec.ts, which surfaced as a bare navigation timeout with no
  *      indication that compilation was the cause.
  *

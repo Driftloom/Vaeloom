@@ -153,23 +153,20 @@ async function hideDevIndicators(page: Page): Promise<void> {
  * The reduced-motion pass doubles as the WCAG fallback-mode check:
  * if the page stops telling its story without 3D, these snapshots show it.
  *
- * NOT A CI GATE, and the reason is per-OS, not laziness: `toHaveScreenshot`
- * compares against per-OS baselines and only `-win32` are committed, so a hard
- * compare on ubuntu has nothing to match and would fail on font rasterization
- * alone. CI refreshes and uploads the linux baselines for review instead.
+ * CI GATE (plan D-R2): `.github/workflows/ci-frontend.yml` now runs these with
+ * `--grep "visual baselines"` WITHOUT `--update-snapshots` on a pinned
+ * `ubuntu-24.04`, so the runner compares against the committed `-linux` baselines
+ * and an unapproved pixel diff fails the build. A maintainer regenerates and
+ * commits `-linux` via the manual `visual-baseline-refresh` job. BOOTSTRAP: only
+ * `-win32` are committed today, so the first ubuntu run reports "snapshot
+ * missing" until that refresh job seeds the `-linux` set once.
  *
- * Because the pixel comparison is advisory, correctness is asserted where it CAN
- * gate: `expectThemeApplied` runs in the a11y tests, which are inside the blocking
+ * Independent of pixels, correctness is still asserted where it can gate without a
+ * baseline: `expectThemeApplied` runs in the a11y tests, inside the blocking
  * `--grep-invert "visual baselines"` job. That check exists because the four
  * committed baselines were both light renders - top-band luminance 170 (dark) and
- * 205 (light) - so the suite could not tell a working dark mode from a broken one.
- * A picture-only comparison cannot catch that class of bug, and did not.
- *
- * STILL OUTSTANDING (tracked, not fixed here): no OS ever compares these PNGs.
- * Required CI change to make them a real gate: commit `-linux` baselines and run
- * `pnpm exec playwright test --grep "visual baselines"` WITHOUT
- * `--update-snapshots` on a pinned image. Until then the pixel comparison is
- * review-only and the theme assertions above are the actual gate.
+ * 205 (light) - so a picture-only comparison could not, and did not, tell a
+ * working dark mode from a broken one. It stays as the pixel-independent guard.
  */
 
 test.describe('landing functional', () => {

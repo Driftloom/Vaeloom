@@ -249,16 +249,20 @@ test.describe('responsive overflow', () => {
 /**
  * Visual baselines.
  *
- * CI does not compare these. `.github/workflows/ci-frontend.yml:62` excludes
- * the "visual baselines" grep from the gating run and `:67` re-runs it with
- * `--update-snapshots`, which rewrites every PNG and always exits 0. Cross-OS
- * font rasterization is the stated reason, so the committed `-win32` PNGs can
- * never be compared from the `ubuntu-latest` runner.
+ * CI gates these now (plan D-R2). `.github/workflows/ci-frontend.yml` runs
+ * `--grep "visual baselines"` WITHOUT `--update-snapshots` on a pinned
+ * `ubuntu-24.04`, so an unapproved pixel diff fails the build. Baselines are
+ * OS-scoped by the snapshot template, so the runner compares against the
+ * committed `-linux` PNGs; a maintainer regenerates and commits them via the
+ * manual `visual-baseline-refresh` (workflow_dispatch) job after reviewing an
+ * intentional change.
  *
- * Required CI change to make this a real gate (workflows are out of scope for
- * this change): run `pnpm exec playwright test --grep "visual baselines"`
- * without `--update-snapshots` on a pinned image with committed `-linux`
- * baselines, or drop the refresh step and let the failure block.
+ * BOOTSTRAP NOTE: only `-win32` baselines exist in-repo today, so the first
+ * ubuntu gate run reports "snapshot missing" until the refresh job seeds the
+ * `-linux` set once. The a11y theme assertions (landing.spec.ts, in the blocking
+ * `--grep-invert` run) remain the correctness check that does not depend on
+ * pixels — the committed "dark" baselines were previously light renders and the
+ * old advisory suite still passed them.
  */
 test.describe('visual baselines', () => {
   // `name` is the baseline slug and must match the committed PNG exactly.
