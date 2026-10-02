@@ -206,3 +206,73 @@ class TestPasswordResetRecovery:
 
         await db_session.refresh(session)
         assert session.status == "REVOKED"
+
+    async def test_lockout_then_reset_then_login_roundtrip(self, client, db_session):
+        """T3 evidence: a locked account (423) is recovered by a reset, not deadlocked.
+
+        Exercises the full operator journey through the real router and
+        persistence layer, which the unit-level clearance test above does not:
+          1. repeated bad credentials lock the account, after which login
+             answers 423 even for the CORRECT password (the deadlock state);
+          2. completing a password reset clears the lockout and rotates the
+             credential;
+          3. login with the NEW password then succeeds (200) and the OLD
+             pre-lockout credential no longer authenticates (401).
+        Without the reset-clears-lockout behaviour the account would stay pinned
+        at 423 for the whole lockout window — the failure mode this proves fixed.
+        """
+        email = "lockout-recovery@vaeloom.test"
+        signup = await client.post(
+            "/api/v1/auth/signup",
+            json={"email": email, "password": "OriginalPass123!", "display_name": "Recovery"},
+        )
+        assert signup.status_code == 201
+        user_id = uuid.UUID(signup.json()["user"]["id"])
+
+        # Drive the account into lockout with 10 failed logins.
+        for i in range(10):
+            bad = await client.post(
+                "/api/v1/auth/login",
+                json={"email": email, "password": f"WrongPass{i:02d}"},
+            )
+            assert bad.status_code == 401
+
+        # While locked, even the CORRECT password is refused with 423.
+        locked = await client.post(
+            "/api/v1/auth/login",
+            json={"email": email, "password": "OriginalPass123!"},
+        )
+        assert locked.status_code == 423
+
+        # Issue a reset token as the recovery email would, then complete the reset.
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        db_session.add(
+            PasswordResetToken(
+                user_id=user_id,
+                token_hash=token_hash,
+                expires_at=datetime.now(UTC) + timedelta(minutes=15),
+            )
+        )
+        await db_session.commit()
+
+        reset = await client.post(
+            "/api/v1/auth/reset-password",
+            json={"token": raw_token, "password": "RecoveredPass123!"},
+        )
+        assert reset.status_code == 200
+
+        # Deadlock resolved: the NEW credential authenticates...
+        recovered = await client.post(
+            "/api/v1/auth/login",
+            json={"email": email, "password": "RecoveredPass123!"},
+        )
+        assert recovered.status_code == 200
+        assert recovered.json().get("access_token")
+
+        # ...and the OLD pre-lockout credential does not.
+        stale = await client.post(
+            "/api/v1/auth/login",
+            json={"email": email, "password": "OriginalPass123!"},
+        )
+        assert stale.status_code == 401
