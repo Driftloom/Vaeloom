@@ -1306,6 +1306,60 @@ async def _try_react_loop(
             system_content = (getattr(agent, "mission", "") or f"You are the {agent_name} agent.").strip()
             system_content += " You have access to tools. Call them when they help answer the user's request. After tool results, synthesise a helpful answer."
 
+        # ---------------------------------------------------------------------
+        # Skill injection — the single prompt seam.
+        #
+        # Spliced into `system_content` HERE, before the PromptCompiler block,
+        # because the compiled path is what actually produces the system
+        # message: `agent_contract=system_content` below feeds it in. Appending
+        # after the compiler would silently drop every skill on the common path.
+        #
+        # `build_skill_directive` returns text="" when nothing is injectable, so
+        # the no-op case is byte-identical (covered by
+        # test_loop_system_content_is_byte_identical_when_no_skill_is_injectable).
+        #
+        # Guarded twice, deliberately:
+        #   - no `db` means no lookup AT ALL (test asserts the call count is 0);
+        #   - any failure is swallowed, because a skills lookup must never take
+        #     down an agent run or degrade the prompt it would have augmented.
+        # The import is function-local on purpose: it is read at call time, so a
+        # test patching the module attribute actually intercepts it.
+        if db is not None and workspace_id:
+            try:
+                from ..services.skill_injection import build_skill_directive
+
+                _skill_directive = await build_skill_directive(
+                    db,
+                    workspace_id,
+                    agent_name=agent_name,
+                    allowed_scopes=agent_allowed_scopes,
+                    user_message=message,
+                )
+                if _skill_directive.text:
+                    system_content = f"{system_content}\n\n{_skill_directive.text}"
+                # Audit every decision, not just the injected ones: a skill that
+                # silently fails to apply is indistinguishable from one that was
+                # never configured, which is exactly the bug this makes visible.
+                _injected = ",".join(_skill_directive.injected) or "-"
+                logger.info(
+                    "SKILL_INJECTION agent=%s workspace=%s injected=[%s]",
+                    agent_name,
+                    workspace_id,
+                    _injected,
+                )
+                for _skip in _skill_directive.skipped:
+                    logger.info(
+                        "SKILL_INJECTION agent=%s skipped=%s=%s required_scope=%s",
+                        agent_name,
+                        _skip.name,
+                        _skip.reason,
+                        _skip.detail or "-",
+                    )
+            except Exception as _si_exc:
+                logger.warning(
+                    "Skill injection skipped (prompt unchanged): %s", _si_exc
+                )
+
         # (messages are built after the prompt manifest so resume-replay can
         # reuse the exact same system/user content — see below.)
 

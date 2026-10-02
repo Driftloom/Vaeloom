@@ -36,15 +36,14 @@ const nextConfig = {
     ],
   },
   async headers() {
-    const isDevCsp =
-      process.env.NODE_ENV === 'development' || process.env.ALLOW_LOCAL_API === 'true';
-    const scriptSrc = isDevCsp
-      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vaeloom.app"
-      : "script-src 'self' 'unsafe-inline' https://vaeloom.app";
-    const connectSrc = isDevCsp
-      ? "'self' http://localhost:8000 ws://localhost:8000 http://127.0.0.1:8000 ws://127.0.0.1:8000 https://*.supabase.co https://accounts.google.com https://*.algolia.net https://*.algolianet.com https://analytics.vaeloom.app"
-      : "'self' https://vaeloom.app https://*.supabase.co https://accounts.google.com https://*.algolia.net https://*.algolianet.com https://analytics.vaeloom.app";
-
+    // CSP is set per-request in src/middleware.ts, not here. A nonce-based
+    // Content-Security-Policy (E2) must mint a fresh nonce on every request, and
+    // a build-time static `headers()` value cannot. It also has to be the single
+    // CSP authority: two CSP headers are enforced together (the stricter result
+    // wins), so a leftover static `unsafe-inline` policy here would neither
+    // weaken nor help the nonce policy — it would just be dead, misleading
+    // config. Non-HTML routes (excluded by the middleware matcher) don't need
+    // CSP anyway.
     return [
       {
         source: '/(.*)',
@@ -56,23 +55,10 @@ const nextConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
           },
-          {
-            key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              scriptSrc,
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: blob: https://vaeloom.app https://*.supabase.co https://*.googleusercontent.com https://*.githubusercontent.com https://*.slack.com",
-              `connect-src ${connectSrc}`,
-              "frame-ancestors 'none'",
-              "base-uri 'self'",
-              "form-action 'self'",
-            ].join('; '),
-          },
-          // Note: Strict-Transport-Security is intentionally omitted from static headers here
-          // and handled dynamically in src/middleware.ts. This prevents `next start` on localhost
-          // from poisoning browser HSTS caches and causing ERR_SSL_PROTOCOL_ERROR.
+          // Note: Content-Security-Policy and Strict-Transport-Security are set
+          // dynamically in src/middleware.ts (nonce per request; HSTS only for
+          // real domains so `next start` on localhost does not poison browser
+          // HSTS caches / trigger ERR_SSL_PROTOCOL_ERROR).
         ],
       },
     ];

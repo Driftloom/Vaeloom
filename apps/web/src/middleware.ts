@@ -64,7 +64,14 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/workspace', request.url));
   }
 
-  const response = NextResponse.next();
+  // E2 — per-request CSP nonce. A fresh, unpredictable nonce is minted for every
+  // request so production `script-src` can drop 'unsafe-inline' entirely: only
+  // scripts Next.js stamps with this nonce (its own runtime/page chunks) and the
+  // author-controlled inline scripts that read it from `x-nonce` may execute.
+  // Because the nonce is per-request, pages must render dynamically (see
+  // `export const dynamic = 'force-dynamic'` in app/layout.tsx) — a build-time
+  // prerendered page would bake inline scripts with no matching nonce.
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
 
   // DevEx footgun note: `connect-src` below only includes the local API
   // (http://localhost:8000 + ws://, plus 127.0.0.1) when this dev allowlist
@@ -75,6 +82,50 @@ export function middleware(request: NextRequest) {
   // started (dev server vs production build) and set ALLOW_LOCAL_API=true if
   // needed. Do not confuse with backend CSRF 403s, which hint at
   // `GET /csrf-token` in the response body.
+  const isDevCsp =
+    process.env.NODE_ENV === 'development' ||
+    request.nextUrl.hostname === 'localhost' ||
+    request.nextUrl.hostname === '127.0.0.1';
+  const allowLocalApi =
+    process.env.NODE_ENV === 'development' ||
+    process.env['ALLOW_LOCAL_API'] === 'true' ||
+    request.nextUrl.hostname === 'localhost' ||
+    request.nextUrl.hostname === '127.0.0.1';
+
+  // Production enables a script ONLY via the per-request nonce ('strict-dynamic'
+  // lets the bundler load its own chunked scripts transitively). Dev keeps
+  // 'unsafe-inline' + 'unsafe-eval' for the Next HMR runtime and is exercised
+  // here as well so local and prod CSP share one code path.
+  const scriptSrc = isDevCsp
+    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-inline' 'unsafe-eval' https://vaeloom.app`
+    : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://vaeloom.app`;
+
+  // style-src keeps 'unsafe-inline': inline `style=""` attributes (React/Tailwind
+  // runtime styles) cannot carry a nonce, and E2 targets scripts only.
+  const cspValue = [
+    "default-src 'self'",
+    scriptSrc,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https://vaeloom.app https://*.supabase.co https://*.googleusercontent.com https://*.githubusercontent.com https://*.slack.com",
+    `connect-src 'self' https://*.supabase.co https://accounts.google.com https://*.algolia.net https://*.algolianet.com https://analytics.vaeloom.app https://vaeloom.app${
+      allowLocalApi
+        ? ' http://localhost:8000 ws://localhost:8000 http://127.0.0.1:8000 ws://127.0.0.1:8000'
+        : ''
+    }`,
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join('; ');
+
+  // Hand the nonce + the concrete CSP to the renderer (Next.js parses this
+  // request header and applies the nonce to the scripts it emits), and set the
+  // same CSP on the response for the browser.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-nonce', nonce);
+  requestHeaders.set('Content-Security-Policy', cspValue);
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+
   // Security headers
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-Content-Type-Options', 'nosniff');
@@ -83,37 +134,7 @@ export function middleware(request: NextRequest) {
     'Permissions-Policy',
     'camera=(), microphone=(), geolocation=(), interest-cohort=()',
   );
-  // Zero-trust CSP: 'unsafe-eval' only in development (Next.js webpack HMR needs
-  // it; production builds must never allow eval). img-src narrowed from `https:`
-  // wildcard to explicit hosts + data:/blob: for avatars/uploads.
-  const isDevCsp =
-    process.env.NODE_ENV === 'development' ||
-    request.nextUrl.hostname === 'localhost' ||
-    request.nextUrl.hostname === '127.0.0.1';
-  const scriptSrc = isDevCsp
-    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vaeloom.app"
-    : "script-src 'self' 'unsafe-inline' https://vaeloom.app";
-  response.headers.set(
-    'Content-Security-Policy',
-    [
-      "default-src 'self'",
-      scriptSrc,
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: blob: https://vaeloom.app https://*.supabase.co https://*.googleusercontent.com https://*.githubusercontent.com https://*.slack.com",
-      `connect-src 'self' https://*.supabase.co https://accounts.google.com https://*.algolia.net https://*.algolianet.com https://analytics.vaeloom.app https://vaeloom.app${
-        process.env.NODE_ENV === 'development' ||
-        process.env['ALLOW_LOCAL_API'] === 'true' ||
-        request.nextUrl.hostname === 'localhost' ||
-        request.nextUrl.hostname === '127.0.0.1'
-          ? ' http://localhost:8000 ws://localhost:8000 http://127.0.0.1:8000 ws://127.0.0.1:8000'
-          : ''
-      }`,
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-    ].join('; '),
-  );
+  response.headers.set('Content-Security-Policy', cspValue);
 
   // Only enforce HSTS in production for real domain names (never on localhost/127.0.0.1,
   // which forces browsers like Edge/Chrome into ERR_SSL_PROTOCOL_ERROR on local HTTP dev).
