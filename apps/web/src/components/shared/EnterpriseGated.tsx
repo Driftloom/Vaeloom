@@ -1,6 +1,7 @@
 'use client';
 import React from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/useAuth';
 
 export function EnterpriseGated({
   feature,
@@ -33,6 +34,13 @@ export function EnterpriseGated({
   );
 }
 
-export function isEnterpriseEnabled(): boolean {
-  return process.env['NEXT_PUBLIC_ENABLE_ENTERPRISE'] === 'true';
+/**
+ * E6: enterprise access is a server-attested capability delivered with the
+ * authenticated `/auth/me` payload — not a build-time `NEXT_PUBLIC_*` flag a
+ * client could flip. Fails closed: no entitlement (while loading, signed out,
+ * or an entitled-but-unconfirmed session) means gated.
+ */
+export function useEnterpriseEnabled(): boolean {
+  const { me } = useAuth();
+  return me?.capabilities?.enterprise === true;
 }

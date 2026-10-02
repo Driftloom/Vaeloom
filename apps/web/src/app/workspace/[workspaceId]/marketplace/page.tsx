@@ -16,7 +16,7 @@ import {
   type WorkspacePluginInstallItem,
 } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
-import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
+import { EnterpriseGated, useEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
 
 const CATEGORIES = ['All', 'AI', 'Analytics', 'Data', 'Integration', 'Productivity', 'Security'];
 
@@ -39,7 +39,8 @@ function installedListingIds(connectors: ConnectorItem[] | undefined): Set<strin
 }
 
 export default function MarketplacePage() {
-  if (!isEnterpriseEnabled()) {
+  const enterpriseEnabled = useEnterpriseEnabled();
+  if (!enterpriseEnabled) {
     return <EnterpriseGated feature="Marketplace" />;
   }
   return <MarketplaceContent />;

@@ -14,7 +14,7 @@ import {
 } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 import { PageHeader } from '@/components/shared/Page';
-import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
+import { EnterpriseGated, useEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
 
 interface Role {
   id: string;
@@ -219,7 +219,8 @@ function OrgTreeNode({
 }
 
 export default function OrganizationsPage() {
-  if (!isEnterpriseEnabled()) {
+  const enterpriseEnabled = useEnterpriseEnabled();
+  if (!enterpriseEnabled) {
     return <EnterpriseGated feature="Organizations" />;
   }
   return <OrganizationsContent />;

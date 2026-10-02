@@ -135,22 +135,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [check]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await api.login({ email, password });
-    if ((res as any).mfaRequired && (res as any).mfaToken) {
-      return { mfaRequired: true, mfaToken: (res as any).mfaToken };
-    }
-    setToken(res.accessToken);
-    if (res.refreshToken) setRefreshToken(res.refreshToken);
-    setState({ user: res.user, me: null, loading: false, error: null, isAuthenticated: true });
-  }, []);
+  const login = useCallback(
+    async (email: string, password: string) => {
+      const res = await api.login({ email, password });
+      if ((res as any).mfaRequired && (res as any).mfaToken) {
+        return { mfaRequired: true, mfaToken: (res as any).mfaToken };
+      }
+      setToken(res.accessToken);
+      if (res.refreshToken) setRefreshToken(res.refreshToken);
+      setState({ user: res.user, me: null, loading: false, error: null, isAuthenticated: true });
+      // E6: fetch /auth/me so server-attested capabilities (enterprise gating)
+      // are present without needing a page reload after login.
+      check(1);
+    },
+    [check],
+  );
 
-  const verifyMfa = useCallback(async (mfaToken: string, code: string) => {
-    const res = await api.mfa.verify(mfaToken, code);
-    setToken(res.accessToken);
-    if (res.refreshToken) setRefreshToken(res.refreshToken);
-    setState({ user: res.user, me: null, loading: false, error: null, isAuthenticated: true });
-  }, []);
+  const verifyMfa = useCallback(
+    async (mfaToken: string, code: string) => {
+      const res = await api.mfa.verify(mfaToken, code);
+      setToken(res.accessToken);
+      if (res.refreshToken) setRefreshToken(res.refreshToken);
+      setState({ user: res.user, me: null, loading: false, error: null, isAuthenticated: true });
+      check(1);
+    },
+    [check],
+  );
 
   const signup = useCallback(
     async (email: string, password: string, displayName?: string, termsAccepted?: boolean) => {
@@ -163,8 +173,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(res.accessToken);
       if (res.refreshToken) setRefreshToken(res.refreshToken);
       setState({ user: res.user, me: null, loading: false, error: null, isAuthenticated: true });
+      check(1);
     },
-    [],
+    [check],
   );
 
   const logout = useCallback(async () => {

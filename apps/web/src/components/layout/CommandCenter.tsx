@@ -103,7 +103,7 @@ export function CommandCenter({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, logout, me } = useAuth();
   const { toggleTheme, theme } = useTheme();
   const [query, setQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<CommandCategory>('all');
@@ -148,8 +148,10 @@ export function CommandCenter({
     }
   }, []);
 
-  // Workspace navigation commands generated from canonical WORKSPACE_ROUTES manifest
-  const isEnterprise = process.env['NEXT_PUBLIC_ENABLE_ENTERPRISE'] === 'true';
+  // Workspace navigation commands generated from canonical WORKSPACE_ROUTES manifest.
+  // E6: enterprise commands are filtered by the server-attested capability from
+  // /auth/me (fail-closed), not a client-side NEXT_PUBLIC_* flag.
+  const isEnterprise = me?.capabilities?.enterprise === true;
 
   const navigationCommands = useMemo<CommandItem[]>(() => {
     return WORKSPACE_ROUTES.filter((r) => !r.enterprise || isEnterprise).map((r) => {

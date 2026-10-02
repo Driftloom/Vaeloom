@@ -1,5 +1,5 @@
 'use client';
-import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
+import { EnterpriseGated, useEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
 import { PageHeader } from '@/components/shared/Page';
 import React, { useState, useEffect } from 'react';
 import { Button } from '@vaeloom/ui-kit';
@@ -55,6 +55,7 @@ const serviceColors: Record<string, StatusVariant> = {
 const svcColor = (s: string): StatusVariant => serviceColors[s] ?? 'neutral';
 
 export default function AdminPage() {
+  const enterpriseEnabled = useEnterpriseEnabled();
   const [users, setUsers] = useState<User[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [auditLog, setAuditLog] = useState<AuditEvent[]>([]);
@@ -133,7 +134,7 @@ export default function AdminPage() {
     }
   }, [healthRes]);
 
-  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Admin" />;
+  if (!enterpriseEnabled) return <EnterpriseGated feature="Admin" />;
 
   const showToast = (msg: string) => {
     setToast(msg);

@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useCallback } from 'react';
-import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
+import { EnterpriseGated, useEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
 import { Button, Card, Input } from '@vaeloom/ui-kit';
 import { Toggle } from '@/components/shared/Toggle';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -18,6 +18,7 @@ const CATEGORIES = ['general', 'ui', 'features', 'ai', 'integrations'];
 type TabId = 'flags' | 'abtest' | 'session';
 
 export default function FeatureFlagsPage() {
+  const enterpriseEnabled = useEnterpriseEnabled();
   const { toast } = useToast();
   const params = useParams();
   const workspaceId = (params?.['workspaceId'] as string | undefined) ?? '';
@@ -210,7 +211,7 @@ export default function FeatureFlagsPage() {
     toast,
   ]);
 
-  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Feature Flags" />;
+  if (!enterpriseEnabled) return <EnterpriseGated feature="Feature Flags" />;
 
   const flagList = flags ?? [];
 

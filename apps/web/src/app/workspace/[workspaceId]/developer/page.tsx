@@ -2,7 +2,7 @@
 import React, { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
+import { EnterpriseGated, useEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
 import { Button, Card, Input, Modal } from '@vaeloom/ui-kit';
 import { PageHeader } from '@/components/shared/Page';
 import { Table, type Column } from '@/components/shared/Table';
@@ -669,7 +669,8 @@ function DeveloperContent() {
 }
 
 export default function DeveloperPage() {
-  if (!isEnterpriseEnabled()) {
+  const enterpriseEnabled = useEnterpriseEnabled();
+  if (!enterpriseEnabled) {
     return <EnterpriseGated feature="Developer" />;
   }
   return <DeveloperContent />;

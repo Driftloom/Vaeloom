@@ -6,34 +6,46 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/workspace/ws-1/memory',
 }));
 
+// E6: enterprise access arrives as a server-attested capability on the
+// /auth/me payload; the spec controls it here instead of a NEXT_PUBLIC_* env.
+const authControl: { me: { capabilities?: { enterprise: boolean } } | null } = { me: null };
+
 jest.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({
     user: { displayName: 'Test User', email: 'test@example.com' },
     isAuthenticated: true,
+    me: authControl.me,
   }),
 }));
 
 describe('Sidebar', () => {
   it('groups navigation into IA spaces', () => {
+    authControl.me = null;
     render(<Sidebar workspaceId="ws-1" open={false} onClose={jest.fn()} />);
     expect(screen.getByText('Assist')).toBeInTheDocument();
     expect(screen.getByText('Memory')).toBeInTheDocument();
     expect(screen.getByText('Career')).toBeInTheDocument();
     expect(screen.getByText('Operations')).toBeInTheDocument();
     expect(screen.getByText('Trust & Rights')).toBeInTheDocument();
-    // Enterprise is gated hidden by default (FW-017)
+    // Enterprise is gated hidden without a server entitlement (FW-017 / E6)
     expect(screen.queryByText('Enterprise')).not.toBeInTheDocument();
   });
 
-  it('shows enterprise group when portalMode="all" and NEXT_PUBLIC_ENABLE_ENTERPRISE=true', () => {
-    const prev = process.env['NEXT_PUBLIC_ENABLE_ENTERPRISE'];
-    process.env['NEXT_PUBLIC_ENABLE_ENTERPRISE'] = 'true';
+  it('shows enterprise group when portalMode="all" and the server attests the enterprise capability', () => {
+    authControl.me = { capabilities: { enterprise: true } };
     render(<Sidebar workspaceId="ws-1" portalMode="all" open={false} onClose={jest.fn()} />);
     expect(screen.getByText('Enterprise')).toBeInTheDocument();
     expect(screen.getByText('gated')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Admin' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Marketplace' })).toBeInTheDocument();
-    process.env['NEXT_PUBLIC_ENABLE_ENTERPRISE'] = prev;
+    authControl.me = null;
+  });
+
+  it('keeps the enterprise group hidden when the server withholds the capability', () => {
+    authControl.me = { capabilities: { enterprise: false } };
+    render(<Sidebar workspaceId="ws-1" portalMode="all" open={false} onClose={jest.fn()} />);
+    expect(screen.queryByText('Enterprise')).not.toBeInTheDocument();
+    authControl.me = null;
   });
 
   it('renders mode switcher tabs and allows switching modes', () => {

@@ -34,6 +34,7 @@ import {
   type AppPortalMode,
 } from '@/lib/route-manifest';
 import { useAppMode } from '@/hooks/useAppMode';
+import { useAuth } from '@/hooks/useAuth';
 
 interface NavLink {
   id: string;
@@ -49,8 +50,29 @@ interface NavGroup {
   enterprise?: boolean;
 }
 
-function isEnterpriseEnabled(): boolean {
-  return process.env['NEXT_PUBLIC_ENABLE_ENTERPRISE'] === 'true';
+function groupLinks(
+  workspaceId: string,
+  portalMode?: AppPortalMode | 'all',
+  enableEnterprise = false,
+): NavGroup[] {
+  // E6: enableEnterprise is the server-attested capability from /auth/me —
+  // never a client-side NEXT_PUBLIC_* flag.
+  const manifestGroups = getNavigationGroups(workspaceId, {
+    enableEnterprise,
+    portalMode,
+  });
+
+  return manifestGroups.map((g) => ({
+    label: g.label,
+    enterprise: g.enterprise,
+    links: g.links.map((link) => ({
+      id: link.id,
+      name: link.name,
+      path: link.path,
+      icon: ROUTE_ICONS[link.id] ?? <CpuIcon size={16} />,
+      dataMode: link.dataMode,
+    })),
+  }));
 }
 
 const ROUTE_ICONS: Record<string, React.ReactNode> = {
@@ -86,26 +108,6 @@ const ROUTE_ICONS: Record<string, React.ReactNode> = {
   developer: <TerminalIcon size={16} />,
   'feature-flags': <SettingsIcon size={16} />,
 };
-
-function groupLinks(workspaceId: string, portalMode?: AppPortalMode | 'all'): NavGroup[] {
-  const enableEnterprise = isEnterpriseEnabled();
-  const manifestGroups = getNavigationGroups(workspaceId, {
-    enableEnterprise,
-    portalMode,
-  });
-
-  return manifestGroups.map((g) => ({
-    label: g.label,
-    enterprise: g.enterprise,
-    links: g.links.map((link) => ({
-      id: link.id,
-      name: link.name,
-      path: link.path,
-      icon: ROUTE_ICONS[link.id] ?? <CpuIcon size={16} />,
-      dataMode: link.dataMode,
-    })),
-  }));
-}
 
 interface SidebarNavLinkProps {
   link: NavLink;
@@ -174,13 +176,15 @@ export function Sidebar({
   onOpenCommandCenter,
 }: SidebarProps) {
   const pathname = usePathname();
+  const { me } = useAuth();
+  const enterpriseEnabled = me?.capabilities?.enterprise === true;
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   useScrollLock(showShortcutsModal);
   const { mode: contextMode, setMode, cycleMode, currentModeMeta } = useAppMode();
   const effectiveMode = portalMode ?? contextMode;
 
   const isCol = collapsed !== undefined ? collapsed : isCollapsed;
-  const groups = groupLinks(workspaceId, effectiveMode);
+  const groups = groupLinks(workspaceId, effectiveMode, enterpriseEnabled);
 
   const handleModeChange = (targetMode: AppPortalMode) => {
     setMode(targetMode, true);

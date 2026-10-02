@@ -1,5 +1,5 @@
 'use client';
-import { EnterpriseGated, isEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
+import { EnterpriseGated, useEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
 import React, { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { useParams } from 'next/navigation';
@@ -82,6 +82,7 @@ const invoiceColors: Record<string, StatusVariant> = {
 const invColor = (s: string): StatusVariant => invoiceColors[s] ?? 'neutral';
 
 export default function BillingPage() {
+  const enterpriseEnabled = useEnterpriseEnabled();
   // ── Hooks must be BEFORE early return guard (no conditional hooks) ─────────
   const { toast } = useToast();
   const params = useParams();
@@ -230,7 +231,7 @@ export default function BillingPage() {
   const isLoading = subLoading || usageLoading || invoicesLoading;
 
   // Enterprise gate — MUST stay after all hooks (no conditional hooks before)
-  if (!isEnterpriseEnabled()) return <EnterpriseGated feature="Billing" />;
+  if (!enterpriseEnabled) return <EnterpriseGated feature="Billing" />;
 
   const header = (
     <PageHeader
