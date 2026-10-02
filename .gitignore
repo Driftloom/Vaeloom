@@ -278,6 +278,14 @@ query_engine-*.node
 dump.rdb
 *.rdb
 temporal_data/
+# Stale/rotated SQLite copies (e.g. dev.db.stale-20261002). `*.db` does NOT match
+# `dev.db.stale-<date>` because the suffix is the extension, so these leak as
+# untracked files without the dotted + stale patterns below.
+*.db.*
+*.sqlite.*
+*.sqlite3.*
+dev.db*
+*.stale-*
 
 # Coverage artifacts
 .coverage
@@ -450,6 +458,13 @@ original_report_assets/
 
 # Isolated production build output (see apps/web/scripts/build-isolated.cjs)
 apps/web/.next-build/
+# Numbered/temporary Next build copies (e.g. apps/web/.next-build2/ — 800+ files
+# that otherwise flood `git status` / VS Code counts; --untracked-files=normal
+# shows 1 dir entry but explorers expand to 600+ files)
+apps/web/.next-build2/
+.next-build2/
+apps/web/.next-*/
+.next-*/
 
 # User-uploaded documents. These are tenant content, not source: they can carry
 # PII and, for the documents pipeline, deliberately hostile HTML/SVG. Committing
