@@ -23,10 +23,15 @@ describe('Sidebar', () => {
     authControl.me = null;
     render(<Sidebar workspaceId="ws-1" open={false} onClose={jest.fn()} />);
     expect(screen.getByText('Assist')).toBeInTheDocument();
-    expect(screen.getByText('Memory')).toBeInTheDocument();
     expect(screen.getByText('Career')).toBeInTheDocument();
     expect(screen.getByText('Operations')).toBeInTheDocument();
     expect(screen.getByText('Trust & Rights')).toBeInTheDocument();
+    // The `memory` route is labelled "Memory" inside a group ALSO headed "Memory",
+    // so a bare getByText matches two nodes and `getAllByText(...)[0]` would pass
+    // while asserting nothing about which one it found. Group headings are plain
+    // text; nav entries are links, so assert each by its own role.
+    expect(screen.getByRole('link', { name: 'Memory' })).toBeInTheDocument();
+    expect(screen.getAllByText('Memory')).toHaveLength(2);
     // Enterprise is gated hidden without a server entitlement (FW-017 / E6)
     expect(screen.queryByText('Enterprise')).not.toBeInTheDocument();
   });
@@ -77,7 +82,7 @@ describe('Sidebar', () => {
 
   it('marks the active route with aria-current', () => {
     render(<Sidebar workspaceId="ws-1" open={false} onClose={jest.fn()} />);
-    const active = screen.getByRole('link', { name: 'Second Brain' });
+    const active = screen.getByRole('link', { name: 'Memory' });
     expect(active).toHaveAttribute('aria-current', 'page');
   });
 
@@ -125,8 +130,8 @@ describe('Sidebar', () => {
 
   it('keeps links accessible with sr-only text and title tooltip in collapsed mode', () => {
     render(<Sidebar workspaceId="ws-1" open={false} onClose={jest.fn()} collapsed={true} />);
-    const link = screen.getByRole('link', { name: 'Second Brain' });
+    const link = screen.getByRole('link', { name: 'Memory' });
     expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute('title', 'Second Brain');
+    expect(link).toHaveAttribute('title', 'Memory');
   });
 });
