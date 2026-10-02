@@ -26,7 +26,6 @@ import {
   CheckIcon,
   TrashIcon,
   DownloadIcon,
-  LockIcon,
 } from '@vaeloom/ui-kit';
 import type { Agent, PaginatedResponse } from '@vaeloom/shared-types';
 
@@ -261,14 +260,6 @@ export default function SettingsPage() {
         agentsError
           ? 'Manage workspace preferences and security policies.'
           : 'Configure agent governance, connected integrations, BYOK credentials, and data privacy.'
-      }
-      actions={
-        agentsError ? undefined : (
-          <Badge variant="default" size="sm">
-            <LockIcon size={12} className="mr-1 text-primary" />
-            Zero-Trust Enforced
-          </Badge>
-        )
       }
     />
   );

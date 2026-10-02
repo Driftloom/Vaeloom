@@ -20,6 +20,7 @@ import {
 } from '@vaeloom/ui-kit';
 import { PageHeader } from '@/components/shared/Page';
 import { FilterPills } from '@/components/shared/FilterPills';
+import { ErrorState } from '@/components/shared/ErrorState';
 import { searchApi, type SearchResponse, type SearchResult } from '@/lib/api-client';
 
 export default function GlobalSearchPage() {
@@ -58,6 +59,7 @@ export default function GlobalSearchPage() {
     data: searchData,
     isLoading,
     error,
+    mutate: revalidateSearch,
   } = useSWR<SearchResponse>(
     workspaceId && debouncedQuery
       ? `search-${workspaceId}-${debouncedQuery}-${selectedCategory}`
@@ -213,6 +215,12 @@ export default function GlobalSearchPage() {
             knowledge graph relations.
           </p>
         </Card>
+      ) : error ? (
+        <ErrorState
+          title="Search failed"
+          message="We couldn't retrieve results for your query. This is a connection or server issue, not an empty result."
+          onRetry={() => revalidateSearch()}
+        />
       ) : sortedResults.length === 0 ? (
         <Card className="p-8">
           <EmptyState

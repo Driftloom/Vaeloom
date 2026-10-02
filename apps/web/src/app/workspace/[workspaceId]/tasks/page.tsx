@@ -20,6 +20,7 @@ import {
 } from '@vaeloom/ui-kit';
 import { PageHeader } from '@/components/shared/Page';
 import { FilterPills } from '@/components/shared/FilterPills';
+import { ErrorState } from '@/components/shared/ErrorState';
 import { schedulerApi, approvalApi, type JobResponse, type ApprovalItem } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 
@@ -40,14 +41,18 @@ export default function TasksPage() {
     mutate: mutateJobs,
   } = useSWR<JobResponse[]>(
     workspaceId ? `scheduler-jobs-${workspaceId}` : null,
-    () => schedulerApi.listJobs({ page_size: 50 }).catch(() => []),
+    () => schedulerApi.listJobs({ page_size: 50 }),
     { revalidateOnFocus: false },
   );
 
   // 2. SWR: Pending Approvals
-  const { data: approvalsRes, mutate: mutateApprovals } = useSWR(
+  const {
+    data: approvalsRes,
+    error: approvalsError,
+    mutate: mutateApprovals,
+  } = useSWR(
     workspaceId ? `approvals-${workspaceId}` : null,
-    () => approvalApi.list({ status: 'PENDING' }).catch(() => ({ items: [], total: 0 })),
+    () => approvalApi.list({ status: 'PENDING' }),
     { revalidateOnFocus: false },
   );
 
@@ -213,6 +218,23 @@ export default function TasksPage() {
         ariaLabel="Filter tasks by schedule status"
       />
 
+      {/* Pending Approvals load failure: never render a silent "0" */}
+      {approvalsError && !jobsError && (
+        <div
+          className="p-3.5 text-sm text-error bg-error/10 rounded-xl border border-error/30 flex items-center justify-between gap-2"
+          role="alert"
+        >
+          <span>Couldn&apos;t load pending approvals. Counts below may be incomplete.</span>
+          <button
+            type="button"
+            onClick={() => mutateApprovals()}
+            className="text-xs font-medium underline shrink-0"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Pending Approvals Section if any */}
       {pendingApprovals.length > 0 && (
         <Card className="p-4 border-warning/30 bg-warning/5 space-y-3">
@@ -255,6 +277,12 @@ export default function TasksPage() {
             Loading autonomous execution schedules from database…
           </p>
         </Card>
+      ) : jobsError ? (
+        <ErrorState
+          title="Failed to load tasks"
+          message="We couldn't retrieve your scheduled tasks from the server. This is a connection or server issue, not an empty list."
+          onRetry={() => mutateJobs()}
+        />
       ) : filteredJobs.length === 0 ? (
         <Card className="p-8">
           <EmptyState
