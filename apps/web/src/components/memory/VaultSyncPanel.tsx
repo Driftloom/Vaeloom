@@ -67,7 +67,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
   // Ingest form notes state
   const [customNoteTitle, setCustomNoteTitle] = useState('');
   const [customNoteContent, setCustomNoteContent] = useState('');
-  const [customNoteTags, setCustomNoteTags] = useState('second-brain, vault');
+  const [customNoteTags, setCustomNoteTags] = useState('memory, vault');
 
   // Handle open config modal with current values
   const handleOpenConfig = () => {
@@ -170,9 +170,9 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
         {
           filename: 'Vault-Index.md',
           content:
-            '# Second Brain Knowledge Vault\n\nCentral hub for all synchronized markdown notes, literature thoughts, and architectural specifications.',
+            '# Memory Knowledge Vault\n\nCentral hub for all synchronized markdown notes, literature thoughts, and architectural specifications.',
           relative_path: 'Vault-Index.md',
-          tags: ['index', 'second-brain', 'vault'],
+          tags: ['index', 'memory', 'vault'],
         },
         {
           filename: 'Cognitive-Architecture.md',
@@ -434,7 +434,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
           <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-3.5 space-y-2">
             <div className="flex items-center justify-between">
               <h4 className="font-semibold text-[var(--color-text-primary)] uppercase tracking-wider text-[11px]">
-                Second Brain Integration
+                Memory Integration
               </h4>
               <Badge variant={statusData?.autoIngest ? 'success' : 'default'} size="sm">
                 {statusData?.autoIngest ? 'Auto-Indexing ON' : 'Manual Ingest'}
@@ -708,7 +708,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
               htmlFor="auto-ingest-toggle"
               className="text-xs text-[var(--color-text-primary)] cursor-pointer select-none font-medium"
             >
-              Automatically ingest notes into Vaeloom Documents & Second Brain Graph
+              Automatically ingest notes into Vaeloom Documents & Memory Graph
             </label>
           </div>
 
@@ -727,7 +727,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
       <Modal
         isOpen={ingestModalOpen}
         onClose={() => setIngestModalOpen(false)}
-        title="Ingest Notes to Documents & Second Brain Graph"
+        title="Ingest Notes to Documents & Memory Graph"
         size="lg"
       >
         <div className="space-y-4">

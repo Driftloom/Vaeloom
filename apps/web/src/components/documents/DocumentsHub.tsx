@@ -424,7 +424,7 @@ export function DocumentsHub({
     }
   }, [currentWorkspaceId, fetchFolders, fetchDocuments, toast]);
 
-  // Synchronize a single document into Second Brain (Memory Store)
+  // Synchronize a single document into Memory Store
   const handleSyncMemory = useCallback(
     async (doc: DocumentResponse) => {
       if (!currentWorkspaceId) return;
@@ -433,7 +433,7 @@ export function DocumentsHub({
         const res = await documentApi.syncMemory(doc.id, currentWorkspaceId);
         toast({
           tone: 'success',
-          title: 'Synced to Second Brain',
+          title: 'Synced to Memory',
           detail: `Document "${getFileName(doc.path)}" is indexed into workspace memory.`,
         });
         setDocuments((prev) =>
@@ -464,7 +464,7 @@ export function DocumentsHub({
     [currentWorkspaceId, toast],
   );
 
-  // Bulk Synchronize all selected documents into Second Brain
+  // Bulk Synchronize all selected documents into Memory
   const handleBulkSyncMemory = useCallback(async () => {
     if (!currentWorkspaceId || selectedDocIds.size === 0) return;
     setBulkBusy(true);
@@ -473,7 +473,7 @@ export function DocumentsHub({
       toast({
         tone: 'success',
         title: 'Bulk Memory Sync Complete',
-        detail: `Successfully indexed ${res.syncedCount} document(s) into Second Brain.`,
+        detail: `Successfully indexed ${res.syncedCount} document(s) into Memory.`,
       });
       void fetchDocuments();
     } catch (err) {
@@ -1165,7 +1165,7 @@ export function DocumentsHub({
                   disabled={bulkBusy}
                   onClick={handleBulkSyncMemory}
                   className="btn-secondary text-xs px-3 py-1.5 text-primary hover:bg-primary/10 hover:border-primary/40 flex items-center gap-1.5"
-                  title="Index selected documents into Second Brain"
+                  title="Index selected documents into Memory"
                 >
                   <svg
                     className={`w-3.5 h-3.5 text-primary ${bulkBusy ? 'animate-spin' : ''}`}
@@ -1402,7 +1402,7 @@ export function DocumentsHub({
                                 <Link
                                   href={`/workspace/${currentWorkspaceId}/memory?query=${encodeURIComponent(fileName)}`}
                                   className="inline-flex items-center gap-1 text-[10px] text-primary/90 hover:text-primary bg-primary/10 hover:bg-primary/20 border border-primary/25 px-1.5 py-0.5 rounded font-mono shrink-0 transition-colors"
-                                  title="Dynamically indexed in Second Brain. Click to view in Memory."
+                                  title="Dynamically indexed in Memory. Click to view in Memory."
                                 >
                                   <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                                   Memory Synced
@@ -1416,7 +1416,7 @@ export function DocumentsHub({
                                     void handleSyncMemory(doc);
                                   }}
                                   className="inline-flex items-center gap-1 text-[10px] text-text-muted hover:text-primary bg-surface hover:bg-surface-hover border border-border px-1.5 py-0.5 rounded font-mono shrink-0 transition-colors disabled:opacity-50"
-                                  title="Click to sync document into Second Brain"
+                                  title="Click to sync document into Memory"
                                 >
                                   <svg
                                     className={`w-2.5 h-2.5 ${syncingDocId === doc.id ? 'animate-spin' : ''}`}
@@ -1633,13 +1633,13 @@ export function DocumentsHub({
                                 </svg>
                               </Link>
 
-                              {/* Sync with Second Brain */}
+                              {/* Sync with Memory */}
                               <button
                                 type="button"
                                 disabled={syncingDocId === doc.id}
                                 onClick={() => void handleSyncMemory(doc)}
                                 className="p-1.5 text-text-muted hover:text-primary rounded hover:bg-primary/10 transition-colors"
-                                title="Sync with Second Brain (Memory Store)"
+                                title="Sync with Memory"
                                 aria-label={`Sync ${fileName} to Memory`}
                               >
                                 <svg

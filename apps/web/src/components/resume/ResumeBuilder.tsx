@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   resumeApi,
+  documentApi,
   agentApi,
   downloadArtifact,
   fetchArtifactBlob,
@@ -100,6 +101,69 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
   const [tailorRole, setTailorRole] = useState('');
   const [tailorCompany, setTailorCompany] = useState('');
   const [tailoring, setTailoring] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUploadFile = async (file: File) => {
+    if (!workspaceId) return;
+    setUploading(true);
+    try {
+      toast({ tone: 'info', title: 'Uploading document…', detail: file.name });
+      await documentApi.upload(file, workspaceId);
+      toast({
+        tone: 'info',
+        title: 'Analyzing with Resume Agent…',
+        detail: 'Extracting experience into Master Resume',
+      });
+      try {
+        await agentApi.chat({
+          workspaceId,
+          message: `Extract work experience, education, and skills from the uploaded resume document (${file.name}) and build my master resume.`,
+          agentName: 'resume',
+        });
+      } catch (agentErr) {
+        console.debug('Agent build trigger:', agentErr);
+      }
+      toast({ tone: 'success', title: 'Resume uploaded & processed', detail: file.name });
+      await fetchData();
+    } catch (err) {
+      toast({
+        tone: 'error',
+        title: 'Upload failed',
+        detail: err instanceof Error ? err.message : 'Could not upload document',
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      void handleUploadFile(file);
+    }
+    if (e.target) e.target.value = '';
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      void handleUploadFile(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
 
   const fetchData = useCallback(async () => {
     if (!workspaceId) return;
@@ -323,10 +387,59 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
             Build your master resume and generate tailored variants.
           </p>
         </header>
-        <EmptyState
-          title="No resumes yet"
-          description="Upload documents so the Resume Agent can build your master resume from extracted experience."
-        />
+
+        <div className="max-w-xl mx-auto w-full my-auto py-8">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept=".pdf,.docx,.txt,.md"
+            className="hidden"
+          />
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all ${
+              isDragging
+                ? 'border-primary bg-primary/5 scale-[1.01]'
+                : 'border-border hover:border-primary/50 hover:bg-surface/50 bg-surface/20'
+            }`}
+          >
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary mx-auto flex items-center justify-center text-2xl mb-4">
+              {uploading ? (
+                <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+              ) : (
+                '📄'
+              )}
+            </div>
+            <h3 className="text-lg font-semibold text-text mb-1.5">
+              {uploading ? 'Processing Resume with Agent…' : 'Drop your resume or CV here'}
+            </h3>
+            <p className="text-xs text-text-muted max-w-sm mx-auto mb-6 leading-relaxed">
+              {uploading
+                ? 'Resume Agent is extracting verified work experience, education, and skills into your sovereign Master Resume.'
+                : 'Supports PDF, DOCX, TXT, or Markdown. The Resume Agent will parse and ground your master resume with provenance citations.'}
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                type="button"
+                disabled={uploading}
+                className="btn-primary text-xs py-2 px-5 rounded-xl shadow-sm"
+              >
+                {uploading ? 'Analyzing…' : 'Browse Files'}
+              </button>
+              <Link
+                href={`/workspace/${workspaceId}/documents`}
+                onClick={(e) => e.stopPropagation()}
+                className="btn-secondary text-xs py-2 px-4 rounded-xl"
+              >
+                Vault Documents
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

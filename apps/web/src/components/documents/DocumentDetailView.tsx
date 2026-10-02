@@ -196,7 +196,7 @@ export function DocumentDetailView({
     }
   }, [workspaceId, documentId]);
 
-  // Synchronize document into Second Brain (Memory Store)
+  // Synchronize document into Memory
   const handleSyncMemory = useCallback(async () => {
     if (!doc || !workspaceId) return;
     setSyncingMemory(true);
@@ -204,7 +204,7 @@ export function DocumentDetailView({
       const res = await documentApi.syncMemory(doc.id, workspaceId);
       toast({
         tone: 'success',
-        title: 'Synced to Second Brain',
+        title: 'Synced to Memory',
         detail: `Document "${getFileName(doc.path)}" is synchronized with workspace memory.`,
       });
       setDoc((prev) =>
@@ -798,7 +798,7 @@ export function DocumentDetailView({
                 d="M13 10V3L4 14h7v7l9-11h-7z"
               />
             </svg>
-            <span>View in Second Brain</span>
+            <span>View in Memory</span>
           </Link>
         </div>
 

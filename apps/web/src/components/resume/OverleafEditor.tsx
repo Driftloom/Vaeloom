@@ -86,12 +86,6 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
       previewTimeout.current = setTimeout(() => {
         try {
           setHtmlPreview(toHtmlPreview(v));
-          // Extract ATS-like hint: count provenance comments as trust signal
-          const provCount = (v.match(/provenance:/g) || []).length;
-          // Mock ATS: more provenance + more bullets = higher
-          const bulletCount = (v.match(/- /g) || []).length;
-          const mockScore = Math.min(98, 70 + bulletCount * 3 + provCount);
-          setAtsScore(mockScore);
           setMarkers([]);
         } catch (e: any) {
           setMarkers([

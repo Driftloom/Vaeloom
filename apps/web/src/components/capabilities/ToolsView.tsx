@@ -60,38 +60,87 @@ interface ToolSuite {
   rows: ToolRow[];
 }
 
-const SUITE_KEY_PREFIX = 'vaeloom.tools.suites.';
-
-function suiteStorageKey(workspaceId: string): string {
-  return `${SUITE_KEY_PREFIX}${workspaceId}`;
+/**
+ * One tool's server-side gate: the `workspace_capabilities` row that decides
+ * whether `execute_tool` will run it.
+ *
+ * Keyed by tool NAME, because that is what the executor matches on —
+ * `_query_disabled_tools` selects rows with `category='tool'` and
+ * `enabled=false` and `execute_tool` denies when `tool.name` is in that set. A
+ * row named after a suite would never be consulted, which is why the suite
+ * switch writes one row per tool rather than one row per suite.
+ *
+ * ABSENT ROW MEANS ENABLED. Every existing workspace has zero tool rows, so
+ * treating a missing row as "not enabled" would switch off the whole built-in
+ * surface. Only an explicit `enabled=false` blocks a call.
+ */
+interface ToolGateRow {
+  id: string;
+  enabled: boolean;
 }
 
-function readSuiteState(workspaceId: string): Record<string, boolean> {
-  if (typeof window === 'undefined') return {};
-  try {
-    const raw = window.localStorage.getItem(suiteStorageKey(workspaceId));
-    if (!raw) return {};
-    const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
-    const out: Record<string, boolean> = {};
-    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
-      if (typeof value === 'boolean') out[key] = value;
-    }
-    return out;
-  } catch {
-    return {};
+interface SuiteGate {
+  total: number;
+  /** Tools in this suite that carry an explicit `enabled=false` row. */
+  disabled: string[];
+}
+
+function suiteGate(suite: ToolSuite, rows: ReadonlyMap<string, ToolGateRow>): SuiteGate {
+  const disabled: string[] = [];
+  for (const row of suite.rows) {
+    const gate = rows.get(row.name);
+    if (gate && !gate.enabled) disabled.push(row.name);
   }
+  return { total: suite.rows.length, disabled };
 }
 
-function writeSuiteState(workspaceId: string, state: Record<string, boolean>): boolean {
-  if (typeof window === 'undefined') return false;
-  try {
-    window.localStorage.setItem(suiteStorageKey(workspaceId), JSON.stringify(state));
-    return true;
-  } catch {
-    return false;
-  }
+interface ToolGateState {
+  denied: boolean;
+  /** Short form for the fact grid; the three cases are genuinely different. */
+  label: string;
+  detail: string;
 }
+
+/**
+ * One tool's gate, spelled out.
+ *
+ * Three states rather than a boolean, because "no row" and "an enabled row" are
+ * different facts about the server even though both let the tool run, and
+ * collapsing them hides the row an operator would have to look for.
+ */
+function activeGateState(row: ToolRow, rows: ReadonlyMap<string, ToolGateRow>): ToolGateState {
+  const gate = rows.get(row.name);
+  if (!gate) {
+    return {
+      denied: false,
+      label: 'no row — enabled',
+      detail: `This workspace holds no capability row for ${row.name}, and no row means enabled: execute_tool will run it. Turning the switch off creates one with enabled=false.`,
+    };
+  }
+  if (!gate.enabled) {
+    return {
+      denied: true,
+      label: 'no — enabled=false row',
+      detail: `A capability row for ${row.name} carries enabled=false, so execute_tool raises PermissionDeniedError for it before the handler runs.`,
+    };
+  }
+  return {
+    denied: false,
+    label: 'yes — enabled row',
+    detail: `A capability row for ${row.name} carries enabled=true. The tool runs; the row exists only to record the decision.`,
+  };
+}
+
+/**
+ * Where the switch is enforced, in one sentence.
+ *
+ * The previous Tooltip said the flag lived in this browser and that no endpoint
+ * stored it. That is no longer true: the flag is a `workspace_capabilities` row
+ * with `category='tool'` and `enabled=false`, and `execute_tool` raises
+ * `PermissionDeniedError` on it before any handler runs.
+ */
+const GATE_ENFORCEMENT =
+  'Enforced server-side: a workspace capability row with category=tool and enabled=false, read by execute_tool at call time. No row means enabled.';
 
 function formatSuiteName(suiteId: string): string {
   return suiteId
@@ -177,7 +226,10 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
   const [selectedToolName, setSelectedToolName] = useState<string | null>(null);
   const [detailSubTab, setDetailSubTab] = useState<DetailSubTab>('contract');
 
-  const [suiteState, setSuiteState] = useState<Record<string, boolean>>({});
+  const [gateRows, setGateRows] = useState<ReadonlyMap<string, ToolGateRow>>(() => new Map());
+  const [gateStatus, setGateStatus] = useState<'loading' | 'ready' | 'failed'>('loading');
+  const [gateError, setGateError] = useState<string | null>(null);
+  const [pendingTools, setPendingTools] = useState<ReadonlySet<string>>(() => new Set());
 
   const [testInputJson, setTestInputJson] = useState('{}');
   const [testRunning, setTestRunning] = useState(false);
@@ -188,8 +240,35 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
   const [testValidationErrors, setTestValidationErrors] = useState<string[]>([]);
   const [testError, setTestError] = useState<string | null>(null);
 
+  /**
+   * The workspace's own `category='tool'` rows.
+   *
+   * Read from `GET /capabilities?category=tool` rather than from the `tools` prop,
+   * because that prop merges workspace rows with seeded entries and a seeded entry
+   * has no row to point at. A gate control driven by the merge would offer to
+   * PATCH an id that was never minted.
+   */
   useEffect(() => {
-    setSuiteState(readSuiteState(workspaceId));
+    let cancelled = false;
+    setGateStatus('loading');
+    setGateError(null);
+    capabilitiesApi
+      .list('tool', workspaceId)
+      .then((rows) => {
+        if (cancelled) return;
+        const next = new Map<string, ToolGateRow>();
+        for (const row of rows) next.set(row.name, { id: row.id, enabled: row.enabled });
+        setGateRows(next);
+        setGateStatus('ready');
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setGateError(err instanceof Error ? err.message : 'The tool rows could not be read.');
+        setGateStatus('failed');
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [workspaceId]);
 
   /**
@@ -289,26 +368,133 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
     setTestValidationErrors([]);
   }, []);
 
-  const handleToggleSuite = useCallback(
-    (suite: ToolSuite, enabled: boolean) => {
-      const next = { ...suiteState, [suite.id]: enabled };
-      if (!writeSuiteState(workspaceId, next)) {
+  /**
+   * Move one tool's gate to `enabled`, creating the row when there is none.
+   *
+   * Two calls for the create case, because `POST /capabilities` has no `enabled`
+   * field and writes `enabled=true` unconditionally: a tool with no row cannot be
+   * disabled in one request. The gap is harmless in the direction that matters —
+   * an absent row already means enabled, so the tool is running before and after
+   * the create; the PATCH is what actually installs the gate.
+   *
+   * Local state is updated only from a response the server returned. A rejected
+   * write leaves the map untouched, which is the point: a tool whose row write
+   * failed is still enabled server-side and the switch has to keep saying so.
+   */
+  const writeToolEnabled = useCallback(
+    async (row: ToolRow, enabled: boolean): Promise<void> => {
+      const existing = gateRows.get(row.name);
+      let id = existing?.id;
+      if (!id) {
+        const created = await capabilitiesApi.create({
+          name: row.name,
+          category: 'tool',
+          description:
+            row.definition?.description ?? `Execution-gate row for the built-in tool ${row.name}.`,
+          config: {
+            ...(row.definition ? { parameters: row.definition.inputSchema } : {}),
+            ...(row.requiredScope ? { required_scope: row.requiredScope } : {}),
+          },
+        });
+        id = created.id;
+      }
+      const updated = await capabilitiesApi.update(id, { enabled });
+      setGateRows((previous) => {
+        const next = new Map(previous);
+        next.set(row.name, { id: updated.id, enabled: updated.enabled });
+        return next;
+      });
+    },
+    [gateRows],
+  );
+
+  const handleSetToolEnabled = useCallback(
+    async (row: ToolRow, enabled: boolean) => {
+      setPendingTools((previous) => new Set(previous).add(row.name));
+      try {
+        await writeToolEnabled(row, enabled);
+        toast({
+          tone: enabled ? 'success' : 'info',
+          title: `${row.name} ${enabled ? 'enabled' : 'disabled'} for this workspace`,
+          detail: enabled
+            ? 'The capability row no longer blocks it; execute_tool will run it.'
+            : 'A capability row with enabled=false now denies execute_tool for this tool.',
+        });
+      } catch (err) {
         toast({
           tone: 'error',
-          title: 'Suite preference not saved',
-          detail: 'Browser storage rejected the write, so nothing was recorded.',
+          title: `${row.name} was not ${enabled ? 'enabled' : 'disabled'}`,
+          detail: `${err instanceof Error ? err.message : 'The server write failed.'} The server still has this tool enabled, so the switch has been left where it was.`,
+        });
+      } finally {
+        setPendingTools((previous) => {
+          const next = new Set(previous);
+          next.delete(row.name);
+          return next;
+        });
+      }
+    },
+    [toast, writeToolEnabled],
+  );
+
+  /**
+   * One write per tool, because the executor keys on the individual tool name.
+   *
+   * A single row named after the suite would be a row nothing reads: the gate is
+   * `tool.name IN {names with enabled=false rows}`, and `memory-graph` is not a
+   * tool name. So the switch means "every tool in this suite" and is implemented
+   * as N writes.
+   *
+   * Failures are per tool and are not rolled back: the writes that landed are
+   * real, and reporting the whole switch as either on or off would be a claim
+   * about rows that do not exist. The toast names the tools that did not move.
+   */
+  const handleToggleSuite = useCallback(
+    async (suite: ToolSuite, enabled: boolean) => {
+      setPendingTools((previous) => {
+        const next = new Set(previous);
+        for (const row of suite.rows) next.add(row.name);
+        return next;
+      });
+      const results = await Promise.allSettled(
+        suite.rows.map((row) => writeToolEnabled(row, enabled)),
+      );
+      const failures = suite.rows.flatMap((row, index) => {
+        const result = results[index];
+        if (result?.status !== 'rejected') return [];
+        return [
+          {
+            name: row.name,
+            reason: result.reason instanceof Error ? result.reason.message : String(result.reason),
+          },
+        ];
+      });
+      setPendingTools((previous) => {
+        const next = new Set(previous);
+        for (const row of suite.rows) next.delete(row.name);
+        return next;
+      });
+
+      const moved = suite.rows.length - failures.length;
+      if (failures.length === 0) {
+        toast({
+          tone: 'success',
+          title: `${moved} tool${moved === 1 ? '' : 's'} in ${suite.name} marked ${
+            enabled ? 'enabled' : 'disabled'
+          }`,
+          detail: enabled
+            ? 'Every tool in this suite now has a capability row with enabled=true.'
+            : `Each of the ${moved} tool${moved === 1 ? '' : 's'} now has a capability row with enabled=false, so execute_tool raises PermissionDeniedError for it.`,
         });
         return;
       }
-      setSuiteState(next);
       toast({
-        tone: 'info',
-        title: `${suite.name} marked ${enabled ? 'available' : 'hidden'}`,
-        detail:
-          'Stored in this browser only. The server registers every built-in tool unconditionally — no endpoint stores this flag.',
+        tone: 'error',
+        title: `${failures.length} of ${suite.rows.length} row writes failed`,
+        detail: `${failures.map((failure) => failure.name).join(', ')}: ${failures[0]?.reason ?? 'The server write failed.'} Those tools are still enabled server-side because no enabled=false row was written. The other ${moved} did change.`,
       });
     },
-    [suiteState, workspaceId, toast],
+    [toast, writeToolEnabled],
   );
 
   /**
@@ -409,6 +595,27 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
           </div>
         </div>
 
+        {/*
+          The gate banner is unconditional about what it does and does not know.
+          While the rows are loading or after a failure the switches are disabled,
+          because a switch showing "on" from an empty map would be indistinguishable
+          from a verified "no row means enabled".
+        */}
+        <div className="px-3 py-2 border-b border-border bg-surface-elevated shrink-0 space-y-1.5">
+          <p className="text-2xs text-text-muted leading-relaxed">{GATE_ENFORCEMENT}</p>
+          {gateStatus === 'loading' && (
+            <p role="status" className="text-2xs font-mono text-text-muted">
+              Reading this workspace&apos;s tool rows…
+            </p>
+          )}
+          {gateStatus === 'failed' && (
+            <p role="alert" className="text-2xs font-mono text-error leading-relaxed">
+              The tool rows could not be read: {gateError}. The switches are disabled because
+              nothing here can tell an enabled tool from a denied one.
+            </p>
+          )}
+        </div>
+
         <ul className="flex-1 overflow-y-auto overscroll-y-contain p-2 pb-12 space-y-1.5 min-h-0">
           {filteredSuites.length === 0 && (
             <li className="p-1">
@@ -425,7 +632,21 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
 
           {filteredSuites.map((suite) => {
             const isSelected = selectedSuite?.id === suite.id;
-            const hidden = suiteState[suite.id] === false;
+            const gate = suiteGate(suite, gateRows);
+            const allDisabled = gate.disabled.length === gate.total;
+            // The switch means "no tool in this suite is denied". A partially
+            // denied suite therefore reads as ON, because the alternative — an
+            // unchecked switch — claims the suite is disabled while most of it
+            // still runs. The count beside it is what stops ON from being read as
+            // "everything is fine".
+            const checked = !allDisabled;
+            const partial = gate.disabled.length > 0 && !allDisabled;
+            const busy = suite.rows.some((row) => pendingTools.has(row.name));
+            const gateTooltip = allDisabled
+              ? `All ${gate.total} tools in ${suite.name} have an enabled=false capability row. execute_tool raises PermissionDeniedError before any handler runs.`
+              : partial
+                ? `${gate.disabled.length} of ${gate.total} tools have an enabled=false row and are denied at execution (${gate.disabled.join(', ')}). The rest have no such row, and no row means enabled.`
+                : `No tool in ${suite.name} has an enabled=false row, so execute_tool runs all ${gate.total}. Turning this off writes one capability row per tool, because the gate keys on the individual tool name.`;
             return (
               <li key={suite.id}>
                 <div
@@ -473,6 +694,16 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
                               workspace
                             </Badge>
                           )}
+                          {allDisabled && (
+                            <Badge variant="error" size="sm">
+                              all {gate.total} denied
+                            </Badge>
+                          )}
+                          {partial && (
+                            <Badge variant="warning" size="sm">
+                              {gate.disabled.length} of {gate.total} denied
+                            </Badge>
+                          )}
                         </span>
                       </span>
                     </span>
@@ -484,9 +715,11 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
                         <span
                           key={row.name}
                           className={`text-2xs font-mono px-1.5 py-0.2 rounded border truncate max-w-[130px] ${
-                            row.definition
-                              ? 'bg-surface-elevated text-text-secondary border-border-subtle'
-                              : 'bg-warning/10 text-warning border-warning/30'
+                            gateRows.get(row.name)?.enabled === false
+                              ? 'bg-error/10 text-error border-error/30 line-through'
+                              : row.definition
+                                ? 'bg-surface-elevated text-text-secondary border-border-subtle'
+                                : 'bg-warning/10 text-warning border-warning/30'
                           }`}
                         >
                           {row.name}
@@ -500,21 +733,24 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
                     </span>
                   </button>
 
-                  <div className="shrink-0 pt-1">
-                    <Tooltip
-                      content="Browser-local visibility preference. The server registers every built-in tool unconditionally."
-                      side="left"
-                    >
+                  <div className="shrink-0 pt-1 flex flex-col items-end gap-1">
+                    <Tooltip content={gateTooltip} side="left">
                       <div>
                         <Switch
-                          checked={!hidden}
-                          onChange={(next) => handleToggleSuite(suite, next)}
+                          checked={checked}
+                          disabled={gateStatus !== 'ready' || busy}
+                          onChange={(next) => void handleToggleSuite(suite, next)}
                           label={
-                            <span className="sr-only">{`Show ${suite.name} in this browser`}</span>
+                            <span className="sr-only">
+                              {partial
+                                ? `Partially disabled: ${gate.disabled.length} of ${gate.total} tools in ${suite.name} are denied at execution`
+                                : `Allow all ${gate.total} tools in ${suite.name} in this workspace`}
+                            </span>
                           }
                         />
                       </div>
                     </Tooltip>
+                    {busy && <span className="text-2xs font-mono text-text-muted">writing…</span>}
                   </div>
                 </div>
               </li>
@@ -627,17 +863,53 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
                       emptyText="unknown — no server definition for this tool"
                     />
                     <Fact
-                      term="Enabled in workspace"
-                      value={
-                        activeRow.workspaceItem
-                          ? activeRow.workspaceItem.enabled
-                            ? 'yes'
-                            : 'no'
-                          : null
-                      }
-                      emptyText="not a workspace capability row"
+                      term="Execution gate"
+                      value={activeGateState(activeRow, gateRows).label}
+                      emptyText=""
                     />
                   </dl>
+
+                  {/*
+                    Per-tool control, because a suite that is partially denied
+                    cannot be repaired from the suite switch: that switch means
+                    "every tool", so it can only take the suite to all-on or
+                    all-off. This is the control that moves one tool.
+                  */}
+                  <div className="p-4 rounded-xl border border-border bg-surface space-y-2.5">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+                        Allow {activeRow.name} in this workspace
+                      </h4>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={
+                            activeGateState(activeRow, gateRows).denied ? 'error' : 'success'
+                          }
+                          size="sm"
+                        >
+                          {activeGateState(activeRow, gateRows).denied
+                            ? 'denied at execution'
+                            : 'runs at execution'}
+                        </Badge>
+                        <Switch
+                          checked={!activeGateState(activeRow, gateRows).denied}
+                          disabled={gateStatus !== 'ready' || pendingTools.has(activeRow.name)}
+                          onChange={(next) => void handleSetToolEnabled(activeRow, next)}
+                          label={
+                            <span className="sr-only">{`Allow ${activeRow.name} in this workspace`}</span>
+                          }
+                        />
+                      </div>
+                    </div>
+                    <p className="text-2xs text-text-muted leading-relaxed">
+                      {activeGateState(activeRow, gateRows).detail}
+                    </p>
+                    {pendingTools.has(activeRow.name) && (
+                      <p role="status" className="text-2xs font-mono text-text-muted">
+                        Writing the capability row…
+                      </p>
+                    )}
+                  </div>
 
                   {activeRow.workspaceItem?.markdownDoc && (
                     <div className="p-4 rounded-xl bg-surface border border-border space-y-2">

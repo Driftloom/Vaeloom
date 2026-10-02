@@ -3951,6 +3951,131 @@ export function capabilityConfigLastUsedAt(config?: CapabilityConfig | null): st
   return typeof value === 'string' && value !== '' ? value : null;
 }
 
+/**
+ * The `config` key the ReAct budget lives under, in both spellings.
+ *
+ * `max_react_rounds` goes out in a request body; `transformKeys` camelCases it to
+ * `maxReactRounds` on the way back — `toCamelCase` uppercases the single letter
+ * after each underscore, so this is `maxReactRounds` and not `maxReActRounds`.
+ * `services/capability_runtime_config.py` reads the snake_case name off the stored
+ * row and nothing else, so a client that writes `maxReactRounds` stores a key no
+ * runtime will ever look at.
+ */
+export const CAPABILITY_MAX_REACT_ROUNDS_KEY = 'max_react_rounds';
+
+const CAPABILITY_MAX_REACT_ROUNDS_CAMEL = 'maxReactRounds';
+
+/**
+ * `MIN_MAX_REACT_ROUNDS` / `MAX_MAX_REACT_ROUNDS` in
+ * `services/capability_runtime_config.py`.
+ *
+ * A stored value outside the range is not rejected — it is clamped with a
+ * server-side WARNING. A control that accepts 30 therefore hands the operator a
+ * number that silently becomes 12 at run time, which is why the bound lives in
+ * the client too.
+ */
+export const MIN_REACT_ROUNDS = 1;
+export const MAX_REACT_ROUNDS = 12;
+
+/**
+ * Whether the runtime would use `value` exactly as written.
+ *
+ * Mirrors `_coerce` in the resolver, including the cases it treats as absent:
+ * a boolean is not a round count (`bool` is an `int` subclass in Python, so
+ * `true` would become a one-round agent), a non-integral number is never
+ * truncated into a value nobody typed, and text that is not a whole number is
+ * rejected rather than parsed hopefully.
+ *
+ * The reason is returned rather than a bare boolean so the input can say which
+ * rule it broke instead of "invalid".
+ */
+export function reactRoundsAcceptance(
+  value: unknown,
+): { ok: true; rounds: number } | { ok: false; reason: string } {
+  if (typeof value === 'boolean') {
+    return { ok: false, reason: 'true/false is not a round count; the server rejects a boolean.' };
+  }
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) {
+      return { ok: false, reason: `${String(value)} is not a finite number.` };
+    }
+    if (!Number.isInteger(value)) {
+      return {
+        ok: false,
+        reason: `${value} is not a whole number; it would not be rounded for you.`,
+      };
+    }
+    if (value < MIN_REACT_ROUNDS) {
+      return {
+        ok: false,
+        reason: `The server clamps anything below ${MIN_REACT_ROUNDS} up to ${MIN_REACT_ROUNDS} and logs it, so this would not be the value the run used.`,
+      };
+    }
+    if (value > MAX_REACT_ROUNDS) {
+      return {
+        ok: false,
+        reason: `The server clamps anything above ${MAX_REACT_ROUNDS} down to ${MAX_REACT_ROUNDS} and logs it, so this would not be the value the run used.`,
+      };
+    }
+    return { ok: true, rounds: value };
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed === '') return { ok: false, reason: 'Empty; the server treats this as unset.' };
+    // `_coerce` parses text with `int(s, 10)` first and only then as a float, so
+    // the two shapes get two different verdicts: an integer is honoured, and a
+    // non-integral one is rejected rather than truncated.
+    if (/^[+-]?\d+$/.test(trimmed)) return reactRoundsAcceptance(Number.parseInt(trimmed, 10));
+    const numeric = Number(trimmed);
+    if (Number.isFinite(numeric)) {
+      return {
+        ok: false,
+        reason: `${trimmed} is not a whole number of rounds, and the server does not round it for you.`,
+      };
+    }
+    return {
+      ok: false,
+      reason: `"${trimmed}" is not a number; the server rejects it rather than guessing.`,
+    };
+  }
+  return {
+    ok: false,
+    reason: `${value === null ? 'null' : typeof value} is not a round count; the server rejects it.`,
+  };
+}
+
+/**
+ * What this capability row actually contributes to the ReAct round budget.
+ *
+ * `rejected` is distinct from `absent` on purpose: an absent key means nobody
+ * configured a budget, while a rejected one means someone saved a value the
+ * runtime ignored — which is exactly the case an operator needs told, because
+ * from the form it looks configured.
+ */
+export function capabilityConfigReactRounds(
+  config?: CapabilityConfig | null,
+):
+  | { state: 'absent' }
+  | { state: 'honoured'; rounds: number }
+  | { state: 'rejected'; stored: unknown; reason: string } {
+  if (!config) return { state: 'absent' };
+  // The camelCase arm is what a server response carries. The snake_case arm is a
+  // row copied straight out of a request body, which happens whenever a caller
+  // round-trips a config it built itself instead of one the API sent back.
+  const key =
+    CAPABILITY_MAX_REACT_ROUNDS_CAMEL in config
+      ? CAPABILITY_MAX_REACT_ROUNDS_CAMEL
+      : CAPABILITY_MAX_REACT_ROUNDS_KEY in config
+        ? CAPABILITY_MAX_REACT_ROUNDS_KEY
+        : null;
+  if (key === null) return { state: 'absent' };
+  const stored = config[key];
+  const verdict = reactRoundsAcceptance(stored);
+  return verdict.ok
+    ? { state: 'honoured', rounds: verdict.rounds }
+    : { state: 'rejected', stored, reason: verdict.reason };
+}
+
 export interface CapabilityItemRecord {
   id: string;
   workspaceId: string;
@@ -4042,6 +4167,88 @@ export interface SkillListItem extends Omit<CapabilityItemRecord, 'id' | 'worksp
   slug: string | null;
 }
 
+/**
+ * The four statuses `POST /capabilities/validate` can answer with.
+ *
+ * `not_validated` is the one a UI is most likely to get wrong: it means the
+ * category is real but no validator covers it, so only the shared draft rules
+ * ran. It is not a pass and it is not a failure, and the server returns it
+ * instead of inventing a `success`.
+ */
+export type CapabilityDraftStatus = 'success' | 'warning' | 'error' | 'not_validated';
+
+/** `hard` means the create path would reject the draft; `soft` means advisory. */
+export type CapabilityDraftSeverity = 'hard' | 'soft';
+
+/**
+ * Where the rules that ran came from.
+ *
+ * `draft` is the author's own document, `catalog` the bundled skill of the same
+ * name (so a `catalog` verdict is about the shipped text, not about the edits),
+ * `delegated` a validator this endpoint does not own, and `none` that nothing
+ * checked the capability's substance — which is what `not_validated` reports.
+ */
+export type CapabilityDraftSource = 'draft' | 'catalog' | 'delegated' | 'none';
+
+export interface CapabilityDraftViolation {
+  rule: string;
+  message: string;
+  /** 1-based line in the authored document, when the rule could locate one. */
+  line?: number | null;
+  severity: CapabilityDraftSeverity;
+}
+
+/**
+ * `CapabilityDraftValidationResponse` in `api/schemas/capability_draft.py`.
+ *
+ * `executed` is typed `false` rather than `boolean` because the server types it
+ * `Literal[False]`: no response from this endpoint may be read as a live run, and
+ * the compiler is what keeps a caller from writing `executed && <a run>`.
+ *
+ * Every field is renamed from the wire by `transformKeys`: `rules_checked` is
+ * `rulesChecked`, `validated_source` is `validatedSource`, `catalog_slug` is
+ * `catalogSlug`. `rule`, `message`, `line` and `severity` are single words and
+ * survive unrenamed.
+ */
+export interface CapabilityDraftValidationResponse {
+  status: CapabilityDraftStatus;
+  /** How many rules actually ran. Not a score, and not the violation count. */
+  rulesChecked: number;
+  violations: CapabilityDraftViolation[];
+  executed: false;
+  /** The lower-cased category the server measured; may not be a valid one. */
+  category: string;
+  validatedSource: CapabilityDraftSource;
+  /** Only set when `validatedSource` is `catalog`. */
+  catalogSlug: string | null;
+  /** The server's own sentence, including why a `not_validated` happened. */
+  detail: string;
+}
+
+/**
+ * `CapabilityDraftRequest`.
+ *
+ * `config` is `CapabilityConfig` rather than an open record so a caller builds it
+ * through the typed readers above instead of restating which keys the server
+ * reads. Keys travel snake_case in a request body -- `transformKeys` runs on
+ * responses only -- so `markdown_doc` / `required_scope` are the names
+ * `routers/capabilities.py` looks up, and the camelCase arms of
+ * `CapabilityConfig` describe rows that have already made the round trip.
+ *
+ * `autonomy` and `trustClass` are plain strings on purpose, mirroring the server:
+ * a validator endpoint has to be able to *report* a value outside the enum as a
+ * violation, so typing them as `CapabilityAutonomy` / `CapabilityTrustClass`
+ * here would push the rejection into the client and hide the rule.
+ */
+export interface ValidateCapabilityDraftRequest {
+  name: string;
+  category: string;
+  description?: string;
+  config?: CapabilityConfig;
+  autonomy?: string;
+  trustClass?: string;
+}
+
 export const capabilitiesApi = {
   list(category?: string, workspaceId?: string): Promise<CapabilityItemRecord[]> {
     const params: Record<string, string | undefined> = {};
@@ -4125,6 +4332,29 @@ export const capabilitiesApi = {
       capability_name: body.capabilityName,
       category: body.category,
       input_payload: body.inputPayload ?? {},
+    });
+  },
+  /**
+   * Validate an unsaved draft. Nothing is persisted and nothing is executed.
+   *
+   * The counterpart to `test()`, which needs a minted capability id the author
+   * does not have until they save. This one takes the field set a create takes,
+   * so an author can check their work against the server's real validators
+   * before the row exists.
+   *
+   * No workspace argument: the endpoint reads the request-scoped workspace
+   * (`X-Workspace-ID`, which `api.request` derives from the current route), and
+   * `POST /capabilities` uses the same dependency. Sending one in the body would
+   * be a second, unverifiable copy of an identity the server already resolved.
+   */
+  validateDraft(body: ValidateCapabilityDraftRequest): Promise<CapabilityDraftValidationResponse> {
+    return apiClient.post<CapabilityDraftValidationResponse>('/capabilities/validate', {
+      name: body.name,
+      category: body.category,
+      description: body.description ?? '',
+      config: body.config ?? {},
+      ...(body.autonomy !== undefined ? { autonomy: body.autonomy } : {}),
+      ...(body.trustClass !== undefined ? { trust_class: body.trustClass } : {}),
     });
   },
 };

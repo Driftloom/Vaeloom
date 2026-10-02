@@ -21,7 +21,13 @@ import { useToast } from '@/components/shared/Toast';
 import {
   agentCatalogApi,
   capabilitiesApi,
+  capabilityConfigReactRounds,
+  reactRoundsAcceptance,
+  CAPABILITY_MAX_REACT_ROUNDS_KEY,
+  MAX_REACT_ROUNDS,
+  MIN_REACT_ROUNDS,
   type AgentCatalogResponse,
+  type CapabilityItemRecord,
   type CatalogAgent,
   type CapabilityTestResponse,
 } from '@/lib/api-client';
@@ -134,12 +140,29 @@ function coerceAutonomy(value: string | undefined, fallback: AutonomyMode): Auto
   return value && AUTONOMY_VALUES.has(value) ? (value as AutonomyMode) : fallback;
 }
 
-const DEFAULT_REACT_ROUNDS = 15;
+/**
+ * Shown when nothing on this row is set. NOT the effective budget: the resolver
+ * falls through to the agent card and then the deployment setting, so this is a
+ * form default and the panel says so wherever it appears.
+ */
+const DEFAULT_REACT_ROUNDS = 5;
+
+/**
+ * The real resolution order, in the words the resolver's own docstring uses.
+ *
+ * `services/capability_runtime_config.resolve_agent_max_rounds` returns the
+ * deciding layer with the number, and the loop logs it as `REACT_ROUNDS
+ * … rounds=N source=…`, so "why did my agent stop at 3 rounds" is answerable
+ * from the run log rather than from this form.
+ */
+const REACT_ROUNDS_PRECEDENCE = `The run resolves the budget in this order: this workspace's capability row (config.${CAPABILITY_MAX_REACT_ROUNDS_KEY}) → the agent's AgentCard → the server's AGENT_MAX_REACT_ROUNDS setting → 5. Values outside ${MIN_REACT_ROUNDS}–${MAX_REACT_ROUNDS} are clamped server-side and logged, so the number below is refused rather than silently rounded.`;
 
 interface ReactRoundsSetting {
-  value: number;
-  /** True only once `capabilitiesApi.update` confirmed the write. */
-  persisted: boolean;
+  /** The value the server confirmed, or null when it holds none. */
+  rounds: number | null;
+  saving: boolean;
+  /** Why the current input cannot be written, or the server's own error. */
+  issue: string | null;
 }
 
 export const AgentsView: React.FC<AgentsViewProps> = ({
@@ -169,6 +192,31 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
     }
     return map;
   }, [catalog]);
+
+  /**
+   * This workspace's `category='agent'` rows.
+   *
+   * The ReAct budget lives in a row's `config` bag, and the `agents` prop cannot
+   * supply it: the page's mapping of a server row builds a `CapabilityItem`
+   * without a `metadata` field, so reading the budget from there reported "not
+   * saved" after a successful write. These rows are the only place the value the
+   * resolver reads actually exists.
+   */
+  const {
+    data: agentCapabilityRows,
+    error: agentCapabilityRowsError,
+    mutate: mutateAgentCapabilityRows,
+  } = useSWR(
+    workspaceId ? ['agent-capability-rows', workspaceId] : null,
+    () => capabilitiesApi.list('agent', workspaceId),
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  );
+
+  const agentCapabilityByName = useMemo(() => {
+    const map = new Map<string, CapabilityItemRecord>();
+    for (const row of agentCapabilityRows ?? []) map.set(row.name, row);
+    return map;
+  }, [agentCapabilityRows]);
 
   const defaultAgentId = useMemo(() => {
     if (initialAgentName) {
@@ -207,14 +255,29 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
   // Autonomy and round budget are per-agent server state, so they are re-seeded
   // whenever the selection changes rather than leaking across agents.
   const [autonomyMode, setAutonomyMode] = useState<AutonomyMode>('autonomous');
+  const [roundsText, setRoundsText] = useState(String(DEFAULT_REACT_ROUNDS));
   const [reactRounds, setReactRounds] = useState<ReactRoundsSetting>({
-    value: DEFAULT_REACT_ROUNDS,
-    persisted: false,
+    rounds: null,
+    saving: false,
+    issue: null,
   });
-  // The last value the server confirmed, so a blur that changed nothing does not
-  // issue a PATCH.
-  const [savedRounds, setSavedRounds] = useState<number | null>(null);
   const [savingAutonomy, setSavingAutonomy] = useState(false);
+
+  const selectedCapabilityRow = selectedAgent
+    ? (agentCapabilityByName.get(selectedAgent.name) ?? null)
+    : null;
+
+  /**
+   * What this row contributes, decided by the same rules the resolver applies.
+   *
+   * `rejected` is the state the old copy could not express: the operator saved
+   * something, the row holds it, and the run ignores it. Presenting the stored
+   * number in the input would claim a budget the run will not use.
+   */
+  const storedRounds = useMemo(
+    () => capabilityConfigReactRounds(selectedCapabilityRow?.config),
+    [selectedCapabilityRow],
+  );
 
   useEffect(() => {
     if (!selectedAgent) return;
@@ -229,19 +292,17 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
     setCopiedContract(false);
   }, [selectedAgent, selectedCatalogEntry]);
 
-  // `maxReActRounds` lives in the capability's `config` bag, which is only
-  // readable once the agent is a real workspace capability row. Until a catalog
-  // entry is attached the setting is presented as unset rather than defaulted.
   useEffect(() => {
-    const stored = selectedAgent?.metadata?.['maxReActRounds'];
-    const parsed = typeof stored === 'number' && Number.isFinite(stored) ? stored : null;
-    setReactRounds(
-      parsed === null
-        ? { value: DEFAULT_REACT_ROUNDS, persisted: false }
-        : { value: parsed, persisted: true },
-    );
-    setSavedRounds(parsed);
-  }, [selectedAgent]);
+    if (storedRounds.state === 'honoured') {
+      setRoundsText(String(storedRounds.rounds));
+      setReactRounds({ rounds: storedRounds.rounds, saving: false, issue: null });
+      return;
+    }
+    // Absent, rejected, or not read yet: the field shows the form default and the
+    // badge says the row holds nothing usable. It is never presented as saved.
+    setRoundsText(String(DEFAULT_REACT_ROUNDS));
+    setReactRounds({ rounds: null, saving: false, issue: null });
+  }, [storedRounds]);
 
   const isCanonical = selectedCatalogEntry?.isCanonical ?? null;
 
@@ -291,31 +352,63 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
     [selectedAgent, autonomyMode, toast],
   );
 
-  const handleCommitRounds = useCallback(
-    async (next: number) => {
-      if (!selectedAgent) return;
-      const previous = reactRounds;
-      setReactRounds({ value: next, persisted: false });
-      try {
-        await capabilitiesApi.update(selectedAgent.id, { config: { maxReActRounds: next } });
-        setReactRounds({ value: next, persisted: true });
-        setSavedRounds(next);
-        toast({
-          tone: 'success',
-          title: `ReAct round budget set to ${next}`,
-          detail: 'Stored in the capability config bag. No agent runtime reads it yet.',
-        });
-      } catch (err) {
-        setReactRounds(previous);
-        toast({
-          tone: 'error',
-          title: 'Round budget not saved',
-          detail: err instanceof Error ? err.message : 'The server write failed.',
-        });
-      }
-    },
-    [selectedAgent, reactRounds, toast],
-  );
+  /**
+   * Write the round budget, or refuse to.
+   *
+   * Two things this deliberately does not do. It does not clamp: a value the
+   * server would clamp is refused here with the server's own rule as the
+   * message, because a silent clamp is indistinguishable from a setting that was
+   * never applied. And it does not claim success from the number that was typed:
+   * the badge flips to "saved" only when the response the server sent still
+   * carries that value, so a clamped write shows as unsaved rather than as the
+   * operator's number.
+   *
+   * The key is `max_react_rounds` — the snake_case name the resolver reads. The
+   * previous version wrote `maxReActRounds`, which is the shape `transformKeys`
+   * produces on the way *out* of the API and the name of no config key anything
+   * reads, so the value it stored was never honoured.
+   */
+  const handleCommitRounds = useCallback(async () => {
+    if (!selectedAgent) return;
+    const verdict = reactRoundsAcceptance(roundsText);
+    if (!verdict.ok) {
+      setReactRounds((previous) => ({ ...previous, issue: verdict.reason }));
+      return;
+    }
+    if (verdict.rounds === reactRounds.rounds) {
+      setReactRounds((previous) => ({ ...previous, issue: null }));
+      return;
+    }
+    setReactRounds({ rounds: reactRounds.rounds, saving: true, issue: null });
+    try {
+      const updated = await capabilitiesApi.update(selectedAgent.id, {
+        config: { [CAPABILITY_MAX_REACT_ROUNDS_KEY]: verdict.rounds },
+      });
+      const stored = capabilityConfigReactRounds(updated.config);
+      setReactRounds({
+        rounds: stored.state === 'honoured' ? stored.rounds : null,
+        saving: false,
+        issue:
+          stored.state === 'honoured'
+            ? null
+            : `The server accepted the write but the row does not hold ${verdict.rounds}.`,
+      });
+      void mutateAgentCapabilityRows();
+      toast({
+        tone: 'success',
+        title: `ReAct round budget set to ${verdict.rounds}`,
+        detail: `Stored as config.${CAPABILITY_MAX_REACT_ROUNDS_KEY} on this workspace's ${selectedAgent.name} row. A run resolves this row first, then the agent card, then AGENT_MAX_REACT_ROUNDS.`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'The server write failed.';
+      setReactRounds({ rounds: reactRounds.rounds, saving: false, issue: message });
+      toast({
+        tone: 'error',
+        title: 'Round budget not saved',
+        detail: message,
+      });
+    }
+  }, [selectedAgent, roundsText, reactRounds.rounds, mutateAgentCapabilityRows, toast]);
   /**
    * Contract probe. `POST /agents/capabilities/test` reads the agent's declared
    * contract out of the live registry and executes nothing, so the panel reports
@@ -354,7 +447,10 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
       isCanonical: entry ? entry.isCanonical : null,
       registry: entry ? 'live' : 'not-registered',
       autonomy: autonomyMode,
-      maxReActRounds: reactRounds.persisted ? reactRounds.value : null,
+      // Only what the row actually holds. A default typed into an empty input is
+      // not a configured budget, and a rejected stored value is not one either.
+      maxReActRounds: reactRounds.rounds,
+      maxReActRoundsSource: reactRounds.rounds === null ? null : 'workspace-capability-row',
       requiredScopes: entry
         ? Array.from(new Set(entry.tools.map((t) => t.requiredScope).filter(Boolean))).sort()
         : selectedAgent.requiredScope
@@ -721,48 +817,111 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                     )}
                   </div>
 
-                  <div className="p-4 rounded-xl bg-surface border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <div className="text-xs font-semibold text-text">ReAct round budget</div>
-                      <div className="text-xs text-text-muted mt-0.5">
-                        Stored in the capability config bag. No agent runtime reads this field yet,
-                        so it is a recorded setting, not an enforced guardrail.
+                  <div
+                    role="group"
+                    aria-labelledby="react-rounds-heading"
+                    className="p-4 rounded-xl bg-surface border border-border space-y-2.5"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h4 id="react-rounds-heading" className="text-xs font-semibold text-text">
+                          ReAct round budget
+                        </h4>
+                        <p className="text-2xs text-text-muted mt-1 leading-relaxed">
+                          {REACT_ROUNDS_PRECEDENCE}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <label
+                          htmlFor="agent-react-rounds"
+                          className="text-2xs font-sans text-text-muted"
+                        >
+                          Max rounds
+                        </label>
+                        <input
+                          id="agent-react-rounds"
+                          type="number"
+                          step={1}
+                          inputMode="numeric"
+                          min={MIN_REACT_ROUNDS}
+                          max={MAX_REACT_ROUNDS}
+                          value={roundsText}
+                          disabled={reactRounds.saving}
+                          aria-invalid={reactRounds.issue !== null}
+                          aria-describedby="agent-react-rounds-state"
+                          onChange={(e) => {
+                            setRoundsText(e.target.value);
+                            setReactRounds((previous) => ({ ...previous, issue: null }));
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              void handleCommitRounds();
+                            }
+                          }}
+                          onBlur={() => void handleCommitRounds()}
+                          className="w-16 bg-surface-elevated border border-border rounded px-2 py-1 text-xs font-mono text-text text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus:border-primary disabled:opacity-60"
+                        />
+                        <Badge
+                          variant={
+                            reactRounds.issue !== null
+                              ? 'error'
+                              : reactRounds.rounds !== null
+                                ? 'success'
+                                : 'warning'
+                          }
+                          size="sm"
+                        >
+                          {reactRounds.issue !== null
+                            ? 'Not saved'
+                            : reactRounds.rounds !== null
+                              ? `Saved: ${reactRounds.rounds}`
+                              : 'Not set on this row'}
+                        </Badge>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <label
-                        htmlFor="agent-react-rounds"
-                        className="text-2xs font-sans text-text-muted"
-                      >
-                        Max rounds
-                      </label>
-                      <input
-                        id="agent-react-rounds"
-                        type="number"
-                        min={1}
-                        max={50}
-                        value={reactRounds.value}
-                        onChange={(e) => {
-                          const next = Number(e.target.value);
-                          if (Number.isFinite(next)) {
-                            setReactRounds({
-                              value: Math.min(50, Math.max(1, Math.trunc(next))),
-                              persisted: false,
-                            });
-                          }
-                        }}
-                        onBlur={(e) => {
-                          const next = Number(e.target.value);
-                          if (Number.isFinite(next) && next !== savedRounds) {
-                            void handleCommitRounds(Math.min(50, Math.max(1, Math.trunc(next))));
-                          }
-                        }}
-                        className="w-16 bg-surface-elevated border border-border rounded px-2 py-1 text-xs font-mono text-text text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus:border-primary"
-                      />
-                      <Badge variant={reactRounds.persisted ? 'success' : 'warning'} size="sm">
-                        {reactRounds.persisted ? 'Saved' : 'Not saved'}
-                      </Badge>
-                    </div>
+
+                    <p
+                      id="agent-react-rounds-state"
+                      role="status"
+                      className="text-2xs leading-relaxed text-text-muted"
+                    >
+                      {reactRounds.issue !== null ? (
+                        <span className="text-error">{reactRounds.issue} Nothing was written.</span>
+                      ) : storedRounds.state === 'rejected' ? (
+                        <span className="text-warning">
+                          This row stores{' '}
+                          <code className="font-mono">
+                            {CAPABILITY_MAX_REACT_ROUNDS_KEY}={String(storedRounds.stored)}
+                          </code>
+                          , which the resolver rejects: {storedRounds.reason} The run falls back to
+                          the agent card, then AGENT_MAX_REACT_ROUNDS, then 5.
+                        </span>
+                      ) : agentCapabilityRowsError ? (
+                        <span className="text-error">
+                          This workspace&apos;s capability rows could not be read (
+                          {agentCapabilityRowsError.message}), so what the row holds is unknown. The
+                          input was not seeded from it.
+                        </span>
+                      ) : storedRounds.state === 'absent' ? (
+                        <>
+                          No <code className="font-mono">{CAPABILITY_MAX_REACT_ROUNDS_KEY}</code> on
+                          this agent&apos;s row, so this row contributes nothing and the run uses
+                          the agent card, then the server setting, then 5. {DEFAULT_REACT_ROUNDS} in
+                          the box is a form default, not a stored value.
+                        </>
+                      ) : (
+                        <>
+                          Stored as{' '}
+                          <code className="font-mono">
+                            {CAPABILITY_MAX_REACT_ROUNDS_KEY}={reactRounds.rounds}
+                          </code>{' '}
+                          on this workspace&apos;s <code className="font-mono">agent</code> row, and
+                          this is the layer the run resolves first. The run log records the deciding
+                          layer as <code className="font-mono">REACT_ROUNDS … source=</code>.
+                        </>
+                      )}
+                    </p>
                   </div>
                 </div>
               </TabPanel>

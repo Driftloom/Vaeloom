@@ -152,7 +152,7 @@ export function DocumentPreviewModal({
                 <Link
                   href={`/workspace/${targetWsId}/memory?query=${encodeURIComponent(noteTitle)}`}
                   className="px-2.5 py-1 rounded-md bg-purple-500/15 text-purple-300 hover:bg-purple-500/25 border border-purple-500/40 font-medium inline-flex items-center gap-1.5 transition-colors text-xs shadow-sm"
-                  title="View in Second Brain Graph"
+                  title="View in Memory Graph"
                 >
                   <svg
                     className="w-3.5 h-3.5 text-purple-400"
@@ -167,7 +167,7 @@ export function DocumentPreviewModal({
                       strokeLinejoin="round"
                     />
                   </svg>
-                  <span>View in Second Brain Graph</span>
+                  <span>View in Memory Graph</span>
                 </Link>
               )}
               <a

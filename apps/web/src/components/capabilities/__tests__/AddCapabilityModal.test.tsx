@@ -44,14 +44,22 @@ jest.mock('remark-gfm', () => () => {});
 
 const fakeApi = {
   test: jest.fn(),
+  validateDraft: jest.fn(),
+  update: jest.fn(),
 };
 
-jest.mock('@/lib/api-client', () => ({
-  __esModule: true,
-  capabilitiesApi: {
-    test: (body: unknown) => fakeApi.test(body),
-  },
-}));
+jest.mock('@/lib/api-client', () => {
+  const actual = jest.requireActual('@/lib/api-client');
+  return {
+    __esModule: true,
+    ...actual,
+    capabilitiesApi: {
+      test: (body: unknown) => fakeApi.test(body),
+      validateDraft: (body: unknown) => fakeApi.validateDraft(body),
+      update: (id: string, body: unknown) => fakeApi.update(id, body),
+    },
+  };
+});
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -139,11 +147,42 @@ function okValidationResponse(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/**
+ * The unsaved-draft verdict, as `POST /capabilities/validate` sends it.
+ *
+ * `executed` is `false` on every fixture because the server types it
+ * `Literal[False]`: there is no draft validation that ran anything, and a mock
+ * claiming otherwise would render this form as having executed a capability.
+ */
+function draftValidation(overrides: Record<string, unknown> = {}) {
+  return {
+    status: 'success',
+    rulesChecked: 4,
+    violations: [],
+    executed: false,
+    category: 'skill',
+    validatedSource: 'draft',
+    catalogSlug: null,
+    detail:
+      '4 rule(s) evaluated; 0 hard and 0 soft violation(s); nothing was executed or persisted.',
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
   localStorage.clear();
   fakeApi.test.mockResolvedValue(okValidationResponse());
+  fakeApi.validateDraft.mockResolvedValue(draftValidation());
 });
+
+function validateDraftButton(): HTMLElement {
+  return within(dialog()).getByRole('button', { name: /Validate draft against the API/i });
+}
+
+function clickValidateDraft() {
+  fireEvent.click(validateDraftButton());
+}
 
 // ─── The readiness audit ─────────────────────────────────────────────────────
 
@@ -575,7 +614,7 @@ describe('AddCapabilityModal removed fabrication', () => {
     // With no workspace the endpoint cannot be called at all, and the form says so
     // rather than substituting a character count labelled a sandbox run.
     expect(
-      within(dialog()).queryByRole('button', { name: /Validate against the API/i }),
+      within(dialog()).queryByRole('button', { name: /Validate draft against the API/i }),
     ).toBeNull();
     expect(dialog()).toHaveTextContent(/no workspace/i);
     expect(dialog().textContent ?? '').not.toContain('VALIDATED_LOCAL_SYNTAX');
@@ -584,42 +623,16 @@ describe('AddCapabilityModal removed fabrication', () => {
 
   it('never renders an error string in success styling', async () => {
     renderModal({ defaultCategory: 'plugins', workspaceId: 'ws-test-123' });
-    fakeApi.test.mockRejectedValueOnce(new Error('Sandbox refused to start'));
+    fakeApi.validateDraft.mockRejectedValueOnce(new Error('Gateway timeout after 30s'));
 
     setName('honest-plugin');
-    fireEvent.click(within(dialog()).getByRole('button', { name: /Validate against the API/i }));
+    clickValidateDraft();
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(/Request failed: Sandbox refused to start/);
+    expect(alert).toHaveTextContent(/Request failed: Gateway timeout after 30s/);
     expect(alert.className).toContain('text-error');
     expect(alert.className).not.toContain('text-success');
     expect(screen.queryByText(/SANDBOX_SUCCESS/)).toBeNull();
-  });
-
-  it('reports the executed flag and the server rule count verbatim', async () => {
-    renderModal({ defaultCategory: 'skills', workspaceId: 'ws-test-123' });
-    fakeApi.test.mockResolvedValueOnce(
-      okValidationResponse({
-        // `rules_checked` arrives as `rulesChecked`: `transformKeys` runs on every
-        // response body, so the mock has to carry the shape the client delivers or
-        // it is not exercising the reader the component actually uses.
-        result: {
-          skill: 'contract-review',
-          rulesChecked: 6,
-          violations: [
-            { rule: 'required_scope', message: 'no scope declared', line: null, severity: 'error' },
-          ],
-        },
-      }),
-    );
-
-    setName('contract-review');
-    fireEvent.click(within(dialog()).getByRole('button', { name: /Validate against the API/i }));
-
-    const badge = await within(dialog()).findByText(/executed: false/);
-    expect(badge).toHaveTextContent('nothing was run');
-    expect(dialog()).toHaveTextContent('The server ran 6 rules and reported 1 violation.');
-    expect(dialog()).toHaveTextContent('[error] required_scope');
   });
 
   it('gives every category a validation affordance, not just plugins', () => {
@@ -636,11 +649,241 @@ describe('AddCapabilityModal removed fabrication', () => {
       );
       expect(
         within(screen.getByRole('dialog')).getByRole('button', {
-          name: /Validate against the API/i,
+          name: /Validate draft against the API/i,
         }),
       ).toBeInTheDocument();
       view.unmount();
     }
+  });
+});
+
+// ─── Unsaved-draft validation ────────────────────────────────────────────────
+
+describe('AddCapabilityModal draft validation', () => {
+  /**
+   * Every status the endpoint can return, rendered and asserted separately.
+   *
+   * The four are not decoration: `not_validated` in particular is the outcome a
+   * UI is most likely to flatten into a pass, because it arrives with no
+   * violations and no `error`.
+   */
+  it('renders success as a pass, with the real rule count', async () => {
+    renderModal({ defaultCategory: 'skills', workspaceId: 'ws-test-123' });
+    setName('contract-review');
+    fakeApi.validateDraft.mockResolvedValueOnce(
+      draftValidation({ status: 'success', rulesChecked: 7, category: 'skill' }),
+    );
+
+    clickValidateDraft();
+
+    const badge = await within(dialog()).findByText('success');
+    expect(badge.className).toContain('text-success');
+    expect(dialog()).toHaveTextContent('7 rules checked');
+    expect(dialog()).toHaveTextContent('0 violations');
+    expect(dialog()).toHaveTextContent('executed: false');
+  });
+
+  it('renders warning as a pass-with-caveats, not as an error', async () => {
+    renderModal({ defaultCategory: 'skills', workspaceId: 'ws-test-123' });
+    setName('contract-review');
+    fakeApi.validateDraft.mockResolvedValueOnce(
+      draftValidation({
+        status: 'warning',
+        rulesChecked: 5,
+        violations: [
+          {
+            rule: 'SKILL-TRUST-CLASS',
+            message: "trust_class 'made-up' is not one of ['community', 'core_trusted']",
+            line: null,
+            severity: 'soft',
+          },
+        ],
+      }),
+    );
+
+    clickValidateDraft();
+
+    const badge = await within(dialog()).findByText('warning');
+    expect(badge.className).toContain('text-warning');
+    expect(badge.className).not.toContain('text-error');
+    expect(dialog()).toHaveTextContent('the draft is still savable');
+    expect(dialog()).toHaveTextContent('SKILL-TRUST-CLASS');
+  });
+
+  it('renders error with the create-would-reject meaning', async () => {
+    renderModal({ defaultCategory: 'skills', workspaceId: 'ws-test-123' });
+    setName('contract-review');
+    fakeApi.validateDraft.mockResolvedValueOnce(
+      draftValidation({
+        status: 'error',
+        rulesChecked: 3,
+        violations: [
+          {
+            rule: 'NAME-PATTERN',
+            message: 'Capability name contains invalid characters.',
+            line: null,
+            severity: 'hard',
+          },
+        ],
+      }),
+    );
+
+    clickValidateDraft();
+
+    const badge = await within(dialog()).findByText('error');
+    expect(badge.className).toContain('text-error');
+    expect(dialog()).toHaveTextContent('the create path would reject this draft');
+    expect(dialog()).toHaveTextContent('NAME-PATTERN');
+  });
+
+  it('renders not_validated as its own state with the endpoint reason, never as a pass', async () => {
+    renderModal({ defaultCategory: 'skills', workspaceId: 'ws-test-123' });
+    setName('contract-review');
+    fakeApi.validateDraft.mockResolvedValueOnce(
+      draftValidation({
+        status: 'not_validated',
+        rulesChecked: 3,
+        violations: [],
+        validatedSource: 'none',
+        detail:
+          "No validator exists for category 'connector': 3 rule(s) evaluated; 0 hard and 0 soft violation(s). The draft was not approved for anything, only measured.",
+      }),
+    );
+
+    clickValidateDraft();
+
+    const badge = await within(dialog()).findByText('not_validated');
+    // Distinct from both other outcomes: not green, not amber, not red.
+    expect(badge.className).toContain('text-info');
+    expect(badge.className).not.toContain('text-success');
+    expect(badge.className).not.toContain('text-warning');
+    expect(badge.className).not.toContain('text-error');
+    expect(dialog()).toHaveTextContent('no validator exists for this category');
+    expect(dialog()).toHaveTextContent('No validator exists for category');
+    // It must not be described as a pass anywhere in the panel.
+    expect(dialog().textContent ?? '').not.toMatch(/every rule that ran passed/i);
+  });
+
+  it('distinguishes a hard violation from a soft one', async () => {
+    renderModal({ defaultCategory: 'skills', workspaceId: 'ws-test-123' });
+    setName('contract-review');
+    fakeApi.validateDraft.mockResolvedValueOnce(
+      draftValidation({
+        status: 'error',
+        rulesChecked: 4,
+        violations: [
+          { rule: 'PLAYBOOK-STRUCTURE', message: 'no heading', line: 12, severity: 'hard' },
+          {
+            rule: 'SKILL-TRUST-CLASS',
+            message: 'unknown trust class',
+            line: null,
+            severity: 'soft',
+          },
+        ],
+      }),
+    );
+
+    clickValidateDraft();
+
+    const hard = (await within(dialog()).findByText('PLAYBOOK-STRUCTURE')).closest('li');
+    const soft = within(dialog()).getByText('SKILL-TRUST-CLASS').closest('li');
+    expect(hard).not.toBeNull();
+    expect(soft).not.toBeNull();
+    expect(hard).toHaveAttribute('data-severity', 'hard');
+    expect(soft).toHaveAttribute('data-severity', 'soft');
+    expect(hard?.textContent).toContain('line 12');
+    // The soft one carries no line, so it must not render one.
+    expect(soft?.textContent).not.toContain('line');
+    expect(hard?.className).toContain('border-l-error');
+    expect(soft?.className).toContain('border-l-warning');
+    expect(hard?.className).not.toBe(soft?.className);
+  });
+
+  it('says which text the rules read when the verdict came from the catalog', async () => {
+    renderModal({ defaultCategory: 'skills', workspaceId: 'ws-test-123' });
+    setName('resume-tailoring');
+    fakeApi.validateDraft.mockResolvedValueOnce(
+      draftValidation({
+        status: 'success',
+        validatedSource: 'catalog',
+        catalogSlug: 'resume-tailoring',
+      }),
+    );
+
+    clickValidateDraft();
+
+    expect(await within(dialog()).findByText(/validated_source: catalog/)).toBeInTheDocument();
+    expect(dialog()).toHaveTextContent('resume-tailoring');
+    // The distinction has to be load-bearing: a catalog verdict is about the
+    // shipped document, not about what the author has typed.
+    expect(dialog()).toHaveTextContent('not on the edits above');
+  });
+
+  it('says so when the draft was the document that was read', async () => {
+    renderModal({ defaultCategory: 'skills', workspaceId: 'ws-test-123' });
+    setName('contract-review');
+    fakeApi.validateDraft.mockResolvedValueOnce(draftValidation({ validatedSource: 'draft' }));
+
+    clickValidateDraft();
+
+    expect(await within(dialog()).findByText(/validated_source: draft/)).toBeInTheDocument();
+    expect(dialog()).toHaveTextContent('Rules read the document in this form.');
+  });
+
+  it('sends the fields a create would write, under the server category name', async () => {
+    renderModal({ defaultCategory: 'tools', workspaceId: 'ws-test-123' });
+    setName('scoped-tool');
+    fireEvent.change(within(dialog()).getByLabelText('Required security scope'), {
+      target: { value: 'memory.write' },
+    });
+    clickValidateDraft();
+
+    await waitFor(() => expect(fakeApi.validateDraft).toHaveBeenCalledTimes(1));
+    const body = fakeApi.validateDraft.mock.calls[0][0] as {
+      name: string;
+      category: string;
+      autonomy?: string;
+      config: Record<string, unknown>;
+    };
+    // The form slugifies before submitting, so the draft must carry the same slug
+    // or the server judges a name the create path would never send.
+    expect(body.name).toBe('scoped-tool');
+    expect(body.category).toBe('tool');
+    expect(body.autonomy).toBe('autonomous');
+    expect(body.config).toMatchObject({
+      required_scope: 'memory.write',
+      autonomy: 'autonomous',
+    });
+    // The tool validator rejects a draft with no `parameters`; sending a config
+    // without it would report a violation the create path would not hit.
+    expect(body.config['parameters']).toMatchObject({ type: 'object' });
+    // Never the UI's plural label.
+    expect(body.category).not.toBe('tools');
+  });
+
+  it('makes no request at all when there is no identifier to send', async () => {
+    renderModal({ defaultCategory: 'skills', workspaceId: 'ws-test-123' });
+    clickValidateDraft();
+
+    // Scoped to the text, because the empty name field's own inline error is also an
+    // alert and `findByRole` cannot choose between them.
+    const alert = await within(dialog()).findByText(/no identifier to send/i);
+    expect(alert).toHaveAttribute('role', 'alert');
+    expect(alert).toHaveTextContent(/no request was made/i);
+    expect(fakeApi.validateDraft).not.toHaveBeenCalled();
+  });
+
+  it('separates the local form checks from the server verdict in the copy', () => {
+    renderModal({ defaultCategory: 'skills', workspaceId: 'ws-test-123' });
+
+    expect(dialog()).toHaveTextContent('Form checks (this browser only)');
+    expect(dialog()).toHaveTextContent('they are not a server result');
+    expect(dialog()).toHaveTextContent('This call is the authoritative answer');
+    expect(dialog()).toHaveTextContent('POST /api/v1/capabilities/validate');
+    // The endpoint that used to be named here could only report on a row that
+    // did not exist yet.
+    expect(dialog().textContent ?? '').not.toContain('No endpoint validates an unsaved draft');
+    expect(dialog().textContent ?? '').not.toContain('already registered');
   });
 });
 

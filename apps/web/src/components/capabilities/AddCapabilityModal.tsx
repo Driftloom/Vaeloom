@@ -16,8 +16,18 @@ import {
   Textarea,
   Tooltip,
 } from '@vaeloom/ui-kit';
-import { capabilitiesApi } from '@/lib/api-client';
-import type { CapabilityTestResponse } from '@/lib/api-client';
+import {
+  capabilitiesApi,
+  capabilityConfigAutonomy,
+  MAX_REACT_ROUNDS,
+  MIN_REACT_ROUNDS,
+  CAPABILITY_MAX_REACT_ROUNDS_KEY,
+} from '@/lib/api-client';
+import type {
+  CapabilityConfig,
+  CapabilityDraftStatus,
+  CapabilityDraftValidationResponse,
+} from '@/lib/api-client';
 import { getStoredCapabilities } from '@/lib/capabilities-data';
 import type { CapabilityCategory, CapabilityItem } from '@/lib/capabilities-data';
 
@@ -692,7 +702,10 @@ function buildReadiness(draft: Draft): Readiness {
     ];
   } else if (draft.category === 'agents') {
     const unknown = draft.agentTools.filter((id) => !AGENT_TOOL_IDS.has(id));
-    const turnsOk = Number.isInteger(draft.maxTurns) && draft.maxTurns >= 1 && draft.maxTurns <= 30;
+    const turnsOk =
+      Number.isInteger(draft.maxTurns) &&
+      draft.maxTurns >= MIN_REACT_ROUNDS &&
+      draft.maxTurns <= MAX_REACT_ROUNDS;
     checks = [
       identityRow(draft),
       row(
@@ -702,7 +715,7 @@ function buildReadiness(draft: Draft): Readiness {
         turnsOk,
         turnsOk
           ? `${draft.archetype}, "${draft.autonomy}", ${draft.maxTurns} ReAct round(s).`
-          : `maxTurns=${draft.maxTurns}; the runtime accepts 1 to 30.`,
+          : `max_react_rounds=${draft.maxTurns}; the runtime honours ${MIN_REACT_ROUNDS} to ${MAX_REACT_ROUNDS} and clamps anything outside that with a log.`,
       ),
       row(
         'prompt',
@@ -956,7 +969,7 @@ Turn a multi-turn objective into verified sub-goals and stop when a step cannot 
     agent: {
       archetype: 'specialist',
       modelTier: 'pro',
-      maxTurns: 15,
+      maxTurns: 8,
       tools: ['search_documents', 'browse_job_page', 'query_graph'],
       prompt: `You are Research Analyst, an enterprise agent in Vaeloom.
 Role: investigate a topic, synthesise findings, format a brief.
@@ -1089,15 +1102,15 @@ function buildMarkdownDoc(draft: Draft, inputSchema: InputSchema): string {
 }
 
 /**
- * The create payload.
+ * The `config` bag this form authors, in the server's own snake_case.
  *
- * `metadata` keys are the server's own snake_case because request bodies are
- * `JSON.stringify`-ed verbatim (`transformKeys` runs on responses only). The page
- * spreads `metadata` into `config` and drops `CapabilityItem.requiredScope`, so the
- * scope has to travel here or it is silently lost. Skills get no invented
- * `required_scope`: this form never asks for one.
+ * Split out of `buildCapability` because two callers need it and they must not
+ * disagree: the create payload, and the draft sent to
+ * `POST /capabilities/validate`. A validator pointed at a different config than
+ * the one that will be saved is how a form earns a clean verdict for a draft the
+ * server would reject.
  */
-function buildCapability(draft: Draft, inputSchema: InputSchema): CapabilityItem {
+function buildCapabilityConfig(draft: Draft, inputSchema: InputSchema): Record<string, unknown> {
   const { category, name } = draft;
   const slug = slugify(name);
   const scope =
@@ -1139,7 +1152,11 @@ function buildCapability(draft: Draft, inputSchema: InputSchema): CapabilityItem
     Object.assign(metadata, {
       archetype: draft.archetype,
       model_tier: draft.modelTier,
-      max_turns: draft.maxTurns,
+      // `max_react_rounds` is the key
+      // `services/capability_runtime_config.resolve_agent_max_rounds` reads, and
+      // the field `AgentCard` declares. `max_turns`, which this form wrote
+      // before, is read by nothing on the server.
+      max_react_rounds: draft.maxTurns,
       system_prompt: draft.prompt,
       tools: draft.agentTools,
     });
@@ -1149,6 +1166,60 @@ function buildCapability(draft: Draft, inputSchema: InputSchema): CapabilityItem
       returns: { type: 'object', properties: { result: { type: 'string' } } },
     });
   }
+  return metadata;
+}
+
+/**
+ * The exact config `POST /capabilities` will receive for this draft.
+ *
+ * The page adds `parameters`, `doc` and `tags` on top of `metadata`; this adds
+ * the same three so the endpoint measures the payload rather than a subset of
+ * it. `parameters` matters most: the tool validator rejects a draft whose schema
+ * is absent, and sending a config without it would report a violation the create
+ * path would not hit.
+ */
+function buildDraftConfig(draft: Draft, inputSchema: InputSchema): CapabilityConfig {
+  const base = buildCapabilityConfig(draft, inputSchema);
+  const config: CapabilityConfig = {
+    ...base,
+    parameters: inputSchema,
+    doc: buildMarkdownDoc(draft, inputSchema),
+    tags: draft.tags,
+  };
+  return config;
+}
+
+/** The categories `routers/capabilities.py` accepts; the UI names are plural. */
+const SERVER_CATEGORY: Record<CapabilityCategory, string> = {
+  agents: 'agent',
+  skills: 'skill',
+  tools: 'tool',
+  mcp: 'mcp',
+  plugins: 'plugin',
+  connectors: 'connector',
+};
+
+/**
+ * The create payload.
+ *
+ * `metadata` keys are the server's own snake_case because request bodies are
+ * `JSON.stringify`-ed verbatim (`transformKeys` runs on responses only). The page
+ * spreads `metadata` into `config` and drops `CapabilityItem.requiredScope`, so the
+ * scope has to travel here or it is silently lost. Skills get no invented
+ * `required_scope`: this form never asks for one.
+ */
+function buildCapability(draft: Draft, inputSchema: InputSchema): CapabilityItem {
+  const { category, name } = draft;
+  const slug = slugify(name);
+  const metadata = buildCapabilityConfig(draft, inputSchema);
+  const scope =
+    category === 'tools'
+      ? draft.toolScope
+      : category === 'mcp'
+        ? 'connector.mcp.execute'
+        : category === 'skills'
+          ? undefined
+          : 'system.execute';
 
   const triggers = draft.triggers
     .split(',')
@@ -1180,51 +1251,31 @@ function buildCapability(draft: Draft, inputSchema: InputSchema): CapabilityItem
 
 // ─── Server validation outcome ───────────────────────────────────────────────
 
-interface RuleViolation {
-  rule: string;
-  message: string;
-  line: number | null;
-  severity: string;
-}
-
-/**
- * The skill branch of `POST /agents/capabilities/test` reports the server's own
- * `rules_checked` and `violations`. `CapabilityTestResponse` pins the envelope but
- * not `result`, so this is read as open data rather than asserted into a type.
- */
-function readViolations(result: unknown): { checked: number | null; violations: RuleViolation[] } {
-  if (result === null || typeof result !== 'object') return { checked: null, violations: [] };
-  const src = result as Record<string, unknown>;
-  const raw = Array.isArray(src['violations']) ? src['violations'] : [];
-  return {
-    checked: typeof src['rulesChecked'] === 'number' ? src['rulesChecked'] : null,
-    violations: raw.flatMap((entry): RuleViolation[] => {
-      if (entry === null || typeof entry !== 'object') return [];
-      const item = entry as Record<string, unknown>;
-      return [
-        {
-          rule: typeof item['rule'] === 'string' ? item['rule'] : 'unknown rule',
-          message: typeof item['message'] === 'string' ? item['message'] : '(no message)',
-          line: typeof item['line'] === 'number' ? item['line'] : null,
-          severity: typeof item['severity'] === 'string' ? item['severity'] : 'unknown',
-        },
-      ];
-    }),
-  };
-}
-
-type TestOutcome =
+type DraftOutcome =
   | { kind: 'idle' }
   | { kind: 'running' }
-  | { kind: 'done'; response: CapabilityTestResponse }
+  | { kind: 'done'; response: CapabilityDraftValidationResponse }
   | { kind: 'request_failed'; error: string };
 
-const STATUS_TONE: Record<string, 'success' | 'warning' | 'error' | 'default'> = {
+/**
+ * `not_validated` gets `info`, deliberately not `success` and not `warning`.
+ *
+ * It means the category is real but no validator covers it, so only the shared
+ * draft rules ran. Painting it green claims an approval nobody gave; painting it
+ * amber implies something failed. It is a third thing and it looks like one.
+ */
+const DRAFT_STATUS_TONE: Record<CapabilityDraftStatus, 'success' | 'warning' | 'error' | 'info'> = {
   success: 'success',
   warning: 'warning',
   error: 'error',
-  skipped: 'warning',
-  not_registered: 'warning',
+  not_validated: 'info',
+};
+
+const DRAFT_STATUS_LABEL: Record<CapabilityDraftStatus, string> = {
+  success: 'success — every rule that ran passed',
+  warning: 'warning — only soft rules failed, so the draft is still savable',
+  error: 'error — a hard rule failed, so the create path would reject this draft',
+  not_validated: 'not_validated — no validator exists for this category',
 };
 
 const stringify = (value: unknown) => {
@@ -1236,70 +1287,116 @@ const stringify = (value: unknown) => {
 };
 
 /**
- * The API's verdict, verbatim.
+ * The API's verdict on the unsaved draft, verbatim.
  *
- * `executed` appears on every row because `status: 'success'` from this endpoint
- * means "the declared contract validated", not "something ran". The previous
- * plugin panel omitted that distinction and printed an error string inside a
- * success-coloured block.
+ * Every field the endpoint sends is rendered and nothing is added to it: the
+ * status word, the real rule count, `executed: false` and which source the rules
+ * came from. `rules_checked` is the number of rules that ran, which is not the
+ * violation count and not a score, so it is labelled as a count of rules.
+ *
+ * Severity is structural, not a word in a sentence: a hard violation and a soft
+ * one are different facts about whether the create path would reject the draft,
+ * and the previous single-colour list rendered them identically.
  */
-function ValidationOutcome({
-  outcome,
-  isSkill,
-}: {
-  outcome: CapabilityTestResponse;
-  isSkill: boolean;
-}) {
-  const { checked, violations } = isSkill
-    ? readViolations(outcome.result)
-    : { checked: null, violations: [] };
-
+function DraftValidationOutcome({ outcome }: { outcome: CapabilityDraftValidationResponse }) {
   return (
-    <div className="space-y-2 border border-border rounded-lg p-2.5 bg-surface">
+    <div className="space-y-2.5 border border-border rounded-lg p-2.5 bg-surface">
       <div className="flex items-center gap-2 flex-wrap">
-        <Badge variant={STATUS_TONE[outcome.status] ?? 'default'} size="sm">
+        <Badge variant={DRAFT_STATUS_TONE[outcome.status]} size="sm">
           {outcome.status}
         </Badge>
-        <Badge variant={outcome.executed ? 'warning' : 'default'} size="sm">
-          {outcome.executed
-            ? 'executed: true — the server really ran something'
-            : 'executed: false — nothing was run'}
+        <Badge variant="default" size="sm">
+          executed: false — nothing was run
         </Badge>
-        <span className="text-2xs font-mono text-text-muted">
-          {outcome.executionDurationMs}ms server-side
-        </span>
       </div>
 
-      {outcome.validationErrors.length > 0 && (
-        <ul className="space-y-1">
-          {outcome.validationErrors.map((message, index) => (
-            <li key={index} className="text-2xs text-warning font-mono">
-              {message}
-            </li>
-          ))}
+      <p className="text-2xs text-text-secondary leading-relaxed">
+        {DRAFT_STATUS_LABEL[outcome.status]}
+      </p>
+
+      <p className="text-2xs font-mono text-text-secondary">
+        {outcome.rulesChecked} rule{outcome.rulesChecked === 1 ? '' : 's'} checked ·{' '}
+        {outcome.violations.length} violation{outcome.violations.length === 1 ? '' : 's'}
+      </p>
+
+      <DraftSourceNote outcome={outcome} />
+
+      {outcome.detail && (
+        <p className="text-2xs font-mono text-text-secondary leading-relaxed break-words">
+          {outcome.detail}
+        </p>
+      )}
+
+      {outcome.violations.length > 0 && (
+        <ul className="space-y-1.5">
+          {outcome.violations.map((violation, index) => {
+            const hard = violation.severity === 'hard';
+            return (
+              <li
+                key={`${violation.rule}-${index}`}
+                data-severity={violation.severity}
+                className={`p-2 rounded border-l-2 bg-surface-elevated ${
+                  hard
+                    ? 'border-l-error border border-error/30'
+                    : 'border-l-warning border border-warning/30'
+                }`}
+              >
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <Badge variant={hard ? 'error' : 'warning'} size="sm">
+                    <span aria-hidden="true">{hard ? '✗' : '!'}</span>{' '}
+                    {violation.severity === 'hard' ? 'hard' : 'soft'}
+                  </Badge>
+                  <span className="text-2xs font-mono font-semibold text-text">
+                    {violation.rule}
+                  </span>
+                  {typeof violation.line === 'number' && (
+                    <span className="text-2xs font-mono text-text-muted">
+                      line {violation.line}
+                    </span>
+                  )}
+                </div>
+                <p className="text-2xs text-text-secondary leading-relaxed mt-1">
+                  {violation.message}
+                </p>
+              </li>
+            );
+          })}
         </ul>
       )}
 
-      {checked !== null && (
-        <p className="text-2xs text-text-secondary">
-          The server ran {checked} rule{checked === 1 ? '' : 's'} and reported {violations.length}{' '}
-          violation{violations.length === 1 ? '' : 's'}.
-        </p>
-      )}
-
-      {violations.map((violation, index) => (
-        <p key={index} className="text-2xs font-mono text-warning">
-          [{violation.severity}] {violation.rule}
-          {violation.line !== null ? ` (line ${violation.line})` : ''}: {violation.message}
-        </p>
-      ))}
-
-      {outcome.result != null && (
-        <pre className="p-2 rounded bg-surface-elevated border border-border font-mono text-2xs text-text max-h-40 overflow-auto whitespace-pre-wrap break-all">
-          {stringify(outcome.result)}
+      <details className="text-2xs">
+        <summary className="cursor-pointer text-text-muted font-mono">Response body</summary>
+        <pre className="p-2 rounded bg-surface-elevated border border-border font-mono text-2xs text-text max-h-40 overflow-auto whitespace-pre-wrap break-all mt-1">
+          {stringify(outcome)}
         </pre>
-      )}
+      </details>
     </div>
+  );
+}
+
+/**
+ * Which text the rules above actually read.
+ *
+ * `catalog` is the important one: the author is editing a copy of a bundled
+ * document, so a clean verdict is about the shipped text and says nothing about
+ * the edits on screen. Presenting it as a pass on their draft would be the exact
+ * inversion of what it means.
+ */
+function DraftSourceNote({ outcome }: { outcome: CapabilityDraftValidationResponse }) {
+  const note: Record<CapabilityDraftValidationResponse['validatedSource'], string> = {
+    draft: 'Rules read the document in this form.',
+    catalog: `Rules read the bundled catalog document${
+      outcome.catalogSlug ? ` (${outcome.catalogSlug})` : ''
+    }, because this draft carried no document of its own — this is a verdict on the shipped text, not on the edits above.`,
+    delegated:
+      'A validator this endpoint does not own did the checking (a registry, a config validator or a schema).',
+    none: 'Nothing validated the substance of this draft; only the shared draft rules ran.',
+  };
+  return (
+    <p className="text-2xs text-text-muted leading-relaxed">
+      <span className="font-mono">validated_source: {outcome.validatedSource}</span> —{' '}
+      {note[outcome.validatedSource]}
+    </p>
   );
 }
 
@@ -1393,11 +1490,15 @@ function ReadinessPanel({ readiness }: { readiness: Readiness }) {
   return (
     <div className="space-y-2">
       <div role="status" aria-live="polite" className="flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold text-text">Form checks</span>
+        <span className="text-xs font-semibold text-text">Form checks (this browser only)</span>
         <Badge variant={blocked ? 'error' : 'info'} size="sm">
           {readiness.passedCount} of {readiness.applicable} applicable checks passed
         </Badge>
       </div>
+      <p className="text-2xs text-text-muted leading-relaxed">
+        Computed from the form state as you type, with no request. These mirror rules the server
+        also enforces; they are not a server result.
+      </p>
       {readiness.applicableWeight > 0 && (
         <p className="text-2xs text-text-muted font-mono">
           {readiness.earnedWeight} of {readiness.applicableWeight} weight points
@@ -1760,7 +1861,7 @@ export function AddCapabilityModal({
 
   const [presetSearch, setPresetSearch] = useState('');
   const [presetFilter, setPresetFilter] = useState('all');
-  const [testOutcome, setTestOutcome] = useState<TestOutcome>({ kind: 'idle' });
+  const [draftOutcome, setDraftOutcome] = useState<DraftOutcome>({ kind: 'idle' });
   const [issues, setIssues] = useState<FieldIssue[]>([]);
   const [collisions, setCollisions] = useState<ReadonlySet<string>>(() => new Set<string>());
 
@@ -1797,7 +1898,7 @@ export function AddCapabilityModal({
     setCategory(defaultCategory);
     setIssues([]);
     setImportError(null);
-    setTestOutcome({ kind: 'idle' });
+    setDraftOutcome({ kind: 'idle' });
     submittingRef.current = false;
     lastFocusedRef.current = document.activeElement as HTMLElement | null;
     return () => lastFocusedRef.current?.focus?.();
@@ -1956,7 +2057,7 @@ export function AddCapabilityModal({
     setDescription(preset.description);
     setAutonomy(preset.autonomy);
     setIssues([]);
-    setTestOutcome({ kind: 'idle' });
+    setDraftOutcome({ kind: 'idle' });
     if (preset.doc) setDoc(preset.doc);
     if (preset.triggers) setTriggers(preset.triggers.join(', '));
     if (preset.parameters) setToolParams(preset.parameters);
@@ -2149,78 +2250,60 @@ export function AddCapabilityModal({
 
   const canValidate = Boolean(workspaceId);
 
-  const runValidation = useCallback(async () => {
-    if (!workspaceId) return;
-    if (category === 'plugins') {
-      const payload = parseJsonObject(testPayload, 'The payload');
-      if (!payload.ok) {
-        setTestPayloadIssue(payload.reason);
-        return;
-      }
-      setTestPayloadIssue(null);
-      setTestOutcome({ kind: 'running' });
-      try {
-        setTestOutcome({
-          kind: 'done',
-          // With no row registered under this name the handler falls back to
-          // `input_payload`, so this validates the draft manifest rather than a
-          // stored one. That fallback is the server's behaviour, not an
-          // assumption this form makes about it.
-          response: await capabilitiesApi.test({
-            workspaceId,
-            capabilityName: name || 'plugin-under-authoring',
-            category: 'plugin',
-            inputPayload: {
-              ...payload.value,
-              name,
-              version: '1.0.0',
-              min_app_version: minAppVersion,
-              author: pluginAuthor,
-              description,
-              license: pluginLicense,
-              entry_point: `${slugify(name) || 'plugin'}.py`,
-              tags,
-              permissions: parseJsonObject(pluginPermissions, 'Permissions').value,
-            },
-          }),
-        });
-      } catch (err) {
-        setTestOutcome({
-          kind: 'request_failed',
-          error: err instanceof Error ? err.message : 'The validation request failed.',
-        });
-      }
+  /**
+   * Validate the unsaved draft.
+   *
+   * `POST /capabilities/validate` measures the fields a create would write, so
+   * the config sent here is built by the same function the create payload uses
+   * (`buildDraftConfig`). The previous version of this handler called
+   * `POST /agents/capabilities/test`, which looks a capability up *by name in the
+   * database* — so inside this modal it could only ever report on a row that did
+   * not exist yet, or on a catalog entry with the same name.
+   *
+   * The plugin payload editor is not part of the draft: `testPayload` is a sample
+   * `run(input)` call, and the sandbox handler is what a plugin actually declares.
+   * Sending the sample instead of the handler would have the registry validator
+   * read the wrong document, so the payload editor no longer feeds this call.
+   *
+   * Not wrapped in `useCallback`, for the same reason `submit` is not: it reads
+   * the freshly built `draft`, and a dependency array would either be thirty
+   * identifiers long or a lie about what it depends on.
+   */
+  async function runDraftValidation() {
+    const slug = slugify(name);
+    if (!slug) {
+      setDraftOutcome({
+        kind: 'request_failed',
+        error:
+          'There is no identifier to send. The server requires a name of at least one character, so no request was made and no verdict was obtained.',
+      });
       return;
     }
 
-    setTestOutcome({ kind: 'running' });
+    const config = buildDraftConfig(draft, inputSchema);
+    setTestPayloadIssue(null);
+    setDraftOutcome({ kind: 'running' });
     try {
-      setTestOutcome({
+      setDraftOutcome({
         kind: 'done',
-        response: await capabilitiesApi.test({
-          workspaceId,
-          capabilityName: name || 'unnamed-draft',
-          category: category === 'skills' ? 'skill' : category === 'agents' ? 'agent' : category,
+        response: await capabilitiesApi.validateDraft({
+          name: slug,
+          category: SERVER_CATEGORY[category],
+          description,
+          config,
+          // Read back through the typed getter rather than sent from the raw
+          // select state, so the top-level field and `config.autonomy` cannot
+          // disagree about what this form is authoring.
+          autonomy: capabilityConfigAutonomy(config),
         }),
       });
     } catch (err) {
-      setTestOutcome({
+      setDraftOutcome({
         kind: 'request_failed',
         error: err instanceof Error ? err.message : 'The validation request failed.',
       });
     }
-  }, [
-    workspaceId,
-    category,
-    name,
-    description,
-    tags,
-    testPayload,
-    minAppVersion,
-    pluginAuthor,
-    pluginLicense,
-    pluginPermissions,
-  ]);
+  }
 
   const filteredPresets = PRESETS.filter((preset) => {
     if (presetFilter !== 'all' && preset.category !== presetFilter) return false;
@@ -2449,7 +2532,14 @@ export function AddCapabilityModal({
           rows={3}
           spellCheck={false}
           value={testPayload}
+          helperText="A sample input for your own run(input) call. It is not sent anywhere: draft validation reads the handler and the manifest."
           onChange={(event) => setTestPayload(event.target.value)}
+          onBlur={() => {
+            // Local parse only, and it never blocks the draft call: this payload
+            // is not part of the request, so a malformed sample is a note about
+            // the author's own test harness rather than a server verdict.
+            setTestPayloadIssue(parseJsonObject(testPayload, 'The payload').reason || null);
+          }}
         />
       </div>
       <Textarea
@@ -2707,7 +2797,7 @@ export function AddCapabilityModal({
                       onClick={() => {
                         setCategory(choice.id);
                         setIssues([]);
-                        setTestOutcome({ kind: 'idle' });
+                        setDraftOutcome({ kind: 'idle' });
                       }}
                       className={`flex flex-col items-center justify-center p-2 rounded-xl border text-xs font-medium transition-all ${
                         category === choice.id
@@ -2783,13 +2873,15 @@ export function AddCapabilityModal({
                         <Input
                           label="Max ReAct rounds"
                           type="number"
-                          min={1}
-                          max={30}
-                          helperText="The runtime accepts 1 to 30."
+                          min={MIN_REACT_ROUNDS}
+                          max={MAX_REACT_ROUNDS}
+                          helperText={`Stored as config.${CAPABILITY_MAX_REACT_ROUNDS_KEY}. The runtime resolves the budget from this row, then the agent card, then AGENT_MAX_REACT_ROUNDS (default 5), then 5 — and clamps anything outside ${MIN_REACT_ROUNDS}–${MAX_REACT_ROUNDS} with a log.`}
                           value={maxTurns}
-                          onChange={(event) =>
-                            setMaxTurns(Number.parseInt(event.target.value, 10) || 0)
-                          }
+                          onChange={(event) => {
+                            const parsed = Number.parseInt(event.target.value, 10);
+                            if (Number.isNaN(parsed)) return;
+                            setMaxTurns(parsed);
+                          }}
                         />
                         <FormField
                           label={`Assigned workspace tools (${agentTools.length} selected)`}
@@ -2913,16 +3005,18 @@ export function AddCapabilityModal({
 
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <span className="text-xs font-semibold text-text">Server validation</span>
+                        <span className="text-xs font-semibold text-text">
+                          Server validation of this draft
+                        </span>
                         {canValidate ? (
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            loading={testOutcome.kind === 'running'}
-                            onClick={() => void runValidation()}
+                            loading={draftOutcome.kind === 'running'}
+                            onClick={() => void runDraftValidation()}
                           >
-                            Validate against the API
+                            Validate draft against the API
                           </Button>
                         ) : (
                           <Badge variant="warning" size="sm">
@@ -2931,47 +3025,47 @@ export function AddCapabilityModal({
                         )}
                       </div>
 
+                      {/*
+                        The two panels above and below answer different questions
+                        and neither is a substitute for the other. Form checks are
+                        computed in this browser from the fields on screen, with no
+                        request, so they are instant and they are a mirror of
+                        server rules rather than the server. This call is the
+                        authority: it runs the real validators against the config a
+                        create would write. Keeping them apart in the copy is the
+                        point — a form check presented as server-verified is a claim
+                        nothing checked.
+                      */}
+                      <p className="text-2xs text-text-muted leading-relaxed">
+                        The checks above are computed in this browser from the fields on screen.
+                        They are instant and they are not server-verified. This call is the
+                        authoritative answer:{' '}
+                        <code className="font-mono">POST /api/v1/capabilities/validate</code> runs
+                        the real validators against the unsaved draft — the same fields a create
+                        would write, so nothing has to be saved first. It persists nothing and
+                        executes nothing (<code className="font-mono">executed: false</code>); for a
+                        plugin it reads the manifest and never runs the handler.
+                      </p>
+
                       {!canValidate && (
                         <p className="text-2xs text-warning leading-relaxed">
-                          <code className="font-mono">POST /api/v1/agents/capabilities/test</code>{' '}
-                          verifies workspace membership from the request body, so it cannot be
-                          called without one. No result is shown because none was obtained. The
-                          previous version substituted a local character count and labelled it a
-                          sandbox run.
+                          The endpoint resolves the workspace from the request context, so it cannot
+                          be called from outside a workspace route. No request was made and no
+                          result is shown, because none was obtained.
                         </p>
                       )}
 
-                      {canValidate && category === 'plugins' && (
-                        <p className="text-2xs text-text-muted leading-relaxed">
-                          Sends this draft as the manifest, so the registry validator reads the
-                          hook, entry point, license, permissions and payload above. It does not
-                          execute the handler: nothing on this API runs plugin code.
-                        </p>
-                      )}
-
-                      {canValidate && category !== 'plugins' && (
-                        <p className="text-2xs text-text-muted leading-relaxed">
-                          Validates the capability <strong>already registered</strong> under this
-                          name in the workspace, or the server catalog when there is none. No
-                          endpoint validates an unsaved draft, so this cannot report on the fields
-                          above until the capability exists.
-                        </p>
-                      )}
-
-                      {testOutcome.kind === 'request_failed' && (
+                      {draftOutcome.kind === 'request_failed' && (
                         <p
                           role="alert"
                           className="p-2.5 rounded bg-error/10 border border-error/30 text-xs text-error font-mono"
                         >
-                          Request failed: {testOutcome.error}. No validation result was obtained.
+                          Request failed: {draftOutcome.error}. No validation result was obtained.
                         </p>
                       )}
 
-                      {testOutcome.kind === 'done' && (
-                        <ValidationOutcome
-                          outcome={testOutcome.response}
-                          isSkill={category === 'skills'}
-                        />
+                      {draftOutcome.kind === 'done' && (
+                        <DraftValidationOutcome outcome={draftOutcome.response} />
                       )}
                     </div>
                   </div>
