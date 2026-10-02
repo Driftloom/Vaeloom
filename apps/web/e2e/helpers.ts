@@ -5,8 +5,22 @@ export const TEST_USER = {
   password: 'AuditPass123!',
 };
 
+/**
+ * A second, independently seeded account (see e2e/api-launcher.py E2E_USERS).
+ * Identity-binding tests (an invitation is only honoured for the account it was
+ * issued to) need a real, distinct authenticated principal — a second request
+ * from the same session is not a cross-account probe.
+ */
+export const SECOND_USER = {
+  email: 'demo@vaeloom.app',
+  password: 'demo1234',
+};
+
 /** UI login against the real backend; resolves to the workspace id. */
-export async function login(page: Page): Promise<string> {
+export async function login(
+  page: Page,
+  user: { email: string; password: string } = TEST_USER,
+): Promise<string> {
   await page.goto('/login', { waitUntil: 'domcontentloaded' });
   // Wait for React hydration signal so event listeners are active
   await page
@@ -16,12 +30,12 @@ export async function login(page: Page): Promise<string> {
   const emailInput = page.locator('#email');
   await emailInput.waitFor({ state: 'visible', timeout: 30_000 });
   await page.waitForTimeout(300);
-  await page.fill('#email', TEST_USER.email);
-  await page.fill('#password', TEST_USER.password);
+  await page.fill('#email', user.email);
+  await page.fill('#password', user.password);
   const currentEmail = await emailInput.inputValue();
-  if (currentEmail !== TEST_USER.email) {
-    await page.fill('#email', TEST_USER.email);
-    await page.fill('#password', TEST_USER.password);
+  if (currentEmail !== user.email) {
+    await page.fill('#email', user.email);
+    await page.fill('#password', user.password);
   }
   await Promise.all([
     page.waitForURL(/\/workspace\/[^/]+/, { timeout: 45_000 }),
