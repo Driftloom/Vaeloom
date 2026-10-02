@@ -1405,9 +1405,31 @@ async def _try_react_loop(
         except Exception as _pc_exc:
             logger.debug(f"PromptCompiler manifest skipped: {_pc_exc}")
 
-        # Loop budget: configurable max rounds per card or global setting
-        card_max = getattr(card, "max_react_rounds", None) if card else None
-        max_rounds = max(1, int(card_max or getattr(settings, "agent_max_react_rounds", 5) or 5))
+        # Loop budget: workspace capability → agent card → global setting → 5.
+        # The resolver also reports WHICH layer decided, and the previous
+        # expression is kept as the failure path so a config lookup can never
+        # take down a run. The import is function-local for the same reason as
+        # the skill-injection import above: read at call time, so a test
+        # patching the module attribute actually intercepts it.
+        try:
+            from ..services.capability_runtime_config import resolve_agent_max_rounds
+
+            max_rounds, _rounds_source = await resolve_agent_max_rounds(
+                db, workspace_id, agent_name, card=card
+            )
+            # INFO, not DEBUG: "why did my agent stop at 3 rounds" is a support
+            # question, and the source string is the only answer. One line per
+            # run is cheap against the per-round logging below it.
+            logger.info(
+                f"REACT_ROUNDS agent={agent_name} workspace={workspace_id} "
+                f"rounds={max_rounds} source={_rounds_source}"
+            )
+        except Exception as _rc_exc:
+            card_max = getattr(card, "max_react_rounds", None) if card else None
+            max_rounds = max(
+                1, int(card_max or getattr(settings, "agent_max_react_rounds", 5) or 5)
+            )
+            logger.debug(f"ReAct round budget resolution fell back to card/setting: {_rc_exc}")
 
         # Resume-from-checkpoint (§17): replay fully-recorded rounds WITHOUT
         # re-executing tools. A crashed run continues; completed side effects
