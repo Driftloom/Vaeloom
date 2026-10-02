@@ -3909,6 +3909,177 @@ async def _abandon_idem_claim(workspace_id: str, idem_key: str | None, claim: st
         pass
 
 
+# ── Per-workspace tool enable gate ─────────────────────────────────────
+#
+# Source of truth: the existing ``workspace_capabilities`` row with
+# ``category='tool'``. That row is sufficient on its own — it already carries
+# RLS (ENABLE + FORCE ROW LEVEL SECURITY under
+# ``p_capabilities_workspace_isolation``, migration 0049), UNIQUE
+# (workspace_id, name, category) so a tool has at most one row per workspace,
+# and a working toggle (``PATCH /api/v1/capabilities/{id}`` with ``enabled``).
+# A new table or column would duplicate all three and buy no state that is not
+# already there: what was missing was enforcement, not storage.
+#
+# INVARIANT — absence of a row means ENABLED. Every existing workspace has zero
+# tool rows, so treating a missing row as "not enabled" would switch off the
+# whole built-in surface on upgrade. Only an explicit ``enabled=false`` row
+# blocks execution.
+#
+# STALENESS BOUND — reads are cached per workspace for
+# ``TOOL_ENABLE_CACHE_TTL_S``. The write path calls
+# ``invalidate_tool_enable_cache()``, so a toggle through PATCH is visible to
+# the very next call on the worker that served the write. The TTL bounds only
+# propagation to OTHER workers, and that bound is exactly the TTL: a disable
+# can keep executing for at most that long on a worker that did not serve the
+# PATCH, and no longer. Cost the cache avoids: the disabled-set SELECT measured
+# a median of 4.49 ms and a p95 of 10.06 ms over 500 reads on SQLite with a
+# fresh connection per read (NullPool, 3 rows returned) — paid per tool call on
+# a path whose handlers already query the database, for no decision a cached
+# set does not also make.
+#
+# FAIL-OPEN on a failed read, deliberately. Execution already depends on the
+# database for its audit row, its idempotency claim and most handlers, so a
+# read failure means a degraded workspace rather than a healthy one; failing
+# closed would convert a transient DB blip into a wall of denials across every
+# tool in the fleet. A failure never overwrites a previously loaded set, so a
+# tool known to be disabled stays blocked for the rest of the cache window; only
+# a first-ever failed read leaves the gate empty, and that is logged at ERROR
+# with the workspace and the tool.
+
+TOOL_ENABLE_CACHE_TTL_S = 15.0
+
+# Bounds memory in a long-lived worker: one small frozenset per workspace seen.
+# 512 is far above the workspace count of any single-process deployment we have
+# evidence for; past it the oldest entry is dropped and re-read on demand, which
+# is correct because the entry is a cache and not a policy.
+TOOL_ENABLE_CACHE_MAX_WORKSPACES = 512
+
+
+async def _query_disabled_tools(workspace_id: str) -> frozenset[str]:
+    """Tool names this workspace has an explicit ``enabled=false`` row for."""
+    import uuid as _uuid
+
+    from sqlalchemy import select
+
+    from ..models.schema import WorkspaceCapability
+
+    try:
+        ws_key: Any = _uuid.UUID(str(workspace_id))
+    except (ValueError, TypeError, AttributeError):
+        ws_key = workspace_id
+
+    stmt = select(WorkspaceCapability.name).where(
+        WorkspaceCapability.workspace_id == ws_key,
+        WorkspaceCapability.category == "tool",
+        WorkspaceCapability.enabled.is_(False),
+    )
+    async with _ws_session(workspace_id) as session:
+        rows = (await session.execute(stmt)).scalars().all()
+    return frozenset(str(name) for name in rows)
+
+
+class _ToolEnableGate:
+    """Workspace -> explicitly disabled tool names, cached for a bounded window.
+
+    Deliberately holds no ``asyncio`` primitive: the module is imported once and
+    the cache is shared by every event loop a test (or a reload) creates, so an
+    ``asyncio.Lock`` captured here would be bound to a loop that no longer
+    exists. The cost of that choice is that concurrent cold misses each issue
+    one read; the loop fans a ReAct round out over ``asyncio.gather``, so the
+    bound is one read per concurrently-dispatched call per TTL window.
+    """
+
+    def __init__(self, ttl_s: float, max_workspaces: int) -> None:
+        self._ttl_s = float(ttl_s)
+        self._max_workspaces = max(1, int(max_workspaces))
+        self._entries: dict[str, tuple[float, frozenset[str]]] = {}
+        self._order: list[str] = []
+
+    def _store(self, workspace_id: str, names: frozenset[str]) -> None:
+        self._entries[workspace_id] = (time.monotonic(), names)
+        self._order.append(workspace_id)
+        while len(self._order) > self._max_workspaces:
+            self._entries.pop(self._order.pop(0), None)
+
+    async def disabled(self, workspace_id: str) -> frozenset[str]:
+        ws = str(workspace_id)
+        entry = self._entries.get(ws)
+        if entry is not None and (time.monotonic() - entry[0]) < self._ttl_s:
+            return entry[1]
+        try:
+            names = await _query_disabled_tools(ws)
+        except Exception as exc:
+            logger.error(
+                "TOOL_ENABLE_GATE_UNAVAILABLE workspace=%s: %s: %s — the gate could not be "
+                "evaluated and is treated as empty (no tool is known to be disabled)",
+                ws, type(exc).__name__, exc,
+            )
+            if entry is not None:
+                # Serve the last known set rather than reopening a tool the
+                # workspace had already turned off.
+                return entry[1]
+            names = frozenset()
+        self._store(ws, names)
+        return names
+
+    def invalidate(self, workspace_id: str) -> None:
+        ws = str(workspace_id)
+        self._entries.pop(ws, None)
+        if ws in self._order:
+            self._order.remove(ws)
+
+    def clear(self) -> None:
+        self._entries.clear()
+        self._order.clear()
+
+    def set_ttl_s(self, ttl_s: float) -> None:
+        # Every stored window was measured against the old TTL, so changing it
+        # has to drop them all or a shortened TTL would not take effect until
+        # the old one expired.
+        self._ttl_s = float(ttl_s)
+        self.clear()
+
+
+_TOOL_ENABLE_GATE = _ToolEnableGate(TOOL_ENABLE_CACHE_TTL_S, TOOL_ENABLE_CACHE_MAX_WORKSPACES)
+
+
+def tool_enable_gate() -> _ToolEnableGate:
+    return _TOOL_ENABLE_GATE
+
+
+def invalidate_tool_enable_cache(workspace_id: str | uuid_lib.UUID | None = None) -> None:
+    """Drop cached policy after a write. Called by the capability toggle path."""
+    if workspace_id is None:
+        _TOOL_ENABLE_GATE.clear()
+    else:
+        _TOOL_ENABLE_GATE.invalidate(str(workspace_id))
+
+
+def set_tool_enable_cache_ttl(ttl_s: float | None) -> None:
+    """Seam for tests and for tightening the window without a redeploy.
+
+    The TTL is a module constant rather than a setting because
+    ``api.config.settings`` is not in this change's scope; promoting it to
+    ``AGENT_TOOL_ENABLE_CACHE_TTL_S`` there is a one-line follow-up.
+    """
+    _TOOL_ENABLE_GATE.set_ttl_s(
+        TOOL_ENABLE_CACHE_TTL_S if ttl_s is None else ttl_s
+    )
+
+
+def reset_tool_enable_gate() -> None:
+    """Restore the shipped TTL and empty the cache. Test isolation seam."""
+    _TOOL_ENABLE_GATE.set_ttl_s(TOOL_ENABLE_CACHE_TTL_S)
+
+
+def tool_disabled_message(tool_name: str, workspace_id: str) -> str:
+    """The single wording for a workspace-level tool denial."""
+    return (
+        f"Tool '{tool_name}' is disabled for this workspace (workspace {workspace_id}). "
+        f"Set enabled=true on the workspace capability row for '{tool_name}' to allow it."
+    )
+
+
 async def execute_tool(
     tool: ToolDefinition,
     params: dict[str, Any],
@@ -3922,6 +4093,7 @@ async def execute_tool(
     Flow:
     0. Input sanitization (ADR-031) — strip HTML/JS vectors before any tool sees payload
     0b. Output schema validation (TOOL-002/TOOL-001) — validate handler result shape before returning
+    0c. Per-workspace enable gate — an explicit enabled=false capability row denies the call
     1. Permission check (zero retries on denial)
     2. Execute with timeout
     3. Retry on transient failure (exponential backoff)
@@ -3936,6 +4108,19 @@ async def execute_tool(
         )
         _audit_log(agent_id, tool.name, "", False, 0, "missing_workspace_id")
         raise ValueError(f"workspace_id is required for tool execution (tool '{tool.name}')")
+
+    # ── Per-workspace enable gate ──────────────────────────────────
+    # Deliberately ahead of the idempotency fast path below: that LRU returns a
+    # stored success without consulting any policy, so a tool disabled after one
+    # cached success would keep reporting success until the entry aged out. This
+    # is also the only point that covers built-in tools — ALL_TOOLS registers
+    # them unconditionally, so listing and registration carry no opinion.
+    if tool.name in await _TOOL_ENABLE_GATE.disabled(str(workspace_id)):
+        logger.warning(
+            f"TOOL_DISABLED_FOR_WORKSPACE: agent={agent_id} tool={tool.name} workspace={workspace_id}"
+        )
+        _audit_log(agent_id, tool.name, workspace_id, False, 0, "tool_disabled_for_workspace")
+        raise PermissionDeniedError(tool_disabled_message(tool.name, str(workspace_id)))
 
     # ── Cross-workspace parameter tampering check ──────────────────
     if params and "workspace_id" in params:

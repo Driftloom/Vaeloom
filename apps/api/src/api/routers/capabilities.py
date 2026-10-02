@@ -33,6 +33,7 @@ from ..tools.definitions import ALL_TOOLS, ToolDefinition
 from ..tools.executor import (
     WORKSPACE_DYNAMIC_TOOL_DEFS,
     execute_tool,
+    invalidate_tool_enable_cache,
     register_dynamic_tool,
     unregister_dynamic_tools,
 )
@@ -1228,6 +1229,13 @@ async def update_capability(
 
     await db.commit()
     await db.refresh(cap)
+    # The executor's enable gate caches the disabled set per workspace. Without
+    # this the toggle is invisible to execution until the TTL expires, so the
+    # operator watches a disabled tool keep running and concludes the switch is
+    # broken. Invalidate after the commit so no reader can observe a cleared
+    # cache that would still answer with the pre-write set.
+    if cap.category == "tool":
+        invalidate_tool_enable_cache(str(wid))
     return _serialize_cap(cap)
 
 
@@ -1281,6 +1289,10 @@ async def delete_capability(
 
     await db.delete(cap)
     await db.commit()
+    # Deleting a disabled tool row must un-block it, or the cached set keeps
+    # denying a tool the workspace no longer holds a row for.
+    if cap.category == "tool":
+        invalidate_tool_enable_cache(str(wid))
     return None
 
 
