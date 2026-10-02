@@ -381,6 +381,8 @@ const SERVER_STATUS_META: Record<ConnectorItem['status'], { dot: ServerDotStatus
     // is what made a deliberately idle server look broken.
     paused: { dot: 'disabled', label: 'paused' },
     error: { dot: 'error', label: 'error' },
+    disconnected: { dot: 'disabled', label: 'disconnected' },
+    synced: { dot: 'active', label: 'synced' },
   };
 
 function isStdioConfig(config: Record<string, unknown> | undefined): boolean {
@@ -599,7 +601,7 @@ export const McpView: React.FC<McpViewProps> = ({
       setSyncingServerId(server.id);
       try {
         const res = await connectorsApi.mcp.sync(server.id, workspaceId);
-        const bridged = res?.bridged_total ?? res?.registered?.length ?? 0;
+        const bridged = res?.registered?.length ?? 0;
         addLog(
           'success',
           `Bridge sync registered ${bridged} tool(s) for '${server.name}'.`,
@@ -650,7 +652,7 @@ export const McpView: React.FC<McpViewProps> = ({
       let syncFailure: string | null = null;
       try {
         const res = await connectorsApi.mcp.sync(created.id, workspaceId);
-        bridged = res?.bridged_total ?? res?.registered?.length ?? 0;
+        bridged = res?.registered?.length ?? 0;
         addLog('success', `'${name}' bridged ${bridged} tool(s).`, name);
       } catch (err) {
         syncFailure = err instanceof Error ? err.message : 'The bridge sync request failed.';
@@ -919,7 +921,7 @@ export const McpView: React.FC<McpViewProps> = ({
     await Promise.allSettled(
       succeeded.map(async ({ key, id }) => {
         const res = await connectorsApi.mcp.sync(id, workspaceId);
-        const bridged = res?.bridged_total ?? res?.registered?.length ?? 0;
+        const bridged = res?.registered?.length ?? 0;
         addLog('success', `'${key}' written and ${bridged} tool(s) bridged.`, key);
       }),
     ).then((outcomes) => {
@@ -1519,8 +1521,7 @@ export const McpView: React.FC<McpViewProps> = ({
                       </h3>
                       <p className="text-xs text-text-muted mt-1 font-mono">
                         ID {selectedServer.id} &middot; last sync{' '}
-                        {formatRelativeTime(selectedServer.lastSync ?? null)}
-                        {selectedServer.errorMessage ? ` · ${selectedServer.errorMessage}` : ''}
+                        {formatRelativeTime(selectedServer.lastSyncedAt ?? null)}
                       </p>
                     </div>
                     <Button
@@ -1694,7 +1695,7 @@ export const McpView: React.FC<McpViewProps> = ({
                                   <span className="font-mono text-sm font-semibold text-text">
                                     {tool.name}
                                   </span>
-                                  {tool.readOnly ? (
+                                  {tool.readOnlyHint ? (
                                     <Badge variant="success" size="sm">
                                       Read-Only
                                     </Badge>

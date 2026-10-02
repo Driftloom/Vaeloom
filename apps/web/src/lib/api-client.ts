@@ -257,7 +257,7 @@ export const memoryApi = {
   },
 };
 
-// ─── Vault Sync (Second Brain Git Plumbing) ──────────────────────────────────
+// ─── Vault Sync (Memory Vault Git Plumbing) ──────────────────────────────────
 
 export interface VaultSyncStatus {
   workspaceId: string;
@@ -4131,19 +4131,26 @@ export const capabilitiesApi = {
 
 // ─── Connectors API ─────────────────────────────────────────────────────────
 
+/**
+ * `ConnectorResponse` in `api/schemas/connector_ext.py`.
+ *
+ * `syncInterval`, `errorMessage` and `tenantId` were declared here and are NOT on
+ * the wire; `configVersion` and `scopes` were on the wire and were NOT declared.
+ * Every read of a missing field is `undefined`, which renders as a permanent
+ * "Never synced" rather than an error, so the mismatch was invisible.
+ */
 export interface ConnectorItem {
   id: string;
+  workspaceId: string;
   name: string;
-  type: 'rest' | 'graphql' | 'mcp';
+  type: 'rest' | 'graphql' | 'database' | 'file' | 'mcp';
+  status: 'active' | 'syncing' | 'error' | 'paused' | 'disconnected' | 'synced';
   config: Record<string, any>;
-  syncInterval?: number;
-  lastSync?: string;
-  status: 'active' | 'syncing' | 'error' | 'paused';
-  errorMessage?: string;
+  configVersion: number;
+  scopes?: string[] | null;
+  lastSyncedAt?: string | null;
   createdAt: string;
   updatedAt: string;
-  workspaceId?: string;
-  tenantId?: string;
 }
 
 export interface CreateConnectorRequest {
@@ -4161,12 +4168,45 @@ export interface UpdateConnectorRequest {
   status?: string;
 }
 
+/**
+ * `McpToolInfoResponse` in `api/schemas/connector_ext.py`.
+ *
+ * The read-only hint arrives as `readOnlyHint` (the response transform
+ * camelCases `read_only_hint`). It was previously typed and read as `readOnly`,
+ * which does not exist on the wire -- so the value was always `undefined` and
+ * every MCP tool rendered as "Approval gated", including read-only ones. That is
+ * a false security signal: it told the operator a tool needed approval it did
+ * not need, and told nothing at all about the tools that genuinely do.
+ *
+ * The server always sends the field, defaulting to `false`, so `undefined` here
+ * means the response did not come from this endpoint and the UI must say
+ * "unknown" rather than guess.
+ */
 export interface McpToolInfo {
   name: string;
-  description?: string;
-  inputSchema?: Record<string, any>;
-  outputSchema?: Record<string, any>;
-  readOnly?: boolean;
+  description: string;
+  inputSchema: Record<string, any>;
+  readOnlyHint: boolean;
+}
+
+/**
+ * `POST /connectors/{id}/mcp/sync` returns `{connector_id, registered, bridged_total}`.
+ *
+ * `bridgedTotal` is the size of the process-wide bridge registry
+ * (`len(get_bridge_definitions())` in routers/connectors.py), NOT this
+ * connector's contribution. Reading `bridged_total` off the camelCased response
+ * was always `undefined`, and the `?? registered.length` fallback then silently
+ * substituted a different quantity for the same label. Use `registered.length`
+ * when reporting what a single connector bridged.
+ */
+export interface McpSyncResult {
+  connectorId: string;
+  connector_id?: string;
+  /** Tool names bridged from this connector into the executor. */
+  registered: string[];
+  /** Size of the process-wide bridge registry, across every connector. */
+  bridgedTotal: number;
+  bridged_total?: number;
 }
 
 /**
@@ -4233,14 +4273,28 @@ export interface ComposioAuthUrlResponse {
   message?: string;
 }
 
+/**
+ * `GET /connectors/{id}/health`, from `connector_ext_service.get_health`.
+ *
+ * The service returns exactly `connector_id`, `name`, `type`, `status`,
+ * `last_synced_at`, `auth_state`, `connectivity` and `details`. `last_sync`,
+ * `error_message` and `config_keys` were declared here and are NOT produced --
+ * so the health panel showed "None reported" for an error that could not exist,
+ * and a config-keys row that was always empty.
+ */
 export interface ConnectorHealthResponse {
-  status: string;
-  connector_id: string;
-  type: string;
+  connectorId?: string;
+  connector_id?: string;
   name: string;
-  last_sync?: string;
+  type: string;
+  status: 'healthy' | 'degraded' | 'error' | 'unknown';
+  lastSyncedAt?: string | null;
+  last_sync?: string | null;
+  authState?: 'configured' | 'unconfigured';
+  connectivity?: 'ok' | 'failed' | 'unknown';
+  details?: string;
   error_message?: string;
-  config_keys: string[];
+  config_keys?: string[];
 }
 
 export const connectorsApi = {
@@ -4262,13 +4316,17 @@ export const connectorsApi = {
   delete(connectorId: string): Promise<void> {
     return apiClient.delete<void>(`/connectors/${connectorId}`);
   },
-  sync(connectorId: string): Promise<{ status: string; records_synced?: number; error?: string }> {
-    return apiClient.post(`/connectors/${connectorId}/sync`);
+  /**
+   * `SyncStatusResponse` in `api/schemas/connector_ext.py`, which carries
+   * `connector_id`, `status`, `error` and `synced_at`. `records_synced` was
+   * declared by the caller and is not produced by any of these endpoints, so the
+   * success toast could only ever have read "Records synced: 0".
+   */
+  sync(connectorId: string): Promise<SyncStatusResponse> {
+    return apiClient.post<SyncStatusResponse>(`/connectors/${connectorId}/sync`);
   },
-  getSyncStatus(
-    connectorId: string,
-  ): Promise<{ status: string; records_synced?: number; error?: string }> {
-    return apiClient.get(`/connectors/${connectorId}/sync/status`);
+  getSyncStatus(connectorId: string): Promise<SyncStatusResponse> {
+    return apiClient.get<SyncStatusResponse>(`/connectors/${connectorId}/sync/status`);
   },
   test(
     connectorId: string,
@@ -4285,11 +4343,8 @@ export const connectorsApi = {
     refreshTools(connectorId: string): Promise<McpToolInfo[]> {
       return apiClient.post<McpToolInfo[]>(`/connectors/${connectorId}/mcp/tools/refresh`);
     },
-    sync(
-      connectorId: string,
-      workspaceId?: string,
-    ): Promise<{ connector_id: string; registered: string[]; bridged_total: number }> {
-      return apiClient.post(
+    sync(connectorId: string, workspaceId?: string): Promise<McpSyncResult> {
+      return apiClient.post<McpSyncResult>(
         `/connectors/${connectorId}/mcp/sync`,
         workspaceId ? { workspace_id: workspaceId } : undefined,
       );

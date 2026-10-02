@@ -475,6 +475,8 @@ const CONNECTOR_STATUS_LABEL: Record<ConnectorItem['status'], string> = {
   syncing: 'Syncing',
   error: 'Error',
   paused: 'Paused',
+  disconnected: 'Disconnected',
+  synced: 'Synced',
 };
 
 const CONNECTOR_BADGE_VARIANT: Record<
@@ -485,6 +487,8 @@ const CONNECTOR_BADGE_VARIANT: Record<
   syncing: 'warning',
   error: 'error',
   paused: 'default',
+  disconnected: 'default',
+  synced: 'success',
 };
 
 const CONNECTOR_DOT_STATUS: Record<
@@ -495,6 +499,8 @@ const CONNECTOR_DOT_STATUS: Record<
   syncing: 'warning',
   error: 'error',
   paused: 'disabled',
+  disconnected: 'disabled',
+  synced: 'active',
 };
 
 const CUSTOM_TYPES = ['mcp', 'rest', 'graphql'] as const;
@@ -503,7 +509,7 @@ function isCustomConnector(connector: ConnectorItem): boolean {
   return (CUSTOM_TYPES as readonly string[]).includes(connector.type?.toLowerCase() ?? '');
 }
 
-function formatDate(iso?: string): string {
+function formatDate(iso?: string | null): string {
   if (!iso) return 'Never';
   const parsed = Date.parse(iso);
   if (Number.isNaN(parsed)) return 'Unknown';
@@ -972,6 +978,10 @@ export function ConnectorsView({
         setBusyAction(null);
       }
     },
+    // handleComposioOAuth is declared below and only reached after render, so it
+    // is a legitimate forward reference (same pattern as handleOpenOrConnect).
+    // Listing it here would be a temporal-dead-zone use-before-declaration.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [composioCatalogApps, loadDynamicData, mutate, toast],
   );
 
@@ -993,7 +1003,7 @@ export function ConnectorsView({
 
       try {
         const res = await connectorsApi.mcp.sync(created.id, workspaceId);
-        const bridged = res?.bridged_total ?? res?.registered?.length ?? 0;
+        const bridged = res?.registered?.length ?? 0;
         toast({
           tone: 'success',
           title: 'ATS MCP attached',
@@ -1188,7 +1198,7 @@ export function ConnectorsView({
           toast({
             tone: 'success',
             title: 'Sync Completed',
-            detail: `Records synced: ${res.records_synced ?? 0}`,
+            detail: res.synced_at ? `Synced at ${res.synced_at}` : 'Sync completed successfully.',
           });
         }
         void loadDynamicData();
@@ -2351,12 +2361,13 @@ export function ConnectorsView({
             {(
               [
                 ['Connector', healthTarget.name],
-                ['ID', healthTarget.connector_id],
+                ['ID', healthTarget.connectorId],
                 ['Protocol', healthTarget.type],
                 ['Status', healthTarget.status],
-                ['Last sync', healthTarget.last_sync ?? 'Never'],
-                ['Error', healthTarget.error_message ?? 'None reported'],
-                ['Config keys', healthTarget.config_keys?.join(', ') || 'None reported'],
+                ['Last sync', formatDate(healthTarget.lastSyncedAt)],
+                ['Auth', healthTarget.authState],
+                ['Connectivity', healthTarget.connectivity],
+                ['Details', healthTarget.details],
               ] as const
             ).map(([term, value]) => (
               <div
@@ -2593,8 +2604,8 @@ export function ConnectorsView({
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-mono font-semibold text-primary">{tool.name}</span>
-                      <Badge variant={tool.readOnly ? 'success' : 'warning'} size="sm">
-                        {tool.readOnly ? 'Read-only' : 'Approval gated'}
+                      <Badge variant={tool.readOnlyHint ? 'success' : 'warning'} size="sm">
+                        {tool.readOnlyHint ? 'Read-only' : 'Approval gated'}
                       </Badge>
                     </div>
                     <p className="text-text-secondary">

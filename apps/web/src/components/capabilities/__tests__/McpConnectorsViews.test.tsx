@@ -42,7 +42,7 @@ function mcpConnector(overrides: Partial<ConnectorRow> = {}): ConnectorRow {
     },
     createdAt: '2026-09-20T00:00:00Z',
     updatedAt: '2026-09-20T00:00:00Z',
-    lastSync: '2026-09-20T00:00:00Z',
+    lastSyncedAt: '2026-09-20T00:00:00Z',
     ...overrides,
   };
 }
@@ -136,7 +136,7 @@ jest.mock('@/lib/api-client', () => {
       sync: jest.fn(async () => {
         server.syncCalls += 1;
         maybeFail(server.failures.sync);
-        return { connector_id: 'x', registered: ['a'], bridged_total: 1 };
+        return { connectorId: 'x', registered: ['a'], bridgedTotal: 9 };
       }),
       test: jest.fn(async (id: string) => {
         server.testCalls.push(id);
@@ -148,11 +148,13 @@ jest.mock('@/lib/api-client', () => {
         maybeFail(server.failures.health);
         return {
           status: 'healthy',
-          connector_id: id,
+          connectorId: id,
           type: 'mcp',
           name: 'SQLite Memory MCP',
-          last_sync: '2026-09-20T00:00:00Z',
-          config_keys: ['transport', 'command'],
+          lastSyncedAt: '2026-09-20T00:00:00Z',
+          authState: 'configured',
+          connectivity: 'ok',
+          details: "Connector in status 'active'",
         };
       }),
       mcp: {
@@ -166,7 +168,10 @@ jest.mock('@/lib/api-client', () => {
         sync: jest.fn(async () => {
           server.syncCalls += 1;
           maybeFail(server.failures.sync);
-          return { connector_id: 'x', registered: ['a'], bridged_total: 1 };
+          // bridgedTotal (9) deliberately differs from registered.length (1): the
+          // UI must report this connector's contribution, not the process-wide
+          // bridge registry size.
+          return { connectorId: 'x', registered: ['a'], bridgedTotal: 9 };
         }),
       },
       composio: {
@@ -506,6 +511,48 @@ describe('McpView', () => {
     await waitFor(() => expect(server.deleted).toEqual(['conn-created-1']));
   });
 
+  it('reports this connector own tool count, not the process-wide bridge registry size', async () => {
+    server.connectors = [mcpConnector()];
+    await renderMcp();
+
+    // The name also appears in the sr-only heading and the selected-server
+    // heading, so scope to the server row button rather than matching text.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'SQLite Memory MCP stdio active' }),
+      ).toBeInTheDocument(),
+    );
+    // Exact name, not /sync bridge/i: the selected-server panel carries a
+    // differently-worded sync control, so the case-insensitive match hit both.
+    await click(screen.getByRole('button', { name: 'Sync Bridge' }));
+
+    // The mock bridges 1 tool from this connector while the process-wide registry
+    // holds 9. `bridged_total` was read off a camelCased response, so it was always
+    // `undefined`, and the `?? registered.length` fallback silently swapped a
+    // different quantity into the same label. The two must never be conflated.
+    //
+    // Both reporting surfaces are asserted: the toast and the activity-log line
+    // build the count independently, so passing on one and failing on the other
+    // is possible and would be a real defect.
+    await waitFor(() =>
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          detail: expect.stringContaining('Registered 1 tool(s)'),
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(document.body.textContent ?? '').toContain(
+        "Bridge sync registered 1 tool(s) for 'SQLite Memory MCP'.",
+      ),
+    );
+    const logText = document.body.textContent ?? '';
+    expect(logText).not.toContain('9 tool(s)');
+    expect(mockToast).not.toHaveBeenCalledWith(
+      expect.objectContaining({ detail: expect.stringContaining('9 tool(s)') }),
+    );
+  });
+
   it('surfaces a failed bridge sync instead of claiming the manifest was fully applied', async () => {
     server.connectors = [];
     await renderMcp();
@@ -586,14 +633,39 @@ describe('McpView', () => {
   it('shows no per-tool scope, because the tools endpoint declares none', async () => {
     server.connectors = [mcpConnector()];
     server.tools = [
-      { name: 'query_sql', description: 'Run a read-only query', readOnly: true },
-      { name: 'write_row', description: 'Insert a row', readOnly: false },
+      { name: 'query_sql', description: 'Run a read-only query', readOnlyHint: true },
+      { name: 'write_row', description: 'Insert a row', readOnlyHint: false },
     ];
     await renderMcp();
 
     await waitFor(() => expect(screen.getByText('query_sql')).toBeInTheDocument());
     expect(screen.getByText('write_row')).toBeInTheDocument();
     expect(document.body.textContent ?? '').not.toContain('connector.mcp.execute');
+  });
+
+  it('labels each tool from the server read-only hint, not from a field that does not exist', async () => {
+    server.connectors = [mcpConnector()];
+    server.tools = [
+      { name: 'query_sql', description: 'Run a read-only query', readOnlyHint: true },
+      { name: 'write_row', description: 'Insert a row', readOnlyHint: false },
+    ];
+    await renderMcp();
+
+    await waitFor(() => expect(screen.getByText('query_sql')).toBeInTheDocument());
+
+    // The wire field is `read_only_hint` -> `readOnlyHint`. Reading `readOnly`
+    // yielded `undefined` for both tools, so every tool rendered "Approval Gated",
+    // including the read-only one. That is a false security signal: it overstates
+    // the control and reveals nothing about the tools that genuinely need one.
+    const readOnlyCard = screen.getByText('query_sql').closest('div')?.parentElement;
+    expect(within(readOnlyCard as HTMLElement).getByText('Read-Only')).toBeInTheDocument();
+    expect(
+      within(readOnlyCard as HTMLElement).queryByText('Approval Gated'),
+    ).not.toBeInTheDocument();
+
+    const writeCard = screen.getByText('write_row').closest('div')?.parentElement;
+    expect(within(writeCard as HTMLElement).getByText('Approval Gated')).toBeInTheDocument();
+    expect(within(writeCard as HTMLElement).queryByText('Read-Only')).not.toBeInTheDocument();
   });
 
   it('renders the real connected probe result with the tool names the server reported', async () => {
@@ -749,7 +821,11 @@ describe('ConnectorsView', () => {
 
     await waitFor(() => expect(server.healthCalls).toEqual(['conn-mcp-1']));
     expect(await screen.findByText('healthy')).toBeInTheDocument();
-    expect(screen.getByText('transport, command')).toBeInTheDocument();
+    // The fields get_health actually produces. `config_keys` is not one of them,
+    // so asserting it was asserting a value the endpoint never returned.
+    expect(screen.getByText('configured')).toBeInTheDocument();
+    expect(screen.getByText('ok')).toBeInTheDocument();
+    expect(screen.getByText("Connector in status 'active'")).toBeInTheDocument();
   });
 
   it('lists the built-in MCP servers the API returned, not a hardcoded five', async () => {
