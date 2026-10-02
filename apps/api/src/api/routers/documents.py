@@ -985,7 +985,7 @@ async def sync_document_to_memory(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    """Synchronize document content into the workspace second brain / memory store."""
+    """Synchronize document content into the workspace memory store."""
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 

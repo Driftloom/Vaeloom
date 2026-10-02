@@ -30,7 +30,7 @@ CognitivePriority = Literal[
     "P0_CRITICAL_DIRECTIVE",  # System, security, policy, explicit task instruction
     "P1_ACTIVE_GROUNDING",    # Primary active document, code snippet, attached file (Claude-style)
     "P2_WORKING_EPISODE",     # Immediate chat conversation turns, recent tool results
-    "P3_DYNAMIC_MEMORY",      # Second brain facts, extracted user preferences, knowledge graph (ChatGPT-style)
+    "P3_DYNAMIC_MEMORY",      # Dynamic memory facts, extracted user preferences, knowledge graph (ChatGPT-style)
     "P4_BACKGROUND_ARCHIVE",  # Global corpus, historical archives
 ]
 
@@ -174,7 +174,7 @@ def filter_items(
 
 def rank_items(items: list[ContextItem], limit: int = 8) -> list[ContextItem]:
     """Hierarchical cognitive ranking:
-    1. Cognitive priority (P0 Directives -> P1 Active Grounding Document -> P2 Working Context -> P3 Second Brain Memory -> P4 Archive)
+    1. Cognitive priority (P0 Directives -> P1 Active Grounding Document -> P2 Working Context -> P3 Dynamic Memory -> P4 Archive)
     2. Score within same priority tier (-i.score)
     3. Token compactness (i.token_estimate)
     """
@@ -250,7 +250,7 @@ def assemble_hierarchical(
 
     Generates structured XML context fencing:
       - <active_grounding_context>: Authoritative primary files, attached documents, and direct code.
-      - <second_brain_memory_context>: User preferences, cross-session facts, and personal memory cards.
+      - <memory_context>: User preferences, cross-session facts, and personal memory cards.
       - Explicit Precedence Directive: Grounding context takes precedence over memory in case of conflict.
     """
     by_priority: dict[str, list[ContextItem]] = {}
@@ -265,7 +265,7 @@ def assemble_hierarchical(
             "[COGNITIVE PRECEDENCE DIRECTIVE]\n"
             "1. <active_grounding_context> represents current authoritative files and active documents. "
             "You MUST inspect and ground your answer on active grounding information first.\n"
-            "2. <second_brain_memory_context> represents extracted personal memories and user preferences. "
+            "2. <memory_context> represents extracted personal memories and user preferences. "
             "Use it to enrich tone, personal facts, and style, but NEVER allow historical memory to override "
             "factual statements in the active grounding document."
         )
@@ -291,13 +291,13 @@ def assemble_hierarchical(
         working_excerpts = "\n---\n".join(it.content for it in p2_items)
         blocks.append(f"<working_context>\n{working_excerpts}\n</working_context>")
 
-    # 4. P3 Dynamic Second Brain Memory (ChatGPT style)
+    # 4. P3 Dynamic Memory (ChatGPT style)
     p3_items = by_priority.get("P3_DYNAMIC_MEMORY", [])
     if p3_items:
         mem_excerpts = []
         for it in p3_items:
             mem_excerpts.append(f'<memory_card kind="{it.kind}" provenance="{it.provenance}">\n{it.content}\n</memory_card>')
-        blocks.append(f"<second_brain_memory_context priority=\"enrichment\">\n" + "\n".join(mem_excerpts) + "\n</second_brain_memory_context>")
+        blocks.append(f"<memory_context priority=\"enrichment\">\n" + "\n".join(mem_excerpts) + "\n</memory_context>")
 
     # 5. P4 Background Archive
     p4_items = by_priority.get("P4_BACKGROUND_ARCHIVE", [])

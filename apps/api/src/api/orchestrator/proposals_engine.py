@@ -161,7 +161,7 @@ class ActionProposalEngine:
             proposals.append(
                 ActionProposal(
                     proposal_id=f"prop_graph_{uuid.uuid4().hex[:6]}",
-                    title="🧠 Explore Second Brain Graph",
+                    title="🧠 Explore Memory Graph",
                     description="Query multi-hop knowledge ontology linking your documents and Obsidian notes.",
                     proposal_type=ProposalType.ACTION_CHIP,
                     risk_class=RiskClass.LOW,
@@ -247,7 +247,7 @@ class ActionProposalEngine:
 
         # Ensure at least 3 high-leverage default chips if list is short
         fallback_titles = [
-            ("🧠 Second Brain Notes", "memory.read"),
+            ("🧠 Memory Notes", "memory.read"),
             ("🔄 Sync Vault", "memory.write"),
             ("🎯 Tailor Resume for a Target Role", "career.resume.write"),
             ("📈 Quantify Career Achievements", "career.resume.write"),

@@ -98,11 +98,11 @@ class TestHierarchicalContextEngine:
 
         # Assert XML fences
         assert "<active_grounding_context priority=\"high\">" in assembled
-        assert "<second_brain_memory_context priority=\"enrichment\">" in assembled
+        assert "<memory_context priority=\"enrichment\">" in assembled
 
-        # Assert Grounding Context appears BEFORE Second Brain Memory in the string
+        # Assert Grounding Context appears BEFORE Dynamic Memory in the string
         idx_doc = assembled.index("<active_grounding_context")
-        idx_mem = assembled.index("<second_brain_memory_context")
+        idx_mem = assembled.index("<memory_context")
         assert idx_doc < idx_mem, "Active grounding context MUST appear before dynamic memory context"
 
     def test_budget_compression_protects_active_grounding(self):
@@ -204,8 +204,8 @@ class TestMemoryAndVaultContextHierarchy:
         assert "[Background Context from Workspace Memories & Vault Notes]" in ctx
         assert "[COGNITIVE PRECEDENCE DIRECTIVE]" in ctx
         assert "Active Grounding Documents (Authoritative)" in ctx
-        assert "Second Brain Memories (Enrichment)" in ctx
+        assert "Dynamic Memories (Enrichment)" in ctx
 
         idx_doc = ctx.index("Active Grounding Documents")
-        idx_mem = ctx.index("Second Brain Memories")
-        assert idx_doc < idx_mem, "Active Grounding Documents must appear before Second Brain Memories"
+        idx_mem = ctx.index("Dynamic Memories")
+        assert idx_doc < idx_mem, "Active Grounding Documents must appear before Dynamic Memories"

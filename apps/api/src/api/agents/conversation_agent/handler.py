@@ -27,7 +27,7 @@ class ConversationAgent(BaseAgent):
         Tool(name="search_documents", description="Search workspace career documents and resumes"),
         Tool(name="query_graph", description="Query long-term knowledge graph for career entities and skills"),
         Tool(name="web_search", description="Real-time web search for company news, market trends, and salaries"),
-        Tool(name="search_memories", description="Search across personal Second Brain memories and synced vault notes"),
+        Tool(name="search_memories", description="Search across personal dynamic memories and synced vault notes"),
     ]
     memory_scopes = MemoryScopes(
         read_types=["career", "skills", "education", "experience", "timeline"],
@@ -55,7 +55,7 @@ class ConversationAgent(BaseAgent):
                     "🔍 Find Target Roles",
                     "📊 ATS Health Audit",
                     "📅 Calendar & Deadlines",
-                    "🧠 Second Brain Notes",
+                    "🧠 Memory Notes",
                     "🔄 Sync Vault",
                 ],
             },
@@ -135,7 +135,7 @@ class ConversationAgent(BaseAgent):
 
         if _stripped in _GREETINGS or any(_stripped.startswith(p) for p in ("good morning", "good afternoon", "good evening", "good night", "how are", "how's")):
             greeting_chips = list(dynamic_chips)
-            for c in ["🧠 Second Brain Notes", "🔄 Sync Vault"]:
+            for c in ["🧠 Memory Notes", "🔄 Sync Vault"]:
                 if c not in greeting_chips:
                     greeting_chips.append(c)
             return {
@@ -144,7 +144,7 @@ class ConversationAgent(BaseAgent):
                 "confidence": 0.95,
                 "result": {
                     "summary": (
-                        "Hello! 👋 I'm Vaeloom, your executive career partner and second brain. "
+                        "Hello! 👋 I'm Vaeloom, your executive career partner with persistent memory. "
                         "I can help you build an ATS-proof resume, sync and query your Obsidian vault and notes, "
                         "discover target roles, track deadlines, and synthesize long-term career memory.\n\n"
                         "What would you like to focus on today?"
@@ -182,7 +182,7 @@ class ConversationAgent(BaseAgent):
             try:
                 system_prompt = (
                     "You are Vaeloom, an elite executive career strategist, psychological counselor, "
-                    "and second brain. You treat the user with unconditional positive regard, deep empathy, "
+                    "and persistent career partner. You treat the user with unconditional positive regard, deep empathy, "
                     "and strategic competence.\n\n"
                     "Core Principles:\n"
                     "1. Psychological Containment: If the user expresses anxiety, burnout, or job search fatigue, "
@@ -199,7 +199,7 @@ class ConversationAgent(BaseAgent):
                         "[COGNITIVE PRECEDENCE DIRECTIVE]\n"
                         "1. Active Grounding Documents represent current authoritative facts. "
                         "You MUST inspect and ground your answers on active documents first.\n"
-                        "2. Second Brain Memories (personal preferences, historical facts) are for personalization and enrichment only. "
+                        "2. Dynamic Memories (personal preferences, historical facts) are for personalization and enrichment only. "
                         "NEVER allow historical memories to override factual statements in active grounding documents."
                     )
 

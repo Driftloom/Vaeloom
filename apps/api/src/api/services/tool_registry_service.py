@@ -9,8 +9,10 @@ Authoritative per-execution tool discovery engine that enforces:
 """
 from __future__ import annotations
 
+import functools
+import inspect
 import logging
-from typing import Any
+from typing import Any, Callable, get_type_hints
 import uuid
 
 from sqlalchemy import select
@@ -141,9 +143,137 @@ class ToolRegistryService:
 tool_registry_service = ToolRegistryService()
 
 
-def register_tool(category: str = "general", risk_class: str = "LOW"):
-    """Decorator for declarative tool registration."""
-    def decorator(cls_or_func):
-        # Decorator support for future dynamic function-based tools
-        return cls_or_func
+def register_tool(
+    name_or_fn: str | Callable[..., Any] | None = None,
+    name: str | None = None,
+    description: str | None = None,
+    category: str = "general",
+    required_scope: str = "tools.execute",
+    risk_class: str = "LOW",
+    trust_class: str = "first_party",
+):
+    """Declarative decorator for dynamic tool registration.
+
+    Inspects function signature and type hints, builds an MCP-compliant ToolDefinition,
+    and registers into ALL_TOOLS and TOOL_DISPATCH. Supports:
+    - @register_tool
+    - @register_tool()
+    - @register_tool("custom_name")
+    - @register_tool(name="custom_name", category="memory_read")
+    """
+    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
+        tool_name = name or (name_or_fn if isinstance(name_or_fn, str) else None) or fn.__name__
+        tool_desc = (description or fn.__doc__ or f"Execute {tool_name}").strip()
+
+        # Build schema from signature & type hints
+        sig = inspect.signature(fn)
+        type_hints: dict[str, Any] = {}
+        try:
+            type_hints = get_type_hints(fn)
+        except Exception:
+            pass
+
+        properties: dict[str, Any] = {}
+        required: list[str] = []
+
+        type_map = {
+            str: "string",
+            int: "integer",
+            float: "number",
+            bool: "boolean",
+            list: "array",
+            dict: "object",
+        }
+
+        # Check if signature expects raw (params, workspace_id=None)
+        params_list = list(sig.parameters.values())
+        is_raw_params = (
+            len(params_list) >= 1
+            and params_list[0].name in ("params", "args", "payload")
+            and (len(params_list) == 1 or params_list[1].name in ("workspace_id", "ws_id"))
+        )
+
+        if not is_raw_params:
+            for param_name, param in sig.parameters.items():
+                if param_name in ("self", "cls", "workspace_id", "ws_id", "context"):
+                    continue
+                hint = type_hints.get(param_name, param.annotation)
+                json_type = "string"
+                if hint in type_map:
+                    json_type = type_map[hint]
+                elif getattr(hint, "__origin__", None) in type_map:
+                    json_type = type_map[hint.__origin__]
+
+                prop_def: dict[str, Any] = {"type": json_type}
+                if param.default is not inspect.Parameter.empty:
+                    prop_def["default"] = param.default
+                else:
+                    required.append(param_name)
+                properties[param_name] = prop_def
+
+        input_schema = {
+            "type": "object",
+            "properties": properties,
+            "required": required,
+        }
+        output_schema = {"type": "object"}
+
+        td = ToolDefinition(
+            name=tool_name,
+            description=tool_desc,
+            input_schema=input_schema,
+            output_schema=output_schema,
+            required_scope=required_scope,
+            category=category,
+            trust_class=trust_class,
+        )
+
+        # 1. Register in ALL_TOOLS
+        ALL_TOOLS[tool_name] = td
+
+        # 2. Build dispatch adapter
+        @functools.wraps(fn)
+        async def tool_handler(params: dict[str, Any], workspace_id: Any = None) -> Any:
+            try:
+                if is_raw_params:
+                    if len(params_list) >= 2:
+                        res = fn(params, workspace_id)
+                    else:
+                        res = fn(params)
+                else:
+                    call_kwargs = dict(params)
+                    if "workspace_id" in sig.parameters:
+                        call_kwargs["workspace_id"] = workspace_id
+                    elif "ws_id" in sig.parameters:
+                        call_kwargs["ws_id"] = workspace_id
+                    res = fn(**call_kwargs)
+
+                if inspect.iscoroutine(res):
+                    res = await res
+
+                if isinstance(res, dict) and "status" in res:
+                    return res
+                return {
+                    "status": "success",
+                    "tool": tool_name,
+                    "result": res,
+                }
+            except Exception as exc:
+                logger.warning("Error in dynamic tool %s: %s", tool_name, exc)
+                return {
+                    "status": "error",
+                    "tool": tool_name,
+                    "result": str(exc),
+                    "error_code": "TOOL_EXECUTION_FAILED",
+                }
+
+        # 3. Register in executor
+        from ..tools.executor import TOOL_DISPATCH, register_dynamic_tool
+        TOOL_DISPATCH[tool_name] = tool_handler
+        register_dynamic_tool(td, tool_handler)
+
+        return fn
+
+    if callable(name_or_fn):
+        return decorator(name_or_fn)
     return decorator

@@ -36,9 +36,9 @@ class OrchestratorExecuteRequest(BaseModel):
 @router.post("/execute", status_code=200)
 async def execute_orchestrator_turn(
     dto: OrchestratorExecuteRequest,
-    db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
     tenant_id: Optional[str] = Depends(get_tenant_id),
+    db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Execute an agent turn via the governed orchestrator boundary."""
     try:
@@ -57,12 +57,23 @@ async def execute_orchestrator_turn(
         raise HTTPException(status_code=403, detail="User ID mismatch with authenticated identity")
 
     effective_tenant_id = tenant_id or current_user.get("tenant_id")
-    has_access = await check_user_workspace_access(
-        session=db,
-        workspace_id=str(ws_uuid),
-        user_id=authenticated_user_id,
-        tenant_id=effective_tenant_id,
-    )
+    try:
+        has_access = await check_user_workspace_access(
+            session=db,
+            workspace_id=str(ws_uuid),
+            user_id=authenticated_user_id,
+            tenant_id=effective_tenant_id,
+        )
+    finally:
+        # Crucial P0 Fix: Release DB connection immediately before awaiting long-running orchestrator loop
+        try:
+            await db.commit()
+        except Exception:
+            pass
+        try:
+            await db.close()
+        except Exception:
+            pass
     if not has_access:
         logger.warning("User %s denied access to workspace %s", authenticated_user_id, dto.workspace_id)
         raise HTTPException(status_code=403, detail="Access denied to workspace")

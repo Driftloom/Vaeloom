@@ -16,6 +16,9 @@ PUBLIC_PATHS = frozenset({
     "/health/startup",
     "/metrics",
     "/csrf-token",
+    "/docs",
+    "/redoc",
+    "/openapi.json",
     "/api/v1/auth/signup",
     "/api/v1/auth/login",
     "/api/v1/auth/refresh",
@@ -268,7 +271,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
                             or app_meta.get("email_verified") is True
                             or bool(payload.get("email_confirmed_at"))
                             or bool(user_meta.get("email_confirmed_at"))
-                            or payload.get("aud") == "authenticated"
                         )
                         if is_verified:
                             try:

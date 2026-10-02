@@ -185,7 +185,7 @@ CANONICAL_CAPABILITIES: list[AgentCapabilityManifest] = [
             "what companies have i worked at?",
             "update my skills list with rust and go",
             "check what you know about my career history",
-            "sync vault notes into second brain",
+            "sync vault notes into memory",
             "search my memories and obsidian notes",
         ],
         required_tools=["search_documents", "query_graph"],

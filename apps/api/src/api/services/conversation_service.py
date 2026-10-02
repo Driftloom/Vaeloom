@@ -206,7 +206,7 @@ class ConversationService:
         conversation = await self.get_conversation(db, workspace_id, conversation_id)
         conversation.updated_at = datetime.now(UTC)
 
-        # Level 2: Extract & persist cognitive memory from user chat turn into Second Brain
+        # Level 2: Extract & persist cognitive memory from user chat turn into dynamic memory
         if dto.role == "user" and dto.text and len(dto.text.strip()) > 10:
             await self._extract_chat_cognitive_memory(
                 db=db,
@@ -227,7 +227,7 @@ class ConversationService:
         text: str,
         client_id: str,
     ) -> None:
-        """Autonomously ingest user thoughts, preferences, decisions, and notes from chat into the cognitive Second Brain (memories table)."""
+        """Autonomously ingest user thoughts, preferences, decisions, and notes from chat into dynamic memory (memories table)."""
         from .memory_service import memory_service
         from ..schemas.memory import MemoryCreate
 
@@ -279,7 +279,7 @@ class ConversationService:
             summary=summary,
             type=mem_type,
             domain="general",
-            tags=["chat", "second-brain"],
+            tags=["chat", "memory"],
             source_type="chat",
             source_label=f"Chat message ({client_id[:8]})",
             metadata={"client_id": client_id, "channel": "chat"},

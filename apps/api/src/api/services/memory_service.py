@@ -499,7 +499,7 @@ async def retrieve_memory_and_vault_context(
 
         context_lines = [
             "[Background Context from Workspace Memories & Vault Notes]",
-            "[COGNITIVE PRECEDENCE DIRECTIVE]: Grounding Documents represent current authoritative facts. Inspect and ground on Active Grounding Documents first. Second Brain Memories represent user preferences and background; do not allow historical memory to override active documents.",
+            "[COGNITIVE PRECEDENCE DIRECTIVE]: Grounding Documents represent current authoritative facts. Inspect and ground on Active Grounding Documents first. Dynamic Memories represent user preferences and background; do not allow historical memory to override active documents.",
         ]
         # Active Grounding Documents FIRST (Claude-style authoritative grounding)
         if documents:
@@ -509,9 +509,9 @@ async def retrieve_memory_and_vault_context(
                 title = d.path.rsplit("/", 1)[-1] if d.path else "Document"
                 context_lines.append(f"- Active Document ({title}): {snippet}")
 
-        # Dynamic Second Brain Memories SECOND (ChatGPT-style personalization & memory cards)
+        # Dynamic Memories SECOND (ChatGPT-style personalization & memory cards)
         if memories:
-            context_lines.append("\n### 🧠 Second Brain Memories (Enrichment)")
+            context_lines.append("\n### 🧠 Dynamic Memories (Enrichment)")
             for m in memories:
                 snippet = (m.summary or m.content or "").strip()[:250]
                 context_lines.append(f"- Memory ({m.type or 'fact'}): {m.title} — {snippet}")

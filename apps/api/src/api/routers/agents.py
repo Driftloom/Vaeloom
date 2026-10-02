@@ -569,14 +569,25 @@ async def chat(
     """
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    await _verify_workspace_access(dto.workspaceId, current_user, db)
+    try:
+        await _verify_workspace_access(dto.workspaceId, current_user, db)
+        bg_context = await retrieve_memory_and_vault_context(dto.workspaceId, dto.message, db)
+    finally:
+        # Crucial P0 Fix: Release DB connection immediately before awaiting long-running orchestrator loop
+        try:
+            await db.commit()
+        except Exception:
+            pass
+        try:
+            await db.close()
+        except Exception:
+            pass
     # Trusted caller identity for downstream orchestration (graph branch).
     # Tenant prefers middleware request-state, falls back to JWT claims.
     _uid = current_user.get("sub") or current_user.get("user_id") if current_user else None
     _tenant = getattr(request.state, "tenant_id", None)
     if not _tenant and isinstance(current_user, dict):
         _tenant = current_user.get("tenant_id") or (current_user.get("tenant") if isinstance(current_user.get("tenant"), str) else None)
-    bg_context = await retrieve_memory_and_vault_context(dto.workspaceId, dto.message, db)
     full_message = f"{dto.message}\n\n{bg_context}" if bg_context else dto.message
     req = UserRequest(
         request_id=str(uuid.uuid4()),
@@ -613,11 +624,22 @@ async def chat_stream(
 
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    await _verify_workspace_access(dto.workspaceId, current_user, db)
+    try:
+        await _verify_workspace_access(dto.workspaceId, current_user, db)
+        bg_context = await retrieve_memory_and_vault_context(dto.workspaceId, dto.message, db)
+    finally:
+        # Crucial P0 Fix: Release DB connection immediately before starting SSE stream
+        try:
+            await db.commit()
+        except Exception:
+            pass
+        try:
+            await db.close()
+        except Exception:
+            pass
 
     req_id = str(uuid.uuid4())
     preferred = dto.agentName.strip().lower() if dto.agentName else None
-    bg_context = await retrieve_memory_and_vault_context(dto.workspaceId, dto.message, db)
     full_message = f"{dto.message}\n\n{bg_context}" if bg_context else dto.message
 
     async def event_gen():

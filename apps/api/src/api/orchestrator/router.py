@@ -684,9 +684,11 @@ async def handle(request: UserRequest) -> dict[str, Any]:
     )
     loop_start = time.monotonic()
     # P1c: OTel span per orchestrator dispatch
-    with agent_span("orchestrator.handle", agent=agent_name, workspace_id=request.workspace_id):
-        loop_response = await run_agent_loop(agent_request)
-    workspace_limiter.release(request.workspace_id)
+    try:
+        with agent_span("orchestrator.handle", agent=agent_name, workspace_id=request.workspace_id):
+            loop_response = await run_agent_loop(agent_request)
+    finally:
+        workspace_limiter.release(request.workspace_id)
     loop_latency_ms = (time.monotonic() - loop_start) * 1000
 
     # Record agent metrics

@@ -62,10 +62,21 @@ async def send_chat_message(
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    await _verify_workspace_access(workspace_id, current_user, db)
+    try:
+        await _verify_workspace_access(workspace_id, current_user, db)
+        bg_context = await retrieve_memory_and_vault_context(workspace_id, dto.message, db)
+    finally:
+        # Crucial P0 Fix: Release DB connection immediately before awaiting long-running orchestrator loop
+        try:
+            await db.commit()
+        except Exception:
+            pass
+        try:
+            await db.close()
+        except Exception:
+            pass
     user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
     tenant_id = current_user.get("tenant_id")
-    bg_context = await retrieve_memory_and_vault_context(workspace_id, dto.message, db)
     full_message = f"{dto.message}\n\n{bg_context}" if bg_context else dto.message
     req = UserRequest(
         request_id=str(uuid.uuid4()),

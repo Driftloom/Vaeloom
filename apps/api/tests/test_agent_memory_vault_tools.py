@@ -356,34 +356,34 @@ async def test_retrieve_memory_and_vault_context(db_session):
 # ── 6. Conversation & Memory Agent Scaffolding & Dynamic Proposals ───────────
 
 async def test_conversation_agent_second_brain_scaffolding():
-    """Verify ConversationAgent tools, greetings text, and action chips for second brain."""
+    """Verify ConversationAgent tools, greetings text, and action chips for memory."""
     agent = ConversationAgent()
 
     # 1. search_memories in ConversationAgent.tools
     tool_names = [t.name for t in agent.tools]
     assert "search_memories" in tool_names
     search_tool = next(t for t in agent.tools if t.name == "search_memories")
-    assert "personal Second Brain memories and synced vault notes" in search_tool.description
+    assert "personal dynamic memories and synced vault notes" in search_tool.description
 
-    # 2. Greeting response mentions Second Brain
+    # 2. Greeting response mentions persistent memory
     res = await agent.execute("hi")
     expected_greeting = (
-        "Hello! 👋 I'm Vaeloom, your executive career partner and second brain. "
+        "Hello! 👋 I'm Vaeloom, your executive career partner with persistent memory. "
         "I can help you build an ATS-proof resume, sync and query your Obsidian vault and notes, "
         "discover target roles, track deadlines, and synthesize long-term career memory.\n\n"
         "What would you like to focus on today?"
     )
     assert res["result"]["summary"] == expected_greeting
 
-    # 3. Action chips include second brain notes and sync vault
+    # 3. Action chips include memory notes and sync vault
     chips = res["result"]["action_chips"]
-    assert "🧠 Second Brain Notes" in chips
+    assert "🧠 Memory Notes" in chips
     assert "🔄 Sync Vault" in chips
 
-    # 4. Fallback action chips include second brain notes and sync vault
+    # 4. Fallback action chips include memory notes and sync vault
     fb = await agent.fallback()
     fb_chips = fb["result"]["action_chips"]
-    assert "🧠 Second Brain Notes" in fb_chips
+    assert "🧠 Memory Notes" in fb_chips
     assert "🔄 Sync Vault" in fb_chips
 
 
@@ -449,8 +449,8 @@ async def test_action_proposal_engine_vault_conflict_and_graph(db_session):
 
     # Verify second brain graph exploration proposal
     graph_prop = next((p for p in proposals if p.binding and p.binding.tool_name == "query_graph"), None)
-    assert graph_prop is not None, "Second brain graph proposal not generated"
-    assert graph_prop.title == "🧠 Explore Second Brain Graph"
+    assert graph_prop is not None, "Memory graph proposal not generated"
+    assert graph_prop.title == "🧠 Explore Memory Graph"
     assert graph_prop.description == "Query multi-hop knowledge ontology linking your documents and Obsidian notes."
     assert graph_prop.binding.tool_name == "query_graph"
     assert graph_prop.binding.arguments == {"query": "", "workspace_id": str(ws_id)}

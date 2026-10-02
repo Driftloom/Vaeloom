@@ -975,7 +975,7 @@ def _build_context_prompt(rag: dict[str, Any]) -> str:
         if chunk:
             doc_text += f"\nRelevant excerpt: {chunk[:800]}"
         parts.append(f"Active Document: {doc.get('path')} — {doc_text}")
-    # 2. P3 Dynamic Second Brain Memories (Personalization & Preferences)
+    # 2. P3 Dynamic Memories (Personalization & Preferences)
     for ent in (rag.get("entities") or [])[:5]:
         parts.append(f"Memory Entity: {ent.get('name')} ({ent.get('type')})")
     for pref in (rag.get("preferences") or [])[:3]:
