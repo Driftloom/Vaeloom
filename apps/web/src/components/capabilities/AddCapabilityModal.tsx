@@ -1686,7 +1686,7 @@ function textField(
       label={extra.ariaLabel ? undefined : label}
       aria-label={extra.ariaLabel ?? label}
       value={value}
-      onChange={(event) => onChange(event.target.value)}
+      onChange={(event: React.ChangeEvent<HTMLInputElement>) => onChange(event.target.value)}
       placeholder={extra.placeholder}
       helperText={extra.helperText}
       error={extra.error}
@@ -2877,7 +2877,7 @@ export function AddCapabilityModal({
                           max={MAX_REACT_ROUNDS}
                           helperText={`Stored as config.${CAPABILITY_MAX_REACT_ROUNDS_KEY}. The runtime resolves the budget from this row, then the agent card, then AGENT_MAX_REACT_ROUNDS (default 5), then 5 — and clamps anything outside ${MIN_REACT_ROUNDS}–${MAX_REACT_ROUNDS} with a log.`}
                           value={maxTurns}
-                          onChange={(event) => {
+                          onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
                             const parsed = Number.parseInt(event.target.value, 10);
                             if (Number.isNaN(parsed)) return;
                             setMaxTurns(parsed);
@@ -3135,7 +3135,9 @@ export function AddCapabilityModal({
                   label="Repository URL / endpoint"
                   required
                   value={importUrl}
-                  onChange={(event) => setImportUrl(event.target.value)}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                    setImportUrl(event.target.value)
+                  }
                   placeholder="https://github.com/vaeloom/skills-community/tree/main/rag-eval"
                 />
                 <Select

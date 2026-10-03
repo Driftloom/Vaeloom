@@ -506,6 +506,7 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
               Drag & drop files or folders here, or{' '}
               <button
                 type="button"
+                aria-label="Upload files"
                 onClick={(e) => {
                   e.stopPropagation();
                   fileInputRef.current?.click();
@@ -517,6 +518,7 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
               or{' '}
               <button
                 type="button"
+                aria-label="Upload folder"
                 onClick={(e) => {
                   e.stopPropagation();
                   folderInputRef.current?.click();

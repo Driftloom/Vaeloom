@@ -467,7 +467,7 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
             label="Folder Name"
             placeholder="e.g. Legal Contracts, Resumes, Financials"
             value={newFolderName}
-            onChange={(e) => setNewFolderName(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewFolderName(e.target.value)}
             error={createError ?? undefined}
             autoFocus
             required

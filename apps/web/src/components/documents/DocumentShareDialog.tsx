@@ -193,7 +193,9 @@ export const DocumentShareDialog: React.FC<DocumentShareDialogProps> = ({
                 label="Target Workspace ID"
                 placeholder="e.g. 00000000-0000-0000-0000-000000000000"
                 value={targetWorkspaceId}
-                onChange={(e) => setTargetWorkspaceId(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setTargetWorkspaceId(e.target.value)
+                }
                 required
               />
 
@@ -209,7 +211,9 @@ export const DocumentShareDialog: React.FC<DocumentShareDialogProps> = ({
                   label="Optional Expiration"
                   type="datetime-local"
                   value={expiresAt}
-                  onChange={(e) => setExpiresAt(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setExpiresAt(e.target.value)
+                  }
                 />
               </div>
             </div>

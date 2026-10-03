@@ -148,7 +148,7 @@ export default function GlobalSearchPage() {
           type="search"
           placeholder="Search across documents, memories, jobs, resumes, and skills..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
           className="text-sm py-2.5 pl-10 shadow-sm"
         />
         {searchQuery && (
