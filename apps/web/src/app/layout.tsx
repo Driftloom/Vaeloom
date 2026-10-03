@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { Inter, Space_Grotesk, IBM_Plex_Mono } from 'next/font/google';
 import '../styles/globals.css';
 import { ThemeProvider } from '../hooks/useTheme';
@@ -14,6 +15,31 @@ import { ToastProvider } from '../components/shared/Toast';
 import { SkipLink } from '../components/shared/SkipLink';
 import { AuthProvider } from '../hooks/useAuth';
 import { SWRProvider } from '../components/providers/SWRProvider';
+
+/**
+ * Every route renders per request so the CSP nonce minted in `middleware.ts`
+ * matches the scripts in the HTML.
+ *
+ * `middleware.ts` sets `script-src 'self' 'nonce-…' 'strict-dynamic'` in production.
+ * A browser that sees a nonce **ignores `'self'` and `'unsafe-inline'` for
+ * `script-src`** — that is what `strict-dynamic` means. So only scripts carrying
+ * the request's nonce may execute. A statically prerendered page bakes its script
+ * tags at build time, when no request nonce exists, so none of them carry one and
+ * the browser blocks every one.
+ *
+ * The failure is silent and looks like a network fault: React never hydrates, so
+ * `onSubmit` handlers never attach, native form submission takes over, and the app
+ * appears to hang on `page.waitForURL`. It only appears in a production build —
+ * `next dev` renders per request, so the nonce matches and dev stays green. That
+ * is how an app-wide hydration failure reached a green test suite: the Playwright
+ * specs assert against a production build (commit fc223467), and every one of them
+ * timed out at login.
+ *
+ * Dropping `strict-dynamic` would also "fix" it and re-open the hole CSP was added
+ * to close, so the renderer is made dynamic instead — the requirement
+ * `middleware.ts` already documents at its own nonce comment.
+ */
+export const dynamic = 'force-dynamic';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -103,7 +129,13 @@ export const metadata: Metadata = {
   category: 'technology',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Next.js stamps its own runtime and page chunks with the nonce it finds in the
+  // `Content-Security-Policy` request header, but a hand-written inline `<script>`
+  // is not covered by that pass. Under `strict-dynamic` an inline script without
+  // the nonce is blocked, which for this script means the theme flash it exists to
+  // prevent comes back — silently, and only in production.
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
   return (
     <html
       lang="en"
@@ -116,6 +148,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             brand default is dark; stored user choice or OS light preference
             is applied before first paint. */}
         <script
+          nonce={nonce}
           suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'&&t!=='high-contrast'){if(window.matchMedia('(prefers-contrast: more)').matches){t='high-contrast';}else{t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}}var r=document.documentElement;r.classList.remove('light','dark','high-contrast');r.classList.add(t);r.setAttribute('data-theme',t);}catch(e){}})();`,

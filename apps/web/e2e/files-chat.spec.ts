@@ -118,7 +118,12 @@ test.describe('chat', () => {
     // A new conversation is titled from the first prompt (ChatWindow.tsx:544)
     // and is reachable in the thread rail.
     const rail = page.locator('aside').filter({ hasText: 'THREADS' });
-    const threadLabel = prompt.slice(0, 24);
+    // Chat history is now server-side, so a workspace accumulates one thread per run
+    // and the rail is NOT empty on a repeat run. "Hello from Playwright " is 21 chars,
+    // so a 24-char slice kept only the first 3 digits of the timestamp — enough for
+    // a shape check but not an identity, and every leftover thread matched it. Slice
+    // past the timestamp prefix so the label identifies THIS run's thread.
+    const threadLabel = prompt.slice(0, 32);
     // Scoped away from the per-thread actions trigger, whose accessible name also
     // contains the title — matching both would trip Playwright strict mode.
     const thread = rail

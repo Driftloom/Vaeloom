@@ -511,12 +511,18 @@ importers:
       jest:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@26.2.0)(ts-node@10.9.2(@types/node@26.2.0)(typescript@5.9.3))
+      rxjs:
+        specifier: ^7.8.1
+        version: 7.8.2
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
 
   packages/plugin-sdk:
     devDependencies:
+      '@types/node':
+        specifier: ^20.14.0
+        version: 20.19.43
       '@vaeloom/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
@@ -528,7 +534,7 @@ importers:
         version: link:../tsconfig
       jest:
         specifier: ^29.7.0
-        version: 29.7.0(@types/node@26.2.0)(ts-node@10.9.2(@types/node@26.2.0)(typescript@5.9.3))
+        version: 29.7.0(@types/node@20.19.43)(ts-node@10.9.2(@types/node@20.19.43)(typescript@5.9.3))
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
@@ -658,6 +664,12 @@ importers:
         specifier: ^1.7.0
         version: 1.18.1
     devDependencies:
+      '@types/jest':
+        specifier: ^29.5.12
+        version: 29.5.14
+      '@types/node':
+        specifier: ^20.14.0
+        version: 20.19.43
       '@vaeloom/eslint-config':
         specifier: workspace:*
         version: link:../../packages/eslint-config
@@ -666,7 +678,7 @@ importers:
         version: link:../../packages/tsconfig
       jest:
         specifier: ^29.7.0
-        version: 29.7.0(@types/node@26.2.0)(ts-node@10.9.2(@types/node@26.2.0)(typescript@5.9.3))
+        version: 29.7.0(@types/node@20.19.43)(ts-node@10.9.2(@types/node@20.19.43)(typescript@5.9.3))
       typescript:
         specifier: ^5.5.0
         version: 5.9.3

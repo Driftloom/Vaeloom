@@ -653,6 +653,59 @@ function renderRail(overrides: Partial<Parameters<typeof ChatThreadRail>[0]> = {
   return spies;
 }
 
+describe('pointer-driven disclosure (regression)', () => {
+  /**
+   * Reproduces the browser's real event order. `fireEvent.click` alone cannot see
+   * this class of bug: a mouse press is `mousedown` then `click`, and the rail's
+   * outside-press handler runs on the first one.
+   *
+   * The disclosure panel is a SIBLING of the thread row inside the <li>, so an
+   * outside-press check anchored on the row reported every press inside the panel
+   * as "outside", closed the menu on `mousedown`, and the `click` that followed
+   * then landed on nothing. Rename/Clear/Delete were mouse-dead while keyboard
+   * activation kept working, which is why 306 unit tests stayed green and only a
+   * real browser surfaced it.
+   */
+  function press(el: Element): void {
+    fireEvent.mouseDown(el);
+    fireEvent.click(el);
+  }
+
+  it('keeps the disclosure open long enough for Delete to be pressed', () => {
+    renderRail();
+
+    press(screen.getByRole('button', { name: 'Actions for Quarterly planning' }));
+    press(screen.getByRole('button', { name: /^delete$/i }));
+
+    expect(screen.getByRole('button', { name: /^confirm delete$/i })).toBeInTheDocument();
+  });
+
+  it('does not fire onDelete until the confirmation is pressed', () => {
+    const spies = renderRail();
+
+    press(screen.getByRole('button', { name: 'Actions for Quarterly planning' }));
+    press(screen.getByRole('button', { name: /^delete$/i }));
+
+    expect(spies.onDelete).not.toHaveBeenCalled();
+
+    press(screen.getByRole('button', { name: /^confirm delete$/i }));
+
+    expect(spies.onDelete).toHaveBeenCalledTimes(1);
+    expect(spies.onDelete).toHaveBeenCalledWith('t-1');
+  });
+
+  it('still closes the disclosure on a press genuinely outside it', () => {
+    renderRail();
+
+    press(screen.getByRole('button', { name: 'Actions for Quarterly planning' }));
+    expect(screen.getByRole('button', { name: /^delete$/i })).toBeInTheDocument();
+
+    fireEvent.mouseDown(document.body);
+
+    expect(screen.queryByRole('button', { name: /^delete$/i })).not.toBeInTheDocument();
+  });
+});
+
 describe('ChatThreadRail', () => {
   it('is a named complementary landmark that the e2e suite can locate by its visible heading', () => {
     renderRail();

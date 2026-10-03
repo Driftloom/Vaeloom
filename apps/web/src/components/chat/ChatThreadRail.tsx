@@ -91,7 +91,7 @@ export function ChatThreadRail({
   commandsAvailable,
 }: ChatThreadRailProps): JSX.Element {
   const railRef = useRef<HTMLElement | null>(null);
-  const openRowRef = useRef<HTMLDivElement | null>(null);
+  const openRowRef = useRef<HTMLLIElement | null>(null);
 
   const [isDesktop, setIsDesktop] = useState(true);
   const [query, setQuery] = useState('');
@@ -121,6 +121,11 @@ export function ChatThreadRail({
     if (menuId === null) return;
     const onPointerDown = (e: MouseEvent): void => {
       const target = e.target;
+      // The ref sits on the <li>, not on the inner row: the disclosure panel is a
+      // SIBLING of the row, so a ref on the row reported every press inside the panel
+      // as "outside" and closed the menu. That made Rename/Clear/Delete unreachable
+      // with a mouse — mousedown closed the menu before click could fire — while
+      // keyboard activation still worked, so only a real browser surfaced it.
       if (target instanceof Node && openRowRef.current && !openRowRef.current.contains(target)) {
         setMenuId(null);
       }
@@ -303,11 +308,8 @@ export function ChatThreadRail({
                 const menuIdDom = `chat-thread-actions-${t.id}`;
                 const stamp = now === null ? '' : formatRelative(t.updatedAt || t.createdAt, now);
                 return (
-                  <li key={t.id} className="relative">
-                    <div
-                      ref={menuOpen ? openRowRef : undefined}
-                      className="flex items-stretch gap-0.5"
-                    >
+                  <li key={t.id} className="relative" ref={menuOpen ? openRowRef : undefined}>
+                    <div className="flex items-stretch gap-0.5">
                       <button
                         type="button"
                         onClick={() => handleSelect(t.id)}

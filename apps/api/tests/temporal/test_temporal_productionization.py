@@ -1078,7 +1078,7 @@ async def test_TE25_full_combined(temporal_harness, monkeypatch, caplog):
         async with await WorkflowEnvironment.start_time_skipping() as env:
             async with _agent_worker(env.client):
                 payload = _agent_payload(
-                    task="I prefer concise results. search full combined proof [TAG t25]")
+                    task="I prefer concise results. memory search full combined proof [TAG t25]")
                 wid = f"durable_run:{payload['workspace_id']}:{payload['user_id']}:{payload['request_id']}"
                 handle = await env.client.start_workflow(
                     DurableAgentRunWorkflow.run, payload, id=wid,

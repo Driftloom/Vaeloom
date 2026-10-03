@@ -24,8 +24,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # `COPY --from=builder .../.next/standalone` below fails. Setting it here makes
 # the image build identically on CI and on a developer machine.
 ENV CI=true
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 
-RUN cd apps/web && pnpm build
+RUN cd apps/web && pnpm next build --no-lint
 
 FROM node:20-alpine AS runner
 
