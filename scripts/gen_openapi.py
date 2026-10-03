@@ -1,7 +1,14 @@
 import os
+import subprocess
 import sys
 from pathlib import Path
 import yaml
+
+# Self-guarding runner: ensure execution inside the pinned Python 3.12 virtualenv
+if sys.version_info[:2] != (3, 12):
+    repo_root = Path(__file__).resolve().parent.parent
+    cmd = ["uv", "run", "--project", "apps/api", "python", str(Path(__file__).resolve())] + sys.argv[1:]
+    sys.exit(subprocess.call(cmd, cwd=str(repo_root)))
 
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-for-ci-only-32-chars-long!!")
 os.environ.setdefault("ENCRYPTION_KEY", "MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=")

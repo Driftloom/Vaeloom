@@ -933,17 +933,6 @@ export function DocumentsHub({
               <span>{autoOrganizeBusy ? 'Organizing...' : 'Auto-Organize Files'}</span>
             </button>
 
-            <input
-              ref={folderInputRef}
-              type="file"
-              // @ts-expect-error webkitdirectory is standard in all modern browsers
-              webkitdirectory=""
-              directory=""
-              multiple
-              className="hidden"
-              onChange={handleFolderUpload}
-            />
-
             <button
               type="button"
               onClick={() => folderInputRef.current?.click()}
@@ -2095,6 +2084,18 @@ export function DocumentsHub({
             ? 'danger'
             : 'default'
         }
+      />
+
+      {/* Hidden input for directory upload (placed at bottom so DocumentUploadQueue input is primary) */}
+      <input
+        ref={folderInputRef}
+        type="file"
+        // @ts-expect-error webkitdirectory is standard in all modern browsers
+        webkitdirectory=""
+        directory=""
+        multiple
+        className="hidden"
+        onChange={handleFolderUpload}
       />
     </div>
   );

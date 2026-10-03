@@ -312,7 +312,7 @@ function MemoryGraphPageContent() {
     }
   };
 
-  const toggleSelectMemory = (id: string, e?: React.MouseEvent) => {
+  const toggleSelectMemory = (id: string, e?: React.SyntheticEvent) => {
     if (e) e.stopPropagation();
     setSelectedMemoryIds((prev) => {
       const next = new Set(prev);
@@ -555,19 +555,19 @@ function MemoryGraphPageContent() {
                     }`}
                   >
                     <div
-                      className="absolute top-2 right-2 z-10 p-1 flex items-center justify-center"
+                      className="absolute top-3 left-3 z-10 p-1 flex items-center justify-center"
                       onClick={(e) => toggleSelectMemory(m.id, e)}
                     >
                       <input
                         type="checkbox"
                         checked={isSelected}
-                        onChange={() => {}}
+                        onChange={(e) => toggleSelectMemory(m.id, e)}
                         aria-label={`Select memory ${m.title || m.id}`}
                         className="w-6 h-6 min-w-[24px] min-h-[24px] rounded border-[var(--color-border)] text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                       />
                     </div>
                     <div
-                      className="cursor-pointer"
+                      className="cursor-pointer pl-7"
                       onClick={() => router.push(`/workspace/${workspaceId}/memory/${m.id}`)}
                     >
                       <MemoryCard
@@ -577,10 +577,10 @@ function MemoryGraphPageContent() {
                         source={sourceText}
                         timestamp={relTime}
                         entityCount={Array.isArray(m.tags) ? m.tags.length : undefined}
-                        onEdit={(id) => {
+                        onEdit={(id: string) => {
                           openLineage(id);
                         }}
-                        onDelete={(id) => {
+                        onDelete={(id: string) => {
                           void handleDeleteMemory(id);
                         }}
                       />

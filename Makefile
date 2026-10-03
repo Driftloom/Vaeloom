@@ -43,6 +43,9 @@ lint: ## Lint all packages
 typecheck: ## TypeScript type checking
 	pnpm typecheck
 
+gen-openapi: ## Regenerate committed OpenAPI specs for backend and docs
+	uv run --project apps/api python scripts/gen_openapi.py
+
 # Setup
 setup: ## One-click developer setup
 	pnpm install

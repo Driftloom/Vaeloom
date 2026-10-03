@@ -13,6 +13,7 @@
     "typecheck": "nx run-many --target=typecheck --parallel",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml}\"",
+    "gen:openapi": "uv run --project apps/api python scripts/gen_openapi.py",
     "clean": "nx reset && rimraf node_modules packages/*/node_modules apps/*/node_modules",
     "prepare": "husky"
   },

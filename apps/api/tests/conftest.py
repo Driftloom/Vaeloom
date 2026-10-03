@@ -4,6 +4,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+# Hermetic unit test database baseline: default to local sqlite so module-level
+# engines never connect to remote Supabase instances specified in developer .env files
+os.environ.setdefault("DATABASE__URL", "sqlite+aiosqlite:///./test_dev.db")
+os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///./test_dev.db")
+os.environ.setdefault("DATABASE_MIGRATION__URL", "")
+
 # Ensure ENCRYPTION_KEY is set for tests that trigger encrypt_value()
 os.environ.setdefault("ENCRYPTION_KEY", "test-encryption-key-must-be-at-least-32-chars!!")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-for-ci-only-32-chars-long!!")
@@ -256,12 +262,7 @@ async def db_session(db_path):
         async with session_factory() as session:
             yield session
     finally:
-        # Teardown must not hang the worker: drop is best-effort, dispose is mandatory.
-        try:
-            async with engine.begin() as conn:
-                await conn.run_sync(Base.metadata.drop_all)
-        except Exception:
-            pass
+        # Teardown: tmp_path isolates and cleans the SQLite db file; cleanly dispose the engine.
         try:
             await engine.dispose()
         except Exception:
@@ -295,7 +296,12 @@ async def mock_llm(monkeypatch, request):
     from api.services.llm_service import LLMService
 
     # Deterministic env: agents must see no LLM key unless a test sets one
-    monkeypatch.setattr(settings, "llm_api_key", "")
+    for _k in ("llm_api_key", "groq_api_key", "openai_api_key", "anthropic_api_key", "gemini_api_key"):
+        if hasattr(settings, _k):
+            monkeypatch.setattr(settings, _k, "")
+    for _env in ("LLM_API_KEY", "GROQ_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY"):
+        monkeypatch.setenv(_env, "")
+
     # MVP scope lock is off by default for existing suites; the dedicated
     # test_mvp_scope.py module re-enables it and verifies the gate.
     monkeypatch.setattr(settings, "mvp_scope_enforced", False)
@@ -326,6 +332,16 @@ async def mock_llm(monkeypatch, request):
     monkeypatch.setattr(LLMService, "generate_completion", fake_generate_completion)
     monkeypatch.setattr(LLMService, "generate_completion_with_tools", fake_generate_completion_with_tools)
     monkeypatch.setattr(LLMService, "generate_completion_stream", fake_generate_completion_stream, raising=False)
+
+    try:
+        from api.services.llm_service import llm_service
+        monkeypatch.setattr(llm_service, "api_key", "")
+        monkeypatch.setattr(llm_service, "generate_embedding", fake_generate_embedding)
+        monkeypatch.setattr(llm_service, "generate_completion", fake_generate_completion)
+        monkeypatch.setattr(llm_service, "generate_completion_with_tools", fake_generate_completion_with_tools)
+        monkeypatch.setattr(llm_service, "generate_completion_stream", fake_generate_completion_stream, raising=False)
+    except Exception:
+        pass
 
 
 @pytest_asyncio.fixture(autouse=True)

@@ -90,7 +90,7 @@ export function AnticipationFeed({ workspaceId }: AnticipationFeedProps) {
     switch (urgency.toUpperCase()) {
       case 'HIGH':
         return (
-          <span className="text-2xs font-bold px-2 py-0.5 rounded-full bg-error text-white">
+          <span className="text-2xs font-bold px-2 py-0.5 rounded-full bg-red-700 text-white">
             HIGH URGENCY
           </span>
         );

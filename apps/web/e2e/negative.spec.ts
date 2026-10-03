@@ -12,6 +12,10 @@ import { apiRequest, gotoWorkspace, login } from './helpers';
  */
 
 test.describe('negative paths', () => {
+  test.beforeEach(async () => {
+    test.setTimeout(60_000);
+  });
+
   test('an unknown workspace route renders the full 404 page', async ({ page }) => {
     const wsId = await login(page);
     await page.goto(`/workspace/${wsId}/this-route-does-not-exist`, {

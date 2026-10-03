@@ -25,6 +25,8 @@ jobs:
           python -m pytest ../../packages/ ../../runtimes/ -q
       - name: Temporal dry-run check
         run: python -m api.temporal.worker --dry-run
+      - name: Verify OpenAPI Spec Sync
+        run: python ../../scripts/gen_openapi.py && git diff --exit-code ../../specs/api/openapi.yaml ../../docs/backend/openapi.yaml
       - name: Temporal workflow tests (serial — WorkflowEnvironment time-skipping not xdist-safe)
         run: python -m pytest tests/temporal -q -o addopts="" --timeout=120
-      - run: python -m pytest tests/ -q --cov=src/api/ --cov-report=xml --cov-report=term --ignore=tests/temporal
+      - run: python -m pytest tests/ -q -o addopts="" --cov=src/api/ --cov-report=xml --cov-report=term --ignore=tests/temporal
