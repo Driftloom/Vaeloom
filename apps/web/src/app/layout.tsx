@@ -116,6 +116,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             brand default is dark; stored user choice or OS light preference
             is applied before first paint. */}
         <script
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'&&t!=='high-contrast'){if(window.matchMedia('(prefers-contrast: more)').matches){t='high-contrast';}else{t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}}var r=document.documentElement;r.classList.remove('light','dark','high-contrast');r.classList.add(t);r.setAttribute('data-theme',t);}catch(e){}})();`,
           }}
