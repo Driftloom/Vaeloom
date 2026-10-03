@@ -1309,14 +1309,18 @@ async def _try_react_loop(
         # ---------------------------------------------------------------------
         # Skill injection — the single prompt seam.
         #
-        # Spliced into `system_content` HERE, before the PromptCompiler block,
-        # because the compiled path is what actually produces the system
-        # message: `agent_contract=system_content` below feeds it in. Appending
-        # after the compiler would silently drop every skill on the common path.
+        # The directive goes into PromptLayers.workspace_skills, an UNTRUSTED
+        # layer, NOT into system_content. A skill document is workspace-authored:
+        # any workspace member can write one, so splicing it into system_content
+        # put tenant-supplied text inside the never-truncated trusted block
+        # (`agent_contract`) where it would read as platform policy. The
+        # compiled path is what actually produces the messages, so the layer is
+        # where it has to land to be fenced, budgeted and recorded at all.
         #
         # `build_skill_directive` returns text="" when nothing is injectable, so
         # the no-op case is byte-identical (covered by
-        # test_loop_system_content_is_byte_identical_when_no_skill_is_injectable).
+        # test_loop_system_content_is_byte_identical_when_no_skill_is_injectable
+        # and test_skill_prompt_layer's golden-compile test).
         #
         # Guarded twice, deliberately:
         #   - no `db` means no lookup AT ALL (test asserts the call count is 0);
@@ -1324,6 +1328,7 @@ async def _try_react_loop(
         #     down an agent run or degrade the prompt it would have augmented.
         # The import is function-local on purpose: it is read at call time, so a
         # test patching the module attribute actually intercepts it.
+        _skill_text = ""
         if db is not None and workspace_id:
             try:
                 from ..services.skill_injection import build_skill_directive
@@ -1334,9 +1339,9 @@ async def _try_react_loop(
                     agent_name=agent_name,
                     allowed_scopes=agent_allowed_scopes,
                     user_message=message,
+                    usage_run_id=request_id,
                 )
-                if _skill_directive.text:
-                    system_content = f"{system_content}\n\n{_skill_directive.text}"
+                _skill_text = _skill_directive.text
                 # Audit every decision, not just the injected ones: a skill that
                 # silently fails to apply is indistinguishable from one that was
                 # never configured, which is exactly the bug this makes visible.
@@ -1390,6 +1395,7 @@ async def _try_react_loop(
                 evidence=rag_evidence[:3000],
                 tool_context=_tool_desc,
                 observations="",
+                workspace_skills=_skill_text,
                 current_state="",
                 output_contract=json.dumps(getattr(card, "output_schema", {}) or {})[:2000] if card else "",
             )
@@ -1397,7 +1403,11 @@ async def _try_react_loop(
                 _layers, agent_name=agent_name,
                 agent_version=getattr(card, "version", "v1.0") if card else "v1.0",
                 task_type=agent_name,
-                untrusted_sources={"tool_context": "tool-registry", "evidence": "rag_context"},
+                untrusted_sources={
+                    "tool_context": "tool-registry",
+                    "evidence": "rag_context",
+                    "workspace_skills": "workspace:skills",
+                },
             )
             prompt_manifest = {**_compiled.manifest, "compiled": True}
             if _compiled.messages:

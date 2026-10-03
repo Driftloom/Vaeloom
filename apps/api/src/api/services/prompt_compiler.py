@@ -8,13 +8,14 @@ untrusted content, and emits a reproducible manifest for every model call.
 
 Layer order (highest authority first):
   platform_policy > safety_policy > agent_contract > task_contract >
-  output_contract > user_intent > state > observations > tool_context >
-  evidence > memory_context
+  output_contract > user_intent > state > workspace_skills > observations >
+  tool_context > evidence > memory_context
 
 Trust classes:
   TRUSTED   — platform/safety/agent/task/output/user_intent (operator-owned)
   UNTRUSTED — memory evidence, retrieved docs, tool output, observations
-              derived from tools, third-party content (quarantined)
+              derived from tools, third-party content, workspace-authored
+              skill documents (quarantined)
 
 Every compile() returns (messages, manifest). The manifest carries
 prompt_id / prompt_version / compiler_version / context_manifest / model /
@@ -49,6 +50,7 @@ OVERRIDE_MARKERS = (
 
 UNTRUSTED_OPEN = "<untrusted-data source=\"{source}\">"
 UNTRUSTED_CLOSE = "</untrusted-data>"
+UNTRUSTED_OPEN_PREFIX = "<untrusted-data"
 
 TrustLevel = Literal["TRUSTED", "UNTRUSTED"]
 
@@ -102,6 +104,9 @@ class PromptLayers:
     evidence: str = ""  # UNTRUSTED, source-backed
     tool_context: str = ""  # UNTRUSTED (tool schemas are trusted, outputs not)
     observations: str = ""  # UNTRUSTED (derived from tool outputs)
+    workspace_skills: str = ""  # UNTRUSTED (workspace-authored: ANY member of the
+    # workspace can write one, so it is never platform policy and must never
+    # reach the never-truncated trusted block — see skills.skill_injection)
     current_state: str = ""
     output_contract: str = ""
 
@@ -155,8 +160,11 @@ class PromptCompiler:
                 omitted.append(name)
 
         # 2. Untrusted context block (quarantined, budgeted, truncatable)
-        # Priority: user_intent > current_state > evidence > memory > tool > obs.
-        # Lower-priority layers are truncated first when over budget.
+        # Priority: user_intent > current_state > evidence > memory > tool > obs
+        # > workspace_skills. Lower-priority layers are truncated first when over
+        # budget. workspace_skills is LAST so it is also the first thing dropped:
+        # a workspace-authored document is the only context layer with no claim on
+        # the run's core window, and it already carries its own inner budget.
         context_specs: list[tuple[str, str, TrustLevel]] = [
             ("user_intent", layers.user_intent, "TRUSTED"),
             ("current_state", layers.current_state, "TRUSTED"),
@@ -164,6 +172,7 @@ class PromptCompiler:
             ("memory_context", layers.memory_context, "UNTRUSTED"),
             ("tool_context", layers.tool_context, "UNTRUSTED"),
             ("observations", layers.observations, "UNTRUSTED"),
+            ("workspace_skills", layers.workspace_skills, "UNTRUSTED"),
         ]
         context_parts: list[str] = []
         for name, text, trust in context_specs:
@@ -240,7 +249,18 @@ class PromptCompiler:
             if tokens > budget // max(1, len(kept)):
                 # truncate this part to ~half, record it
                 half = len(kept[idx]) // 2
-                kept[idx] = kept[idx][:half] + "\n…[truncated to fit token budget]"
+                cut = kept[idx][:half]
+                notice = "\n…[truncated to fit token budget]"
+                if UNTRUSTED_OPEN_PREFIX in kept[idx] and UNTRUSTED_CLOSE not in cut:
+                    # Half-cutting a quarantined layer would strand its opening
+                    # fence with no closer, so every sibling part after it would
+                    # read as untrusted-quoted payload and an unbalanced tag is
+                    # exactly the structural confusion the fence exists to stop.
+                    # Nested fences are entity-escaped by quarantine(), so exactly
+                    # one closer is owed here.
+                    kept[idx] = f"{cut}{notice}\n{UNTRUSTED_CLOSE}"
+                else:
+                    kept[idx] = cut + notice
                 name = kept[idx][1:].split("]")[0] if kept[idx].startswith("[") else f"part-{idx}"
                 if name not in dropped:
                     dropped.append(name)

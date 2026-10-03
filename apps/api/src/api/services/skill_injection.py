@@ -35,28 +35,56 @@ An injection decision is always justified by a real field on the row:
 
 Trust
 -----
-A skill document is workspace-authored text. It is *not* platform policy, so it
-is never delivered bare: every document goes through
-:func:`api.services.prompt_compiler.quarantine`, which is this repo's existing
-untrusted-content convention (the same ``<untrusted-data source="...">`` fence
-the prompt compiler applies to memory, evidence and tool output). Fencing reuses
-that function rather than inventing a second delimiter so there is exactly one
-fence grammar in the codebase, and so a skill cannot close the fence or escape
-it via an attribute injection in the ``source`` label.
+A skill document is workspace-authored text: any member of the workspace can
+write one. It is *not* platform policy, so it never reaches the prompt compiler's
+never-truncated trusted block. The orchestrator hands the block to
+:attr:`api.services.prompt_compiler.PromptLayers.workspace_skills`, an UNTRUSTED
+layer, and the compiler quarantines it there alongside memory, evidence and tool
+output. This module adds a *second*, inner fence via
+:func:`api.services.prompt_compiler.quarantine`.
+
+Why two fences rather than one
+------------------------------
+They answer different questions and neither substitutes for the other. The inner
+fence is per-document: it carries the ``source="skill:<name>"`` provenance header,
+escapes the document against breakout, and raises the SECURITY NOTE next to the
+payload it describes. It is what makes a single skill's text safe to *handle*, and
+it keeps this module's public return value self-contained — the text is fenced
+before it leaves, so a caller that splices it somewhere the compiler is not
+involved still cannot deliver a bare document. The outer fence is per-layer: it
+is applied by the compiler to every untrusted layer with no knowledge of what a
+skill is, so skills cannot acquire a privileged path by being a special case.
+Both are needed; dropping the inner one would return unfenced text from a public
+API, and skipping the outer one would make skills the only untrusted layer the
+compiler does not fence.
 
 Budget
 ------
-The prompt compiler's default slice is 8k tokens. Skills get
-:data:`SKILL_DIRECTIVE_TOKEN_BUDGET`, a bounded fraction of it. When the cap is
-hit, whole skills are dropped from the end of the deterministic order and named
-in ``skipped`` — a document is never cut mid-rule, because half an Operating
-Rules list is worse than no document at all.
+Two caps, deliberately nested. :data:`SKILL_DIRECTIVE_TOKEN_BUDGET` is the inner
+one — it drops whole skills from the end of the deterministic order and names them
+in ``skipped``, because a document is never cut mid-rule (half an Operating Rules
+list is worse than no document at all). The prompt compiler's 8k slice is the outer
+one and applies to the layer as a whole. The producer's cap keeps one workspace
+from monopolising the window before the compiler ever sees it; the compiler's cap
+is the authority and would apply to the layer even if this module were removed.
+
+Usage counting
+--------------
+``usage_count`` used to move only when an operator pressed *Test* on a skill, so
+the "Most used" ordering in the Skills UI ranked test runs and nothing else.
+This module is the seam where a real use happens — a skill that reached a prompt
+— so it is also where real use is counted. See
+:func:`record_injected_usage` for the counting rules and, importantly, for what
+this seam can and cannot key on.
 """
 
 from __future__ import annotations
 
+import logging
+import os
 import re
 import uuid as uuid_mod
+from collections import OrderedDict
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -64,9 +92,12 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..config import settings
 from ..models.schema import WorkspaceCapability
 from .prompt_compiler import estimate_tokens, quarantine
 from .skill_catalog_service import get_catalog_entry
+
+logger = logging.getLogger(__name__)
 
 SKILL_CATEGORY = "skill"
 
@@ -92,6 +123,139 @@ DIRECTIVE_HEADER = (
 
 _LABEL_SAFE_RE = re.compile(r"[^A-Za-z0-9._:/-]+")
 _LABEL_MAX = 64
+
+# ── usage telemetry ───────────────────────────────────────────────────────
+# Kill switch. Read from ``settings`` when that attribute exists so there is one
+# place to look, and from the environment otherwise: config.py is not owned by
+# the agent that writes here, and this repo already reads operator switches
+# straight from the environment (config.py's INFISICAL_ENABLED,
+# middleware/prompt_injection.py, the provider keys in loop.py).
+#
+# Default ON is the honest default: a counter nobody writes is indistinguishable
+# from a capability nobody uses, which is the exact dishonesty this seam removes.
+# The cost when ON is one UPDATE per skill per act-phase that actually injected
+# one, in its own transaction (see capability_usage_service) that cannot fail the
+# request — bounded, and switchable off without a deploy.
+USAGE_TELEMETRY_SETTING = "skill_usage_telemetry_enabled"
+USAGE_TELEMETRY_ENV = "SKILL_USAGE_TELEMETRY_ENABLED"
+
+# Bounded so a long-lived worker cannot grow this without limit. FIFO eviction
+# rather than LRU-on-access: the keys are write-once dedupe markers, so recency
+# carries no meaning here. Same shape as tools.executor.execute_tool._idem_cache.
+USAGE_DEDUPE_LIMIT = 512
+_usage_dedupe: OrderedDict[tuple[str, str, str], None] = OrderedDict()
+
+
+def usage_telemetry_enabled() -> bool:
+    """Whether an injected skill may move its ``usage_count``."""
+    flag = getattr(settings, USAGE_TELEMETRY_SETTING, None)
+    if flag is not None:
+        return bool(flag)
+    raw = (os.environ.get(USAGE_TELEMETRY_ENV) or "").strip().lower()
+    if raw in ("0", "false", "no", "off"):
+        return False
+    return True
+
+
+def _claim_usage_slot(workspace_id: str, run_id: str, skill_name: str) -> bool:
+    """False when this ``(workspace, run, skill)`` was already counted.
+
+    In-process only. It makes a retried or replayed run idempotent *within* one
+    worker's lifetime; a run that resumes on a different worker still counts
+    twice. That limit is stated rather than hidden — a durable claim table would
+    cost a second write on the same hot path to fix a case the process-local
+    cache already covers for the common retry (same process, same request).
+    """
+    key = (str(workspace_id), str(run_id), str(skill_name))
+    if key in _usage_dedupe:
+        return False
+    _usage_dedupe[key] = None
+    while len(_usage_dedupe) > USAGE_DEDUPE_LIMIT:
+        _usage_dedupe.popitem(last=False)
+    return True
+
+
+async def record_injected_usage(
+    workspace_id: Any,
+    injected: Sequence[EnabledSkill],
+    *,
+    run_id: str | None,
+) -> int:
+    """Count the skills that reached this run's prompt. Returns rows incremented.
+
+    Counting rules, and why each one is this rule:
+
+    * **Only injected skills.** A skill that was disabled, out of scope, trigger-
+      unmatched or dropped by the token budget did not shape the run, so counting
+      it would make the UI rank skills by how often an operator misconfigured
+      them. The caller passes the injected set only.
+    * **Once per ``(workspace, run, skill)``, not once per prompt assembly.**
+      This function is reached from ``build_skill_directive``, which
+      ``orchestrator.loop`` calls from ``_try_react_loop`` — once per *act
+      phase*, and an act phase runs once per outer-loop iteration. A run that
+      retries after a QA rejection assembles the prompt again, and a resumed run
+      re-enters from its checkpoint, so counting per call would multiply one
+      user's single run by the number of iterations it took.
+    * **What the key cannot be.** ``run_id`` is *not* available here: the only
+      arguments this seam receives are the session, the workspace, the agent
+      name, the granted scopes and the user message. None of them identifies a
+      run — the same agent can legitimately be asked the same question twice, so
+      deriving a key from them would silently merge two real uses. So the key is
+      an explicit parameter, and when the caller does not supply one this counts
+      every injection. Until the loop passes ``usage_run_id=request.id`` at
+      ``loop.py:1331``, a multi-iteration run over-counts; the WARNING below says
+      so on every occurrence instead of letting the number look trustworthy.
+    * **Never fatal.** Every layer is guarded: telemetry that breaks an agent turn
+      is worse than no telemetry at all.
+    """
+    if not injected:
+        return 0
+    if not usage_telemetry_enabled():
+        return 0
+
+    if run_id:
+        fresh = [
+            skill
+            for skill in injected
+            if _claim_usage_slot(str(workspace_id), run_id, skill.name)
+        ]
+        suppressed = len(injected) - len(fresh)
+    else:
+        fresh = list(injected)
+        suppressed = 0
+        logger.warning(
+            "SKILL_USAGE %d skill(s) counted without a run id — a retried or "
+            "multi-iteration run will count more than once (no run identifier "
+            "reaches skill_injection)",
+            len(fresh),
+        )
+
+    if not fresh:
+        return 0
+
+    entries = [(skill.capability_id, skill.name) for skill in fresh]
+    try:
+        from .capability_usage_service import record_injected_usage as _write
+
+        counted = await _write(
+            str(workspace_id), entries, category=SKILL_CATEGORY
+        )
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning(
+            "SKILL_USAGE telemetry unavailable for workspace %s (run unaffected): %s",
+            workspace_id,
+            exc,
+        )
+        return 0
+
+    logger.info(
+        "SKILL_USAGE workspace=%s counted=%d already_counted=%d skills=%s",
+        workspace_id,
+        counted,
+        suppressed,
+        ",".join(skill.name for skill in fresh),
+    )
+    return counted
 
 
 @dataclass(frozen=True)
@@ -264,7 +428,9 @@ def _render_block(skill: EnabledSkill) -> str:
     ``quarantine`` supplies the repo's untrusted-data fence, escapes any
     ``<untrusted-data``/``</untrusted-data>`` inside the document so it cannot
     close the fence, and prepends the SECURITY NOTE when the document trips
-    :data:`api.services.prompt_compiler.OVERRIDE_MARKERS`.
+    :data:`api.services.prompt_compiler.OVERRIDE_MARKERS`. The result is the
+    *inner* fence; the prompt compiler wraps the whole directive again when it
+    quarantines the layer, which re-escapes this one into inert entities.
     """
     label = _safe_label(skill.name)
     safe_doc, _flagged = quarantine(skill.markdown_doc, source=f"skill:{label}")
@@ -291,15 +457,23 @@ async def build_skill_directive(
     allowed_scopes: Sequence[str] | None,
     user_message: str = "",
     token_budget: int | None = None,
+    usage_run_id: str | None = None,
 ) -> SkillDirective:
-    """Build the skill directive block to splice into ``system_content``.
+    """Build the skill directive block for the UNTRUSTED
+    ``PromptLayers.workspace_skills`` layer.
 
     ``user_message`` and ``token_budget`` are keywords with defaults so the
     documented four-argument call still works; the orchestrator passes both.
 
+    ``usage_run_id`` is the run identifier :func:`record_injected_usage` keys its
+    once-per-run dedupe on. It is optional because the caller that owns the run
+    id is the orchestrator, and it must not have to change for counting to work:
+    with it, a retried or replayed run counts each skill once; without it, every
+    injection counts and a WARNING says why.
+
     Returns ``SkillDirective(text="")`` when nothing is injected — no header, no
     fence — so a workspace with no applicable skills produces a byte-identical
-    ``system_content``.
+    compiled prompt.
     """
     granted = {s.strip() for s in (allowed_scopes or []) if s and s.strip()}
     haystack = _normalize(user_message)
@@ -309,7 +483,7 @@ async def build_skill_directive(
     if not rows:
         return SkillDirective(text="")
 
-    injected: list[str] = []
+    injected: list[EnabledSkill] = []
     skipped: list[SkillSkip] = []
     eligible: list[EnabledSkill] = []
 
@@ -363,10 +537,16 @@ async def build_skill_directive(
             continue
         blocks.append(block)
         spent += cost
-        injected.append(skill.name)
+        injected.append(skill)
 
     if not blocks:
         return SkillDirective(text="", skipped=tuple(skipped))
 
+    await record_injected_usage(workspace_id, injected, run_id=usage_run_id)
+
     text = f"{DIRECTIVE_HEADER}\n\n" + "\n\n".join(blocks)
-    return SkillDirective(text=text, injected=tuple(injected), skipped=tuple(skipped))
+    return SkillDirective(
+        text=text,
+        injected=tuple(skill.name for skill in injected),
+        skipped=tuple(skipped),
+    )

@@ -722,7 +722,16 @@ def _system(captured: list[list[dict[str, Any]]], run: int = -1) -> str:
     return system[0]["content"]
 
 
-async def _run_loop(db_session: AsyncSession, workspace_id: str, message: str) -> None:
+def _user(captured: list[list[dict[str, Any]]], run: int = -1) -> str:
+    """Skills are workspace-authored, so they are delivered in the untrusted
+    context turn — never in the trusted system message."""
+    messages = captured[run]
+    user = [m for m in messages if m["role"] == "user"]
+    assert len(user) == 1, f"expected exactly one user message, got {len(user)}"
+    return user[0]["content"]
+
+
+async def _run_loop(db_session: AsyncSession, workspace_id: str, message: str) -> dict[str, Any]:
     result = await _try_react_loop(
         agent=_SkillAgent(),
         message=message,
@@ -732,10 +741,21 @@ async def _run_loop(db_session: AsyncSession, workspace_id: str, message: str) -
         request_id=f"req-skill-{uuid.uuid4().hex[:8]}",
     )
     assert result is not None, result
+    return result
 
 
 @pytest.mark.asyncio
-async def test_loop_assembly_point_splices_a_matching_skill(monkeypatch, db_session: AsyncSession):
+async def test_loop_assembly_point_delivers_a_matching_skill_as_untrusted(
+    monkeypatch, db_session: AsyncSession
+):
+    """A workspace-authored document must NOT reach the trusted system block.
+
+    The skill used to be spliced into ``system_content`` (= ``agent_contract``,
+    never truncated, read as platform policy). It now travels in the untrusted
+    ``workspace_skills`` layer, so it lands in the user turn behind the
+    compiler's own fence, with this module's per-document fence re-escaped into
+    inert entities. Placement, not filtering, is what stops impersonation.
+    """
     monkeypatch.setattr(settings, "agent_react_enabled", True)
     monkeypatch.setattr(settings, "llm_api_key", "mock-test-key")
     captured = _capture_loop(monkeypatch)
@@ -746,14 +766,28 @@ async def test_loop_assembly_point_splices_a_matching_skill(monkeypatch, db_sess
         "markdown_doc": doc, "required_scope": "memory.read", "tags": ["QA"],
     })
 
-    await _run_loop(db_session, ws, "summarize my documents")
+    result = await _run_loop(db_session, ws, "summarize my documents")
 
-    system = _system(captured)
-    assert "## Workspace skills" in system
-    assert "### loop-skill" in system
-    assert doc.strip() in system
-    assert system.count("<untrusted-data") == 1
-    assert system.count("</untrusted-data>") == 1
+    system, user = _system(captured), _user(captured)
+    assert "## Workspace skills" not in system
+    assert "### loop-skill" not in system
+    assert doc.strip() not in system
+    assert "<untrusted-data" not in system
+
+    assert "[workspace_skills]" in user
+    assert "## Workspace skills" in user
+    assert "### loop-skill" in user
+    assert doc.strip() in user
+    assert '<untrusted-data source="workspace:skills">' in user
+    assert '<untrusted-data source="tool-registry">' in user
+    skills_block = user.split("[workspace_skills]")[1]
+    assert skills_block.count("<untrusted-data") == 1
+    assert skills_block.count("</untrusted-data>") == 1
+    assert user.count("<untrusted-data") == 2
+    assert user.count("</untrusted-data>") == 2
+
+    ctx = result["prompt_manifest"]["context_manifest"]
+    assert "workspace_skills" in ctx["untrusted_quarantined"]
 
 
 @pytest.mark.asyncio
