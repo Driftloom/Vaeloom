@@ -19,6 +19,7 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
   const [draftTitle, setDraftTitle] = useState('');
   const [draftSummary, setDraftSummary] = useState('');
   const [draftContent, setDraftContent] = useState('');
+  const [draftReason, setDraftReason] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'superseded'>('all');
   const [saving, setSaving] = useState(false);
@@ -80,6 +81,7 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
     setDraftSummary(typeof memory.summary === 'string' ? memory.summary : '');
     const contentVal = ((memory as unknown as Record<string, unknown>)['content'] as string) || '';
     setDraftContent(contentVal);
+    setDraftReason('Correction via Enterprise Memory Management');
   };
 
   const saveCorrection = async () => {
@@ -104,11 +106,16 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
 
     setSaving(true);
     try {
-      await memoryApi.update(editing.id, {
-        title: titleChanged ? draftTitle.trim() : undefined,
-        summary: summaryChanged ? draftSummary.trim() : undefined,
+      await memoryApi.supersede(editing.id, {
+        reason: draftReason.trim() || 'Human correction via Memory Management',
+        title: titleChanged ? draftTitle.trim() : editing.title,
+        summary: summaryChanged
+          ? draftSummary.trim()
+          : typeof editing.summary === 'string'
+            ? editing.summary
+            : undefined,
         content: contentChanged ? draftContent.trim() : undefined,
-      } as never);
+      });
 
       toast({
         tone: 'success',
@@ -327,6 +334,22 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
                 onChange={(e) => setDraftContent(e.target.value)}
                 className="w-full px-3 py-2 text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] text-[var(--color-text-primary)] font-mono focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)]"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
+                Correction / Revision Reason (Audit Trail)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g., Promoted to Principal Architect; Corrected graduation year"
+                value={draftReason}
+                onChange={(e) => setDraftReason(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)]"
+              />
+              <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                Preserved immutably in provenance ledger alongside cryptographic lineage.
+              </p>
             </div>
 
             <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">

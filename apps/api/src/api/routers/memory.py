@@ -1,6 +1,8 @@
 import logging
 import uuid
 
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,11 +11,19 @@ from ..database import get_db
 from ..dependencies import get_current_user, get_tenant_id, get_workspace_id
 from ..models.schema import AgentAction, Memory, Workspace, WorkspaceUser
 from ..schemas.memory import (
+    MemoryBulkResult,
+    MemoryBulkStatusRequest,
+    MemoryBulkTagRequest,
     MemoryCreate,
+    MemoryExportItem,
+    MemoryExportResponse,
+    MemoryImportBatch,
+    MemoryImportResult,
     MemoryQuery,
     MemoryResponse,
     MemorySearch,
     MemorySearchResult,
+    MemorySupersedeRequest,
     MemoryUpdate,
 )
 from ..services.memory_service import memory_service
@@ -388,6 +398,169 @@ async def create_memory(
     return MemoryResponse.model_validate(memory)
 
 
+@router.get("/export", response_model=MemoryExportResponse)
+async def export_memories(
+    workspace_id: str | None = Query(None, description="Workspace ID to export"),
+    include_superseded: bool = Query(default=False, description="Include superseded historical records"),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_tenant_id),
+    ws_id: str | None = Depends(get_workspace_id),
+):
+    """Enterprise memory export for data portability, backups, and migration (CONT-P07)."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
+    target_ws = ws_id or workspace_id
+    if not target_ws and user_id:
+        try:
+            uid = uuid.UUID(str(user_id))
+            ws_res = await db.execute(
+                select(Workspace.id).where(Workspace.user_id == uid).order_by(Workspace.created_at.asc()).limit(1)
+            )
+            default_ws = ws_res.scalar_one_or_none()
+            if default_ws:
+                target_ws = str(default_ws)
+        except Exception:
+            pass
+    if not target_ws:
+        raise HTTPException(status_code=400, detail="workspace_id is required for export")
+
+    if user_id:
+        has_access = await check_user_workspace_access(db, user_id, target_ws)
+        if not has_access:
+            raise HTTPException(status_code=403, detail="Forbidden: User does not have access to specified workspace")
+
+    memories = await memory_service.export_memories(
+        db, target_ws, tenant_id, include_superseded=include_superseded
+    )
+    target_ws_uuid = uuid.UUID(str(target_ws))
+    items = [MemoryExportItem.model_validate(m) for m in memories]
+    return MemoryExportResponse(
+        export_version="1.0",
+        workspace_id=target_ws_uuid,
+        exported_at=datetime.now(UTC),
+        total_count=len(items),
+        memories=items,
+    )
+
+
+@router.post("/import", response_model=MemoryImportResult)
+async def import_memories(
+    batch: MemoryImportBatch,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_tenant_id),
+    workspace_id: str | None = Depends(get_workspace_id),
+):
+    """Enterprise batch import of memories with cryptographic deduplication (CONT-P07)."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
+    target_ws = workspace_id or (str(batch.workspace_id) if batch.workspace_id else None)
+    if not target_ws and user_id:
+        try:
+            uid = uuid.UUID(str(user_id))
+            ws_res = await db.execute(
+                select(Workspace.id).where(Workspace.user_id == uid).order_by(Workspace.created_at.asc()).limit(1)
+            )
+            default_ws = ws_res.scalar_one_or_none()
+            if default_ws:
+                target_ws = str(default_ws)
+        except Exception:
+            pass
+    if not target_ws:
+        raise HTTPException(status_code=400, detail="workspace_id is required for import")
+
+    if user_id:
+        has_access = await check_user_workspace_access(db, user_id, target_ws)
+        if not has_access:
+            raise HTTPException(status_code=403, detail="Forbidden: User does not have access to specified workspace")
+
+    batch.workspace_id = uuid.UUID(str(target_ws))
+    imported, skipped, errors, ids = await memory_service.import_memories(
+        db=db,
+        batch=batch,
+        tenant_id=tenant_id,
+        user_id=str(user_id) if user_id else None,
+    )
+    return MemoryImportResult(
+        imported_count=imported,
+        skipped_count=skipped,
+        error_count=errors,
+        imported_ids=ids,
+    )
+
+
+@router.post("/bulk-status", response_model=MemoryBulkResult)
+async def bulk_update_status(
+    req: MemoryBulkStatusRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_tenant_id),
+    workspace_id: str | None = Depends(get_workspace_id),
+):
+    """Enterprise bulk status transition (archive, active, delete) across memories."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
+    target_ws = workspace_id or (str(req.workspace_id) if req.workspace_id else None)
+    if not target_ws:
+        raise HTTPException(status_code=400, detail="workspace_id is required for bulk operations")
+    if user_id:
+        has_access = await check_user_workspace_access(db, user_id, target_ws)
+        if not has_access:
+            raise HTTPException(status_code=403, detail="Forbidden: User does not have access to specified workspace")
+
+    updated_ids = await memory_service.bulk_status(
+        db=db,
+        memory_ids=req.memory_ids,
+        status=req.status,
+        workspace_id=target_ws,
+        tenant_id=tenant_id,
+    )
+    return MemoryBulkResult(
+        success_count=len(updated_ids),
+        failed_count=len(req.memory_ids) - len(updated_ids),
+        affected_ids=updated_ids,
+    )
+
+
+@router.post("/bulk-tag", response_model=MemoryBulkResult)
+async def bulk_update_tags(
+    req: MemoryBulkTagRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_tenant_id),
+    workspace_id: str | None = Depends(get_workspace_id),
+):
+    """Enterprise bulk tag addition/removal across memories."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
+    target_ws = workspace_id or (str(req.workspace_id) if req.workspace_id else None)
+    if not target_ws:
+        raise HTTPException(status_code=400, detail="workspace_id is required for bulk operations")
+    if user_id:
+        has_access = await check_user_workspace_access(db, user_id, target_ws)
+        if not has_access:
+            raise HTTPException(status_code=403, detail="Forbidden: User does not have access to specified workspace")
+
+    updated_ids = await memory_service.bulk_tag(
+        db=db,
+        memory_ids=req.memory_ids,
+        add_tags=req.add_tags,
+        remove_tags=req.remove_tags,
+        workspace_id=target_ws,
+        tenant_id=tenant_id,
+    )
+    return MemoryBulkResult(
+        success_count=len(updated_ids),
+        failed_count=len(req.memory_ids) - len(updated_ids),
+        affected_ids=updated_ids,
+    )
+
+
 @router.get("/{memory_id}", response_model=MemoryResponse)
 async def get_memory(
     memory_id: uuid.UUID,
@@ -479,6 +652,52 @@ async def delete_memory(
     deleted = await memory_service.delete_memory(db, memory_id, tenant_id, str(memory.workspace_id))
     if not deleted:
         raise HTTPException(status_code=404, detail="Memory not found")
+
+
+@router.post("/{memory_id}/supersede", response_model=MemoryResponse, status_code=201)
+async def supersede_memory(
+    memory_id: uuid.UUID,
+    dto: MemorySupersedeRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_tenant_id),
+    workspace_id: str | None = Depends(get_workspace_id),
+):
+    """Supersede an existing memory with immutable revision provenance (ENT-P12)."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
+
+    memory = await memory_service.get_memory(db, memory_id, tenant_id)
+    if not memory:
+        raise HTTPException(status_code=404, detail="Memory not found")
+
+    target_ws = memory.workspace_id or workspace_id
+    if target_ws and user_id:
+        has_access = await check_user_workspace_access(db, user_id, str(target_ws))
+        if not has_access:
+            raise HTTPException(
+                status_code=403,
+                detail="Forbidden: User does not have access to specified workspace",
+            )
+    if workspace_id and str(memory.workspace_id) != str(workspace_id):
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden: Memory does not belong to specified workspace",
+        )
+
+    new_memory = await memory_service.supersede_memory(
+        db=db,
+        memory_id=memory_id,
+        dto=dto,
+        tenant_id=tenant_id,
+        workspace_id=str(target_ws) if target_ws else None,
+        user_id=str(user_id) if user_id else None,
+    )
+    if not new_memory:
+        raise HTTPException(status_code=404, detail="Failed to supersede memory")
+    return MemoryResponse.model_validate(new_memory)
+
 
 
 @router.get("/{memory_id}/history", response_model=dict)

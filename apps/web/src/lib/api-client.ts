@@ -208,10 +208,65 @@ export interface MemoryUpdateRequest {
 
 export interface MemorySearchRequest {
   query: string;
+  workspace_id?: string;
   type?: string;
+  domain?: string;
   tags?: string[];
   top_k?: number;
   threshold?: number;
+  strategy?: 'hybrid' | 'vector' | 'keyword';
+  include_superseded?: boolean;
+}
+
+export interface MemorySupersedeRequest {
+  reason: string;
+  title?: string;
+  summary?: string;
+  content?: string;
+  type?: string;
+  domain?: string;
+  tags?: string[];
+  metadata?: Record<string, unknown>;
+  confidence?: number;
+}
+
+export interface MemoryExportResponse {
+  export_version: string;
+  workspace_id: string;
+  exported_at: string;
+  total_count: number;
+  memories: Memory[];
+}
+
+export interface MemoryImportItem {
+  type?: string;
+  domain?: string;
+  title?: string;
+  summary?: string;
+  content?: string;
+  tags?: string[];
+  metadata?: Record<string, unknown>;
+  source_type?: string;
+  source_label?: string;
+}
+
+export interface MemoryImportBatchRequest {
+  workspace_id?: string;
+  deduplicate_by_hash?: boolean;
+  memories: MemoryImportItem[];
+}
+
+export interface MemoryImportResponse {
+  imported_count: number;
+  skipped_count: number;
+  error_count: number;
+  imported_ids: string[];
+}
+
+export interface MemoryBulkResult {
+  success_count: number;
+  failed_count: number;
+  affected_ids: string[];
 }
 
 export interface MemorySearchResultItem {
@@ -249,11 +304,42 @@ export const memoryApi = {
   update(id: string, body: MemoryUpdateRequest): Promise<Memory> {
     return apiClient.put<Memory>(`/memories/${id}`, body);
   },
+  supersede(id: string, body: MemorySupersedeRequest): Promise<Memory> {
+    return apiClient.post<Memory>(`/memories/${id}/supersede`, body);
+  },
   delete(id: string): Promise<void> {
     return apiClient.delete(`/memories/${id}`);
   },
   search(body: MemorySearchRequest): Promise<MemorySearchResultItem[]> {
     return apiClient.post<MemorySearchResultItem[]>('/memories/search', body);
+  },
+  export(workspaceId: string, includeSuperseded: boolean = false): Promise<MemoryExportResponse> {
+    return apiClient.get<MemoryExportResponse>(
+      `/memories/export?workspace_id=${workspaceId}&include_superseded=${includeSuperseded}`,
+    );
+  },
+  import(body: MemoryImportBatchRequest): Promise<MemoryImportResponse> {
+    return apiClient.post<MemoryImportResponse>('/memories/import', body);
+  },
+  bulkStatus(workspaceId: string, memoryIds: string[], status: string): Promise<MemoryBulkResult> {
+    return apiClient.post<MemoryBulkResult>('/memories/bulk-status', {
+      workspace_id: workspaceId,
+      memory_ids: memoryIds,
+      status,
+    });
+  },
+  bulkTag(
+    workspaceId: string,
+    memoryIds: string[],
+    addTags: string[] = [],
+    removeTags: string[] = [],
+  ): Promise<MemoryBulkResult> {
+    return apiClient.post<MemoryBulkResult>('/memories/bulk-tag', {
+      workspace_id: workspaceId,
+      memory_ids: memoryIds,
+      add_tags: addTags,
+      remove_tags: removeTags,
+    });
   },
 };
 

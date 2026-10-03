@@ -104,8 +104,102 @@ class MemorySearch(BaseModel):
     tags: list[str] | None = None
     top_k: int = Field(default=10, ge=1, le=100)
     threshold: float | None = Field(default=0.7, ge=0.0, le=1.0)
+    strategy: Literal["hybrid", "vector", "keyword"] = Field(
+        default="hybrid",
+        description="Retrieval strategy: hybrid (RRF reciprocal rank fusion), vector, or keyword",
+    )
+    include_superseded: bool = Field(
+        default=False,
+        description="If true, includes superseded historical memories in search results",
+    )
 
 
 class MemorySearchResult(BaseModel):
     memory: MemoryResponse
     score: float
+
+
+# Enterprise Memory Schemas (ENT-P12, CONT-P07)
+
+
+class MemorySupersedeRequest(BaseModel):
+    reason: str = Field(..., min_length=2, description="Audit reason for superseding this memory")
+    title: str | None = None
+    summary: str | None = None
+    content: str | None = None
+    type: str | None = None
+    domain: str | None = None
+    tags: list[str] | None = None
+    metadata: dict[str, Any] | None = None
+    confidence: float | None = Field(default=1.0, ge=0.0, le=1.0)
+
+
+class MemoryExportItem(BaseModel):
+    id: uuid.UUID
+    type: str
+    status: str
+    title: str | None = None
+    summary: str | None = None
+    content: str | None = None
+    content_hash: str | None = None
+    size: int | None = None
+    tags: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict, validation_alias="metadata_")
+    supersedes_id: uuid.UUID | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class MemoryExportResponse(BaseModel):
+    export_version: str = "1.0"
+    workspace_id: uuid.UUID
+    exported_at: datetime
+    total_count: int
+    memories: list[MemoryExportItem]
+
+
+class MemoryImportItem(BaseModel):
+    type: str = Field(default="note")
+    domain: str | None = None
+    title: str | None = None
+    summary: str | None = None
+    content: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    source_type: str | None = "import"
+    source_label: str | None = None
+
+
+class MemoryImportBatch(BaseModel):
+    workspace_id: uuid.UUID | None = None
+    deduplicate_by_hash: bool = True
+    memories: list[MemoryImportItem] = Field(..., min_length=1)
+
+
+class MemoryImportResult(BaseModel):
+    imported_count: int
+    skipped_count: int
+    error_count: int
+    imported_ids: list[uuid.UUID]
+
+
+class MemoryBulkStatusRequest(BaseModel):
+    memory_ids: list[uuid.UUID] = Field(..., min_length=1)
+    status: str = Field(..., description="Target status, e.g. active, archived, deleted")
+    workspace_id: uuid.UUID | None = None
+
+
+class MemoryBulkTagRequest(BaseModel):
+    memory_ids: list[uuid.UUID] = Field(..., min_length=1)
+    add_tags: list[str] = Field(default_factory=list)
+    remove_tags: list[str] = Field(default_factory=list)
+    workspace_id: uuid.UUID | None = None
+
+
+class MemoryBulkResult(BaseModel):
+    success_count: int
+    failed_count: int
+    affected_ids: list[uuid.UUID]
+

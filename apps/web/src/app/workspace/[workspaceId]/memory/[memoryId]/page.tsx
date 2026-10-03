@@ -49,6 +49,7 @@ export default function MemoryDetailPage() {
   const [editTitle, setEditTitle] = useState('');
   const [editSummary, setEditSummary] = useState('');
   const [editContent, setEditContent] = useState('');
+  const [editReason, setEditReason] = useState('Correction via Memory Detail Editor');
   const [saving, setSaving] = useState(false);
 
   const startEdit = useCallback(() => {
@@ -57,6 +58,7 @@ export default function MemoryDetailPage() {
     setEditTitle((mem['title'] as string) ?? '');
     setEditSummary((mem['summary'] as string) ?? '');
     setEditContent((mem['content'] as string) ?? '');
+    setEditReason('Correction via Memory Detail Editor');
     setEditing(true);
   }, [memory]);
 
@@ -68,18 +70,24 @@ export default function MemoryDetailPage() {
     if (!memory || saving) return;
     setSaving(true);
     try {
-      await memoryApi.update(memory.id, {
+      const res = await memoryApi.supersede(memory.id, {
+        reason: editReason.trim() || 'Correction via Memory Detail Editor',
         title: editTitle || undefined,
         summary: editSummary || undefined,
         content: editContent || undefined,
       });
       toast({
         tone: 'success',
-        title: 'Memory updated',
-        detail: 'Changes saved successfully into memory index.',
+        title: 'Memory revised & superseded',
+        detail: 'Immutable revision created with zero-trust audit provenance.',
       });
       setEditing(false);
-      await mutateMemory();
+      const newId = (res as { memory?: { id: string } }).memory?.id;
+      if (newId && workspaceId && newId !== memory.id) {
+        router.push(`/workspace/${workspaceId}/memory/${newId}`);
+      } else {
+        await mutateMemory();
+      }
     } catch (err) {
       toast({
         tone: 'error',
@@ -89,7 +97,18 @@ export default function MemoryDetailPage() {
     } finally {
       setSaving(false);
     }
-  }, [memory, editTitle, editSummary, editContent, saving, toast, mutateMemory]);
+  }, [
+    memory,
+    editTitle,
+    editSummary,
+    editContent,
+    editReason,
+    saving,
+    toast,
+    mutateMemory,
+    router,
+    workspaceId,
+  ]);
 
   if (memoryLoading) {
     return (
@@ -534,6 +553,22 @@ export default function MemoryDetailPage() {
           </div>
           <div>
             <label
+              htmlFor="edit-reason"
+              className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1"
+            >
+              Revision Reason (Immutable Audit Trail)
+            </label>
+            <input
+              id="edit-reason"
+              type="text"
+              placeholder="e.g. Updated with recent architectural decisions and scope"
+              className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)] font-sans"
+              value={editReason}
+              onChange={(e) => setEditReason(e.target.value)}
+            />
+          </div>
+          <div>
+            <label
               htmlFor="edit-content"
               className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1"
             >
@@ -552,7 +587,7 @@ export default function MemoryDetailPage() {
               Cancel
             </Button>
             <Button variant="primary" onClick={() => void saveEdit()} loading={saving}>
-              Save Changes
+              Save Revision (Supersede)
             </Button>
           </div>
         </div>

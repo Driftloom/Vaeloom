@@ -8,11 +8,18 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-from sqlalchemy import func, select, or_, and_
+from sqlalchemy import and_, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models.schema import Memory
-from ..schemas.memory import MemoryCreate, MemoryQuery, MemorySearch, MemoryUpdate
+from ..models.schema import AgentAction, Memory
+from ..schemas.memory import (
+    MemoryCreate,
+    MemoryImportBatch,
+    MemoryQuery,
+    MemorySearch,
+    MemorySupersedeRequest,
+    MemoryUpdate,
+)
 from ..utils.sanitize import sanitize_text
 from .llm_service import LLMProviderError, llm_service
 
@@ -76,13 +83,17 @@ class MemoryService:
         lineage = (dto.metadata or {}).get("lineage") if dto.metadata else None
         if lineage is None:
             lineage = {"model": getattr(dto, "model", None) or "unknown", "taxonomy_version": taxonomy_version, "workspace_id": str(resolved_ws_id) if resolved_ws_id else None}
+        derived_summary = dto.summary
+        if not derived_summary and dto.content:
+            derived_summary = dto.content[:240].strip()
+
         memory = Memory(
             id=uuid.uuid4(),
             type=dto.type,
             domain=dto.domain,
             status="active",
             title=sanitize_text(dto.title),
-            summary=sanitize_text(dto.summary),
+            summary=sanitize_text(derived_summary),
             content=sanitize_text(dto.content),
             content_hash=llm_service.compute_content_hash(content_for_embedding or ""),
             size=len(content_for_embedding or ""),
@@ -327,62 +338,69 @@ class MemoryService:
         if not target_ws and not allow_tenant_wide:
             raise ValueError("workspace_id is required for memory operations")
 
-        content_for_embedding = dto.query
-        query_embedding = await llm_service.generate_embedding(content_for_embedding)
+        strategy = getattr(dto, "strategy", "hybrid") or "hybrid"
+        include_superseded = getattr(dto, "include_superseded", False)
+        status_filter = [Memory.status.in_(["active", "superseded"])] if include_superseded else [Memory.status == "active"]
 
-        # Primary: query configured vector store polymorphically
-        try:
-            from ..infrastructure.vector_store import get_vector_store
-            vstore = get_vector_store()
-            filters: dict[str, Any] = {}
-            if target_ws:
-                filters["workspace_id"] = str(target_ws)
-            vrecords = await vstore.search(
-                query_vector=query_embedding, limit=dto.top_k, filters=filters or None, session=db
-            )
-            if vrecords:
-                mem_ids = [_to_uuid(r.metadata.get("source_id") or r.id) for r in vrecords if _to_uuid(r.metadata.get("source_id") or r.id)]
-                if mem_ids:
-                    res = await db.execute(select(Memory).where(Memory.id.in_(mem_ids)))
-                    mem_map = {m.id: m for m in res.scalars().all()}
-                    found = [(mem_map[mid], 0.95) for mid in mem_ids if mid in mem_map]
-                    if found:
-                        return found
-        except Exception as e:
-            logger.debug(f"Vector store search failed or bypassed: {e}")
+        vector_results: list[tuple[Memory, float]] = []
+        if strategy in ("hybrid", "vector"):
+            content_for_embedding = dto.query
+            query_embedding = await llm_service.generate_embedding(content_for_embedding)
 
-        try:
-            stmt = select(Memory, func.cosine_distance(Memory.embedding, query_embedding).label("distance"))
-            conditions = [Memory.status == "active", Memory.embedding.isnot(None)]
-            if tenant_id:
-                conditions.append(Memory.tenant_id == tenant_id)
-            # Enforced workspace scoping (F-03, G-41): MemoryService.search_memories now scopes by
-            # the authoritative workspace_id, so workspace B cannot retrieve workspace A's
-            # memories even within the same tenant.
-            if target_ws:
-                ws_uuid = _to_uuid(target_ws)
-                if ws_uuid is not None:
-                    conditions.append(Memory.workspace_id == ws_uuid)
-            if dto.type:
-                conditions.append(Memory.type == dto.type)
-            if dto.domain:
-                conditions.append(Memory.domain == dto.domain)
-            if dto.tags:
-                conditions.append(Memory.tags.overlap(dto.tags))
+            # Primary: query configured vector store polymorphically
+            try:
+                from ..infrastructure.vector_store import get_vector_store
+                vstore = get_vector_store()
+                filters: dict[str, Any] = {}
+                if target_ws:
+                    filters["workspace_id"] = str(target_ws)
+                vrecords = await vstore.search(
+                    query_vector=query_embedding, limit=dto.top_k, filters=filters or None, session=db
+                )
+                if vrecords:
+                    mem_ids = [_to_uuid(r.metadata.get("source_id") or r.id) for r in vrecords if _to_uuid(r.metadata.get("source_id") or r.id)]
+                    if mem_ids:
+                        res = await db.execute(select(Memory).where(Memory.id.in_(mem_ids)))
+                        mem_map = {m.id: m for m in res.scalars().all()}
+                        vector_results = [(mem_map[mid], 0.95) for mid in mem_ids if mid in mem_map]
+            except Exception as e:
+                logger.debug(f"Vector store search failed or bypassed: {e}")
 
-            stmt = stmt.where(*conditions)
-            if dto.threshold is not None:
-                stmt = stmt.where(func.cosine_distance(Memory.embedding, query_embedding) <= (1.0 - dto.threshold))
-            stmt = stmt.order_by(func.cosine_distance(Memory.embedding, query_embedding)).limit(dto.top_k)
+            if not vector_results:
+                try:
+                    stmt = select(Memory, func.cosine_distance(Memory.embedding, query_embedding).label("distance"))
+                    conditions = list(status_filter) + [Memory.embedding.isnot(None)]
+                    if tenant_id:
+                        conditions.append(Memory.tenant_id == tenant_id)
+                    # Enforced workspace scoping (F-03, G-41)
+                    if target_ws:
+                        ws_uuid = _to_uuid(target_ws)
+                        if ws_uuid is not None:
+                            conditions.append(Memory.workspace_id == ws_uuid)
+                    if dto.type:
+                        conditions.append(Memory.type == dto.type)
+                    if dto.domain:
+                        conditions.append(Memory.domain == dto.domain)
+                    if dto.tags:
+                        conditions.append(Memory.tags.overlap(dto.tags))
 
-            result = await db.execute(stmt)
-            rows = result.all()
-            if rows:
-                return [(row[0], float(1.0 - row[1])) for row in rows]
-        except Exception as e:
-            logger.debug(f"Cosine distance search failed or unsupported on this dialect: {e}")
+                    stmt = stmt.where(*conditions)
+                    if dto.threshold is not None:
+                        stmt = stmt.where(func.cosine_distance(Memory.embedding, query_embedding) <= (1.0 - dto.threshold))
+                    stmt = stmt.order_by(func.cosine_distance(Memory.embedding, query_embedding)).limit(dto.top_k)
 
-        # Text fallback search across title/summary/content for SQLite parity & resilience
+                    result = await db.execute(stmt)
+                    rows = result.all()
+                    if rows:
+                        vector_results = [(row[0], float(1.0 - row[1])) for row in rows]
+                except Exception as e:
+                    logger.debug(f"Cosine distance search failed or unsupported on this dialect: {e}")
+
+        # If pure vector strategy requested and results found, return them
+        if strategy == "vector" and vector_results:
+            return vector_results
+
+        # Keyword text search across title/summary/content for precision & SQLite parity
         pattern = f"%{dto.query}%"
         words = [w.strip() for w in dto.query.split() if len(w.strip()) > 2]
         match_expr = or_(
@@ -402,7 +420,7 @@ class MemoryService:
             match_expr = or_(match_expr, and_(*word_conditions))
 
         fallback_stmt = select(Memory).where(
-            Memory.status == "active",
+            *status_filter,
             match_expr,
         )
         if target_ws:
@@ -415,8 +433,362 @@ class MemoryService:
             fallback_stmt = fallback_stmt.where(Memory.type == dto.type)
         fallback_stmt = fallback_stmt.limit(dto.top_k)
         fb_res = await db.execute(fallback_stmt)
-        fb_mems = fb_res.scalars().all()
-        return [(m, 0.90 if dto.query.lower() in m.title.lower() else 0.75) for m in fb_mems]
+        fb_mems = list(fb_res.scalars().all())
+
+        # Check decrypted content for memory records in workspace if matches are below top_k
+        if len(fb_mems) < dto.top_k and target_ws:
+            content_stmt = select(Memory).where(
+                *status_filter,
+                Memory.workspace_id == _to_uuid(target_ws),
+            ).limit(100)
+            if tenant_id:
+                content_stmt = content_stmt.where(Memory.tenant_id == tenant_id)
+            if dto.type:
+                content_stmt = content_stmt.where(Memory.type == dto.type)
+            c_res = await db.execute(content_stmt)
+            existing_ids = {m.id for m in fb_mems}
+            q_lower = dto.query.lower()
+            for m in c_res.scalars().all():
+                if m.id not in existing_ids:
+                    c_text = (m.content or "").lower()
+                    if q_lower in c_text or (words and any(w.lower() in c_text for w in words)):
+                        fb_mems.append(m)
+                        existing_ids.add(m.id)
+                        if len(fb_mems) >= dto.top_k:
+                            break
+
+        text_results = [(m, 0.90 if dto.query.lower() in m.title.lower() else 0.75) for m in fb_mems]
+
+        if strategy == "keyword":
+            return text_results
+
+        # Hybrid strategy: Reciprocal Rank Fusion (RRF)
+        if not vector_results:
+            return text_results
+        if not text_results:
+            return vector_results
+
+        # RRF formula: score(d) = sum(1 / (60 + rank))
+        rrf_scores: dict[uuid.UUID, float] = {}
+        mem_lookup: dict[uuid.UUID, Memory] = {}
+
+        for rank, (mem, _) in enumerate(vector_results, start=1):
+            mem_lookup[mem.id] = mem
+            rrf_scores[mem.id] = rrf_scores.get(mem.id, 0.0) + (1.0 / (60.0 + rank))
+
+        for rank, (mem, _) in enumerate(text_results, start=1):
+            mem_lookup[mem.id] = mem
+            rrf_scores[mem.id] = rrf_scores.get(mem.id, 0.0) + (1.0 / (60.0 + rank))
+
+        sorted_mems = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)[:dto.top_k]
+        max_rrf = sorted_mems[0][1] if sorted_mems else 1.0
+        fused = [
+            (mem_lookup[mid], min(0.98, max(0.65, (score / max_rrf) * 0.98)))
+            for mid, score in sorted_mems
+        ]
+        return fused
+
+    async def supersede_memory(
+        self,
+        db: AsyncSession,
+        memory_id: uuid.UUID,
+        dto: MemorySupersedeRequest,
+        tenant_id: str | None,
+        workspace_id: str | None = None,
+        user_id: str | None = None,
+    ) -> Memory | None:
+        """Supersede an existing memory with immutable revision provenance (ENT-P12 Task 4).
+
+        The previous memory is preserved in status='superseded' with updated_at timestamp.
+        A new successor memory is created with supersedes_id pointer, content hash,
+        recalculated embeddings, and an immutable audit trail.
+        """
+        old_memory = await self.get_memory(db, memory_id, tenant_id, workspace_id)
+        if not old_memory:
+            return None
+
+        # 1. Snapshot old state for durable versioning
+        old_state = {
+            "title": getattr(old_memory, "title", None),
+            "summary": getattr(old_memory, "summary", None),
+            "content": getattr(old_memory, "content", None),
+            "type": getattr(old_memory, "type", None),
+            "domain": getattr(old_memory, "domain", None),
+            "status": getattr(old_memory, "status", None),
+            "tags": list(getattr(old_memory, "tags", None) or []),
+            "metadata": dict(getattr(old_memory, "metadata_", None) or {}),
+        }
+
+        # 2. Mark old memory as superseded
+        old_memory.status = "superseded"
+        old_memory.updated_at = datetime.now(UTC)
+
+        # 3. Create successor memory record
+        new_title = dto.title if dto.title is not None else old_memory.title
+        new_summary = dto.summary if dto.summary is not None else old_memory.summary
+        new_content = dto.content if dto.content is not None else old_memory.content
+        if new_content:
+            new_content = sanitize_text(new_content)
+        new_type = dto.type or old_memory.type
+        new_domain = dto.domain or old_memory.domain
+        new_tags = dto.tags if dto.tags is not None else list(old_memory.tags or [])
+
+        merged_meta = dict(getattr(old_memory, "metadata_", None) or {})
+        if dto.metadata:
+            merged_meta.update(dto.metadata)
+        merged_meta["supersession_reason"] = dto.reason
+        merged_meta["superseded_from_id"] = str(old_memory.id)
+        merged_meta["superseded_at"] = datetime.now(UTC).isoformat()
+        if user_id:
+            merged_meta["superseded_by_user_id"] = str(user_id)
+
+        content_for_embedding = new_content or new_summary or new_title or ""
+        embedding = None
+        if content_for_embedding.strip():
+            with contextlib.suppress(LLMProviderError):
+                embedding = await llm_service.generate_embedding(
+                    content_for_embedding,
+                    user_id=str(user_id) if user_id else (str(old_memory.user_id) if old_memory.user_id else None),
+                    workspace_id=str(workspace_id) if workspace_id else (str(old_memory.workspace_id) if old_memory.workspace_id else None),
+                    db=db,
+                )
+
+        new_memory = Memory(
+            id=uuid.uuid4(),
+            type=new_type,
+            domain=new_domain,
+            status="active",
+            title=new_title,
+            summary=new_summary,
+            content=new_content,
+            content_hash=llm_service.compute_content_hash(content_for_embedding),
+            size=len(content_for_embedding),
+            embedding=embedding,
+            metadata_=merged_meta,
+            tags=new_tags,
+            tenant_id=_to_uuid(tenant_id) if tenant_id else old_memory.tenant_id,
+            user_id=_to_uuid(user_id) if user_id else old_memory.user_id,
+            workspace_id=_to_uuid(workspace_id) if workspace_id else old_memory.workspace_id,
+            source_type="correction",
+            source_label=f"Superseded #{str(old_memory.id)[:8]}: {dto.reason[:60]}",
+            supersedes_id=old_memory.id,
+        )
+        db.add(new_memory)
+
+        # 4. Durable versioning
+        new_state = {
+            "title": new_memory.title,
+            "summary": new_memory.summary,
+            "content": new_memory.content,
+            "type": new_memory.type,
+            "domain": new_memory.domain,
+            "status": "active",
+            "tags": list(new_memory.tags or []),
+            "metadata": dict(new_memory.metadata_ or {}),
+            "supersedes_id": str(old_memory.id),
+            "reason": dto.reason,
+        }
+        try:
+            from .memory_versioning import persist_version
+
+            await persist_version(
+                memory_id=old_memory.id,
+                old_state=old_state,
+                new_state={"status": "superseded", "superseded_by": str(new_memory.id), "reason": dto.reason},
+                workspace_id=str(old_memory.workspace_id) if old_memory.workspace_id else None,
+                created_by=str(user_id) if user_id else None,
+                db=db,
+            )
+            await persist_version(
+                memory_id=new_memory.id,
+                old_state={},
+                new_state=new_state,
+                workspace_id=str(new_memory.workspace_id) if new_memory.workspace_id else None,
+                created_by=str(user_id) if user_id else None,
+                db=db,
+            )
+        except Exception:
+            pass
+
+        # 5. Record agent action / audit event
+        try:
+            action = AgentAction(
+                id=uuid.uuid4(),
+                agent_name="human_correction",
+                action_type="memory_superseded",
+                input_ref=str(old_memory.id),
+                output_ref=str(new_memory.id),
+                status="completed",
+                tenant_id=_to_uuid(tenant_id) if tenant_id else old_memory.tenant_id,
+                workspace_id=_to_uuid(workspace_id) if workspace_id else old_memory.workspace_id,
+                metadata_={"reason": dto.reason},
+            )
+            db.add(action)
+        except Exception:
+            pass
+
+        await db.flush()
+        await db.refresh(new_memory)
+        return new_memory
+
+    async def export_memories(
+        self,
+        db: AsyncSession,
+        workspace_id: str | uuid.UUID,
+        tenant_id: str | None,
+        include_superseded: bool = False,
+    ) -> list[Memory]:
+        """Export all memories for a workspace with lineage & audit metadata (CONT-P07)."""
+        ws_uuid = _to_uuid(workspace_id)
+        if not ws_uuid:
+            return []
+        stmt = select(Memory).where(Memory.workspace_id == ws_uuid)
+        if tenant_id:
+            stmt = stmt.where(Memory.tenant_id == tenant_id)
+        if not include_superseded:
+            stmt = stmt.where(Memory.status == "active")
+        else:
+            stmt = stmt.where(Memory.status != "deleted")
+        stmt = stmt.order_by(desc(Memory.created_at))
+        res = await db.execute(stmt)
+        return list(res.scalars().all())
+
+    async def import_memories(
+        self,
+        db: AsyncSession,
+        batch: MemoryImportBatch,
+        tenant_id: str | None,
+        user_id: str | None,
+    ) -> tuple[int, int, int, list[uuid.UUID]]:
+        """Batch import memories with hash deduplication and workspace RLS isolation."""
+        ws_uuid = _to_uuid(batch.workspace_id)
+        imported_ids: list[uuid.UUID] = []
+        skipped_count = 0
+        error_count = 0
+
+        existing_hashes = set()
+        if batch.deduplicate_by_hash and ws_uuid:
+            stmt = select(Memory.content_hash).where(
+                Memory.workspace_id == ws_uuid,
+                Memory.status != "deleted",
+            )
+            res = await db.execute(stmt)
+            existing_hashes = set(res.scalars().all())
+
+        for item in batch.memories:
+            try:
+                title = item.title or (item.summary[:60] if item.summary else "Imported Memory")
+                content = item.content or item.summary or title
+                content_for_embedding = content or ""
+                chash = llm_service.compute_content_hash(content_for_embedding)
+
+                if batch.deduplicate_by_hash and chash in existing_hashes:
+                    skipped_count += 1
+                    continue
+
+                embedding = None
+                if content_for_embedding.strip():
+                    with contextlib.suppress(LLMProviderError):
+                        embedding = await llm_service.generate_embedding(
+                            content_for_embedding,
+                            user_id=str(user_id) if user_id else None,
+                            workspace_id=str(ws_uuid) if ws_uuid else None,
+                            db=db,
+                        )
+
+                mem = Memory(
+                    id=uuid.uuid4(),
+                    type=item.type or "note",
+                    domain=item.domain,
+                    status="active",
+                    title=title,
+                    summary=item.summary,
+                    content=sanitize_text(content),
+                    content_hash=chash,
+                    size=len(content_for_embedding),
+                    embedding=embedding,
+                    metadata_=dict(item.metadata or {}),
+                    tags=list(item.tags or []),
+                    tenant_id=_to_uuid(tenant_id) if tenant_id else None,
+                    user_id=_to_uuid(user_id) if user_id else None,
+                    workspace_id=ws_uuid,
+                    source_type=item.source_type or "import",
+                    source_label=item.source_label or "Batch Import",
+                )
+                db.add(mem)
+                imported_ids.append(mem.id)
+                existing_hashes.add(chash)
+            except Exception:
+                error_count += 1
+
+        await db.flush()
+        return len(imported_ids), skipped_count, error_count, imported_ids
+
+    async def bulk_status(
+        self,
+        db: AsyncSession,
+        memory_ids: list[uuid.UUID],
+        status: str,
+        workspace_id: str | uuid.UUID,
+        tenant_id: str | None,
+    ) -> list[uuid.UUID]:
+        """Atomically update status across multiple workspace memories."""
+        ws_uuid = _to_uuid(workspace_id)
+        if not ws_uuid or not memory_ids:
+            return []
+        stmt = select(Memory).where(
+            Memory.id.in_(memory_ids),
+            Memory.workspace_id == ws_uuid,
+        )
+        if tenant_id:
+            stmt = stmt.where(Memory.tenant_id == tenant_id)
+        res = await db.execute(stmt)
+        mems = list(res.scalars().all())
+        updated: list[uuid.UUID] = []
+        now = datetime.now(UTC)
+        for m in mems:
+            m.status = status
+            m.updated_at = now
+            if status == "deleted":
+                m.deleted_at = now
+            updated.append(m.id)
+        await db.flush()
+        return updated
+
+    async def bulk_tag(
+        self,
+        db: AsyncSession,
+        memory_ids: list[uuid.UUID],
+        add_tags: list[str],
+        remove_tags: list[str],
+        workspace_id: str | uuid.UUID,
+        tenant_id: str | None,
+    ) -> list[uuid.UUID]:
+        """Batch update tags across multiple memories in a workspace."""
+        ws_uuid = _to_uuid(workspace_id)
+        if not ws_uuid or not memory_ids:
+            return []
+        stmt = select(Memory).where(
+            Memory.id.in_(memory_ids),
+            Memory.workspace_id == ws_uuid,
+        )
+        if tenant_id:
+            stmt = stmt.where(Memory.tenant_id == tenant_id)
+        res = await db.execute(stmt)
+        mems = list(res.scalars().all())
+        updated: list[uuid.UUID] = []
+        now = datetime.now(UTC)
+        for m in mems:
+            current_tags = set(m.tags or [])
+            if add_tags:
+                current_tags.update(add_tags)
+            if remove_tags:
+                current_tags.difference_update(remove_tags)
+            m.tags = list(current_tags)
+            m.updated_at = now
+            updated.append(m.id)
+        await db.flush()
+        return updated
 
 
 memory_service = MemoryService()

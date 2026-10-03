@@ -43,11 +43,17 @@ function formatRelative(iso: string | null | undefined) {
 
 const TYPE_FILTERS: FilterOption[] = [
   { id: 'all', label: 'All Types' },
+  { id: 'profile', label: 'Profile' },
+  { id: 'career', label: 'Career' },
+  { id: 'skill', label: 'Skills' },
+  { id: 'project', label: 'Projects' },
+  { id: 'decision', label: 'Decisions' },
+  { id: 'goal', label: 'Goals' },
   { id: 'note', label: 'Notes' },
   { id: 'document', label: 'Documents' },
   { id: 'insight', label: 'Insights' },
-  { id: 'decision', label: 'Decisions' },
   { id: 'task', label: 'Tasks' },
+  { id: 'relationship', label: 'Relationships' },
 ];
 
 function MemoryGraphPageContent() {
@@ -63,6 +69,11 @@ function MemoryGraphPageContent() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showLineage, setShowLineage] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importJsonText, setImportJsonText] = useState('');
+  const [importDeduplicate, setImportDeduplicate] = useState(true);
+  const [isImporting, setIsImporting] = useState(false);
+  const [selectedMemoryIds, setSelectedMemoryIds] = useState<Set<string>>(new Set());
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
   const [newType, setNewType] = useState('note');
@@ -190,6 +201,138 @@ function MemoryGraphPageContent() {
     }
   };
 
+  const handleExportMemories = async () => {
+    try {
+      const res = await memoryApi.export(workspaceId, true);
+      const blob = new Blob([JSON.stringify(res, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `vaeloom-memory-export-${workspaceId.slice(0, 8)}-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({
+        tone: 'success',
+        title: 'Memory Export Completed',
+        detail: `Exported ${res.total_count} memories successfully.`,
+      });
+    } catch (err) {
+      toast({
+        tone: 'error',
+        title: 'Export Failed',
+        detail: err instanceof Error ? err.message : 'Could not export memories.',
+      });
+    }
+  };
+
+  const handleImportMemories = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importJsonText.trim() || isImporting) return;
+    setIsImporting(true);
+    try {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(importJsonText);
+      } catch {
+        throw new Error('Invalid JSON format. Please paste valid JSON.');
+      }
+      let items: Record<string, unknown>[] = [];
+      if (Array.isArray(parsed)) {
+        items = parsed as Record<string, unknown>[];
+      } else if (
+        typeof parsed === 'object' &&
+        parsed !== null &&
+        'items' in parsed &&
+        Array.isArray((parsed as { items: unknown[] }).items)
+      ) {
+        items = (parsed as { items: Record<string, unknown>[] }).items;
+      } else if (
+        typeof parsed === 'object' &&
+        parsed !== null &&
+        'memories' in parsed &&
+        Array.isArray((parsed as { memories: unknown[] }).memories)
+      ) {
+        items = (parsed as { memories: Record<string, unknown>[] }).memories;
+      } else {
+        throw new Error(
+          'JSON must contain an array of memory objects or an object with an items/memories array.',
+        );
+      }
+
+      const res = await memoryApi.import({
+        workspace_id: workspaceId,
+        memories: items as unknown as import('@/lib/api-client').MemoryImportItem[],
+        deduplicate_by_hash: importDeduplicate,
+      });
+
+      toast({
+        tone: 'success',
+        title: 'Import Completed',
+        detail: `Imported: ${res.imported_count}, Skipped: ${res.skipped_count}, Errors: ${res.error_count}`,
+      });
+      setImportModalOpen(false);
+      setImportJsonText('');
+      await mutateMemories();
+      await mutateFeed();
+    } catch (err) {
+      toast({
+        tone: 'error',
+        title: 'Import Failed',
+        detail: err instanceof Error ? err.message : 'Could not import memories.',
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleBulkArchive = async () => {
+    if (selectedMemoryIds.size === 0) return;
+    try {
+      const res = await memoryApi.bulkStatus(
+        workspaceId,
+        Array.from(selectedMemoryIds),
+        'archived',
+      );
+      toast({
+        tone: 'success',
+        title: 'Memories Archived',
+        detail: `Archived ${res.success_count} memories.`,
+      });
+      setSelectedMemoryIds(new Set());
+      await mutateMemories();
+      await mutateFeed();
+    } catch (err) {
+      toast({
+        tone: 'error',
+        title: 'Bulk Archive Failed',
+        detail: err instanceof Error ? err.message : 'Could not archive selected memories.',
+      });
+    }
+  };
+
+  const toggleSelectMemory = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedMemoryIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const selectAllFiltered = () => {
+    if (selectedMemoryIds.size === filteredMemories.length) {
+      setSelectedMemoryIds(new Set());
+    } else {
+      setSelectedMemoryIds(new Set(filteredMemories.map((m) => m.id)));
+    }
+  };
+
   // Convert feed items to MemoryTimelineItems
   const timelineItems: MemoryTimelineItem[] = useMemo(() => {
     if (!feedData?.feed) return [];
@@ -241,6 +384,12 @@ function MemoryGraphPageContent() {
               }}
             >
               Refresh
+            </Button>
+            <Button variant="secondary" size="sm" onClick={handleExportMemories}>
+              Export Backup
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setImportModalOpen(true)}>
+              Import JSON
             </Button>
             <Button variant="primary" size="sm" onClick={() => setCreateModalOpen(true)}>
               + New Note / Memory
@@ -335,6 +484,33 @@ function MemoryGraphPageContent() {
             onCategoryChange={setSelectedType}
           />
 
+          {selectedMemoryIds.size > 0 && (
+            <div className="flex items-center justify-between p-3 bg-[var(--color-surface-subtle)] border border-[var(--color-brand-primary,#818cf8)] rounded-xl shadow-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-[var(--color-brand-primary,#818cf8)]">
+                  {selectedMemoryIds.size} selected
+                </span>
+                <button
+                  type="button"
+                  onClick={selectAllFiltered}
+                  className="text-xs text-[var(--color-text-muted)] hover:underline"
+                >
+                  {selectedMemoryIds.size === filteredMemories.length
+                    ? 'Deselect all'
+                    : 'Select all'}
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="secondary" onClick={handleBulkArchive}>
+                  Archive Selected
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setSelectedMemoryIds(new Set())}>
+                  Clear
+                </Button>
+              </div>
+            </div>
+          )}
+
           {memoriesLoading ? (
             <div className="py-12 flex justify-center">
               <LoadingSpinner text="Loading memories..." />
@@ -367,27 +543,48 @@ function MemoryGraphPageContent() {
                   m.summary ||
                   m.title;
                 const relTime = formatRelative(m.createdAt);
+                const isSelected = selectedMemoryIds.has(m.id);
 
                 return (
                   <div
                     key={m.id}
-                    className="relative group cursor-pointer"
-                    onClick={() => router.push(`/workspace/${workspaceId}/memory/${m.id}`)}
+                    className={`relative group rounded-xl transition border ${
+                      isSelected
+                        ? 'border-[var(--color-brand-primary,#818cf8)] ring-1 ring-[var(--color-brand-primary,#818cf8)]'
+                        : 'border-transparent'
+                    }`}
                   >
-                    <MemoryCard
-                      id={m.id}
-                      content={contentStr}
-                      confidence={confScore}
-                      source={sourceText}
-                      timestamp={relTime}
-                      entityCount={Array.isArray(m.tags) ? m.tags.length : undefined}
-                      onEdit={(id) => {
-                        openLineage(id);
-                      }}
-                      onDelete={(id) => {
-                        void handleDeleteMemory(id);
-                      }}
-                    />
+                    <div
+                      className="absolute top-3 right-3 z-10"
+                      onClick={(e) => toggleSelectMemory(m.id, e)}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}}
+                        aria-label={`Select memory ${m.title || m.id}`}
+                        className="h-4 w-4 rounded border-[var(--color-border)] text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      />
+                    </div>
+                    <div
+                      className="cursor-pointer"
+                      onClick={() => router.push(`/workspace/${workspaceId}/memory/${m.id}`)}
+                    >
+                      <MemoryCard
+                        id={m.id}
+                        content={contentStr}
+                        confidence={confScore}
+                        source={sourceText}
+                        timestamp={relTime}
+                        entityCount={Array.isArray(m.tags) ? m.tags.length : undefined}
+                        onEdit={(id) => {
+                          openLineage(id);
+                        }}
+                        onDelete={(id) => {
+                          void handleDeleteMemory(id);
+                        }}
+                      />
+                    </div>
                   </div>
                 );
               })}
@@ -542,6 +739,12 @@ function MemoryGraphPageContent() {
               <option value="insight">Insight</option>
               <option value="decision">Decision</option>
               <option value="task">Task</option>
+              <option value="profile">Profile</option>
+              <option value="career">Career</option>
+              <option value="skill">Skill</option>
+              <option value="project">Project</option>
+              <option value="goal">Goal</option>
+              <option value="relationship">Relationship</option>
             </select>
           </div>
 
@@ -578,6 +781,59 @@ function MemoryGraphPageContent() {
             </Button>
             <Button variant="primary" type="submit" loading={isCreating}>
               Save to Memory
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Import Memories Modal */}
+      <Modal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        title="Import Memories (Batch JSON)"
+        size="lg"
+      >
+        <form onSubmit={handleImportMemories} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
+              JSON Payload (Array or Export Format)
+            </label>
+            <p className="text-[11px] text-[var(--color-text-muted)] mb-2">
+              Paste exported JSON or an array of items with title, content, type, tags, and
+              metadata.
+            </p>
+            <textarea
+              required
+              rows={10}
+              placeholder={`[\n  {\n    "title": "System Architecture Decisions",\n    "content": "Decided on SQLite/PostgreSQL RLS with event stream...",\n    "type": "decision",\n    "tags": ["architecture", "database"]\n  }\n]`}
+              value={importJsonText}
+              onChange={(e) => setImportJsonText(e.target.value)}
+              className="w-full font-mono text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2.5 text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)]"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="dedup"
+              checked={importDeduplicate}
+              onChange={(e) => setImportDeduplicate(e.target.checked)}
+              className="rounded border-[var(--color-border)] text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+            />
+            <label
+              htmlFor="dedup"
+              className="text-xs text-[var(--color-text-primary)] cursor-pointer"
+            >
+              Deduplicate by SHA-256 content hash (skip existing identical records)
+            </label>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
+            <Button variant="ghost" onClick={() => setImportModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" loading={isImporting}>
+              Import Memories
             </Button>
           </div>
         </form>
