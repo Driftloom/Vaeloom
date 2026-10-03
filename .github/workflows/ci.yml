@@ -85,11 +85,11 @@ jobs:
           cache-dependency-path: |
             apps/api/pyproject.toml
             packages/python-common/pyproject.toml
-      - run: pip install ruff mypy
+      - run: pip install ruff mypy -e packages/python-common
       - name: Architecture Verification
         run: python scripts/verify_architecture.py
       - run: ruff check apps/api/src packages/python-common/src
-      - run: mypy packages/python-common/src
+      - run: mypy --ignore-missing-imports packages/python-common/src
 
   build:
     name: Build

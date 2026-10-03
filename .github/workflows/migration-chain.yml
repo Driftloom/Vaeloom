@@ -58,6 +58,11 @@ jobs:
           --health-retries 20
 
     env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: vaeloom_test
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/vaeloom_test
       VAELOOM_TARGET_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/vaeloom_test
       VAELOOM_TEST_PG_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/vaeloom_test

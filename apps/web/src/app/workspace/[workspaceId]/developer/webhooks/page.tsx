@@ -329,19 +329,19 @@ export default function WebhooksPage() {
           <Input
             label="Name"
             value={newName}
-            onChange={(e) => setNewName(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewName(e.target.value)}
             placeholder="e.g. Production"
           />
           <Input
             label="URL"
             value={newUrl}
-            onChange={(e) => setNewUrl(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewUrl(e.target.value)}
             placeholder="https://hooks.example.com/events"
           />
           <Input
             label="Secret"
             value={newSecret}
-            onChange={(e) => setNewSecret(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSecret(e.target.value)}
             placeholder="Leave blank to auto-generate"
           />
           <div className="space-y-1">
