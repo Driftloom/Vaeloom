@@ -262,6 +262,81 @@ class TestGateCache:
         assert await _TOOL_ENABLE_GATE.disabled("") == frozenset()
 
 
+class TestBuiltinPolicyRowRegistration:
+    """A row for a built-in name is policy, not a tool definition.
+
+    ToolsView creates exactly these rows to switch a built-in off. Registering an
+    echo stub under the built-in's name made the registry listing show a phantom
+    custom tool shadowing a real one.
+    """
+
+    async def test_creating_a_row_for_a_builtin_name_registers_no_dynamic_definition(
+        self, client: AsyncClient
+    ):
+        from api.tools.definitions import ALL_TOOLS
+        from api.tools.executor import dynamic_tool_definitions
+
+        builtin_name = next(iter(ALL_TOOLS))
+        headers, workspace_id = await _authed_workspace(client, "builtin-row")
+
+        before = dynamic_tool_definitions(workspace_id)
+        assert builtin_name not in before
+
+        res = await client.post(
+            "/api/v1/capabilities",
+            json={
+                "name": builtin_name,
+                "category": "tool",
+                "description": "policy row only",
+            },
+            headers=headers,
+        )
+        assert res.status_code == 201
+
+        after = dynamic_tool_definitions(workspace_id)
+        assert builtin_name not in after, (
+            "a policy row for a built-in must not register a dynamic ToolDefinition "
+            "that shadows the built-in in the registry listing"
+        )
+
+    async def test_the_policy_row_still_gates_the_builtin(self, client: AsyncClient):
+        """The whole point: no registration, full enforcement."""
+        from api.tools.definitions import ALL_TOOLS
+
+        builtin_name = next(iter(ALL_TOOLS))
+        headers, workspace_id = await _authed_workspace(client, "builtin-gate")
+        cap_id = await _create_tool(client, headers, builtin_name)
+
+        assert builtin_name in await _TOOL_ENABLE_GATE.disabled(workspace_id) or (
+            (await client.patch(
+                f"/api/v1/capabilities/{cap_id}", json={"enabled": False}, headers=headers
+            )).status_code == 200
+        )
+        assert builtin_name in await _TOOL_ENABLE_GATE.disabled(workspace_id)
+
+    async def test_a_genuinely_custom_tool_name_still_registers(self, client: AsyncClient):
+        """The fix must not break the path that registration exists for."""
+        from api.tools.definitions import ALL_TOOLS
+        from api.tools.executor import dynamic_tool_definitions
+
+        custom_name = "gate_really_custom_tool"
+        assert custom_name not in ALL_TOOLS
+        headers, workspace_id = await _authed_workspace(client, "custom-reg")
+
+        res = await client.post(
+            "/api/v1/capabilities",
+            json={
+                "name": custom_name,
+                "category": "tool",
+                "description": "genuinely custom",
+                "config": {"parameters": {"type": "object", "properties": {}}},
+            },
+            headers=headers,
+        )
+        assert res.status_code == 201
+        assert custom_name in dynamic_tool_definitions(workspace_id)
+
+
 class TestDenialMessage:
     def test_the_message_names_the_tool_and_the_remedy(self):
         """A denial the operator cannot act on is a support ticket, not a gate."""

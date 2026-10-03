@@ -1075,30 +1075,43 @@ async def create_capability(
         config=payload.config,
     )
 
-    # If it's a dynamic tool, register it in the executor for this workspace
+    # A row for a name that a built-in tool already owns is a POLICY row, not a
+    # tool definition: the enable gate reads it and nothing else should. Since
+    # ToolsView now creates exactly these rows to switch a built-in off, the old
+    # behaviour registered an echo stub with an empty schema under the built-in's
+    # name, which then showed up in the registry listing as a phantom custom tool
+    # shadowing a real one. Execution is unaffected (`get_tool_definition` checks
+    # ALL_TOOLS first) but the listing lied.
     if category == "tool":
+        shadows_builtin = name in ALL_TOOLS
         try:
-            input_schema = payload.config.get("parameters") or {
-                "type": "object",
-                "properties": {},
-            }
-            output_schema = payload.config.get("returns") or {
-                "type": "object",
-                "properties": {},
-            }
-            td = ToolDefinition(
-                name=name,
-                description=payload.description or f"Custom workspace tool: {name}",
-                category="custom",
-                required_scope=f"tool.{name}",
-                input_schema=input_schema,
-                output_schema=output_schema,
-            )
+            if shadows_builtin:
+                logger.info(
+                    f"Capability row for built-in tool '{name}' recorded as policy only; "
+                    "no dynamic ToolDefinition registered"
+                )
+            else:
+                input_schema = payload.config.get("parameters") or {
+                    "type": "object",
+                    "properties": {},
+                }
+                output_schema = payload.config.get("returns") or {
+                    "type": "object",
+                    "properties": {},
+                }
+                td = ToolDefinition(
+                    name=name,
+                    description=payload.description or f"Custom workspace tool: {name}",
+                    category="custom",
+                    required_scope=f"tool.{name}",
+                    input_schema=input_schema,
+                    output_schema=output_schema,
+                )
 
-            async def _custom_tool_handler(args: dict[str, Any], workspace_id: str | None = None) -> dict[str, Any]:
-                return {"status": "ok", "tool": name, "echo": args}
+                async def _custom_tool_handler(args: dict[str, Any], workspace_id: str | None = None) -> dict[str, Any]:
+                    return {"status": "ok", "tool": name, "echo": args}
 
-            register_dynamic_tool(td, _custom_tool_handler, workspace_id=str(wid))
+                register_dynamic_tool(td, _custom_tool_handler, workspace_id=str(wid))
         except Exception as e:
             logger.warning(f"Failed to register dynamic tool '{name}': {e}")
 
@@ -1166,27 +1179,36 @@ async def update_capability(
         if not payload.enabled and cap.category == "tool":
             unregister_dynamic_tools(cap.name, workspace_id=str(wid))
         elif payload.enabled and cap.category == "tool":
-            input_schema = (cap.config or {}).get("parameters") or {
-                "type": "object",
-                "properties": {},
-            }
-            output_schema = (cap.config or {}).get("returns") or {
-                "type": "object",
-                "properties": {},
-            }
-            td = ToolDefinition(
-                name=cap.name,
-                description=cap.description or f"Custom workspace tool: {cap.name}",
-                category="custom",
-                required_scope=f"tool.{cap.name}",
-                input_schema=input_schema,
-                output_schema=output_schema,
-            )
+            # Same policy-row distinction as create: a row for a built-in name
+            # carries no schema, and registering an empty echo stub under it
+            # would shadow the real tool in the registry listing.
+            if cap.name in ALL_TOOLS:
+                logger.info(
+                    f"Re-enabling built-in tool '{cap.name}': policy row only, "
+                    "no dynamic ToolDefinition registered"
+                )
+            else:
+                input_schema = (cap.config or {}).get("parameters") or {
+                    "type": "object",
+                    "properties": {},
+                }
+                output_schema = (cap.config or {}).get("returns") or {
+                    "type": "object",
+                    "properties": {},
+                }
+                td = ToolDefinition(
+                    name=cap.name,
+                    description=cap.description or f"Custom workspace tool: {cap.name}",
+                    category="custom",
+                    required_scope=f"tool.{cap.name}",
+                    input_schema=input_schema,
+                    output_schema=output_schema,
+                )
 
-            async def _custom_tool_handler(args: dict[str, Any], workspace_id: str | None = None) -> dict[str, Any]:
-                return {"status": "ok", "tool": cap.name, "echo": args}
+                async def _custom_tool_handler(args: dict[str, Any], workspace_id: str | None = None) -> dict[str, Any]:
+                    return {"status": "ok", "tool": cap.name, "echo": args}
 
-            register_dynamic_tool(td, _custom_tool_handler, workspace_id=str(wid))
+                register_dynamic_tool(td, _custom_tool_handler, workspace_id=str(wid))
 
     if payload.status is not None:
         cap.status = payload.status
