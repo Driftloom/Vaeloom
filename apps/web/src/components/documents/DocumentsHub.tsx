@@ -657,7 +657,6 @@ export function DocumentsHub({
         const rawBlob = await documentApi.getContent(
           doc.id,
           docWorkspaceId(doc, currentWorkspaceId),
-          true,
         );
         const ext = (doc.path.split('.').pop() || '').toLowerCase();
         let resolvedMime = rawBlob.type || 'application/octet-stream';

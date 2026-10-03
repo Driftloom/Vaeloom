@@ -204,7 +204,7 @@ export const DocumentShareDialog: React.FC<DocumentShareDialogProps> = ({
                   label="Permission Level"
                   options={PERMISSION_OPTIONS}
                   value={permission}
-                  onChange={(val) => setPermission(val)}
+                  onChange={(val: string) => setPermission(val)}
                 />
 
                 <Input

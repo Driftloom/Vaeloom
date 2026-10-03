@@ -3143,7 +3143,7 @@ export function AddCapabilityModal({
                 <Select
                   label="Target category"
                   value={importCategory}
-                  onChange={(value) =>
+                  onChange={(value: string) =>
                     setImportCategory(
                       option(
                         value,

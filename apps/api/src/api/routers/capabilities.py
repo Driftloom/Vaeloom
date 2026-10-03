@@ -1410,6 +1410,97 @@ async def test_capability(
                 executed=probe["status"] == "connected",
             )
 
+        if cap.category == "skill":
+            cfg = cap.config or {}
+            catalog_entry = get_catalog_entry(cap.name)
+            doc = cfg.get("markdown_doc") or (catalog_entry.markdown_doc if catalog_entry else "")
+            scope = cfg.get("required_scope") or (catalog_entry.required_scope if catalog_entry else "")
+            triggers = cfg.get("triggers") or (list(catalog_entry.triggers) if catalog_entry else [])
+            tags = cfg.get("tags") or (list(catalog_entry.tags) if catalog_entry else [])
+
+            from ..services.skill_catalog_service import validate_skill_document
+            val_res = validate_skill_document(
+                markdown_doc=doc,
+                required_scope=scope,
+                tags=tags,
+                entry=catalog_entry,
+            )
+
+            sample_msg = ""
+            if isinstance(payload.input, dict):
+                sample_msg = str(payload.input.get("message") or payload.input.get("prompt") or "")
+
+            if not sample_msg:
+                elapsed_ms = (time.monotonic() - start_time) * 1000.0
+                return TestCapabilityResponse(
+                    status="success",
+                    latency_ms=round(elapsed_ms, 2),
+                    output={
+                        "detail": NO_EXECUTABLE_RUNTIME,
+                        "category": cap.category,
+                        "status": cap.status,
+                        "enabled": bool(cap.enabled),
+                    },
+                    executed=False,
+                )
+
+            from ..services.prompt_compiler import estimate_tokens, quarantine
+            from ..services.skill_injection import (
+                SKILL_DIRECTIVE_TOKEN_BUDGET,
+                EnabledSkill,
+                _normalize,
+                _trigger_state,
+            )
+
+            temp_skill = EnabledSkill(
+                name=cap.name,
+                markdown_doc=doc,
+                required_scope=scope,
+                tags=tuple(tags),
+                triggers=tuple(triggers),
+                trust_class=str(
+                    cfg.get("trust_class")
+                    or (catalog_entry.trust_class if catalog_entry else "community")
+                ),
+                version=str(cap.version or "1.0.0"),
+                source=str(cap.type or "custom"),
+                capability_id=str(cap.id),
+            )
+            trigger_matched, trigger_detail = (
+                _trigger_state(temp_skill, _normalize(sample_msg))
+                if sample_msg
+                else (True, "No test message provided; trigger check skipped")
+            )
+
+            safe_doc, flagged_markers = quarantine(doc, source=f"skill:{cap.name}")
+            est_tokens = estimate_tokens(safe_doc)
+
+            elapsed_ms = (time.monotonic() - start_time) * 1000.0
+            return TestCapabilityResponse(
+                status=val_res.status,
+                latency_ms=round(elapsed_ms, 2),
+                output={
+                    "skill_name": cap.name,
+                    "validation_status": val_res.status,
+                    "syntax_valid": val_res.status == "success",
+                    "rules_checked": val_res.rules_checked,
+                    "violations": [v.model_dump() for v in val_res.violations],
+                    "estimated_tokens": est_tokens,
+                    "token_budget": SKILL_DIRECTIVE_TOKEN_BUDGET,
+                    "within_budget": est_tokens <= SKILL_DIRECTIVE_TOKEN_BUDGET,
+                    "trigger_matched": trigger_matched,
+                    "trigger_detail": trigger_detail,
+                    "flagged_markers": flagged_markers,
+                    "preview": safe_doc[:300] + ("..." if len(safe_doc) > 300 else ""),
+                },
+                error=(
+                    val_res.violations[0].message
+                    if val_res.violations and val_res.status == "error"
+                    else None
+                ),
+                executed=True,
+            )
+
         elapsed_ms = (time.monotonic() - start_time) * 1000.0
         return TestCapabilityResponse(
             status="success",

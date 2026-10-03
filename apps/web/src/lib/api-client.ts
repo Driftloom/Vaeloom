@@ -848,106 +848,285 @@ export const knowledgeGraphApi = {
 
 // ─── Document ────────────────────────────────────────────────────────────────
 
-export interface DocumentResponse {
-  id: string;
-  workspace_id: string;
-  folder_id?: string | null;
-  path: string;
-  type: string;
-  summary?: string;
-  metadata?: Record<string, unknown>;
-  status?: string;
-  detected_mime_type?: string | null;
-  scan_status?: 'CLEAN' | 'PENDING' | 'MALICIOUS' | 'REJECTED';
-  scan_result?: string | null;
-  expires_at?: string | null;
-  deleted_at?: string | null;
-  created_at: string;
-  updated_at: string;
+/**
+ * WHY EVERY RESPONSE INTERFACE BELOW IS CAMELCASE WHILE EVERY QUERY PARAM AND
+ * REQUEST BODY IS SNAKECASE.
+ *
+ * `api.request` (`api.ts:440`) runs `transformKeys()` over every JSON response
+ * body, and `transformKeys` (`api.ts:130`) rewrites every key through
+ * `toCamelCase` (`api.ts:77`), recursing into nested objects and array elements.
+ * Every `documentApi` method reaches the network through `ApiClient` ->
+ * `api.request`, so `folder_id` on the wire is `folderId` in this layer.
+ * Unconditionally, for every call.
+ *
+ * The opposite holds for anything travelling *out*: request bodies are
+ * `JSON.stringify`-ed verbatim (`api-client.ts:61`) and the Pydantic schemas in
+ * `apps/api/src/api/schemas/document.py` declare snake_case field names with no
+ * serialisation aliases, so a body must stay snake_case. Query strings go
+ * through `encodeParams` (`api-client.ts:34`), which never transforms, so query
+ * parameter *names* stay snake_case too.
+ *
+ * These interfaces used to declare snake_case. TypeScript believes a declared
+ * interface, so the build stayed green while every one of those reads evaluated
+ * to `undefined` at runtime. The types below are now the shape the runtime
+ * actually produces.
+ */
+
+/**
+ * `Document.metadata`, keyed by what the backend actually writes.
+ *
+ * `metadata` is a JSON column (`models/schema.py:360`) passed through verbatim by
+ * the API (`schemas/document.py:20`), and `metadata` is NOT a member of
+ * `OPAQUE_DATA_KEYS` (`api.ts:121`) — so `transformKeys` recurses INTO it and
+ * rewrites its inner keys as well. `metadata.original_name` therefore arrives as
+ * `metadata.originalName`, while `metadata.size` and `metadata.sha256` arrive
+ * spelled exactly as the backend wrote them because they contain no underscore.
+ *
+ * There is no `version_number` and no `size_bytes`. The byte count is written as
+ * `size` (`document_service.py:443`), not `size_bytes`, and a document's version
+ * number lives on `DocumentVersion.versionNumber`
+ * (`schemas/document.py:107`) — not in metadata at all.
+ *
+ * Every key is optional because different code paths add different keys, so no
+ * single document carries all of them. Keys the ingestion pipeline writes
+ * (`ingestion/pipeline.py:104`) are parser-specific and are deliberately not
+ * modelled here; read them off an index access with a cast rather than widening
+ * this interface to `Record<string, unknown>`, which would let a misspelled
+ * metadata key type-check again.
+ */
+export interface DocumentMetadata {
+  /** `original_name` — the filename the client uploaded under (`:442`). */
+  originalName?: string;
+  /** `size` — `len(content)` in bytes (`:443`). NOT `size_bytes`. */
+  size?: number;
+  /** `sha256` — content checksum (`:444`). No underscore, so untransformed. */
+  sha256?: string | null;
+  /** `detected_mime` — MIME reported by the security scanner (`:445`). NOT `detected_mime_type`. */
+  detectedMime?: string | null;
+  /** Normalised tags; written by `set_tags` (`document_service.py:742`). */
+  tags?: string[];
+  /** `'synced'` once the document is mirrored into memory (`:1622`). */
+  syncStatus?: string;
+  /** Memory row created by `sync_to_memory`; `null` when none was created (`:1623`). */
+  memoryId?: string | null;
+  /** ISO-8601 string from `datetime.now(UTC).isoformat()` (`:1624`). */
+  syncedAt?: string;
+  /** Category assigned by the `categorize_document` tool (`tools/executor.py:919`). */
+  category?: string;
+  /** Set by `categorize_document` (`executor.py:921`) and `move_file` (`executor.py:2277`). */
+  folder?: string;
+  /** Path before a `move_file` tool call moved it (`executor.py:2278`). */
+  previousPath?: string;
 }
 
+/**
+ * `Document.scan_status`.
+ *
+ * The backend only ever writes `CLEAN`, `REJECTED` or `MALICIOUS`
+ * (`file_security_service.py:97,107,118-239`) and the column default is `CLEAN`
+ * (`models/schema.py:357`). `PENDING` is a client-side in-flight state and is
+ * never served. Rows predating that migration can still carry the lowercase
+ * `quarantined` value the backend's own queries compare against
+ * (`tools/executor.py:437,489`), which is why `scanStateOf` in
+ * `@/lib/document-format` matches case-insensitively.
+ */
+export type DocumentScanStatus = 'CLEAN' | 'PENDING' | 'MALICIOUS' | 'REJECTED';
+
+/**
+ * One document as served by `GET /documents`, `GET /documents/{id}`,
+ * `POST /documents`, `GET /documents/search`, and every mutating route that
+ * echoes the row back. Wire shape: `schemas/document.py:8`.
+ *
+ * `folder_id` -> `folderId`, `detected_mime_type` -> `detectedMimeType`,
+ * `scan_status` -> `scanStatus`, `scan_result` -> `scanResult`,
+ * `raw_storage_key` -> `rawStorageKey`, `expires_at` -> `expiresAt`,
+ * `deleted_at` -> `deletedAt`, `created_at` -> `createdAt`,
+ * `updated_at` -> `updatedAt`.
+ */
+export interface DocumentResponse {
+  id: string;
+  workspaceId: string;
+  /** `null` (or absent) means the document sits at the workspace root. */
+  folderId?: string | null;
+  path: string;
+  /**
+   * `Document.type`, taken from `EXTENSION_MAP` (`document_service.py:22-45`):
+   * `pdf`, `markdown`, `text`, `docx`, `csv`, `xlsx`, `pptx`, `json`, `html`,
+   * `xml`, `yaml`, `image`, or `unknown` for anything unmapped.
+   */
+  type: string;
+  /** `'ACTIVE'` on create (`schemas/document.py:14`); `'ARCHIVED'` / `'STORAGE_DEGRADED'` also occur. */
+  status?: string;
+  detectedMimeType?: string | null;
+  scanStatus?: DocumentScanStatus;
+  /** Rejection reason when the scanner refused the file; `null` otherwise. */
+  scanResult?: string | null;
+  summary?: string | null;
+  /** Object-storage key once the body has been offloaded (`>= 1MB` or mirroring on). */
+  rawStorageKey?: string | null;
+  metadata?: DocumentMetadata | null;
+  expiresAt?: string | null;
+  /** Non-null marks the row archived (soft delete); this is the archived-badge signal. */
+  deletedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** `GET /documents`. Wire shape: `schemas/document.py:29`. `page_size` -> `pageSize`. */
 export interface DocumentListResponse {
   documents: DocumentResponse[];
   total: number;
   page: number;
-  page_size: number;
+  pageSize: number;
 }
 
+/**
+ * One audit-trail entry from `GET /documents/{id}/actions`.
+ * Wire shape: `schemas/document.py:49`.
+ *
+ * `action_type` is typed `string` rather than a union because the backend's own
+ * action constants number six (`document_service.py:47-52`: rename, archive,
+ * restore, version_create, version_restore, share) and the column is a plain
+ * `String`, so a narrowing union would reject legitimate historical values at
+ * the call site without making the runtime any safer. Compare against the
+ * constants, not against a type.
+ *
+ * `actor_id` -> `actorId` and `tenant_id` -> `tenantId` are declared here; they
+ * were previously missing from this interface despite being served.
+ */
 export interface DocumentAction {
   id: string;
-  document_id: string;
-  workspace_id: string;
-  action_type: 'document_rename' | 'document_archive' | 'document_restore';
-  old_path?: string | null;
-  new_path?: string | null;
-  old_deleted_at?: string | null;
-  new_deleted_at?: string | null;
-  undone_at?: string | null;
-  created_at: string;
+  documentId: string;
+  workspaceId: string;
+  actorId?: string | null;
+  tenantId?: string | null;
+  /** `document_rename` | `document_archive` | `document_restore` | `document_version_create` | `document_version_restore` | `document_share` */
+  actionType: string;
+  oldPath?: string | null;
+  newPath?: string | null;
+  oldDeletedAt?: string | null;
+  newDeletedAt?: string | null;
+  /** Non-null once the action has been undone. */
+  undoneAt?: string | null;
+  createdAt: string;
 }
 
+/** `GET /documents/{id}/actions`. Wire shape: `schemas/document.py:66`. */
 export interface DocumentActionListResponse {
   actions: DocumentAction[];
   total: number;
 }
 
+/**
+ * `GET/POST/PATCH/DELETE /documents/folders`. Wire shape:
+ * `schemas/document.py:82`.
+ *
+ * `workspace_id` -> `workspaceId`, `parent_id` -> `parentId`, `created_by` ->
+ * `createdBy`, `created_at` -> `createdAt`, `updated_at` -> `updatedAt`.
+ * `updatedAt` was missing from this interface before and is served on every row.
+ */
 export interface FolderResponse {
   id: string;
-  workspace_id: string;
-  parent_id?: string | null;
+  workspaceId: string;
+  /** `null` means the folder is at the workspace root. */
+  parentId?: string | null;
   name: string;
-  created_by?: string | null;
-  created_at: string;
+  createdBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
+/**
+ * `GET /documents/folders/tree`. Wire shape: `schemas/document.py:94`.
+ *
+ * The tree endpoint declares every id as `str` rather than `uuid.UUID`, so no
+ * UUID validation happens server-side; `id`, `workspaceId`, `parentId` and
+ * `createdAt` all arrive as plain strings. `children` is always present but may
+ * be empty, and a leaf node's `children` is `[]`, not absent.
+ */
 export interface FolderTreeItem {
   id: string;
-  workspace_id: string;
-  parent_id?: string | null;
+  workspaceId: string;
+  parentId?: string | null;
   name: string;
-  created_at?: string | null;
+  createdAt?: string | null;
   children: FolderTreeItem[];
 }
 
+/**
+ * One row of `GET/POST /documents/{id}/versions`. Wire shape:
+ * `schemas/document.py:104`.
+ *
+ * `document_id` -> `documentId`, `version_number` -> `versionNumber`,
+ * `storage_key` -> `storageKey`, `size_bytes` -> `sizeBytes`, `created_at` ->
+ * `createdAt`. The snake_case duplicates this interface used to declare
+ * alongside each field could never be populated — `transformKeys` renames the
+ * key, it does not keep both — so they are removed rather than left as a lie.
+ */
 export interface DocumentVersionResponse {
   id: string;
   documentId: string;
-  document_id?: string;
   versionNumber: number;
-  version_number?: number;
   storageKey: string;
-  storage_key?: string;
   checksum?: string | null;
   sizeBytes?: number | null;
-  size_bytes?: number | null;
   createdAt: string;
-  created_at?: string;
 }
 
+/**
+ * `GET/POST/DELETE /documents/{id}/shares`. Wire shape:
+ * `schemas/document.py:123`.
+ *
+ * `document_id` -> `documentId`, `source_workspace_id` -> `sourceWorkspaceId`,
+ * `target_workspace_id` -> `targetWorkspaceId`, `granted_by` -> `grantedBy`,
+ * `expires_at` -> `expiresAt`, `created_at` -> `createdAt`. The snake_case
+ * duplicates are removed for the same reason as on `DocumentVersionResponse`.
+ */
 export interface DocumentShareResponse {
   id: string;
   documentId: string;
-  document_id?: string;
   sourceWorkspaceId: string;
-  source_workspace_id?: string;
   targetWorkspaceId: string;
-  target_workspace_id?: string;
   permission: string;
   grantedBy?: string | null;
-  granted_by?: string | null;
   expiresAt?: string | null;
-  expires_at?: string | null;
   createdAt: string;
-  created_at?: string;
 }
 
+/** One accepted file inside a `BulkUploadResponse`. `document_service.py:1223-1228`. */
+export interface BulkUploadItem {
+  id: string;
+  /** The multipart filename as sent, which is NOT necessarily `path`. */
+  filename: string;
+  path: string;
+  /** `scan_status` on the wire, so `scanStatus` here. */
+  scanStatus: string;
+}
+
+/** One rejected file inside a `BulkUploadResponse`. `document_service.py:1231-1234`. */
+export interface BulkUploadError {
+  filename: string;
+  /** `str()` of the raised exception, or its `detail` when it was an `HTTPException`. */
+  error: string;
+}
+
+/**
+ * `POST /documents/bulk/upload`. Wire shape: `schemas/document.py:137`.
+ *
+ * `total_attempted` -> `totalAttempted`; the other five keys have no underscore
+ * and are unchanged. `processed` counts successes (it is `len(succeeded)`, not
+ * successes plus failures — `document_service.py:1238`), so
+ * `processed + failed === totalAttempted` is the invariant to check.
+ * `items` is the same list as `succeeded` (`document_service.py:1241`), kept for
+ * the older alias route `POST /documents/bulk`.
+ */
 export interface BulkUploadResponse {
-  total_attempted: number;
+  totalAttempted: number;
   processed: number;
   failed: number;
-  succeeded: Array<{ id: string; filename: string; path: string; scan_status: string }>;
-  items: Array<{ id: string; filename: string; path: string; scan_status: string }>;
-  errors: Array<{ filename: string; error: string }>;
+  succeeded: BulkUploadItem[];
+  items: BulkUploadItem[];
+  errors: BulkUploadError[];
 }
 
 export interface DocumentAuditCheckItem {
@@ -1245,7 +1424,7 @@ export const documentApi = {
       { workspace_id: workspaceId },
     );
   },
-  async getContent(id: string, workspaceId: string, inline: boolean = true): Promise<Blob> {
+  async getContent(id: string, workspaceId: string, inline: boolean = false): Promise<Blob> {
     const token = getToken();
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
     const base = contentUrl(id, workspaceId);

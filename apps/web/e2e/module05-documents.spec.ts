@@ -43,7 +43,7 @@ test.describe('Module 05 — Documents & Security Workflow', () => {
 
     // Negative control: upload an allowed file, wait for the list to refresh,
     // then prove the rejected file is absent from the very same listing.
-    const controlName = `${UNIQUE}.txt`;
+    const controlName = `module05-ctrl-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`;
     const [controlUpload] = await Promise.all([
       page.waitForResponse(
         (res) => res.url().includes(DOCS_API) && res.request().method() === 'POST',
@@ -93,7 +93,7 @@ test.describe('Module 05 — Documents & Security Workflow', () => {
       timeout: 30_000,
     });
 
-    const fileName = `${UNIQUE}.txt`;
+    const fileName = `module05-fixture-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`;
     const [upload] = await Promise.all([
       page.waitForResponse(
         (res) => res.url().includes(DOCS_API) && res.request().method() === 'POST',

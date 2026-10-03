@@ -739,7 +739,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
                         <Switch
                           checked={checked}
                           disabled={gateStatus !== 'ready' || busy}
-                          onChange={(next) => void handleToggleSuite(suite, next)}
+                          onChange={(next: boolean) => void handleToggleSuite(suite, next)}
                           label={
                             <span className="sr-only">
                               {partial
@@ -894,7 +894,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
                         <Switch
                           checked={!activeGateState(activeRow, gateRows).denied}
                           disabled={gateStatus !== 'ready' || pendingTools.has(activeRow.name)}
-                          onChange={(next) => void handleSetToolEnabled(activeRow, next)}
+                          onChange={(next: boolean) => void handleSetToolEnabled(activeRow, next)}
                           label={
                             <span className="sr-only">{`Allow ${activeRow.name} in this workspace`}</span>
                           }

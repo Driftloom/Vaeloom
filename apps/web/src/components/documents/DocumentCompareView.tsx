@@ -306,7 +306,7 @@ export const DocumentCompareView: React.FC<DocumentCompareViewProps> = ({
             label="Base Version (A)"
             options={versionOptions}
             value={String(versionA)}
-            onChange={(val) => setVersionA(Number(val))}
+            onChange={(val: string) => setVersionA(Number(val))}
             disabled={loading || loadingVersions}
           />
         </div>
@@ -320,7 +320,7 @@ export const DocumentCompareView: React.FC<DocumentCompareViewProps> = ({
             label="Compare Against (B)"
             options={versionOptions}
             value={String(versionB)}
-            onChange={(val) => setVersionB(Number(val))}
+            onChange={(val: string) => setVersionB(Number(val))}
             disabled={loading || loadingVersions}
           />
         </div>

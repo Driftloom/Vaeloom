@@ -21,9 +21,48 @@ import {
 } from '@vaeloom/ui-kit';
 import type { CapabilityItem } from '@/lib/capabilities-data';
 import { formatRelativeTime } from '@/lib/capabilities-data';
+import { SkillFilterBar, type SkillCategoryFilter } from './skills/SkillFilterBar';
+import { SkillMarkdownViewer } from './skills/SkillMarkdownViewer';
+import { SkillPlaygroundDrawer } from './skills/SkillPlaygroundDrawer';
+import { TriggerSimulatorModal } from './skills/TriggerSimulatorModal';
+import { SkillTelemetryCard } from './skills/SkillTelemetryCard';
 
 export type SkillTab = 'installed' | 'browse';
 export type SkillSort = 'most-used' | 'alphabetical' | 'recent';
+
+/**
+ * Classify a skill into career domain, agent architecture domain, or engineering tools domain.
+ */
+export function getSkillDomain(item: CapabilityItem): 'career' | 'agent' | 'engineering' {
+  const text =
+    `${item.name} ${(item.tags || []).join(' ')} ${item.description || ''}`.toLowerCase();
+  if (
+    text.includes('career') ||
+    text.includes('resume') ||
+    text.includes('ats') ||
+    text.includes('interview') ||
+    text.includes('job') ||
+    text.includes('cover-letter') ||
+    text.includes('hiring') ||
+    text.includes('salary')
+  ) {
+    return 'career';
+  }
+  if (
+    text.includes('agent') ||
+    text.includes('workflow') ||
+    text.includes('react') ||
+    text.includes('harness') ||
+    text.includes('loop') ||
+    text.includes('orchestrat') ||
+    text.includes('eval') ||
+    text.includes('rag') ||
+    text.includes('autonomy')
+  ) {
+    return 'agent';
+  }
+  return 'engineering';
+}
 
 /**
  * One row as the page resolved it. The page owns the merge and owns every write,
@@ -149,15 +188,51 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
   const [detailPane, setDetailPane] = useState<'doc' | 'schema'>('doc');
   const [confirmDelete, setConfirmDelete] = useState<SkillRow | null>(null);
 
+  const [categoryFilter, setCategoryFilter] = useState<SkillCategoryFilter>('all');
+  const [trustFilter, setTrustFilter] = useState<string>('all');
+  const [isTriggerSimOpen, setIsTriggerSimOpen] = useState(false);
+  const [playgroundSkill, setPlaygroundSkill] = useState<SkillRow | null>(null);
+
   // Presentation-only: on a narrow viewport the two panes cannot share the
   // screen, so the list is removed from the a11y tree while the detail is open.
   // The page deliberately does not own this, because nothing about the data
   // depends on it and duplicating it is how the two components drifted apart.
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
 
+  const { careerCount, agentCount, engineeringCount } = useMemo(() => {
+    let c = 0;
+    let a = 0;
+    let e = 0;
+    for (const r of rows) {
+      const domain = getSkillDomain(r.item);
+      if (domain === 'career') c++;
+      else if (domain === 'agent') a++;
+      else e++;
+    }
+    return { careerCount: c, agentCount: a, engineeringCount: e };
+  }, [rows]);
+
+  const filteredRows = useMemo(() => {
+    return rows.filter((r) => {
+      if (categoryFilter !== 'all' && getSkillDomain(r.item) !== categoryFilter) {
+        return false;
+      }
+      if (trustFilter !== 'all') {
+        const rowTrust = r.item.trustClass || 'community';
+        if (rowTrust !== trustFilter) return false;
+      }
+      return true;
+    });
+  }, [rows, categoryFilter, trustFilter]);
+
   const selectedRow = useMemo(
-    () => rows.find((row) => row.key === selectedKey) ?? rows[0] ?? null,
-    [rows, selectedKey],
+    () =>
+      filteredRows.find((row) => row.key === selectedKey) ??
+      filteredRows[0] ??
+      rows.find((row) => row.key === selectedKey) ??
+      rows[0] ??
+      null,
+    [filteredRows, rows, selectedKey],
   );
 
   const detailRef = useRef<HTMLDivElement>(null);
@@ -325,44 +400,46 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
           mobileDetailOpen ? 'hidden lg:flex' : 'flex'
         }`}
       >
-        <div className="p-3 border-b border-border bg-surface shrink-0 space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <Select
-              aria-label="Sort skills"
-              options={SORT_OPTIONS}
-              value={sort}
-              onChange={(value) => onSortChange(value as SkillSort)}
-              className="text-xs py-1"
-            />
-            <ButtonGroup attached>
-              <Button
-                size="sm"
-                variant={tab === 'installed' ? 'primary' : 'ghost'}
-                aria-pressed={tab === 'installed'}
-                onClick={() => onTabChange('installed')}
-              >
-                {`Installed (${installedCount})`}
-              </Button>
-              <Button
-                size="sm"
-                variant={tab === 'browse' ? 'primary' : 'ghost'}
-                aria-pressed={tab === 'browse'}
-                onClick={() => onTabChange('browse')}
-              >
-                {`Browse (${browseCount})`}
-              </Button>
-            </ButtonGroup>
-          </div>
-        </div>
+        <SkillFilterBar
+          sort={sort}
+          onSortChange={onSortChange}
+          tab={tab}
+          onTabChange={onTabChange}
+          installedCount={installedCount}
+          browseCount={browseCount}
+          categoryFilter={categoryFilter}
+          onCategoryFilterChange={setCategoryFilter}
+          careerCount={careerCount}
+          agentCount={agentCount}
+          engineeringCount={engineeringCount}
+          totalFilteredCount={rows.length}
+          trustFilter={trustFilter}
+          onTrustFilterChange={setTrustFilter}
+          onOpenTriggerSimulator={() => setIsTriggerSimOpen(true)}
+        />
 
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain p-1.5 pb-12">
           {isLoading ? (
             <SkillListSkeleton />
           ) : rows.length === 0 ? (
             <div className="p-4">{listEmpty}</div>
+          ) : filteredRows.length === 0 ? (
+            <div className="p-4">
+              <EmptyState
+                title="No skills match filters"
+                description={`No skills in ${tab === 'installed' ? 'Installed' : 'Browse'} match category "${categoryFilter}" and trust level "${trustFilter}".`}
+                action={{
+                  label: 'Reset filters',
+                  onClick: () => {
+                    setCategoryFilter('all');
+                    setTrustFilter('all');
+                  },
+                }}
+              />
+            </div>
           ) : (
             <ul aria-label="Skills" className="divide-y divide-border-subtle">
-              {rows.map((row) => {
+              {filteredRows.map((row) => {
                 const isSelected = row.key === selectedRow?.key;
                 const isPending = pendingKey === row.key;
                 return (
@@ -419,7 +496,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                       {row.installed ? (
                         <Switch
                           checked={row.item.enabled}
-                          onChange={(next) => onToggleEnabled(row.key, next)}
+                          onChange={(next: boolean) => onToggleEnabled(row.key, next)}
                           label={<span className="sr-only">{`Enable ${row.item.name}`}</span>}
                           disabled={isPending}
                         />
@@ -570,6 +647,14 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
               </dl>
             </div>
 
+            <div className="p-4 sm:p-5 pb-0 bg-background shrink-0">
+              <SkillTelemetryCard
+                row={selectedRow}
+                onOpenPlayground={(row) => setPlaygroundSkill(row)}
+                onCopyDoc={onCopyDoc}
+              />
+            </div>
+
             <Tabs
               className="shrink-0 rounded-none border-0 border-b border-border-subtle bg-surface"
               ariaLabel="Skill detail sections"
@@ -623,9 +708,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                     ) : (
                       <div className="rounded-xl border border-border bg-surface p-4 sm:p-5">
                         {selectedRow.item.markdownDoc ? (
-                          <pre className="font-mono text-xs text-text leading-relaxed whitespace-pre-wrap select-text font-normal">
-                            {selectedRow.item.markdownDoc}
-                          </pre>
+                          <SkillMarkdownViewer content={selectedRow.item.markdownDoc} />
                         ) : (
                           <p className="text-xs text-text-muted">
                             The server sent no markdown for this skill.
@@ -676,6 +759,23 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
         }
         confirmLabel="Delete skill"
         variant="destructive"
+      />
+
+      <SkillPlaygroundDrawer
+        isOpen={playgroundSkill !== null}
+        onClose={() => setPlaygroundSkill(null)}
+        selectedSkill={playgroundSkill}
+      />
+
+      <TriggerSimulatorModal
+        isOpen={isTriggerSimOpen}
+        onClose={() => setIsTriggerSimOpen(false)}
+        rows={rows}
+        installedSkills={rows.filter((r) => r.installed)}
+        onSelectSkill={(key) => {
+          setIsTriggerSimOpen(false);
+          handleSelect(key);
+        }}
       />
     </div>
   );

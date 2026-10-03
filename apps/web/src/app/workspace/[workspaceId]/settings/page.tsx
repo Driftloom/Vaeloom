@@ -501,7 +501,7 @@ export default function SettingsPage() {
                   <Switch
                     checked={consentState['data_processing'] ?? true}
                     disabled={consentLoading}
-                    onChange={(checked) => handleConsentToggle('data_processing', checked)}
+                    onChange={(checked: boolean) => handleConsentToggle('data_processing', checked)}
                   />
                 </div>
 
@@ -518,7 +518,7 @@ export default function SettingsPage() {
                   <Switch
                     checked={consentState['agent_access'] ?? true}
                     disabled={consentLoading}
-                    onChange={(checked) => handleConsentToggle('agent_access', checked)}
+                    onChange={(checked: boolean) => handleConsentToggle('agent_access', checked)}
                   />
                 </div>
 

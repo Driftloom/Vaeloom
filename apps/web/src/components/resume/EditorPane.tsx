@@ -90,7 +90,7 @@ export function EditorPane({
           height="100%"
           language={language === 'typst' ? 'typst' : 'latex'}
           value={value}
-          onChange={(v) => onChange(v ?? '')}
+          onChange={(v: string | undefined) => onChange(v ?? '')}
           onMount={handleMount}
           options={{
             minimap: { enabled: false },

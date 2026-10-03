@@ -348,7 +348,8 @@ async def bulk_delete_documents(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_MUTATE)
+    # P0-02: permanent bulk delete is owner/admin only (irreversible)
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_ADMIN)
     doc_ids = payload.document_ids if hasattr(payload, "document_ids") else payload.get("document_ids", [])
     res = await document_service.bulk_delete(
         document_ids=doc_ids,
@@ -525,11 +526,17 @@ async def get_document_content(
     # Security: Inline preview for in-browser rendering (images, pdfs, text)
     # vs attachment for explicit file downloads
     disposition = "inline" if inline else "attachment"
+    csp = (
+        "default-src 'self' blob: data:; style-src 'unsafe-inline'; sandbox allow-scripts allow-same-origin"
+        if inline
+        else "default-src 'none'; sandbox"
+    )
+    frame_options = "SAMEORIGIN" if inline else "DENY"
     headers = {
         "Content-Disposition": f'{disposition}; filename="{filename}"',
-        "Content-Security-Policy": "default-src 'self' blob: data:; style-src 'unsafe-inline'; sandbox allow-scripts allow-same-origin",
+        "Content-Security-Policy": csp,
         "X-Content-Type-Options": "nosniff",
-        "X-Frame-Options": "SAMEORIGIN",
+        "X-Frame-Options": frame_options,
     }
     return Response(
         content=content,

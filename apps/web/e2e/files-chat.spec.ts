@@ -53,7 +53,10 @@ test.describe('files', () => {
     expect(archive.status()).toBe(200);
 
     await expect(page.locator('body')).toContainText(/moved to archive/i, { timeout: 30_000 });
-    await page.getByRole('button', { name: 'Clear', exact: true }).click();
+    const clearBtn = page.getByRole('button', { name: 'Clear', exact: true });
+    if (await clearBtn.isVisible().catch(() => false)) {
+      await clearBtn.click();
+    }
     await expect(page.getByText('1 document(s) selected')).toHaveCount(0);
   });
 

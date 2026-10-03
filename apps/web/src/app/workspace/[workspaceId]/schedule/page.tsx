@@ -42,10 +42,19 @@ function getSourceBadge(e: Event): { label: string; cls: string } {
   const payloadSrc = String((e.payload as Record<string, unknown>)?.['source'] ?? '').toLowerCase();
   const combined = `${src} ${payloadSrc}`;
   if (combined.includes('gmail'))
-    return { label: 'Gmail', cls: 'bg-red-500/10 text-red-600 border-red-500/20' };
+    return {
+      label: 'Gmail',
+      cls: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20',
+    };
   if (combined.includes('agent') || (e.payload as Record<string, unknown>)?.['proposed'])
-    return { label: 'Agent', cls: 'bg-violet-500/10 text-violet-700 border-violet-500/20' };
-  return { label: 'You', cls: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' };
+    return {
+      label: 'Agent',
+      cls: 'bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20',
+    };
+  return {
+    label: 'You',
+    cls: 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border-emerald-500/20',
+  };
 }
 
 function isProposed(e: Event): boolean {
@@ -316,11 +325,13 @@ export default function SchedulePage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search title or type…"
+          aria-label="Search events"
           className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm outline-none focus:border-primary w-48"
         />
         <select
           value={filterSource}
           onChange={(e) => setFilterSource(e.target.value)}
+          aria-label="Filter events by source"
           className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm"
         >
           <option value="all">All sources</option>
@@ -331,6 +342,7 @@ export default function SchedulePage() {
         <select
           value={filterCategory}
           onChange={(e) => setFilterCategory(e.target.value)}
+          aria-label="Filter events by category"
           className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm"
         >
           <option value="all">All categories</option>

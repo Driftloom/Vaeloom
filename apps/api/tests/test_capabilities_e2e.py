@@ -119,6 +119,23 @@ class TestCapabilitiesE2E:
         assert test_data["output"]["tool"] == "custom_echo_tool"
         assert test_data["output"]["echo"] == {"message": "hello world"}
 
+        # 8b. Test skill capability endpoint (real diagnostic execution)
+        test_skill_res = await client.post(
+            f"/api/v1/capabilities/{skill_id}/test",
+            json={"input": {"message": "audit code for security vulnerabilities"}},
+            headers=headers,
+        )
+        assert test_skill_res.status_code == 200
+        test_skill_data = test_skill_res.json()
+        assert test_skill_data["executed"] is True
+        assert test_skill_data["status"] in ("success", "warning", "error")
+        assert "latency_ms" in test_skill_data
+        assert "output" in test_skill_data
+        assert test_skill_data["output"]["skill_name"] == "forensic-code-auditor"
+        assert "violations" in test_skill_data["output"]
+        assert test_skill_data["output"]["syntax_valid"] is False
+        assert "estimated_tokens" in test_skill_data["output"]
+
         # 9. Filter capabilities by category
         filter_res = await client.get("/api/v1/capabilities?category=skill", headers=headers)
         assert filter_res.status_code == 200
@@ -126,12 +143,12 @@ class TestCapabilitiesE2E:
         assert len(skills) >= 1
         assert all(s["category"] == "skill" for s in skills)
         assert all(s["installed"] is True for s in skills)
-        assert all(s["usage_count"] == 0 for s in skills)
-        assert all(s["last_used_at"] is None for s in skills)
         assert all(s["installed_at"] is not None for s in skills)
 
         # 9b. Telemetry fields and skill metadata are persisted on the row
         skill_row = next(s for s in skills if s["id"] == skill_id)
+        assert skill_row["usage_count"] == 1
+        assert skill_row["last_used_at"] is not None
         assert skill_row["tags"] == ["Security", "Audit"]
         assert skill_row["autonomy"] == "autonomous"
 
