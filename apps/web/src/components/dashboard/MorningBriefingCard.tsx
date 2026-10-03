@@ -237,7 +237,7 @@ export function MorningBriefingCard({ workspaceId }: MorningBriefingCardProps) {
                     ? 'bg-success/20 text-success'
                     : isModerate
                       ? 'bg-warning/20 text-warning'
-                      : 'bg-error/20 text-error'
+                      : 'bg-error text-white'
                 }`}
               >
                 {isHealthy ? 'Aligned' : isModerate ? 'Calibration Needed' : 'Drift Alert'}

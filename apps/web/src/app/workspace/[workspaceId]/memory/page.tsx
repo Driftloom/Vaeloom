@@ -555,7 +555,7 @@ function MemoryGraphPageContent() {
                     }`}
                   >
                     <div
-                      className="absolute top-3 right-3 z-10"
+                      className="absolute top-2 right-2 z-10 p-1 flex items-center justify-center"
                       onClick={(e) => toggleSelectMemory(m.id, e)}
                     >
                       <input
@@ -563,7 +563,7 @@ function MemoryGraphPageContent() {
                         checked={isSelected}
                         onChange={() => {}}
                         aria-label={`Select memory ${m.title || m.id}`}
-                        className="h-4 w-4 rounded border-[var(--color-border)] text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        className="w-6 h-6 min-w-[24px] min-h-[24px] rounded border-[var(--color-border)] text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                       />
                     </div>
                     <div

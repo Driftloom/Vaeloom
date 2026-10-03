@@ -281,7 +281,7 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
         isOpen={editing !== null}
         onClose={() => setEditing(null)}
         title={
-          editing ? `Correct Memory: ${editing.title || editing.id.slice(0, 8)}` : 'Correct Memory'
+          editing ? `Correct memory: ${editing.title || editing.id.slice(0, 8)}` : 'Correct memory'
         }
         size="lg"
       >

@@ -97,6 +97,7 @@ test.describe('negative paths', () => {
     await page.getByRole('button', { name: 'User account menu' }).click();
     await page.getByRole('button', { name: 'Log out' }).click();
     await page.waitForURL((u) => u.pathname === '/login', { timeout: 30_000 });
+    await page.waitForLoadState('domcontentloaded');
 
     const after = await page.evaluate(() => ({
       token: window.localStorage.getItem('vaeloom.accessToken'),

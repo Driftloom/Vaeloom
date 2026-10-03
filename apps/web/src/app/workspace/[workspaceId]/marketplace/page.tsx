@@ -354,7 +354,7 @@ function MarketplaceContent() {
               { id: 'installed', label: `Installed (${installedListingsMap.size})` },
             ]}
             activeTab={view}
-            onChange={(id) => setView(id as 'browse' | 'installed')}
+            onChange={(id: string) => setView(id as 'browse' | 'installed')}
           />
         }
       />
@@ -399,7 +399,7 @@ function MarketplaceContent() {
           <div className="w-36 shrink-0">
             <Select
               value={sortBy}
-              onChange={(v) => setSortBy(v as 'popular' | 'rating' | 'name')}
+              onChange={(v: string) => setSortBy(v as 'popular' | 'rating' | 'name')}
               options={[
                 { value: 'popular', label: 'Most Popular' },
                 { value: 'rating', label: 'Highest Rated' },
@@ -411,7 +411,7 @@ function MarketplaceContent() {
             <SearchInput
               placeholder="Search plugins & tools…"
               value={search}
-              onChange={(val) => setSearch(val)}
+              onChange={(val: string) => setSearch(val)}
             />
           </div>
         </div>
@@ -653,7 +653,9 @@ function MarketplaceContent() {
                   <Input
                     placeholder="Write an optional review…"
                     value={reviewInput}
-                    onChange={(e) => setReviewInput(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setReviewInput(e.target.value)
+                    }
                   />
                   <div className="flex justify-end">
                     <Button

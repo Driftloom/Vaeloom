@@ -1,8 +1,8 @@
 from fastapi import Depends, HTTPException
 
+from ..dependencies import ROLE_HIERARCHY as ROLE_HIERARCHY
 from ..dependencies import get_current_user
 from ..dependencies import require_role as require_role  # single source of truth (hierarchical)
-from ..dependencies import ROLE_HIERARCHY as ROLE_HIERARCHY
 
 ROLE_PERMISSIONS: dict[str, set[str]] = {
     "viewer": {"workspace:read"},

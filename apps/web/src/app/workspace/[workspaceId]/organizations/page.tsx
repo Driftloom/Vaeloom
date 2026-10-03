@@ -974,13 +974,13 @@ function OrganizationsContent() {
           <Input
             label="Unit Name"
             value={createName}
-            onChange={(e) => setCreateName(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateName(e.target.value)}
             placeholder="e.g. Engineering, Platform, Frontend"
           />
           <Select
             label="Unit Type"
             value={createType}
-            onChange={(v) => setCreateType(v as 'organization' | 'department' | 'team')}
+            onChange={(v: string) => setCreateType(v as 'organization' | 'department' | 'team')}
             options={[
               { value: 'organization', label: 'Root Organization' },
               { value: 'department', label: 'Department' },
@@ -990,13 +990,15 @@ function OrganizationsContent() {
           <Input
             label="Allowed Email Domains (comma-separated, optional)"
             value={createAllowedDomains}
-            onChange={(e) => setCreateAllowedDomains(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setCreateAllowedDomains(e.target.value)
+            }
             placeholder="e.g. acme.com, vaeloom.test"
           />
           <Select
             label="Default Role"
             value={createDefaultRole}
-            onChange={(v) => setCreateDefaultRole(v)}
+            onChange={(v: string) => setCreateDefaultRole(v)}
             options={[
               { value: 'admin', label: 'Admin' },
               { value: 'lead', label: 'Lead' },
@@ -1025,13 +1027,13 @@ function OrganizationsContent() {
           <Input
             label="User ID or Email"
             value={inviteUserId}
-            onChange={(e) => setInviteUserId(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInviteUserId(e.target.value)}
             placeholder="user_id or user@organization.com"
           />
           <Select
             label="Assigned Role"
             value={inviteRole}
-            onChange={(v) => setInviteRole(v as 'admin' | 'lead' | 'member' | 'viewer')}
+            onChange={(v: string) => setInviteRole(v as 'admin' | 'lead' | 'member' | 'viewer')}
             options={[
               { value: 'admin', label: 'Admin' },
               { value: 'lead', label: 'Lead' },

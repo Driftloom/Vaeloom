@@ -43,7 +43,7 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
               type="button"
               aria-label="Edit memory"
               onClick={() => onEdit(id)}
-              className={`inline-flex items-center justify-center p-1 text-text-muted hover:text-text rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
+              className={`inline-flex items-center justify-center w-6 h-6 min-w-[24px] min-h-[24px] p-1 text-text-muted hover:text-text rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
             >
               <EditIcon size={14} />
             </button>
@@ -53,7 +53,7 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
               type="button"
               aria-label="Delete memory"
               onClick={() => onDelete(id)}
-              className={`inline-flex items-center justify-center p-1 text-text-muted hover:text-error rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
+              className={`inline-flex items-center justify-center w-6 h-6 min-w-[24px] min-h-[24px] p-1 text-text-muted hover:text-error rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
             >
               <TrashIcon size={14} />
             </button>
