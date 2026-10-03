@@ -21,9 +21,14 @@ alembic state:
 * users     <- 0020_rls_remaining_5.py:50-62
 * documents <- 0013 workspace-only template (_create_workspace_only)
 
-Scope note: the 42/42 rollout uses these same three policy templates across
-all tables (audited in 0010/0012/0013/0019/0020). This file live-proves the
-mechanism; the matrix is covered by mechanism-proof + migration audit.
+Scope note: the FORCE+policies rollout (44 tables as of 0063, 2026-10-01 —
+42 audited via 0010/0019/0020 on 2026-08-22, +conversations/chat_messages)
+uses these same three policy templates across all tables (audited in
+0010/0012/0013/0019/0020). This file live-proves the mechanism; the matrix is
+covered by mechanism-proof + migration audit. Note the deployed invariant is
+stronger than any fixed count: 0060_verify_rls_coverage and the _assert_coverage
+re-run at the end of 0063 both raise if ANY table in `public` lacks RLS or a
+policy, so the denominator is the schema's table count rather than a constant.
 
 Run (from apps/api; plain `uv run` so the env var is inherited):
     $env:VAELOOM_TEST_PG_URL="postgresql://vaeloom:vaeloom_dev@localhost:5432/vaeloom_rls_proof"

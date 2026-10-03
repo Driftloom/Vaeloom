@@ -39,8 +39,9 @@ class Settings(BaseSettings):
     # non-BYPASSRLS role (e.g. vaeloom_app). When unset, current behavior is
     # preserved (runtime engine also runs DDL) for SQLite/local workflows.
     database_migration__url: str = ""
+    database_replica_url: str = ""
 
-    @field_validator("database__url", mode="before")
+    @field_validator("database__url", "database_replica_url", mode="before")
     @classmethod
     def normalize_database_url(cls, v: Any) -> str:
         if isinstance(v, str):

@@ -273,3 +273,21 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
         finally:
             await session.close()
+
+
+async def get_db_read() -> AsyncGenerator[AsyncSession, None]:
+    """Dependency for read-only database queries.
+
+    Routes to read replica when configured via DATABASE_REPLICA_URL,
+    falling back transparently to the primary engine.
+    """
+    from .infrastructure.database_router import get_db_read as _get_db_read
+
+    async for session in _get_db_read():
+        yield session
+
+
+async def get_db_write() -> AsyncGenerator[AsyncSession, None]:
+    """Dependency for write operations requiring the primary database."""
+    async for session in get_db():
+        yield session

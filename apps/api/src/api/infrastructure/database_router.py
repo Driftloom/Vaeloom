@@ -27,8 +27,20 @@ class DatabaseRouter:
         primary_url: str | None = None,
         replica_url: str | None = None,
     ):
-        self._primary_url = primary_url or os.environ.get("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/vaeloom")
-        self._replica_url = replica_url or os.environ.get("DATABASE_REPLICA_URL", "")
+        from api.config import settings
+
+        self._primary_url = (
+            primary_url
+            or os.environ.get("DATABASE_URL")
+            or getattr(settings, "database__url", "")
+            or "postgresql+asyncpg://postgres:postgres@localhost:5432/vaeloom"
+        )
+        self._replica_url = (
+            replica_url
+            or os.environ.get("DATABASE_REPLICA_URL")
+            or getattr(settings, "database_replica_url", "")
+            or ""
+        )
         self._primary_engine = _build_engine(self._primary_url)
         self._replica_engine: Any = None
         if self._replica_url:
