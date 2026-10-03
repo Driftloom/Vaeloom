@@ -107,7 +107,14 @@ test.describe('chat', () => {
     await composer.fill(prompt);
     await page.keyboard.press('Enter');
 
-    await expect(page.getByText(prompt, { exact: false })).toBeVisible({ timeout: 30_000 });
+    // Scoped to the transcript log. The rail titles a new thread from its first
+    // prompt (chat-store.ts:1300 `title: promptText.slice(0, 40)`), so once
+    // ChatThreadRail shipped the same string legitimately appears twice — in the
+    // rail button and in the transcript — and an unscoped getByText trips Playwright
+    // strict mode. Scoping to the log is what the test name claims to assert
+    // ("rendered in the transcript"), so it is stricter than the old form, not looser.
+    const transcript = page.getByRole('log');
+    await expect(transcript.getByText(prompt, { exact: false })).toBeVisible({ timeout: 30_000 });
     // A new conversation is titled from the first prompt (ChatWindow.tsx:544)
     // and is reachable in the thread rail.
     const rail = page.locator('aside').filter({ hasText: 'THREADS' });
