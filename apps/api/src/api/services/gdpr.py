@@ -23,6 +23,8 @@ ALLOWED_TABLES = frozenset({
     "agent_actions", "agent_approvals", "permissions", "subscriptions",
     "gmail_watches", "provider_keys", "memory_versions",
     "resume_artifacts", "resume_sources",
+    # Chat transcripts left localStorage and are now persisted personal data (0063).
+    "conversations", "chat_messages",
 })
 
 EXPORT_COLUMNS = {
@@ -59,11 +61,52 @@ EXPORT_COLUMNS = {
     "memory_versions": "*",
     "resume_artifacts": "*",
     "resume_sources": "*",
+    # Explicit column lists rather than "*", so an Art.20 export of a chat
+    # transcript cannot silently degrade to metadata-only: `text` is the entire
+    # point of the record. A new column added to the model is excluded until
+    # reviewed here, which is the intended direction for a portability payload.
+    "conversations": (
+        "id, workspace_id, tenant_id, title, agent_name, created_at, updated_at"
+    ),
+    "chat_messages": (
+        "id, conversation_id, workspace_id, tenant_id, seq, client_id, role, "
+        "text, status, agent_name, confidence, tool_calls, citations, proposals, "
+        "questions, action_chips, attachments, plan, phases, error, latency_ms, "
+        "highway, s1_latency_ms, s2_latency_ms, workflow_id, reply_to, created_at"
+    ),
 }
 
 USER_TABLES = [
     ("users", "id"),
     ("auth_sessions", "user_id"),
+    # F-24: chat transcripts are workspace-scoped personal data (0063), so they
+    # take the same `workspace_id IN (SELECT id FROM workspaces ...)` branch as
+    # documents/resumes below — both tables carry a real workspace_id UUID FK
+    # precisely so RLS has a column to key on.
+    #
+    # These two are listed ahead of `workspaces`, and `chat_messages` ahead of
+    # `conversations`, because neither `ON DELETE CASCADE` can be treated as
+    # doing the work:
+    #   * `chat_messages.conversation_id -> conversations.id` is ON DELETE
+    #     CASCADE, so on a database where that constraint exists, deleting the
+    #     conversation would remove the messages anyway.
+    #   * `workspace_id -> workspaces.id` is ON DELETE CASCADE on both, so
+    #     deleting the workspace row would remove both tables anyway.
+    # Neither is a safe basis for the erasure, because
+    #   1. this chain has a documented history of silently skipped DDL — 0048
+    #      created `document_actions` after 0028/0036 had already applied policies
+    #      to it, and `test_migration_chain_pg.py::test_webhook_tables_exist`
+    #      exists because `webhooks` was an ORM model no migration ever created. A
+    #      missing FK constraint is a real failure mode in this schema.
+    #   2. the workspace-scoped branch resolves its ids with a *subquery* against
+    #      `workspaces`. Once the `workspaces` row is deleted that subquery returns
+    #      nothing and these deletes silently match 0 rows. That is exactly the
+    #      Art.17 failure this wiring exists to prevent: the transcript surviving
+    #      erasure with a `tables` summary reporting 0.
+    # So both rows are deleted by their own workspace_id predicate while the
+    # workspace still exists, child before parent.
+    ("chat_messages", "workspace_id"),
+    ("conversations", "workspace_id"),
     ("workspaces", "user_id"),
     ("workspace_users", "user_id"),
     ("memories", "user_id"),

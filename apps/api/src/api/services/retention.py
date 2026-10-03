@@ -15,6 +15,25 @@ logger = logging.getLogger(__name__)
 
 ALLOWED_RETENTION_TABLES = frozenset({
     "events", "audit_events", "usage_records", "agent_executions", "auth_sessions",
+    "conversations", "chat_messages",
+})
+
+# Tables for which `action="archive"` is refused rather than attempted.
+#
+# The archive branch runs `INSERT INTO {table}_archive SELECT * FROM {table}` and
+# no migration in this chain ever created a `*_archive` table (the existing
+# archive test has to `CREATE TABLE IF NOT EXISTS events_archive` itself), so
+# archiving chat data would fail at runtime with UndefinedTableError.
+#
+# Even if the table existed, archiving would be the wrong control here: a chat
+# transcript holds resumes, salary figures and employer names, and moving those
+# rows into `conversations_archive` / `chat_messages_archive` would relocate
+# personal data into a second store that `services/gdpr.py` does not enumerate.
+# An Art.17 erasure request would then miss the archived copy — turning a
+# working compliance path into a silent failure. Retention for a transcript must
+# therefore be erasure, which is what `action="delete"` already does.
+ARCHIVE_UNSUPPORTED_TABLES = frozenset({
+    "conversations", "chat_messages",
 })
 
 
@@ -48,6 +67,8 @@ async def apply_retention(policy: RetentionPolicy, db: AsyncSession) -> dict:
         "usage_records": "usage_records",
         "agent_executions": "agent_executions",
         "sessions": "auth_sessions",
+        "conversations": "conversations",
+        "chat_messages": "chat_messages",
     }
 
     table = resource_map.get(policy.resource_type)
@@ -66,6 +87,12 @@ async def apply_retention(policy: RetentionPolicy, db: AsyncSession) -> dict:
         return {"action": "delete", "table": table, "records_affected": count}
 
     if policy.action == "archive":
+        if table in ARCHIVE_UNSUPPORTED_TABLES:
+            raise ValueError(
+                f"Archive is not supported for {table}: archiving would move "
+                "personal data into a table outside the GDPR export/delete "
+                "registry. Use action='delete'."
+            )
         count_result = await db.execute(
             text(f"SELECT COUNT(*) FROM {table} WHERE created_at < :cutoff{tenant_clause}"),  # nosec B608
             params,
