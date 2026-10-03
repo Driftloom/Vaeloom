@@ -49,7 +49,7 @@ def is_encrypted(value: str) -> bool:
 
 
 class EncryptedString(TypeDecorator):
-    """Transparent AES-256 (Fernet) encrypted TEXT column.
+    """Transparent AES-128-CBC with HMAC-SHA256 (Fernet) authenticated encrypted TEXT column.
 
     Encrypts on write, decrypts on read. Backward-compatible: values that are
     not Fernet tokens are stored/returned as-is, so existing plaintext rows are

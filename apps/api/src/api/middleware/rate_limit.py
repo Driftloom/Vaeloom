@@ -209,6 +209,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                                headers={"Retry-After": str(retry_after)})
 
         user_id = getattr(request.state, "user_id", None)
+        if not user_id:
+            headers = getattr(request, "headers", None)
+            auth_header = headers.get("Authorization", "") if hasattr(headers, "get") else ""
+            if isinstance(auth_header, str) and auth_header.startswith("Bearer "):
+                token = auth_header[7:].strip()
+                if token and isinstance(token, str):
+                    import hashlib
+                    user_id = f"token:{hashlib.sha256(token.encode('utf-8')).hexdigest()[:16]}"
         client_key: str = user_id or (
             request.client.host if request.client else "unknown"
         )

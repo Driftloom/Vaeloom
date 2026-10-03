@@ -52,7 +52,8 @@ async def classify_injection_llm(text: str) -> bool | None:
         model = getattr(settings, "llm_model", "claude-3-5-sonnet-20241022")
         # Prefer cheaper model for classifier — try to use Haiku if available via fallback
         # For now use the configured model; cost is low (prompt < 500 tokens)
-        prompt = CLASSIFIER_PROMPT.format(input_text=text[:2000])
+        # Use .replace() instead of .format() to avoid KeyError/ValueError crashes on JSON/brace-containing inputs (CRIT-05)
+        prompt = CLASSIFIER_PROMPT.replace("{input_text}", text[:2000])
 
         resp = await llm_service.generate_completion(
             messages=[{"role": "user", "content": prompt}],

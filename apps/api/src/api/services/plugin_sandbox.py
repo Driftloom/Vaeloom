@@ -11,7 +11,16 @@ import sys
 
 FORBIDDEN_CALLS = {
     "eval", "exec", "compile", "getattr", "setattr", "delattr",
-    "open", "__import__", "globals", "locals", "vars", "breakpoint",
+    "open", "__import__", "globals", "locals", "vars", "breakpoint", "input",
+}
+
+FORBIDDEN_ATTRIBUTES = {
+    "gi_frame", "gi_code", "gi_yieldfrom",
+    "f_back", "f_builtins", "f_globals", "f_locals", "f_code", "f_trace",
+    "cr_frame", "cr_code", "cr_await",
+    "ag_frame", "ag_code", "ag_await",
+    "tb_frame", "tb_next",
+    "co_code", "co_consts", "co_names",
 }
 
 
@@ -32,16 +41,19 @@ def validate_ast(code: str) -> None:
         if isinstance(node, (ast.Import, ast.ImportFrom)):
             raise SecurityViolation("Import statements are forbidden in plugin sandbox")
 
-        # Disallow access to dunder attributes (blocks __class__, __subclasses__, __bases__, __globals__, etc.)
+        # Disallow access to dunder attributes and frame/introspection internals
         if isinstance(node, ast.Attribute):
-            if node.attr.startswith("__") and node.attr.endswith("__"):
-                raise SecurityViolation(f"Access to private/dunder attribute '{node.attr}' is forbidden")
+            attr = node.attr
+            if attr.startswith("__"):
+                raise SecurityViolation(f"Access to private/dunder attribute '{attr}' is forbidden")
+            if attr in FORBIDDEN_ATTRIBUTES or attr.startswith(("f_", "gi_", "cr_", "ag_", "co_")):
+                raise SecurityViolation(f"Access to introspection attribute '{attr}' is forbidden")
 
         # Disallow restricted function names and dunder identifiers
         if isinstance(node, ast.Name):
             if node.id in FORBIDDEN_CALLS:
                 raise SecurityViolation(f"Use of restricted primitive '{node.id}' is forbidden")
-            if node.id.startswith("__") and node.id.endswith("__"):
+            if node.id.startswith("__"):
                 raise SecurityViolation(f"Reference to dunder identifier '{node.id}' is forbidden")
 
 

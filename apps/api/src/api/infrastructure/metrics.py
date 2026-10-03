@@ -31,14 +31,36 @@ def inc_rate_limit_degraded() -> None:
     rate_limit_degraded_total.inc()
 
 
+import re
+
+_UUID_PATTERN = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+_NUMERIC_PATTERN = re.compile(r"/\d+(?=/|$)")
+
+
+def normalize_metric_path(request: Request, response_status: int) -> str:
+    """Normalize request path to prevent Prometheus cardinality explosion (CRIT-04).
+    
+    1. All 404 Not Found requests are grouped into '/404' to defeat URL scanning/fuzzing.
+    2. Dynamic UUIDs and integer IDs in paths are normalized to '{id}' tokens.
+    3. Static endpoint paths (e.g. /health, /health/ready, /metrics) are preserved.
+    """
+    if response_status == 404:
+        return "/404"
+
+    path = request.url.path
+    path = _UUID_PATTERN.sub("{id}", path)
+    path = _NUMERIC_PATTERN.sub("/{id}", path)
+    return path
+
+
 class MetricsMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         method = request.method
-        path = request.url.path
-
         start = time.monotonic()
         response = await call_next(request)
         duration = time.monotonic() - start
+
+        path = normalize_metric_path(request, response.status_code)
 
         http_requests_total.labels(
             method=method, path=path, status=response.status_code

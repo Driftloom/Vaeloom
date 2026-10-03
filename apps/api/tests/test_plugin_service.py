@@ -601,3 +601,61 @@ class TestPluginService:
         assert "SecurityViolation" in result["error_message"]
         assert "Import statements are forbidden" in result["error_message"]
 
+    async def test_execute_blocks_generator_frame_escape(self, service, mock_db):
+        plugin_row = _MockMapping(id="p1", name="P1", version="1.0", author="A",
+                                   description="D", license="MIT", status="REGISTERED",
+                                   permissions="{}", tenant_id="t1")
+
+        call_index = 0
+        def side_effect(stmt, params=None):
+            nonlocal call_index
+            call_index += 1
+            r = MagicMock()
+            if call_index == 1:
+                r.mappings.return_value.first.return_value = plugin_row
+            else:
+                exec_row = _MockMapping(
+                    id="e1", plugin_id="p1",
+                    status=params.get("status", "failed") if params else "failed",
+                    duration_ms=5, output=None,
+                    error_message=params.get("error_message") if params else "Error",
+                    created_at=datetime.now(timezone.utc),
+                )
+                r.mappings.return_value.first.return_value = exec_row
+            return r
+
+        mock_db.execute = AsyncMock(side_effect=side_effect)
+
+        # Adversarial payload: Generator frame traversal to reach host builtins
+        dto = MagicMock()
+        dto.code = "g = (x for x in [1])\nb = g.gi_frame.f_back.f_builtins\nresult = b"
+        dto.input = {}
+        dto.timeout_ms = 5000
+
+        result = await service.execute(uuid.uuid4(), dto, mock_db)
+        assert result["status"] == "failed"
+        assert "SecurityViolation" in result["error_message"]
+        assert "introspection attribute" in result["error_message"]
+
+    def test_validate_ast_blocks_frame_and_eval_intrinsics(self):
+        from api.services.plugin_sandbox import validate_ast, SecurityViolation
+
+        dangerous_snippets = [
+            "g = (x for x in [1]); b = g.gi_frame",
+            "f = lambda: 1; b = f.f_back",
+            "import os",
+            "from math import sin",
+            "x = eval('1+1')",
+            "x = open('/etc/passwd')",
+            "x = ().__class__",
+            "x = [].__bases__",
+        ]
+
+        for snippet in dangerous_snippets:
+            with pytest.raises(SecurityViolation):
+                validate_ast(snippet)
+
+        # Safe code should pass cleanly
+        validate_ast("result = sum([1, 2, 3]) * 2")
+        validate_ast("data = {'key': 'value'}\nresult = data.get('key')")
+

@@ -387,13 +387,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.add_middleware(
-    RateLimitMiddleware,
-    requests_per_minute=settings.rate_limit_requests,
-    window_seconds=settings.rate_limit_window,
-    redis_url=settings.rate_limit_redis_url or settings.redis__url or None,
-    api_key_rate_limit=settings.api_key_rate_limit,
-)
 # IDEM-SCOPE-01: idempotency must execute AFTER Auth+Tenant (added before
 # them: Starlette runs last-added first) so replays are authenticated and
 # tenant/workspace/actor-scoped. Running before auth would serve stored
@@ -413,7 +406,14 @@ app.add_middleware(
     BodySizeLimitMiddleware,
     max_bytes=getattr(settings, "max_request_body_bytes", 25 * 1024 * 1024),
 )
-
+# RateLimit must run outer to Auth/Tenant/DB to throttle incoming floods before expensive crypto verification and DB queries
+app.add_middleware(
+    RateLimitMiddleware,
+    requests_per_minute=settings.rate_limit_requests,
+    window_seconds=settings.rate_limit_window,
+    redis_url=settings.rate_limit_redis_url or settings.redis__url or None,
+    api_key_rate_limit=settings.api_key_rate_limit,
+)
 # IP allowlist always mounted (ADR-031) — no-op when empty, enforce when configured
 app.add_middleware(IPAllowlistMiddleware, allowlist_raw=settings.ip_allowlist or "")
 # Metrics second-outermost (just inside CORS): counts every response,
