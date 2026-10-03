@@ -2,7 +2,7 @@ const config = require('../../security-audit.config.js');
 const { execSync } = require('child_process');
 let rawOutput = '';
 try {
-  rawOutput = execSync('pnpm audit --json').toString();
+  rawOutput = execSync('pnpm audit --json', { maxBuffer: 50 * 1024 * 1024 }).toString();
 } catch (error) {
   if (error.stdout) {
     rawOutput = error.stdout.toString();

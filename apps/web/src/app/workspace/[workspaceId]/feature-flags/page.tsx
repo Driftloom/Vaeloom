@@ -265,14 +265,18 @@ export default function FeatureFlagsPage() {
                   <Input
                     label="Flag name"
                     value={newFlagName}
-                    onChange={(e) => setNewFlagName(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setNewFlagName(e.target.value)
+                    }
                     placeholder="e.g. new-agent-ui"
                     className="flex-1"
                   />
                   <Input
                     label="Description"
                     value={newFlagDesc}
-                    onChange={(e) => setNewFlagDesc(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setNewFlagDesc(e.target.value)
+                    }
                     placeholder="What this flag controls"
                     className="flex-1"
                   />
@@ -287,7 +291,9 @@ export default function FeatureFlagsPage() {
                       id="new-flag-category"
                       className="bg-background border border-border rounded-md px-3 py-2 text-sm text-text w-full sm:w-auto"
                       value={newFlagCategory}
-                      onChange={(e) => setNewFlagCategory(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                        setNewFlagCategory(e.target.value)
+                      }
                     >
                       {CATEGORIES.map((c) => (
                         <option key={c} value={c}>
@@ -348,7 +354,9 @@ export default function FeatureFlagsPage() {
                             max={100}
                             step={1}
                             value={flag.rollout_percentage}
-                            onChange={(e) => handleRollout(flag, parseInt(e.target.value, 10))}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                              handleRollout(flag, parseInt(e.target.value, 10))
+                            }
                             className="flex-1 h-2 bg-surface-active rounded-lg appearance-none cursor-pointer accent-primary max-w-xs"
                           />
                         </div>
@@ -384,13 +392,13 @@ export default function FeatureFlagsPage() {
             <Input
               label="Flag name"
               value={abTestName}
-              onChange={(e) => setAbTestName(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAbTestName(e.target.value)}
               placeholder="e.g. new-onboarding-flow"
             />
             <Input
               label="Description"
               value={abTestDesc}
-              onChange={(e) => setAbTestDesc(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAbTestDesc(e.target.value)}
               placeholder="Describe what this rollout gates"
             />
             <div className="space-y-1">
@@ -404,7 +412,9 @@ export default function FeatureFlagsPage() {
                     id="split-variant-a"
                     placeholder="Variant A label (Control)"
                     value={variantALabel}
-                    onChange={(e) => setVariantALabel(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setVariantALabel(e.target.value)
+                    }
                     className="flex-1"
                   />
                   <span className="text-sm text-text-muted bg-surface-active rounded-md text-center font-mono px-3 py-2 sm:w-20">
@@ -419,7 +429,9 @@ export default function FeatureFlagsPage() {
                     id="split-variant-b"
                     placeholder="Variant B label (Treatment)"
                     value={variantBLabel}
-                    onChange={(e) => setVariantBLabel(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setVariantBLabel(e.target.value)
+                    }
                     className="flex-1"
                   />
                   <div className="flex items-center gap-1">
@@ -433,7 +445,7 @@ export default function FeatureFlagsPage() {
                       max={100}
                       className="w-20 bg-background border border-border rounded-md px-3 py-2 text-sm text-text font-mono"
                       value={splitPct}
-                      onChange={(e) => {
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                         const val = parseInt(e.target.value, 10);
                         setSplitPct(isNaN(val) ? 0 : Math.max(0, Math.min(100, val)));
                       }}

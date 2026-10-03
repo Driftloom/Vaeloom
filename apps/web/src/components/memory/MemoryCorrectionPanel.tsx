@@ -221,7 +221,10 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
           }
         />
       ) : (
-        <div className="divide-y divide-[var(--color-border)] rounded-lg border border-[var(--color-border)] overflow-hidden">
+        <ul
+          role="list"
+          className="divide-y divide-[var(--color-border)] rounded-lg border border-[var(--color-border)] overflow-hidden"
+        >
           {filteredMemories.map((m) => {
             const isSuperseded =
               (m.status as string) === 'superseded' ||
@@ -232,7 +235,7 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
               '';
 
             return (
-              <div
+              <li
                 key={m.id}
                 className="p-4 bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
               >
@@ -267,10 +270,10 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
                     {isSuperseded ? 'Re-Correct' : 'Correct'}
                   </Button>
                 </div>
-              </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
 
       {/* Interactive Correction Modal with Live Diff */}

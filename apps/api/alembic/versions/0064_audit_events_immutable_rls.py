@@ -73,6 +73,64 @@ def upgrade() -> None:
         """
     )
 
+    _assert_coverage(bind)
+
+
+def _assert_coverage(bind) -> None:
+    """Re-run the end-state coverage guard, because 0064 is the terminal migration.
+
+    `0060_verify_rls_coverage` was written to be the last revision so it could see
+    the finished schema and raise if any table lacked RLS or a policy. Attaching
+    subsequent migrations moves that guard earlier in the chain. Repeating the same
+    end-state assertion here restores the property the audit depended on: a table or
+    policy modification cannot leave the schema unprotected with nothing after it to notice.
+    """
+    tables = [
+        row[0]
+        for row in bind.execute(
+            sa.text(
+                "SELECT table_name FROM information_schema.tables "
+                "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' "
+                "AND table_name <> 'alembic_version' ORDER BY 1;"
+            )
+        ).fetchall()
+    ]
+    if not tables:
+        raise RuntimeError(
+            "0064 found no tables in the public schema. Either the chain did not "
+            "run or it targeted a different database. Refusing to pass."
+        )
+
+    unprotected: list[str] = []
+    policyless: list[str] = []
+    for table in tables:
+        rls = bind.execute(
+            sa.text(
+                "SELECT rowsecurity FROM pg_tables "
+                f"WHERE schemaname = 'public' AND tablename = '{table}';"
+            )
+        ).fetchall()
+        if not rls or rls[0][0] is not True:
+            unprotected.append(table)
+        count = bind.execute(
+            sa.text(f"SELECT count(*) FROM pg_policies WHERE tablename = '{table}';")
+        ).fetchall()
+        if not count or count[0][0] == 0:
+            policyless.append(table)
+
+    if unprotected or policyless:
+        problems = []
+        if unprotected:
+            problems.append(
+                f"row-level security NOT enabled on {len(unprotected)} table(s): {sorted(unprotected)}"
+            )
+        if policyless:
+            problems.append(f"no RLS policy on {len(policyless)} table(s): {sorted(policyless)}")
+        raise RuntimeError(
+            "Migration chain finished with incomplete RLS coverage.\n  - "
+            + "\n  - ".join(problems)
+        )
+
 
 def downgrade() -> None:
     bind = op.get_bind()
