@@ -25,13 +25,14 @@ overview (6-layer MVP + 8-layer Enterprise overlay).
 | [Caching](architecture/Caching.md), [Queue](architecture/Queue.md), [Search](architecture/Search.md), [Storage](architecture/Storage.md) | Cross-cutting infrastructure           |
 | [Scalability](architecture/Scalability.md), [Performance](architecture/Performance.md)                                                   | Scaling strategy, targets              |
 | [Infrastructure](architecture/Infrastructure.md), [Disaster Recovery](architecture/Disaster-Recovery.md)                                 | Infra overview, DR plan                |
-| [Architecture Decision Records (ADRs)](adr/README.md)                                                                    | 44 records, ADR-001..ADR-044           |
+| [Architecture Decision Records (ADRs)](adr/README.md)                                                                                    | 44 records, ADR-001..ADR-044           |
 
 ## Enterprise Architecture
 
 - [Enterprise Architecture](enterprise/Enterprise-Architecture.md) — enterprise
   design
-- [Multi-Tenancy](enterprise/Multi-Tenancy.md) — TenantContext, GUCs, RLS 42/42
+- [Multi-Tenancy](enterprise/Multi-Tenancy.md) — TenantContext, GUCs, RLS on 44
+  audited tables
 - Supporting: Organizations, Admin Portal, Billing, Licensing, Feature Flags,
   Enterprise APIs, Plugin Marketplace (all under `enterprise/`)
 - Backend enforcement views:
@@ -48,7 +49,7 @@ graph LR
   HLD--> LLD["Low Level Design"]
   C4--> SVC["Service Architecture"]
   SVC--> ENT["Enterprise Architecture"]
-  ENT--> TEN["Multi-Tenancy (RLS 42/42)"]
+  ENT--> TEN["Multi-Tenancy (RLS 44 tables)"]
   SYS--> ADR["ADRs (001-044)"]
 ```
 

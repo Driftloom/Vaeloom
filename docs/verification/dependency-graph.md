@@ -101,7 +101,7 @@ flowchart TD
     end
 
     subgraph PersistenceTier ["Storage & External Systems"]
-        Postgres[(PostgreSQL 16 - 42/42 RLS)]
+        Postgres[(PostgreSQL 16 - RLS 44 audited tables)]
         RedisCache[(Redis 7 - Working Memory)]
         Providers[(External SaaS APIs)]
     end

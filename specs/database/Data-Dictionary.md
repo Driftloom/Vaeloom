@@ -260,10 +260,11 @@ graph TD
 
 ## RLS / Test Note
 
-RLS column tags in the tables above reflect the enforced **42/42** policy set
-(migrations 0010/0019/0020; GUCs fail-closed via `set_rls_session_vars`).
-Backend tests run on SQLite + `NullPool` with a per-test `tmp_path` DB (2731
-tests) — RLS behavior itself is verified against Postgres.
+RLS column tags in the tables above reflect the enforced policy set (44 audited
+tables as of `0063`; migrations 0010/0019/0020; GUCs fail-closed via
+`set_rls_session_vars`). Backend tests run on SQLite + `NullPool` with a
+per-test `tmp_path` DB (4620 tests) — RLS behavior itself is verified against
+Postgres.
 
 ## Related Documents
 

@@ -1,6 +1,6 @@
 # Vaeloom Developer Onboarding Guide
 
-> **Last Updated:** 2026-09-22 · Backend 0.2.0 · API spec 254 paths / 315 ops
+> **Last Updated:** 2026-10-03 · Backend 0.2.0 · API spec 284 paths / 351 ops
 
 Welcome to Vaeloom. This guide walks you through setting up a local development
 environment, running the stack, and understanding the architecture.
@@ -136,8 +136,9 @@ uv run --project apps/api alembic check
 uv run --project apps/api alembic upgrade head
 ```
 
-42 versions; RLS 42/42. Dual-URL least-privilege (`DATABASE_MIGRATION__URL` for
-DDL only) — see [`docs/database/Migrations.md`](./database/Migrations.md).
+63 versions; RLS FORCE+policies on 44 audited tables. Dual-URL least-privilege
+(`DATABASE_MIGRATION__URL` for DDL only) — see
+[`docs/database/Migrations.md`](./database/Migrations.md).
 
 ## Common Issues & Fixes
 
@@ -192,7 +193,7 @@ DDL only) — see [`docs/database/Migrations.md`](./database/Migrations.md).
 │  Knowledge Graph | Vector Store | Structured Memory     │
 ├─────────────────────────────────────────────────────────┤
 │               Storage & Security                         │
-│  PostgreSQL (RLS 42/42) | Redis | MinIO/S3 | Auth       │
+│  PostgreSQL (RLS 44 tables) | Redis | MinIO/S3 | Auth       │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -216,7 +217,7 @@ Backend = **one** monolithic FastAPI app (`apps/api`), version 0.2.0.
 - **Backend**: FastAPI, SQLAlchemy async, asyncpg, Redis, pgvector, Alembic
 - **Frontend**: Next.js 15 (App Router), React, Tailwind CSS, shadcn/ui
 - **LLM**: Anthropic Claude (primary), OpenAI (secondary); `mock-key` offline
-- **Storage**: PostgreSQL (RLS 42/42), Redis, MinIO (S3-compatible)
+- **Storage**: PostgreSQL (RLS 44 tables), Redis, MinIO (S3-compatible)
 - **Auth**: JWT (access 1h + refresh 30d rotation), SSO (Google, Microsoft)
 - **Observability**: OpenTelemetry, Prometheus (`/metrics`)
 - **CI/CD**: GitHub Actions, Docker

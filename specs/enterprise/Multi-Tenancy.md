@@ -8,7 +8,8 @@
 > [`../Backend/RBAC.md`](../Backend/RBAC.md),
 > [`../Backend/ABAC.md`](../Backend/ABAC.md),
 > [`../Database/Schema.md`](../Database/Schema.md) **Implementation Status:** ✅
-> Implemented 2026-08-22 — RLS 42/42 via Alembic 0010/0019/0020; `TenantContext`
+> Implemented 2026-08-22 — RLS on 42 tables via Alembic 0010/0019/0020 (44 as of
+> `0063`, 2026-10-01); `TenantContext`
 >
 > - `set_rls_session_vars` (`apps/api/src/api/middleware/tenant.py:38`,
 >   `apps/api/src/api/database.py:136-168`); GUCs `app.tenant_id` /
@@ -136,10 +137,16 @@ in `tenants.isolation_mode`:
 
 ### Implementation: RLS (default)
 
-> **Implemented 2026-08-22:** RLS covers 42/42 tenant-scoped tables (34 via
-> Alembic 0010 + 3 via 0019 + 5 via 0020 — see `0020_rls_remaining_5.py:1-18`).
-> Enforcement uses `TenantContext` (`middleware/tenant.py:12-36`) +
-> `set_rls_session_vars` (`middleware/tenant.py:38-75`) with
+> **Implemented 2026-08-22:** RLS covers 42 tenant-scoped tables (34 via Alembic
+> 0010 + 3 via 0019 + 5 via 0020 — see `0020_rls_remaining_5.py:1-18`), plus
+> `conversations` + `chat_messages` added by `0063` (2026-10-01) = **44 audited
+> tables**. The enforced invariant is stronger than this count:
+> `0060_verify_rls_coverage` and the `_assert_coverage` re-run in `0063` raise
+> if _any_ table in `public` lacks RLS or a policy, so the real denominator is
+> the schema's table count (static count of `op.create_table` across the chain
+> is 87; not re-measured against a live PG on 2026-10-03). Enforcement uses
+> `TenantContext` (`middleware/tenant.py:12-36`) + `set_rls_session_vars`
+> (`middleware/tenant.py:38-75`) with
 > `set_config('app.tenant_id' / 'app.workspace_id' / 'app.user_id', ..., true)`
 > (transaction-scoped `SET LOCAL`, fail-closed: missing GUC ⇒ zero rows).
 > `database.py:136-168` re-asserts the same GUCs per session (explicit

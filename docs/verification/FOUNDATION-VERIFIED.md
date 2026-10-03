@@ -35,13 +35,13 @@ suites.
 
 ### Category 3: Two-Tier Memory & RLS (`packages/agent-memory/`)
 
-|  #  | Verification Criterion      | Target Requirement                                                        | Current State                          | Evidence                                        |    Verdict    |
-| :-: | :-------------------------- | :------------------------------------------------------------------------ | :------------------------------------- | :---------------------------------------------- | :-----------: |
-| 11  | Two-Tier Memory Separation  | Working Memory (Episodic/Redis) decoupled from Semantic Memory (PGVector) | Implemented in `packages/agent-memory` | 2/2 tests pass in `packages/agent-memory/tests` | **PASS (L1)** |
-| 12  | Memory Scope Enforcement    | Read/Write/Denied scope evaluation per manifest contract                  | Implemented in `MemoryService`         | Gated via `PolicyEngine`                        | **PASS (L1)** |
-| 13  | 42/42 RLS Table Coverage    | All multi-tenant tables enforce PostgreSQL Row Level Security             | 42/42 covered in migrations            | `database-audit.md`                             | **PASS (L2)** |
-| 14  | Live PG RLS Verification    | Proven via automated suite `test_rls_live_pg.py`                          | 5/5 pass on live Supabase PG           | `database-audit.md`                             | **PASS (L1)** |
-| 15  | RLS Session Var Propagation | `TenantMiddleware` sets `app.workspace_id`, `user_id`, `tenant_id`        | Set via `database.py:30`               | `database-audit.md`                             | **PASS (L2)** |
+|  #  | Verification Criterion      | Target Requirement                                                        | Current State                           | Evidence                                        |    Verdict    |
+| :-: | :-------------------------- | :------------------------------------------------------------------------ | :-------------------------------------- | :---------------------------------------------- | :-----------: |
+| 11  | Two-Tier Memory Separation  | Working Memory (Episodic/Redis) decoupled from Semantic Memory (PGVector) | Implemented in `packages/agent-memory`  | 2/2 tests pass in `packages/agent-memory/tests` | **PASS (L1)** |
+| 12  | Memory Scope Enforcement    | Read/Write/Denied scope evaluation per manifest contract                  | Implemented in `MemoryService`          | Gated via `PolicyEngine`                        | **PASS (L1)** |
+| 13  | RLS Table Coverage          | All multi-tenant tables enforce PostgreSQL Row Level Security             | 44 audited tables covered in migrations | `database-audit.md`                             | **PASS (L2)** |
+| 14  | Live PG RLS Verification    | Proven via automated suite `test_rls_live_pg.py`                          | 5/5 pass on live Supabase PG            | `database-audit.md`                             | **PASS (L1)** |
+| 15  | RLS Session Var Propagation | `TenantMiddleware` sets `app.workspace_id`, `user_id`, `tenant_id`        | Set via `database.py:30`                | `database-audit.md`                             | **PASS (L2)** |
 
 ### Category 4: Tool Registry & Execution (`packages/agent-tools/`)
 

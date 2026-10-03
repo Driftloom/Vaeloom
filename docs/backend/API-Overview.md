@@ -41,13 +41,15 @@ const status = await client.healthCheck(); // "ok"
 
 ## OpenAPI Sync (keep the spec + reference current)
 
-`openapi.yaml` (241 paths / 294 ops, regen 2026-09-21) is generated from code —
-`scripts/gen_openapi.py` imports `apps/api/src/api/main.py` with mock env vars,
-so it runs offline. After any router change:
+`openapi.yaml` (279 paths / 346 ops in the generated artefact; **284 / 351**
+live per `app.openapi()`, measured 2026-10-03 — the artefact is missing 5
+`/api/v1/memories/*` paths) is generated from code — `scripts/gen_openapi.py`
+imports `apps/api/src/api/main.py` with mock env vars, so it runs offline. After
+any router change:
 
 ```bash
 python scripts/gen_openapi.py   # from repo root
-# verify: 241 paths (count ^  / keys), 294 ops
+# verify: 284 paths (count ^  / keys), 351 ops
 ```
 
 Then update [API-Reference.md](./API-Reference.md) (matching router table +

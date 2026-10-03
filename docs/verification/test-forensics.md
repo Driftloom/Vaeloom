@@ -6,7 +6,8 @@ A comprehensive audit of all test suites across the repository was conducted:
 
 - **Total Backend Pytest Files**: 289 files in `apps/api/tests/`
 - **Total Tests Collected**: 3,640 tests
-- **Active Security Tests**: 233 passing tests (170 unique)
+- **Active Security Tests**: 404 collected (2026-10-03 collect-only; was 233
+  passing / 170 unique � not re-run here)
 - **Live PostgreSQL RLS Tests**: 5/5 passing tests (`test_rls_live_pg.py`)
 - **Frontend E2E Specs**: 7 Playwright specs in `apps/web/e2e/` (73 tests total)
 - **Frontend Unit Tests**: 41 Jest tests across 8 packages

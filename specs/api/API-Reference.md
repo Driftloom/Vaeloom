@@ -2,9 +2,13 @@
 
 > **Purpose:** Complete endpoint reference for the Vaeloom API, generated from
 > code truth **Status:** Complete **Owner:** Backend Team **Version:** 0.2.0
-> **Last Updated:** 2026-09-22 **Canonical source:**
-> [`./openapi.yaml`](./openapi.yaml) — **254 paths / 315 operations**,
-> regenerated 2026-09-21 via `scripts/gen_openapi.py`
+> **Last Updated:** 2026-10-03 **Canonical source:**
+> [`./openapi.yaml`](./openapi.yaml) — **279 paths / 346 operations** in the
+> generated artefact; **284 paths / 351 operations** live from `app.openapi()`
+> (the artefact is missing 5 `/api/v1/memories/*` paths — bulk-status, bulk-tag,
+> export, import, `{memory_id}/supersede`). Regenerate via
+> `scripts/gen_openapi.py` to close that gap. Previously cited 254/315 here and
+> 241/294 in `AGENTS.md`; the two disagreed.
 
 ## Base URLs
 
@@ -24,7 +28,9 @@ changing any route in `apps/api/src/api/routers/` or `apps/api/src/api/main.py`:
 
 1. Regen: `python scripts/gen_openapi.py` (sets mock env vars internally; safe
    to run offline)
-2. Verify: 254 paths expected — count `^  /` path keys in `openapi.yaml`
+2. Verify: 284 paths / 351 operations expected from live `app.openapi()`; count
+   `^  /` path keys in `openapi.yaml` (279 as of 2026-10-03 — a regen is
+   required to reach 284)
 3. Update this file: add/remove the endpoint row in the matching router table
    below and bump the counts in the header
 
@@ -116,6 +122,21 @@ Local override: `RATE_LIMIT_REQUESTS` / `RATE_LIMIT_WINDOW`
 | GET / POST           | `/api/v1/workspaces/{workspace_id}/applications`                          | List / create applications |
 | GET                  | `/api/v1/workspaces/{workspace_id}/applications/{application_id}`         | Get application            |
 | PATCH                | `/api/v1/workspaces/{workspace_id}/applications/{application_id}/outcome` | Record outcome             |
+
+## Conversations (`/api/v1/workspaces/{workspace_id}/conversations`, 3 paths / 7 operations)
+
+Server-side chat history. Added 2026-10-01 by migration `0063`, which created
+the `conversations` + `chat_messages` tables with `workspace_id` foreign keys
+and RLS `ENABLE` + `FORCE` + policies. Previously the entire transcript lived in
+`localStorage['vaeloom.threads.<ws>']` only. The browser key survives solely as
+a bounded write-behind outbox plus a one-time migration of pre-existing history
+— see `apps/web/src/components/chat/chat-store.ts`.
+
+| Method               | Path                                                                         | Description                        |
+| -------------------- | ---------------------------------------------------------------------------- | ---------------------------------- |
+| GET / POST           | `/api/v1/workspaces/{workspace_id}/conversations`                            | List / create conversations        |
+| GET / PATCH / DELETE | `/api/v1/workspaces/{workspace_id}/conversations/{conversation_id}`          | Get / rename / delete conversation |
+| POST / DELETE        | `/api/v1/workspaces/{workspace_id}/conversations/{conversation_id}/messages` | Append / delete a message          |
 
 ## Memories (`/api/v1/memories`, 7 paths)
 
@@ -398,5 +419,5 @@ All errors carry a `request_id` / `X-Request-ID` for log correlation.
 - [Connectors](./Connectors.md) — connector + MCP-bridge details
 - [Local Development](./Local-Development.md) — running the API locally
 
-> _Last verified: 2026-09-22 — 254 paths / 315 ops from `openapi.yaml` (regen
-> `scripts/gen_openapi.py`)._
+> _Last verified: 2026-09-22 — 279 paths / 346 ops from `openapi.yaml`, 284 /
+> 351 live (regen `scripts/gen_openapi.py`)._

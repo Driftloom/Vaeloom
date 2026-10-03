@@ -395,4 +395,4 @@ curl -s -o /dev/null -w "%{http_code}" -X POST "https://api.Vaeloom.ai/v1/docume
 - [Authentication.md](./Authentication.md)
 
 > _Last verified: 2026-09-22 — conventions unchanged; live endpoint inventory in
-> API-Reference.md (254 paths / 315 ops, openapi.yaml 2026-09-21)._
+> API-Reference.md (284 paths / 351 ops live, 2026-10-03)._

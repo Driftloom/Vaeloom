@@ -390,7 +390,7 @@ sequenceDiagram
 
 ## RLS / Test Note
 
-Partitioned tables inherit the **42/42** RLS policy set (migrations
+Partitioned tables inherit the **44 audited table** RLS policy set (migrations
 0010/0019/0020) — policies must be defined on the parent so partitions enforce
 them. Backend tests run on SQLite + `NullPool` with a per-test `tmp_path` DB
 (2731 tests).

@@ -8,13 +8,16 @@
 ## Overview
 
 The database schema is the physical implementation of Vaeloom's relational data
-model — defining **67 production tables** (with **42 enforced under PostgreSQL Row-Level Security**)
-across version-controlled Alembic migrations (`0001_initial_schema.py` through `0042_users_tenant_id.py`).
-Tables store user identities, multi-tiered memory records, knowledge graph entities, application states,
-resume pipelines, durable task checkpoints, and immutable audit logs.
+model — defining **87 tables** per the migration chain / **76 ORM models** (with
+**44 audited under PostgreSQL Row-Level Security** as of `0063`) across
+version-controlled Alembic migrations (`0001_initial_schema.py` through
+`0042_users_tenant_id.py`). Tables store user identities, multi-tiered memory
+records, knowledge graph entities, application states, resume pipelines, durable
+task checkpoints, and immutable audit logs.
 
-Tenant isolation is strictly enforced via `workspace_id` and `tenant_id` session variables (`app.workspace_id`,
-`app.tenant_id`) checked fail-closed by PostgreSQL Row-Level Security policies.
+Tenant isolation is strictly enforced via `workspace_id` and `tenant_id` session
+variables (`app.workspace_id`, `app.tenant_id`) checked fail-closed by
+PostgreSQL Row-Level Security policies.
 
 ## Goals
 
@@ -49,7 +52,7 @@ Tenant isolation is strictly enforced via `workspace_id` and `tenant_id` session
 - Graph store schema (Apache AGE — provisioned in Docker, UNUSED in code)
 - Vector store schema (pgvector — `vector(1536)` column in memories table,
   IVFFlat index in extensions.sql)
-- Row-Level Security policies (**DONE — 42/42 tables**, migrations
+- Row-Level Security policies (**DONE — 44 audited tables**, migrations
   0010/0019/0020 + `0005_rls.py`; see RLS section below)
 - Materialized views or denormalized reporting tables
 
@@ -196,14 +199,25 @@ CREATE TABLE memory_records (
 );
 ```
 
-## Row-Level Security (DONE — 42/42)
+## Row-Level Security (DONE — 44 audited tables)
 
-RLS is enforced on **42 of 42 tables**: 34 via migration `0010`, +3 via `0019`,
-+5 via `0020` (plus `0005_rls.py` base). `TenantMiddleware` resolves tenant
+RLS `ENABLE` + `FORCE` + policies on **44 tables**: 34 via migration `0010`, +3
+via `0019`, +5 via `0020` (plus `0005_rls.py` base), + `conversations` and
+`chat_messages` added by `0063` (2026-10-01). `TenantMiddleware` resolves tenant
 context per request (`TenantContext`) and `set_rls_session_vars`
 (`database.py:30`) SETs `app.workspace_id` / `app.user_id` / `app.tenant_id`
 GUCs **fail-closed** — a missing context refuses the query instead of opening
 access. Full inventory: [Migrations.md](./Migrations.md).
+
+**The enforced invariant is stronger than "44 of 44".**
+`0060_verify_rls_coverage` raises if _any_ table in `public` lacks RLS or a
+policy, and `0063` re-runs the same end-state check (`_assert_coverage`) because
+attaching revisions after `0060` moved that guard off the chain head. So the
+real denominator is the schema's table count, not a constant. Static count of
+distinct `op.create_table` names across `alembic/versions/` is **87** (76 ORM
+models); this was **not** re-measured against a live PostgreSQL on 2026-10-03
+(no Docker/local PG available), so treat 87 as an inventory figure, not a
+verified RLS count.
 
 ## Common Mistakes
 
@@ -225,11 +239,11 @@ access. Full inventory: [Migrations.md](./Migrations.md).
 
 ## Security Considerations
 
-| Consideration                                    | Mitigation                                                                                                                                                                                                                                                                                               |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Row-Level Security (RLS) for workspace isolation | **DONE — 42/42 tables** enforced via migrations 0010/0019/0020 + `0005_rls.py`. `TenantMiddleware` sets `app.workspace_id` (path/header) + `app.user_id` + `app.tenant_id` via `TenantContext`; `set_rls_session_vars` (`database.py`) SETs GUCs **fail-closed** (missing context = refused, never open) |
-| Avoiding SELECT * in production code             | Selecting all columns from a table may inadvertently expose sensitive columns — always specify the columns needed                                                                                                                                                                                        |
-| Audit log immutability                           | The agent_actions table must be append-only — use database triggers or application-level enforcement to prevent UPDATE or DELETE on audit rows                                                                                                                                                           |
+| Consideration                                    | Mitigation                                                                                                                                                                                                                                                                                                             |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Row-Level Security (RLS) for workspace isolation | **DONE — 44 audited tables** enforced via migrations 0010/0019/0020 + `0005_rls.py` + `0063`. `TenantMiddleware` sets `app.workspace_id` (path/header) + `app.user_id` + `app.tenant_id` via `TenantContext`; `set_rls_session_vars` (`database.py`) SETs GUCs **fail-closed** (missing context = refused, never open) |
+| Avoiding SELECT * in production code             | Selecting all columns from a table may inadvertently expose sensitive columns — always specify the columns needed                                                                                                                                                                                                      |
+| Audit log immutability                           | The agent_actions table must be append-only — use database triggers or application-level enforcement to prevent UPDATE or DELETE on audit rows                                                                                                                                                                         |
 
 ## Performance Considerations
 
@@ -293,12 +307,12 @@ access. Full inventory: [Migrations.md](./Migrations.md).
 
 ## Limitations
 
-| Limitation                                               | Impact                                         | Workaround                                                                                      | Future Resolution                                     |
-| -------------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| JSONB for unstructured content has no schema enforcement | Application must handle missing/invalid fields | Validate JSONB content at application layer                                                     | Add PostgreSQL CHECK constraints for JSONB validation |
-| No soft-delete columns on most tables                    | DELETE operations lose data permanently        | Use application-level soft delete (is_deleted flag)                                             | Add deleted_at timestamps to all user-data tables     |
-| No table comments in schema definition                   | Schema intent not visible in database tools    | Maintain schema documentation separately                                                        | Add COMMENT ON TABLE statements in migrations         |
-| Row-level security enforced (42/42, fail-closed GUCs)    | Defense-in-depth beyond app-layer checks       | RLS policies are the backstop; every query still scopes `workspace_id` at the application layer | Covered by migration inventory in Migrations.md       |
+| Limitation                                                        | Impact                                         | Workaround                                                                                      | Future Resolution                                     |
+| ----------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| JSONB for unstructured content has no schema enforcement          | Application must handle missing/invalid fields | Validate JSONB content at application layer                                                     | Add PostgreSQL CHECK constraints for JSONB validation |
+| No soft-delete columns on most tables                             | DELETE operations lose data permanently        | Use application-level soft delete (is_deleted flag)                                             | Add deleted_at timestamps to all user-data tables     |
+| No table comments in schema definition                            | Schema intent not visible in database tools    | Maintain schema documentation separately                                                        | Add COMMENT ON TABLE statements in migrations         |
+| Row-level security enforced (44 audited tables, fail-closed GUCs) | Defense-in-depth beyond app-layer checks       | RLS policies are the backstop; every query still scopes `workspace_id` at the application layer | Covered by migration inventory in Migrations.md       |
 
 ---
 
@@ -371,20 +385,20 @@ WHERE workspace_id = 'ws_abc'
 
 ---
 
-## Production Table Inventory (67 Tables across 42 Alembic Migrations)
+## Production Table Inventory (87 chain-created tables across 63 Alembic revisions)
 
-| Subsystem | Tables | RLS Enforced (42 Total) | Alembic Migration |
-| :--- | :--- | :--- | :--- |
-| **Core Identity & Workspaces** | `users`, `workspaces`, `workspace_members`, `tenants`, `auth_sessions`, `revoked_user_cutoffs`, `api_keys` | `workspaces`, `workspace_members`, `auth_sessions`, `api_keys` | 0001, 0005, 0010, 0042 |
-| **Documents & Chunks** | `documents`, `document_versions`, `document_chunks`, `resume_artifacts`, `resume_sources` | **ALL** (5/5) | 0001, 0005, 0020, 0023 |
-| **Memory System (6 Types)** | `memory_records`, `scale_memory_nodes`, `memory_versions`, `crdt_sync_deltas`, `proactive_proposals` | **ALL** (5/5) | 0001, 0005, 0019, 0020 |
-| **Knowledge Graph** | `entities`, `relationships`, `entity_observations`, `graph_snapshots` | **ALL** (4/4) | 0001, 0005, 0010 |
-| **Career & Applications** | `applications`, `application_stages`, `job_listings`, `interview_prep`, `career_goals` | `applications`, `application_stages`, `interview_prep`, `career_goals` | 0001, 0005, 0010 |
-| **Agent Execution & Loop** | `agent_actions`, `agent_executions`, `agent_approvals`, `loop_checkpoints`, `tool_idempotencies` | **ALL** (5/5) | 0001, 0005, 0019, 0021 |
-| **Connectors & Integrations** | `connectors`, `connector_configs`, `gmail_watches`, `sync_cursors` | **ALL** (4/4) | 0005, 0010, 0036 |
-| **Security, Compliance & Keys** | `provider_keys`, `retention_runs`, `audit_logs`, `legal_holds`, `sovereign_identities`, `verifiable_credentials` | **ALL** (6/6) | 0010, 0019, 0020 |
-| **Enterprise & Billing** | `subscriptions`, `invoices`, `feature_flag_overrides`, `org_teams`, `org_members` | **ALL** (5/5) | 0010, 0020 |
-| **Temporal & Orchestration** | `workflow_executions`, `activity_retries`, `schedule_dispatches` | Monitored | 0038 |
+| Subsystem                       | Tables                                                                                                           | RLS Enforced (42 Total)                                                | Alembic Migration      |
+| :------------------------------ | :--------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------- | :--------------------- |
+| **Core Identity & Workspaces**  | `users`, `workspaces`, `workspace_members`, `tenants`, `auth_sessions`, `revoked_user_cutoffs`, `api_keys`       | `workspaces`, `workspace_members`, `auth_sessions`, `api_keys`         | 0001, 0005, 0010, 0042 |
+| **Documents & Chunks**          | `documents`, `document_versions`, `document_chunks`, `resume_artifacts`, `resume_sources`                        | **ALL** (5/5)                                                          | 0001, 0005, 0020, 0023 |
+| **Memory System (6 Types)**     | `memory_records`, `scale_memory_nodes`, `memory_versions`, `crdt_sync_deltas`, `proactive_proposals`             | **ALL** (5/5)                                                          | 0001, 0005, 0019, 0020 |
+| **Knowledge Graph**             | `entities`, `relationships`, `entity_observations`, `graph_snapshots`                                            | **ALL** (4/4)                                                          | 0001, 0005, 0010       |
+| **Career & Applications**       | `applications`, `application_stages`, `job_listings`, `interview_prep`, `career_goals`                           | `applications`, `application_stages`, `interview_prep`, `career_goals` | 0001, 0005, 0010       |
+| **Agent Execution & Loop**      | `agent_actions`, `agent_executions`, `agent_approvals`, `loop_checkpoints`, `tool_idempotencies`                 | **ALL** (5/5)                                                          | 0001, 0005, 0019, 0021 |
+| **Connectors & Integrations**   | `connectors`, `connector_configs`, `gmail_watches`, `sync_cursors`                                               | **ALL** (4/4)                                                          | 0005, 0010, 0036       |
+| **Security, Compliance & Keys** | `provider_keys`, `retention_runs`, `audit_logs`, `legal_holds`, `sovereign_identities`, `verifiable_credentials` | **ALL** (6/6)                                                          | 0010, 0019, 0020       |
+| **Enterprise & Billing**        | `subscriptions`, `invoices`, `feature_flag_overrides`, `org_teams`, `org_members`                                | **ALL** (5/5)                                                          | 0010, 0020             |
+| **Temporal & Orchestration**    | `workflow_executions`, `activity_retries`, `schedule_dispatches`                                                 | Monitored                                                              | 0038                   |
 
 ---
 

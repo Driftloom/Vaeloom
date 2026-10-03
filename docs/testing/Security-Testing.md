@@ -2,8 +2,9 @@
 
 > **Purpose:** Define security testing practices for Vaeloom **Status:** ✅
 > Implemented **Implementation Status:** ✅ IMPLEMENTED —
-> `apps/api/tests/security/` 233 collected / 170 unique (middleware/test_csrf
-> duplicates per zero-trust audit 2026-08-22 F-02). Matrix pointer:
+> `apps/api/tests/security/` 404 collected as of 2026-10-03 (collect-only; was
+> 233 collected / 170 unique — that F-02 figure is superseded, though the
+> middleware/test_csrf duplicate note still holds). Matrix pointer:
 > `docs/phases/mvp-p13/09-gate-report.md` (95.4 APPROVED) +
 > `docs/phases/mvp-p14/05-test-results.md` +
 > `docs/phases/mvp-p14/06-security-privacy-a11y.md`.

@@ -9,15 +9,15 @@
 >   Security Team **Last Updated:** 2026-09-15
 
 > **WS-D 2026-09-15 — RLS correction:** the F-17 header cited RLS 37/42. RLS is
-> now **42/42** via Alembic 0010/0019/0020 (completed 2026-08-22; see
-> `0020_rls_remaining_5.py:1-18`, `docs/enterprise/Multi-Tenancy.md`).
-> Enforcement: `TenantContext` + `set_rls_session_vars`
-> (`apps/api/src/api/middleware/tenant.py:38`), GUCs `app.tenant_id` /
-> `app.workspace_id` / `app.user_id`, fail-closed (missing GUC ⇒ zero rows).
-> Caveat: the automated test tier runs SQLite where RLS is a no-op, so
-> enforcement is unproven at the test tier — Postgres follow-up required
-> (live-PG RLS test + staging GUC audit). STRIDE analysis below is otherwise
-> unchanged.
+> now **42** via Alembic 0010/0019/0020 (completed 2026-08-22; **44** as of
+> 0063, 2026-10-01; see `0020_rls_remaining_5.py:1-18`,
+> `docs/enterprise/Multi-Tenancy.md`). Enforcement: `TenantContext` +
+> `set_rls_session_vars` (`apps/api/src/api/middleware/tenant.py:38`), GUCs
+> `app.tenant_id` / `app.workspace_id` / `app.user_id`, fail-closed (missing GUC
+> ⇒ zero rows). Caveat: the automated test tier runs SQLite where RLS is a
+> no-op, so enforcement is unproven at the test tier — Postgres follow-up
+> required (live-PG RLS test + staging GUC audit). STRIDE analysis below is
+> otherwise unchanged.
 
 ---
 

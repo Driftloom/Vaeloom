@@ -30,10 +30,11 @@ and a three-replica streaming replication topology. The golden rule across all
 documents: measure before optimizing, verify every backup by restoring it, and
 never modify the schema directly in production.
 
-RLS is enforced on **42/42 tables** (migrations 0010/0019/0020 + `0005_rls.py`;
-`TenantContext` + fail-closed GUCs via `set_rls_session_vars`). Backend tests
-run on SQLite + `NullPool` with a per-test `tmp_path` DB — 2731 tests, 94%
-coverage. Details: [Schema.md](./Schema.md), [Migrations.md](./Migrations.md).
+RLS ENABLE+FORCE+policies on **44 audited tables** (migrations 0010/0019/0020 +
+0063 + `0005_rls.py`; `TenantContext` + fail-closed GUCs via
+`set_rls_session_vars`). Backend tests run on SQLite + `NullPool` with a
+per-test `tmp_path` DB — 2731 tests, 94% coverage. Details:
+[Schema.md](./Schema.md), [Migrations.md](./Migrations.md).
 
 ## What's here
 

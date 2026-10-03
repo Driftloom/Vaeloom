@@ -111,7 +111,7 @@ graph TB
 
 > **WS-D 2026-09-15 — honest self-report retained:** the runtime-status table
 > below is kept as-written (including ⚠️/❌ rows). RLS progress since the
-> 2026-08-16 snapshot: **42/42 via Alembic 0010/0019/0020 (2026-08-22)**,
+> 2026-08-16 snapshot: **42 via Alembic 0010/0019/0020 (2026-08-22)**, now
 > `TenantContext` + `set_rls_session_vars` setting `app.tenant_id` /
 > `app.workspace_id` / `app.user_id` fail-closed — so the "RLS: 4/36" and "GUC
 > never SET" cells are superseded (see `docs/enterprise/Multi-Tenancy.md`);

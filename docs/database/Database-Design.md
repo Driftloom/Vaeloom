@@ -386,7 +386,7 @@ sequenceDiagram
 
 ## RLS / Test Note
 
-Tenant isolation is enforced by RLS on **42/42 tables** (migrations
+Tenant isolation is enforced by RLS on **44 audited tables** (migrations
 0010/0019/0020; `TenantContext` + fail-closed GUCs), not just by
 application-layer `workspace_id` filters. Backend tests run on SQLite +
 `NullPool` with a per-test `tmp_path` DB (2731 tests).

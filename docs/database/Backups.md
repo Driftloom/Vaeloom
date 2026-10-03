@@ -339,7 +339,7 @@ sequenceDiagram
 
 ## RLS / Test Note
 
-Backups capture the RLS-enforced schema (**42/42 tables**, migrations
+Backups capture the RLS-enforced schema (**44 audited tables**, migrations
 0010/0019/0020) including `resume_artifacts` (0023). Restores must re-verify
 policies (`alembic check`). Backend tests run on SQLite + `NullPool` with a
 per-test `tmp_path` DB (2731 tests) — restore drills, not unit tests, validate

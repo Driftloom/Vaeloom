@@ -252,8 +252,8 @@ cost/latency.
   explicit memory correction loop (correction → preference update → future
   retrieval) — feedback ends at approval decision.
 - **Permissions/security:** `TenantMiddleware` sets
-  `app.workspace_id/user_id/tenant_id` + `set_rls_session_vars` (RLS 42/42 via
-  migrations 0010/0019/0020); every memory query filters
+  `app.workspace_id/user_id/tenant_id` + `set_rls_session_vars` (RLS on 44
+  audited tables via migrations 0010/0019/0020); every memory query filters
   `workspace_id/tenant_id`; RAG queries scoped `WHERE workspace_id = :wid` —
   verified.
 - **Scalability/cost/latency:** embeddings on write (one per Memory, 1536 floats

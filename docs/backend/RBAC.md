@@ -373,5 +373,5 @@ curl -X GET "https://api.Vaeloom.ai/v1/users/user_42/roles" \
 - [ABAC.md](./ABAC.md)
 - [`Security/IAM.md`](../Security/IAM.md)
 
-> _Last verified: 2026-09-15 — role model unchanged; DB backstop is RLS 42/42
-> (see Authorization.md)._
+> _Last verified: 2026-09-15 — role model unchanged; DB backstop is RLS (44
+> audited tables) (see Authorization.md)._

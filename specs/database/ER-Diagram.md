@@ -272,9 +272,9 @@ for skill_id in ["ent_skill_python", "ent_skill_react"]:
 
 ## RLS / Test Note
 
-Every tenant-scoped entity above carries an RLS policy (**42/42 tables**,
-migrations 0010/0019/0020; GUCs fail-closed). Backend tests run on SQLite +
-`NullPool` with a per-test `tmp_path` DB (2731 tests).
+Every tenant-scoped entity above carries an RLS policy (**44 audited tables** as
+of `0063`, migrations 0010/0019/0020; GUCs fail-closed). Backend tests run on
+SQLite + `NullPool` with a per-test `tmp_path` DB (2731 tests).
 
 ## Related Documents
 

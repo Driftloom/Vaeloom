@@ -2064,6 +2064,207 @@ paths:
         '429': *id001
       security:
         - BearerAuth: []
+  /api/v1/memories/export:
+    get:
+      tags:
+        - memory
+      summary: Export Memories
+      description: Enterprise memory export for data portability, backups, and migration
+        (CONT-P07).
+      operationId: export_memories_api_v1_memories_export_get
+      parameters:
+        - name: workspace_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+              - type: 'null'
+            description: Workspace ID to export
+            title: Workspace Id
+          description: Workspace ID to export
+        - name: include_superseded
+          in: query
+          required: false
+          schema:
+            type: boolean
+            description: Include superseded historical records
+            default: false
+            title: Include Superseded
+          description: Include superseded historical records
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryExportResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Unauthorized — missing or invalid Bearer JWT access token.
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
+                  detail:
+                    type: string
+                required:
+                  - detail
+        '429': *id001
+      security:
+        - BearerAuth: []
+  /api/v1/memories/import:
+    post:
+      tags:
+        - memory
+      summary: Import Memories
+      description: Enterprise batch import of memories with cryptographic deduplication
+        (CONT-P07).
+      operationId: import_memories_api_v1_memories_import_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemoryImportBatch'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryImportResult'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Unauthorized — missing or invalid Bearer JWT access token.
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
+                  detail:
+                    type: string
+                required:
+                  - detail
+        '429': *id001
+      security:
+        - BearerAuth: []
+  /api/v1/memories/bulk-status:
+    post:
+      tags:
+        - memory
+      summary: Bulk Update Status
+      description: Enterprise bulk status transition (archive, active, delete) across
+        memories.
+      operationId: bulk_update_status_api_v1_memories_bulk_status_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemoryBulkStatusRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryBulkResult'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Unauthorized — missing or invalid Bearer JWT access token.
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
+                  detail:
+                    type: string
+                required:
+                  - detail
+        '429': *id001
+      security:
+        - BearerAuth: []
+  /api/v1/memories/bulk-tag:
+    post:
+      tags:
+        - memory
+      summary: Bulk Update Tags
+      description: Enterprise bulk tag addition/removal across memories.
+      operationId: bulk_update_tags_api_v1_memories_bulk_tag_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemoryBulkTagRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryBulkResult'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Unauthorized — missing or invalid Bearer JWT access token.
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
+                  detail:
+                    type: string
+                required:
+                  - detail
+        '429': *id001
+      security:
+        - BearerAuth: []
   /api/v1/memories/{memory_id}:
     get:
       tags:
@@ -2179,6 +2380,61 @@ paths:
       responses:
         '204':
           description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Unauthorized — missing or invalid Bearer JWT access token.
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
+                  detail:
+                    type: string
+                required:
+                  - detail
+        '429': *id001
+      security:
+        - BearerAuth: []
+  /api/v1/memories/{memory_id}/supersede:
+    post:
+      tags:
+        - memory
+      summary: Supersede Memory
+      description: Supersede an existing memory with immutable revision provenance
+        (ENT-P12).
+      operationId: supersede_memory_api_v1_memories__memory_id__supersede_post
+      parameters:
+        - name: memory_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Memory Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemorySupersedeRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryResponse'
         '422':
           description: Validation Error
           content:
@@ -5773,8 +6029,7 @@ paths:
       tags:
         - documents
       summary: Sync Document To Memory
-      description: Synchronize document content into the workspace second brain /
-        memory store.
+      description: Synchronize document content into the workspace memory store.
       operationId: sync_document_to_memory_api_v1_documents__document_id__sync_memory_post
       parameters:
         - name: document_id
@@ -18781,10 +19036,11 @@ components:
         \ values:\n\n* ``success`` — every rule that ran passed.\n* ``warning`` —\
         \ only soft rules failed; the draft is savable as-is.\n* ``error`` — at least\
         \ one hard rule failed; the create path would reject it.\n* ``not_validated``\
-        \ — no validator exists for this category, or the category\n  itself is unknown.\
-        \ ``violations`` still holds whatever real checks did run\n  (name pattern,\
-        \ duplicate, autonomy). ``detail`` says which and why; a\n  category with\
-        \ no validator never returns a fabricated pass."
+        \ — the category is a real one but no validator exists for\n  it (a connector\
+        \ whose declared type no clause covers). Only the shared\n  draft rules ran;\
+        \ ``validated_source`` is ``none`` and ``detail`` says so.\n  A category with\
+        \ no validator never returns a fabricated pass. An unknown\n  category is\
+        \ not this state — it is an ``error`` from ``CATEGORY-VALID``."
     CapabilityResponse:
       properties:
         id:
@@ -21912,6 +22168,79 @@ components:
       required:
         - user
       title: MeResponse
+    MemoryBulkResult:
+      properties:
+        success_count:
+          type: integer
+          title: Success Count
+        failed_count:
+          type: integer
+          title: Failed Count
+        affected_ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          title: Affected Ids
+      type: object
+      required:
+        - success_count
+        - failed_count
+        - affected_ids
+      title: MemoryBulkResult
+    MemoryBulkStatusRequest:
+      properties:
+        memory_ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          minItems: 1
+          title: Memory Ids
+        status:
+          type: string
+          title: Status
+          description: Target status, e.g. active, archived, deleted
+        workspace_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Workspace Id
+      type: object
+      required:
+        - memory_ids
+        - status
+      title: MemoryBulkStatusRequest
+    MemoryBulkTagRequest:
+      properties:
+        memory_ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          minItems: 1
+          title: Memory Ids
+        add_tags:
+          items:
+            type: string
+          type: array
+          title: Add Tags
+        remove_tags:
+          items:
+            type: string
+          type: array
+          title: Remove Tags
+        workspace_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Workspace Id
+      type: object
+      required:
+        - memory_ids
+      title: MemoryBulkTagRequest
     MemoryCreate:
       properties:
         type:
@@ -22015,6 +22344,197 @@ components:
       required:
         - type
       title: MemoryCreate
+    MemoryExportItem:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        type:
+          type: string
+          title: Type
+        status:
+          type: string
+          title: Status
+        title:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Title
+        summary:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Summary
+        content:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Content
+        content_hash:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Content Hash
+        size:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Size
+        tags:
+          items:
+            type: string
+          type: array
+          title: Tags
+        metadata:
+          additionalProperties: true
+          type: object
+          title: Metadata
+        supersedes_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Supersedes Id
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+        - id
+        - type
+        - status
+        - created_at
+        - updated_at
+      title: MemoryExportItem
+    MemoryExportResponse:
+      properties:
+        export_version:
+          type: string
+          title: Export Version
+          default: '1.0'
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        exported_at:
+          type: string
+          format: date-time
+          title: Exported At
+        total_count:
+          type: integer
+          title: Total Count
+        memories:
+          items:
+            $ref: '#/components/schemas/MemoryExportItem'
+          type: array
+          title: Memories
+      type: object
+      required:
+        - workspace_id
+        - exported_at
+        - total_count
+        - memories
+      title: MemoryExportResponse
+    MemoryImportBatch:
+      properties:
+        workspace_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Workspace Id
+        deduplicate_by_hash:
+          type: boolean
+          title: Deduplicate By Hash
+          default: true
+        memories:
+          items:
+            $ref: '#/components/schemas/MemoryImportItem'
+          type: array
+          minItems: 1
+          title: Memories
+      type: object
+      required:
+        - memories
+      title: MemoryImportBatch
+    MemoryImportItem:
+      properties:
+        type:
+          type: string
+          title: Type
+          default: note
+        domain:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Domain
+        title:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Title
+        summary:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Summary
+        content:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Content
+        tags:
+          items:
+            type: string
+          type: array
+          title: Tags
+        metadata:
+          additionalProperties: true
+          type: object
+          title: Metadata
+        source_type:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Source Type
+          default: import
+        source_label:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Source Label
+      type: object
+      title: MemoryImportItem
+    MemoryImportResult:
+      properties:
+        imported_count:
+          type: integer
+          title: Imported Count
+        skipped_count:
+          type: integer
+          title: Skipped Count
+        error_count:
+          type: integer
+          title: Error Count
+        imported_ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          title: Imported Ids
+      type: object
+      required:
+        - imported_count
+        - skipped_count
+        - error_count
+        - imported_ids
+      title: MemoryImportResult
     MemoryResponse:
       properties:
         id:
@@ -22175,6 +22695,22 @@ components:
             - type: 'null'
           title: Threshold
           default: 0.7
+        strategy:
+          type: string
+          enum:
+            - hybrid
+            - vector
+            - keyword
+          title: Strategy
+          description: 'Retrieval strategy: hybrid (RRF reciprocal rank fusion), vector,
+            or keyword'
+          default: hybrid
+        include_superseded:
+          type: boolean
+          title: Include Superseded
+          description: If true, includes superseded historical memories in search
+            results
+          default: false
       type: object
       required:
         - query
@@ -22210,6 +22746,63 @@ components:
         - type
         - count
       title: MemorySummary
+    MemorySupersedeRequest:
+      properties:
+        reason:
+          type: string
+          minLength: 2
+          title: Reason
+          description: Audit reason for superseding this memory
+        title:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Title
+        summary:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Summary
+        content:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Content
+        type:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Type
+        domain:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Domain
+        tags:
+          anyOf:
+            - items:
+                type: string
+              type: array
+            - type: 'null'
+          title: Tags
+        metadata:
+          anyOf:
+            - additionalProperties: true
+              type: object
+            - type: 'null'
+          title: Metadata
+        confidence:
+          anyOf:
+            - type: number
+              maximum: 1.0
+              minimum: 0.0
+            - type: 'null'
+          title: Confidence
+          default: 1.0
+      type: object
+      required:
+        - reason
+      title: MemorySupersedeRequest
     MemoryUpdate:
       properties:
         type:

@@ -409,4 +409,4 @@ Vaeloom abac test --context '{"user.department":"engineering","action":"read"}' 
 - [`Security/IAM.md`](../Security/IAM.md)
 
 > _Last verified: 2026-09-15 — ABAC evaluation unchanged; see Authorization.md
-> for the RLS enforcement note (42/42)._
+> for the RLS enforcement note (44 audited tables)._

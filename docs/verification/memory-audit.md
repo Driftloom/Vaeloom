@@ -11,12 +11,12 @@ persistent facts).
 
 ## 2. Memory Tier Classification & Storage Engines
 
-| Memory Tier                 | Storage Backend                                | Scope & Tenancy          | Persistence Model               | RLS & Security Policy          |
-| :-------------------------- | :--------------------------------------------- | :----------------------- | :------------------------------ | :----------------------------- |
-| **Tier 1: Working Memory**  | Redis / In-Memory Cache                        | Session / Ephemeral Turn | Key-Value TTL (1 hr)            | Workspace prefix key isolation |
-| **Tier 2: Semantic Vector** | PostgreSQL `pgvector` / SQLite mock            | Workspace & Tenant       | `embeddings`, `memories` tables | 42/42 RLS policies enforced    |
-| **Tier 2: Knowledge Graph** | Relational Graph (`entities`, `relationships`) | Workspace Level          | Persistent SQL                  | Workspace RLS + scoped queries |
-| **Tier 2: Document Index**  | `documents`, `document_chunks`                 | Workspace Level          | Persistent SQL                  | Workspace RLS + scoped queries |
+| Memory Tier                 | Storage Backend                                | Scope & Tenancy          | Persistence Model               | RLS & Security Policy             |
+| :-------------------------- | :--------------------------------------------- | :----------------------- | :------------------------------ | :-------------------------------- |
+| **Tier 1: Working Memory**  | Redis / In-Memory Cache                        | Session / Ephemeral Turn | Key-Value TTL (1 hr)            | Workspace prefix key isolation    |
+| **Tier 2: Semantic Vector** | PostgreSQL `pgvector` / SQLite mock            | Workspace & Tenant       | `embeddings`, `memories` tables | RLS policies on 44 audited tables |
+| **Tier 2: Knowledge Graph** | Relational Graph (`entities`, `relationships`) | Workspace Level          | Persistent SQL                  | Workspace RLS + scoped queries    |
+| **Tier 2: Document Index**  | `documents`, `document_chunks`                 | Workspace Level          | Persistent SQL                  | Workspace RLS + scoped queries    |
 
 ---
 

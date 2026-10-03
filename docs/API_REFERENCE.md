@@ -3,7 +3,7 @@
 Base URL: `https://api.vaeloom.dev` (production) or `http://localhost:8000`
 (local)
 
-Version: `0.2.0` — **254 paths / 315 operations**
+Version: `0.2.0` — **284 paths / 351 operations** (live, 2026-10-03)
 
 - **Machine-readable contract (SPEC):**
   [`specs/api/openapi.yaml`](../specs/api/openapi.yaml) (regen via
@@ -323,6 +323,21 @@ Third-party plugin management with sandboxed execution.
 | Method | Path                                 | Description       |
 | ------ | ------------------------------------ | ----------------- |
 | POST   | `/api/v1/chat/workspaces/{wid}/chat` | Send chat message |
+
+#### Conversations (server-side chat history)
+
+Added 2026-10-01 by migration `0063` (`conversations` + `chat_messages`, both
+RLS `ENABLE` + `FORCE` + workspace-scoped policies). Before this, chat history
+existed only in browser `localStorage`; the browser key now survives only as a
+bounded write-behind outbox plus a one-time migration of pre-existing history.
+
+| Method               | Path                                                                         | Description                        |
+| -------------------- | ---------------------------------------------------------------------------- | ---------------------------------- |
+| GET / POST           | `/api/v1/workspaces/{workspace_id}/conversations`                            | List / create conversations        |
+| GET / PATCH / DELETE | `/api/v1/workspaces/{workspace_id}/conversations/{conversation_id}`          | Get / rename / delete conversation |
+| POST / DELETE        | `/api/v1/workspaces/{workspace_id}/conversations/{conversation_id}/messages` | Append / delete a message          |
+
+3 paths / 7 operations (measured from live `app.openapi()` 2026-10-03).
 
 ### Recommendations
 

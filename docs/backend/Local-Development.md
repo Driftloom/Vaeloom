@@ -84,10 +84,13 @@ cd apps/api; uv run --project apps/api python -m pytest -q -o addopts=""
 # Default: -n 4 (~1.2 GB)
 ```
 
-2731 tests, 94% coverage, security 233/233. Tests use SQLite + `NullPool` with a
-per-test `tmp_path` DB; `mock_llm` + `mock_connector_test` are autouse fixtures
-(`tests/conftest.py`). Full suite has a known xdist hang (finding 39) — see
-[Troubleshooting](./Troubleshooting.md).
+4620 tests collected, coverage 94% (unverified since 2026-09-22), security 404
+collected (was 233/233 in the superseded 2026-08-22 F-02 audit). Tests use
+SQLite
+
+- `NullPool` with a per-test `tmp_path` DB; `mock_llm` + `mock_connector_test`
+  are autouse fixtures (`tests/conftest.py`). Full suite has a known xdist hang
+  (finding 39) — see [Troubleshooting](./Troubleshooting.md).
 
 ## 6. Migrations
 
@@ -102,9 +105,10 @@ stays on `DATABASE__URL`. See
 
 ## 7. OpenAPI Sync
 
-After any router change: `python scripts/gen_openapi.py` → verify 241 paths →
+After any router change: `python scripts/gen_openapi.py` → verify 284 paths →
 update [API-Reference](./API-Reference.md). Full table in
 [API-Overview](./API-Overview.md).
 
-> _Last verified: 2026-09-21 — `openapi.yaml` 241 paths / 294 ops, service
-> version 0.2.0._
+> _Last verified: 2026-10-03 — live `app.openapi()` 284 paths / 351 ops; the
+> committed `openapi.yaml` artefacts are 279 / 346 and are missing 5
+> `/api/v1/memories/*` paths, so a regen is outstanding. Service version 0.2.0._

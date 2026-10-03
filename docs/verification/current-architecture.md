@@ -37,7 +37,7 @@ flowchart TD
     end
 
     subgraph Storage ["Persistence Layer"]
-        PG["PostgreSQL 16 (42/42 RLS)"]
+        PG["PostgreSQL 16 (RLS 44 audited tables)"]
         Redis["Redis 7 (Cache & Rates)"]
         Temporal["Temporal Server (Workflows & Activities)"]
     end

@@ -392,10 +392,10 @@ sequenceDiagram
 
 ## RLS / Test Note
 
-RLS is enforced on **42/42 tables** (migrations 0010/0019/0020; GUCs
-fail-closed). `EXPLAIN` plans on tenant queries should show policy-filtered
-index scans. Backend tests run on SQLite + `NullPool` with a per-test `tmp_path`
-DB (2731 tests).
+RLS ENABLE+FORCE+policies on **44 audited tables** (migrations 0010/0019/0020 +
+0063; GUCs fail-closed). `EXPLAIN` plans on tenant queries should show
+policy-filtered index scans. Backend tests run on SQLite + `NullPool` with a
+per-test `tmp_path` DB (2731 tests).
 
 ## Related Documents
 

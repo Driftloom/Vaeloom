@@ -355,4 +355,4 @@ curl -X GET "https://api.Vaeloom.ai/v1/workspaces" \
 - [`/docs/Vaeloom-Complete-Documentation.md#132-api-structure`](../../docs/Vaeloom-Complete-Documentation.md#132-api-structure)
 
 > _Last verified: 2026-09-21 — principles unchanged; endpoint inventory lives in
-> API-Reference.md (241 paths / 294 ops)._
+> API-Reference.md (284 paths / 351 ops live 2026-10-03)._

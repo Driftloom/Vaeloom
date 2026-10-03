@@ -10,9 +10,11 @@ All request handling lives in `src/api/`: routers in `src/api/routers/`,
 business logic in `src/api/services/` (82 files), middleware in
 `src/api/middleware/` (logger → auth → permissions → rate limit → validation).
 Docs: `docs/backend/` (start at
-[`docs/backend/API-Reference.md`](../../docs/backend/API-Reference.md), 241
-paths / 294 ops, regen 2026-09-21). Migrations: `alembic/versions/` (42
-versions, RLS 42/42).
+[`docs/backend/API-Reference.md`](../../docs/backend/API-Reference.md), 284
+paths / 351 ops live per `app.openapi()` 2026-10-03; the generated
+`openapi.yaml` artefacts are 279 / 346 and need a regen). Migrations:
+`alembic/versions/` (**63** versions, highest `0063`; RLS FORCE+policies on 44
+audited tables as of 0063).
 
 ## Environment (correct names)
 
@@ -101,4 +103,4 @@ Enterprise-gated (`enterprise_routes_enabled=true`, default off — excluded fro
 `recommendations`, `webhooks`, `admin_console`, `scim`, `feature_flags`.
 
 Regen the spec after router changes: `python scripts/gen_openapi.py` (repo root)
-→ 254 paths expected.
+→ 284 paths / 351 ops expected.

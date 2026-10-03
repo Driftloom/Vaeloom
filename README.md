@@ -30,10 +30,11 @@ specialized, permission-scoped agents that:
 - **Apply** — job search, company insights, and application tracking agents with
   human-in-the-loop approval gates.
 
-Enterprise track adds multi-tenancy (RLS 42/42, fail-closed), SSO
-(Google/Microsoft), ABAC/RBAC, audit log with tamper detection, and SOC
-2-oriented controls. See `docs/vaeloom-mvp-e2e-enterprise-hardened.md`
-(governing) and the [Roadmap](docs/ROADMAP.md).
+Enterprise track adds multi-tenancy (RLS FORCE+policies on 44 audited tables,
+fail-closed), SSO (Google/Microsoft), ABAC/RBAC, audit log with tamper
+detection, and SOC 2-oriented controls. See
+`docs/vaeloom-mvp-e2e-enterprise-hardened.md` (governing) and the
+[Roadmap](docs/ROADMAP.md).
 
 ## Monorepo Map
 
@@ -42,7 +43,7 @@ Enterprise track adds multi-tenancy (RLS 42/42, fail-closed), SSO
 | Path            | What                                                                                                                                        |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `apps/web`      | Next.js 15 web app (18+ wired pages, SWR caching, dark/light mode)                                                                          |
-| `apps/api`      | FastAPI backend (monolith-with-modules, 254 OpenAPI paths / 315 ops)                                                                        |
+| `apps/api`      | FastAPI backend (monolith-with-modules, 284 OpenAPI paths / 351 ops)                                                                        |
 | `packages/`     | Shared libs: `ui-kit`, `shared-types`, `eslint-config`, `tsconfig`, `observability`, `queue`, `plugin-sdk`, `python-common`, `service-auth` |
 | `integrations/` | calendar, email, github, google-drive, notion, slack                                                                                        |
 | `connectors/`   | graphql, mcp, rest adapters (incl. native MCP bridge `mcp__Server__Tool`)                                                                   |
@@ -51,9 +52,10 @@ Enterprise track adds multi-tenancy (RLS 42/42, fail-closed), SSO
 | `infra/`        | kubernetes manifests, terraform modules, docker                                                                                             |
 | `docs/`         | ~1033 files — start at [docs/README](docs/README.md)                                                                                        |
 
-Backend tests: ~2731 pytest (~94% coverage, security 233/233). API spec:
-`docs/backend/openapi.yaml` (v0.2.0, 254 paths / 315 ops, regen 2026-09-21).
-ADRs: 44 (`docs/adr/ADR-001..ADR-044`).
+Backend tests: 4620 pytest collected, security 404 collected (2026-10-03
+collect-only; ~94% coverage last measured 2026-09-22). API spec:
+`docs/backend/openapi.yaml` (v0.2.0, 279 paths / 346 ops committed; 284 / 351
+live 2026-10-03). ADRs: 44 (`docs/adr/ADR-001..ADR-044`).
 
 ## Quickstart
 

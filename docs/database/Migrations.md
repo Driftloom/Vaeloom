@@ -136,7 +136,7 @@ graph TD
 
 ---
 
-## Migration Inventory (42 versions, `apps/api/alembic/versions/`)
+## Migration Inventory (63 revisions, `apps/api/alembic/versions/`)
 
 | Range                    | Content                                                                                                           |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------- |
@@ -148,7 +148,7 @@ graph TD
 | `0012`–`0015`            | RLS policy fixes (correct columns, memories workspace-only), FK cascades + indexes                                |
 | `0016`–`0018`            | Provider-keys BYOK, events workspace scoping, graph-memory end-to-end                                             |
 | `0019`                   | RLS + sanitize hardening (**+3 tables**)                                                                          |
-| `0020`                   | RLS remaining 5 (**42/42 complete**)                                                                              |
+| `0020`                   | RLS remaining 5 (**42 tables, the 2026-08-22 total**)                                                             |
 | `0021`–`0022`            | Retention runs, agent schedules last-run                                                                          |
 | `0023`                   | **`resume_artifacts`** (compiled PDF/DOCX/HTML bytes, workspace RLS)                                              |
 | `0024`–`0026`            | Resume sources, knowledge-graph workspace scoping, tsvector documents                                             |
@@ -158,9 +158,10 @@ graph TD
 | `0036`–`0040`            | Least-privilege RLS, shared revocation, scoped HTTP idempotency, claims + checkpoint tenant, worker scope helpers |
 | `0041`–`0042`            | Gmail watch token, users tenant_id                                                                                |
 
-RLS total: **42/42** (34 via 0010 + 3 via 0019 + 5 via 0020). GUCs fail-closed
-via `set_rls_session_vars` (`database.py:30`); `TenantContext` supplies
-`app.workspace_id` / `app.user_id` / `app.tenant_id` per request.
+RLS total as of `0020`: **42 tables** (34 via 0010 + 3 via 0019 + 5 via 0020);
+**44** after `0063` added `conversations` + `chat_messages` (2026-10-01). GUCs
+fail-closed via `set_rls_session_vars` (`database.py:30`); `TenantContext`
+supplies `app.workspace_id` / `app.user_id` / `app.tenant_id` per request.
 
 ## Dual-URL Least-Privilege (OP-RLS-01)
 

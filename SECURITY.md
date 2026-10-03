@@ -12,8 +12,10 @@ versions are not supported and users are strongly advised to upgrade.
 
 ## Implemented Controls (0.2.0)
 
-- **Multi-tenancy:** 42/42 Row-Level Security policies, fail-closed (tenant GUCs
-  always SET via `TenantContext` + `set_rls_session_vars`).
+- **Multi-tenancy:** Row-Level Security FORCE + policies on 44 audited tables
+  (42 as of 2026-08-22, +conversations/chat_messages in 0063 2026-10-01),
+  fail-closed (tenant GUCs always SET via `TenantContext` +
+  `set_rls_session_vars`).
 - **CSRF:** Redis-backed CSRF protection; auth routes exempt via
   `SKIP_PREFIXES`, `/csrf-token` in `PUBLIC_PATHS`.
 - **Network:** IP-allowlist middleware always mounted (no-op when empty),

@@ -44,8 +44,8 @@ regional residency `IN/EU/US` or per-tenant failure isolation required by
   (`apps/api/src/api/database.py:28-31`). PgBouncer fronts the _same_ single
   backend in transaction mode (`docker-compose.yml:160-178`) — pooling, not
   isolation.
-- Actual tenant isolation is **42/42 RLS** via transaction-scoped GUCs
-  (`app.tenant_id/workspace_id/user_id`), re-applied after commit
+- Actual tenant isolation is **RLS on 44 audited tables** via transaction-scoped
+  GUCs (`app.tenant_id/workspace_id/user_id`), re-applied after commit
   (`apps/api/src/api/database.py:33-54`) and set per-request by middleware —
   logical separation inside one database, with a single failure and noisy-
   neighbour domain.

@@ -39,7 +39,7 @@ middleware, so it never passes through the unified handler:
 ```
 
 The regenerated OpenAPI spec documents exactly this shape (+ `Retry-After` and
-`X-RateLimit-*` headers) on 292/294 operations — spec matches runtime.
+`X-RateLimit-*` headers) on 351/351 operations — spec matches runtime.
 `docs/backend/Rate-Limiting.md:100-109` additionally shows a third variant
 (`{"error": {"code": "RATE_LIMITED", "message": ..., "retry_after": ...}}`) that
 matches NEITHER runtime path — that doc section is aspirational/drifted and is

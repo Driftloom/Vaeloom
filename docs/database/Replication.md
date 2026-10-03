@@ -399,9 +399,9 @@ sequenceDiagram
 
 ## RLS / Test Note
 
-RLS policies (**42/42 tables**, migrations 0010/0019/0020) replicate with the
-schema; replicas enforce the same fail-closed GUCs. Backend tests run on
-SQLite + `NullPool` with a per-test `tmp_path` DB (2731 tests).
+RLS policies (**44 audited tables**, migrations 0010/0019/0020 + 0063) replicate
+with the schema; replicas enforce the same fail-closed GUCs. Backend tests run
+on SQLite + `NullPool` with a per-test `tmp_path` DB (2731 tests).
 
 ## Related Documents
 

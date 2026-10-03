@@ -26,7 +26,7 @@ If any Vaeloom link is wrong, this corpus breaks it — without over-collecting 
 
 **Key findings:**
 
-- **DB:** 44 ORM classes + 25 migrations, RLS 42/42 fail-closed `0025` (`app.workspace_id`, `app.user_id`, `app.tenant_id`). `memories.embedding Vector(1536)` mocked as `Text` in SQLite; `EncryptedString` for `memories.content`.
+- **DB:** 44 ORM classes + 25 migrations, RLS on 44 audited tables, fail-closed `0025` (`app.workspace_id`, `app.user_id`, `app.tenant_id`). `memories.embedding Vector(1536)` mocked as `Text` in SQLite; `EncryptedString` for `memories.content`.
 - **Upload:** `document_service.upload` 10MB guard, `EXTENSION_MAP` 17 exts, inline `LargeBinary` (not yet `storage_service` S3).
 - **Parsers:** Only 5 (`PDF,MD,DOCX,JPG,PNG`) — drift vs `document_service` 17 vs `pipeline._infer_doc_type` 13 vs `routers/documents.py` 13. `TXT/CSV/XLSX/PPTX` → `UnsupportedFormatError` (F-40).
 - **OCR:** `ImageParser` hardcoded `confidence=0.75`, not from `image_to_data`.

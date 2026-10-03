@@ -65,7 +65,8 @@ Implementation:
 The Decision above states "RLS policies cover 4/34 tables … Other tables rely on
 application-level filtering." That count is **STALE**.
 
-- **Current state (2026-08-22): RLS 42/42** — 34 via Alembic 0010 + 3 via 0019
+- **Current state: RLS on 44 audited tables** (42 as of 2026-08-22; +2 in
+  `0063`) — 34 via Alembic 0010 + 3 via 0019
   - 5 via 0020 (`apps/api/alembic/versions/0020_rls_remaining_5.py:1-18`
     completes coverage from 37/42; `0023_resume_artifacts.py:8` notes new tables
     follow the same workspace-RLS pattern).

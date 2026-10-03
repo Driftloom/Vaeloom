@@ -361,10 +361,10 @@ sequenceDiagram
 
 ## RLS / Test Note
 
-RLS is enforced on **42/42 tables** (migrations 0010/0019/0020); keep
-`(workspace_id, …)` / `(tenant_id, …)` leading columns so policies stay
-index-backed. Backend tests run on SQLite + `NullPool` with a per-test
-`tmp_path` DB (2731 tests).
+RLS FORCE + policies on **44 audited tables** (migrations 0010/0019/0020, plus
+`conversations`/`chat_messages` in `0063`); keep `(workspace_id, …)` /
+`(tenant_id, …)` leading columns so policies stay index-backed. Backend tests
+run on SQLite + `NullPool` with a per-test `tmp_path` DB (2731 tests).
 
 ## Related Documents
 

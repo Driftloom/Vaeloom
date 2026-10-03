@@ -1,15 +1,15 @@
 # Vaeloom Roadmap
 
 > **Last updated:** 2026-09-15 — **Owner:** Product + Platform Current release:
-> **0.2.0** (OpenAPI 254 paths / 315 ops, 44 ADRs, RLS 42/42). MVP track P00–P21
-> complete; CONT track complete through P04; ENT track not started. Execution
-> status lives in the 66-phase prompts overlay
+> **0.2.0** (OpenAPI 284 paths / 351 ops live, 45 ADRs, RLS on 44 audited
+> tables). MVP track P00–P21 complete; CONT track complete through P04; ENT
+> track not started. Execution status lives in the 66-phase prompts overlay
 > (`docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/EXECUTION-STATUS.md`).
 
 ## Next: SOC 2 Type I
 
 - Freeze control narratives (access, change, backup, incident) against the
-  `0.2.0` implementation: RLS 42/42 evidence, audit-log tamper detection,
+  `0.2.0` implementation: RLS 44-table evidence, audit-log tamper detection,
   API-key rotation records, CSRF/IP-allowlist config.
 - Close audit-owned gaps first: empty `testing/smoke|security|chaos|fuzz`
   suites, unmeasured coverage/WCAG/perf claims (EXC-P14-01..03, P15 owns).

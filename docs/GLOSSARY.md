@@ -20,13 +20,13 @@
 
 ## Data & Tenancy
 
-| Term        | Definition                                                                                                                                     |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| GUC         | Grand Unified Configuration — Postgres session variable (`SET app.workspace_id = ...`); all RLS policies read GUCs and fail closed when unset. |
-| NullPool    | SQLAlchemy pool class used in tests so each test gets an isolated `tmp_path` SQLite DB.                                                        |
-| pgvector    | Postgres extension for embedding storage and vector similarity search.                                                                         |
-| RLS         | Row-Level Security — Postgres policies isolating tenant rows; Vaeloom is **42/42 done** (34 via migration 0010, +3 via 0019, +5 via 0020).     |
-| Fail-closed | Secure default: when tenant GUCs are missing, queries return nothing instead of everything.                                                    |
+| Term        | Definition                                                                                                                                                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GUC         | Grand Unified Configuration — Postgres session variable (`SET app.workspace_id = ...`); all RLS policies read GUCs and fail closed when unset.                                                                                                    |
+| NullPool    | SQLAlchemy pool class used in tests so each test gets an isolated `tmp_path` SQLite DB.                                                                                                                                                           |
+| pgvector    | Postgres extension for embedding storage and vector similarity search.                                                                                                                                                                            |
+| RLS         | Row-Level Security — Postgres policies isolating tenant rows; Vaeloom audits **44 tables** (34 via migration 0010, +3 via 0019, +5 via 0020, + conversations/chat_messages via 0063). The enforced invariant is all-tables, checked by 0060/0063. |
+| Fail-closed | Secure default: when tenant GUCs are missing, queries return nothing instead of everything.                                                                                                                                                       |
 
 ## AI / Agents
 
@@ -76,7 +76,7 @@
 | camelCase / snake_case   | Backend serializes `access_token`; frontend expects `accessToken` — converted by `transformKeys()` in `api.ts`/`api-client.ts`. Any new client needs the same.                                                |
 | CSRF                     | Cross-site request forgery protection — Redis backend; exempt paths are explicit in `SKIP_PATHS` (unauthenticated auth entry points + `/csrf-token`); the old blanket `/api/v1/auth` prefix skip was removed. |
 | Enterprise-gated routers | 10 routers excluded unless `enterprise_routes_enabled` — by design, not missing coverage.                                                                                                                     |
-| OpenAPI spec             | `docs/backend/openapi.yaml` — v0.2.0, **254 paths / 315 ops** (regen 2026-09-21), regen via `scripts/gen_openapi.py`.                                                                                         |
+| OpenAPI spec             | `docs/backend/openapi.yaml` — v0.2.0, **279 paths / 346 ops** in the committed artefact; **284 / 351** live (2026-10-03), regen via `scripts/gen_openapi.py`.                                                 |
 | PUBLIC_PATHS             | Auth-middleware allowlist (`middleware/auth.py`); includes `/csrf-token`.                                                                                                                                     |
 | SKIP_PREFIXES            | CSRF-exempt prefixes (`middleware/csrf.py`); includes `/api/v1/auth`.                                                                                                                                         |
 | SSE                      | Server-Sent Events — streaming transport for `POST /agents/{id}/execute?stream=true`.                                                                                                                         |

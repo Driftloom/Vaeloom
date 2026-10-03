@@ -111,6 +111,6 @@ loop.py next). Deadlock? Delegation-chain detection; supervisor DAG bounded.
 Resume after failure? Envelope is serializable; durable resume needs Temporal.
 Model failure? Fallback chain recorded. Self-modification without eval? Registry
 status lifecycle; no auto-promote path exists. Cross-tenant leak? Workspace
-binding at filter + validate + RLS 42/42. Unlimited spend? Envelope budgets +
-spend/quota gate in loop.py + pre-call estimate. Explainability? Manifest +
-snapshot + approval HMAC + audit trail.
+binding at filter + validate + RLS (44 audited tables). Unlimited spend?
+Envelope budgets + spend/quota gate in loop.py + pre-call estimate.
+Explainability? Manifest + snapshot + approval HMAC + audit trail.

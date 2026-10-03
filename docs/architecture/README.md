@@ -104,9 +104,9 @@ graph TD
 6. **Monolithic backend** — `apps/api` (FastAPI) handles all API and AI logic in
    a single service
 7. **Multi-tenancy & Strict Isolation** — PostgreSQL Row-Level Security (RLS)
-   enforced across 42/42 tables, TenantMiddleware workspace/user GUC binding,
-   and fail-closed tenant scoping across all memory, agent, and document
-   operations.
+   enforced across 44 audited tables, TenantMiddleware workspace/user GUC
+   binding, and fail-closed tenant scoping across all memory, agent, and
+   document operations.
 
 ## Common Mistakes
 
@@ -229,6 +229,7 @@ Vaeloom arch diagram --format mermaid --output arch.mmd
 
 - [System Architecture](../02-system-architecture.md) — Six-layer system
   architecture overview
-- [Architecture Decision Records](../adr/README.md) — 44 architectural decision records (ADR-001..ADR-044)
+- [Architecture Decision Records](../adr/README.md) — 44 architectural decision
+  records (ADR-001..ADR-044)
 - [Enterprise Architecture](../Enterprise/Enterprise-Architecture.md) —
   Multi-tenant architecture
