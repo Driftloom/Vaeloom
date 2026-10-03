@@ -18,17 +18,32 @@ class WorkspaceService:
         await db.refresh(workspace)
         return WorkspaceResponse.model_validate(workspace)
 
-    async def list_for_user(self, user_id: str, db=None):
+    async def list_for_user(self, user_id: str, db=None, limit: int | None = None, offset: int = 0):
+        items, _ = await self.list_and_count_for_user(user_id=user_id, db=db, limit=limit, offset=offset)
+        return items
+
+    async def list_and_count_for_user(self, user_id: str, db=None, limit: int | None = None, offset: int = 0):
+        from sqlalchemy import func
         uid = uuid.UUID(user_id)
         member_subquery = select(WorkspaceUser.workspace_id).where(WorkspaceUser.user_id == uid)
-        result = await db.execute(
+        base = (
             select(Workspace)
             .where(or_(Workspace.user_id == uid, Workspace.id.in_(member_subquery)))
-            .order_by(Workspace.created_at.desc())
             .distinct()
         )
+        count_stmt = select(func.count()).select_from(base.subquery())
+        total_res = await db.execute(count_stmt)
+        total = total_res.scalar() or 0
+
+        paged_query = base.order_by(Workspace.created_at.desc())
+        if offset:
+            paged_query = paged_query.offset(offset)
+        if limit is not None:
+            paged_query = paged_query.limit(limit)
+
+        result = await db.execute(paged_query)
         workspaces = result.scalars().all()
-        return [WorkspaceResponse.model_validate(w) for w in workspaces]
+        return [WorkspaceResponse.model_validate(w) for w in workspaces], total
 
     async def find_by_id(self, workspace_id: str, user_id: str, db=None):
         wid = uuid.UUID(workspace_id)

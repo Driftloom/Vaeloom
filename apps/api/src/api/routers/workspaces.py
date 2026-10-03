@@ -32,12 +32,13 @@ async def list_workspaces(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     user_id = current_user.get("sub")
-    workspaces = await workspace_service.list_for_user(user_id=user_id, db=db)
-    total = len(workspaces)
+    workspaces, total = await workspace_service.list_and_count_for_user(
+        user_id=user_id, db=db, limit=limit, offset=offset
+    )
     response.headers["X-Total-Count"] = str(total)
     response.headers["X-Limit"] = str(limit)
     response.headers["X-Offset"] = str(offset)
-    return workspaces[offset : offset + limit]
+    return workspaces
 
 
 @router.get("/{workspace_id}", response_model=WorkspaceResponse)

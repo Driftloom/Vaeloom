@@ -85,18 +85,29 @@ class BullMQWorker:
         self._handlers[job_type] = handler
 
     async def _recover_active_jobs(self, r: redis.Redis) -> None:
-        """On worker startup, check for orphaned jobs left in the active queue by crashed workers."""
+        """On worker startup, check for orphaned jobs left in the active queue by crashed workers.
+        
+        Guarded by lease check (DIST-01 / REM-02): only recovers jobs whose lease has expired (>300s)
+        or is absent. Running peer workers holding active leases are protected against job theft.
+        """
         try:
             if hasattr(r, "lrange"):
                 active_jobs = await r.lrange(self._active_key, 0, -1)
                 if active_jobs:
-                    logger.warning("Recovering %d orphaned active job(s) from crashed workers", len(active_jobs))
                     for job_id in active_jobs:
-                        if hasattr(r, "lrem"):
-                            removed = await r.lrem(self._active_key, 1, job_id)
-                            if removed and hasattr(r, "rpush"):
-                                await r.rpush(self._wait_key, job_id)
-                                logger.info("Orphaned job %s re-queued to wait list", job_id)
+                        lease_key = f"{self._job_key(job_id)}:lease"
+                        has_lease = False
+                        if hasattr(r, "get"):
+                            try:
+                                has_lease = bool(await r.get(lease_key))
+                            except Exception:
+                                has_lease = False
+                        if not has_lease:
+                            if hasattr(r, "lrem"):
+                                removed = await r.lrem(self._active_key, 1, job_id)
+                                if removed and hasattr(r, "rpush"):
+                                    await r.rpush(self._wait_key, job_id)
+                                    logger.warning("Recovered orphaned job %s (no active lease) to wait list", job_id)
         except Exception:
             logger.debug("Active queue recovery failed", exc_info=True)
 
@@ -168,7 +179,15 @@ class BullMQWorker:
         """Fetch, process, and finalize a single job (with retry/backoff)."""
         r = await self._get_redis()
         job_key = self._job_key(job_id)
+        lease_key = f"{job_key}:lease"
         job_data: dict[str, Any] = {}
+
+        # Acquire processing lease to protect job from theft by restarting peers
+        if hasattr(r, "set"):
+            try:
+                await r.set(lease_key, str(os.getpid()), ex=300)
+            except Exception:
+                pass
 
         try:
             raw = await r.hgetall(job_key)
@@ -250,6 +269,12 @@ class BullMQWorker:
                 })
                 await r.zadd(self._failed_key, {job_id: attempts})
                 logger.error("Job %s dead-lettered after %d attempts", job_id, attempts)
+        finally:
+            if hasattr(r, "delete"):
+                try:
+                    await r.delete(lease_key)
+                except Exception:
+                    pass
 
     async def _drain(self) -> None:
         """Wait for active tasks to finish on shutdown."""
