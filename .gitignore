@@ -46,6 +46,10 @@ dist/
 .next/
 .next-build/
 apps/web/.next-build/
+.next-build2/
+apps/web/.next-build2/
+.next-e2e/
+apps/web/.next-e2e/
 build/
 .out/
 .turbo/
