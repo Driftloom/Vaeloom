@@ -58,6 +58,7 @@ build/
 .nx/
 
 # IDE
+.vs/
 .vscode/
 .vscode/settings.json
 .idea/
@@ -188,8 +189,11 @@ testing/e2e/test-results.json
 .agents/tmp/
 .agents/telemetry/
 .agents/transcripts/
+.agents/logs/
+.agents/notes/
 .cursorindexing/
 .gemini-shell/
+.brain/
 .agent/
 .claude/
 .cursor/
@@ -330,6 +334,8 @@ seed_output/
 *.orig
 *.rej
 *.tmp
+*.patch
+*.diff
 
 # Generated deliverable at the repo root. The document pipeline emits a compiled
 # project report here; it is an export of tracked content, not source, and it is
