@@ -104,7 +104,12 @@ export default function (data) {
   const msg = messages[Math.floor(Math.random() * messages.length)];
   const start = http.post(
     `${BASE_URL}/api/v1/temporal/workflows/durable-agent`,
-    JSON.stringify({ workspace_id: workspaceId, agent_id: 'memory', request_id: requestId, input: { message: msg } }),
+    JSON.stringify({
+      workspace_id: workspaceId,
+      agent_id: 'memory',
+      request_id: requestId,
+      input: { message: msg },
+    }),
     { headers },
   );
   const okA = check(start, {
@@ -128,18 +133,27 @@ export default function (data) {
   // duplicate with same request_id should be already_started
   const dup = http.post(
     `${BASE_URL}/api/v1/temporal/workflows/durable-agent`,
-    JSON.stringify({ workspace_id: workspaceId, agent_id: 'memory', request_id: requestId, input: { message: msg } }),
+    JSON.stringify({
+      workspace_id: workspaceId,
+      agent_id: 'memory',
+      request_id: requestId,
+      input: { message: msg },
+    }),
     { headers },
   );
   let dupOk = false;
   try {
     const j = dup.json();
-    dupOk = (j && j.status === 'already_started') || dup.status === 409 || (j && j.workflow_id && dup.status === 200 && j.status === 'already_started');
+    dupOk =
+      (j && j.status === 'already_started') ||
+      dup.status === 409 ||
+      (j && j.workflow_id && dup.status === 200 && j.status === 'already_started');
   } catch {}
   if (!dupOk && dup.status === 500) {
     try {
       const body = dup.body || '';
-      if (body.toLowerCase().includes('already') && body.toLowerCase().includes('started')) dupOk = true;
+      if (body.toLowerCase().includes('already') && body.toLowerCase().includes('started'))
+        dupOk = true;
     } catch {}
   }
   check(dup, { 'duplicate handled': () => dupOk });

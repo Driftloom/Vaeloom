@@ -1,0 +1,13 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allowlist for test fixtures, mock data, and documentation"
+paths = [
+  '''apps/api/tests/.*''',
+  '''services/.*''',
+  '''apps/web/src/app/workspace/\[workspaceId\]/developer/page\.tsx''',
+  '''AGENTS\.md''',
+  '''testing/.*''',
+  '''specs/.*'''
+]

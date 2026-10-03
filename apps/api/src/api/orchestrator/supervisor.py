@@ -12,10 +12,8 @@ import logging
 import uuid
 from typing import Any
 
-from .agent_bus import agent_bus
 from .agent_discovery import dynamic_agent_registry as AGENT_REGISTRY
 from .capability_registry import capability_registry
-from .contracts.agent_message import AgentMessage, AgentResponseEnvelope, MessageType, TaskStatus
 from .loop import AgentRequest
 from .router import CATEGORY_KEYWORDS, classify_intent
 from .sub_agent_manager import sub_agent_manager
@@ -683,7 +681,7 @@ async def resume_supervisor(
 
     logger.info(f"SUPERVISOR resuming {request_id} with remaining layers: {remaining_layers}")
 
-    for idx, layer in enumerate(remaining_layers):
+    for _idx, layer in enumerate(remaining_layers):
         if len(layer) == 1:
             result = await _safe_resume_single(layer[0], context)
             results = [result]

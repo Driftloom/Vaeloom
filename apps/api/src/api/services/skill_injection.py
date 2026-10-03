@@ -152,9 +152,7 @@ def usage_telemetry_enabled() -> bool:
     if flag is not None:
         return bool(flag)
     raw = (os.environ.get(USAGE_TELEMETRY_ENV) or "").strip().lower()
-    if raw in ("0", "false", "no", "off"):
-        return False
-    return True
+    return raw not in ("0", "false", "no", "off")
 
 
 def _claim_usage_slot(workspace_id: str, run_id: str, skill_name: str) -> bool:

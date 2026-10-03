@@ -1,12 +1,19 @@
 import asyncio
 import contextlib
 import hashlib
+import os
 import time
 from collections.abc import AsyncGenerator
 from typing import Any
 
 import httpx
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, stop_after_delay, wait_exponential
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    stop_after_delay,
+    wait_exponential,
+)
 
 # Total retry span per LLM call (Loop 2): attempts are unchanged (3), but the
 # whole retry sequence aborts after 60s so one hanging provider call cannot eat
@@ -629,22 +636,21 @@ class LLMService:
                 from .model_router import model_router as _router
 
                 # Route with provider matching current default so anthropic defaults stay anthropic
-                default_provider = _infer_provider_from_model(self.model) if not provider_override else provider_override
+                default_provider = provider_override if provider_override else _infer_provider_from_model(self.model)
                 routed = _router.select_model(task_type, provider=default_provider)
                 # Only override default when routed tier differs from default's tier (e.g., classify→fast)
                 default_cfg = MODEL_CATALOG.get(self.model)
                 if default_cfg is None or routed.tier != default_cfg.tier:
                     effective_model = routed.name
-                    inferred_provider = provider_override or routed.provider
                 else:
                     effective_model = self.model
-                    inferred_provider = provider_override or _infer_provider_from_model(effective_model)
+                    provider_override or _infer_provider_from_model(effective_model)
             except Exception:
                 effective_model = model or self.model
-                inferred_provider = provider_override or _infer_provider_from_model(effective_model)
+                provider_override or _infer_provider_from_model(effective_model)
         else:
             effective_model = model or self.model
-            inferred_provider = provider_override or _infer_provider_from_model(effective_model)
+            provider_override or _infer_provider_from_model(effective_model)
 
         # Build fallback tier candidates for resilient degraded operation
         fallback_candidates = [effective_model]

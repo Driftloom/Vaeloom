@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import Any, Generic, Sequence, Type, TypeVar
+from collections.abc import Sequence
+from typing import Any, TypeVar
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,12 +21,12 @@ logger = logging.getLogger(__name__)
 ModelT = TypeVar("ModelT", bound=Base)
 
 
-class BaseRepository(Generic[ModelT]):
+class BaseRepository[ModelT: Base]:
     """Generic async repository providing tenant-isolated CRUD operations."""
 
     def __init__(
         self,
-        model_cls: Type[ModelT],
+        model_cls: type[ModelT],
         session: AsyncSession,
         tenant_id: uuid.UUID | str | None = None,
         workspace_id: uuid.UUID | str | None = None,
@@ -39,13 +40,13 @@ class BaseRepository(Generic[ModelT]):
         """Apply tenant and workspace isolation filters to the statement."""
         if hasattr(self.model_cls, "tenant_id") and self.tenant_id:
             stmt = stmt.where(
-                (getattr(self.model_cls, "tenant_id") == self.tenant_id)
-                | (getattr(self.model_cls, "tenant_id").is_(None))
+                (self.model_cls.tenant_id == self.tenant_id)
+                | (self.model_cls.tenant_id.is_(None))
             )
         if hasattr(self.model_cls, "workspace_id") and self.workspace_id:
             stmt = stmt.where(
-                (getattr(self.model_cls, "workspace_id") == self.workspace_id)
-                | (getattr(self.model_cls, "workspace_id").is_(None))
+                (self.model_cls.workspace_id == self.workspace_id)
+                | (self.model_cls.workspace_id.is_(None))
             )
         return stmt
 
@@ -66,10 +67,10 @@ class BaseRepository(Generic[ModelT]):
 
     async def create(self, entity: ModelT) -> ModelT:
         """Add new entity attaching tenant context."""
-        if hasattr(entity, "tenant_id") and not getattr(entity, "tenant_id"):
-            setattr(entity, "tenant_id", self.tenant_id)
-        if hasattr(entity, "workspace_id") and not getattr(entity, "workspace_id"):
-            setattr(entity, "workspace_id", self.workspace_id)
+        if hasattr(entity, "tenant_id") and not entity.tenant_id:
+            entity.tenant_id = self.tenant_id
+        if hasattr(entity, "workspace_id") and not entity.workspace_id:
+            entity.workspace_id = self.workspace_id
         self.session.add(entity)
         await self.session.commit()
         await self.session.refresh(entity)

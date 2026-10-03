@@ -9,9 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
-from api.services.llm_service import llm_service
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +110,7 @@ class WorkspaceAgent(BaseAgent):
         return sprawl_items
 
     async def process(self, request: Any, context: Any = None) -> dict[str, Any]:
-        msg = getattr(request, "message", "") if hasattr(request, "message") else (request.get("message", "") if isinstance(request, dict) else "")
+        getattr(request, "message", "") if hasattr(request, "message") else (request.get("message", "") if isinstance(request, dict) else "")
 
         ws_id = getattr(request, "workspace_id", None) if hasattr(request, "workspace_id") else (
             request.get("workspace_id") if isinstance(request, dict) else None
@@ -124,7 +122,9 @@ class WorkspaceAgent(BaseAgent):
         if ws_id:
             try:
                 import uuid as _uuid
+
                 from sqlalchemy import select
+
                 from api.database import async_session_factory
                 from api.models.schema import Document
 

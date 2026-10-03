@@ -9,9 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
-from api.services.llm_service import llm_service
 
 logger = logging.getLogger(__name__)
 

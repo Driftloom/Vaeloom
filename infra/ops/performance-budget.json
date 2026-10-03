@@ -16,12 +16,12 @@
       "resourceType": "total",
       "routes": [
         { "name": "Dashboard", "pattern": "/dashboard", "max": 50 },
-        { "name": "Memories",  "pattern": "/memories",  "max": 50 },
-        { "name": "Agents",    "pattern": "/agents",    "max": 50 },
-        { "name": "Search",    "pattern": "/search",    "max": 50 },
-        { "name": "Settings",  "pattern": "/settings",  "max": 50 },
-        { "name": "Login",     "pattern": "/login",     "max": 30 },
-        { "name": "Signup",    "pattern": "/signup",    "max": 30 }
+        { "name": "Memories", "pattern": "/memories", "max": 50 },
+        { "name": "Agents", "pattern": "/agents", "max": 50 },
+        { "name": "Search", "pattern": "/search", "max": 50 },
+        { "name": "Settings", "pattern": "/settings", "max": 50 },
+        { "name": "Login", "pattern": "/login", "max": 30 },
+        { "name": "Signup", "pattern": "/signup", "max": 30 }
       ]
     },
     {

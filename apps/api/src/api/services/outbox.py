@@ -38,8 +38,9 @@ Delivery semantics: at-least-once. A crash between broker publish and the
 import inspect
 import logging
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -228,7 +229,7 @@ async def outbox_depth(db: AsyncSession) -> dict:
     """Operator metric: row counts per status (for dashboards / Loop 2 alerts)."""
     stmt = select(OutboxEvent.status, func.count()).group_by(OutboxEvent.status)
     rows = (await db.execute(stmt)).all()
-    counts = {status: 0 for status in OUTBOX_STATUSES}
+    counts = dict.fromkeys(OUTBOX_STATUSES, 0)
     for status, count in rows:
         counts[status] = count
     return counts

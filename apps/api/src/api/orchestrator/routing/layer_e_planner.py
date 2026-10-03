@@ -8,12 +8,9 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import Any
 
 from ..capability_registry import capability_registry
-from ..contracts.capability import AutonomyLevel
 from ..contracts.decision import ExecutionPlan, SubtaskNode
-from ..contracts.intent import IntentEnvelope
 from .layer_d_policy import PolicyEvaluationResult
 
 logger = logging.getLogger(__name__)

@@ -17,20 +17,48 @@ const routes: RouteEntry[] = [
   { path: '/', name: 'Home' },
   { path: '/auth/login', name: 'Login' },
   { path: '/auth/signup', name: 'Sign Up' },
-  { path: '/workspace/[workspaceId]', name: 'Workspace Dashboard', dynamic: { workspaceId: 'demo' } },
+  {
+    path: '/workspace/[workspaceId]',
+    name: 'Workspace Dashboard',
+    dynamic: { workspaceId: 'demo' },
+  },
   { path: '/workspace/[workspaceId]/admin', name: 'Admin', dynamic: { workspaceId: 'demo' } },
-  { path: '/workspace/[workspaceId]/applications', name: 'Applications', dynamic: { workspaceId: 'demo' } },
+  {
+    path: '/workspace/[workspaceId]/applications',
+    name: 'Applications',
+    dynamic: { workspaceId: 'demo' },
+  },
   { path: '/workspace/[workspaceId]/billing', name: 'Billing', dynamic: { workspaceId: 'demo' } },
   { path: '/workspace/[workspaceId]/chat', name: 'Chat', dynamic: { workspaceId: 'demo' } },
-  { path: '/workspace/[workspaceId]/connectors', name: 'Connectors', dynamic: { workspaceId: 'demo' } },
-  { path: '/workspace/[workspaceId]/developer', name: 'Developer', dynamic: { workspaceId: 'demo' } },
-  { path: '/workspace/[workspaceId]/feature-flags', name: 'Feature Flags', dynamic: { workspaceId: 'demo' } },
+  {
+    path: '/workspace/[workspaceId]/connectors',
+    name: 'Connectors',
+    dynamic: { workspaceId: 'demo' },
+  },
+  {
+    path: '/workspace/[workspaceId]/developer',
+    name: 'Developer',
+    dynamic: { workspaceId: 'demo' },
+  },
+  {
+    path: '/workspace/[workspaceId]/feature-flags',
+    name: 'Feature Flags',
+    dynamic: { workspaceId: 'demo' },
+  },
   { path: '/workspace/[workspaceId]/files', name: 'Files', dynamic: { workspaceId: 'demo' } },
   { path: '/workspace/[workspaceId]/history', name: 'History', dynamic: { workspaceId: 'demo' } },
   { path: '/workspace/[workspaceId]/jobs', name: 'Jobs', dynamic: { workspaceId: 'demo' } },
-  { path: '/workspace/[workspaceId]/marketplace', name: 'Marketplace', dynamic: { workspaceId: 'demo' } },
+  {
+    path: '/workspace/[workspaceId]/marketplace',
+    name: 'Marketplace',
+    dynamic: { workspaceId: 'demo' },
+  },
   { path: '/workspace/[workspaceId]/memory', name: 'Memory', dynamic: { workspaceId: 'demo' } },
-  { path: '/workspace/[workspaceId]/organizations', name: 'Organizations', dynamic: { workspaceId: 'demo' } },
+  {
+    path: '/workspace/[workspaceId]/organizations',
+    name: 'Organizations',
+    dynamic: { workspaceId: 'demo' },
+  },
   { path: '/workspace/[workspaceId]/resume', name: 'Resume', dynamic: { workspaceId: 'demo' } },
   { path: '/workspace/[workspaceId]/schedule', name: 'Schedule', dynamic: { workspaceId: 'demo' } },
   { path: '/workspace/[workspaceId]/settings', name: 'Settings', dynamic: { workspaceId: 'demo' } },
@@ -120,15 +148,12 @@ async function main() {
 
   await browser.close();
 
-  const template = fs.readFileSync(
-    path.resolve(__dirname, 'report-template.html'),
-    'utf8'
-  );
+  const template = fs.readFileSync(path.resolve(__dirname, 'report-template.html'), 'utf8');
 
   const totalViolations = allResults.reduce((s, r) => s + r.violations.length, 0);
   const totalPages = allResults.length;
   const passedPages = allResults.filter(
-    (r) => r.violations.filter((v) => v.impact === 'critical').length === 0
+    (r) => r.violations.filter((v) => v.impact === 'critical').length === 0,
   ).length;
 
   const reportHtml = template
@@ -139,7 +164,7 @@ async function main() {
     .replace('{{TIMESTAMP}}', new Date().toISOString())
     .replace(
       '{{RESULTS_JSON}}',
-      JSON.stringify(allResults, null, 2).replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      JSON.stringify(allResults, null, 2).replace(/</g, '&lt;').replace(/>/g, '&gt;'),
     );
 
   fs.writeFileSync(path.join(REPORTS_DIR, 'a11y-report.html'), reportHtml);
@@ -147,14 +172,11 @@ async function main() {
   const criticalList = allResults.flatMap((r) =>
     r.violations
       .filter((v) => v.impact === 'critical')
-      .map((v) => `${r.page}: ${v.id} - ${v.description} (${v.nodes} nodes)`)
+      .map((v) => `${r.page}: ${v.id} - ${v.description} (${v.nodes} nodes)`),
   );
 
   if (criticalList.length > 0) {
-    fs.writeFileSync(
-      path.join(REPORTS_DIR, 'critical-violations.txt'),
-      criticalList.join('\n')
-    );
+    fs.writeFileSync(path.join(REPORTS_DIR, 'critical-violations.txt'), criticalList.join('\n'));
   }
 
   console.log(`\nAccessibility Audit Complete`);

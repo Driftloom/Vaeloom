@@ -1,6 +1,7 @@
 # `@vaeloom/plugin-sdk`
 
-Software Development Kit for building, packaging, and executing Vaeloom community and official plugins.
+Software Development Kit for building, packaging, and executing Vaeloom
+community and official plugins.
 
 ## Features
 
@@ -18,7 +19,7 @@ export default definePlugin({
   version: '1.0.0',
   async execute(ctx: PluginContext) {
     // Plugin logic
-  }
+  },
 });
 ```
 

@@ -4,6 +4,7 @@ Memory Consolidator Agent — Self-improving learning loop closure.
 Captures execution outcomes, user corrections, and feedback to consolidate
 learned preferences, skills, and entity updates into workspace memory and knowledge graph.
 """
+import contextlib
 import logging
 import re
 import uuid
@@ -226,10 +227,8 @@ class MemoryConsolidatorAgent(BaseAgent):
                             "LEARNING_REJECTED correlation=%s workspace=%s tenant=%s reason=%s",
                             corr, ws_str[:8], str(tenant_id)[:8], _why,
                         )
-                        try:
+                        with contextlib.suppress(Exception):
                             await sess.rollback()
-                        except Exception:
-                            pass
                         return "REJECTED", [{"reason": _why}]
                     elif _why == "unverified_owner" and tenant_id:
                         logger.debug("LEARNING tenant unverified correlation=%s workspace=%s",
@@ -256,10 +255,8 @@ class MemoryConsolidatorAgent(BaseAgent):
                             await sess.flush()
                         except Exception as ie:
                             # UNIQUE violation (or driver equivalent) → duplicate.
-                            try:
+                            with contextlib.suppress(Exception):
                                 await sess.rollback()
-                            except Exception:
-                                pass
                             if "uq_learning_events_ws_event" in str(ie) or "UNIQUE" in str(ie).upper() or isinstance(ie, IntegrityError):
                                 logger.info(
                                     "LEARNING_DUPLICATE correlation=%s workspace=%s event=%s",
@@ -346,10 +343,8 @@ class MemoryConsolidatorAgent(BaseAgent):
                     except IntegrityError as cie:
                         # Concurrent duplicate Entity insert (no DB unique on
                         # entities): roll back, re-read winners, merge instead.
-                        try:
+                        with contextlib.suppress(Exception):
                             await sess.rollback()
-                        except Exception:
-                            pass
                         logger.info("LEARNING_CONCURRENT_MERGE correlation=%s workspace=%s detail=%s",
                                     corr, ws_str[:8], str(cie)[:120])
                         for (etype2, ename2), item2 in deduped.items():
@@ -372,10 +367,8 @@ class MemoryConsolidatorAgent(BaseAgent):
                         try:
                             await sess.commit()
                         except Exception:
-                            try:
+                            with contextlib.suppress(Exception):
                                 await sess.rollback()
-                            except Exception:
-                                pass
                     return count, rejected
 
                 if session is not None:

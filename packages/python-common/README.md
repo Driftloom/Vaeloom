@@ -1,6 +1,7 @@
 # `vaeloom-python-common`
 
-Shared Python utilities, base models, cryptography helpers, and telemetry integration across Python services and scripts.
+Shared Python utilities, base models, cryptography helpers, and telemetry
+integration across Python services and scripts.
 
 ## Installation
 

@@ -3,6 +3,7 @@
 Keeps metric names distinct from http_requests_total so dashboards can
 join workflow telemetry with app telemetry without collision.
 """
+import contextlib
 
 try:
     from prometheus_client import Counter, Gauge, Histogram
@@ -30,36 +31,26 @@ try:
     HAS_METRICS = True
 
     def _inc_workflow_started(workflow_type: str, task_queue: str) -> None:
-        try:
+        with contextlib.suppress(Exception):
             temporal_workflow_started.labels(workflow_type=workflow_type, task_queue=task_queue).inc()
-        except Exception:
-            pass
 
     def _inc_workflow_completed(workflow_type: str, task_queue: str, status: str) -> None:
-        try:
+        with contextlib.suppress(Exception):
             temporal_workflow_completed.labels(workflow_type=workflow_type, task_queue=task_queue, status=status).inc()
-        except Exception:
-            pass
 
     def _inc_activity_started(activity_type: str) -> None:
-        try:
+        with contextlib.suppress(Exception):
             temporal_activity_started.labels(activity_type=activity_type).inc()
-        except Exception:
-            pass
 
     def _inc_activity_failed(activity_type: str, reason: str = "exception") -> None:
-        try:
+        with contextlib.suppress(Exception):
             temporal_activity_failed.labels(activity_type=activity_type, reason=reason).inc()
-        except Exception:
-            pass
 
     temporal_fallback_total = Counter("temporal_fallback_total", "Executions degraded to synchronous local fallback", ["workflow_type", "reason"])
 
     def inc_temporal_fallback(workflow_type: str, reason: str = "disabled_or_unreachable") -> None:
-        try:
+        with contextlib.suppress(Exception):
             temporal_fallback_total.labels(workflow_type=workflow_type, reason=reason).inc()
-        except Exception:
-            pass
 
 except Exception:  # pragma: no cover
     HAS_METRICS = False

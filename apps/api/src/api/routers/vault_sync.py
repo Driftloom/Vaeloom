@@ -13,11 +13,11 @@ import re
 import uuid
 from datetime import UTC, datetime
 from typing import Any
-import yaml
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+import yaml
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
-from sqlalchemy import desc, func, select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db

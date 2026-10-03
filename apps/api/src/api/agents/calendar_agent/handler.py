@@ -5,14 +5,12 @@ Suggest autonomy: Always requests approval before committing or mutating events 
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from pydantic import BaseModel, Field
 
-from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
-from api.services.llm_service import llm_service
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +79,7 @@ class CalendarAgent(BaseAgent):
         busy_events: list[dict[str, Any]] | None = None,
     ) -> list[str]:
         """Propose open slots between standard business hours."""
-        base_date = datetime.now(timezone.utc) + timedelta(days=1)
+        base_date = datetime.now(UTC) + timedelta(days=1)
         slots = []
         for hour in [10, 11, 14, 15, 16]:
             slot_start = base_date.replace(hour=hour, minute=0, second=0, microsecond=0)
@@ -90,7 +88,7 @@ class CalendarAgent(BaseAgent):
 
     async def process(self, request: Any) -> dict[str, Any]:
         msg = getattr(request, "message", "") if hasattr(request, "message") else (request.get("message", "") if isinstance(request, dict) else "")
-        msg_lower = (msg or "").lower()
+        (msg or "").lower()
 
         sample_events = [
             {"title": "Product Sync", "start": "2026-09-20T10:00:00Z", "end": "2026-09-20T11:00:00Z"},

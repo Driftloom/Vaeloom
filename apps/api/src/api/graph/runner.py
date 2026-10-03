@@ -21,6 +21,7 @@ pure nodes simply recompute. No fabricated state, no skipped approvals.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import json
 import logging
@@ -462,10 +463,8 @@ async def run_graph_direct(
                         cancelled = True
                         raise asyncio.CancelledError("cancel requested between graph nodes")
         finally:
-            try:
+            with contextlib.suppress(Exception):
                 await stream.aclose()
-            except Exception:
-                pass
         # Full post-run state for validation + normalization.
         try:
             snap = await graph.aget_state(config)

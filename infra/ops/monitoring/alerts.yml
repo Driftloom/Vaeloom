@@ -13,9 +13,9 @@ groups:
           severity: critical
           service: backend
         annotations:
-          summary: "High error rate on backend"
-          description: "Error rate {{ $value | humanizePercentage }} over the last 5 minutes (threshold 5%)"
-          runbook: "ops/runbooks/high-error-rate.md"
+          summary: 'High error rate on backend'
+          description: 'Error rate {{ $value | humanizePercentage }} over the last 5 minutes (threshold 5%)'
+          runbook: 'ops/runbooks/high-error-rate.md'
 
       - alert: HighLatency
         expr: |
@@ -25,9 +25,9 @@ groups:
           severity: critical
           service: backend
         annotations:
-          summary: "High API latency (p95 > 1s)"
-          description: "p95 latency is {{ $value | humanizeDuration }} over the last 5 minutes"
-          runbook: "ops/runbooks/high-latency.md"
+          summary: 'High API latency (p95 > 1s)'
+          description: 'p95 latency is {{ $value | humanizeDuration }} over the last 5 minutes'
+          runbook: 'ops/runbooks/high-latency.md'
 
       - alert: ServiceDown
         expr: |
@@ -37,9 +37,9 @@ groups:
           severity: critical
           service: backend
         annotations:
-          summary: "Backend service is down"
-          description: "Health check probe has failed for {{ $value }} consecutive checks"
-          runbook: "ops/runbooks/service-down.md"
+          summary: 'Backend service is down'
+          description: 'Health check probe has failed for {{ $value }} consecutive checks'
+          runbook: 'ops/runbooks/service-down.md'
 
   - name: vaeloom-infrastructure
     interval: 60s
@@ -52,8 +52,8 @@ groups:
           severity: warning
           service: infrastructure
         annotations:
-          summary: "Low disk space on {{ $labels.instance }}"
-          description: "Disk usage is {{ $value | humanizePercentage }} free (threshold 10%)"
+          summary: 'Low disk space on {{ $labels.instance }}'
+          description: 'Disk usage is {{ $value | humanizePercentage }} free (threshold 10%)'
 
       - alert: HighCPUUsage
         expr: |
@@ -63,8 +63,8 @@ groups:
           severity: warning
           service: infrastructure
         annotations:
-          summary: "High CPU usage on {{ $labels.instance }}"
-          description: "CPU is less than 20% idle for 10 minutes"
+          summary: 'High CPU usage on {{ $labels.instance }}'
+          description: 'CPU is less than 20% idle for 10 minutes'
 
       - alert: DatabaseConnectionPoolExhaustion
         expr: |
@@ -74,9 +74,9 @@ groups:
           severity: critical
           service: database
         annotations:
-          summary: "Database connection pool near exhaustion"
-          description: "Active backend connections: {{ $value }} (threshold 80)"
-          runbook: "ops/runbooks/database-connection-pool-exhaustion.md"
+          summary: 'Database connection pool near exhaustion'
+          description: 'Active backend connections: {{ $value }} (threshold 80)'
+          runbook: 'ops/runbooks/database-connection-pool-exhaustion.md'
 
       - alert: RedisMemoryHigh
         expr: |
@@ -86,8 +86,8 @@ groups:
           severity: warning
           service: redis
         annotations:
-          summary: "Redis memory usage high"
-          description: "Redis memory usage at {{ $value | humanizePercentage }} (threshold 85%)"
+          summary: 'Redis memory usage high'
+          description: 'Redis memory usage at {{ $value | humanizePercentage }} (threshold 85%)'
 
   - name: vaeloom-agents
     interval: 30s
@@ -103,8 +103,8 @@ groups:
           severity: warning
           service: agents
         annotations:
-          summary: "Agent execution failure rate high"
-          description: "Agent failure rate {{ $value | humanizePercentage }} over the last 5 minutes (threshold 10%)"
+          summary: 'Agent execution failure rate high'
+          description: 'Agent failure rate {{ $value | humanizePercentage }} over the last 5 minutes (threshold 10%)'
 
       - alert: HighAgentLatency
         expr: |
@@ -114,5 +114,5 @@ groups:
           severity: warning
           service: agents
         annotations:
-          summary: "Agent execution latency high"
-          description: "p95 agent execution time is {{ $value | humanizeDuration }}"
+          summary: 'Agent execution latency high'
+          description: 'p95 agent execution time is {{ $value | humanizeDuration }}'

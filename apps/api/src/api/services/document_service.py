@@ -9,11 +9,11 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import func, select, or_, and_, String, cast
+from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models.schema import Document, DocumentAction, DocumentVersion, DocumentShare, Folder
+from ..models.schema import Document, DocumentAction, DocumentShare, DocumentVersion, Folder
 from .file_security_service import file_security_service
 from .storage_service import storage_service
 
@@ -281,7 +281,7 @@ def _run_50_checks(
         if c["passed"]:
             cat_stats[cat]["passed"] += 1
 
-    for cat, stats in cat_stats.items():
+    for stats in cat_stats.values():
         stats["score"] = round((stats["passed"] / stats["total"]) * 100, 1)
 
     passed_count = sum(1 for c in checks if c["passed"])
@@ -555,6 +555,7 @@ class DocumentService:
         if not os.environ.get("PYTEST_CURRENT_TEST"):
             try:
                 import asyncio
+
                 from ..ingestion.pipeline import run_pipeline
 
                 async def _bg_run_pipeline():
@@ -736,7 +737,7 @@ class DocumentService:
         db=None,
     ) -> Document:
         doc = await self.get_document(document_id, workspace_id, db, required_permission="write")
-        clean_tags = sorted(list({t.strip().lower() for t in tags if t.strip()}))[:20]
+        clean_tags = sorted({t.strip().lower() for t in tags if t.strip()})[:20]
         meta = dict(doc.metadata_ or {})
         meta["tags"] = clean_tags
         doc.metadata_ = meta
@@ -1248,8 +1249,6 @@ class DocumentService:
         db=None,
     ) -> bytes:
         """Create a zip archive containing requested documents."""
-        import zipfile
-        import io
 
         w_uuid = uuid.UUID(str(workspace_id))
         zip_buffer = io.BytesIO()
@@ -1510,9 +1509,11 @@ class DocumentService:
     ) -> dict[str, Any]:
         """Explicitly synchronize an existing document with Workspace Memory and Knowledge Graph."""
         import uuid
-        from datetime import datetime, UTC
+        from datetime import UTC, datetime
+
         from sqlalchemy import select
-        from ..models.schema import Document, DocumentVersion, Memory, MemoryRecord
+
+        from ..models.schema import DocumentVersion, Memory, MemoryRecord
         from ..schemas.memory import MemoryCreate
         from ..services.memory_service import memory_service
 

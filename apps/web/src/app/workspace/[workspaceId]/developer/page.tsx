@@ -458,7 +458,7 @@ function DeveloperContent() {
               <Input
                 label="Webhook URL"
                 value={webhookUrl}
-                onChange={(e) => setWebhookUrl(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWebhookUrl(e.target.value)}
               />
               <div className="space-y-1">
                 <label htmlFor="webhook-event" className="block text-sm font-medium text-text">
@@ -468,7 +468,9 @@ function DeveloperContent() {
                   id="webhook-event"
                   className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:border-primary"
                   value={webhookEvent}
-                  onChange={(e) => setWebhookEvent(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setWebhookEvent(e.target.value)
+                  }
                 >
                   <option value="job.match">job.match</option>
                   <option value="application.submitted">application.submitted</option>
@@ -487,7 +489,9 @@ function DeveloperContent() {
                 type="password"
                 autoComplete="off"
                 value={webhookTestSecret}
-                onChange={(e) => setWebhookTestSecret(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setWebhookTestSecret(e.target.value)
+                }
                 placeholder="Enter a throwaway value for this run"
                 aria-describedby="webhook-test-secret-help"
                 className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:border-primary"
@@ -602,7 +606,7 @@ function DeveloperContent() {
           <Input
             label="Key Name"
             value={newKeyName}
-            onChange={(e) => setNewKeyName(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewKeyName(e.target.value)}
             placeholder="e.g. Production CI"
           />
           <div className="space-y-1">
@@ -610,7 +614,7 @@ function DeveloperContent() {
             <select
               className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:border-primary"
               value={newKeyPerms}
-              onChange={(e) => setNewKeyPerms(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewKeyPerms(e.target.value)}
             >
               <option value="full_access">Full Access</option>
               <option value="read_only">Read Only</option>

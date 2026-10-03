@@ -4,7 +4,6 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-
 VALID_ONBOARDING_STEPS = ["PROFILE", "WORKSPACE", "RESUME", "CONNECTORS", "COMPLETED"]
 
 

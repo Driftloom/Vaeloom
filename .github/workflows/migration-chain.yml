@@ -89,7 +89,7 @@ jobs:
         run: |
           for role in service_role authenticated vaeloom_app; do
             psql -v ON_ERROR_STOP=1 -U postgres -d vaeloom_test \
-              -c "CREATE ROLE $role NOLOGIN" || true
+              -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$role') THEN CREATE ROLE $role NOLOGIN; END IF; END \$\$;"
           done
 
       - name: Run the migration chain from empty

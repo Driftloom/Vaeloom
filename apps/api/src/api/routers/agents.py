@@ -1,6 +1,11 @@
 import json
-from typing import Any
+import logging
 import uuid
+from typing import Any
+
+logger = logging.getLogger(__name__)
+
+import contextlib
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
@@ -574,14 +579,10 @@ async def chat(
         bg_context = await retrieve_memory_and_vault_context(dto.workspaceId, dto.message, db)
     finally:
         # Crucial P0 Fix: Release DB connection immediately before awaiting long-running orchestrator loop
-        try:
+        with contextlib.suppress(Exception):
             await db.commit()
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             await db.close()
-        except Exception:
-            pass
     # Trusted caller identity for downstream orchestration (graph branch).
     # Tenant prefers middleware request-state, falls back to JWT claims.
     _uid = current_user.get("sub") or current_user.get("user_id") if current_user else None
@@ -620,7 +621,7 @@ async def chat_stream(
     from ..infrastructure.agent_eval import detect_adversarial_prompt
     from ..infrastructure.agent_observability import kill_switch
     from ..orchestrator.loop import AgentRequest, run_agent_loop_stream
-    from ..orchestrator.router import AGENT_REGISTRY, classify_intent
+    from ..orchestrator.router import AGENT_REGISTRY
 
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -629,14 +630,10 @@ async def chat_stream(
         bg_context = await retrieve_memory_and_vault_context(dto.workspaceId, dto.message, db)
     finally:
         # Crucial P0 Fix: Release DB connection immediately before starting SSE stream
-        try:
+        with contextlib.suppress(Exception):
             await db.commit()
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             await db.close()
-        except Exception:
-            pass
 
     req_id = str(uuid.uuid4())
     preferred = dto.agentName.strip().lower() if dto.agentName else None
@@ -753,7 +750,7 @@ async def chat_stream(
 
             # ── 4. LangGraph state machine vs ReAct loop dispatch ──
             try:
-                from ..graph.runner import should_use_graph, run_graph_direct
+                from ..graph.runner import run_graph_direct, should_use_graph
                 if should_use_graph(req_id):
                     logger.info(f"Dispatching request {req_id} via LangGraph state machine")
                     graph_ctx = {

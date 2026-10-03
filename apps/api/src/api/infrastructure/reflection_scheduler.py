@@ -7,6 +7,7 @@ WS01 learning closure: now also harvests recent APPROVED/REJECTED approval feedb
 into preference-type Entities so future retrieval ranking can adapt measurably.
 All learning is workspace-scoped, bounded, reversible, auditable.
 """
+import contextlib
 import logging
 
 logger = logging.getLogger(__name__)
@@ -50,7 +51,7 @@ async def reflection_scan() -> int:
                         # Derive lightweight preference hint (e.g., "Prefer remote senior roles")
                         # Bounded: at most one preference Entity per workspace per scan, capped length, workspace-scoped.
                         hint = None
-                        for action_type, reason, status, payload in apr_rows:
+                        for action_type, reason, _status, payload in apr_rows:
                             r = (reason or "")[:200]
                             # Simple heuristic: if payload or reason mentions 'prefer', capture it
                             blob = f"{action_type} {r} {str(payload)[:200]}".lower()
@@ -73,10 +74,8 @@ async def reflection_scan() -> int:
                                 logger.info(f"LEARNING preference created ws={ws_str} hint='{hint[:40]}'")
                 except Exception as le:
                     logger.debug(f"reflection preference harvest ws={ws_str} skipped: {le}")
-                    try:
+                    with contextlib.suppress(Exception):
                         await db.rollback()
-                    except Exception:
-                        pass
             if count:
                 logger.info(f"DAEMON reflection scan ran for {count} workspaces")
             return count

@@ -1,7 +1,9 @@
+import contextlib
+
 import jwt
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.responses import JSONResponse, Response
+from starlette.responses import Response
 
 from ..config import settings
 from ..database import async_session_factory as _default_session_factory
@@ -101,14 +103,16 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         if api_key_raw:
             from datetime import UTC, datetime
+
             from sqlalchemy import select
+
             from ..models.schema import ApiKey
             from ..services.api_keys import api_key_manager
 
             async with self._session_factory() as db:
                 prefix = api_key_raw[:10]
                 result = await db.execute(
-                    select(ApiKey).where(ApiKey.key_prefix == prefix, ApiKey.enabled == True)
+                    select(ApiKey).where(ApiKey.key_prefix == prefix, ApiKey.enabled)
                 )
                 keys = result.scalars().all()
                 matched_key = None
@@ -207,6 +211,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 if not verified and supa_url:
                     try:
                         import time
+
                         import httpx
                         supa_key = getattr(settings, "supabase_anon_key", "")
                         headers = {"Authorization": f"Bearer {token}"}
@@ -242,7 +247,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
             # synchronize the user_id so all RLS and workspaces match seamlessly.
             db_user_id = user_id
             try:
-                from sqlalchemy import select, text, func
+                from sqlalchemy import func, select, text
+
                 from ..models.schema import User as _User
                 async with self._session_factory() as _s:
                     u = None
@@ -273,13 +279,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
                             or bool(user_meta.get("email_confirmed_at"))
                         )
                         if is_verified:
-                            try:
+                            with contextlib.suppress(Exception):
                                 await _s.execute(
                                     text("SELECT set_config('app.lookup_email', :email, true)"),
                                     {"email": str(email).strip().lower()},
                                 )
-                            except Exception:
-                                pass
                             res = await _s.execute(
                                 select(_User.id, _User.tenant_id).where(
                                     func.lower(_User.email) == str(email).strip().lower()

@@ -4,7 +4,10 @@
   "private": true,
   "license": "MIT",
   "main": "base.js",
-  "files": ["base.js", "nextjs.js"],
+  "files": [
+    "base.js",
+    "nextjs.js"
+  ],
   "peerDependencies": {
     "eslint": "^8.57.0 || ^9.0.0",
     "typescript": "^5.5.0",

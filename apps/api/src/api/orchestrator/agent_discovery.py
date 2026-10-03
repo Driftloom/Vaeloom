@@ -12,7 +12,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Any
 
-from .card_registry import get_agent_card, list_agent_cards
+from .card_registry import get_agent_card
 
 logger = logging.getLogger(__name__)
 

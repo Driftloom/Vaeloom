@@ -6,16 +6,16 @@ state, replacing static string arrays.
 
 from __future__ import annotations
 
-from enum import Enum
-from typing import Any
 import uuid
+from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 from .capability import AutonomyLevel, RiskClass
 
 
-class ProposalType(str, Enum):
+class ProposalType(StrEnum):
     """Semantic type of proposed action."""
     ACTION_CHIP = "action_chip"                    # Interactive suggestion pill in chat
     DOCUMENT_MUTATION = "document_mutation"        # Proposed file update/generation

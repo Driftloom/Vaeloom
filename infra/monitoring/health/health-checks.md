@@ -22,9 +22,9 @@ All services expose `GET /health` returning:
 
 ## Health Check Types
 
-| Type | Endpoint | Interval | Purpose |
-|---|---|---|---|
-| Liveness | `GET /health` | 10s | Is the service running? |
-| Readiness | `GET /health/ready` | 5s | Can the service accept traffic? |
-| Startup | `GET /health/startup` | 2s | Has the service initialized? |
-| Deep | `GET /health/deep` | 30s | Are all dependencies healthy? |
+| Type      | Endpoint              | Interval | Purpose                         |
+| --------- | --------------------- | -------- | ------------------------------- |
+| Liveness  | `GET /health`         | 10s      | Is the service running?         |
+| Readiness | `GET /health/ready`   | 5s       | Can the service accept traffic? |
+| Startup   | `GET /health/startup` | 2s       | Has the service initialized?    |
+| Deep      | `GET /health/deep`    | 30s      | Are all dependencies healthy?   |

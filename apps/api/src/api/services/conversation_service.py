@@ -228,8 +228,8 @@ class ConversationService:
         client_id: str,
     ) -> None:
         """Autonomously ingest user thoughts, preferences, decisions, and notes from chat into dynamic memory (memories table)."""
-        from .memory_service import memory_service
         from ..schemas.memory import MemoryCreate
+        from .memory_service import memory_service
 
         cleaned = (text or "").strip()
         if len(cleaned) < 15:
@@ -256,9 +256,7 @@ class ConversationService:
             mem_type = "preference"
         elif "decid" in lowered or "decision" in lowered:
             mem_type = "decision"
-        elif "insight" in lowered or "learned" in lowered:
-            mem_type = "insight"
-        elif "goal" in lowered or "target" in lowered or "priority" in lowered:
+        elif "insight" in lowered or "learned" in lowered or "goal" in lowered or "target" in lowered or "priority" in lowered:
             mem_type = "insight"
         elif "skill" in lowered or "stack" in lowered or "tech" in lowered:
             mem_type = "skill"

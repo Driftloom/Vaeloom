@@ -9,13 +9,7 @@ export const slackConfigSchema = z.object({
   scopes: z
     .array(z.string())
     .min(1)
-    .default([
-      'channels:read',
-      'channels:history',
-      'chat:write',
-      'users:read',
-      'im:write',
-    ]),
+    .default(['channels:read', 'channels:history', 'chat:write', 'users:read', 'im:write']),
 });
 
 export type SlackConfig = z.infer<typeof slackConfigSchema>;

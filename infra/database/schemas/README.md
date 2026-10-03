@@ -1,14 +1,13 @@
 # Database Schemas
 
-> **Purpose:** Define the database schema architecture, naming conventions, and migration strategy for Vaeloom
-> **Status:** âœ… Upgraded to enterprise quality
-> **Owner:** Backend Team
-> **Version:** 2.0
-> **Last Updated:** 2026-07-17
+> **Purpose:** Define the database schema architecture, naming conventions, and
+> migration strategy for Vaeloom **Status:** âœ… Upgraded to enterprise quality
+> **Owner:** Backend Team **Version:** 2.0 **Last Updated:** 2026-07-17
 
 ## Architecture
 
 Vaeloom uses PostgreSQL 16 with the following extensions:
+
 - `pgcrypto` — UUID generation, encrypt/decrypt
 - `vector` — pgvector for embedding similarity search
 
@@ -37,22 +36,22 @@ erDiagram
 
 ## Naming Conventions
 
-| Convention | Rule | Example |
-|---|---|---|
-| Table names | snake_case, plural | `knowledge_nodes`, `agent_executions` |
-| Column names | snake_case | `created_at`, `display_name` |
-| Primary keys | `id` with UUIDv4 | `id String @id @default(uuid())` |
-| Foreign keys | `{table}_id` | `tenant_id`, `workspace_id` |
-| Timestamps | `created_at`, `updated_at` | `DateTime @default(now())` |
-| JSON fields | `Json` type with defaults | `metadata Json @default("{}")` |
+| Convention   | Rule                       | Example                               |
+| ------------ | -------------------------- | ------------------------------------- |
+| Table names  | snake_case, plural         | `knowledge_nodes`, `agent_executions` |
+| Column names | snake_case                 | `created_at`, `display_name`          |
+| Primary keys | `id` with UUIDv4           | `id String @id @default(uuid())`      |
+| Foreign keys | `{table}_id`               | `tenant_id`, `workspace_id`           |
+| Timestamps   | `created_at`, `updated_at` | `DateTime @default(now())`            |
+| JSON fields  | `Json` type with defaults  | `metadata Json @default("{}")`        |
 
 ## Migration Strategy
 
-| Environment | Strategy | Rollback |
-|---|---|---|
-| Development | `alembic upgrade head` | `alembic downgrade -1` |
-| Staging | `alembic upgrade head` (via CI) | `alembic downgrade <target_rev>` |
-| Production | Automated Alembic migration run | Point-in-time recovery + migration rollback |
+| Environment | Strategy                        | Rollback                                    |
+| ----------- | ------------------------------- | ------------------------------------------- |
+| Development | `alembic upgrade head`          | `alembic downgrade -1`                      |
+| Staging     | `alembic upgrade head` (via CI) | `alembic downgrade <target_rev>`            |
+| Production  | Automated Alembic migration run | Point-in-time recovery + migration rollback |
 
 ## Related Documents
 

@@ -39,7 +39,7 @@ _NUMERIC_PATTERN = re.compile(r"/\d+(?=/|$)")
 
 def normalize_metric_path(request: Request, response_status: int) -> str:
     """Normalize request path to prevent Prometheus cardinality explosion (CRIT-04).
-    
+
     1. All 404 Not Found requests are grouped into '/404' to defeat URL scanning/fuzzing.
     2. Dynamic UUIDs and integer IDs in paths are normalized to '{id}' tokens.
     3. Static endpoint paths (e.g. /health, /health/ready, /metrics) are preserved.

@@ -14,8 +14,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..dependencies import get_current_user, get_workspace_id
-from ..models.schema import Resume, Workspace
+from ..dependencies import get_current_user
+from ..models.schema import Resume
 from ..services.profile_service import ProfileService
 
 logger = logging.getLogger(__name__)
@@ -35,12 +35,12 @@ async def get_career_strategy(
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     user_id = str(current_user.get("sub") or current_user.get("user_id") or "")
-    
+
     # 1. Fetch user's profile and skills
     user_skills: list[str] = []
     target_role_title = "Senior AI Systems Engineer"
     target_level = "Staff / Principal (L6-L7)"
-    
+
     try:
         profile = await _profile_service.get_profile(user_id, workspace_id=str(workspace_id), db=db)
         if profile and profile.skills:
@@ -81,7 +81,7 @@ async def get_career_strategy(
         has_skill = any(c["skill"].lower() in s.lower() or s.lower() in c["skill"].lower() for s in user_skills)
         current = "Expert" if (has_skill and c["baseLevel"] == "Expert") else (c["baseLevel"] if has_skill else "Intermediate")
         severity = "LOW" if current == c["required"] else ("MEDIUM" if current == "Advanced" else "HIGH")
-        
+
         skill_gaps.append({
             "skill": c["skill"],
             "category": c["category"],

@@ -32,7 +32,16 @@
         }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "percent", "thresholds": { "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 5}] } }
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
       }
     },
     {
@@ -40,9 +49,21 @@
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
       "targets": [
-        { "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[5m]))", "legendFormat": "p50", "refId": "A" },
-        { "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))", "legendFormat": "p95", "refId": "B" },
-        { "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))", "legendFormat": "p99", "refId": "C" }
+        {
+          "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[5m]))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
       ],
       "fieldConfig": {
         "defaults": { "unit": "s" }
@@ -61,7 +82,11 @@
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 6, "x": 18, "y": 8 },
       "targets": [
-        { "expr": "histogram_quantile(0.95, rate(langgraph_run_duration_seconds_bucket[5m]))", "legendFormat": "p95", "refId": "A" }
+        {
+          "expr": "histogram_quantile(0.95, rate(langgraph_run_duration_seconds_bucket[5m]))",
+          "legendFormat": "p95",
+          "refId": "A"
+        }
       ],
       "fieldConfig": {
         "defaults": { "unit": "s" }
@@ -72,7 +97,11 @@
       "type": "piechart",
       "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
       "targets": [
-        { "expr": "sum(temporal_workflow_started_total) by (queue)", "legendFormat": "{{queue}}", "refId": "A" }
+        {
+          "expr": "sum(temporal_workflow_started_total) by (queue)",
+          "legendFormat": "{{queue}}",
+          "refId": "A"
+        }
       ]
     },
     {
@@ -83,7 +112,15 @@
         { "expr": "sum(rate(rate_limit_rejected_total[5m]))", "legendFormat": "/sec", "refId": "A" }
       ],
       "fieldConfig": {
-        "defaults": { "thresholds": { "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 10}] } }
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 10 }
+            ]
+          }
+        }
       }
     },
     {
@@ -91,7 +128,11 @@
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 },
       "targets": [
-        { "expr": "sum(rate(temporal_activity_heartbeat_total[5m])) by (activity)", "legendFormat": "{{activity}}", "refId": "A" }
+        {
+          "expr": "sum(rate(temporal_activity_heartbeat_total[5m])) by (activity)",
+          "legendFormat": "{{activity}}",
+          "refId": "A"
+        }
       ]
     }
   ],

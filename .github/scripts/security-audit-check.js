@@ -1,6 +1,16 @@
 const config = require('../../security-audit.config.js');
 const { execSync } = require('child_process');
-const audit = JSON.parse(execSync('pnpm audit --json').toString());
+let rawOutput = '';
+try {
+  rawOutput = execSync('pnpm audit --json').toString();
+} catch (error) {
+  if (error.stdout) {
+    rawOutput = error.stdout.toString();
+  } else {
+    throw error;
+  }
+}
+const audit = JSON.parse(rawOutput);
 const advisories = audit.advisories || {};
 const allowed = config.allowedAdvisories || [];
 const violations = Object.entries(advisories)

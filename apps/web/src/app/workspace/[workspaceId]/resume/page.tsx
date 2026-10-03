@@ -10,9 +10,7 @@ export default function ResumePage() {
 
   if (!workspaceId) {
     return (
-      <div className="flex items-center justify-center h-full text-text-muted">
-        Loading...
-      </div>
+      <div className="flex items-center justify-center h-full text-text-muted">Loading...</div>
     );
   }
 

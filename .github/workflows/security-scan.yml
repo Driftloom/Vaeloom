@@ -23,7 +23,7 @@ jobs:
           tar -zxvf gitleaks_8.18.4_linux_x64.tar.gz
           sudo mv gitleaks /usr/local/bin/
       - name: Run Gitleaks
-        run: gitleaks detect --verbose --redact
+        run: gitleaks detect --verbose --redact --config .gitleaks.toml
 
   sast:
     name: SAST (CodeQL)

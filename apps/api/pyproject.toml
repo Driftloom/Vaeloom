@@ -112,6 +112,10 @@ ignore = [
     "B039",    # mutable-contextvar-default — intentional pattern
     "E402",    # module-import-not-at-top — intentional ordering
     "UP031",   # printf-string-formatting — existing code style
+    "N806",    # non-lowercase-variable-in-function — uppercase model/schema alias in functions
+    "N814",    # camelcase-imported-as-constant — constant style import aliases
+    "SIM105",  # suppressible-exception — standard try-except-pass pattern
+    "ARG005",  # unused-lambda-argument — protocol dummy callbacks
 ]
 
 [tool.ruff.format]

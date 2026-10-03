@@ -1,7 +1,6 @@
 import asyncio
 import contextlib
 import logging
-import os
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -47,10 +46,8 @@ class MemoryService:
     ) -> Memory:
         resolved_ws_id = workspace_id or dto.workspace_id
         if resolved_ws_id and isinstance(resolved_ws_id, str):
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 resolved_ws_id = uuid.UUID(resolved_ws_id)
-            except (ValueError, TypeError):
-                pass
         if db is not None:
             from ..middleware.tenant import set_rls_session_vars
             await set_rls_session_vars(
@@ -809,7 +806,9 @@ async def retrieve_memory_and_vault_context(
 
     try:
         import uuid as _uuid
+
         from sqlalchemy import or_, select
+
         from ..models.schema import Document, Memory
 
         ws_uuid = _uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, _uuid.UUID) else workspace_id

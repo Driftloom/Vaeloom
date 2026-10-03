@@ -11,7 +11,7 @@ import hmac
 import secrets
 import struct
 import time
-from typing import Any
+
 import jwt
 
 from ..config import settings
@@ -75,7 +75,7 @@ class TOTPService:
     @classmethod
     def generate_recovery_codes(cls, count: int = 8) -> tuple[list[str], list[str]]:
         """Generate plaintext recovery codes and their SHA-256 hashes.
-        
+
         Returns:
             (plaintext_codes, hashed_codes)
         """
@@ -93,7 +93,7 @@ class TOTPService:
     @classmethod
     def verify_recovery_code(cls, code: str, hashed_codes: list[str]) -> tuple[bool, list[str]]:
         """Verify and consume a single-use recovery code.
-        
+
         Returns:
             (is_valid, remaining_hashed_codes)
         """

@@ -4,8 +4,8 @@ Endpoints for managing enterprise organizational hierarchies (departments, teams
 memberships, and role assignments.
 """
 
-from typing import Any, Dict, List, Literal, Optional
 import uuid
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -14,7 +14,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import get_db
 from ..dependencies import get_current_user
 from ..services.organization_service import (
-    ORG_ROLES,
     OrganizationPermissionError,
     OrganizationService,
 )
@@ -31,20 +30,20 @@ MemberStatus = Literal["active", "invited", "suspended"]
 class CreateOrganizationRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     type: str = Field(default="department", description="organization | department | team")
-    parent_id: Optional[uuid.UUID] = None
-    workspace_id: Optional[uuid.UUID] = None
-    description: Optional[str] = None
-    allowed_domains: Optional[List[str]] = Field(default=None, description="Allowed email domains")
+    parent_id: uuid.UUID | None = None
+    workspace_id: uuid.UUID | None = None
+    description: str | None = None
+    allowed_domains: list[str] | None = Field(default=None, description="Allowed email domains")
     default_role: OrgRole = Field(default="member", description="Default role for new members")
 
 
 class UpdateOrganizationRequest(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=255)
-    type: Optional[str] = None
-    parent_id: Optional[uuid.UUID] = None
-    description: Optional[str] = None
-    allowed_domains: Optional[List[str]] = None
-    default_role: Optional[OrgRole] = None
+    name: str | None = Field(None, min_length=1, max_length=255)
+    type: str | None = None
+    parent_id: uuid.UUID | None = None
+    description: str | None = None
+    allowed_domains: list[str] | None = None
+    default_role: OrgRole | None = None
 
 
 class AddMemberRequest(BaseModel):
@@ -117,7 +116,7 @@ def require_org_role(min_role: str):
 
 @router.get("/tree")
 async def get_organization_tree(
-    workspace_id: Optional[uuid.UUID] = Query(None),
+    workspace_id: uuid.UUID | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):

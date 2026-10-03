@@ -14,3 +14,8 @@ package-lock.json
 docs/prompts/vaeloom-66-independent-end-to-end-phase-prompts/
 # test-data corpus: DATA-MANIFEST.json SHA256 must stay valid (see test-data/validate-corpus.py)
 test-data/
+specs/
+evidence/
+.agents/
+docs/
+

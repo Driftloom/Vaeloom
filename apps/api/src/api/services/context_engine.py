@@ -283,7 +283,7 @@ def assemble_hierarchical(
         for it in p1_items:
             clean = it.content.replace("<document", "&lt;document").replace("</document>", "&lt;/document&gt;")
             doc_excerpts.append(f'<document provenance="{it.provenance}" confidence="{it.confidence:.2f}">\n{clean}\n</document>')
-        blocks.append(f"<active_grounding_context priority=\"high\">\n" + "\n".join(doc_excerpts) + "\n</active_grounding_context>")
+        blocks.append("<active_grounding_context priority=\"high\">\n" + "\n".join(doc_excerpts) + "\n</active_grounding_context>")
 
     # 3. P2 Working Session Context
     p2_items = by_priority.get("P2_WORKING_EPISODE", [])
@@ -297,7 +297,7 @@ def assemble_hierarchical(
         mem_excerpts = []
         for it in p3_items:
             mem_excerpts.append(f'<memory_card kind="{it.kind}" provenance="{it.provenance}">\n{it.content}\n</memory_card>')
-        blocks.append(f"<memory_context priority=\"enrichment\">\n" + "\n".join(mem_excerpts) + "\n</memory_context>")
+        blocks.append("<memory_context priority=\"enrichment\">\n" + "\n".join(mem_excerpts) + "\n</memory_context>")
 
     # 5. P4 Background Archive
     p4_items = by_priority.get("P4_BACKGROUND_ARCHIVE", [])

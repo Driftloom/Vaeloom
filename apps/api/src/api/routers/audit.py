@@ -55,10 +55,7 @@ async def query_events(
 
     # Zero-trust scoping: non-admins or users without tenant default to viewing their own events
     if not is_admin:
-        if actor_id and actor_id != user_id:
-            scoped_actor_id = actor_id
-        else:
-            scoped_actor_id = user_id
+        scoped_actor_id = actor_id if actor_id and actor_id != user_id else user_id
     else:
         scoped_actor_id = actor_id
 

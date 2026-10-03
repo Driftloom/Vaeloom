@@ -11,8 +11,9 @@ Handles:
 
 import logging
 import os
-from typing import Any, Dict, List, Optional
 import uuid
+from datetime import UTC
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,14 +25,14 @@ except Exception:
     pass
 
 class ComposioService:
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         self._api_key = api_key
         self.base_url = os.environ.get("COMPOSIO_BASE_URL", "https://backend.composio.dev/api/v3")
-        self._toolkits_cache: Optional[List[Dict[str, Any]]] = None
+        self._toolkits_cache: list[dict[str, Any]] | None = None
         self._cache_timestamp: float = 0.0
 
     @property
-    def api_key(self) -> Optional[str]:
+    def api_key(self) -> str | None:
         if self._api_key is not None:
             return self._api_key
         env_val = os.environ.get("COMPOSIO_API_KEY")
@@ -55,7 +56,7 @@ class ComposioService:
         for path in ["apps/api/.env", ".env", "../.env", "../../.env"]:
             if os.path.exists(path):
                 try:
-                    with open(path, "r", encoding="utf-8") as f:
+                    with open(path, encoding="utf-8") as f:
                         for line in f:
                             line = line.strip()
                             if line.startswith("COMPOSIO_API_KEY="):
@@ -80,8 +81,8 @@ class ComposioService:
         workspace_id: uuid.UUID,
         user_id: uuid.UUID,
         app_name: str,
-        redirect_url: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        redirect_url: str | None = None,
+    ) -> dict[str, Any]:
         """Initiate OAuth connection flow for a Composio app."""
         if not self.is_configured:
             logger.info("Composio API key not configured; returning setup instructions for app %s", app_name)
@@ -100,7 +101,7 @@ class ComposioService:
         self,
         workspace_id: uuid.UUID,
         app_name: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Check if an app is connected and authenticated for this workspace."""
         if not self.is_configured:
             return {
@@ -138,7 +139,7 @@ class ComposioService:
         self,
         workspace_id: uuid.UUID,
         app_name: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Revoke all Composio connected accounts for this workspace+app.
 
         Idempotent: when nothing is connected the call succeeds with an empty
@@ -179,8 +180,8 @@ class ComposioService:
                 "revoked": [],
             }
 
-        revoked: List[str] = []
-        errors: List[Dict[str, str]] = []
+        revoked: list[str] = []
+        errors: list[dict[str, str]] = []
         for acc_id in targets:
             try:
                 deleter = getattr(getattr(client, "connected_accounts", None), "delete", None)
@@ -213,16 +214,16 @@ class ComposioService:
         self,
         workspace_id: uuid.UUID,
         app_name: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Re-verify a Composio connection; re-issue an OAuth link when expired.
 
         Composio holds provider refresh tokens server-side, so a client-side
         refresh means: poll live status, and when the connection is not ACTIVE
         return COMPOSIO_AUTH_REQUIRED together with a fresh connect URL.
         """
-        from datetime import datetime, timezone
+        from datetime import datetime
         status = await self.get_connection_status(workspace_id, app_name)
-        checked_at = datetime.now(timezone.utc).isoformat()
+        checked_at = datetime.now(UTC).isoformat()
         if status.get("connected"):
             return {
                 "status": "success",
@@ -246,8 +247,8 @@ class ComposioService:
         workspace_id: uuid.UUID,
         app_name: str,
         action_name: str,
-        params: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        params: dict[str, Any],
+    ) -> dict[str, Any]:
         """Execute a Composio tool action on behalf of a workspace."""
         if not self.is_configured:
             return {
@@ -286,8 +287,8 @@ class ComposioService:
         self,
         app_name: str,
         workspace_id: str,
-        redirect_url: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        redirect_url: str | None = None,
+    ) -> dict[str, Any]:
         """Generate an authentic OAuth link for a Composio app."""
         if not self.is_configured:
             return {
@@ -380,7 +381,7 @@ class ComposioService:
                 "connection_status": "failed",
             }
 
-    def bridge_workspace_tools(self, workspace_id: str) -> List[str]:
+    def bridge_workspace_tools(self, workspace_id: str) -> list[str]:
         """Discover and bridge workspace SaaS tools from Composio into dynamic executor."""
         from ..tools.definitions import ToolDefinition
         from ..tools.executor import mark_approval_gated, register_dynamic_tool
@@ -398,7 +399,7 @@ class ComposioService:
             ("jira", "create_ticket", "Create a Jira ticket", False),
             ("jira", "list_tickets", "List Jira tickets", True),
         ]
-        registered: List[str] = []
+        registered: list[str] = []
         for app, action, desc, is_read in popular_tools:
             tool_name = f"composio__{app}__{action}"
             td = ToolDefinition(
@@ -412,7 +413,7 @@ class ComposioService:
             )
 
             def make_handler(_app=app, _action=action):
-                async def handler(params: Dict[str, Any], wid: str) -> Dict[str, Any]:
+                async def handler(params: dict[str, Any], wid: str) -> dict[str, Any]:
                     try:
                         w_uuid = uuid.UUID(str(wid))
                     except (ValueError, TypeError):
@@ -428,16 +429,17 @@ class ComposioService:
 
     async def get_apps(
         self,
-        category: Optional[str] = None,
-        search: Optional[str] = None,
+        category: str | None = None,
+        search: str | None = None,
         limit: int = 300,
         offset: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Fetch Composio apps catalog, with live fallback or local 269+ enterprise catalog."""
         import time
+
         from .composio_catalog import COMPOSIO_SUPPORTED_APPS
 
-        apps: List[Dict[str, Any]] = []
+        apps: list[dict[str, Any]] = []
 
         # Fetch live toolkits from official Composio SDK if configured and not in unit tests
         if self.is_configured and not os.environ.get("PYTEST_CURRENT_TEST"):
@@ -452,7 +454,7 @@ class ComposioService:
                     cursor = None
                     # Pull all pages (1,400+ toolkits) using cursor pagination
                     while True:
-                        kwargs: Dict[str, Any] = {}
+                        kwargs: dict[str, Any] = {}
                         if cursor:
                             kwargs["cursor"] = cursor
                         res = client._client.toolkits.list(**kwargs)
@@ -462,7 +464,7 @@ class ComposioService:
                         if not cursor or not items:
                             break
 
-                    def _resolve_purpose(cats: List[str], name: str, slug: str, desc: str) -> str:
+                    def _resolve_purpose(cats: list[str], name: str, slug: str, desc: str) -> str:
                         full_text = f"{' '.join(cats)} {name} {slug} {desc}".lower()
                         if any(k in full_text for k in ['educat', 'learning', 'course', 'school', 'academy', 'student', 'tutor', 'classroom', 'moodle', 'canvas lms', 'blackboard', 'coursera', 'udemy', 'quiz', 'duolingo', 'khan', 'teachable', 'thinkific', 'edx', 'scholar']):
                             return "Education"
@@ -492,7 +494,7 @@ class ComposioService:
                             return "Security & Monitoring"
                         return "Productivity"
 
-                    mapped_apps: List[Dict[str, Any]] = []
+                    mapped_apps: list[dict[str, Any]] = []
                     for t in live_toolkits:
                         meta = getattr(t, "meta", None)
                         cats = [getattr(c, "name", str(c)).title() for c in getattr(meta, "categories", [])] if meta else []
@@ -535,7 +537,7 @@ class ComposioService:
 
         total = len(apps)
         paginated_apps = apps[offset : offset + limit]
-        categories = sorted(list({a.get("category", "General") for a in apps}))
+        categories = sorted({a.get("category", "General") for a in apps})
         return {
             "total": total,
             "limit": limit,

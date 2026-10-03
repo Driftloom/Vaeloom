@@ -7,6 +7,7 @@ Temporal still owns durability, Policy still owns authorization.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import logging
@@ -598,10 +599,8 @@ async def tool_execute_node(state: dict[str, Any]) -> dict[str, Any]:
         from ..tools.executor import approval_gated_tools as _agt  # type: ignore
 
         gated_for_quota = False
-        try:
+        with contextlib.suppress(Exception):
             gated_for_quota = tool in _agt()
-        except Exception:
-            pass
         # Enforce per-tool quota for gated or when tool implies side effect
         if ws and (gated_for_quota or tool in ("create_entity", "merge_entities", "rename_file", "move_file", "draft_email", "create_calendar_event")):
             try:

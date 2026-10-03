@@ -15,7 +15,7 @@ import json
 import logging
 import re
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -26,7 +26,7 @@ from ..services.llm_service import llm_service
 logger = logging.getLogger(__name__)
 
 
-class DeliberatorRole(str, Enum):
+class DeliberatorRole(StrEnum):
     SKEPTIC = "skeptic"
     VOICE_IDENTITY = "voice_identity"
     EVIDENCE_CALIBRATION = "evidence_calibration"
@@ -34,7 +34,7 @@ class DeliberatorRole(str, Enum):
     ADJUDICATOR = "adjudicator"
 
 
-class CouncilVerdictType(str, Enum):
+class CouncilVerdictType(StrEnum):
     SHIP = "SHIP"
     REVISE = "REVISE"
     HOLD = "HOLD"
@@ -97,10 +97,7 @@ class AgentCouncilService:
             r"^ok(ay)?\b",
             r"^status$",
         ]
-        for pattern in trivial_patterns:
-            if re.match(pattern, cleaned, re.IGNORECASE):
-                return False
-        return True
+        return all(not re.match(pattern, cleaned, re.IGNORECASE) for pattern in trivial_patterns)
 
     async def deliberate(
         self,
@@ -398,8 +395,8 @@ class AgentCouncilService:
             all_reducible.extend(crit.reducible_flaws)
 
         # Deduplicate
-        all_irreducible = sorted(list(set(all_irreducible)))
-        all_reducible = sorted(list(set(all_reducible)))
+        all_irreducible = sorted(set(all_irreducible))
+        all_reducible = sorted(set(all_reducible))
 
         # Deterministic Verdict Policy Compilation
         if len(all_irreducible) >= 3 or (mode == "adversarial" and any(c.stance == "BLOCK" for c in critiques.values())):
@@ -427,7 +424,7 @@ class AgentCouncilService:
             DeliberatorRole.VOICE_IDENTITY.value: 0.20,
         }
         persona_scores: dict[str, float] = {}
-        for role_val, w in weights.items():
+        for role_val, _w in weights.items():
             crit = critiques.get(role_val)
             if not crit:
                 p_score = 75.0

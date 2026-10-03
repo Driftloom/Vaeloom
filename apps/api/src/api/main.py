@@ -78,7 +78,6 @@ from .middleware.security_headers import SecurityHeadersMiddleware
 from .middleware.tenant import TenantMiddleware
 from .routers import (
     admin_console,
-    agent_commands,
     agents,
     analytics,
     anticipation,
@@ -92,8 +91,8 @@ from .routers import (
     chat,
     cognition,
     connectors,
-    council,
     conversations,
+    council,
     documents,
     events,
     feature_flags,
@@ -146,9 +145,8 @@ async def lifespan(app: FastAPI):
     # OP-RLS-01: DDL/boot migrations run on the owner engine when
     # DATABASE_MIGRATION__URL is configured; the runtime engine may be a
     # least-privilege non-BYPASSRLS role without DDL rights.
-    from .database import get_migration_engine
-
     from . import models  # noqa: F401
+    from .database import get_migration_engine
     _ddl_engine = get_migration_engine() or engine
     async with _ddl_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

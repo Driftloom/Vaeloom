@@ -6,7 +6,6 @@ import logging
 import time
 from typing import Any
 
-from api.agents.conversation_agent.handler import ConversationAgent
 from api.agents.qa_agent.handler import QAAgent, QAValidationResult
 from api.infrastructure.agent_eval import detect_adversarial_prompt
 from api.infrastructure.agent_observability import (
@@ -541,7 +540,7 @@ async def handle(request: UserRequest) -> dict[str, Any]:
         logger.info(f"Classified: agent={agent_name}, confidence={confidence}")
 
     if execution_plan:
-        setattr(request, "execution_plan", execution_plan)
+        request.execution_plan = execution_plan
 
 
     # ── 1b. MVP scope lock ─────────────────────────────────────────

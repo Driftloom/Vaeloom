@@ -120,7 +120,7 @@ class ProviderRegistry:
                 if pkg.name.startswith("_"):
                     continue
                 try:
-                    mod = importlib.import_module(f"api.integrations.providers.{pkg.name}.provider")
+                    importlib.import_module(f"api.integrations.providers.{pkg.name}.provider")
                     # provider.py may call registry.register at import time
                     logger.info(f"Discovered provider module: {pkg.name}")
                 except ModuleNotFoundError:

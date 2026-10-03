@@ -92,7 +92,7 @@ class ConversationAgent(BaseAgent):
             "thanks", "thank you", "thx", "ty", "cheers",
         ])
         _stripped = re.sub(r"^[@/]\w+\s*", "", msg_lower).strip().rstrip("!?.,'\"")
-        
+
         farewell_tokens = frozenset(["bye", "goodbye", "see you", "later", "take care", "cya", "ttyl"])
         thanks_tokens = frozenset(["thanks", "thank you", "thx", "ty", "cheers"])
 

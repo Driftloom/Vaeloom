@@ -1,11 +1,20 @@
-import { createCipheriv, createDecipheriv, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHmac,
+  randomBytes,
+  timingSafeEqual,
+} from 'node:crypto';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
 const KEY_LENGTH = 32;
 
 function deriveKey(secret: string): Buffer {
-  return Buffer.from(secret.padEnd(KEY_LENGTH * 2, '0').slice(0, KEY_LENGTH * 2), 'utf8').subarray(0, KEY_LENGTH);
+  return Buffer.from(secret.padEnd(KEY_LENGTH * 2, '0').slice(0, KEY_LENGTH * 2), 'utf8').subarray(
+    0,
+    KEY_LENGTH,
+  );
 }
 
 export function encryptSecret(plaintext: string, masterKey: string): string {
@@ -23,7 +32,9 @@ export function decryptSecret(payload: string, masterKey: string): string {
   const key = deriveKey(masterKey);
   const decipher = createDecipheriv(ALGORITHM, key, Buffer.from(ivHex, 'hex'));
   decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
-  return Buffer.concat([decipher.update(Buffer.from(dataHex, 'hex')), decipher.final()]).toString('utf8');
+  return Buffer.concat([decipher.update(Buffer.from(dataHex, 'hex')), decipher.final()]).toString(
+    'utf8',
+  );
 }
 
 /**

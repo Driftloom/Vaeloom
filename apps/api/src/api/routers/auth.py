@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import logging
 import secrets
 
@@ -280,16 +281,17 @@ async def me(current_user: dict = Depends(get_current_user), db: AsyncSession = 
         email = current_user.get("email")
         if email:
             import uuid as _uuid
-            from sqlalchemy import select, delete, text, func
-            from ..models.schema import User as _User, AuthSession as _AuthSession, Tenant as _Tenant
 
-            try:
+            from sqlalchemy import func, select, text
+
+            from ..models.schema import Tenant as _Tenant
+            from ..models.schema import User as _User
+
+            with contextlib.suppress(Exception):
                 await db.execute(
                     text("SELECT set_config('app.lookup_email', :email, true)"),
                     {"email": str(email).strip().lower()},
                 )
-            except Exception:
-                pass
 
             res = await db.execute(select(_User).where(func.lower(_User.email) == str(email).strip().lower()))
             existing_user = res.scalar_one_or_none()
@@ -362,6 +364,8 @@ async def me(current_user: dict = Depends(get_current_user), db: AsyncSession = 
     )
 
 
+from datetime import UTC
+
 from pydantic import BaseModel
 
 
@@ -380,8 +384,6 @@ async def sso_token_login(
     from sqlalchemy import select
 
     from ..models.schema import User
-    from ..schemas.auth import AuthResponse as AuthResp
-    from ..schemas.auth import PublicUser
 
     provider_config = settings.sso_providers.get(provider)
     if not provider_config:
@@ -397,7 +399,7 @@ async def sso_token_login(
         raise HTTPException(status_code=401, detail="Email not provided by SSO provider")
 
     try:
-        from sqlalchemy import text, func
+        from sqlalchemy import func, text
         await db.execute(
             text("SELECT set_config('app.lookup_email', :email, true)"),
             {"email": str(email).strip().lower()},
@@ -469,12 +471,11 @@ async def sso_callback(
     state: str = Query(...),
     db: AsyncSession = Depends(get_db),
     request: Request = None,
+    response: Response = None,
 ):
     from sqlalchemy import select
 
     from ..models.schema import User
-    from ..schemas.auth import AuthResponse as AuthResp
-    from ..schemas.auth import PublicUser
 
     stored = _sso_states.pop(state, None)
     if stored is None:
@@ -523,7 +524,7 @@ async def sso_callback(
 
     payload.get("sub")
     try:
-        from sqlalchemy import text, func
+        from sqlalchemy import func, text
         await db.execute(
             text("SELECT set_config('app.lookup_email', :email, true)"),
             {"email": str(email).strip().lower()},
@@ -656,7 +657,7 @@ async def saml_login(request: Request, redirect_url: str | None = None):
     import urllib.parse
     import uuid
     import zlib
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     saml_cfg = settings.sso_providers.get('saml', {})
     idp_sso_url = saml_cfg.get('idp_sso_url') or os.environ.get('SAML_IDP_SSO_URL')
@@ -670,7 +671,7 @@ async def saml_login(request: Request, redirect_url: str | None = None):
     sp_entity_id = saml_cfg.get('sp_entity_id') or f"{base_url}/api/v1/auth/saml/metadata"
     acs_url = f"{base_url}/api/v1/auth/saml/callback"
     req_id = f"id_{uuid.uuid4().hex}"
-    issue_instant = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    issue_instant = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     authn_request = (
         f'<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" '
@@ -736,10 +737,8 @@ async def saml_callback_post(
     from sqlalchemy import select
 
     from ..models.schema import User
-    from ..schemas.auth import AuthResponse as AuthResp2
-    from ..schemas.auth import PublicUser
     try:
-        from sqlalchemy import text, func
+        from sqlalchemy import func, text
         await db.execute(
             text("SELECT set_config('app.lookup_email', :email, true)"),
             {"email": str(email).strip().lower()},

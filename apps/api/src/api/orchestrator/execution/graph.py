@@ -7,7 +7,8 @@ streaming telemetry, Human-in-the-Loop approval pausing, and self-reflection loo
 from __future__ import annotations
 
 import logging
-from typing import Any, AsyncGenerator, Callable, Coroutine
+from collections.abc import AsyncGenerator, Callable, Coroutine
+from typing import Any
 
 from .nodes.approve import approve_node
 from .nodes.complete import complete_node

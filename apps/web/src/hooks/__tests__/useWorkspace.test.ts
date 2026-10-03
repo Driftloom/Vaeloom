@@ -1,5 +1,10 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { useWorkspace, useWorkspaceAgents, useWorkspaceMemories, useWorkspaceConnectors } from '../useWorkspace';
+import {
+  useWorkspace,
+  useWorkspaceAgents,
+  useWorkspaceMemories,
+  useWorkspaceConnectors,
+} from '../useWorkspace';
 import * as api from '../../lib/api';
 
 jest.mock('../../lib/api', () => ({

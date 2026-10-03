@@ -473,10 +473,7 @@ class JudgeEvaluator:
         except Exception as e:
             logger.warning(f"Judge call failed for {case.id}: {e}")
             return JudgeVerdict(case.id, 0.0, 0.0, 0.0, rationale=f"judge-error: {e}", raw="")
-        if isinstance(raw, dict):
-            content = str(raw.get("content", raw))
-        else:
-            content = str(raw)
+        content = str(raw.get("content", raw)) if isinstance(raw, dict) else str(raw)
         parsed = _parse_judge_json(content)
         if parsed is None:
             return JudgeVerdict(case.id, 0.0, 0.0, 0.0, rationale="judge-unparseable", raw=content[:500])
@@ -511,7 +508,7 @@ class JudgeEvaluator:
         cases = cases or JUDGE_GOLDEN
         verdicts: list[JudgeVerdict] = []
         for case in cases:
-            start = time.monotonic()
+            time.monotonic()
             try:
                 response = await agent_fn(case.input)
                 response_text = response if isinstance(response, str) else str(response)
@@ -520,7 +517,7 @@ class JudgeEvaluator:
             verdict = await self.score_with_judge(case, response_text, judge_fn)
             verdicts.append(verdict)
             logger.info("Judge %s: overall=%.3f threshold=%.2f", case.id, verdict.overall, case.min_overall)
-        passed = sum(1 for v, c in zip(verdicts, cases) if v.passes(c.min_overall))
+        passed = sum(1 for v, c in zip(verdicts, cases, strict=False) if v.passes(c.min_overall))
         return {
             "total": len(verdicts),
             "passed": passed,
@@ -529,7 +526,7 @@ class JudgeEvaluator:
             "avg_overall": round(sum(v.overall for v in verdicts) / max(len(verdicts), 1), 3),
             "verdicts": [
                 {"case_id": v.case_id, "overall": v.overall, "passed": v.passes(c.min_overall), "rationale": v.rationale}
-                for v, c in zip(verdicts, cases)
+                for v, c in zip(verdicts, cases, strict=False)
             ],
         }
 

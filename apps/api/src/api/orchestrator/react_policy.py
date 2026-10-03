@@ -16,6 +16,7 @@ Contract enforced here:
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import logging
@@ -132,8 +133,10 @@ def validate_tool_arguments(
     try:
         from ..utils.sanitize import looks_like_prompt_injection, sanitize_text
     except Exception:  # pragma: no cover
-        sanitize_text = lambda v: v  # type: ignore[assignment]
-        looks_like_prompt_injection = lambda t: False  # type: ignore[assignment]
+        def sanitize_text(v):
+            return v  # type: ignore[assignment]
+        def looks_like_prompt_injection(t):
+            return False  # type: ignore[assignment]
 
     for key, value in args.items():
         if isinstance(value, str) and len(value) > REACT_MAX_ARG_STRING:
@@ -144,10 +147,8 @@ def validate_tool_arguments(
                     advisory.append(f"argument '{key}' contains instruction-like content (sanitized)")
             except Exception:
                 pass
-            try:
+            with contextlib.suppress(Exception):
                 value = sanitize_text(value)
-            except Exception:
-                pass
         cleaned[key] = value
 
     # Unknown-field policy: reject when the schema declares properties and does

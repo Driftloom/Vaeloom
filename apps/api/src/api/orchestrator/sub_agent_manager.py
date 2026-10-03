@@ -21,7 +21,6 @@ from .card_registry import get_agent_card
 from .contracts.agent_message import (
     AgentMessage,
     AgentResponseEnvelope,
-    MessagePriority,
     MessageType,
     TaskStatus,
 )
@@ -66,7 +65,7 @@ class SubAgentManager:
         sub_agent_name: str,
     ) -> list[str]:
         """Compute child agent permissions enforcing the Zero-Trust Least Privilege invariant.
-        
+
         Sub-agents can never exceed the permissions granted to their parent.
         """
         from .capability_registry import capability_registry
@@ -166,7 +165,7 @@ class SubAgentManager:
                     sub_agent = await sub_agent
 
                 # Check for standard handle / run method
-                if hasattr(sub_agent, "handle") and callable(getattr(sub_agent, "handle")):
+                if hasattr(sub_agent, "handle") and callable(sub_agent.handle):
                     try:
                         res = await sub_agent.handle(
                             message=task_instruction,
@@ -177,7 +176,7 @@ class SubAgentManager:
                         )
                     except TypeError:
                         res = await sub_agent.handle(task_instruction)
-                elif hasattr(sub_agent, "run") and callable(getattr(sub_agent, "run")):
+                elif hasattr(sub_agent, "run") and callable(sub_agent.run):
                     res = await sub_agent.run(
                         instruction=task_instruction,
                         context=context or {},
@@ -214,7 +213,7 @@ class SubAgentManager:
         try:
             result = await asyncio.wait_for(exec_task, timeout=timeout_seconds)
             return result
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("Sub-agent %s timed out after %ds", sub_agent_name, timeout_seconds)
             exec_task.cancel()
             return AgentResponseEnvelope(

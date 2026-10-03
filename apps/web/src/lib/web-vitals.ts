@@ -13,7 +13,8 @@ interface Metric {
 
 export function reportWebVitals(metric: Metric): void {
   // Dev-only diagnostics; production builds strip console via next.config.js removeConsole
-  console.info('[Web Vitals]', { // eslint-disable-line no-console
+  console.info('[Web Vitals]', {
+    // eslint-disable-line no-console
     name: metric.name,
     value: metric.value,
     rating: metric.rating,

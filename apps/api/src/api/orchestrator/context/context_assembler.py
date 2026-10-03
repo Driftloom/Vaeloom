@@ -7,7 +7,6 @@ Prevents prompt injection, indirect attacks, and context window overflow.
 
 from __future__ import annotations
 
-import html
 import logging
 from typing import Any
 
@@ -71,7 +70,7 @@ class ContextAssembler:
             if user_profile.get("experience_years"):
                 profile_lines.append(f"Experience Years: {user_profile['experience_years']}")
             if profile_lines:
-                blocks.append(f"<user_profile>\n" + "\n".join(profile_lines) + "\n</user_profile>")
+                blocks.append("<user_profile>\n" + "\n".join(profile_lines) + "\n</user_profile>")
 
         # 3. <workspace_state>: Active workspace state and entities
         if workspace_state:
@@ -80,7 +79,7 @@ class ContextAssembler:
                 if v is not None:
                     state_lines.append(f"{k}: {_sanitize_xml_content(str(v))[:200]}")
             if state_lines:
-                blocks.append(f"<workspace_state>\n" + "\n".join(state_lines) + "\n</workspace_state>")
+                blocks.append("<workspace_state>\n" + "\n".join(state_lines) + "\n</workspace_state>")
 
         # 4. <active_grounding_context> / <untrusted_evidence>: Authoritative active files, documents, web results
         # Placed FIRST before memories per Claude-style active grounding hierarchy.

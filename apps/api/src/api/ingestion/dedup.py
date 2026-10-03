@@ -28,7 +28,9 @@ def filename_similarity(a: str, b: str) -> float:
 async def check_dedup(workspace_id: str, content_hash: str, filename: str) -> str | None:
     try:
         import uuid  # noqa: F401
+
         from sqlalchemy import select
+
         from api.database import scoped_session
         from api.models.schema import Document, DocumentVersion
     except ImportError as e:
@@ -93,9 +95,9 @@ async def _fuzzy_path_match(session, workspace_id: str, filename: str) -> str | 
     """Best-effort near-duplicate filename match within a workspace."""
     try:
         # Lazy import mirrors check_dedup (avoids module-level cycles).
-        from api.models.schema import Document
-
         import uuid as _uuid
+
+        from api.models.schema import Document
         w_uuid = _uuid.UUID(str(workspace_id)) if workspace_id else None
         cand_stmt = (
             select(Document.id, Document.path)

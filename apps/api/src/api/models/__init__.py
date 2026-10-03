@@ -1,3 +1,10 @@
+from .registries import (
+    EvaluationEntry,
+    ModelProviderEntry,
+    PolicyEntry,
+    PromptVersionEntry,
+    ToolRegistryEntry,
+)
 from .schema import (
     Agent,
     AgentAction,
@@ -43,13 +50,6 @@ from .schema import (
     WebhookDelivery,
     Workspace,
     WorkspaceUser,
-)
-from .registries import (
-    EvaluationEntry,
-    ModelProviderEntry,
-    PolicyEntry,
-    PromptVersionEntry,
-    ToolRegistryEntry,
 )
 
 __all__ = [

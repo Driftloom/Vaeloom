@@ -179,7 +179,7 @@ test.describe('landing functional', () => {
     await page.waitForTimeout(1500);
     await waitForFonts(page);
 
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('second brain');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(/persistent memory/i);
 
     // Primary conversion path present (hero + final CTA at minimum)
     const signups = page.locator('a[href="/signup"]');

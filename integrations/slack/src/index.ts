@@ -8,11 +8,7 @@ export {
   SlackApiError,
   SlackWebhookVerificationError,
 } from './errors';
-export {
-  encryptSecret,
-  decryptSecret,
-  verifySlackSignature,
-} from './auth';
+export { encryptSecret, decryptSecret, verifySlackSignature } from './auth';
 export type {
   Integration,
   IntegrationConfig,

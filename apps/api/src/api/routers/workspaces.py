@@ -255,7 +255,7 @@ async def invite_workspace_member(
             )
 
     try:
-        from sqlalchemy import text, func
+        from sqlalchemy import func, text
         await db.execute(
             text("SELECT set_config('app.lookup_email', :email, true)"),
             {"email": str(dto.email).strip().lower()},

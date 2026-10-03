@@ -6,7 +6,10 @@ const IV_LENGTH = 12;
 const KEY_LENGTH = 32;
 
 function deriveKey(secret: string): Buffer {
-  return Buffer.from(secret.padEnd(KEY_LENGTH * 2, '0').slice(0, KEY_LENGTH * 2), 'utf8').subarray(0, KEY_LENGTH);
+  return Buffer.from(secret.padEnd(KEY_LENGTH * 2, '0').slice(0, KEY_LENGTH * 2), 'utf8').subarray(
+    0,
+    KEY_LENGTH,
+  );
 }
 
 /** Encrypt a plaintext secret (e.g. an OAuth token) with AES-256-GCM. */
@@ -16,11 +19,7 @@ export function encryptSecret(plaintext: string, masterKey: string): string {
   const cipher = createCipheriv(ALGORITHM, key, iv);
   const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
   const authTag = cipher.getAuthTag();
-  return [
-    iv.toString('hex'),
-    authTag.toString('hex'),
-    encrypted.toString('hex'),
-  ].join(':');
+  return [iv.toString('hex'), authTag.toString('hex'), encrypted.toString('hex')].join(':');
 }
 
 /** Decrypt a value previously produced by {@link encryptSecret}. */
@@ -32,10 +31,7 @@ export function decryptSecret(payload: string, masterKey: string): string {
   const key = deriveKey(masterKey);
   const decipher = createDecipheriv(ALGORITHM, key, Buffer.from(ivHex, 'hex'));
   decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
-  const decrypted = Buffer.concat([
-    decipher.update(Buffer.from(dataHex, 'hex')),
-    decipher.final(),
-  ]);
+  const decrypted = Buffer.concat([decipher.update(Buffer.from(dataHex, 'hex')), decipher.final()]);
   return decrypted.toString('utf8');
 }
 

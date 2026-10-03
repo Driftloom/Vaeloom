@@ -4,12 +4,12 @@
 
 Vaeloom · Visual Overview
 
-| Metadata | Value |
+| Metadata         | Value                                                                      |
 | ---------------- | -------------------------------------------------------------------------- |
-| **Purpose** | Visual overview of Vaeloom — what it is, how it works, and how we build it |
-| **Status** | Living document |
-| **Owner** | Product Team |
-| **Last Updated** | 2026-07-13 |
+| **Purpose**      | Visual overview of Vaeloom — what it is, how it works, and how we build it |
+| **Status**       | Living document                                                            |
+| **Owner**        | Product Team                                                               |
+| **Last Updated** | 2026-07-13                                                                 |
 
 ## Overview
 
@@ -24,10 +24,10 @@ orchestration, memory system, implementation plan, and roadmap.
 
 - Provide a visual-first walkthrough of the Vaeloom system
 - Explain the problem, architecture, agent orchestration, and memory system in
- an accessible way
+  an accessible way
 - Communicate the implementation plan and roadmap visually
 - Serve as a high-level overview for stakeholders, new team members, and
- investors
+  investors
 
 ## Scope
 
@@ -218,7 +218,8 @@ Specialized agents, each scoped to one job — full detail in the next section.
 
 Orchestrator — Routes every request
 
-7 specialist agents — Organization, Resume, ATS, Job Search, Gmail, Scheduler, Application
+7 specialist agents — Organization, Resume, ATS, Job Search, Gmail, Scheduler,
+Application
 
 ### Memory & Knowledge — CORE
 
@@ -428,13 +429,17 @@ graph TD
  class W1,W2,W3,W4 write
 ```
 
-> **Diagram summary:** Six memory types (Profile, Document, Career, Episodic, Preference, Working) connect to the central Knowledge Graph. The read path uses Agentic RAG (hybrid search → re-rank → context), and the write path extracts → deduplicates → writes to graph/vector store. Working Memory is session-scoped; others persist.
+> **Diagram summary:** Six memory types (Profile, Document, Career, Episodic,
+> Preference, Working) connect to the central Knowledge Graph. The read path
+> uses Agentic RAG (hybrid search → re-rank → context), and the write path
+> extracts → deduplicates → writes to graph/vector store. Working Memory is
+> session-scoped; others persist.
 
 ### Agentic RAG retrieval
 
 When an agent needs context, it doesn't run one fixed search — it picks a
-strategy for the question in front of it, as shown in the read path above
-(query → hybrid search → re-rank → assembled context).
+strategy for the question in front of it, as shown in the read path above (query
+→ hybrid search → re-rank → assembled context).
 
 ### How memory gets updated
 
@@ -669,21 +674,21 @@ Vaeloom tutorial export --format pdf --output walkthrough.pdf
 ## Future Improvements
 
 - **Animated flow diagrams** — convert static Mermaid diagrams to animated
- step-through walkthroughs
+  step-through walkthroughs
 - **Interactive prototype links** — embed clickable prototype hotspots for each
- major screen
+  major screen
 - **Video narration** — add narrated screencast for each visual section
 - **PDF export** — generate a downloadable PDF version of the visual overview
 - **Localized versions** — translate visual content for international student
- audiences
+  audiences
 
 ---
 
 ## Related Documents
 
-| Document | Description |
+| Document                                                    | Description                                   |
 | ----------------------------------------------------------- | --------------------------------------------- |
 | [Complete Documentation](Vaeloom-Complete-Documentation.md) | Full linear product and engineering reference |
-| [MVP Product Spec](01-Vaeloom-MVP-Spec.md) | v1/MVP product scope |
-| [System Architecture](02-system-architecture.md) | Six-layer architecture diagram |
-| [Memory & Knowledge Graph](04-memory-knowledge-graph.md) | Memory system visual breakdown |
+| [MVP Product Spec](01-Vaeloom-MVP-Spec.md)                  | v1/MVP product scope                          |
+| [System Architecture](02-system-architecture.md)            | Six-layer architecture diagram                |
+| [Memory & Knowledge Graph](04-memory-knowledge-graph.md)    | Memory system visual breakdown                |

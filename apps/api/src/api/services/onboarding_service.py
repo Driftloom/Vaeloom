@@ -1,3 +1,4 @@
+import logging
 import uuid
 from typing import Any
 
@@ -6,7 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.schema import OnboardingState, Workspace
-from ..schemas.onboarding import OnboardingStateResponse, VALID_ONBOARDING_STEPS
+from ..schemas.onboarding import VALID_ONBOARDING_STEPS, OnboardingStateResponse
+
+logger = logging.getLogger(__name__)
 
 
 class OnboardingService:

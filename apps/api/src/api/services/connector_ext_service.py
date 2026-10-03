@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import logging
 import re
 import uuid
@@ -109,6 +110,7 @@ class ConnectorExtService:
         """Acquire distributed Redis sync lock or in-memory fallback mutex."""
         try:
             import redis.asyncio as aioredis
+
             from ..config import settings
             redis_url = getattr(settings, "redis__url", None) or getattr(settings, "redis_url", None)
             if redis_url:
@@ -275,10 +277,8 @@ class ConnectorExtService:
         if tenant_id:
             stmt = stmt.where(Connector.tenant_id == uuid.UUID(tenant_id))
         if workspace_id:
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 stmt = stmt.where(Connector.workspace_id == uuid.UUID(str(workspace_id)))
-            except (ValueError, TypeError):
-                pass
         elif user_id:
             try:
                 uid = uuid.UUID(str(user_id))
@@ -302,10 +302,8 @@ class ConnectorExtService:
         if tenant_id:
             stmt = stmt.where(Connector.tenant_id == uuid.UUID(tenant_id))
         if workspace_id:
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 stmt = stmt.where(Connector.workspace_id == uuid.UUID(str(workspace_id)))
-            except (ValueError, TypeError):
-                pass
         result = await db.execute(stmt)
         connector = result.scalar_one_or_none()
         if not connector:
@@ -617,10 +615,8 @@ class ConnectorExtService:
         ctype = getattr(connector, "type", "rest")
         c_config = getattr(connector, "config", None)
         config = dict(c_config) if isinstance(c_config, dict) else {}
-        try:
+        with contextlib.suppress(Exception):
             self._decrypt_config(config, ctype)
-        except Exception:
-            pass
         token_ref = None
         try:
             raw_ref = getattr(connector, "token_ref", None)
@@ -661,10 +657,8 @@ class ConnectorExtService:
                         if response.is_redirect and "location" in response.headers:
                             from urllib.parse import urljoin
                             target = urljoin(str(response.url), response.headers["location"])
-                            try:
+                            with contextlib.suppress(DnsResolutionError):
                                 await assert_public_http_url(target)
-                            except DnsResolutionError:
-                                pass
 
                     try:
                         async with httpx.AsyncClient(
@@ -713,10 +707,8 @@ class ConnectorExtService:
             raise
         except Exception:
             error = "sync_failed"
-            try:
+            with contextlib.suppress(Exception):
                 connector.status = "error"
-            except Exception:
-                pass
             logger.exception("connector_sync_trigger_failed", extra={"connector_id": str(connector_id)})
         finally:
             await self._release_sync_lock(lock_handle)
@@ -777,10 +769,8 @@ class ConnectorExtService:
             if response.is_redirect and "location" in response.headers:
                 from urllib.parse import urljoin
                 target = urljoin(str(response.url), response.headers["location"])
-                try:
+                with contextlib.suppress(DnsResolutionError):
                     await assert_public_http_url(target)
-                except DnsResolutionError:
-                    pass
 
         headers = self._build_auth_headers(config, connector.type, token_ref)
         try:

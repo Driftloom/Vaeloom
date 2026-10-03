@@ -4,8 +4,8 @@ Endpoints for browsing curated enterprise plugins, installing/uninstalling plugi
 per workspace, and inspecting plugin capabilities.
 """
 
-from typing import Any, Dict, List, Optional
 import uuid
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -20,24 +20,24 @@ router = APIRouter(tags=["marketplace"])
 
 class InstallPluginRequest(BaseModel):
     workspace_id: uuid.UUID
-    config: Dict[str, Any] = Field(default_factory=dict)
+    config: dict[str, Any] = Field(default_factory=dict)
 
 
 class RateListingRequest(BaseModel):
     rating: float = Field(..., ge=1.0, le=5.0, description="Rating from 1.0 to 5.0")
-    review: Optional[str] = Field(None, max_length=1000, description="Optional text review")
+    review: str | None = Field(None, max_length=1000, description="Optional text review")
 
 
 class ExecutePluginRequest(BaseModel):
     workspace_id: uuid.UUID
     action: str = Field(..., min_length=1, max_length=100)
-    params: Dict[str, Any] = Field(default_factory=dict)
+    params: dict[str, Any] = Field(default_factory=dict)
 
 
 @router.get("/listings")
 async def list_marketplace_listings(
-    category: Optional[str] = Query(None, description="Filter by category (All, Integration, AI, etc.)"),
-    search: Optional[str] = Query(None, description="Search term in name or description"),
+    category: str | None = Query(None, description="Filter by category (All, Integration, AI, etc.)"),
+    search: str | None = Query(None, description="Search term in name or description"),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
     limit: int | None = Query(default=None, ge=1, le=100, description="Standard pagination page size (wins over page/page_size)"),

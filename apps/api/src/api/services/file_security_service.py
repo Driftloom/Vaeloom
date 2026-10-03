@@ -1,6 +1,5 @@
-import os
-import re
 import logging
+import re
 from typing import NamedTuple
 
 logger = logging.getLogger(__name__)

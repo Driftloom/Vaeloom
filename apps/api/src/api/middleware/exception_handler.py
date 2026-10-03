@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import uuid
 
@@ -58,10 +59,8 @@ def problem_envelope(
         "status": status_code,
     }
     if request is not None:
-        try:
+        with contextlib.suppress(Exception):
             body["instance"] = str(request.url.path)
-        except Exception:
-            pass
     return body
 
 
@@ -94,7 +93,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     try:
         details = _json.loads(_json.dumps(raw_errors, default=str))
     except Exception:
-        details = [{"msg": str(e) for e in raw_errors}]
+        details = [{"msg": str(e)} for e in raw_errors]
     return JSONResponse(
         status_code=422,
         content={

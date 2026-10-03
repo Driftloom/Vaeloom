@@ -341,10 +341,7 @@ class ImageParser(BaseParser):
             try:
                 data = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)
                 confs = [int(c) for c in data.get("conf", []) if int(c) != -1]
-                if confs:
-                    confidence = sum(confs) / len(confs) / 100.0
-                else:
-                    confidence = 0.75
+                confidence = sum(confs) / len(confs) / 100.0 if confs else 0.75
                 ocr_text = pytesseract.image_to_string(image)
             except Exception:
                 # Fallback path if image_to_data not available / fails

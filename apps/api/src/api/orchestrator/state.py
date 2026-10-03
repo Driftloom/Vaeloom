@@ -366,6 +366,8 @@ class LoopState:
         return state
 
 
+import contextlib
+
 from .state_store import get_state_store
 
 
@@ -474,10 +476,8 @@ async def save_checkpoint(
                 state.status = _stored.get("status")
                 state.termination_reason = _stored.get("termination_reason")
                 logger.warning(f"Preserved stored terminal outcome for {state.request_id} over stale in-memory copy")
-            try:
+            with contextlib.suppress(TypeError, ValueError):
                 expected_version = int(_stored.get("state_version", expected_version))
-            except (TypeError, ValueError):
-                pass
         # Primary: Save via pluggable StateStore (Database/Redis/Composite/File)
         try:
             new_version = await get_state_store().save(

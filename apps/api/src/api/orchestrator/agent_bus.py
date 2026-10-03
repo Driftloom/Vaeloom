@@ -10,10 +10,10 @@ Supports:
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 from collections import defaultdict
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from .contracts.agent_message import AgentMessage, AgentResponseEnvelope, TaskStatus
 
@@ -122,7 +122,7 @@ class AgentEventBus:
         try:
             await self.publish(message)
             return await asyncio.wait_for(future, timeout=timeout_sec)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning(
                 "Request timeout after %.1fs for message %s (target agent: %s)",
                 timeout_sec,

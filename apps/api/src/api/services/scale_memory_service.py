@@ -12,7 +12,7 @@ import json
 import logging
 import uuid
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -25,7 +25,7 @@ from ..services.llm_service import llm_service
 logger = logging.getLogger(__name__)
 
 
-class ScaleTier(str, Enum):
+class ScaleTier(StrEnum):
     SUB_DAILY = "SUB_DAILY"
     DAILY = "DAILY"
     WEEKLY = "WEEKLY"

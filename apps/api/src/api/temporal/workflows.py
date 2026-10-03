@@ -8,6 +8,7 @@ Versioning via workflow.get_version on breaking field changes (§17).
 
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any
@@ -286,41 +287,35 @@ if HAS_TEMPORAL:
 
                 self._status = "completed"
                 self._step = "completed"
-                try:
+                with contextlib.suppress(Exception):
                     await wf.execute_activity(
                         "record_workflow_metric",
                         {"workflow_type": "IngestDocumentWorkflow", "task_queue": "vaeloom-ingest-q", "status": "completed" if not _degraded else "degraded"},
                         start_to_close_timeout=timedelta(seconds=5),
                         retry_policy=RetryPolicy(maximum_attempts=1),
                     )
-                except Exception:
-                    pass
                 return IngestResult(status="completed", document_id=inp.document_id, memories_created=int(written.get("memories_created", 0) or 0) if isinstance(written, dict) else 0, degraded=_degraded)
             except Exception as e:
                 if _is_cancel(e):
                     self._status = "cancelled"
                     self._error = str(e)[:500]
-                    try:
+                    with contextlib.suppress(Exception):
                         await wf.execute_activity(
                             "record_workflow_metric",
                             {"workflow_type": "IngestDocumentWorkflow", "task_queue": "vaeloom-ingest-q", "status": "cancelled"},
                             start_to_close_timeout=timedelta(seconds=5),
                             retry_policy=RetryPolicy(maximum_attempts=1),
                         )
-                    except Exception:
-                        pass
                     return IngestResult(status="cancelled", document_id=inp.document_id, error=self._error)
                 self._status = "failed"
                 self._error = str(e)[:500]
-                try:
+                with contextlib.suppress(Exception):
                     await wf.execute_activity(
                         "record_workflow_metric",
                         {"workflow_type": "IngestDocumentWorkflow", "task_queue": "vaeloom-ingest-q", "status": "failed"},
                         start_to_close_timeout=timedelta(seconds=5),
                         retry_policy=RetryPolicy(maximum_attempts=1),
                     )
-                except Exception:
-                    pass
                 return IngestResult(status="failed", document_id=inp.document_id, error=self._error)
 
     @workflow.defn(name="HelloWorkflow")
@@ -466,15 +461,13 @@ if HAS_TEMPORAL:
                     if isinstance(res, dict):
                         res = {**res, "status": "failed",
                                "error": str(res.get("error") or f"unknown activity status {_act_status!r}")[:500]}
-                try:
+                with contextlib.suppress(Exception):
                     await wf.execute_activity(
                         "record_workflow_metric",
                         {"workflow_type": "DurableAgentRunWorkflow", "task_queue": "vaeloom-agent-q", "status": self._status},
                         start_to_close_timeout=timedelta(seconds=5),
                         retry_policy=RetryPolicy(maximum_attempts=1),
                     )
-                except Exception:
-                    pass
                 return res
             except Exception as e:
                 # Terminal mapping distinguishes user cancellation (workflow
@@ -585,43 +578,37 @@ if HAS_TEMPORAL:
             except Exception as we:
                 if _is_cancel(we):
                     self._status = "cancelled"
-                    try:
+                    with contextlib.suppress(Exception):
                         await wf.execute_activity(
                             "record_workflow_metric",
                             {"workflow_type": "ApprovalWorkflow", "task_queue": "vaeloom-approvals-q", "status": "cancelled"},
                             start_to_close_timeout=timedelta(seconds=5),
                             retry_policy=RetryPolicy(maximum_attempts=1),
                         )
-                    except Exception:
-                        pass
                     return {"status": "cancelled", "approval_id": inp.approval_id, "error": str(we)[:500]}
             if self._decision is None:
                 # Check if cancelled during wait (Temporal cancels wait_condition)
                 try:
                     if wf.is_cancelled():  # type: ignore[attr-defined]
                         self._status = "cancelled"
-                        try:
+                        with contextlib.suppress(Exception):
                             await wf.execute_activity(
                                 "record_workflow_metric",
                                 {"workflow_type": "ApprovalWorkflow", "task_queue": "vaeloom-approvals-q", "status": "cancelled", "approval_wait_seconds": _wait_s},
                                 start_to_close_timeout=timedelta(seconds=5),
                                 retry_policy=RetryPolicy(maximum_attempts=1),
                             )
-                        except Exception:
-                            pass
                         return {"status": "cancelled", "approval_id": inp.approval_id}
                 except Exception:
                     pass
                 self._status = "expired"
-                try:
+                with contextlib.suppress(Exception):
                     await wf.execute_activity(
                         "record_workflow_metric",
                         {"workflow_type": "ApprovalWorkflow", "task_queue": "vaeloom-approvals-q", "status": "expired", "approval_wait_seconds": _wait_s},
                         start_to_close_timeout=timedelta(seconds=5),
                         retry_policy=RetryPolicy(maximum_attempts=1),
                     )
-                except Exception:
-                    pass
                 return {"status": "expired", "approval_id": inp.approval_id}
             self._status = str(self._decision.get("decision", "decided"))
             try:
@@ -635,15 +622,13 @@ if HAS_TEMPORAL:
                     schedule_to_close=timedelta(minutes=5),
                     retry_policy=RetryPolicy(maximum_attempts=2, backoff_coefficient=2.0, non_retryable_error_types=["ValueError", "ApplicationError"]),
                 )
-                try:
+                with contextlib.suppress(Exception):
                     await wf.execute_activity(
                         "record_workflow_metric",
                         {"workflow_type": "ApprovalWorkflow", "task_queue": "vaeloom-approvals-q", "status": self._status, "approval_wait_seconds": _wait_s},
                         start_to_close_timeout=timedelta(seconds=5),
                         retry_policy=RetryPolicy(maximum_attempts=1),
                     )
-                except Exception:
-                    pass
                 return {"status": self._status, "approval_id": inp.approval_id, "result": res}
             except Exception as e:
                 if _is_cancel(e):
@@ -670,10 +655,8 @@ if HAS_TEMPORAL:
 
         @workflow.signal
         def updateProgress(self, payload: dict[str, Any]) -> None:  # noqa: N802 — activity heartbeats via signal proxy when needed
-            try:
+            with contextlib.suppress(Exception):
                 self._progress = int(payload.get("progress", self._progress))
-            except Exception:
-                pass
 
         @workflow.run
         async def run(self, inp: SyncConnectorInput) -> SyncConnectorResult:

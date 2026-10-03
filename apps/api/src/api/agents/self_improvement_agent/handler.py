@@ -9,9 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
-from api.services.llm_service import llm_service
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +68,7 @@ class SelfImprovementAgent(BaseAgent):
 
     async def process(self, request: Any) -> dict[str, Any]:
         msg = getattr(request, "message", "") if hasattr(request, "message") else (request.get("message", "") if isinstance(request, dict) else "")
-        msg_lower = (msg or "").lower()
+        (msg or "").lower()
 
         audits = await self.audit_recent_trajectories()
 
@@ -84,8 +82,8 @@ class SelfImprovementAgent(BaseAgent):
             })
 
         summary = (
-            f"Self-Improvement Audit: Analyzed agent execution traces across the 28-agent enterprise roster. "
-            f"Overall system accuracy is high (98.4%). Identified 1 candidate refinement to improve precision."
+            "Self-Improvement Audit: Analyzed agent execution traces across the 28-agent enterprise roster. "
+            "Overall system accuracy is high (98.4%). Identified 1 candidate refinement to improve precision."
         )
 
         return {

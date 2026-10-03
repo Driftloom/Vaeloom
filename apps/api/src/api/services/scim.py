@@ -108,8 +108,9 @@ async def create_tenant_scim_token(
     name: str = Query("SCIM Token"),
     db: AsyncSession = Depends(get_db),
 ):
-    import secrets
     import hashlib
+    import secrets
+
     from ..models.schema import TenantScimToken
     raw_token = f"scim_{secrets.token_urlsafe(32)}"
     token_hash = hashlib.sha256(raw_token.encode()).hexdigest()

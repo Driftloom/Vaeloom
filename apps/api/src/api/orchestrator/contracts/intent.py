@@ -6,17 +6,17 @@ fenced memory, and execution budget for every user turn.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-from enum import Enum
-from typing import Any
 import uuid
+from datetime import UTC, datetime
+from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
 from .capability import AutonomyLevel
 
 
-class EmotionalState(str, Enum):
+class EmotionalState(StrEnum):
     """Emotional state detected from context signals (Rogers OARS mapping)."""
     CALM = "calm"
     ANXIOUS = "anxious"
@@ -26,7 +26,7 @@ class EmotionalState(str, Enum):
     DETERMINED = "determined"
 
 
-class OARSTone(str, Enum):
+class OARSTone(StrEnum):
     """Empathetic conversational tone guidance for System 2 generation."""
     SUPPORTIVE_AFFIRMATION = "supportive_affirmation"  # Acknowledge struggle, validate feelings
     REFLECTIVE_INQUIRY = "reflective_inquiry"          # Clarify ambiguous desires gently

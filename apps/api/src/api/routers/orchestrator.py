@@ -6,11 +6,12 @@ through zero-trust validation into the orchestrator pipeline.
 """
 from __future__ import annotations
 
+import contextlib
 import logging
 import uuid
-from typing import Any, Optional
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,14 +31,14 @@ class OrchestratorExecuteRequest(BaseModel):
     user_id: str = Field(..., description="Authenticated user UUID (mandatory, non-null)")
     agent_id: str = Field(..., description="Target agent name or identifier")
     message: str = Field(..., max_length=10000, description="Task instruction or prompt")
-    session_id: Optional[str] = None
+    session_id: str | None = None
 
 
 @router.post("/execute", status_code=200)
 async def execute_orchestrator_turn(
     dto: OrchestratorExecuteRequest,
     current_user: dict = Depends(get_current_user),
-    tenant_id: Optional[str] = Depends(get_tenant_id),
+    tenant_id: str | None = Depends(get_tenant_id),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Execute an agent turn via the governed orchestrator boundary."""
@@ -66,14 +67,10 @@ async def execute_orchestrator_turn(
         )
     finally:
         # Crucial P0 Fix: Release DB connection immediately before awaiting long-running orchestrator loop
-        try:
+        with contextlib.suppress(Exception):
             await db.commit()
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             await db.close()
-        except Exception:
-            pass
     if not has_access:
         logger.warning("User %s denied access to workspace %s", authenticated_user_id, dto.workspace_id)
         raise HTTPException(status_code=403, detail="Access denied to workspace")

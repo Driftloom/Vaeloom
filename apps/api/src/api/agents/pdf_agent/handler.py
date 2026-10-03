@@ -9,9 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
-from api.services.llm_service import llm_service
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +66,7 @@ class PDFAgent(BaseAgent):
 
     async def process(self, request: Any) -> dict[str, Any]:
         msg = getattr(request, "message", "") if hasattr(request, "message") else (request.get("message", "") if isinstance(request, dict) else "")
-        msg_lower = (msg or "").lower()
+        (msg or "").lower()
 
         fields = await self.extract_form_fields(document_id="doc_pdf_sample")
 
@@ -77,7 +75,7 @@ class PDFAgent(BaseAgent):
             proposals.append({
                 "type": "pdf_field_proposal",
                 "field": f["field_name"],
-                "type": f["field_type"],
+                "field_type": f["field_type"],
                 "value": f["suggested_value"],
                 "confidence": f["confidence"],
             })

@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import json
 import logging
 import re
@@ -529,10 +530,8 @@ def _runtime_contract(
                 card_tools.update(getattr(_card, "tools", []) or [])
         except Exception:
             pass
-        try:
+        with contextlib.suppress(Exception):
             card_tools.update(t.name for t in (getattr(agent, "tools", []) or []))
-        except Exception:
-            pass
         if allowed_tools:
             card_tools.update(allowed_tools)
         if workspace_id:
@@ -626,8 +625,6 @@ async def _assemble_rag_context(
                     db_url = _os.environ.get("DATABASE__URL", "") + _os.environ.get("QDRANT_URL", "")
                     has_vector_store = "postgres" in db_url.lower() or bool(_os.environ.get("QDRANT_URL"))
                     if has_vector_store or _os.environ.get("ENABLE_VECTOR_RAG") == "1":
-                        from sqlalchemy import text as _text
-
                         from api.services.llm_service import llm_service
                         vec = await llm_service.generate_embedding(query[:2000])
                         rows: list[tuple[str, str]] = []
@@ -791,8 +788,8 @@ async def _assemble_rag_context(
                         _uc = None
                     ranked = search_ranking_service.rank_results(all_cands, query, user_context=_uc)
                     # Re-build truncated lists preserving order via rank
-                    ent_ids = {r["id"] for r in ranked if r["source"] == "entity"}
-                    doc_ids = {r["id"] for r in ranked if r["source"] == "document"}
+                    {r["id"] for r in ranked if r["source"] == "entity"}
+                    {r["id"] for r in ranked if r["source"] == "document"}
                     # Keep original dicts but ordered by rank
                     ent_order = {cid: i for i, cid in enumerate([r["id"] for r in ranked if r["source"] == "entity"])}
                     doc_order = {cid: i for i, cid in enumerate([r["id"] for r in ranked if r["source"] == "document"])}
@@ -1047,10 +1044,8 @@ async def _react_approval_gate(
             try:
                 await db.commit()
             except Exception:
-                try:
+                with contextlib.suppress(Exception):
                     await db.rollback()
-                except Exception:
-                    pass
                 return {"approved": False, "approval_id": None, "error": "approval store unavailable"}
             return {"approved": False, "approval_id": str(resp.id), "error": None}
         async with scoped_session(workspace_id=workspace_id, require=False) as _sess:
@@ -1128,10 +1123,8 @@ async def _try_react_loop(
         except Exception:
             _tenant = None
     _run_budgets: dict[str, float] = {}
-    try:
+    with contextlib.suppress(Exception):
         _run_budgets = dict(getattr(state, "budgets", None) or {})
-    except Exception:
-        pass
     if not _run_budgets:
         try:
             from .state import DEFAULT_RUN_BUDGETS as _DRB
@@ -1161,10 +1154,8 @@ async def _try_react_loop(
         from .react_policy import REACT_TERMINATION_MAP
         _rec.termination = termination
         _rec.duration_ms = (_rt.monotonic() - _react_start) * 1000
-        try:
+        with contextlib.suppress(Exception):
             record_react_run(_rec)
-        except Exception:
-            pass
         if card is not None:
             try:
                 card["termination_reason"] = REACT_TERMINATION_MAP.get(termination, termination)
@@ -1489,10 +1480,8 @@ async def _try_react_loop(
             pass
         _consecutive_denials = 0
         _tokens_est = 0
-        try:
+        with contextlib.suppress(Exception):
             _tokens_est = estimate_tokens(system_content + message)
-        except Exception:
-            pass
 
         for _round in range(max_rounds):
             # ── Durable cancellation first: no new side effects after cancel.
@@ -1550,10 +1539,8 @@ async def _try_react_loop(
                         delta = evt.get("text", "")
                         content_str += delta
                         if on_token and delta:
-                            try:
+                            with contextlib.suppress(Exception):
                                 on_token(delta)
-                            except Exception:
-                                pass
                     elif etype == "tool_calls":
                         tool_calls = evt.get("tool_calls") or []
                     elif etype == "done":
@@ -1605,10 +1592,8 @@ async def _try_react_loop(
                 # the tool-execution section below with them.
 
             # Token estimate for the run budget (streams carry no usage block).
-            try:
+            with contextlib.suppress(Exception):
                 _tokens_est += estimate_tokens(content_str)
-            except Exception:
-                pass
 
             # Deadline re-check after wake: the streaming LLM call above
             # contains its own retry/backoff sleeps (429 backoff + tenacity
@@ -1736,8 +1721,17 @@ async def _try_react_loop(
                 except Exception as _se:
                     logger.debug(f"ReAct running checkpoint skipped: {_se}")
 
-            def _record_round(tname: str, tc_id: str, fp: str, args_red: Any,
-                              status: str, observation: str, assistant_text: str) -> None:
+            def _record_round(
+                tname: str,
+                tc_id: str,
+                fp: str,
+                args_red: Any,
+                status: str,
+                observation: str,
+                assistant_text: str,
+                model: str = _round_model,
+                provider: str = _round_provider,
+            ) -> None:
                 try:
                     _obs = str(observation or "")
                     if len(_obs) > _OBS_CAP:
@@ -1757,7 +1751,7 @@ async def _try_react_loop(
                         "args_redacted": _args_stored, "result_status": status,
                         "observation": _obs_red if isinstance(_obs_red, str) else str(_obs_red),
                         "assistant_text": _asst_red if isinstance(_asst_red, str) else str(_asst_red),
-                        "model": _round_model, "provider": _round_provider,
+                        "model": model, "provider": provider,
                         "at": __import__("datetime").datetime.now(__import__("datetime").UTC).isoformat(),
                     })
                 except Exception as _rre:
@@ -1875,20 +1869,16 @@ async def _try_react_loop(
                         args = _out["args"]
                         td = _out["td"]
                         result = _out["result"]
-                        try:
+                        with contextlib.suppress(Exception):
                             _seen_tool_calls.append({"id": tc_id, "type": "function", "function": {"name": tname, "arguments": args}})
-                        except Exception:
-                            pass
                         _status = str(result.get("status", "error"))
                         try:
                             _fp2 = _tool_fp(tname, args)
                             _tracker.tool_fingerprints.append(_fp2)
                             _tracker.tool_calls += 1
                             _rec.tool_calls += 1
-                            try:
+                            with contextlib.suppress(Exception):
                                 _tokens_est += estimate_tokens(json.dumps(result, default=str)[:8000])
-                            except Exception:
-                                pass
                             if _status != "success":
                                 _rec.tool_failures += 1
                             else:
@@ -1896,18 +1886,14 @@ async def _try_react_loop(
                             if _status == "error" and ("denied" in str(result.get("result", "")).lower() or "not allowed" in str(result.get("result", "")).lower()):
                                 _consecutive_denials += 1
                             if state is not None:
-                                try:
+                                with contextlib.suppress(Exception):
                                     state.record_tool_call(tname, _fp2, _status)
-                                except Exception:
-                                    pass
                         except Exception:
                             _fp2 = ""
                         if _consecutive_denials >= 3:
                             if state is not None:
-                                try:
+                                with contextlib.suppress(Exception):
                                     state.record_policy("react_policy_stop", f"{tname} denied x3")
-                                except Exception:
-                                    pass
                             return await _terminal_card(f"ReAct run stopped: tool '{tname}' repeatedly denied by policy.", "policy_denied")
                         try:
                             from ..utils.sanitize import (
@@ -1929,10 +1915,8 @@ async def _try_react_loop(
                         messages.append({"role": "tool", "tool_call_id": tc_id, "content": quarantined_tool_output})
                         try:
                             if state is not None:
-                                try:
+                                with contextlib.suppress(Exception):
                                     state.record_observation(quarantined_tool_output)
-                                except Exception:
-                                    pass
                             _record_round(tname, tc_id, _fp2, args, _status, quarantined_tool_output, content_str)
                             await _snapshot_running()
                         except Exception:
@@ -1999,10 +1983,8 @@ async def _try_react_loop(
                     td, args, workspace_id=str(workspace_id), tenant_id=_tenant, user_id=user_id)
                 if not _ok_args:
                     logger.warning(f"ReAct: tool '{tname}' arguments rejected: {_arg_errs}")
-                    try:
+                    with contextlib.suppress(Exception):
                         state.record_policy("react_arg_rejected", f"{tname}: {'; '.join(_arg_errs)[:300]}") if state is not None else None
-                    except Exception:
-                        pass
                     messages.append({"role": "assistant", "content": content_str or None, "tool_calls": [tc]})
                     messages.append({"role": "tool", "tool_call_id": tc_id, "content": json.dumps({"status": "error", "tool": tname, "result": f"Invalid arguments: {'; '.join(_arg_errs[:4])}"})[:4000]})
                     try:
@@ -2085,11 +2067,9 @@ async def _try_react_loop(
                                         state.approvals_consumed.append(str(_appr.get("approval_id") or ""))
                                 except Exception:
                                     pass
-                                try:
+                                with contextlib.suppress(Exception):
                                     _seen_tool_calls.append({"id": tc_id, "type": "function",
                                                              "function": {"name": tname, "arguments": args}})
-                                except Exception:
-                                    pass
                                 await _broadcast_ws(workspace_id, "AGENT_TOOL_EXECUTION", {
                                     "agent": agent_name,
                                     "run_id": str(run_id),
@@ -2119,13 +2099,11 @@ async def _try_react_loop(
                                 except Exception:
                                     pass
                                 logger.info(f"REACT_APPROVAL_PAUSE correlation={corr} run={run_id} tool={tname} approval={_appr.get('approval_id')}")
-                                try:
+                                with contextlib.suppress(Exception):
                                     _record_round(tname, tc_id, _tool_fp(tname, args), args,
                                                   "approval_pending",
                                                   f"Tool '{tname}' requires approval — awaiting approval.",
                                                   content_str)
-                                except Exception:
-                                    pass
                                 _pause: dict[str, Any] = {
                                     "agent_name": agent_name,
                                     "action": "request_approval",
@@ -2144,11 +2122,9 @@ async def _try_react_loop(
                             else:
                                 result = {"status": "error", "tool": tname, "result": f"Approval required for {tname} — approval service unavailable, refusing (fail-closed)"}
                         else:
-                            try:
+                            with contextlib.suppress(Exception):
                                 _seen_tool_calls.append({"id": tc_id, "type": "function",
                                                          "function": {"name": tname, "arguments": args}})
-                            except Exception:
-                                pass
                             await _broadcast_ws(workspace_id, "AGENT_TOOL_EXECUTION", {
                                 "agent": agent_name,
                                 "run_id": str(run_id),
@@ -2176,10 +2152,8 @@ async def _try_react_loop(
                     _tracker.tool_fingerprints.append(_fp2)
                     _tracker.tool_calls += 1
                     _rec.tool_calls += 1
-                    try:
+                    with contextlib.suppress(Exception):
                         _tokens_est += estimate_tokens(json.dumps(result, default=str)[:8000])
-                    except Exception:
-                        pass
                     if _status != "success":
                         _rec.tool_failures += 1
                     else:
@@ -2188,10 +2162,8 @@ async def _try_react_loop(
                                               or "not allowed" in str(result.get("result", "")).lower()):
                         _consecutive_denials += 1
                     if state is not None:
-                        try:
+                        with contextlib.suppress(Exception):
                             state.record_tool_call(tname, _fp2, _status)
-                        except Exception:
-                            pass
                 except Exception:
                     _fp2 = ""
                 if _consecutive_denials >= 3:
@@ -2233,10 +2205,8 @@ async def _try_react_loop(
                 # Durable per-tool checkpoint (resume replays, never re-executes).
                 try:
                     if state is not None:
-                        try:
+                        with contextlib.suppress(Exception):
                             state.record_observation(quarantined_tool_output)
-                        except Exception:
-                            pass
                     _record_round(tname, tc_id, _fp2, args, _status, quarantined_tool_output, content_str)
                     await _snapshot_running()
                 except Exception:
@@ -2263,10 +2233,8 @@ async def _try_react_loop(
         return None
     except Exception as e:
         logger.warning(f"ReAct loop exception: {e}")
-        try:
+        with contextlib.suppress(Exception):
             await _finish("failure", None)
-        except Exception:
-            pass
         return None
 
 
@@ -2325,10 +2293,8 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
         if _act_released:
             return
         _act_released = True
-        try:
+        with contextlib.suppress(Exception):
             await _rate_limiter.release(agent_name)
-        except Exception:
-            pass
 
     if not await _rate_limiter.acquire(agent_name):
         return {
@@ -3099,10 +3065,8 @@ async def run_agent_loop_stream(request: AgentRequest) -> AsyncGenerator[dict[st
         except Exception:
             pass
         if state.cancel_requested:
-            try:
+            with contextlib.suppress(Exception):
                 state.terminate("cancelled", "user_cancel")
-            except Exception:
-                pass
             await save_checkpoint(state)
             logger.info(f"CANCELLED stream run={request.id} iter={iteration} — no further side effects")
             yield {"event": "error", "data": {"status": "cancelled", "result": "Run cancelled by user request"}}
@@ -3154,10 +3118,8 @@ async def run_agent_loop_stream(request: AgentRequest) -> AsyncGenerator[dict[st
             _ck2 = (act_result.get("result", {}) or {}).get("_ceiling") if isinstance(act_result, dict) else None
             if _ck2 in _TR2:
                 _csum = ((act_result.get("result", {}) or {}).get("summary") or f"Run stopped: {_ck2}")
-                try:
+                with contextlib.suppress(Exception):
                     state.terminate("failed", _ck2)
-                except Exception:
-                    pass
                 await save_checkpoint(state)
                 yield {"event": "error", "data": {"status": "failed", "result": str(_csum), "termination_reason": _ck2}}
                 yield {"event": "done", "data": {"status": "failed", "result": str(_csum), "termination_reason": _ck2}}
@@ -3174,10 +3136,8 @@ async def run_agent_loop_stream(request: AgentRequest) -> AsyncGenerator[dict[st
             tname = tc.get("function", {}).get("name", "unknown") if isinstance(tc.get("function"), dict) else tc.get("tool", "unknown")
             targs = tc.get("function", {}).get("arguments", {}) if isinstance(tc.get("function"), dict) else tc.get("params", {})
             if isinstance(targs, str):
-                try:
+                with contextlib.suppress(Exception):
                     targs = json.loads(targs)
-                except Exception:
-                    pass
             yield {"event": "tool_start", "data": {"tool": tname, "params": targs}}
 
             # Multi-agent child delegation SSE events (R-07)
@@ -3250,19 +3210,15 @@ async def run_agent_loop_stream(request: AgentRequest) -> AsyncGenerator[dict[st
                 continue
 
             if qa_res.decision == "rejected":
-                try:
+                with contextlib.suppress(Exception):
                     state.terminate("failed", "qa_failed")
-                except Exception:
-                    pass
                 await save_checkpoint(state)
                 yield {"event": "error", "data": {"status": "failed", "result": "Run failed: output did not pass verification"}}
                 yield {"event": "done", "data": {"status": "failed", "result": "Run failed: output did not pass verification"}}
                 return
 
-            try:
+            with contextlib.suppress(Exception):
                 state.terminate("success", "success")
-            except Exception:
-                pass
             improve_resp = await improve_phase(state, request)
             # If the winning iteration already streamed REAL LLM tokens (ReAct path),
             # don't re-emit the full text. Static dispatch has no LLM stream →
@@ -3551,7 +3507,7 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
         await save_checkpoint(state)
 
         observe_result = await observe_phase(act_result)
-        obs_fp = tracker.record_observation(observe_result.get("observation", ""))
+        tracker.record_observation(observe_result.get("observation", ""))
         state.record_observation(observe_result.get("observation", ""))
         state.add_phase(f"observe_{iteration}", observe_result)
         await save_checkpoint(state)

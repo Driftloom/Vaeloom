@@ -5,8 +5,9 @@ membership assignments, and tree traversal with cycle prevention.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Set
 import uuid
+from datetime import UTC
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,7 +34,7 @@ _WORKSPACE_ADMIN_ROLES = ["ADMIN", "OWNER"]
 # api/middleware/rbac.py (viewer|editor|admin) and a hardcoded list in the web
 # organizations page, with four different orderings. Anything that needs to
 # reason about org roles must import from here.
-ORG_ROLE_HIERARCHY: Dict[str, int] = {
+ORG_ROLE_HIERARCHY: dict[str, int] = {
     "viewer": 10,
     "member": 20,
     "lead": 30,
@@ -61,8 +62,8 @@ class OrganizationService:
     async def get_organization_tree(
         db: AsyncSession,
         tenant_id: uuid.UUID,
-        workspace_id: Optional[uuid.UUID] = None,
-    ) -> List[Dict[str, Any]]:
+        workspace_id: uuid.UUID | None = None,
+    ) -> list[dict[str, Any]]:
         """Return the recursive hierarchical organization tree for a tenant."""
         stmt = select(Organization).where(Organization.tenant_id == tenant_id)
         if workspace_id:
@@ -85,7 +86,7 @@ class OrganizationService:
         counts_map = {row[0]: row[1] for row in counts_res.all()}
 
         # Build lookup table
-        node_map: Dict[uuid.UUID, Dict[str, Any]] = {}
+        node_map: dict[uuid.UUID, dict[str, Any]] = {}
         for org in all_orgs:
             node_map[org.id] = {
                 "id": str(org.id),
@@ -100,7 +101,7 @@ class OrganizationService:
             }
 
         # Build tree
-        roots: List[Dict[str, Any]] = []
+        roots: list[dict[str, Any]] = []
         for org in all_orgs:
             node = node_map[org.id]
             if org.parent_id and org.parent_id in node_map:
@@ -116,12 +117,12 @@ class OrganizationService:
         tenant_id: uuid.UUID,
         name: str,
         org_type: str = "department",
-        parent_id: Optional[uuid.UUID] = None,
-        workspace_id: Optional[uuid.UUID] = None,
-        description: Optional[str] = None,
-        allowed_domains: Optional[List[str]] = None,
+        parent_id: uuid.UUID | None = None,
+        workspace_id: uuid.UUID | None = None,
+        description: str | None = None,
+        allowed_domains: list[str] | None = None,
         default_role: str = "member",
-        owner_id: Optional[uuid.UUID] = None,
+        owner_id: uuid.UUID | None = None,
     ) -> Organization:
         """Create a new organizational node.
 
@@ -167,12 +168,12 @@ class OrganizationService:
         db: AsyncSession,
         org_id: uuid.UUID,
         tenant_id: uuid.UUID,
-        name: Optional[str] = None,
-        org_type: Optional[str] = None,
-        parent_id: Optional[uuid.UUID] = None,
-        description: Optional[str] = None,
-        allowed_domains: Optional[List[str]] = None,
-        default_role: Optional[str] = None,
+        name: str | None = None,
+        org_type: str | None = None,
+        parent_id: uuid.UUID | None = None,
+        description: str | None = None,
+        allowed_domains: list[str] | None = None,
+        default_role: str | None = None,
     ) -> Organization:
         """Update an organization node with cycle prevention."""
         org = await db.get(Organization, org_id)
@@ -185,7 +186,7 @@ class OrganizationService:
 
             # Check if parent is a descendant of this org (cycle detection)
             current_id = parent_id
-            visited: Set[uuid.UUID] = set()
+            visited: set[uuid.UUID] = set()
             while current_id:
                 if current_id in visited:
                     break
@@ -232,7 +233,7 @@ class OrganizationService:
         db: AsyncSession,
         org_id: uuid.UUID,
         tenant_id: uuid.UUID,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """List all members in an organization unit."""
         org = await db.get(Organization, org_id)
         if not org or org.tenant_id != tenant_id:
@@ -334,12 +335,12 @@ class OrganizationService:
         tenant_id: uuid.UUID,
         email: str,
         role: str = "member",
-        invited_by: Optional[uuid.UUID] = None,
+        invited_by: uuid.UUID | None = None,
     ) -> tuple[OrganizationInvitation, str]:
         """Create a secure invitation with domain whitelisting and token hashing."""
         import hashlib
         import secrets
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
         org = await db.get(Organization, org_id)
         if not org or org.tenant_id != tenant_id:
@@ -360,7 +361,7 @@ class OrganizationService:
 
         raw_token = secrets.token_urlsafe(32)
         token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
-        expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+        expires_at = datetime.now(UTC) + timedelta(days=7)
 
         invitation = OrganizationInvitation(
             id=uuid.uuid4(),
@@ -441,10 +442,7 @@ class OrganizationService:
             WorkspaceUser.role.in_(_WORKSPACE_ADMIN_ROLES),
         )
         res_ws = await db.execute(stmt_ws)
-        if res_ws.scalars().first():
-            return True
-
-        return False
+        return bool(res_ws.scalars().first())
 
     @staticmethod
     async def require_org_permission(
@@ -502,7 +500,7 @@ class OrganizationService:
         db: AsyncSession,
         org_id: uuid.UUID,
         tenant_id: uuid.UUID,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """List invitations for an organization."""
         org = await db.get(Organization, org_id)
         if not org or org.tenant_id != tenant_id:
@@ -538,7 +536,7 @@ class OrganizationService:
         db: AsyncSession,
         invitation_id: uuid.UUID,
         tenant_id: uuid.UUID,
-    ) -> Optional[uuid.UUID]:
+    ) -> uuid.UUID | None:
         """Resolve the organization an invitation belongs to, for authorization.
 
         Returns None when the invitation does not exist in the caller's tenant, so
@@ -557,7 +555,7 @@ class OrganizationService:
         db: AsyncSession,
         token: str,
         user_id: uuid.UUID,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Accept an organization invitation using the raw token.
 
         The token is a bearer credential. It is only honoured for the account it
@@ -565,7 +563,7 @@ class OrganizationService:
         twice by concurrent requests.
         """
         import hashlib
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         from sqlalchemy import update as sa_update
 
@@ -600,10 +598,10 @@ class OrganizationService:
             )
 
         # Check expiration
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         exp = invitation.expires_at
         if exp is not None and exp.tzinfo is None:
-            exp = exp.replace(tzinfo=timezone.utc)
+            exp = exp.replace(tzinfo=UTC)
         if exp is not None and exp < now:
             invitation.status = "expired"
             await db.commit()
@@ -663,7 +661,7 @@ class OrganizationService:
         db: AsyncSession,
         invitation_id: uuid.UUID,
         tenant_id: uuid.UUID,
-        revoked_by: Optional[uuid.UUID] = None,
+        revoked_by: uuid.UUID | None = None,
     ) -> bool:
         """Revoke a pending organization invitation."""
         stmt = select(OrganizationInvitation).where(

@@ -10,17 +10,17 @@ Endpoints:
 import asyncio
 import json
 import logging
-from typing import Any, Dict, Optional
 import uuid
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status
 import jwt
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status
 from pydantic import BaseModel, Field
 
 from ..config import settings
 from ..dependencies import get_current_user
 from ..infrastructure.websocket_manager import WebSocketConnection, ws_manager
-from ..services.ws_tickets import DEFAULT_TTL_SECONDS, issue_ticket, redeem_ticket
+from ..services.ws_tickets import issue_ticket, redeem_ticket
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ router = APIRouter(tags=["realtime"])
 class BroadcastRequest(BaseModel):
     channel: str = Field(..., description="Target channel (e.g. workspace:{id}, user:{id}, broadcast)")
     event: str = Field(..., description="Event name (e.g. AGENT_STEP, NOTIFICATION)")
-    data: Dict[str, Any] = Field(default_factory=dict, description="Event payload")
+    data: dict[str, Any] = Field(default_factory=dict, description="Event payload")
 
 
 class WsTicketResponse(BaseModel):
@@ -41,7 +41,7 @@ class WsTicketResponse(BaseModel):
 @router.post("/ws-ticket", response_model=WsTicketResponse)
 async def mint_ws_ticket(
     current_user: dict = Depends(get_current_user),
-    workspace_id: Optional[str] = Query(None),
+    workspace_id: str | None = Query(None),
 ):
     """Mint a single-use ticket for the WebSocket handshake.
 
@@ -77,7 +77,7 @@ async def mint_ws_ticket(
     return WsTicketResponse(ticket=ticket, expires_in=ttl)
 
 
-async def _authenticate_token(token: str) -> Dict[str, Any]:
+async def _authenticate_token(token: str) -> dict[str, Any]:
     """Validate JWT token and return payload.
 
     Supports the full verification chain: native secret → Supabase HMAC →
@@ -148,10 +148,11 @@ async def _authenticate_token(token: str) -> Dict[str, Any]:
     if supa_url:
         try:
             import time
+
             import httpx
 
             supa_key = getattr(settings, "supabase_anon_key", "")
-            headers: Dict[str, str] = {"Authorization": f"Bearer {token}"}
+            headers: dict[str, str] = {"Authorization": f"Bearer {token}"}
             if supa_key:
                 headers["apikey"] = supa_key
             async with httpx.AsyncClient(timeout=2.0) as client:
@@ -181,9 +182,9 @@ async def _authenticate_token(token: str) -> Dict[str, Any]:
 @router.websocket("/ws")
 async def websocket_endpoint(
     websocket: WebSocket,
-    token: Optional[str] = Query(None),
-    ticket: Optional[str] = Query(None),
-    workspace_id: Optional[str] = Query(None),
+    token: str | None = Query(None),
+    ticket: str | None = Query(None),
+    workspace_id: str | None = Query(None),
 ):
     """Full-duplex WebSocket connection for real-time workspace updates.
 

@@ -53,4 +53,10 @@ export interface ApiKey {
   enabled: boolean;
 }
 
-export type AuthEventType = 'login' | 'logout' | 'token_refresh' | 'password_change' | 'mfa_challenge' | 'suspicious_activity';
+export type AuthEventType =
+  | 'login'
+  | 'logout'
+  | 'token_refresh'
+  | 'password_change'
+  | 'mfa_challenge'
+  | 'suspicious_activity';

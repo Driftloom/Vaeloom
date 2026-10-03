@@ -1,13 +1,13 @@
-import uuid
 import logging
+import uuid
+from datetime import UTC, datetime
 from typing import Any
-from datetime import datetime, timezone
 
-from sqlalchemy import select, and_
-from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models.schema import Folder, Document
+from ..models.schema import Folder
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class FolderService:
         p_id = uuid.UUID(str(parent_id)) if parent_id else None
 
         if p_id:
-            parent = await self.get_folder(p_id, ws_id, db)
+            await self.get_folder(p_id, ws_id, db)
             # Verify depth
             depth = await self._calculate_depth(p_id, db)
             if depth >= MAX_FOLDER_DEPTH:
@@ -182,7 +182,7 @@ class FolderService:
                 await self.get_folder(target_p_id, ws_id, db)
                 folder.parent_id = target_p_id
 
-        folder.updated_at = datetime.now(timezone.utc)
+        folder.updated_at = datetime.now(UTC)
         await db.commit()
         await db.refresh(folder)
         return folder

@@ -1,17 +1,18 @@
 from datetime import datetime
-from enum import Enum
-from typing import Any, Generic, Optional, TypeVar
+from enum import StrEnum
+from typing import Any, TypeVar
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel as PydanticBaseModel, Field
+from pydantic import BaseModel as PydanticBaseModel
+from pydantic import Field
 
 
 class BaseModel(PydanticBaseModel):
     id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    tenant_id: Optional[UUID] = None
-    created_by: Optional[UUID] = None
+    tenant_id: UUID | None = None
+    created_by: UUID | None = None
 
     model_config = {"from_attributes": True, "populate_by_name": True}
 
@@ -19,7 +20,7 @@ class BaseModel(PydanticBaseModel):
 T = TypeVar("T")
 
 
-class PaginatedResponse(BaseModel, Generic[T]):
+class PaginatedResponse[T](BaseModel):
     data: list[T]
     page: int
     page_size: int
@@ -29,20 +30,20 @@ class PaginatedResponse(BaseModel, Generic[T]):
     has_previous: bool
 
 
-class ApiResponse(BaseModel, Generic[T]):
+class ApiResponse[T](BaseModel):
     success: bool = True
     data: T
-    error: Optional[dict[str, Any]] = None
-    meta: Optional[dict[str, Any]] = None
+    error: dict[str, Any] | None = None
+    meta: dict[str, Any] | None = None
 
 
 class ApiError(BaseModel):
     code: str
     message: str
-    details: Optional[dict[str, Any]] = None
+    details: dict[str, Any] | None = None
 
 
-class MemoryType(str, Enum):
+class MemoryType(StrEnum):
     DOCUMENT = "document"
     EMAIL = "email"
     CODE = "code"
@@ -52,7 +53,7 @@ class MemoryType(str, Enum):
     STRUCTURED = "structured"
 
 
-class MemoryStatus(str, Enum):
+class MemoryStatus(StrEnum):
     PROCESSING = "processing"
     INDEXED = "indexed"
     FAILED = "failed"
@@ -62,13 +63,13 @@ class MemoryStatus(str, Enum):
 
 class MemoryQuery(BaseModel):
     query: str
-    filters: Optional[dict[str, Any]] = None
+    filters: dict[str, Any] | None = None
     limit: int = 10
     offset: int = 0
     min_score: float = 0.0
 
 
-class AgentStatus(str, Enum):
+class AgentStatus(StrEnum):
     IDLE = "idle"
     RUNNING = "running"
     PAUSED = "paused"
@@ -89,7 +90,7 @@ class AgentConfig(BaseModel):
 
 class TenantContext(BaseModel):
     tenant_id: UUID
-    user_id: Optional[UUID] = None
+    user_id: UUID | None = None
     roles: list[str] = []
     permissions: list[str] = []
     is_system: bool = False

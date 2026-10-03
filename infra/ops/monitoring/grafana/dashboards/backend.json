@@ -10,7 +10,7 @@
     {
       "title": "Request Rate",
       "type": "graph",
-      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
       "targets": [
         {
           "expr": "rate(http_requests_total[$__rate_interval])",
@@ -28,7 +28,7 @@
     {
       "title": "Error Rate",
       "type": "graph",
-      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
       "targets": [
         {
           "expr": "rate(http_requests_total{status=~\"5..\"}[5m]) / rate(http_requests_total[5m]) * 100",
@@ -47,7 +47,7 @@
     {
       "title": "Latency p50 / p95 / p99",
       "type": "graph",
-      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
       "targets": [
         {
           "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[$__rate_interval]))",
@@ -74,7 +74,7 @@
     {
       "title": "Active Users",
       "type": "graph",
-      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8},
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
       "targets": [
         {
           "expr": "active_users",
@@ -86,7 +86,7 @@
     {
       "title": "HTTP Status Codes (1m rate)",
       "type": "graph",
-      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 8},
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
       "targets": [
         {
           "expr": "rate(http_requests_total{status=~\"2..\"}[1m])",
@@ -108,7 +108,7 @@
     {
       "title": "Database Connections",
       "type": "graph",
-      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 8},
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
       "targets": [
         {
           "expr": "pg_stat_database_numbackends",
@@ -120,7 +120,7 @@
     {
       "title": "Memory Usage",
       "type": "graph",
-      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 16},
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
       "targets": [
         {
           "expr": "process_resident_memory_bytes",
@@ -137,7 +137,7 @@
     {
       "title": "CPU Usage",
       "type": "graph",
-      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 16},
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 },
       "targets": [
         {
           "expr": "rate(process_cpu_seconds_total[$__rate_interval]) * 100",

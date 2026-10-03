@@ -7,7 +7,7 @@ import time
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.responses import JSONResponse, Response
+from starlette.responses import Response
 
 from ..config import settings
 
@@ -137,8 +137,6 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         if request.method in MUTATING_METHODS:
-            from .exception_handler import denial as _denial
-
             # The posture for every endpoint is unchanged: a mutating request
             # must present the double-submit token, whatever it authenticates
             # with. The single exception is /auth/refresh, and only when the
@@ -146,6 +144,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             # session cookie. Narrowing the exemption this way keeps the SDK
             # working without re-opening a cross-site rotation path.
             from ..services.session_cookies import reads_session_cookie
+            from .exception_handler import denial as _denial
 
             if path == REFRESH_PATH and not reads_session_cookie(request):
                 return await call_next(request)

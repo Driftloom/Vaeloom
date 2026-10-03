@@ -7,7 +7,6 @@ the authoritative 27-field IntentEnvelope.
 
 from __future__ import annotations
 
-import json
 import logging
 import time
 import uuid
@@ -15,7 +14,6 @@ from typing import Any
 
 from ..capability_registry import capability_registry
 from ..contracts.capability import AutonomyLevel
-from ..contracts.decision import RoutingDecision, SubtaskNode
 from ..contracts.intent import (
     ContextSignal,
     EmotionalState,
@@ -166,7 +164,7 @@ class LayerCArbitration:
     def _detect_context_signal(self, text: str) -> tuple[ContextSignal, str | None]:
         """Cognitive signal and emotional valence extraction (Rogers OARS mapping)."""
         lower = text.lower().strip()
-        words = set(lower.split())
+        set(lower.split())
 
         # Social Openers & Closers
         greetings = {"hi", "hello", "hey", "hlo", "good morning", "good afternoon", "good evening", "howdy"}

@@ -92,7 +92,7 @@ class PromptManager:
             prompts.update(list_agent_cards().keys())
         except Exception:
             pass
-        return sorted(list(prompts))
+        return sorted(prompts)
 
     def set_prompt_dir(self, prompt_dir: str) -> None:
         self._prompt_dir = Path(prompt_dir)

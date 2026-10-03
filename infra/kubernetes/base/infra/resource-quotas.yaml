@@ -5,10 +5,10 @@ metadata:
   namespace: vaeloom
 spec:
   hard:
-    pods: "50"
-    requests.cpu: "100"
+    pods: '50'
+    requests.cpu: '100'
     requests.memory: 200Gi
-    limits.cpu: "200"
+    limits.cpu: '200'
     limits.memory: 400Gi
     requests.ephemeral-storage: 500Gi
     limits.ephemeral-storage: 1Ti

@@ -5,7 +5,7 @@ from functools import wraps
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.responses import JSONResponse, Response
+from starlette.responses import Response
 
 logger = logging.getLogger("vaeloom-api.middleware.rate_limit")
 

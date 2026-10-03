@@ -9,12 +9,12 @@ Supports:
 """
 
 import asyncio
-from datetime import datetime, timezone
 import json
 import logging
 import os
-from typing import Any, Dict, List, Optional, Set
 import uuid
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import WebSocket
 
@@ -33,16 +33,16 @@ class WebSocketConnection:
         self.user_id = user_id
         self.tenant_id = tenant_id
         self.workspace_id = workspace_id
-        self.subscriptions: Set[str] = {
+        self.subscriptions: set[str] = {
             f"workspace:{workspace_id}",
             f"user:{user_id}",
             "broadcast",
         }
-        self.connected_at = datetime.now(timezone.utc)
-        self.last_ping = datetime.now(timezone.utc)
+        self.connected_at = datetime.now(UTC)
+        self.last_ping = datetime.now(UTC)
         self._pending_sends = 0
 
-    async def send_json(self, data: Dict[str, Any]) -> None:
+    async def send_json(self, data: dict[str, Any]) -> None:
         if self._pending_sends > 100:
             logger.warning(
                 "WS_SLOW_CONSUMER_DROP: user=%s workspace=%s (pending: %d)",
@@ -64,15 +64,15 @@ class WebSocketConnection:
 
 class WebSocketConnectionManager:
     def __init__(self):
-        self._connections: Dict[uuid.UUID, List[WebSocketConnection]] = {}  # user_id -> [connections]
-        self._channel_map: Dict[str, Set[WebSocketConnection]] = {}  # channel -> set(connections)
-        self._presence: Dict[uuid.UUID, Dict[str, Any]] = {}  # user_id -> {status, last_active}
+        self._connections: dict[uuid.UUID, list[WebSocketConnection]] = {}  # user_id -> [connections]
+        self._channel_map: dict[str, set[WebSocketConnection]] = {}  # channel -> set(connections)
+        self._presence: dict[uuid.UUID, dict[str, Any]] = {}  # user_id -> {status, last_active}
         self._lock = asyncio.Lock()
         self._redis_client = None
         self._redis_pubsub = None
-        self._redis_task: Optional[asyncio.Task] = None
+        self._redis_task: asyncio.Task | None = None
 
-    async def init_redis(self, redis_url: Optional[str] = None) -> bool:
+    async def init_redis(self, redis_url: str | None = None) -> bool:
         """Initialize Redis Pub/Sub for multi-replica horizontal scaling."""
         url = redis_url or os.environ.get("REDIS__URL") or os.environ.get("REDIS_URL")
         if not url:
@@ -132,7 +132,7 @@ class WebSocketConnectionManager:
 
             self._presence[user_id] = {
                 "status": "online",
-                "last_active": datetime.now(timezone.utc).isoformat(),
+                "last_active": datetime.now(UTC).isoformat(),
             }
 
         if self._redis_client:
@@ -193,7 +193,7 @@ class WebSocketConnectionManager:
     def update_presence(self, user_id: uuid.UUID, status: str) -> None:
         if user_id in self._presence:
             self._presence[user_id]["status"] = status
-            self._presence[user_id]["last_active"] = datetime.now(timezone.utc).isoformat()
+            self._presence[user_id]["last_active"] = datetime.now(UTC).isoformat()
 
     async def update_presence_async(self, user_id: uuid.UUID, status: str) -> None:
         self.update_presence(user_id, status)
@@ -206,15 +206,15 @@ class WebSocketConnectionManager:
             except Exception as exc:
                 logger.debug("Redis presence update failed: %s", exc)
 
-    def get_presence(self, user_id: uuid.UUID) -> Dict[str, Any]:
+    def get_presence(self, user_id: uuid.UUID) -> dict[str, Any]:
         return self._presence.get(
             user_id,
             {"status": "offline", "last_active": None},
         )
 
-    async def _deliver_local(self, channel: str, message: Dict[str, Any]) -> int:
+    async def _deliver_local(self, channel: str, message: dict[str, Any]) -> int:
         """Deliver a message to all locally connected WebSockets for a channel."""
-        recipients: List[WebSocketConnection] = []
+        recipients: list[WebSocketConnection] = []
         async with self._lock:
             if channel in self._channel_map:
                 recipients = list(self._channel_map[channel])
@@ -237,7 +237,7 @@ class WebSocketConnectionManager:
         self,
         channel: str,
         event_type: str,
-        payload: Dict[str, Any],
+        payload: dict[str, Any],
     ) -> int:
         """Broadcast a message to all subscribers across all replicas."""
         message = {
@@ -246,7 +246,7 @@ class WebSocketConnectionManager:
             "event": event_type,
             "channel": channel,
             "data": payload,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         # If Redis is connected, publish to Redis so peer replicas broadcast
@@ -266,7 +266,7 @@ class WebSocketConnectionManager:
         self,
         workspace_id: uuid.UUID | str,
         event_type: str,
-        payload: Dict[str, Any],
+        payload: dict[str, Any],
     ) -> int:
         return await self.broadcast_to_channel(f"workspace:{workspace_id}", event_type, payload)
 
@@ -274,7 +274,7 @@ class WebSocketConnectionManager:
         self,
         user_id: uuid.UUID | str,
         event_type: str,
-        payload: Dict[str, Any],
+        payload: dict[str, Any],
     ) -> int:
         return await self.broadcast_to_channel(f"user:{user_id}", event_type, payload)
 
@@ -292,7 +292,7 @@ class WebSocketConnectionManager:
         return sum(len(conns) for conns in self._connections.values())
 
     @property
-    def active_channels(self) -> List[str]:
+    def active_channels(self) -> list[str]:
         return list(self._channel_map.keys())
 
 

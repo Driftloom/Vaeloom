@@ -63,9 +63,7 @@ def is_blocked_host(host: str) -> bool:
     lowered = (host or "").lower().strip(".")
     if lowered in ("localhost", "localhost.localdomain", "metadata.google.internal"):
         return True
-    if lowered.endswith(".local") or lowered.endswith(".internal"):
-        return True
-    return False
+    return bool(lowered.endswith(".local") or lowered.endswith(".internal"))
 
 
 async def assert_public_http_url(url: str) -> str:

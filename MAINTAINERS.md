@@ -5,13 +5,13 @@ responsibility, and contact information.
 
 ## Project Maintainers
 
-| Name           | Email                         | GitHub                                        | Area                           |
-| -------------- | ----------------------------- | --------------------------------------------- | ------------------------------ |
-| Alex Chen      | alex@vaeloom.dev              | [@alexchen](https://github.com/alexchen)      | Platform Core, API Gateway     |
-| Maya Rodriguez | maya@vaeloom.dev              | [@mayarodriguez](https://github.com/mayarodriguez) | AI/ML, Knowledge Graph, Memory Store |
-| Kunal Sharma   | kunal@vaeloom.dev             | [@kunalsharma](https://github.com/kunalsharma) | Infrastructure, CI/CD, K8s     |
-| Emma Larsson   | emma@vaeloom.dev              | [@emmalarsson](https://github.com/emmalarsson) | Frontend, UI Kit, Web App      |
-| Sam Okafor     | sam@vaeloom.dev               | [@samokafor](https://github.com/samokafor)     | Documentation, Developer Experience |
+| Name           | Email             | GitHub                                             | Area                                 |
+| -------------- | ----------------- | -------------------------------------------------- | ------------------------------------ |
+| Alex Chen      | alex@vaeloom.dev  | [@alexchen](https://github.com/alexchen)           | Platform Core, API Gateway           |
+| Maya Rodriguez | maya@vaeloom.dev  | [@mayarodriguez](https://github.com/mayarodriguez) | AI/ML, Knowledge Graph, Memory Store |
+| Kunal Sharma   | kunal@vaeloom.dev | [@kunalsharma](https://github.com/kunalsharma)     | Infrastructure, CI/CD, K8s           |
+| Emma Larsson   | emma@vaeloom.dev  | [@emmalarsson](https://github.com/emmalarsson)     | Frontend, UI Kit, Web App            |
+| Sam Okafor     | sam@vaeloom.dev   | [@samokafor](https://github.com/samokafor)         | Documentation, Developer Experience  |
 
 ## Emeritus Maintainers
 
@@ -49,8 +49,8 @@ New maintainers may be added by:
 4. A majority vote if objections are raised
 
 Maintainers may step down voluntarily at any time. A maintainer may be removed
-by unanimous vote of the remaining maintainers due to sustained inactivity
-(no contributions for 6+ months) or a Code of Conduct violation.
+by unanimous vote of the remaining maintainers due to sustained inactivity (no
+contributions for 6+ months) or a Code of Conduct violation.
 
 ## Release Process
 
@@ -86,6 +86,7 @@ A release requires:
 2. Finalize the changelog and bump version numbers
 3. Open a pull request from the release branch to `main`
 4. After approval, tag the merge commit: `git tag -s v<major>.<minor>.<patch>`
-5. GitHub Actions builds and publishes Docker images, npm packages, and PyPI packages
+5. GitHub Actions builds and publishes Docker images, npm packages, and PyPI
+   packages
 6. Publish the GitHub Release with changelog notes
 7. Announce the release on the community discussion board

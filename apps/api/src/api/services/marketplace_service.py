@@ -4,9 +4,10 @@ Manages curated enterprise plugin listings, installation state per workspace,
 and default catalog seeding.
 """
 
+import json
 import logging
-from typing import Any, Dict, List, Optional
 import uuid
+from typing import Any
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -123,11 +124,11 @@ class MarketplaceService:
     @staticmethod
     async def list_listings(
         db: AsyncSession,
-        category: Optional[str] = None,
-        search: Optional[str] = None,
+        category: str | None = None,
+        search: str | None = None,
         page: int = 1,
         page_size: int = 50,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Return paginated marketplace listings with optional search and category filter."""
         # Ensure seed listings exist
         await MarketplaceService.seed_default_listings_if_empty(db)
@@ -182,7 +183,7 @@ class MarketplaceService:
         }
 
     @staticmethod
-    async def get_listing(db: AsyncSession, listing_id_or_slug: str) -> Optional[MarketplaceListing]:
+    async def get_listing(db: AsyncSession, listing_id_or_slug: str) -> MarketplaceListing | None:
         """Retrieve a listing by UUID or slug."""
         try:
             val_uuid = uuid.UUID(listing_id_or_slug)
@@ -198,8 +199,8 @@ class MarketplaceService:
         db: AsyncSession,
         workspace_id: uuid.UUID,
         listing_id: uuid.UUID,
-        user_id: Optional[uuid.UUID] = None,
-        config: Optional[dict] = None,
+        user_id: uuid.UUID | None = None,
+        config: dict | None = None,
     ) -> WorkspacePluginInstall:
         """Install or activate a plugin in a workspace."""
         listing = await db.get(MarketplaceListing, listing_id)
@@ -269,7 +270,7 @@ class MarketplaceService:
     async def get_installed_plugins(
         db: AsyncSession,
         workspace_id: uuid.UUID,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Return all active installed plugins for a workspace."""
         stmt = (
             select(WorkspacePluginInstall)
@@ -334,8 +335,8 @@ class MarketplaceService:
         listing_id: uuid.UUID,
         user_id: uuid.UUID,
         rating: float,
-        review: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        review: str | None = None,
+    ) -> dict[str, Any]:
         """Submit or update a rating and review for a marketplace listing."""
         if not (1.0 <= rating <= 5.0):
             raise ValueError("Rating must be between 1.0 and 5.0")
@@ -394,7 +395,7 @@ class MarketplaceService:
         install_id: uuid.UUID,
         action: str,
         params: dict,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute an action on an installed plugin with decrypted secrets."""
         stmt = (
             select(WorkspacePluginInstall)
@@ -426,9 +427,10 @@ class MarketplaceService:
         # 1. Check if plugin has a webhook URL configured
         webhook_url = decrypted_config.get("webhook_url")
         if webhook_url:
-            import httpx
-            import hmac
             import hashlib
+            import hmac
+
+            import httpx
             secret = decrypted_config.get("secret", "")
             payload_body = json.dumps({"action": action, "params": params, "workspace_id": str(workspace_id)})
             headers = {"Content-Type": "application/json"}

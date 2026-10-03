@@ -9,6 +9,7 @@ Provides pluggable persistence backends:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import os
@@ -245,10 +246,8 @@ class DatabaseStateStore(StateStore):
         # them and divert every save to the file fallback). Parity with
         # MemoryStateStore. Sanitization is deterministic, so CAS comparisons
         # stay consistent across writers.
-        try:
+        with contextlib.suppress(Exception):
             payload = _json.loads(_json.dumps(payload, default=str))
-        except Exception:
-            pass
 
         if expected_version is not None:
             new_version = int(expected_version) + 1
@@ -333,10 +332,8 @@ class DatabaseStateStore(StateStore):
             new_version = current + 1
             payload["state_version"] = new_version
             row.state_json = payload
-            try:
+            with contextlib.suppress(Exception):
                 row.state_version = new_version
-            except Exception:
-                pass
             try:
                 if wid:
                     row.workspace_id = str(wid)

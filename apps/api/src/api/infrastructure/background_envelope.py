@@ -15,6 +15,7 @@ Nonce replay protection backends (honest fallback):
   configure REDIS_URL / REDIS__URL. See nonce_backend_status().
 """
 
+import contextlib
 import hashlib
 import hmac
 import inspect
@@ -101,10 +102,8 @@ def _get_default_nonce_redis():
             client.ping()
             return client
         except Exception:
-            try:
+            with contextlib.suppress(Exception):
                 client.close()
-            except Exception:
-                pass
             cached["client"] = None
     try:
         import redis as _redis
@@ -244,9 +243,7 @@ def _claim_nonce_memory(nonce: str, expires_at: float, now: float, job_id: str |
         entry = _SEEN_NONCES[nonce]
         exp = entry[0] if isinstance(entry, tuple) else entry
         owner = entry[1] if isinstance(entry, tuple) else "1"
-        if job_id and owner == str(job_id) and exp >= now:
-            return True
-        return False
+        return bool(job_id and owner == str(job_id) and exp >= now)
     _SEEN_NONCES[nonce] = (expires_at, str(job_id) if job_id else "1")
     return True
 
@@ -345,10 +342,8 @@ async def averify_background_envelope(
             finally:
                 # Close loop-bound clients we created; leave caller-owned clients alone.
                 if redis_client is None and client is not None:
-                    try:
+                    with contextlib.suppress(Exception):
                         await client.aclose()
-                    except Exception:
-                        pass
         else:
             if not _claim_nonce_memory(nonce, float(envelope["expires_at"]), now, job_id=job_id):
                 return False, f"replay detected: nonce {nonce} already consumed", None

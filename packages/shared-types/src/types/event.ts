@@ -4,7 +4,8 @@ export type EventStatus = 'published' | 'processing' | 'completed' | 'failed' | 
 
 export type EventPriority = 'critical' | 'high' | 'normal' | 'low';
 
-export type EventCategory = 'memory' | 'agent' | 'auth' | 'billing' | 'system' | 'sync' | 'user' | 'integration';
+export type EventCategory =
+  'memory' | 'agent' | 'auth' | 'billing' | 'system' | 'sync' | 'user' | 'integration';
 
 export interface Event {
   id: UUID;

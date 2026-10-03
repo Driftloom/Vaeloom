@@ -1,4 +1,11 @@
-import type { PluginManifest, PluginContext, PluginLifecycle, PluginConfig, PluginAPI, PluginLogger } from './types';
+import type {
+  PluginManifest,
+  PluginContext,
+  PluginLifecycle,
+  PluginConfig,
+  PluginAPI,
+  PluginLogger,
+} from './types';
 
 export abstract class PluginBase implements PluginLifecycle {
   public abstract manifest: PluginManifest;

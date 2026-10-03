@@ -7,7 +7,6 @@ to generate top-K candidate capabilities in <15ms without expensive LLM calls.
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from ..capability_registry import capability_registry
 from ..contracts.capability import AgentCapabilityManifest

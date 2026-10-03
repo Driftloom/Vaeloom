@@ -13,7 +13,6 @@ import os
 import re
 import sqlite3
 from pathlib import Path
-from typing import Any
 
 from mcp.server import MCPServer
 
@@ -152,7 +151,7 @@ async def query_sql(query: str, db_path: str = "") -> str:
         cursor.execute(clean_query)
         rows = cursor.fetchmany(200)
         col_names = [d[0] for d in cursor.description] if cursor.description else []
-        records = [dict(zip(col_names, row)) for row in rows]
+        records = [dict(zip(col_names, row, strict=False)) for row in rows]
         conn.close()
         return json.dumps(
             {

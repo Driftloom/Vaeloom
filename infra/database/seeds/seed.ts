@@ -34,13 +34,15 @@ async function main(): Promise<void> {
   const existingWorkspace = await prisma.workspace.findFirst({
     where: { userId: user.id, name: 'Demo Workspace' },
   });
-  const workspace = existingWorkspace ?? await prisma.workspace.create({
-    data: {
-      userId: user.id,
-      name: 'Demo Workspace',
-      description: 'A sample workspace for local development and QA',
-    },
-  });
+  const workspace =
+    existingWorkspace ??
+    (await prisma.workspace.create({
+      data: {
+        userId: user.id,
+        name: 'Demo Workspace',
+        description: 'A sample workspace for local development and QA',
+      },
+    }));
   console.log(`  ✓ Workspace: ${workspace.name} (${workspace.id})`);
 
   // ─── Sample Document ───
@@ -53,7 +55,8 @@ async function main(): Promise<void> {
       path: '/uploads/resume-v1.pdf',
       type: 'pdf',
       rawStorageKey: 'local/demo/resume-v1.pdf',
-      summary: 'Software engineer resume with 3 years of experience in TypeScript, Python, and cloud infrastructure.',
+      summary:
+        'Software engineer resume with 3 years of experience in TypeScript, Python, and cloud infrastructure.',
     },
   });
   console.log(`  ✓ Document: ${doc.path}`);

@@ -10,7 +10,7 @@
     {
       "title": "Agent Executions (rate)",
       "type": "graph",
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
       "targets": [
         {
           "expr": "rate(agent_executions_total[$__rate_interval])",
@@ -27,7 +27,7 @@
     {
       "title": "Agent Success Rate",
       "type": "graph",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
       "targets": [
         {
           "expr": "rate(agent_executions_total{status=\"success\"}[5m]) / rate(agent_executions_total[5m]) * 100",
@@ -46,7 +46,7 @@
     {
       "title": "Token Usage",
       "type": "graph",
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
       "targets": [
         {
           "expr": "rate(agent_token_usage_total[$__rate_interval])",
@@ -63,7 +63,7 @@
     {
       "title": "Agent Execution Duration p50 / p95 / p99",
       "type": "graph",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
       "targets": [
         {
           "expr": "histogram_quantile(0.50, rate(agent_execution_duration_seconds_bucket[$__rate_interval]))",
@@ -90,7 +90,7 @@
     {
       "title": "Active Agents",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 16},
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 16 },
       "targets": [
         {
           "expr": "count(agent_executions_total) by (agent_id)",
@@ -102,7 +102,7 @@
     {
       "title": "Errors by Agent",
       "type": "table",
-      "gridPos": {"h": 8, "w": 12, "x": 4, "y": 16},
+      "gridPos": { "h": 8, "w": 12, "x": 4, "y": 16 },
       "targets": [
         {
           "expr": "rate(agent_executions_total{status=\"failure\"}[5m])",
@@ -114,7 +114,7 @@
     {
       "title": "LLM Calls (rate)",
       "type": "graph",
-      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 16},
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 },
       "targets": [
         {
           "expr": "rate(llm_calls_total[$__rate_interval])",

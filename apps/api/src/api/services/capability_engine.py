@@ -11,11 +11,11 @@ import math
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class ValidationTier(str, Enum):
+class ValidationTier(StrEnum):
     V0 = "V0"  # Unvalidated / Raw claim
     V1 = "V1"  # Initial / Extracted from single unverified source
     V2 = "V2"  # Validated / Sustained evidence (minimum for Opportunity matching)
@@ -23,7 +23,7 @@ class ValidationTier(str, Enum):
     V4 = "V4"  # Externally Certified / Cryptographically verifiable
 
 
-class DecayStatus(str, Enum):
+class DecayStatus(StrEnum):
     FRESH = "fresh"      # decay >= 0.85
     ACTIVE = "active"    # 0.60 <= decay < 0.85
     STALE = "stale"      # decay < 0.60 (recommends refresher)

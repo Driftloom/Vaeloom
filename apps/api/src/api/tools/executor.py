@@ -137,6 +137,7 @@ TOOL_TIMEOUT_OVERRIDES = {
 # We use a pluggable backend: in-memory by default (single worker / tests), and a
 # Redis-backed implementation automatically when a Redis URL is configured, so the
 # quota is shared across the fleet. Both backends expose `allowed(ws, limit, window)`.
+import contextlib
 import os as _os
 import time as _time
 from typing import Protocol
@@ -421,7 +422,6 @@ async def _execute_search_documents(params: dict[str, Any], workspace_id: str) -
     try:
         from sqlalchemy import or_, select
 
-        from api.database import async_session_factory
         from api.models.schema import Document
     except ImportError as e:
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
@@ -476,6 +476,7 @@ async def _execute_get_document_content(params: dict[str, Any], workspace_id: st
 
     try:
         import uuid as _uuid
+
         from api.models.schema import Document
 
         doc_uuid = _uuid.UUID(str(document_id))
@@ -519,7 +520,9 @@ async def _execute_list_workspace_folders(params: dict[str, Any], workspace_id: 
     parent_id = params.get("parent_id")
     try:
         import uuid as _uuid
+
         from sqlalchemy import select
+
         from api.models.schema import Folder
 
         ws_uuid = _uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, _uuid.UUID) else workspace_id
@@ -556,6 +559,7 @@ async def _execute_create_workspace_folder(params: dict[str, Any], workspace_id:
 
     try:
         import uuid as _uuid
+
         from api.services.folder_service import folder_service
 
         ws_uuid = _uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, _uuid.UUID) else workspace_id
@@ -586,7 +590,9 @@ async def _execute_get_document_version(params: dict[str, Any], workspace_id: st
         return {"status": "error", "tool": "get_document_version", "result": "document_id is required"}
     try:
         import uuid as _uuid
+
         from sqlalchemy import select
+
         from api.models.schema import Document, DocumentVersion
 
         doc_uuid = _uuid.UUID(str(document_id))
@@ -628,6 +634,7 @@ async def _execute_restore_document_version(params: dict[str, Any], workspace_id
         return {"status": "error", "tool": "restore_document_version", "result": "document_id and version_id are required"}
     try:
         import uuid as _uuid
+
         from api.services.document_service import document_service
 
         doc_uuid = _uuid.UUID(str(document_id))
@@ -657,6 +664,7 @@ async def _execute_share_workspace_document(params: dict[str, Any], workspace_id
         return {"status": "error", "tool": "share_workspace_document", "result": "document_id and target_workspace_id are required"}
     try:
         import uuid as _uuid
+
         from api.services.document_service import document_service
 
         doc_uuid = _uuid.UUID(str(document_id))
@@ -685,7 +693,9 @@ async def _execute_get_document_audit_history(params: dict[str, Any], workspace_
         return {"status": "error", "tool": "get_document_audit_history", "result": "document_id is required"}
     try:
         import uuid as _uuid
+
         from sqlalchemy import select
+
         from api.models.schema import DocumentAction
 
         doc_uuid = _uuid.UUID(str(document_id))
@@ -719,7 +729,6 @@ async def _execute_query_graph(params: dict[str, Any], workspace_id: str) -> dic
     try:
         from sqlalchemy import or_, select
 
-        from api.database import async_session_factory
         from api.models.schema import Entity, Relationship
     except ImportError as e:
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
@@ -785,7 +794,6 @@ async def _execute_get_entity(params: dict[str, Any], workspace_id: str) -> dict
 
         from sqlalchemy import or_, select
 
-        from api.database import async_session_factory
         from api.models.schema import Entity, Relationship
     except ImportError as e:
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
@@ -838,7 +846,6 @@ async def _execute_create_entity(params: dict[str, Any], workspace_id: str) -> d
     try:
         from sqlalchemy import select
 
-        from api.database import async_session_factory
         from api.models.schema import Entity
     except ImportError as e:
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
@@ -898,7 +905,6 @@ async def _execute_categorize_document(params: dict[str, Any], workspace_id: str
 
         from sqlalchemy import select  # noqa: F401
 
-        from api.database import async_session_factory
         from api.models.schema import Document
     except ImportError as e:
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
@@ -936,7 +942,9 @@ async def _execute_sync_vault(params: dict[str, Any], workspace_id: str) -> dict
     try:
         import uuid as _uuid
         from datetime import UTC, datetime
+
         from sqlalchemy import select
+
         from api.models.schema import Connector, Document
 
         ws_uuid = _uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, _uuid.UUID) else workspace_id
@@ -1024,7 +1032,9 @@ async def _execute_ingest_vault_notes(params: dict[str, Any], workspace_id: str)
     try:
         import uuid as _uuid
         from datetime import UTC, datetime
+
         from sqlalchemy import select
+
         from api.models.schema import Document, Folder, Memory
         from api.schemas.knowledge_graph import CreateNodeRequest, NodeType
         from api.services.knowledge_graph_service import kg_service
@@ -1245,7 +1255,9 @@ async def _execute_search_memories(params: dict[str, Any], workspace_id: str) ->
 
     try:
         import uuid as _uuid
+
         from sqlalchemy import or_, select
+
         from api.models.schema import Memory
 
         ws_uuid = _uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, _uuid.UUID) else workspace_id
@@ -1322,6 +1334,7 @@ async def _execute_create_memory(params: dict[str, Any], workspace_id: str) -> d
 
     try:
         import uuid as _uuid
+
         from api.models.schema import Memory
         from api.services.llm_service import llm_service
         from api.utils.sanitize import sanitize_text
@@ -1379,7 +1392,6 @@ async def _execute_notify_user(params: dict[str, Any], workspace_id: str) -> dic
     try:
         import uuid
 
-        from api.database import async_session_factory
         from api.models.schema import AgentAction
     except ImportError:
         return {"status": "success", "tool": "notify_user", "result": {"delivered": True, "logged_to": "stdout"}}
@@ -1584,7 +1596,6 @@ async def _execute_merge_entities(params: dict[str, Any], workspace_id: str) -> 
         from sqlalchemy import delete, or_, select  # noqa: F401
         from sqlalchemy import update as sa_update
 
-        from api.database import async_session_factory
         from api.models.schema import Embedding, Entity, Relationship
     except ImportError as e:
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
@@ -2203,7 +2214,6 @@ async def _execute_rename_file(params: dict[str, Any], workspace_id: str) -> dic
     try:
         import uuid
 
-        from api.database import async_session_factory
         from api.models.schema import Document
     except ImportError as e:
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
@@ -2247,7 +2257,6 @@ async def _execute_move_file(params: dict[str, Any], workspace_id: str) -> dict[
     try:
         import uuid
 
-        from api.database import async_session_factory
         from api.models.schema import Document
     except ImportError as e:
         return {"status": "error", "result": f"DB imports unavailable: {e}"}
@@ -2413,9 +2422,6 @@ async def _execute_parse_document_ocr(params: dict[str, Any], workspace_id: str)
     try:
         import uuid
 
-        from sqlalchemy import select
-
-        from api.database import async_session_factory
         from api.ingestion.parsers import parse_document
         from api.models.schema import Document
     except ImportError as e:
@@ -3849,10 +3855,8 @@ async def _await_tool_effect(
             # caller (us, via execute_tool) must not double-execute in the
             # poll path — hand the claim back by marking failed so a future
             # retry reclaims cleanly, and report timeout truthfully.
-            try:
+            with contextlib.suppress(Exception):
                 await _complete_tool_effect(workspace_id, idem_key, payload, False, None)
-            except Exception:
-                pass
             return None
         if outcome == "retry":
             continue
@@ -3903,10 +3907,8 @@ async def _abandon_idem_claim(workspace_id: str, idem_key: str | None, claim: st
     block identical retries behind a live lease."""
     if not idem_key or not claim:
         return
-    try:
+    with contextlib.suppress(Exception):
         await _complete_tool_effect(str(workspace_id), idem_key, claim, False, None)
-    except Exception:
-        pass
 
 
 # ── Per-workspace tool enable gate ─────────────────────────────────────
@@ -4391,10 +4393,8 @@ async def execute_tool(
                 # Non-success terminal outcome: release the claim as failed so
                 # a later retry may reclaim (equivalent to pre-claim behavior
                 # where failures were never stored).
-                try:
+                with contextlib.suppress(Exception):
                     await _complete_tool_effect(str(workspace_id), idem_key, idem_claim, False, None)
-                except Exception:
-                    pass
             elif idem_key and idem_unavailable:
                 result["idempotency"] = "unavailable"
             return result
@@ -4467,6 +4467,7 @@ def _audit_log(
     try:
         import asyncio
         import uuid as _uuid
+
         from ..database import async_session_factory
         from ..models.schema import AgentAction, AuditEvent
 
@@ -4474,10 +4475,8 @@ def _audit_log(
             try:
                 async with async_session_factory() as s:
                     ws_uuid = None
-                    try:
+                    with contextlib.suppress(Exception):
                         ws_uuid = _uuid.UUID(str(workspace_id))
-                    except Exception:
-                        pass
                     if ws_uuid:
                         action_rec = AgentAction(
                             workspace_id=ws_uuid,

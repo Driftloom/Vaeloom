@@ -10,7 +10,6 @@ Admin & workspace CRUD endpoints for:
 from __future__ import annotations
 
 import uuid
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
@@ -102,10 +101,10 @@ async def update_tool(
     entry = res.scalars().first()
     if not entry:
         raise HTTPException(status_code=404, detail=f"Tool {tool_id} not found")
-    
+
     for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(entry, k, v)
-        
+
     await db.commit()
     await db.refresh(entry)
     return entry
@@ -170,10 +169,10 @@ async def update_model(
     entry = res.scalars().first()
     if not entry:
         raise HTTPException(status_code=404, detail=f"Model {model_id} not found")
-    
+
     for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(entry, k, v)
-        
+
     await db.commit()
     await db.refresh(entry)
     return entry

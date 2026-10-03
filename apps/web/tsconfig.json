@@ -13,11 +13,12 @@
     "**/*.tsx",
     ".next-build/types/**/*.ts",
     ".next-build2/types/**/*.ts",
+    ".next-e2e-full/types/**/*.ts",
     ".next-e2e/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
     "trigger.config.ts",
-    ".next-e2e-full/types/**/*.ts"
+    ".next-e2e-triage/types/**/*.ts"
   ],
   "exclude": ["node_modules", "**/*.spec.ts", "**/*.spec.tsx", "**/*.test.ts", "**/*.test.tsx"]
 }

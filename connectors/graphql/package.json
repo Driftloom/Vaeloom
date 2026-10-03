@@ -6,7 +6,9 @@
   "description": "GraphQL connector with schema introspection and query builder",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
-  "files": ["src/**/*.ts"],
+  "files": [
+    "src/**/*.ts"
+  ],
   "scripts": {
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",

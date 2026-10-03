@@ -9,7 +9,6 @@ from __future__ import annotations
 import logging
 import re
 import uuid
-from typing import Any
 
 from ...utils.sanitize import looks_like_prompt_injection, sanitize_text
 

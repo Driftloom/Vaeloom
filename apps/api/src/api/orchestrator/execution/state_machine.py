@@ -6,12 +6,11 @@ Validates that state transitions follow the authoritative lifecycle invariants.
 from __future__ import annotations
 
 import logging
-from typing import Set
 
 logger = logging.getLogger(__name__)
 
 # Valid transitions from node -> set of allowable next nodes
-VALID_TRANSITIONS: dict[str, Set[str]] = {
+VALID_TRANSITIONS: dict[str, set[str]] = {
     "understand": {"plan", "complete", "failed"},
     "plan": {"execute", "complete", "failed"},
     "execute": {"observe", "failed"},
@@ -40,7 +39,7 @@ class ExecutionStateMachine:
         if to_node not in allowed:
             raise InvalidStateTransitionError(
                 f"Illegal state transition attempted: '{from_node}' -> '{to_node}'. "
-                f"Allowable target states: {sorted(list(allowed))}"
+                f"Allowable target states: {sorted(allowed)}"
             )
         return True
 

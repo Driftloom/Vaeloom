@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import json
 import logging
 import re
@@ -8,7 +9,7 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, ValidationError
-from sqlalchemy import delete, select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
@@ -1054,10 +1055,8 @@ async def create_capability(
 
     tid = None
     if tenant_id:
-        try:
+        with contextlib.suppress(ValueError, TypeError):
             tid = uuid.UUID(str(tenant_id))
-        except (ValueError, TypeError):
-            pass
 
     cap = WorkspaceCapability(
         id=uuid.uuid4(),

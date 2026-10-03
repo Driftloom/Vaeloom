@@ -8,6 +8,7 @@ Payload invariant: inputs are IDs/refs; secrets resolved here via SecretManager
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import logging
 from dataclasses import dataclass
@@ -148,7 +149,6 @@ async def parse_document(inp: ParseDocumentInput) -> dict[str, Any]:
         _activity_log("parse_document", document_id=doc_id_in, workspace_id=ws_id_in)
     except Exception:
         pass
-    activity = _activity
     _bind_activity_scope(inp)
     try:
         import uuid as _uuid
@@ -465,7 +465,6 @@ async def durable_agent_run(payload: Any) -> dict[str, Any]:
     except Exception:
         pass
     # Normalize dataclass → dict
-    orig_payload = payload
     try:
         if hasattr(payload, "__dataclass_fields__"):
             payload = {
@@ -538,10 +537,9 @@ async def durable_agent_run(payload: Any) -> dict[str, Any]:
         from ..config import settings as _s2
 
         shadow_mode = bool(getattr(_s2, "langgraph_shadow_mode", False))
-        enabled2 = bool(getattr(_s2, "langgraph_enabled", False))
+        bool(getattr(_s2, "langgraph_enabled", False))
     except Exception:
         shadow_mode = False
-        enabled2 = True
 
     # Shadow: run both legacy and graph, compare, return legacy (no duplicate side effects)
     if shadow_mode:
@@ -785,10 +783,8 @@ async def _run_graph(payload: dict[str, Any]) -> dict[str, Any]:
         _term = str((_g or {}).get("termination") or "failed")
         _agent = str(card.get("agent_name") or payload.get("agent_id") or "memory")
         _summary = str(((card.get("result") or {}).get("summary")) or f"graph {_term} for {_agent}")[:2000]
-        try:
+        with contextlib.suppress(Exception):
             _activity_log("graph completed", agent=_agent, graph_termination=_term, duration_ms=int((time.monotonic() - start) * 1000))
-        except Exception:
-            pass
         _base: dict[str, Any] = {"agent": _agent, "graph_version": (_g or {}).get("graph_version") or _RUNNER_GRAPH_VERSION,
                                  "graph_termination": _term, "run_id": (_g or {}).get("run_id"),
                                  "trace": (_g or {}).get("trace") or []}
@@ -1001,10 +997,8 @@ async def execute_approved_action(payload: dict[str, Any]) -> dict[str, Any]:
                 if consume_res.rowcount == 0:
                     return {"approval_id": approval_id, "executed": False, "error": "already consumed"}
             except Exception as ce:
-                try:
+                with contextlib.suppress(Exception):
                     await db.rollback()
-                except Exception:
-                    pass
                 return {"approval_id": approval_id, "executed": False, "error": f"consume failed: {ce}"[:200]}
 
         logger.info("execute_approved_action approved=%s decision=%s", approval_id, decision.get("decision"))

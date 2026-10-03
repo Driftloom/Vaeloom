@@ -28,13 +28,20 @@ class OffsetPagination implements PaginationHandler {
     this.limit = config.limit ?? 100;
   }
 
-  getNextParams(response: unknown, params: Record<string, unknown>): Record<string, unknown> | null {
+  getNextParams(
+    response: unknown,
+    params: Record<string, unknown>,
+  ): Record<string, unknown> | null {
     const data = response as { data?: unknown[] };
     const items = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
     if (items.length < this.limit) return null;
 
     const currentOffset = (params[this.offsetParam] as number) ?? 0;
-    return { ...params, [this.offsetParam]: currentOffset + this.limit, [this.limitParam]: this.limit };
+    return {
+      ...params,
+      [this.offsetParam]: currentOffset + this.limit,
+      [this.limitParam]: this.limit,
+    };
   }
 }
 
@@ -49,7 +56,10 @@ class CursorPagination implements PaginationHandler {
     this.limit = config.limit ?? 100;
   }
 
-  getNextParams(response: unknown, params: Record<string, unknown>): Record<string, unknown> | null {
+  getNextParams(
+    response: unknown,
+    params: Record<string, unknown>,
+  ): Record<string, unknown> | null {
     const body = response as { nextCursor?: string; cursor?: string; meta?: { cursor?: string } };
     const nextCursor = body.nextCursor ?? body.cursor ?? body.meta?.cursor;
     if (!nextCursor) return null;
@@ -69,7 +79,10 @@ class PagePagination implements PaginationHandler {
     this.limit = config.limit ?? 100;
   }
 
-  getNextParams(response: unknown, params: Record<string, unknown>): Record<string, unknown> | null {
+  getNextParams(
+    response: unknown,
+    params: Record<string, unknown>,
+  ): Record<string, unknown> | null {
     const body = response as { total?: number; totalPages?: number; data?: unknown[] };
     const currentPage = (params[this.pageParam] as number) ?? 1;
     const items = Array.isArray(body?.data) ? body.data : [];

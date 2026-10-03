@@ -1,4 +1,5 @@
 """Erasure service — 100% deletion across all stores (BQ-P02-03)."""
+import contextlib
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -76,20 +77,16 @@ class ErasureService:
             )
             for row in doc_versions_res.fetchall():
                 if row[0]:
-                    try:
+                    with contextlib.suppress(Exception):
                         await storage_service.delete(row[0])
-                    except Exception:
-                        pass
 
             docs_res = await db.execute(
                 select(Document.raw_storage_key).where(Document.workspace_id == workspace_id)
             )
             for row in docs_res.fetchall():
                 if row[0]:
-                    try:
+                    with contextlib.suppress(Exception):
                         await storage_service.delete(row[0])
-                    except Exception:
-                        pass
             receipt.stores_affected.append("object_storage")
         except Exception as e:
             receipt.stores_affected.append(f"object_storage:ERROR:{e}")

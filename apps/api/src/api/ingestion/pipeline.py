@@ -1,3 +1,4 @@
+import contextlib
 import hashlib
 import logging
 import uuid
@@ -144,10 +145,8 @@ async def run_pipeline(
                             workspace_id, document_id, ch.index, detection,
                         )
                         # Mark chunk metadata as quarantined so retrieval can filter if needed
-                        try:
+                        with contextlib.suppress(Exception):
                             ch.metadata = {**(ch.metadata or {}), "quarantined": True, "quarantine_reason": detection}
-                        except Exception:
-                            pass
                         quarantined += 1
                         # Still persist but flagged — alternative is to skip persistence entirely
                         # We persist flagged so admin can review via audit; retrieval filters quarantined
@@ -442,7 +441,7 @@ async def _populate_graph_memory(
 
             # Link each entity to central document hub (obsidian backlink style: document CONTAINS entity)
             if doc_node_id:
-                for lbl, nid in label_to_node_id.items():
+                for _lbl, nid in label_to_node_id.items():
                     try:
                         from uuid import UUID as _UUID_DOC
 

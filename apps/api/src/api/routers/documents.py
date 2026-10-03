@@ -1,7 +1,4 @@
-import io
 import uuid
-from datetime import timedelta
-from typing import Any
 
 from fastapi import (
     APIRouter,
@@ -92,7 +89,7 @@ async def _verify_workspace_access(
     required_roles: tuple[str, ...] | None = None,
 ) -> Workspace:
     """Verify user has access to this workspace.
-    
+
     Checks if user is workspace owner OR a member in WorkspaceUser.
     Raises 404 if workspace does not exist.
     Raises 403 if workspace exists but user is not a member or lacks required role.

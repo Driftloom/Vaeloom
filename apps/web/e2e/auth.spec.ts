@@ -19,7 +19,7 @@ const SIDEBAR_ROUTES: Array<{ label: string; landsOn: (ws: string) => string }> 
   { label: 'Agents', landsOn: (ws) => `/workspace/${ws}/agents` },
   { label: 'Capabilities', landsOn: (ws) => `/workspace/${ws}/capabilities` },
   { label: 'Approvals', landsOn: (ws) => `/workspace/${ws}/approvals` },
-  { label: 'Second Brain', landsOn: (ws) => `/workspace/${ws}/memory` },
+  { label: 'Memory', landsOn: (ws) => `/workspace/${ws}/memory` },
   { label: 'Vault Sync', landsOn: (ws) => `/workspace/${ws}/memory/vault` },
   { label: 'Search', landsOn: (ws) => `/workspace/${ws}/search` },
   { label: 'Documents', landsOn: (ws) => `/workspace/${ws}/files` },
@@ -44,7 +44,7 @@ const ROUTE_HEADINGS: Array<{
 }> = [
   { path: (ws) => `/workspace/${ws}`, heading: /E2E Audit/ },
   { path: (ws) => `/workspace/${ws}/chat`, heading: /^Chat$/ },
-  { path: (ws) => `/workspace/${ws}/memory`, heading: /^Second Brain & Memory$/ },
+  { path: (ws) => `/workspace/${ws}/memory`, heading: /^Memory$/ },
   { path: (ws) => `/workspace/${ws}/files`, heading: /Workspace Files/ },
   { path: (ws) => `/workspace/${ws}/history`, heading: /^History$/ },
   { path: (ws) => `/workspace/${ws}/jobs`, heading: /^Jobs$/ },

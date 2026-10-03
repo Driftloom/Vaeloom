@@ -10,13 +10,13 @@ import logging
 import os
 import re
 import time
-from typing import Any, Sequence
+from collections import OrderedDict
+from collections.abc import Sequence
+from typing import Any
 
 import httpx
 
 from ..config import settings
-
-from collections import OrderedDict
 
 logger = logging.getLogger("api.services.jev")
 

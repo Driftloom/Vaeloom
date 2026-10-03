@@ -169,10 +169,7 @@ class CrdtSyncService:
             cid = d.client_id or client_id
             payload_str = d.encrypted_payload
             if not payload_str:
-                if d.payload is not None:
-                    payload_str = json.dumps(d.payload)
-                else:
-                    payload_str = "{}"
+                payload_str = json.dumps(d.payload) if d.payload is not None else "{}"
 
             if compare_hlc(d.hlc_timestamp, highest_hlc_seen) > 0:
                 highest_hlc_seen = d.hlc_timestamp

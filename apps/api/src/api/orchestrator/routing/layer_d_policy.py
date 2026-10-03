@@ -10,7 +10,6 @@ Enforces zero-trust authorization:
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from ...config import settings
 from ..capability_registry import capability_registry

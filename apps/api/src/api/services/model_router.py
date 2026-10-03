@@ -149,11 +149,8 @@ class ProviderCircuitBreaker:
             return True
 
         last_fail = self.last_failure_time.get(provider, 0.0)
-        if (time.time() - last_fail) > self.recovery_time_sec:
-            # Recovery period elapsed, allow probe (half-open)
-            return True
-
-        return False
+        # Recovery period elapsed, allow probe (half-open)
+        return (time.time() - last_fail) > self.recovery_time_sec
 
 
 class ModelRouter:

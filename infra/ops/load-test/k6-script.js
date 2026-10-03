@@ -49,7 +49,7 @@ function getAuthToken() {
 
 function authHeaders(token) {
   return {
-    'Authorization': `Bearer ${token}`,
+    Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
   };
 }

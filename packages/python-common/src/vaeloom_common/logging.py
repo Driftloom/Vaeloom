@@ -1,6 +1,6 @@
 import logging
 import sys
-from typing import Optional
+from typing import Any
 
 import structlog
 
@@ -9,9 +9,9 @@ def configure_logging(
     level: str = "INFO",
     json_format: bool = True,
     include_trace: bool = True,
-    service_name: Optional[str] = None,
+    service_name: str | None = None,
 ) -> None:
-    processors = [
+    processors: list[Any] = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.filter_by_level,
         structlog.stdlib.add_logger_name,
@@ -48,6 +48,9 @@ def configure_logging(
         cache_logger_on_first_use=True,
     )
 
+    if service_name:
+        structlog.contextvars.bind_contextvars(service=service_name)
+
     logging.basicConfig(
         format="%(message)s",
         stream=sys.stdout,
@@ -55,5 +58,5 @@ def configure_logging(
     )
 
 
-def get_logger(name: Optional[str] = None) -> structlog.stdlib.BoundLogger:
+def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
     return structlog.get_logger(name or __name__)

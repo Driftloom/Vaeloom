@@ -1,3 +1,4 @@
+import contextlib
 import json
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -397,7 +398,7 @@ async def _ingest_feedback_preference(
                                 {"uid": pref_user_id, "tid": tenant_id, "vec": vec_str},
                             )
                         except Exception:
-                            try:
+                            with contextlib.suppress(Exception):
                                 await db.execute(
                                     text("""
                                         INSERT INTO user_preference_vectors (user_id, tenant_id, preference_vector, updated_at)
@@ -406,8 +407,6 @@ async def _ingest_feedback_preference(
                                     """),
                                     {"uid": pref_user_id, "tid": tenant_id, "vec": vec_str, "now": datetime.now(UTC)},
                                 )
-                            except Exception:
-                                pass
             except Exception as ve:
                 import logging
                 logging.getLogger(__name__).debug(f"Preference vector upsert skipped (non-blocking): {ve}")

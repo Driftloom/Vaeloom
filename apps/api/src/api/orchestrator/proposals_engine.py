@@ -254,7 +254,7 @@ class ActionProposalEngine:
             ("🔍 Discover Remote Roles", "career.jobs.read"),
             ("📅 Schedule Interview Preparation", "workspace.calendar.write"),
         ]
-        for title, scope in fallback_titles:
+        for title, _scope in fallback_titles:
             if len(proposals) >= limit:
                 break
             if not any(p.title == title for p in proposals):

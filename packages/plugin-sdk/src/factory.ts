@@ -13,10 +13,7 @@ export function definePlugin(pluginClass: new () => PluginBase): () => PluginBas
   return () => new pluginClass();
 }
 
-export async function loadPlugin(
-  plugin: PluginBase,
-  context: PluginContext,
-): Promise<void> {
+export async function loadPlugin(plugin: PluginBase, context: PluginContext): Promise<void> {
   await plugin.onInit(context);
   if (context.config.enabled) {
     await plugin.onActivate(context);

@@ -86,7 +86,7 @@ class BullMQWorker:
 
     async def _recover_active_jobs(self, r: redis.Redis) -> None:
         """On worker startup, check for orphaned jobs left in the active queue by crashed workers.
-        
+
         Guarded by lease check (DIST-01 / REM-02): only recovers jobs whose lease has expired (>300s)
         or is absent. Running peer workers holding active leases are protected against job theft.
         """
@@ -142,10 +142,8 @@ class BullMQWorker:
                         continue
                     _key, job_id = result
                     if hasattr(r, "lpush"):
-                        try:
+                        with contextlib.suppress(Exception):
                             await r.lpush(self._active_key, job_id)
-                        except Exception:
-                            pass
 
                 async with self._semaphore:
                     task = asyncio.create_task(self._process_job(job_id))
@@ -184,20 +182,16 @@ class BullMQWorker:
 
         # Acquire processing lease to protect job from theft by restarting peers
         if hasattr(r, "set"):
-            try:
+            with contextlib.suppress(Exception):
                 await r.set(lease_key, str(os.getpid()), ex=300)
-            except Exception:
-                pass
 
         try:
             raw = await r.hgetall(job_key)
             if not raw:
                 logger.warning("Job %s not found in Redis", job_id)
                 if hasattr(r, "lrem"):
-                    try:
+                    with contextlib.suppress(Exception):
                         await r.lrem(self._active_key, 1, job_id)
-                    except Exception:
-                        pass
                 return
 
             job_data = {
@@ -215,10 +209,8 @@ class BullMQWorker:
                 await r.hset(job_key, "failedReason", f"No handler for '{job_name}'")
                 await r.zadd(self._failed_key, {job_id: 0})
                 if hasattr(r, "lrem"):
-                    try:
+                    with contextlib.suppress(Exception):
                         await r.lrem(self._active_key, 1, job_id)
-                    except Exception:
-                        pass
                 return
 
             if hasattr(handler, "__code__") and "job_id" in handler.__code__.co_varnames:
@@ -227,10 +219,8 @@ class BullMQWorker:
                 result = await handler(data)
 
             if hasattr(r, "lrem"):
-                try:
+                with contextlib.suppress(Exception):
                     await r.lrem(self._active_key, 1, job_id)
-                except Exception:
-                    pass
 
             await r.zadd(self._completed_key, {job_id: float(job_data.get("timestamp", 0) or 0)})
             await r.hset(job_key, mapping={"returnvalue": json.dumps(result)})
@@ -240,10 +230,8 @@ class BullMQWorker:
         except Exception:
             logger.exception("Job %s failed", job_id)
             if hasattr(r, "lrem"):
-                try:
+                with contextlib.suppress(Exception):
                     await r.lrem(self._active_key, 1, job_id)
-                except Exception:
-                    pass
             # Retry with exponential backoff until maxAttempts, then dead-letter
             try:
                 attempts = int(job_data.get("attempts", 0) or 0)
@@ -271,10 +259,8 @@ class BullMQWorker:
                 logger.error("Job %s dead-lettered after %d attempts", job_id, attempts)
         finally:
             if hasattr(r, "delete"):
-                try:
+                with contextlib.suppress(Exception):
                     await r.delete(lease_key)
-                except Exception:
-                    pass
 
     async def _drain(self) -> None:
         """Wait for active tasks to finish on shutdown."""

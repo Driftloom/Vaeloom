@@ -2,7 +2,8 @@
 
 Translation plugin for Vaeloom.
 
-Returns a structured translation request that the agent engine can pass to an AI service.
+Returns a structured translation request that the agent engine can pass to an AI
+service.
 
 ## Usage
 

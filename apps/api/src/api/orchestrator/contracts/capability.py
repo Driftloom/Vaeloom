@@ -6,13 +6,13 @@ and authorization boundaries.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class RiskClass(str, Enum):
+class RiskClass(StrEnum):
     """Risk classification governing human-in-the-loop approval thresholds."""
     LOW = "low"            # Read-only document retrieval, search, metrics
     MEDIUM = "medium"      # Document drafting, classification, transient staging
@@ -20,7 +20,7 @@ class RiskClass(str, Enum):
     CRITICAL = "critical"  # Account deletion, irreversible credential modification, mass purge
 
 
-class AutonomyLevel(str, Enum):
+class AutonomyLevel(StrEnum):
     """Autonomy level governing agent execution bounds."""
     READ = "read"          # Passive inspection and analysis only
     SUGGEST = "suggest"    # Proposes action cards; requires explicit user click to execute

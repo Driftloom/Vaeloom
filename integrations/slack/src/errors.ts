@@ -24,7 +24,11 @@ export class SlackWebhookVerificationError extends SlackIntegrationError {
 }
 
 export class SlackApiError extends SlackIntegrationError {
-  constructor(message: string, public readonly status?: number, cause?: unknown) {
+  constructor(
+    message: string,
+    public readonly status?: number,
+    cause?: unknown,
+  ) {
     super(message, 'SLACK_API_ERROR', cause);
     this.name = 'SlackApiError';
   }

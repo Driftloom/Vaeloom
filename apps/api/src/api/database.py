@@ -1,5 +1,5 @@
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
@@ -238,10 +238,8 @@ async def scoped_session(
             yield session
             await session.commit()
         except Exception:
-            try:
+            with suppress(Exception):
                 await session.rollback()
-            except Exception:
-                pass
             raise
         # NOTE: no explicit session.close() here. Lifecycle is owned by the
         # context-manager protocol of whatever the factory yields: real

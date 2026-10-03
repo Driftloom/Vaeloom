@@ -1,6 +1,6 @@
 from fastapi import Depends, HTTPException
 
-from ..dependencies import ROLE_HIERARCHY, get_current_user
+from ..dependencies import get_current_user
 from ..dependencies import require_role as require_role  # single source of truth (hierarchical)
 
 ROLE_PERMISSIONS: dict[str, set[str]] = {

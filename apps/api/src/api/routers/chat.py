@@ -6,6 +6,7 @@ Now wraps the governed orchestrator path so both chat surfaces share
 the same security boundary.
 Kept for backward compat; new clients should use POST /api/v1/agents/chat.
 """
+import contextlib
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -67,14 +68,10 @@ async def send_chat_message(
         bg_context = await retrieve_memory_and_vault_context(workspace_id, dto.message, db)
     finally:
         # Crucial P0 Fix: Release DB connection immediately before awaiting long-running orchestrator loop
-        try:
+        with contextlib.suppress(Exception):
             await db.commit()
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             await db.close()
-        except Exception:
-            pass
     user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
     tenant_id = current_user.get("tenant_id")
     full_message = f"{dto.message}\n\n{bg_context}" if bg_context else dto.message

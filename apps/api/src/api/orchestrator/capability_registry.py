@@ -8,13 +8,11 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
 
 from .contracts.capability import (
     AgentCapabilityManifest,
     AutonomyLevel,
     RiskClass,
-    ToolCapabilityManifest,
 )
 
 logger = logging.getLogger(__name__)

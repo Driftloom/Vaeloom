@@ -9,11 +9,13 @@ Authoritative per-execution tool discovery engine that enforces:
 """
 from __future__ import annotations
 
+import contextlib
 import functools
 import inspect
 import logging
-from typing import Any, Callable, get_type_hints
 import uuid
+from collections.abc import Callable
+from typing import Any, get_type_hints
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -168,10 +170,8 @@ def register_tool(
         # Build schema from signature & type hints
         sig = inspect.signature(fn)
         type_hints: dict[str, Any] = {}
-        try:
+        with contextlib.suppress(Exception):
             type_hints = get_type_hints(fn)
-        except Exception:
-            pass
 
         properties: dict[str, Any] = {}
         required: list[str] = []
@@ -236,10 +236,7 @@ def register_tool(
         async def tool_handler(params: dict[str, Any], workspace_id: Any = None) -> Any:
             try:
                 if is_raw_params:
-                    if len(params_list) >= 2:
-                        res = fn(params, workspace_id)
-                    else:
-                        res = fn(params)
+                    res = fn(params, workspace_id) if len(params_list) >= 2 else fn(params)
                 else:
                     call_kwargs = dict(params)
                     if "workspace_id" in sig.parameters:

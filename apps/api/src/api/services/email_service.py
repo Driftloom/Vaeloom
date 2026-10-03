@@ -6,12 +6,12 @@ Supports:
 3. Local Dev / Test fallback (logs email payload cleanly to logger and audit trail)
 """
 
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 import logging
 import os
 import smtplib
-from typing import Any, Dict, Optional
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +30,8 @@ class EmailService:
         to_email: str,
         subject: str,
         html_body: str,
-        text_body: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        text_body: str | None = None,
+    ) -> dict[str, Any]:
         """Send an email using Resend, SMTP, or Dev/Mock fallback."""
         text_body = text_body or html_body
 
@@ -103,8 +103,8 @@ class EmailService:
         inviter_name: str,
         invite_url: str,
         role: str = "member",
-        expires_at: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        expires_at: str | None = None,
+    ) -> dict[str, Any]:
         """Dispatch a branded organization invitation email."""
         subject = f"You're invited to join {organization_name} on Vaeloom"
 
@@ -145,7 +145,7 @@ class EmailService:
         to_email: str,
         reset_url: str,
         expires_minutes: int = 15,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Dispatch a branded password reset email."""
         subject = "Reset your Vaeloom password"
 

@@ -1,3 +1,4 @@
+import contextlib
 import hashlib
 import os
 import secrets
@@ -6,11 +7,18 @@ from datetime import UTC, datetime, timedelta
 
 import bcrypt
 import jwt
-from sqlalchemy import select, update, delete, func
+from sqlalchemy import delete, func, select, update
 
 from ..config import settings
-from ..models.schema import AuthSession, EmailVerificationToken, OnboardingState, PasswordResetToken, User, Workspace
-from ..schemas.auth import AuthResponse, PublicUser, SessionItemResponse, MfaSetupResponse
+from ..models.schema import (
+    AuthSession,
+    EmailVerificationToken,
+    OnboardingState,
+    PasswordResetToken,
+    User,
+    Workspace,
+)
+from ..schemas.auth import AuthResponse, MfaSetupResponse, PublicUser, SessionItemResponse
 from ..utils.sanitize import sanitize_text
 
 # AUTH-REV-01: shared revocation. Redis (when explicitly configured via
@@ -174,7 +182,7 @@ class AuthService:
 
         # Audit consent in consent_records
         try:
-            from .consent import consent_manager, ConsentScope
+            from .consent import ConsentScope, consent_manager
             await consent_manager.record_consent(
                 user_id=str(user.id),
                 scope=ConsentScope.terms_and_privacy,
@@ -460,6 +468,7 @@ class AuthService:
 
     async def setup_mfa(self, user_id: str, db=None) -> MfaSetupResponse:
         from fastapi import HTTPException
+
         from .totp_service import totp_service
         result = await db.execute(select(User).where(User.id == uuid.UUID(str(user_id))))
         user = result.scalar_one_or_none()
@@ -482,6 +491,7 @@ class AuthService:
 
     async def verify_mfa_and_enable(self, user_id: str, code: str, db=None) -> dict:
         from fastapi import HTTPException
+
         from .totp_service import totp_service
         result = await db.execute(select(User).where(User.id == uuid.UUID(str(user_id))))
         user = result.scalar_one_or_none()
@@ -504,6 +514,7 @@ class AuthService:
         db=None,
     ) -> AuthResponse:
         from fastapi import HTTPException
+
         from .totp_service import totp_service
         user_id = totp_service.verify_mfa_challenge_token(mfa_token)
         if not user_id:
@@ -1006,10 +1017,8 @@ class AuthService:
             return False, ""
         finally:
             if own_session:
-                try:
+                with contextlib.suppress(Exception):
                     await ctx.__aexit__(None, None, None)
-                except Exception:
-                    pass
 
     def is_token_revoked(self, jti: str | None = None, user_id: str | None = None, iat: float | None = None) -> bool:
         """Deprecated sync shim (no DB access): consults the shared Redis
@@ -1063,15 +1072,13 @@ class AuthService:
             expires_at = datetime.now(UTC) + timedelta(minutes=15)
 
             # Invalidate any prior unused reset tokens for this user
-            try:
+            with contextlib.suppress(Exception):
                 await db.execute(
                     delete(PasswordResetToken).where(
                         PasswordResetToken.user_id == user.id,
                         PasswordResetToken.used_at.is_(None),
                     )
                 )
-            except Exception:
-                pass
 
             # Pre-auth RLS context: token hash + user id
             try:
@@ -1119,7 +1126,7 @@ class AuthService:
     async def reset_password_with_token(self, token: str, new_password: str, db=None) -> bool:
         """Verify password reset token and update user password."""
         import hashlib
-        import time
+
         from fastapi import HTTPException
 
         if not token or not new_password or len(new_password) < 8:

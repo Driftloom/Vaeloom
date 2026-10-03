@@ -1,3 +1,4 @@
+import contextlib
 import html
 import re
 import urllib.parse
@@ -20,18 +21,12 @@ def _decode_evasions(value: str) -> str:
     decoded = value
     for _ in range(3):
         prev = decoded
-        try:
+        with contextlib.suppress(Exception):
             decoded = urllib.parse.unquote(decoded)
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             decoded = html.unescape(decoded)
-        except Exception:
-            pass
-        try:
+        with contextlib.suppress(Exception):
             decoded = decoded.encode("utf-8").decode("unicode_escape", errors="ignore")
-        except Exception:
-            pass
         if decoded == prev:
             break
     return decoded

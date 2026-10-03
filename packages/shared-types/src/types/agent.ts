@@ -2,7 +2,8 @@ import type { BaseEntity, UUID } from './domain';
 
 export type AgentStatus = 'idle' | 'running' | 'paused' | 'error' | 'disabled';
 
-export type AgentCategory = 'ingestion' | 'memory' | 'analysis' | 'retrieval' | 'action' | 'scheduling' | 'communication';
+export type AgentCategory =
+  'ingestion' | 'memory' | 'analysis' | 'retrieval' | 'action' | 'scheduling' | 'communication';
 
 export interface Agent extends BaseEntity {
   name: string;
@@ -66,7 +67,8 @@ export interface AgentExecution {
   cost?: number;
 }
 
-export type ExecutionStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'timeout';
+export type ExecutionStatus =
+  'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'timeout';
 
 export interface AgentMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';

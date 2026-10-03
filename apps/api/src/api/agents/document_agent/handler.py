@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from api.config import settings
 from api.orchestrator.base import BaseAgent, MemoryScopes, Tool
@@ -206,7 +206,9 @@ class DocumentAgent(BaseAgent):
                 )
                 try:
                     import uuid as _uuid
+
                     from sqlalchemy import select
+
                     from api.models.schema import Document
 
                     try:
@@ -303,7 +305,7 @@ class DocumentAgent(BaseAgent):
                         "confidence": 0.99,
                         "result": {
                             "summary": f"Speculative quality audit complete for '{real_docs[0]['title']}': Quality Score {audit_result['quality_score']}% ({audit_result['verdict']}). {audit_result['passed_checks']}/50 checks passed.",
-                            "details": f"Evaluated 50 discrete checks across contact, structure, metrics, ATS parseability, skills, and polish.",
+                            "details": "Evaluated 50 discrete checks across contact, structure, metrics, ATS parseability, skills, and polish.",
                             "action_data": audit_result,
                             "proposals": [
                                 {"type": "recommendation", "text": rec}
@@ -391,8 +393,8 @@ class DocumentAgent(BaseAgent):
         # Retrieve relevant workspace memories to augment generative synthesis
         if ws_id:
             try:
-                from api.services.memory_service import memory_service
                 from api.schemas.memory import MemoryQuery
+                from api.services.memory_service import memory_service
                 async with _get_db() as mem_db:
                     mem_query = MemoryQuery(type="knowledge", status="active", limit=3)
                     m_rows, _ = await memory_service.list_memories(
@@ -416,8 +418,8 @@ class DocumentAgent(BaseAgent):
         # Persist newly generated synthesis insight to workspace memory
         if ws_id and synth.get("synthesis") and len(synth["synthesis"]) > 40:
             try:
-                from api.services.memory_service import memory_service
                 from api.schemas.memory import MemoryCreate
+                from api.services.memory_service import memory_service
                 async with _get_db() as mem_db:
                     await memory_service.create_memory(
                         db=mem_db,

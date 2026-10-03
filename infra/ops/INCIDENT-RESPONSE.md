@@ -2,36 +2,39 @@
 
 ## Severity Definitions
 
-| Severity | Description | Response Time | Examples |
-|----------|-------------|---------------|----------|
-| **SEV1** | Complete service outage or data loss. All users affected. | 15 min | Site down, DB corruption, auth broken, billing failures |
-| **SEV2** | Major feature degraded or partial outage. Significant user impact. | 30 min | LLM responses failing, uploads broken, slow page loads >5s |
-| **SEV3** | Minor feature degraded. Workaround available. Small subset affected. | 2 hours | Rate limiting too aggressive, cache misses, non-critical UI bug |
-| **SEV4** | Cosmetic issue, documentation, or non-urgent bug. No user impact. | Next business day | Typo in UI, stale docs, non-critical log noise |
+| Severity | Description                                                          | Response Time     | Examples                                                        |
+| -------- | -------------------------------------------------------------------- | ----------------- | --------------------------------------------------------------- |
+| **SEV1** | Complete service outage or data loss. All users affected.            | 15 min            | Site down, DB corruption, auth broken, billing failures         |
+| **SEV2** | Major feature degraded or partial outage. Significant user impact.   | 30 min            | LLM responses failing, uploads broken, slow page loads >5s      |
+| **SEV3** | Minor feature degraded. Workaround available. Small subset affected. | 2 hours           | Rate limiting too aggressive, cache misses, non-critical UI bug |
+| **SEV4** | Cosmetic issue, documentation, or non-urgent bug. No user impact.    | Next business day | Typo in UI, stale docs, non-critical log noise                  |
 
 ---
 
 ## On-Call Rotation
 
 ### Schedule
+
 - **Primary on-call**: 1 engineer, 7-day rotation (Mon→Mon)
 - **Secondary on-call**: 1 engineer, same rotation (offset by 1 week)
 - **Escalation lead**: Engineering manager, always available
 
 ### Handoff
+
 - Handoff occurs every Monday at 09:00 UTC
 - Primary reviews active incidents and open tickets with incoming primary
 - Update on-call calendar in PagerDuty / Opsgenie
 - Ensure secondary is aware of any ongoing incidents
 
 ### Communication Channels
-| Channel | Purpose |
-|---------|---------|
-| `#vaeloom-alerts` | Automated monitoring alerts (PagerDuty, CloudWatch, Sentry) |
-| `#vaeloom-incidents` | Incident coordination and status updates |
-| `#vaeloom-eng` | Technical discussion / debugging |
-| Phone / Zoom bridge | SEV1/SEV2 escalation calls |
-| `status.vaeloom.app` | Public status page updates |
+
+| Channel              | Purpose                                                     |
+| -------------------- | ----------------------------------------------------------- |
+| `#vaeloom-alerts`    | Automated monitoring alerts (PagerDuty, CloudWatch, Sentry) |
+| `#vaeloom-incidents` | Incident coordination and status updates                    |
+| `#vaeloom-eng`       | Technical discussion / debugging                            |
+| Phone / Zoom bridge  | SEV1/SEV2 escalation calls                                  |
+| `status.vaeloom.app` | Public status page updates                                  |
 
 ---
 
@@ -40,6 +43,7 @@
 ### 1. Detect
 
 **Sources:**
+
 - PagerDuty alert → page primary on-call
 - CloudWatch Alarm → `#vaeloom-alerts`
 - Sentry error spike → `#vaeloom-alerts`
@@ -60,21 +64,22 @@
    Symptom: API returning 502 on /api/v1/agents
    Action: Investigating...
    ```
-5. **Declare SEV1 immediately** if >5% of users are affected or data loss suspected
+5. **Declare SEV1 immediately** if >5% of users are affected or data loss
+   suspected
 
 ### 3. Mitigate (Goal: <30 min for SEV1)
 
 **Primary goal: stop the bleeding — not root cause.**
 
-| Mitigation Tactic | When to Use |
-|-------------------|-------------|
-| Rollback ECS task definition | Bad deploy, code defect |
-| Scale up / scale out | Traffic spike, resource exhaustion |
-| Feature flag disable | Isolate bad feature |
-| Restore from DB snapshot | Data corruption |
-| Failover to replica | Primary DB failure |
-| Block traffic at WAF | DDoS or abusive traffic |
-| Restart service | Memory leak, hung connections |
+| Mitigation Tactic            | When to Use                        |
+| ---------------------------- | ---------------------------------- |
+| Rollback ECS task definition | Bad deploy, code defect            |
+| Scale up / scale out         | Traffic spike, resource exhaustion |
+| Feature flag disable         | Isolate bad feature                |
+| Restore from DB snapshot     | Data corruption                    |
+| Failover to replica          | Primary DB failure                 |
+| Block traffic at WAF         | DDoS or abusive traffic            |
+| Restart service              | Memory leak, hung connections      |
 
 **Commands (use `make` scripts where available):**
 
@@ -122,13 +127,11 @@ Every SEV1 and SEV2 requires a written postmortem.
 ```markdown
 # Postmortem: [Title]
 
-Date: YYYY-MM-DD
-Severity: SEV1 | SEV2
-Duration: HH:MM → HH:MM (total: Xh Ym)
-Services affected: [web, backend, db, redis, cdn]
-Author: @name
+Date: YYYY-MM-DD Severity: SEV1 | SEV2 Duration: HH:MM → HH:MM (total: Xh Ym)
+Services affected: [web, backend, db, redis, cdn] Author: @name
 
 ## Timeline
+
 - HH:MM — Alert triggered
 - HH:MM — Incident declared, on-call engaged
 - HH:MM — Root cause identified
@@ -137,22 +140,26 @@ Author: @name
 - HH:MM — Status page updated
 
 ## Root Cause
+
 [Description of what went wrong]
 
 ## Impact
+
 - Users affected: [number or %]
 - Downtime: [duration]
 - Errors: [number of 5xx responses]
 - Data loss: [yes/no, details]
 
 ## Action Items
-| Action | Owner | Due | Type |
-|--------|-------|-----|------|
-| Fix bug in ... | @name | YYYY-MM-DD | patch |
-| Add alert for ... | @name | YYYY-MM-DD | monitoring |
-| Update runbook for ... | @name | YYYY-MM-DD | docs |
+
+| Action                 | Owner | Due        | Type       |
+| ---------------------- | ----- | ---------- | ---------- |
+| Fix bug in ...         | @name | YYYY-MM-DD | patch      |
+| Add alert for ...      | @name | YYYY-MM-DD | monitoring |
+| Update runbook for ... | @name | YYYY-MM-DD | docs       |
 
 ## Lessons Learned
+
 - What went well
 - What went wrong
 - What to improve
@@ -305,16 +312,17 @@ SEV2 ──→ + Engineering Lead
 SEV1 ──→ + CTO / VP Engineering + All hands
 ```
 
-| Role | Contact |
-|------|---------|
-| Primary on-call | PagerDuty rotation (phone + Slack) |
-| Secondary on-call | PagerDuty rotation (Slack) |
-| Engineering Lead | @eng-lead in Slack / phone |
-| DevOps / Infra | @devops in Slack |
-| Security Lead | @security in Slack / phone |
-| CTO / VP Eng | @cto in Slack / phone |
+| Role              | Contact                            |
+| ----------------- | ---------------------------------- |
+| Primary on-call   | PagerDuty rotation (phone + Slack) |
+| Secondary on-call | PagerDuty rotation (Slack)         |
+| Engineering Lead  | @eng-lead in Slack / phone         |
+| DevOps / Infra    | @devops in Slack                   |
+| Security Lead     | @security in Slack / phone         |
+| CTO / VP Eng      | @cto in Slack / phone              |
 
-**If escalation is unreachable within 5 minutes:** call the next person in the chain. Do not wait.
+**If escalation is unreachable within 5 minutes:** call the next person in the
+chain. Do not wait.
 
 ---
 
@@ -322,12 +330,12 @@ SEV1 ──→ + CTO / VP Engineering + All hands
 
 For SEV1 incidents, assign these roles:
 
-| Role | Responsibility |
-|------|---------------|
-| **Incident Commander** | Coordinates response, communication, resource allocation |
-| **Tech Lead** | Drives root cause investigation and mitigation |
-| **Communications Lead** | Updates status page, internal slack, stakeholders |
-| **Scribe** | Takes notes and builds timeline for postmortem |
+| Role                    | Responsibility                                           |
+| ----------------------- | -------------------------------------------------------- |
+| **Incident Commander**  | Coordinates response, communication, resource allocation |
+| **Tech Lead**           | Drives root cause investigation and mitigation           |
+| **Communications Lead** | Updates status page, internal slack, stakeholders        |
+| **Scribe**              | Takes notes and builds timeline for postmortem           |
 
 ---
 

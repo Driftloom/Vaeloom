@@ -10,7 +10,7 @@
     {
       "title": "Per-Endpoint Latency p50",
       "type": "table",
-      "gridPos": {"h": 10, "w": 8, "x": 0, "y": 0},
+      "gridPos": { "h": 10, "w": 8, "x": 0, "y": 0 },
       "targets": [
         {
           "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[$__rate_interval]))",
@@ -24,13 +24,21 @@
         }
       },
       "transformations": [
-        {"id": "groupBy", "options": {"fields": {"Value": {"aggregations": ["mean"]}, "path": {"aggregations": ["duplicates"]}}}}
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "Value": { "aggregations": ["mean"] },
+              "path": { "aggregations": ["duplicates"] }
+            }
+          }
+        }
       ]
     },
     {
       "title": "Per-Endpoint Latency p95",
       "type": "table",
-      "gridPos": {"h": 10, "w": 8, "x": 8, "y": 0},
+      "gridPos": { "h": 10, "w": 8, "x": 8, "y": 0 },
       "targets": [
         {
           "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[$__rate_interval]))",
@@ -47,7 +55,7 @@
     {
       "title": "Per-Endpoint Latency p99",
       "type": "table",
-      "gridPos": {"h": 10, "w": 8, "x": 16, "y": 0},
+      "gridPos": { "h": 10, "w": 8, "x": 16, "y": 0 },
       "targets": [
         {
           "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[$__rate_interval]))",
@@ -64,7 +72,7 @@
     {
       "title": "Request Duration Heatmap",
       "type": "heatmap",
-      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 10},
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 10 },
       "targets": [
         {
           "expr": "rate(http_request_duration_seconds_bucket[$__rate_interval])",
@@ -86,7 +94,7 @@
     {
       "title": "Latency by HTTP Method",
       "type": "graph",
-      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 10},
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 10 },
       "targets": [
         {
           "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{method=\"GET\"}[$__rate_interval]))",
@@ -118,7 +126,7 @@
     {
       "title": "Top-10 Workspaces by Request Volume",
       "type": "table",
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
       "targets": [
         {
           "expr": "topk(10, sum by (workspace) (rate(http_requests_total[$__rate_interval])))",
@@ -130,7 +138,7 @@
     {
       "title": "Latency by Workspace (Top-10 p95)",
       "type": "graph",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
       "targets": [
         {
           "expr": "topk(10, histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[$__rate_interval]))) by (workspace)",
@@ -147,7 +155,7 @@
     {
       "title": "Slow Endpoints (p95 > 500ms)",
       "type": "table",
-      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 28},
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 28 },
       "targets": [
         {
           "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[$__rate_interval])) > 0.5",

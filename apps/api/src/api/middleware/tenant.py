@@ -206,10 +206,9 @@ class TenantMiddleware(BaseHTTPMiddleware):
             else:
                 import uuid as _uuid
 
-                from starlette.responses import JSONResponse
                 try:
-                    ws_uuid = _uuid.UUID(str(requested_workspace_id))
-                    uid = _uuid.UUID(str(jwt_user_id))
+                    _uuid.UUID(str(requested_workspace_id))
+                    _uuid.UUID(str(jwt_user_id))
                 except (ValueError, TypeError):
                     from .exception_handler import denial as _denial
 

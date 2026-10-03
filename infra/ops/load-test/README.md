@@ -28,19 +28,20 @@ k6 run --summary-trend-stats="avg,p(50),p(95),p(99),max" k6-script.js
 
 ## Scenarios
 
-| Scenario | VUs | Duration | Endpoints |
-|----------|-----|----------|-----------|
-| Default | 50 | 5min | login, workspaces, memories, graph edges |
+| Scenario | VUs | Duration | Endpoints                                |
+| -------- | --- | -------- | ---------------------------------------- |
+| Default  | 50  | 5min     | login, workspaces, memories, graph edges |
 
 ## Thresholds
 
-| Metric | Threshold |
-|--------|-----------|
-| p95 latency | < 500ms |
-| Error rate | < 1% |
-| Per-endpoint errors | < 1% |
+| Metric              | Threshold |
+| ------------------- | --------- |
+| p95 latency         | < 500ms   |
+| Error rate          | < 1%      |
+| Per-endpoint errors | < 1%      |
 
 ## Writing Tests
 
-Create additional `.js` files in this directory with `export default function () { ... }`.
-Use `groups` to organize related endpoints. Add custom metrics for fine-grained monitoring.
+Create additional `.js` files in this directory with
+`export default function () { ... }`. Use `groups` to organize related
+endpoints. Add custom metrics for fine-grained monitoring.

@@ -12,7 +12,7 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
-    "test": "tsc && node --test dist/tests/*.test.js",
+    "test": "tsc && node run-tests.js",
     "start": "node dist/src/cli.js start"
   },
   "keywords": [

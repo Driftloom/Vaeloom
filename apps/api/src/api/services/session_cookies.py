@@ -167,9 +167,7 @@ def has_explicit_credential(request: Request) -> bool:
     """
     if request.headers.get("Authorization"):
         return True
-    if request.headers.get("X-API-Key"):
-        return True
-    return False
+    return bool(request.headers.get("X-API-Key"))
 
 
 def reads_session_cookie(request: Request) -> bool:

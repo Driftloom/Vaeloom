@@ -8,7 +8,14 @@ const mockContext: PluginContext = {
   config: {
     enabled: true,
     settings: {},
-    permissions: { memory: [], agents: [], events: [], storage: [], network: ['outbound'], files: [] },
+    permissions: {
+      memory: [],
+      agents: [],
+      events: [],
+      storage: [],
+      network: ['outbound'],
+      files: [],
+    },
   },
   api: {} as never,
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },

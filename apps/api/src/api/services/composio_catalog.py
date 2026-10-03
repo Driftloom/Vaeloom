@@ -5,9 +5,9 @@ enabling zero-trust catalog discovery, category filtering, search, and dynamic
 OAuth connection initiation.
 """
 
-from typing import Any, Dict, List
+from typing import Any
 
-COMPOSIO_SUPPORTED_APPS: List[Dict[str, Any]] = [
+COMPOSIO_SUPPORTED_APPS: list[dict[str, Any]] = [
     # ──────────────────────────────────────────────────────────────────────────
     # 1. PRODUCTIVITY & COLLABORATION (40 apps)
     # ──────────────────────────────────────────────────────────────────────────

@@ -264,15 +264,19 @@ class _McpClientService:
                     return await operation(session)
         else:
             if not cfg.get("allow_insecure"):
-                from ..utils.url_guard import DnsResolutionError, UrlBlockedError, assert_public_http_url
+                from ..utils.url_guard import (
+                    DnsResolutionError,
+                    UrlBlockedError,
+                    assert_public_http_url,
+                )
                 try:
                     await assert_public_http_url(cfg["url"])
                 except (DnsResolutionError, UrlBlockedError) as e:
                     raise McpConfigError(f"SSRF policy blocked URL: {e}")
 
+            import httpx
             from mcp.client.streamable_http import streamable_http_client
             from mcp.shared._httpx_utils import create_mcp_http_client
-            import httpx
 
             async def _safe_redirect_hook(response: httpx.Response):
                 if response.is_redirect and "location" in response.headers:

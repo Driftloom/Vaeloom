@@ -8,12 +8,9 @@ Persists evaluation telemetry to PostgreSQL EvaluationEntry.
 from __future__ import annotations
 
 import logging
-import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.registries import EvaluationEntry

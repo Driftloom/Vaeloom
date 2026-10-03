@@ -9,7 +9,6 @@ intentionally not imported by `routers/auth.py`. Enable by importing into
 """
 import base64
 import logging
-import os
 from datetime import UTC, datetime
 from typing import Any
 

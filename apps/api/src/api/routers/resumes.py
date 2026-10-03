@@ -1,3 +1,5 @@
+import contextlib
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
@@ -461,10 +463,8 @@ async def compile_typst(
             # Typst twin → render via resume_templates typst → wrap as HTML for Playwright fallback
             from ..services.resume_templates import resume_templates
 
-            try:
-                typst_text = resume_templates.render_resume_typst(dto.template_slug, resume.content or {})
-            except Exception:
-                typst_text = typst_source or ""
+            with contextlib.suppress(Exception):
+                resume_templates.render_resume_typst(dto.template_slug, resume.content or {})
             # Fallback HTML: show Typst source as formatted preview until real Typst WASM is wired
             # We still produce a real PDF via HTML so download works
             from ..services.document_builder import document_builder

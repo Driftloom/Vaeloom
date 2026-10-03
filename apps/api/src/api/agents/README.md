@@ -1,7 +1,9 @@
 # Agents
 
-28 specialist agent modules (8 MVP, 13 Enterprise, 7 Meta/Core handlers — see canonical index in [`specs/ai/REGISTRY_INDEX.md`](../../../../specs/ai/REGISTRY_INDEX.md)) built on the shared `BaseAgent` harness in
-`../orchestrator/`.
+28 specialist agent modules (8 MVP, 13 Enterprise, 7 Meta/Core handlers — see
+canonical index in
+[`specs/ai/REGISTRY_INDEX.md`](../../../../specs/ai/REGISTRY_INDEX.md)) built on
+the shared `BaseAgent` harness in `../orchestrator/`.
 
 ## MVP Agents (8)
 

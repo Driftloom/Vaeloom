@@ -21,7 +21,7 @@ jobs:
           # apps/api, so it must keep that context.
           - service: api
             context: ./apps/api
-            dockerfile: Dockerfile
+            dockerfile: apps/api/Dockerfile
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4

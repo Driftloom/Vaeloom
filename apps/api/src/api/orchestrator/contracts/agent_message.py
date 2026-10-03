@@ -13,10 +13,11 @@ import enum
 import time
 import uuid
 from typing import Any
+
 from pydantic import BaseModel, Field
 
 
-class MessageType(str, enum.Enum):
+class MessageType(enum.StrEnum):
     TASK_DELEGATION = "task_delegation"
     TASK_RESULT = "task_result"
     SUB_TASK_SPAWN = "sub_task_spawn"
@@ -27,14 +28,14 @@ class MessageType(str, enum.Enum):
     ERROR = "error"
 
 
-class MessagePriority(str, enum.Enum):
+class MessagePriority(enum.StrEnum):
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
     URGENT = "urgent"
 
 
-class TaskStatus(str, enum.Enum):
+class TaskStatus(enum.StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     SUCCESS = "success"
@@ -50,25 +51,25 @@ class AgentMessage(BaseModel):
     correlation_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     parent_run_id: str | None = None
     parent_agent: str | None = None
-    
+
     sender_agent: str
     recipient_agent: str
     message_type: MessageType = MessageType.TASK_DELEGATION
     priority: MessagePriority = MessagePriority.NORMAL
-    
+
     # Security and multi-tenancy context
     tenant_id: str | None = None
     workspace_id: str | None = None
     user_id: str | None = None
-    
+
     # Execution intent
     capability: str | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
-    
+
     # Delegated security permissions (Least Privilege)
     permissions: list[str] = Field(default_factory=list)
     allow_side_effects: bool = False
-    
+
     # Execution constraints
     timeout_seconds: float = 30.0
     created_at: float = Field(default_factory=time.time)
@@ -81,16 +82,16 @@ class AgentResponseEnvelope(BaseModel):
     source_agent: str
     recipient_agent: str | None = None
     parent_run_id: str | None = None
-    
+
     status: TaskStatus = TaskStatus.SUCCESS
     data: dict[str, Any] = Field(default_factory=dict)
     error_message: str | None = None
-    
+
     # Execution metrics
     execution_time_ms: float = 0.0
     tokens_used: int = 0
     cost_usd: float = 0.0
-    
+
     # Sub-agent hierarchy results
     sub_agent_results: list[dict[str, Any]] = Field(default_factory=list)
     created_at: float = Field(default_factory=time.time)

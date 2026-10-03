@@ -71,10 +71,7 @@ class GreenhouseClient:
 
     def _normalize(self, raw: dict[str, Any]) -> dict[str, Any]:
         loc = raw.get("location") or {}
-        if isinstance(loc, dict):
-            loc_str = loc.get("name", "")
-        else:
-            loc_str = str(loc)
+        loc_str = loc.get("name", "") if isinstance(loc, dict) else str(loc)
         return {
             "id": str(raw.get("id", "")),
             "title": raw.get("title", "Unknown Role"),
