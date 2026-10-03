@@ -53,7 +53,7 @@ test.describe('files', () => {
     expect(archive.status()).toBe(200);
 
     await expect(page.locator('body')).toContainText(/moved to archive/i, { timeout: 30_000 });
-    await page.getByRole('button', { name: 'Clear' }).click();
+    await page.getByRole('button', { name: 'Clear', exact: true }).click();
     await expect(page.getByText('1 document(s) selected')).toHaveCount(0);
   });
 
@@ -82,7 +82,7 @@ test.describe('files', () => {
 
     const row = page.locator('tr', { hasText: fileName }).first();
     await expect(row).toBeVisible({ timeout: 30_000 });
-    await row.getByRole('button', { name: fileName }).click();
+    await row.getByRole('button', { name: fileName, exact: true }).click();
 
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();

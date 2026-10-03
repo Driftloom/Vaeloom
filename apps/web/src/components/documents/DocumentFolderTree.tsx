@@ -245,12 +245,7 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
     const count = docCountByFolder[item.id] ?? 0;
 
     return (
-      <div
-        key={item.id}
-        className="space-y-0.5 select-none"
-        role="treeitem"
-        aria-selected={isSelected}
-      >
+      <div key={item.id} className="space-y-0.5 select-none">
         <div
           onClick={() => onSelectFolder(item.id)}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
@@ -352,12 +347,10 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
       )}
 
       {/* Navigation Tree */}
-      <div className="space-y-0.5" role="tree">
+      <nav className="space-y-0.5" aria-label="Folders">
         {/* All / Root Folder Selection */}
         <div
           onClick={() => onSelectFolder(null)}
-          role="treeitem"
-          aria-selected={selectedFolderId === null}
           className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
             selectedFolderId === null
               ? 'bg-action/10 text-action border border-action/30'
@@ -410,8 +403,6 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
                 <div
                   key={folder.id}
                   onClick={() => onSelectFolder(folder.id)}
-                  role="treeitem"
-                  aria-selected={isSelected}
                   className={`group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
                     isSelected
                       ? 'bg-action/10 text-action border border-action/30'
@@ -462,7 +453,7 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
             </button>
           </div>
         )}
-      </div>
+      </nav>
 
       {/* Internal Create Folder Modal */}
       <Modal

@@ -827,7 +827,9 @@ function OrganizationsContent() {
                     aria-label="Filter members by id, role, or status"
                     placeholder="Filter members..."
                     value={memberSearch}
-                    onChange={(e) => setMemberSearch(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setMemberSearch(e.target.value)
+                    }
                     className="w-44 text-xs py-1"
                   />
                   <Button size="sm" onClick={() => setShowInviteModal(true)}>
@@ -1099,13 +1101,17 @@ function OrganizationsContent() {
               <Input
                 label="Colleague Email Address"
                 value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setInviteEmail(e.target.value)
+                }
                 placeholder="colleague@company.com"
               />
               <Select
                 label="Role"
                 value={inviteEmailRole}
-                onChange={(v) => setInviteEmailRole(v as 'admin' | 'lead' | 'member' | 'viewer')}
+                onChange={(v: string) =>
+                  setInviteEmailRole(v as 'admin' | 'lead' | 'member' | 'viewer')
+                }
                 options={[
                   { value: 'admin', label: 'Admin' },
                   { value: 'lead', label: 'Lead' },

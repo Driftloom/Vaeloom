@@ -489,15 +489,8 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
             ? 'border-action bg-action/5 shadow-inner scale-[0.99]'
             : 'border-border hover:border-action/50 hover:bg-surface-100'
         }`}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            fileInputRef.current?.click();
-          }
-        }}
-        aria-label="Upload files: Drag and drop files or folders here, or click to browse"
+        role="region"
+        aria-label="Upload files: Drag and drop files or folders here, or browse files"
       >
         <div className="flex flex-col items-center justify-center space-y-2">
           <div

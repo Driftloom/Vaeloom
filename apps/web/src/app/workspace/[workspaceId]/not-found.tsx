@@ -2,10 +2,7 @@ import Link from 'next/link';
 
 export default function WorkspaceNotFound() {
   return (
-    <main
-      id="main-content"
-      className="flex h-full flex-col items-center justify-center min-h-[60dvh] text-center px-4"
-    >
+    <div className="flex h-full flex-col items-center justify-center min-h-[60dvh] text-center px-4">
       <h1 className="text-6xl font-display font-bold text-primary mb-4">404</h1>
       <h2 className="text-2xl font-display font-medium text-text mb-2">Workspace not found</h2>
       <p className="text-text-muted max-w-sm mb-8">
@@ -14,6 +11,6 @@ export default function WorkspaceNotFound() {
       <Link href="/" className="btn-primary">
         Go Home
       </Link>
-    </main>
+    </div>
   );
 }

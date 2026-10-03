@@ -122,7 +122,7 @@ test.describe('Module 05 — Documents & Security Workflow', () => {
         (res) => res.url().includes('/content') && res.request().method() === 'GET',
         { timeout: 30_000 },
       ),
-      row.getByRole('button', { name: fileName }).click(),
+      row.getByRole('button', { name: fileName, exact: true }).click(),
     ]);
 
     expect(content, 'opening the document never fetched its content').not.toBeNull();

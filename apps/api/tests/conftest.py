@@ -336,10 +336,9 @@ async def mock_llm(monkeypatch, request):
     try:
         from api.services.llm_service import llm_service
         monkeypatch.setattr(llm_service, "api_key", "")
-        monkeypatch.setattr(llm_service, "generate_embedding", fake_generate_embedding)
-        monkeypatch.setattr(llm_service, "generate_completion", fake_generate_completion)
-        monkeypatch.setattr(llm_service, "generate_completion_with_tools", fake_generate_completion_with_tools)
-        monkeypatch.setattr(llm_service, "generate_completion_stream", fake_generate_completion_stream, raising=False)
+        for _attr in ("generate_embedding", "generate_completion", "generate_completion_with_tools", "generate_completion_stream"):
+            if _attr in llm_service.__dict__:
+                monkeypatch.delattr(llm_service, _attr, raising=False)
     except Exception:
         pass
 

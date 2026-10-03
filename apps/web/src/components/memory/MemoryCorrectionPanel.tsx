@@ -305,10 +305,14 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
+              <label
+                htmlFor="memory-summary"
+                className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1"
+              >
                 Executive Summary
               </label>
               <textarea
+                id="memory-summary"
                 rows={3}
                 value={draftSummary}
                 onChange={(e) => setDraftSummary(e.target.value)}
