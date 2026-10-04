@@ -94,7 +94,7 @@ export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
           label="Folder Name"
           placeholder="e.g. Legal Contracts, Resumes, Financials"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
           error={failure ?? error ?? undefined}
           autoFocus
           required
