@@ -2826,7 +2826,7 @@ export function AddCapabilityModal({
                   {/* Identity, shared by every category */}
                   <div className="space-y-3.5">
                     <FormField label="Name / identifier" required error={nameIssue ?? undefined}>
-                      {({ id, errorId }) => (
+                      {({ id, errorId }: { id: string; errorId?: string }) => (
                         <input
                           ref={nameRef}
                           id={id}
@@ -2941,7 +2941,7 @@ export function AddCapabilityModal({
                         note={`${doc.trim().length} chars · ${countHeadings(doc)} heading(s)`}
                         preview={docPreview}
                         onTogglePreview={() => setDocPreview((open) => !open)}
-                        renderPreview={(value) =>
+                        renderPreview={(value: string) =>
                           value ? (
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
                           ) : (
