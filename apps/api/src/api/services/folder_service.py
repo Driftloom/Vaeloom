@@ -13,6 +13,10 @@ logger = logging.getLogger(__name__)
 
 MAX_FOLDER_DEPTH = 10
 
+# Upper bound on rows a single folder listing may materialize. A workspace with
+# an unbounded folder count would otherwise load every row into memory.
+MAX_FOLDER_PAGE = 500
+
 
 class FolderService:
     async def create_folder(
@@ -100,6 +104,8 @@ class FolderService:
         workspace_id: str | uuid.UUID,
         parent_id: str | uuid.UUID | None,
         db: AsyncSession,
+        limit: int = MAX_FOLDER_PAGE,
+        offset: int = 0,
     ) -> list[Folder]:
         ws_id = uuid.UUID(str(workspace_id))
         stmt = select(Folder).where(Folder.workspace_id == ws_id)
@@ -109,6 +115,7 @@ class FolderService:
             else:
                 stmt = stmt.where(Folder.parent_id == uuid.UUID(str(parent_id)))
         stmt = stmt.order_by(Folder.name.asc())
+        stmt = stmt.limit(min(max(int(limit), 1), MAX_FOLDER_PAGE)).offset(max(int(offset), 0))
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
@@ -116,9 +123,15 @@ class FolderService:
         self,
         workspace_id: str | uuid.UUID,
         db: AsyncSession,
+        limit: int = MAX_FOLDER_PAGE,
     ) -> list[dict[str, Any]]:
         ws_id = uuid.UUID(str(workspace_id))
-        stmt = select(Folder).where(Folder.workspace_id == ws_id).order_by(Folder.name.asc())
+        stmt = (
+            select(Folder)
+            .where(Folder.workspace_id == ws_id)
+            .order_by(Folder.name.asc())
+            .limit(min(max(int(limit), 1), MAX_FOLDER_PAGE))
+        )
         all_folders = list((await db.execute(stmt)).scalars().all())
 
         # Build adjacency list

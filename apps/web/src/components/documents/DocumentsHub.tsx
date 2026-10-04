@@ -59,7 +59,7 @@ function docWorkspaceId(d: DocumentResponse, fallbackWsId?: string): string {
 
 type ScanState = 'clean' | 'quarantined' | 'scanning' | 'unknown';
 
-function scanStateOf(scanStatus: DocumentResponse['scan_status']): ScanState {
+function scanStateOf(scanStatus: DocumentResponse['scanStatus']): ScanState {
   if (scanStatus === 'CLEAN') return 'clean';
   if (scanStatus === 'MALICIOUS' || scanStatus === 'REJECTED') return 'quarantined';
   if (scanStatus === 'PENDING') return 'scanning';
@@ -226,7 +226,7 @@ export function DocumentsHub({
           let docs =
             res?.documents ?? (res as unknown as { items?: DocumentResponse[] })?.items ?? [];
           if (folderId) {
-            docs = docs.filter((d) => d.folder_id === folderId);
+            docs = docs.filter((d) => d.folderId === folderId);
           }
           setDocuments(docs);
           setTotal(res?.total ?? docs.length);
@@ -398,11 +398,11 @@ export function DocumentsHub({
     setAutoOrganizeBusy(true);
     try {
       const res = await documentApi.autoOrganize(currentWorkspaceId);
-      if (res.organized_count > 0) {
+      if (res.organizedCount > 0) {
         toast({
           tone: 'success',
           title: 'Auto-Organize Complete',
-          detail: `Organized ${res.organized_count} document(s) into smart folders: ${res.folders_created.join(', ') || 'existing categories'}.`,
+          detail: `Organized ${res.organizedCount} document(s) into smart folders: ${res.foldersCreated.join(', ') || 'existing categories'}.`,
         });
       } else {
         toast({
@@ -598,7 +598,7 @@ export function DocumentsHub({
         toast({
           tone: 'success',
           title: 'New version uploaded',
-          detail: `Version ${newVer.versionNumber ?? newVer.version_number} added.`,
+          detail: `Version ${newVer.versionNumber} added.`,
         });
         const vList = await documentApi.listVersions(versionDoc.id, currentWorkspaceId);
         setVersions(vList);
@@ -796,7 +796,7 @@ export function DocumentsHub({
       toast({
         tone: 'success',
         title: 'Deleted',
-        detail: `${res.deleted_count} document(s) permanently deleted.`,
+        detail: `${res.deletedCount} document(s) permanently deleted.`,
       });
       setSelectedDocIds(new Set());
       void fetchDocuments();
@@ -889,7 +889,7 @@ export function DocumentsHub({
       return list.filter((d) => {
         const cat = d.metadata?.['category'];
         const isVault = cat === 'vault_note' || d.type === 'vault_note';
-        const inVaultFolder = folders.find((f) => f.id === d.folder_id)?.name === 'Vault Notes';
+        const inVaultFolder = folders.find((f) => f.id === d.folderId)?.name === 'Vault Notes';
         return isVault || inVaultFolder;
       });
     }
@@ -1301,14 +1301,14 @@ export function DocumentsHub({
                     {filteredDocuments.map((doc) => {
                       const fileName = getFileName(doc.path);
                       const isSelected = selectedDocIds.has(doc.id);
-                      const scanState = scanStateOf(doc.scan_status);
+                      const scanState = scanStateOf(doc.scanStatus);
                       const docVersion = documentVersionOf(doc);
                       const size = (doc.metadata as Record<string, unknown> | undefined)?.['size'];
-                      const isArchived = Boolean(doc.deleted_at);
+                      const isArchived = Boolean(doc.deletedAt);
                       const isVaultNote =
                         doc.metadata?.['category'] === 'vault_note' ||
                         doc.type === 'vault_note' ||
-                        folders.find((f) => f.id === doc.folder_id)?.name === 'Vault Notes';
+                        folders.find((f) => f.id === doc.folderId)?.name === 'Vault Notes';
 
                       return (
                         <tr
@@ -1386,7 +1386,7 @@ export function DocumentsHub({
                               )}
 
                               {/* Memory Sync status badge */}
-                              {doc.metadata?.['sync_status'] === 'synced' || isVaultNote ? (
+                              {doc.metadata?.syncStatus === 'synced' || isVaultNote ? (
                                 <Link
                                   href={`/workspace/${currentWorkspaceId}/memory?query=${encodeURIComponent(fileName)}`}
                                   className="inline-flex items-center gap-1 text-[10px] text-primary/90 hover:text-primary bg-primary/10 hover:bg-primary/20 border border-primary/25 px-1.5 py-0.5 rounded font-mono shrink-0 transition-colors"
@@ -1470,7 +1470,7 @@ export function DocumentsHub({
                                       : 'Unscanned'}
                               </span>
                               <span>•</span>
-                              <span>{formatDate(doc.updated_at)}</span>
+                              <span>{formatDate(doc.updatedAt)}</span>
                             </div>
                           </td>
 
@@ -1519,7 +1519,7 @@ export function DocumentsHub({
 
                           {/* Updated */}
                           <td className="p-3 text-text-muted hidden lg:table-cell">
-                            {formatDate(doc.updated_at)}
+                            {formatDate(doc.updatedAt)}
                           </td>
 
                           {/* Quick Actions Icons */}
@@ -1844,8 +1844,8 @@ export function DocumentsHub({
             ) : (
               <div className="divide-y divide-border/40 rounded-xl border border-border/60 overflow-hidden">
                 {versions.map((v) => {
-                  const num = v.versionNumber ?? v.version_number ?? 0;
-                  const date = v.createdAt ?? v.created_at;
+                  const num = v.versionNumber ?? 0;
+                  const date = v.createdAt;
                   return (
                     <div
                       key={v.id}
@@ -1991,16 +1991,16 @@ export function DocumentsHub({
           onClose={() => setBulkMoveOpen(false)}
           document={{
             id: 'bulk-placeholder',
-            workspace_id: currentWorkspaceId,
+            workspaceId: currentWorkspaceId,
             path: `${selectedDocIds.size} Selected Documents`,
-            folder_id: selectedFolderId,
+            folderId: selectedFolderId,
             type: 'folder',
             status: 'AVAILABLE',
-            scan_status: 'CLEAN',
+            scanStatus: 'CLEAN',
             metadata: {},
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            deleted_at: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            deletedAt: null,
           }}
           workspaceId={currentWorkspaceId}
           folders={folders}

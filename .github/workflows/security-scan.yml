@@ -13,6 +13,7 @@ jobs:
   secret-scan:
     name: Secret Scan (Gitleaks)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
         with:
@@ -28,6 +29,7 @@ jobs:
   sast:
     name: SAST (CodeQL)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       security-events: write
       actions: read
@@ -48,6 +50,7 @@ jobs:
   vulnerability-scan:
     name: Vulnerability Scan (Trivy)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       security-events: write
       contents: read
@@ -70,6 +73,7 @@ jobs:
   sbom:
     name: Generate SBOM
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - name: Generate SBOM with Syft
@@ -87,6 +91,7 @@ jobs:
   docker-scan:
     name: Docker Image Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       security-events: write
       contents: read

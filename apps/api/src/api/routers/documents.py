@@ -141,6 +141,11 @@ _ROLES_ADMIN = ("owner", "admin")
 # P0-05: Maximum upload size enforced at router level before service streaming begins
 _MAX_UPLOAD_BYTES = 100 * 1024 * 1024  # 100 MB
 
+# P0-10: Cap on files accepted by a single bulk-upload request. FastAPI buffers
+# every UploadFile before the handler runs, so an unbounded list is a memory
+# exhaustion vector even when each individual file passes the size guard.
+_MAX_BULOAD_FILES = 50
+
 
 # ============================================================================
 # Core Document Endpoints
@@ -298,6 +303,14 @@ async def bulk_upload_documents(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
+    if not files:
+        raise HTTPException(status_code=400, detail="No files provided")
+    if len(files) > _MAX_BULOAD_FILES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Too many files — max {_MAX_BULOAD_FILES} per bulk upload",
+        )
+
     # P0-02: member-level role required to upload
     await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_WRITE)
     res = await document_service.bulk_upload(
@@ -372,7 +385,8 @@ async def bulk_sync_documents_to_memory(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    # P0-02: member-level role or above to sync into the memory store
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_WRITE)
     doc_ids = payload.document_ids if hasattr(payload, "document_ids") else payload.get("document_ids", [])
     res = await document_service.bulk_sync_documents_to_memory(
         document_ids=[str(i) for i in doc_ids],
@@ -415,7 +429,8 @@ async def create_folder(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    # P0-02: member-level role or above to create a folder
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_WRITE)
     folder = await folder_service.create_folder(
         workspace_id=workspace_id,
         name=dto.name,
@@ -430,6 +445,8 @@ async def create_folder(
 async def list_folders(
     workspace_id: str = Query(...),
     parent_id: str | None = Query(default=None),
+    limit: int = Query(default=200, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
@@ -441,6 +458,8 @@ async def list_folders(
         workspace_id=workspace_id,
         parent_id=parent_id,
         db=db,
+        limit=limit,
+        offset=offset,
     )
     return [FolderResponse.model_validate(f) for f in folders]
 
@@ -448,6 +467,7 @@ async def list_folders(
 @router.get("/folders/tree", response_model=list[FolderTreeItem])
 async def get_folder_tree(
     workspace_id: str = Query(...),
+    limit: int = Query(default=200, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
@@ -455,7 +475,7 @@ async def get_folder_tree(
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     await _verify_workspace_access(workspace_id, _user_id(current_user), db)
-    return await folder_service.get_folder_tree(workspace_id=workspace_id, db=db)
+    return await folder_service.get_folder_tree(workspace_id=workspace_id, db=db, limit=limit)
 
 
 @router.patch("/folders/{folder_id}", response_model=FolderResponse)
@@ -469,7 +489,8 @@ async def update_folder(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    # P0-02: folder update requires editor-level role or above
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_MUTATE)
     folder = await folder_service.update_folder(
         folder_id=folder_id,
         workspace_id=workspace_id,
@@ -490,7 +511,8 @@ async def delete_folder(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    # P0-02: folder delete requires editor-level role or above
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_MUTATE)
     await folder_service.delete_folder(folder_id=folder_id, workspace_id=workspace_id, db=db)
     return Response(status_code=204)
 
@@ -669,7 +691,8 @@ async def delete_document(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_MUTATE)
+    # P0-02: permanent delete is owner/admin only (hard delete, not reversible)
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_ADMIN)
     try:
         await document_service.delete(
             document_id=document_id,
@@ -751,13 +774,13 @@ async def list_document_actions(
 
     await _verify_workspace_access(workspace_id, _user_id(current_user), db)
     try:
-        actions = await document_service.list_actions(document_id, workspace_id, db)
+        actions, total_actions = await document_service.list_actions(document_id, workspace_id, db)
     except DocumentNotFound:
         raise HTTPException(status_code=404, detail="Document not found")
 
     return DocumentActionListResponse(
         actions=[DocumentActionResponse.model_validate(a) for a in actions],
-        total=len(actions),
+        total=total_actions,
     )
 
 
@@ -795,6 +818,8 @@ async def undo_document_action(
 async def list_document_versions(
     document_id: str,
     workspace_id: str = Query(...),
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
@@ -803,7 +828,9 @@ async def list_document_versions(
 
     await _verify_workspace_access(workspace_id, _user_id(current_user), db)
     try:
-        versions = await document_service.list_versions(document_id, workspace_id, db)
+        versions = await document_service.list_versions(
+            document_id, workspace_id, db, limit=limit, offset=offset
+        )
     except DocumentNotFound:
         raise HTTPException(status_code=404, detail="Document not found")
 
@@ -821,7 +848,8 @@ async def create_document_version(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    # P0-02: member-level role or above to contribute a new version
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_WRITE)
     try:
         version = await document_service.create_version(
             document_id=document_id,
@@ -848,7 +876,8 @@ async def restore_document_version(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    # P0-02: version restore overwrites the live document, so editor-level and above
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_MUTATE)
     try:
         doc = await document_service.restore_version(
             document_id=document_id,
@@ -929,7 +958,8 @@ async def share_document(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    # P0-02: granting another workspace access requires editor-level role or above
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_MUTATE)
     try:
         share = await document_service.share_document(
             document_id=document_id,
@@ -950,6 +980,8 @@ async def share_document(
 async def list_document_shares(
     document_id: str,
     workspace_id: str = Query(...),
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
@@ -958,7 +990,9 @@ async def list_document_shares(
 
     await _verify_workspace_access(workspace_id, _user_id(current_user), db)
     try:
-        shares = await document_service.list_shares(document_id, workspace_id, db)
+        shares = await document_service.list_shares(
+            document_id, workspace_id, db, limit=limit, offset=offset
+        )
     except DocumentNotFound:
         raise HTTPException(status_code=404, detail="Document not found")
 
@@ -977,7 +1011,8 @@ async def revoke_document_share(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    # P0-02: revoking another workspace's access requires editor-level role or above
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_MUTATE)
     await document_service.revoke_share(share_id, workspace_id, db)
     return Response(status_code=204)
 
@@ -993,7 +1028,8 @@ async def sync_document_to_memory(
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    # P0-02: member-level role or above to sync into the memory store
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_WRITE)
     try:
         res = await document_service.sync_document_to_memory(
             document_id=document_id,

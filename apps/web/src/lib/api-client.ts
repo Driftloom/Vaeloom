@@ -917,6 +917,8 @@ export interface DocumentMetadata {
   folder?: string;
   /** Path before a `move_file` tool call moved it (`executor.py:2278`). */
   previousPath?: string;
+  /** Extensible bag of dynamic metadata properties parser- or agent-specific. */
+  [key: string]: unknown;
 }
 
 /**
@@ -1082,6 +1084,33 @@ export interface DocumentVersionResponse {
  * `expires_at` -> `expiresAt`, `created_at` -> `createdAt`. The snake_case
  * duplicates are removed for the same reason as on `DocumentVersionResponse`.
  */
+/**
+ * Access level granted to the target workspace.
+ *
+ * The request side is a `Literal["read", "write"]` on the backend
+ * (`schemas/document.py:119`), so any other value is a 422. Rows written before
+ * that contract may still hold an uppercase or legacy value; the response side is
+ * therefore widened by `legacySharePermission` rather than trusting the column.
+ */
+export type DocumentSharePermission = 'read' | 'write';
+
+/**
+ * Narrows a persisted `permission` to the current vocabulary.
+ *
+ * `read_write` was persisted by earlier callers and never actually granted write:
+ * the backend's escalation check only ever matched `write`/`admin`, so those
+ * shares silently behaved as read-only. The backend now also treats `read_write`
+ * as write for backwards compatibility (`SHARE_WRITE_PERMISSIONS` in
+ * `document_service.py`), so folding it to `write` here matches enforcement.
+ */
+export function legacySharePermission(value: string | null | undefined): DocumentSharePermission {
+  const normalized = (value ?? '').trim().toLowerCase();
+  if (normalized === 'write' || normalized === 'admin' || normalized === 'read_write') {
+    return 'write';
+  }
+  return 'read';
+}
+
 export interface DocumentShareResponse {
   id: string;
   documentId: string;
@@ -1129,6 +1158,10 @@ export interface BulkUploadResponse {
   errors: BulkUploadError[];
 }
 
+/**
+ * One of the 50 checks inside a `DocumentAuditResponse`.
+ * Wire shape: `schemas/document.py:151`. Already snake_case-free.
+ */
 export interface DocumentAuditCheckItem {
   id: string;
   name: string;
@@ -1139,55 +1172,83 @@ export interface DocumentAuditCheckItem {
   recommendation?: string | null;
 }
 
+/** Per-category roll-up inside `DocumentAuditResponse`. `schemas/document.py:161`. */
 export interface DocumentAuditCategoryScore {
   total: number;
   passed: number;
   score: number;
 }
 
+/**
+ * `POST /documents/{id}/audit`. Wire shape: `schemas/document.py:167`.
+ *
+ * `document_id` -> `documentId`, `total_checks` -> `totalChecks`, `passed_checks`
+ * -> `passedChecks`, `failed_checks` -> `failedChecks`, `quality_score` ->
+ * `qualityScore`. The snake_case duplicates are removed: `transformKeys` renames
+ * a key, it does not keep both, so they were unreachable.
+ *
+ * `categories` is a JSON object keyed by category name, not an array, so
+ * `Object.values(categories)` is the way to iterate it. Its keys are category
+ * names chosen by the audit implementation, not by `transformKeys`, and they
+ * carry no underscores, so they survive unrenamed.
+ *
+ * `verdict` is typed `string`: the four named verdicts are what the service
+ * emits today, but the wire field is a plain `str` and a narrowing union would
+ * only push the failure to the call site.
+ */
 export interface DocumentAuditResponse {
   documentId: string;
-  document_id?: string;
   totalChecks: number;
-  total_checks?: number;
   passedChecks: number;
-  passed_checks?: number;
   failedChecks: number;
-  failed_checks?: number;
+  /** 0-100 (`schemas/document.py:172`). */
   qualityScore: number;
-  quality_score?: number;
-  verdict: 'EXCELLENT' | 'GOOD' | 'NEEDS_IMPROVEMENT' | 'CRITICAL_ISSUES' | string;
+  /** `EXCELLENT` | `GOOD` | `NEEDS_IMPROVEMENT` | `CRITICAL_ISSUES` in practice. */
+  verdict: string;
   categories: Record<string, DocumentAuditCategoryScore>;
   checks: DocumentAuditCheckItem[];
   recommendations: string[];
 }
 
+/**
+ * `POST /documents/{id}/compare`. Wire shape: `schemas/document.py:184`.
+ *
+ * Every snake_case field is renamed on the way in: `version_a` -> `versionA`,
+ * `version_b` -> `versionB`, `similarity_ratio` -> `similarityRatio`,
+ * `word_count_a` -> `wordCountA`, `word_count_b` -> `wordCountB`,
+ * `word_count_delta` -> `wordCountDelta`, `additions_count` -> `additionsCount`,
+ * `deletions_count` -> `deletionsCount`, `diff_snippet` -> `diffSnippet`. The
+ * snake_case duplicates are removed.
+ *
+ * `additions` and `deletions` are whole changed lines including their trailing
+ * newline, and `similarityRatio` is 0-1 (multiply by 100 before rendering a
+ * percentage). `diffSnippet` is a single string, not a list of hunks.
+ */
 export interface DocumentCompareResponse {
   documentId: string;
-  document_id?: string;
   versionA: number;
-  version_a?: number;
   versionB: number;
-  version_b?: number;
+  /** 0-1 ratio. */
   similarityRatio: number;
-  similarity_ratio?: number;
   wordCountA: number;
-  word_count_a?: number;
   wordCountB: number;
-  word_count_b?: number;
   wordCountDelta: number;
-  word_count_delta?: number;
   additionsCount: number;
-  additions_count?: number;
   deletionsCount: number;
-  deletions_count?: number;
   additions: string[];
   deletions: string[];
   diffSnippet: string;
-  diff_snippet?: string;
   summary: string;
 }
 
+/**
+ * `POST /documents/{id}/sync-memory`. Wire shape: `schemas/document.py:200`,
+ * and the dict the service returns at `document_service.py:1629-1636`.
+ *
+ * `document_id` -> `documentId`, `workspace_id` -> `workspaceId`, `memory_id` ->
+ * `memoryId`. The separate `sync_status` / `memory_id` / `synced_at` the service
+ * also writes land on `Document.metadata` (see `DocumentMetadata`), not here.
+ */
 export interface DocumentSyncMemoryResponse {
   success: boolean;
   documentId: string;
@@ -1198,10 +1259,97 @@ export interface DocumentSyncMemoryResponse {
   status: string;
 }
 
+/**
+ * `POST /documents/bulk/sync-memory`. Wire shape: `schemas/document.py:214`.
+ * `synced_count` -> `syncedCount`, `failed_count` -> `failedCount`.
+ */
 export interface BulkSyncMemoryResponse {
   syncedCount: number;
   failedCount: number;
   items: DocumentSyncMemoryResponse[];
+}
+
+/** One document relocated by `autoOrganize`. `document_service.py:1486-1491`. */
+export interface AutoOrganizeMovedDocument {
+  id: string;
+  /** The document's path at the time of the move, not its filename. */
+  name: string;
+  /** Destination folder NAME, not its id — the id is on `folderId`. */
+  folder: string;
+  /** `folder_id` on the wire, so `folderId` here. */
+  folderId: string;
+}
+
+/** `POST /documents/auto-organize`. `document_service.py:1495-1500`. */
+export interface AutoOrganizeResponse {
+  message: string;
+  /** `organized_count` on the wire. */
+  organizedCount: number;
+  /** `folders_created` on the wire: names of the folders created this run. */
+  foldersCreated: string[];
+  /** `moved_documents` on the wire. */
+  movedDocuments: AutoOrganizeMovedDocument[];
+}
+
+/** `POST /documents/bulk/delete`. `document_service.py:1367-1376`. */
+export interface BulkDeleteResponse {
+  /** `deleted_count` on the wire. */
+  deletedCount: number;
+  /** `document_ids` on the wire. */
+  documentIds: string[];
+}
+
+/**
+ * `POST /documents/bulk/download` takes ids in the body, so those stay
+ * snake_case; only the response shape above is camelCase.
+ */
+export interface BulkDownloadRequest {
+  document_ids: string[];
+}
+
+/**
+ * Body of `PATCH /documents/folders/{folder_id}`. `schemas/document.py:77`
+ * (`FolderUpdate`) declares `name` and `parent_id` with no aliases, and bodies
+ * are sent verbatim, so this stays snake_case.
+ */
+export interface FolderUpdateRequest {
+  /** 1-255 chars once trimmed; an empty or whitespace-only name is a 400. */
+  name?: string | null;
+  /** Target parent folder id. `null`/absent leaves the parent UNCHANGED. */
+  parent_id?: string | null;
+}
+
+/**
+ * Query parameters for `GET /documents`. Query strings are never transformed,
+ * so these names stay snake_case. Server side: `routers/documents.py:222-234`.
+ */
+export interface DocumentListParams {
+  workspace_id?: string;
+  /** Server-side folder filter. `null`/absent means every folder plus root. */
+  folder_id?: string | null;
+  /** `'ACTIVE'`, `'ARCHIVED'`, `'STORAGE_DEGRADED'` — whatever `Document.status` holds. */
+  status?: string | null;
+  page?: number;
+  /** 1-100. */
+  page_size?: number;
+  include_archived?: boolean;
+}
+
+/**
+ * Pagination for `GET /documents/search`.
+ *
+ * The endpoint answers with a BARE ARRAY and no total (`routers/documents.py:260`,
+ * `response_model=list[DocumentResponse]`), so a caller cannot render a page
+ * count or a "result N of M" line from the response alone — it has to either
+ * page until it receives a short page, or treat the number of rows returned as
+ * the whole answer. That is a backend gap, not something this client can paper
+ * over: there is no `total` field to compute a page count from.
+ */
+export interface DocumentSearchParams {
+  /** 1-100, server default 50. */
+  limit?: number;
+  /** >= 0, server default 0. */
+  offset?: number;
 }
 
 function contentUrl(documentId: string, workspaceId: string): string {
@@ -1339,25 +1487,24 @@ export const documentApi = {
       });
     });
   },
-  autoOrganize(workspaceId: string): Promise<{
-    message: string;
-    organized_count: number;
-    folders_created: string[];
-    moved_documents: Array<{ id: string; name: string; folder: string; folder_id: string }>;
-  }> {
-    return apiClient.postQuery<{
-      message: string;
-      organized_count: number;
-      folders_created: string[];
-      moved_documents: Array<{ id: string; name: string; folder: string; folder_id: string }>;
-    }>('/documents/auto-organize', { workspace_id: workspaceId });
+  autoOrganize(workspaceId: string): Promise<AutoOrganizeResponse> {
+    return apiClient.postQuery<AutoOrganizeResponse>('/documents/auto-organize', {
+      workspace_id: workspaceId,
+    });
   },
-  list(params?: {
-    workspace_id?: string;
-    page?: number;
-    page_size?: number;
-    include_archived?: boolean;
-  }): Promise<DocumentListResponse> {
+  /**
+   * `GET /documents`.
+   *
+   * `folder_id` and `status` are forwarded to the server, which is the point:
+   * filtering client-side after a single page has been fetched can only ever
+   * match documents that happen to be in that page, so a non-empty folder
+   * rendered as empty. Pass `folder_id` and let `routers/documents.py:243-251`
+   * scope the query; `total` then reflects the filter too.
+   *
+   * A `null`/`undefined` `folder_id` is omitted from the query string by
+   * `encodeParams`, which is the same as the server's `None` default.
+   */
+  list(params?: DocumentListParams): Promise<DocumentListResponse> {
     return apiClient.get<DocumentListResponse>(
       '/documents',
       params as Record<string, string | number | boolean | undefined | null>,
@@ -1402,11 +1549,8 @@ export const documentApi = {
       `/documents/${encodeURIComponent(id)}?workspace_id=${encodeURIComponent(workspaceId)}`,
     );
   },
-  bulkDelete(
-    workspaceId: string,
-    documentIds: string[],
-  ): Promise<{ deleted_count: number; document_ids: string[] }> {
-    return apiClient.postQuery<{ deleted_count: number; document_ids: string[] }>(
+  bulkDelete(workspaceId: string, documentIds: string[]): Promise<BulkDeleteResponse> {
+    return apiClient.postQuery<BulkDeleteResponse>(
       '/documents/bulk/delete',
       { workspace_id: workspaceId },
       { document_ids: documentIds },
@@ -1446,9 +1590,26 @@ export const documentApi = {
       `/workspaces/${encodeURIComponent(workspaceId)}/agent-actions`,
     );
   },
-  search(workspaceId: string, query: string, folderId?: string): Promise<DocumentResponse[]> {
-    const params: Record<string, string> = { workspace_id: workspaceId, q: query };
+  /**
+   * `GET /documents/search`.
+   *
+   * `limit`/`offset` are forwarded to the server. Without them the endpoint
+   * silently truncates at its own default of 50 (`routers/documents.py:265-266`),
+   * which reads as "these were the only matches" rather than as a truncation.
+   *
+   * The response is a BARE ARRAY of documents with no `total`, so a caller
+   * cannot compute a page count from it — see `DocumentSearchParams`.
+   */
+  search(
+    workspaceId: string,
+    query: string,
+    folderId?: string | null,
+    pagination?: DocumentSearchParams,
+  ): Promise<DocumentResponse[]> {
+    const params: Record<string, string | number> = { workspace_id: workspaceId, q: query };
     if (folderId) params['folder_id'] = folderId;
+    if (pagination?.limit != null) params['limit'] = pagination.limit;
+    if (pagination?.offset != null) params['offset'] = pagination.offset;
     return apiClient.get<DocumentResponse[]>('/documents/search', params);
   },
   listFolders(workspaceId: string, parentId?: string): Promise<FolderResponse[]> {
@@ -1472,15 +1633,41 @@ export const documentApi = {
       { name, parent_id: parentId },
     );
   },
+  /**
+   * `PATCH /documents/folders/{folder_id}`.
+   *
+   * Body is `FolderUpdate` (`schemas/document.py:77`): only `name` and
+   * `parent_id` exist, both optional, no aliases — so `undefined` keys are
+   * dropped by `JSON.stringify` and the backend treats an absent field as
+   * "leave unchanged" (`folder_service.py:158,166`).
+   *
+   * THE `parentId: null` TRAP: sending `parent_id: null` does NOT move the
+   * folder to the workspace root. `if parent_id is not None` skips a JSON
+   * `null` outright (`folder_service.py:166`). Root is reached only by sending
+   * the literal sentinel STRING `"null"` (or `"none"` or `""`) — see
+   * `folder_service.py:167`. So `parentId: undefined` means "don't touch the
+   * parent" and `parentId: 'null'` means "move to root"; `null` is accepted in
+   * the signature only so the distinction is explicit at the call site.
+   *
+   * The backend rejects a name that is empty after trimming or that contains
+   * `/` or `\` with a 400, and a parent that is the folder itself or one of its
+   * own descendants with a 400 (`folder_service.py:160-178`).
+   *
+   * This method has no call sites yet; `FolderResponse` is the return type, so
+   * the response is camelCase as declared.
+   */
   updateFolder(
     folderId: string,
     workspaceId: string,
     name?: string,
     parentId?: string | null,
   ): Promise<FolderResponse> {
+    const body: FolderUpdateRequest = {};
+    if (name !== undefined) body.name = name;
+    if (parentId !== undefined) body.parent_id = parentId;
     return apiClient.patch<FolderResponse>(
       `/documents/folders/${encodeURIComponent(folderId)}?workspace_id=${encodeURIComponent(workspaceId)}`,
-      { name, parent_id: parentId },
+      body,
     );
   },
   deleteFolder(folderId: string, workspaceId: string): Promise<void> {
@@ -1539,7 +1726,7 @@ export const documentApi = {
     documentId: string,
     workspaceId: string,
     targetWorkspaceId: string,
-    permission = 'READ',
+    permission: DocumentSharePermission = 'read',
     expiresAt?: string | null,
   ): Promise<DocumentShareResponse> {
     return apiClient.postQuery<DocumentShareResponse>(
@@ -1554,10 +1741,30 @@ export const documentApi = {
       : `/documents/shares/${encodeURIComponent(shareId)}`;
     return apiClient.delete(`${path}?workspace_id=${encodeURIComponent(workspaceId)}`);
   },
+  /**
+   * `POST /documents/bulk/upload`.
+   *
+   * Multipart field name is `files`, repeated once per file, which matches the
+   * backend's `files: list[UploadFile] = File(...)`
+   * (`routers/documents.py:292`). `workspace_id` and `folder_id` are QUERY
+   * parameters on that route, not form fields, so they go in the URL.
+   *
+   * The response is `BulkUploadResponse` and is camelCase-transformed like every
+   * other response. Read `succeeded`/`items` for accepted files and `errors` for
+   * rejected ones: this endpoint returns 200 even when individual files fail
+   * (`document_service.py:1229-1242`), so a resolved promise does NOT mean the
+   * upload succeeded. Check `failed === 0`, or `failed + processed ===
+   * totalAttempted`. Per-file errors arrive only in `errors`, never as a thrown
+   * exception.
+   *
+   * `fetch` is used directly rather than `apiClient` because the body is
+   * multipart and must not carry a JSON `Content-Type`; the transform is applied
+   * by hand here, mirroring what `api.request` does.
+   */
   async bulkUpload(
     workspaceId: string,
     files: File[],
-    folderId?: string,
+    folderId?: string | null,
   ): Promise<BulkUploadResponse> {
     const formData = new FormData();
     for (const f of files) {
@@ -1576,9 +1783,13 @@ export const documentApi = {
       credentials: 'include',
     });
     if (!res.ok) throw new ApiClientError(res.status, 'Bulk upload failed');
-    return (res.json() as Promise<Record<string, unknown>>).then(
-      (j) => transformKeys(j) as BulkUploadResponse,
-    );
+    try {
+      return transformKeys(await res.json()) as BulkUploadResponse;
+    } catch {
+      // A 200 with a body that is not JSON is a contract violation, and letting
+      // the raw SyntaxError escape would read as a network bug at the call site.
+      throw new ApiClientError(res.status, 'Bulk upload returned a malformed response');
+    }
   },
   async bulkDownload(workspaceId: string, documentIds: string[]): Promise<Blob> {
     const token = getToken();

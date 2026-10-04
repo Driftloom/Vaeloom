@@ -4728,6 +4728,23 @@ paths:
           - type: string
           - type: 'null'
           title: Parent Id
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 500
+          minimum: 1
+          default: 200
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Offset
       responses:
         '200':
           description: Successful Response
@@ -4777,6 +4794,15 @@ paths:
         schema:
           type: string
           title: Workspace Id
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 500
+          minimum: 1
+          default: 200
+          title: Limit
       responses:
         '200':
           description: Successful Response
@@ -5479,6 +5505,23 @@ paths:
         schema:
           type: string
           title: Workspace Id
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 100
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Offset
       responses:
         '200':
           description: Successful Response
@@ -5875,6 +5918,23 @@ paths:
         schema:
           type: string
           title: Workspace Id
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 100
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Offset
       responses:
         '200':
           description: Successful Response
@@ -18858,6 +18918,8 @@ components:
             type: string
             format: uuid
           type: array
+          maxItems: 100
+          minItems: 1
           title: Document Ids
       type: object
       required:
@@ -18870,6 +18932,7 @@ components:
             type: string
             format: uuid
           type: array
+          maxItems: 100
           minItems: 1
           title: Document Ids
       type: object
@@ -20671,8 +20734,12 @@ components:
           title: Target Workspace Id
         permission:
           type: string
+          enum:
+          - read
+          - write
           title: Permission
-          description: 'Permission level: read, edit'
+          description: 'Access granted to the target workspace: read (view only) or
+            write (mutate)'
           default: read
         expires_at:
           anyOf:
@@ -20680,6 +20747,7 @@ components:
             format: date-time
           - type: 'null'
           title: Expires At
+          description: UTC expiry; null means the share never expires
       type: object
       required:
       - target_workspace_id

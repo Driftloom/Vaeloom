@@ -1,18 +1,81 @@
 'use client';
-import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
+
+/**
+ * The document detail screen.
+ *
+ * Design-system rebuild notes
+ * ---------------------------
+ * This component used to be 1472 lines of raw markup: 19 `<button>`, 8 `<a>`,
+ * 57 `<div>`, 10 inline `<svg>`, 2 `<table>` and a hand-rolled tab bar, with
+ * zero `@vaeloom/ui-kit` imports and zero `<label>` elements. It now composes
+ * ui-kit primitives so every control inherits the shared focus-visible ring,
+ * disabled/loading treatment and touch target.
+ *
+ * Preview rendering is NOT here: `./DocumentPreview` owns all nine branches.
+ * This file supplies only the chrome around it (header download, copy button).
+ *
+ * Honesty notes
+ * -------------
+ *  - The upload-check badge reports what the backend actually does: an EICAR
+ *    test-signature match, a magic-byte comparison against dangerous executable
+ *    headers, and an extension allow-list (`services/file_security_service.py`).
+ *    It does NOT run an antivirus engine, and the copy says so.
+ *  - Every list panel distinguishes loading / empty / error. The shares panel used
+ *    to swallow a failed fetch and then render "This document is private to
+ *    workspace X", which is a false statement dressed as an empty state.
+ *  - The revision number comes from the loaded `DocumentVersion` rows. It used to
+ *    come from `Document.metadata.version`, a key no backend path writes, falling
+ *    back to a hardcoded `1`, so a document on revision 7 was labelled "Rev v1".
+ *  - Uploads are capped at 100 MB per file (`_MAX_UPLOAD_BYTES`,
+ *    `routers/documents.py:142`) and 50 files per bulk upload
+ *    (`_MAX_BULOAD_FILES`, same file). Both constants below mirror those.
+ */
+
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { documentApi } from '@/lib/api-client';
+import {
+  Badge,
+  Breadcrumb,
+  Button,
+  ClockIcon,
+  DataTable,
+  DownloadIcon,
+  EmptyState,
+  ErrorState,
+  FileTextIcon,
+  FormField,
+  IconButton,
+  Panel,
+  RefreshCwIcon,
+  ShieldIcon,
+  Spinner,
+  TabPanel,
+  Tabs,
+  Tooltip,
+  XIcon,
+  type ColumnDef,
+  type TabItem,
+} from '@vaeloom/ui-kit';
+
+import { documentApi, legacySharePermission } from '@/lib/api-client';
 import type {
   DocumentResponse,
   DocumentAction,
   DocumentVersionResponse,
   DocumentShareResponse,
 } from '@/lib/api-client';
-import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { ErrorState } from '@/components/shared/ErrorState';
+import {
+  PLACEHOLDER,
+  extensionOf,
+  formatDate,
+  formatSize,
+  getFileName,
+  mimeForExtension,
+  previewKind,
+  scanStateOf,
+  type ScanState,
+} from '@/lib/document-format';
 import { DiffViewer } from '@/components/shared/DiffViewer';
 import { PageHeader } from '@/components/shared/Page';
 import { useToast } from '@/components/shared/Toast';
@@ -20,50 +83,115 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 
 import { DocumentAuditPanel } from './DocumentAuditPanel';
 import { DocumentCompareView } from './DocumentCompareView';
+import { DocumentPreview } from './DocumentPreview';
 import { DocumentShareDialog } from './DocumentShareDialog';
 import { DocumentMoveDialog } from './DocumentMoveDialog';
 
-function getFileName(path: string): string {
-  const parts = path.split('/');
-  return parts[parts.length - 1] || path;
+/** Tab ids, typed so a mistyped `setActiveTab` cannot compile. */
+type DetailTab = 'preview' | 'audit' | 'compare' | 'revisions' | 'history' | 'sharing';
+
+const DETAIL_TABS: readonly DetailTab[] = [
+  'preview',
+  'audit',
+  'compare',
+  'revisions',
+  'history',
+  'sharing',
+] as const;
+
+/** Mirrors `_MAX_UPLOAD_BYTES` in `apps/api/src/api/routers/documents.py:142`. */
+const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+const UPLOAD_SIZE_LIMIT = '100 MB';
+
+/** Mirrors `_MAX_BULOAD_FILES` in the same router. */
+const BULK_UPLOAD_FILE_LIMIT = 50;
+
+const SCAN_STATE_COPY: Record<
+  ScanState,
+  { label: string; variant: 'success' | 'error' | 'info' | 'default' }
+> = {
+  clean: { label: 'Upload checks passed', variant: 'success' },
+  quarantined: { label: 'Upload blocked', variant: 'error' },
+  scanning: { label: 'Upload checks running', variant: 'info' },
+  unknown: { label: 'No upload-check result', variant: 'default' },
+};
+
+/**
+ * What the badge actually verified.
+ *
+ * `file_security_service.inspect_file` runs four checks: an EICAR anti-malware
+ * test-signature substring match, a dangerous-executable magic-byte comparison,
+ * an extension allow-list, and a magic-byte verification that the declared
+ * extension matches the real content. There is no antivirus engine and no
+ * heuristic scanner, so "Antivirus scan: clean" would be a lie a security
+ * reviewer would correctly fail.
+ */
+const SCAN_STATE_DETAIL: Record<ScanState, string> = {
+  clean:
+    'Passed malware test-signature, file-content and extension checks at upload. This is not a full antivirus engine.',
+  quarantined:
+    'Rejected at upload: malware test-signature, executable content, or a disallowed extension.',
+  scanning: 'Upload checks are still in flight.',
+  unknown: 'No upload-check result was recorded for this document.',
+};
+
+const DATE_TIME_FORMAT: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' };
+
+/**
+ * `formatDate` with a time component.
+ *
+ * `@/lib/document-format` has no `formatDateTime` export and one is NOT
+ * re-declared here, because `formatDate` already accepts an options object and
+ * `{ dateStyle, timeStyle }` is exactly what this needs. What matters is that it
+ * keeps the "never return Invalid Date" guarantee, which the five
+ * `new Date(x).toLocaleString()` call sites this replaces could and did violate.
+ */
+function formatDateTime(value: string | null | undefined): string {
+  return formatDate(value, { options: DATE_TIME_FORMAT });
 }
 
-function formatSize(bytes: unknown): string {
-  const n = typeof bytes === 'number' ? bytes : Number(bytes ?? 0);
-  if (!n) return '—';
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+interface LoadablePanelProps {
+  loading: boolean;
+  error: string | null;
+  onRetry: () => void;
+  /** What is being loaded, e.g. "revisions". Used in the status and retry copy. */
+  label: string;
+  children: React.ReactNode;
 }
 
-function docWorkspaceId(d: DocumentResponse, fallbackWsId?: string): string {
-  return (
-    (d as unknown as Record<string, string>)['workspace_id'] ??
-    (d as unknown as Record<string, string>)['workspaceId'] ??
-    fallbackWsId ??
-    ''
-  );
+/**
+ * Loading / error wrapper with a live region.
+ *
+ * Every data panel needs these two states plus its own empty state, and four of
+ * the six panels had at most one of the three. The spinner sits inside
+ * `role="status"` because a bare spinner announces nothing.
+ */
+function LoadablePanel({ loading, error, onRetry, label, children }: LoadablePanelProps) {
+  if (error) {
+    return (
+      <ErrorState
+        title={`Could not load ${label}`}
+        message={error}
+        actionText={`Retry loading ${label}`}
+        onRetry={onRetry}
+      />
+    );
+  }
+  if (loading) {
+    return (
+      <div
+        className="py-12 flex justify-center"
+        data-testid={`loading-${label.replace(/\s+/g, '-')}`}
+      >
+        <div role="status" aria-live="polite" className="flex flex-col items-center gap-3">
+          <Spinner size="md" />
+          <p className="text-sm text-text-muted">Loading {label}</p>
+        </div>
+      </div>
+    );
+  }
+  return <>{children}</>;
 }
-
-function field<T>(source: unknown, snake: string, camel: string): T | undefined {
-  const record = source as Record<string, T>;
-  return record?.[snake] ?? record?.[camel];
-}
-
-const TEXT_TYPES = new Set([
-  'text',
-  'markdown',
-  'csv',
-  'json',
-  'html',
-  'xml',
-  'yaml',
-  'sql',
-  'ts',
-  'js',
-  'py',
-]);
-const IMAGE_TYPES = new Set(['image', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'svg']);
 
 export interface DocumentDetailViewProps {
   workspaceId?: string;
@@ -86,9 +214,12 @@ export function DocumentDetailView({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Content state
+  // Content state. `contentError` is deliberately separate from the page-level
+  // `error`: a 403 on the blob must not blank the metadata, tag, revision and
+  // share panels, all of which load on their own.
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [textContent, setTextContent] = useState<string | null>(null);
+  const [contentError, setContentError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   // History & Actions state
@@ -100,12 +231,15 @@ export function DocumentDetailView({
   // Versions state
   const [versions, setVersions] = useState<DocumentVersionResponse[]>([]);
   const [versionsLoading, setVersionsLoading] = useState(false);
+  const [versionsError, setVersionsError] = useState<string | null>(null);
   const [versionBusy, setVersionBusy] = useState(false);
   const versionFileInputRef = useRef<HTMLInputElement>(null);
 
   // Shares state
   const [shares, setShares] = useState<DocumentShareResponse[]>([]);
   const [sharesLoading, setSharesLoading] = useState(false);
+  const [sharesError, setSharesError] = useState<string | null>(null);
+  const [revokeBusyId, setRevokeBusyId] = useState<string | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   // Move Dialog state
@@ -118,9 +252,7 @@ export function DocumentDetailView({
   const [syncingMemory, setSyncingMemory] = useState(false);
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<
-    'preview' | 'audit' | 'compare' | 'revisions' | 'history' | 'sharing'
-  >('preview');
+  const [activeTab, setActiveTab] = useState<DetailTab>('preview');
 
   // Confirmation dialogs
   const [confirmDialog, setConfirmDialog] = useState<
@@ -137,57 +269,52 @@ export function DocumentDetailView({
     if (!workspaceId || !documentId) return;
     setLoading(true);
     setError(null);
+    setContentError(null);
+    setTextContent(null);
     try {
       const found = await documentApi.getById(documentId, workspaceId);
       if (!found) throw new Error('Document not found in workspace');
       setDoc(found);
-      const rawTags = (found.metadata?.['tags'] as string[] | undefined) || [];
-      setTags(rawTags);
+      setTags(found.metadata?.tags ?? []);
 
-      const blob = await documentApi.getContent(found.id, workspaceId);
-      const ext = found.path.split('.').pop()?.toLowerCase() || '';
-      const mimeMap: Record<string, string> = {
-        pdf: 'application/pdf',
-        png: 'image/png',
-        jpg: 'image/jpeg',
-        jpeg: 'image/jpeg',
-        webp: 'image/webp',
-        gif: 'image/gif',
-        svg: 'image/svg+xml',
-        bmp: 'image/bmp',
-        ico: 'image/x-icon',
-        txt: 'text/plain',
-        md: 'text/markdown',
-        json: 'application/json',
-        csv: 'text/csv',
-      };
-      const resolvedMime =
-        mimeMap[ext] ||
-        (found as unknown as { detected_mime_type?: string; detectedMimeType?: string })
-          .detected_mime_type ||
-        (found as unknown as { detected_mime_type?: string; detectedMimeType?: string })
-          .detectedMimeType ||
-        blob.type ||
-        'application/octet-stream';
-      const typedBlob = new Blob([await blob.arrayBuffer()], { type: resolvedMime });
-      const url = URL.createObjectURL(typedBlob);
-      setBlobUrl(url);
+      // Second request, third try/catch: the blob. A failure here is reported in
+      // the preview panel and leaves the rest of the page intact.
+      try {
+        // The document's OWN workspace, not the one in the URL: a cross-workspace
+        // share link renders a document stored elsewhere, and asking the content
+        // endpoint for the wrong workspace is a guaranteed 404.
+        //
+        // `docWorkspaceId` from document-format is NOT used here: its parameter is
+        // typed `(WorkspaceScoped & Record<string, unknown>)`, and `DocumentResponse`
+        // is an interface with no index signature, so it rejects a typed document.
+        // `workspaceId` is a required string on the interface, so this is the same
+        // lookup without the unsatisfiable type.
+        const blob = await documentApi.getContent(found.id, found.workspaceId || workspaceId);
 
-      const type = found.type?.toLowerCase() || '';
-      if (
-        TEXT_TYPES.has(type) ||
-        found.path.endsWith('.txt') ||
-        found.path.endsWith('.md') ||
-        found.path.endsWith('.json') ||
-        found.path.endsWith('.csv') ||
-        found.path.endsWith('.py') ||
-        found.path.endsWith('.ts') ||
-        found.path.endsWith('.tsx') ||
-        found.path.endsWith('.js')
-      ) {
-        setTextContent(await blob.text());
-      } else {
-        setTextContent(null);
+        // The content endpoint returns whatever the object store held, which for
+        // a `.md` or `.csv` is frequently `application/octet-stream`, and a blob
+        // typed that way is refused by the renderer.
+        const resolvedMime =
+          mimeForExtension(found.path) ??
+          found.detectedMimeType ??
+          blob.type ??
+          'application/octet-stream';
+        const typedBlob = new Blob([await blob.arrayBuffer()], { type: resolvedMime });
+        setBlobUrl(URL.createObjectURL(typedBlob));
+
+        // `previewKind` decides whether the bytes are text. The old code branched
+        // on a hand-maintained type set plus eight `.endsWith()` checks, which
+        // missed `.tsv`, `.log`, `.toml`, `.kt` and every other extension the
+        // shared helper already knows.
+        const kind = previewKind(resolvedMime, null, found.type, { path: found.path });
+        const isTextKind =
+          kind === 'markdown' || kind === 'text' || kind === 'csv' || kind === 'code';
+        setTextContent(isTextKind ? await blob.text() : null);
+      } catch (contentErr) {
+        setBlobUrl(null);
+        setContentError(
+          contentErr instanceof Error ? contentErr.message : 'Could not load the file contents.',
+        );
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load document');
@@ -212,10 +339,10 @@ export function DocumentDetailView({
           ? {
               ...prev,
               metadata: {
-                ...(prev.metadata as Record<string, unknown> | undefined),
-                sync_status: 'synced',
-                memory_id: res.memoryId,
-                synced_at: new Date().toISOString(),
+                ...prev.metadata,
+                syncStatus: 'synced',
+                memoryId: res.memoryId,
+                syncedAt: new Date().toISOString(),
               },
             }
           : null,
@@ -251,11 +378,16 @@ export function DocumentDetailView({
   const fetchVersions = useCallback(async () => {
     if (!workspaceId || !documentId) return;
     setVersionsLoading(true);
+    setVersionsError(null);
     try {
       const vList = await documentApi.listVersions(documentId, workspaceId);
       setVersions(vList);
-    } catch {
-      // Best effort version load
+    } catch (err) {
+      // Previously swallowed by an empty catch, which left the tab rendering
+      // "No previous revisions found": a confident falsehood about a document
+      // that may have twenty revisions.
+      setVersions([]);
+      setVersionsError(err instanceof Error ? err.message : 'Failed to load revisions');
     } finally {
       setVersionsLoading(false);
     }
@@ -265,11 +397,16 @@ export function DocumentDetailView({
   const fetchShares = useCallback(async () => {
     if (!workspaceId || !documentId) return;
     setSharesLoading(true);
+    setSharesError(null);
     try {
       const sList = await documentApi.listShares(documentId, workspaceId);
       setShares(sList);
-    } catch {
-      // Best effort shares load
+    } catch (err) {
+      // Previously swallowed, which rendered "This document is private to
+      // workspace X" for a document shared with six workspaces whose fetch had
+      // just failed.
+      setShares([]);
+      setSharesError(err instanceof Error ? err.message : 'Failed to load sharing information');
     } finally {
       setSharesLoading(false);
     }
@@ -314,13 +451,22 @@ export function DocumentDetailView({
   const handleUploadVersion = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !workspaceId || !documentId) return;
+    if (file.size > MAX_UPLOAD_BYTES) {
+      toast({
+        tone: 'error',
+        title: 'File too large',
+        detail: `Revisions are capped at ${UPLOAD_SIZE_LIMIT} per file.`,
+      });
+      if (versionFileInputRef.current) versionFileInputRef.current.value = '';
+      return;
+    }
     setVersionBusy(true);
     try {
       const newVer = await documentApi.createVersion(documentId, workspaceId, file);
       toast({
         tone: 'success',
         title: 'Revision uploaded',
-        detail: `New version v${newVer.versionNumber ?? newVer.version_number} saved.`,
+        detail: `New version v${newVer.versionNumber} saved.`,
       });
       void fetchVersions();
       void fetchDocAndContent();
@@ -403,32 +549,33 @@ export function DocumentDetailView({
     }
   };
 
-  // Share handlers
-  const handleShareSubmit = async (targetWs: string, perm: string, exp?: string) => {
-    if (!workspaceId || !documentId) return;
-    const created = await documentApi.createShare(documentId, workspaceId, targetWs, perm, exp);
-    toast({
-      tone: 'success',
-      title: 'Share granted',
-      detail: `Access shared with workspace ${targetWs}.`,
-    });
-    setShares((prev) => [created, ...prev]);
-  };
-
   const handleShareRevoke = async (shareId: string) => {
     if (!workspaceId || !documentId) return;
-    await documentApi.revokeShare(shareId, workspaceId, documentId);
-    toast({ tone: 'success', title: 'Share revoked', detail: 'Access removed.' });
-    setShares((prev) => prev.filter((s) => s.id !== shareId));
+    setRevokeBusyId(shareId);
+    try {
+      await documentApi.revokeShare(shareId, workspaceId, documentId);
+      toast({ tone: 'success', title: 'Share revoked', detail: 'Access removed.' });
+      setShares((prev) => prev.filter((s) => s.id !== shareId));
+    } catch (err) {
+      toast({
+        tone: 'error',
+        title: 'Revoke failed',
+        detail: err instanceof Error ? err.message : 'Could not revoke access',
+      });
+      // The local list is unchanged, so re-read rather than leave a stale view.
+      void fetchShares();
+    } finally {
+      setRevokeBusyId(null);
+    }
   };
 
   // Copy text content
-  const handleCopyText = () => {
-    if (!textContent) return;
-    void navigator.clipboard.writeText(textContent);
+  const handleCopyText = useCallback((text: string) => {
+    if (!text) return;
+    void navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
+  }, []);
 
   // Tag management
   const handleAddTag = async (e: React.FormEvent) => {
@@ -448,7 +595,7 @@ export function DocumentDetailView({
           ? {
               ...prev,
               metadata: {
-                ...(prev.metadata as Record<string, unknown> | undefined),
+                ...prev.metadata,
                 tags: updated,
               },
             }
@@ -479,7 +626,7 @@ export function DocumentDetailView({
           ? {
               ...prev,
               metadata: {
-                ...(prev.metadata as Record<string, unknown> | undefined),
+                ...prev.metadata,
                 tags: updated,
               },
             }
@@ -497,80 +644,99 @@ export function DocumentDetailView({
     }
   };
 
+  // ─── Derived document facts ────────────────────────────────────────────────
+
   const fileName = doc ? getFileName(doc.path) : '';
-  const size = (doc?.metadata as Record<string, unknown> | undefined)?.['size'];
-  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+  const ext = doc ? extensionOf(doc.path) : '';
   const type = (doc?.type || '').toLowerCase();
-  const isImage =
-    IMAGE_TYPES.has(type) ||
-    ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp', 'ico'].includes(ext);
-  const isPdf = type === 'pdf' || ext === 'pdf';
-  const isMarkdown = type === 'markdown' || ext === 'md' || ext === 'markdown';
-  const isCsv = type === 'csv' || ext === 'csv' || ext === 'tsv';
-  const isCode = [
-    'js',
-    'ts',
-    'tsx',
-    'jsx',
-    'py',
-    'json',
-    'yaml',
-    'yml',
-    'sql',
-    'sh',
-    'bash',
-    'html',
-    'css',
-    'go',
-    'rs',
-    'cpp',
-    'c',
-    'h',
-  ].includes(ext);
-  const isVideo = ['mp4', 'mov', 'webm'].includes(ext);
-  const isAudio = ['mp3', 'wav', 'ogg'].includes(ext);
-  const createdAt = doc ? field<string>(doc, 'created_at', 'createdAt') : undefined;
-  const scanStatus = doc?.scan_status;
-  const versionNum =
-    (doc ? field<number | string>(doc.metadata, 'version', 'version_number') : null) ?? 1;
+  const size = doc?.metadata?.size;
+  const isSynced = doc?.metadata?.syncStatus === 'synced';
+  const scanState = scanStateOf(doc?.scanStatus);
+  const scanCopy = SCAN_STATE_COPY[scanState];
 
-  const parsedCsv = useMemo(() => {
-    if (!isCsv || !textContent) return null;
-    const lines = textContent.split(/\r?\n/).filter((l) => l.trim().length > 0);
-    if (lines.length === 0) return null;
-    const delimiter = ext === 'tsv' ? '\t' : ',';
-    const parseLine = (line: string): string[] => {
-      const result: string[] = [];
-      let cur = '';
-      let inQuotes = false;
-      for (let i = 0; i < line.length; i++) {
-        const c = line[i];
-        if (c === '"') {
-          inQuotes = !inQuotes;
-        } else if (c === delimiter && !inQuotes) {
-          result.push(cur.trim());
-          cur = '';
-        } else {
-          cur += c;
-        }
-      }
-      result.push(cur.trim());
-      return result;
-    };
-    const headers = parseLine(lines[0] || '');
-    const rows = lines.slice(1, 101).map((r) => parseLine(r));
-    return { headers, rows, totalRows: lines.length - 1 };
-  }, [isCsv, textContent, ext]);
+  // The current revision comes from the loaded DocumentVersion rows. The old
+  // source was `Document.metadata.version`, which no backend code path writes,
+  // falling back to a hardcoded `1`. When the revisions fetch FAILED there is no
+  // honest number to show, so the header says so instead of guessing.
+  const currentRevision = useMemo(() => {
+    if (versionsError) return null;
+    if (versions.length === 0) return 1;
+    return versions.reduce((max, v) => Math.max(max, v.versionNumber ?? 1), 1);
+  }, [versions, versionsError]);
 
-  const codeLines = useMemo(() => {
-    if (!isCode || !textContent) return [];
-    return textContent.split(/\r?\n/);
-  }, [isCode, textContent]);
+  const revisionColumns = useMemo<ColumnDef<DocumentVersionResponse>[]>(
+    () => [
+      {
+        key: 'versionNumber',
+        header: 'Revision',
+        render: (_value, row) => (
+          <Badge variant="primary" size="sm" className="font-mono">
+            v{row.versionNumber}
+          </Badge>
+        ),
+      },
+      {
+        key: 'createdAt',
+        header: 'Uploaded',
+        render: (_value, row) => (
+          <span className="text-xs text-text-muted">{formatDateTime(row.createdAt)}</span>
+        ),
+      },
+      {
+        key: 'sizeBytes',
+        header: 'Size',
+        render: (_value, row) => (
+          <span className="font-mono text-xs">{formatSize(row.sizeBytes)}</span>
+        ),
+      },
+      {
+        key: 'checksum',
+        header: 'Checksum',
+        render: (_value, row) => (
+          <span className="font-mono text-xs text-text-dim" title={row.checksum ?? undefined}>
+            {row.checksum ? `${row.checksum.slice(0, 12)}…` : PLACEHOLDER}
+          </span>
+        ),
+      },
+      {
+        key: 'actions',
+        header: 'Action',
+        render: (_value, row) => (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            aria-label={`Restore revision ${row.versionNumber} of ${fileName}`}
+            onClick={() =>
+              setConfirmDialog({ kind: 'restore-version', versionNumber: row.versionNumber })
+            }
+          >
+            Restore
+          </Button>
+        ),
+      },
+    ],
+    [fileName],
+  );
 
+  const tabItems = useMemo<TabItem[]>(
+    () => [
+      { id: 'preview', label: 'Preview' },
+      { id: 'audit', label: 'AI Quality Audit' },
+      { id: 'compare', label: 'Version Compare', badge: versions.length },
+      { id: 'revisions', label: 'Revisions', badge: versions.length },
+      { id: 'history', label: 'Activity & History', badge: actions.length },
+      { id: 'sharing', label: 'Access & Sharing', badge: shares.length },
+    ],
+    [versions.length, actions.length, shares.length],
+  );
   if (loading) {
     return (
-      <div className="py-24 flex flex-col items-center justify-center gap-3">
-        <LoadingSpinner size="lg" text="Loading document..." />
+      <div className="py-24 flex flex-col items-center justify-center">
+        <div role="status" aria-live="polite" className="flex flex-col items-center gap-3">
+          <Spinner size="lg" />
+          <p className="text-sm text-text-muted">Loading document</p>
+        </div>
       </div>
     );
   }
@@ -580,816 +746,570 @@ export function DocumentDetailView({
       <ErrorState
         title="Failed to load document"
         message={error ?? 'Document not found'}
-        onRetry={fetchDocAndContent}
+        actionText="Retry loading document"
+        onRetry={() => void fetchDocAndContent()}
       />
     );
   }
+
+  const inlinePreviewable = previewKind(doc.detectedMimeType ?? null, null, doc.type, {
+    path: doc.path,
+  });
 
   return (
     <div className="flex flex-col gap-6">
       {/* Breadcrumb & Navigation Header */}
       <PageHeader
         title={fileName}
-        description={`${type.toUpperCase()} · ${formatSize(size)} · Created ${
-          createdAt ? new Date(createdAt).toLocaleDateString() : '—'
-        } · Rev v${versionNum}`}
+        description={[
+          type ? type.toUpperCase() : 'FILE',
+          formatSize(size),
+          `Created ${formatDate(doc.createdAt)}`,
+          currentRevision === null ? `Revision ${PLACEHOLDER}` : `Rev v${currentRevision}`,
+        ].join(' · ')}
         breadcrumb={
-          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-text-muted">
-            <Link
-              href={`/workspace/${workspaceId}/${basePath}`}
-              className="hover:text-primary transition-colors font-medium"
-            >
-              Workspace {basePath === 'files' ? 'Files' : 'Documents'}
-            </Link>
-            <span aria-hidden="true">/</span>
-            <span className="text-text font-medium truncate max-w-xs">{fileName}</span>
-            <span className="font-mono text-[11px] text-text-dim ml-1">({doc.id.slice(0, 8)})</span>
-          </nav>
+          <Breadcrumb
+            items={[
+              {
+                label: `Workspace ${basePath === 'files' ? 'Files' : 'Documents'}`,
+                href: `/workspace/${workspaceId}/${basePath}`,
+              },
+              { label: fileName, current: true },
+            ]}
+          />
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => router.push(`/workspace/${workspaceId}/${basePath}`)}
-              className="btn-secondary text-xs px-3 py-1.5"
             >
-              ← Back
-            </button>
+              Back
+            </Button>
 
             {blobUrl && (
               <a
                 href={blobUrl}
                 download={fileName}
-                className="btn-primary text-xs px-3.5 py-1.5 flex items-center gap-1.5"
+                aria-label={`Download ${fileName}`}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium bg-action text-action-fg hover:bg-action-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                  />
-                </svg>
+                <DownloadIcon size={14} />
                 <span>Download</span>
               </a>
             )}
 
-            {/* Chat with Document */}
             <Link
               href={`/workspace/${workspaceId}/chat?docId=${doc.id}&docName=${encodeURIComponent(fileName)}`}
-              className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 text-primary hover:bg-primary/10 transition-colors"
-              title="Chat with Document (@document)"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium border border-border bg-surface-hover text-text hover:bg-surface-active transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                />
-              </svg>
-              <span>Chat</span>
+              Chat
             </Link>
 
-            {/* Move to Folder */}
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => setMoveDialogOpen(true)}
-              className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
-              title="Move to Folder"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                />
-              </svg>
-              <span>Move</span>
-            </button>
+              Move
+            </Button>
 
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => setShareDialogOpen(true)}
-              className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
-                />
-              </svg>
-              <span>Share</span>
-            </button>
+              Share
+            </Button>
 
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => setActiveTab('audit')}
-              className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 text-primary"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                />
-              </svg>
-              <span>AI Audit</span>
-            </button>
+              AI Audit
+            </Button>
 
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => setActiveTab('compare')}
-              className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                />
-              </svg>
-              <span>Compare</span>
-            </button>
+              Compare
+            </Button>
 
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => setConfirmDialog({ kind: 'archive-document' })}
-              className="btn-secondary text-xs px-3 py-1.5 text-warning hover:bg-warning/10 hover:border-warning/30"
-              title="Archive document"
             >
               Archive
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="button"
+              variant="danger"
+              size="sm"
               onClick={() => setConfirmDialog({ kind: 'delete-document' })}
-              className="btn-secondary text-xs px-3 py-1.5 text-error hover:bg-error/10 hover:border-error/30"
-              title="Delete document permanently"
             >
               Delete
-            </button>
+            </Button>
           </div>
         }
       />
 
-      {/* Dynamic Metadata & Enterprise Integration Strip */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-3.5 rounded-xl border border-border/70 bg-surface/40 backdrop-blur-sm">
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Dynamic Memory Sync indicator */}
-          <span
-            className="inline-flex items-center gap-1.5 text-xs text-primary bg-primary/10 border border-primary/30 px-2.5 py-1 rounded-lg font-medium"
-            title="Dynamically synchronized with Workspace Memory & Knowledge Graph"
-          >
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            {doc.metadata?.['sync_status'] === 'synced' ? 'Memory Synced' : 'Memory Integration'}
-          </span>
-
-          <button
-            type="button"
-            disabled={syncingMemory}
-            onClick={() => void handleSyncMemory()}
-            className="inline-flex items-center gap-1.5 text-xs text-text hover:text-primary transition-colors border border-border/60 bg-surface px-2.5 py-1 rounded-lg font-medium hover:border-primary/40 disabled:opacity-50"
-            title="Trigger dynamic synchronization with workspace memory"
-          >
-            <svg
-              className={`w-3.5 h-3.5 text-primary ${syncingMemory ? 'animate-spin' : ''}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-            <span>
-              {syncingMemory
-                ? 'Syncing...'
-                : doc.metadata?.['sync_status'] === 'synced'
-                  ? 'Re-sync Memory'
-                  : 'Sync with Memory'}
-            </span>
-          </button>
-
-          {/* Deep link to Memory Graph */}
-          <Link
-            href={`/workspace/${workspaceId}/memory?query=${encodeURIComponent(fileName)}`}
-            className="inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-primary transition-colors border border-border/60 bg-surface px-2.5 py-1 rounded-lg font-medium hover:border-primary/40"
-            title="Explore entity relationships and contextual notes in Memory Graph"
-          >
-            <svg
-              className="w-3.5 h-3.5 text-primary"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 10V3L4 14h7v7l9-11h-7z"
-              />
-            </svg>
-            <span>View in Memory</span>
-          </Link>
-        </div>
-
-        {/* Dynamic Tag Editor Strip */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mr-1">
-            Tags:
-          </span>
-          {tags.map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-md bg-surface-200 border border-border text-text font-medium"
-            >
-              <span>#{tag}</span>
-              <button
-                type="button"
-                disabled={tagBusy}
-                onClick={() => void handleRemoveTag(tag)}
-                className="text-text-dim hover:text-error ml-0.5 rounded-full"
-                title={`Remove tag #${tag}`}
-              >
-                ✕
-              </button>
-            </span>
-          ))}
-
-          <form onSubmit={handleAddTag} className="inline-flex items-center gap-1">
-            <input
-              type="text"
-              value={newTagInput}
-              onChange={(e) => setNewTagInput(e.target.value)}
-              placeholder="+ add tag"
-              aria-label="Add document tag"
-              disabled={tagBusy}
-              className="px-2 py-0.5 text-xs rounded-md bg-surface border border-border/70 text-text placeholder:text-text-dim focus:outline-none focus:border-primary w-24"
-            />
-            {newTagInput.trim() && (
-              <button
-                type="submit"
-                disabled={tagBusy}
-                className="text-[11px] px-2 py-0.5 rounded bg-primary text-primary-fg font-medium hover:opacity-90"
-              >
-                Add
-              </button>
+      {/* Document facts, upload-check verdict and tag editor */}
+      <Panel padding="sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* The upload-check verdict. Previously fetched into a `scanStatus`
+                const that was never rendered, so the verdict was invisible on a
+                document whose whole purpose includes being safe to open. */}
+            <Tooltip content={SCAN_STATE_DETAIL[scanState]}>
+              <Badge variant={scanCopy.variant} size="sm">
+                <ShieldIcon size={12} />
+                {scanCopy.label}
+              </Badge>
+            </Tooltip>
+            {scanState === 'quarantined' && doc.scanResult && (
+              <Badge variant="error" size="sm" role="status">
+                {doc.scanResult}
+              </Badge>
             )}
-          </form>
-        </div>
-      </div>
 
-      {/* Tabs Navigation */}
-      <div
-        role="tablist"
-        aria-label="Document views"
-        className="flex gap-1 border-b border-border/70 overflow-x-auto"
-      >
-        {(
-          [
-            { id: 'preview', label: 'Preview' },
-            { id: 'audit', label: 'AI Quality Audit' },
-            { id: 'compare', label: `Version Compare (${versions.length})` },
-            { id: 'revisions', label: `Revisions (${versions.length})` },
-            { id: 'history', label: `Activity & History (${actions.length})` },
-            { id: 'sharing', label: `Access & Sharing (${shares.length})` },
-          ] as const
-        ).map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === t.id}
-            onClick={() => setActiveTab(t.id)}
-            className={`px-4 py-2.5 text-xs font-medium border-b-2 -mb-[1px] transition-colors whitespace-nowrap ${
-              activeTab === t.id
-                ? 'border-primary text-text font-semibold'
-                : 'border-transparent text-text-muted hover:text-text'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+            <Badge variant={isSynced ? 'success' : 'default'} size="sm">
+              {isSynced ? 'Memory Synced' : 'Memory Integration'}
+            </Badge>
 
-      {/* Tab 1: Preview */}
-      {activeTab === 'preview' && (
-        <div className="space-y-3">
-          {textContent != null && (
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={handleCopyText}
-                className="btn-secondary text-xs px-2.5 py-1 flex items-center gap-1.5"
-              >
-                <svg
-                  className="w-3.5 h-3.5 text-text-dim"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                  />
-                </svg>
-                <span>{copied ? 'Copied!' : 'Copy Content'}</span>
-              </button>
-            </div>
-          )}
+            <Badge variant="mono" size="sm">
+              {ext || type || 'file'}
+            </Badge>
+            <Badge variant="default" size="sm" className="font-mono">
+              {formatSize(size)}
+            </Badge>
+            <Badge variant="default" size="sm">
+              <ClockIcon size={12} />
+              Updated {formatDateTime(doc.updatedAt)}
+            </Badge>
+            <Badge variant="mono" size="sm">
+              <FileTextIcon size={12} />
+              {doc.id.slice(0, 8)}
+            </Badge>
+            {doc.deletedAt && (
+              <Badge variant="warning" size="sm" role="status">
+                Archived {formatDate(doc.deletedAt)}
+              </Badge>
+            )}
 
-          <div className="rounded-xl border border-border/70 bg-surface/40 p-4 min-h-[50dvh] overflow-auto">
-            {textContent != null ? (
-              isMarkdown ? (
-                <div className="prose prose-invert prose-sm max-w-none p-4 leading-relaxed">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{textContent}</ReactMarkdown>
-                </div>
-              ) : isCsv && parsedCsv ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-xs text-text-muted px-1">
-                    <span>
-                      {parsedCsv.headers.length} columns · {parsedCsv.totalRows} rows
-                      {parsedCsv.totalRows > 100 && ' (previewing first 100)'}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleCopyText}
-                      className="text-primary hover:underline font-medium"
-                    >
-                      {copied ? 'Copied CSV' : 'Copy CSV Text'}
-                    </button>
-                  </div>
-                  <div className="overflow-x-auto max-h-[65vh] border border-border/80 rounded-lg">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead className="bg-surface-200 sticky top-0 border-b border-border text-text font-semibold">
-                        <tr>
-                          <th className="p-2.5 w-10 text-center text-text-dim border-r border-border/50">
-                            #
-                          </th>
-                          {parsedCsv.headers.map((h: string, i: number) => (
-                            <th
-                              key={i}
-                              className="p-2.5 border-r border-border/50 whitespace-nowrap"
-                            >
-                              {h || `Col ${i + 1}`}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/40 font-mono text-[11px]">
-                        {parsedCsv.rows.map((r: string[], rIdx: number) => (
-                          <tr key={rIdx} className="hover:bg-surface-hover/50 odd:bg-surface/20">
-                            <td className="p-2 text-center text-text-dim border-r border-border/50">
-                              {rIdx + 1}
-                            </td>
-                            {r.map((cell: string, cIdx: number) => (
-                              <td
-                                key={cIdx}
-                                className="p-2 border-r border-border/50 whitespace-nowrap max-w-xs truncate text-text"
-                              >
-                                {cell}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ) : isCode && codeLines.length > 0 ? (
-                <div className="rounded-lg border border-border/80 bg-surface-sunken overflow-hidden font-mono text-xs">
-                  <div className="flex items-center justify-between px-3 py-1.5 bg-surface-200 border-b border-border text-[11px] text-text-muted">
-                    <span>
-                      {fileName} ({codeLines.length} lines)
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleCopyText}
-                      className="hover:text-text font-sans"
-                    >
-                      {copied ? 'Copied!' : 'Copy Code'}
-                    </button>
-                  </div>
-                  <div className="overflow-x-auto max-h-[65vh] p-2">
-                    <table className="w-full border-collapse">
-                      <tbody>
-                        {codeLines.map((line: string, idx: number) => (
-                          <tr key={idx} className="hover:bg-surface-elevated/40">
-                            <td className="w-10 text-right pr-3 select-none text-text-dim text-[10px] py-0.5 border-r border-border/40">
-                              {idx + 1}
-                            </td>
-                            <td className="pl-3 py-0.5 text-text whitespace-pre font-mono">
-                              {line || ' '}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ) : (
-                <pre className="font-mono text-xs text-text leading-relaxed whitespace-pre-wrap break-words p-4">
-                  {textContent}
-                </pre>
-              )
-            ) : isImage && blobUrl ? (
-              <div className="flex flex-col items-center justify-center p-2 sm:p-4">
-                <div className="w-full flex items-center justify-between pb-3 text-xs border-b border-border/40 mb-3">
-                  <span className="font-mono text-text-muted">{fileName}</span>
-                  <div className="flex items-center gap-2">
-                    <a
-                      href={blobUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-2.5 py-1 rounded bg-surface hover:bg-surface-hover text-text border border-border font-medium inline-flex items-center gap-1 transition-colors"
-                    >
-                      <span>↗</span> Full Resolution
-                    </a>
-                    <a
-                      href={blobUrl}
-                      download={fileName}
-                      className="px-2.5 py-1 rounded bg-primary text-primary-fg hover:bg-primary/90 font-medium inline-flex items-center gap-1 transition-colors"
-                    >
-                      <span>↓</span> Download
-                    </a>
-                  </div>
-                </div>
-                <div className="max-h-[70vh] w-full overflow-auto flex items-center justify-center">
-                  <img
-                    src={blobUrl}
-                    alt={fileName}
-                    className="max-h-[65vh] max-w-full rounded-lg shadow-lg object-contain"
-                  />
-                </div>
-              </div>
-            ) : isVideo && blobUrl ? (
-              <div className="flex flex-col items-center justify-center p-4">
-                <video
-                  controls
-                  src={blobUrl}
-                  className="max-h-[65vh] max-w-full rounded-lg shadow-lg border border-border bg-black"
-                >
-                  Your browser does not support HTML5 video preview.
-                </video>
-              </div>
-            ) : isAudio && blobUrl ? (
-              <div className="flex flex-col items-center justify-center p-8 bg-surface-100 rounded-xl border border-border">
-                <div className="text-3xl mb-3">🎵</div>
-                <p className="text-sm font-semibold text-text mb-4">{fileName}</p>
-                <audio controls src={blobUrl} className="w-full max-w-md">
-                  Your browser does not support HTML5 audio playback.
-                </audio>
-              </div>
-            ) : isPdf && blobUrl ? (
-              <div className="flex flex-col w-full min-h-[60vh] max-h-[78vh]">
-                <div className="flex items-center justify-between px-3 py-2 bg-surface-200/80 rounded-t-lg border border-border/70 border-b-0 text-xs">
-                  <span className="font-mono text-text-muted truncate">{fileName}</span>
-                  <div className="flex items-center gap-2">
-                    <a
-                      href={blobUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-2.5 py-1 rounded bg-surface hover:bg-surface-hover text-text border border-border font-medium inline-flex items-center gap-1 transition-colors"
-                    >
-                      <span>↗</span> Open in New Tab
-                    </a>
-                    <a
-                      href={blobUrl}
-                      download={fileName}
-                      className="px-2.5 py-1 rounded bg-primary text-primary-fg hover:bg-primary/90 font-medium inline-flex items-center gap-1 transition-colors"
-                    >
-                      <span>↓</span> Download PDF
-                    </a>
-                  </div>
-                </div>
-                <object
-                  data={`${blobUrl}#toolbar=1`}
-                  type="application/pdf"
-                  className="w-full flex-1 min-h-[58vh] rounded-b-lg border border-border bg-surface-100"
-                >
-                  <iframe
-                    src={`${blobUrl}#toolbar=1`}
-                    title={fileName}
-                    className="w-full h-full min-h-[58vh] rounded-b-lg border-0"
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              loading={syncingMemory}
+              onClick={() => void handleSyncMemory()}
+            >
+              {!syncingMemory && <RefreshCwIcon size={14} />}
+              {syncingMemory ? 'Syncing' : isSynced ? 'Re-sync Memory' : 'Sync with Memory'}
+            </Button>
+
+            <Link
+              href={`/workspace/${workspaceId}/memory?query=${encodeURIComponent(fileName)}`}
+              className="inline-flex items-center justify-center rounded-lg px-2.5 py-1 text-xs font-medium border border-border bg-surface text-text-muted hover:text-text hover:border-border-strong transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              View in Memory
+            </Link>
+          </div>
+
+          {/* Tag editor. The old markup had a placeholder and an aria-label but
+              no <label>, and its remove control was a bare ✕ glyph. */}
+          <div className="flex flex-wrap items-start gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs font-medium text-text-muted">Tags</span>
+              {tags.length === 0 && <span className="text-xs text-text-dim">none yet</span>}
+              {tags.map((tag) => (
+                <Badge key={tag} variant="mono" size="sm">
+                  <span>#{tag}</span>
+                  <IconButton
+                    type="button"
+                    aria-label={`Remove tag #${tag}`}
+                    variant="ghost"
+                    size="sm"
+                    disabled={tagBusy}
+                    onClick={() => void handleRemoveTag(tag)}
+                    className="h-4 w-4"
                   >
-                    <div className="p-8 text-center bg-surface-100 rounded-b-lg space-y-3">
-                      <p className="text-sm text-text-muted">
-                        Embedded PDF preview was blocked by your browser settings.
-                      </p>
-                      <div className="flex justify-center gap-3">
+                    <XIcon size={10} />
+                  </IconButton>
+                </Badge>
+              ))}
+            </div>
+
+            <form onSubmit={handleAddTag} className="inline-flex items-end gap-1">
+              <FormField label="Add tag" htmlFor="document-tag-input">
+                <input
+                  id="document-tag-input"
+                  type="text"
+                  value={newTagInput}
+                  onChange={(e) => setNewTagInput(e.target.value)}
+                  placeholder="new-tag"
+                  disabled={tagBusy}
+                  className="px-2 py-0.5 text-xs rounded-md bg-surface border border-border/70 text-text placeholder:text-text-dim focus:outline-none focus:border-primary w-24"
+                />
+              </FormField>
+              <Button type="submit" variant="primary" size="sm" disabled={tagBusy}>
+                Add
+              </Button>
+            </form>
+          </div>
+        </div>
+
+        <p className="mt-3 text-xs text-text-dim">
+          Uploads are accepted up to {UPLOAD_SIZE_LIMIT} per file, and up to{' '}
+          {BULK_UPLOAD_FILE_LIMIT} files per bulk upload.
+        </p>
+      </Panel>
+
+      {/* Tabs. ui-kit `Tabs` already emits role=tablist/tab, aria-selected,
+          id={`tab-${id}`}, aria-controls={`tabpanel-${id}`}, a roving tabIndex and
+          Arrow/Home/End key handling; `TabPanel` emits role=tabpanel,
+          aria-labelledby and tabIndex=0. Together they satisfy the WAI-ARIA tabs
+          pattern, which the hand-rolled tab bar did not. */}
+      <Tabs
+        tabs={tabItems}
+        activeTab={activeTab}
+        // `Tabs` hands back an untyped string. Guarding against an id that is not
+        // in DETAIL_TABS keeps `activeTab` from ever holding a value no panel
+        // matches, which would render a tablist with no tabpanel at all.
+        onTabChange={(id) => {
+          if (DETAIL_TABS.includes(id as DetailTab)) setActiveTab(id as DetailTab);
+        }}
+        variant="underline"
+        size="sm"
+        ariaLabel="Document views"
+        className="overflow-x-auto"
+      />
+
+      {DETAIL_TABS.map((tabId) => (
+        <TabPanel key={tabId} id={tabId} activeTab={activeTab}>
+          {tabId === 'preview' && (
+            <div className="space-y-3">
+              {textContent != null && (
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {copied && (
+                    <Badge variant="success" size="sm" role="status">
+                      Copied to clipboard
+                    </Badge>
+                  )}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleCopyText(textContent)}
+                  >
+                    Copy Content
+                  </Button>
+                </div>
+              )}
+
+              <Panel padding="none" variant="subtle" className="min-h-[50dvh] overflow-auto">
+                <DocumentPreview
+                  document={doc}
+                  source={{ url: blobUrl, text: textContent }}
+                  error={contentError}
+                  onCopyText={handleCopyText}
+                  headerActions={
+                    <>
+                      {inlinePreviewable !== 'none' && blobUrl && (
                         <a
                           href={blobUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="btn-secondary text-xs px-3 py-1.5"
+                          aria-label={`Open ${fileName} in a new browser tab`}
+                          className="px-2.5 py-1 rounded bg-surface hover:bg-surface-hover text-text border border-border font-medium inline-flex items-center gap-1 transition-colors text-xs"
                         >
                           Open in New Tab
                         </a>
+                      )}
+                      {blobUrl && (
                         <a
                           href={blobUrl}
                           download={fileName}
-                          className="btn-primary text-xs px-3 py-1.5"
+                          aria-label={`Download ${fileName}`}
+                          className="px-2.5 py-1 rounded bg-primary text-primary-fg hover:bg-primary/90 font-medium inline-flex items-center gap-1 transition-colors text-xs"
                         >
-                          Download PDF
+                          <DownloadIcon size={12} />
+                          Download
                         </a>
-                      </div>
-                    </div>
-                  </iframe>
-                </object>
-              </div>
-            ) : blobUrl ? (
-              <div className="flex flex-col items-center justify-center gap-3 p-12 text-center">
-                <div className="w-12 h-12 rounded-full bg-surface-200 flex items-center justify-center text-text-dim">
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                </div>
-                <p className="text-sm font-medium text-text">
-                  Preview not available for {type || 'binary'}
-                </p>
-                <p className="text-xs text-text-muted max-w-xs">
-                  This file format requires downloading to inspect directly on your local system.
-                </p>
-                <a
-                  href={blobUrl}
-                  download={fileName}
-                  className="btn-primary text-xs px-4 py-2 mt-2"
-                >
-                  Download File ({fileName})
-                </a>
-              </div>
-            ) : (
-              <p className="p-12 text-center text-text-muted text-xs">
-                No preview content available.
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Tab 2: AI Quality Audit */}
-      {activeTab === 'audit' && (
-        <DocumentAuditPanel documentId={documentId} workspaceId={workspaceId} />
-      )}
-
-      {/* Tab 3: Version Compare */}
-      {activeTab === 'compare' && (
-        <DocumentCompareView
-          documentId={documentId}
-          workspaceId={workspaceId}
-          versions={versions}
-        />
-      )}
-
-      {/* Tab 4: Revisions */}
-      {activeTab === 'revisions' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 rounded-xl border border-border/70 bg-surface/50">
-            <div>
-              <h3 className="text-sm font-semibold text-text">Document Revisions</h3>
-              <p className="text-xs text-text-muted mt-0.5">
-                Every update creates an immutable revision record with SHA256 checksum and instant
-                rollback.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => versionFileInputRef.current?.click()}
-              disabled={versionBusy}
-              className="btn-primary text-xs px-3.5 py-2 flex items-center gap-1.5"
-            >
-              {versionBusy ? <LoadingSpinner size="sm" /> : <span>+ Upload Revision</span>}
-            </button>
-            <input
-              ref={versionFileInputRef}
-              type="file"
-              className="hidden"
-              onChange={handleUploadVersion}
-            />
-          </div>
-
-          {versionsLoading ? (
-            <div className="py-12 flex justify-center">
-              <LoadingSpinner size="md" text="Loading revisions..." />
-            </div>
-          ) : versions.length === 0 ? (
-            <p className="p-8 text-center text-xs text-text-muted border border-dashed border-border/60 rounded-xl">
-              No previous revisions found. The current file represents the initial revision.
-            </p>
-          ) : (
-            <div className="divide-y divide-border/40 rounded-xl border border-border/70 overflow-hidden bg-surface/30">
-              {versions.map((ver) => {
-                const num = ver.versionNumber ?? ver.version_number ?? 1;
-                const created = ver.createdAt ?? ver.created_at;
-                const checksum = ver.checksum;
-                const sizeBytes = ver.sizeBytes ?? ver.size_bytes;
-
-                return (
-                  <div
-                    key={ver.id}
-                    className="p-4 flex items-center justify-between gap-4 hover:bg-surface-hover/30 transition-colors"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded bg-primary/10 text-primary font-mono text-xs font-semibold">
-                          v{num}
-                        </span>
-                        <span className="text-xs font-medium text-text">Revision {num}</span>
-                      </div>
-                      <p className="text-[11px] text-text-dim">
-                        Uploaded {created ? new Date(created).toLocaleString() : '—'} ·{' '}
-                        {formatSize(sizeBytes)}
-                        {checksum && ` · SHA: ${checksum.slice(0, 12)}...`}
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setConfirmDialog({ kind: 'restore-version', versionNumber: num })
-                      }
-                      className="btn-secondary text-xs px-3 py-1.5"
-                    >
-                      Restore to v{num}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab 5: Activity & History */}
-      {activeTab === 'history' && (
-        <div className="space-y-4">
-          <div className="p-4 rounded-xl border border-border/70 bg-surface/50">
-            <h3 className="text-sm font-semibold text-text">Audit Trail & Action History</h3>
-            <p className="text-xs text-text-muted mt-0.5">
-              Reversible forensic log of modifications, renames, and workspace archival events.
-            </p>
-          </div>
-
-          {historyError && (
-            <div
-              role="alert"
-              className="p-3 text-xs text-error bg-error/10 border border-error/30 rounded-lg"
-            >
-              Could not load change history: {historyError}
-            </div>
-          )}
-
-          {historyLoading ? (
-            <div className="py-12 flex justify-center">
-              <LoadingSpinner size="md" text="Loading activity history..." />
-            </div>
-          ) : actions.length === 0 ? (
-            <p className="p-8 text-center text-xs text-text-muted border border-dashed border-border/60 rounded-xl">
-              No historical changes recorded for this document.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {actions.map((act) => {
-                const actionType = field<string>(act, 'action_type', 'actionType') ?? '';
-                const oldPath = field<string>(act, 'old_path', 'oldPath');
-                const newPath = field<string>(act, 'new_path', 'newPath');
-                const undone = Boolean(field<string | null>(act, 'undone_at', 'undoneAt'));
-                const created = field<string>(act, 'created_at', 'createdAt') ?? '';
-                const isRename = actionType === 'document_rename' && oldPath && newPath;
-
-                return (
-                  <div
-                    key={act.id}
-                    className={`rounded-xl border p-4 transition-colors ${
-                      undone
-                        ? 'border-border/40 opacity-60 bg-surface/20'
-                        : 'border-border/70 bg-surface/40'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-semibold text-text">
-                          {isRename ? `Renamed ${oldPath} → ${newPath}` : actionType}
-                        </p>
-                        <p className="text-[11px] text-text-muted mt-0.5">
-                          {created ? new Date(created).toLocaleString() : '—'} ·{' '}
-                          {undone ? (
-                            <span className="text-warning font-medium">Reverted / Undone</span>
-                          ) : (
-                            <span className="text-success font-medium">Active</span>
-                          )}
-                        </p>
-                      </div>
-
-                      {!undone && (
-                        <button
-                          type="button"
-                          disabled={undoBusyId === act.id}
-                          onClick={() =>
-                            setConfirmDialog({ kind: 'undo-action', actionId: act.id })
-                          }
-                          className="btn-secondary text-xs px-2.5 py-1"
-                        >
-                          {undoBusyId === act.id ? 'Undoing...' : 'Undo Action'}
-                        </button>
                       )}
-                    </div>
-
-                    {isRename && (
-                      <div className="mt-3 pt-3 border-t border-border/40">
-                        <DiffViewer oldText={oldPath as string} newText={newPath as string} />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                    </>
+                  }
+                  fallbackAction={
+                    blobUrl ? (
+                      <a
+                        href={blobUrl}
+                        download={fileName}
+                        aria-label={`Download ${fileName}`}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium bg-action text-action-fg hover:bg-action-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                      >
+                        <DownloadIcon size={16} />
+                        Download File ({fileName})
+                      </a>
+                    ) : undefined
+                  }
+                />
+              </Panel>
             </div>
           )}
-        </div>
-      )}
 
-      {/* Tab 6: Access & Sharing */}
-      {activeTab === 'sharing' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 rounded-xl border border-border/70 bg-surface/50">
-            <div>
-              <h3 className="text-sm font-semibold text-text">Workspace Access Controls</h3>
-              <p className="text-xs text-text-muted mt-0.5">
-                Share this file across distinct organizational tenants with time-bound cryptographic
-                permissions.
-              </p>
-            </div>
+          {tabId === 'audit' && (
+            <DocumentAuditPanel documentId={documentId} workspaceId={workspaceId} />
+          )}
 
-            <button
-              type="button"
-              onClick={() => setShareDialogOpen(true)}
-              className="btn-primary text-xs px-3.5 py-2 flex items-center gap-1.5"
-            >
-              <span>+ Share Access</span>
-            </button>
-          </div>
+          {tabId === 'compare' && (
+            <DocumentCompareView
+              documentId={documentId}
+              workspaceId={workspaceId}
+              versions={versions}
+            />
+          )}
 
-          {sharesLoading ? (
-            <div className="py-12 flex justify-center">
-              <LoadingSpinner size="md" text="Loading active shares..." />
-            </div>
-          ) : shares.length === 0 ? (
-            <div className="p-8 text-center text-xs text-text-muted border border-dashed border-border/60 rounded-xl">
-              This document is private to workspace <span className="font-mono">{workspaceId}</span>
-              .
-            </div>
-          ) : (
-            <div className="divide-y divide-border/40 rounded-xl border border-border/70 overflow-hidden bg-surface/30">
-              {shares.map((sh) => {
-                const targetWs = sh.targetWorkspaceId ?? sh.target_workspace_id;
-                const perm = sh.permission;
-                const exp = sh.expiresAt ?? sh.expires_at;
-
-                return (
-                  <div key={sh.id} className="p-4 flex items-center justify-between gap-3 text-xs">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-medium text-text">{targetWs}</span>
-                        <span className="px-2 py-0.5 rounded text-[10px] uppercase font-semibold bg-primary/10 text-primary border border-primary/20">
-                          {perm}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-text-dim">
-                        {exp ? `Expires ${new Date(exp).toLocaleString()}` : 'Indefinite Access'}
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => void handleShareRevoke(sh.id)}
-                      className="px-2.5 py-1 text-xs text-error hover:bg-error/10 border border-error/20 rounded transition-colors"
-                    >
-                      Revoke
-                    </button>
+          {tabId === 'revisions' && (
+            <div className="space-y-4">
+              <Panel padding="sm">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-sm font-semibold text-text">Document Revisions</h2>
+                    <p className="text-xs text-text-muted mt-0.5">
+                      Every update creates an immutable revision record with a SHA256 checksum and
+                      instant rollback. Revisions are capped at {UPLOAD_SIZE_LIMIT} per file.
+                    </p>
                   </div>
-                );
-              })}
+
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    loading={versionBusy}
+                    onClick={() => versionFileInputRef.current?.click()}
+                  >
+                    {!versionBusy && <FileTextIcon size={14} />}
+                    {versionBusy ? 'Uploading' : 'Upload Revision'}
+                  </Button>
+                  <label htmlFor="document-version-upload" className="sr-only">
+                    Upload a new revision of {fileName}
+                  </label>
+                  <input
+                    id="document-version-upload"
+                    ref={versionFileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => void handleUploadVersion(e)}
+                  />
+                </div>
+              </Panel>
+
+              <LoadablePanel
+                loading={versionsLoading}
+                error={versionsError}
+                onRetry={() => void fetchVersions()}
+                label="revisions"
+              >
+                {versions.length === 0 ? (
+                  <EmptyState
+                    icon={<ClockIcon size={24} />}
+                    title="No previous revisions"
+                    description="The current file is the initial revision of this document."
+                  />
+                ) : (
+                  <DataTable<DocumentVersionResponse>
+                    columns={revisionColumns}
+                    data={versions}
+                    keyExtractor={(row) => row.id}
+                    emptyMessage="No revisions to show"
+                    loading={false}
+                    skeletonRows={3}
+                  />
+                )}
+              </LoadablePanel>
             </div>
           )}
-        </div>
-      )}
+
+          {tabId === 'history' && (
+            <div className="space-y-4">
+              <Panel padding="sm">
+                <h2 className="text-sm font-semibold text-text">
+                  Audit Trail &amp; Action History
+                </h2>
+                <p className="text-xs text-text-muted mt-0.5">
+                  Reversible forensic log of modifications, renames, and workspace archival events.
+                </p>
+              </Panel>
+
+              <LoadablePanel
+                loading={historyLoading}
+                error={historyError}
+                onRetry={() => void fetchActions()}
+                label="activity history"
+              >
+                {actions.length === 0 ? (
+                  <EmptyState
+                    icon={<ClockIcon size={24} />}
+                    title="No recorded changes"
+                    description="Nothing has been modified, renamed or archived on this document."
+                  />
+                ) : (
+                  <div className="space-y-3">
+                    {actions.map((act) => {
+                      const oldPath = act.oldPath;
+                      const newPath = act.newPath;
+                      const undone = Boolean(act.undoneAt);
+                      const isRename = act.actionType === 'document_rename' && oldPath && newPath;
+
+                      return (
+                        <Panel key={act.id} padding="sm" className={undone ? 'opacity-60' : ''}>
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-semibold text-text">
+                                {isRename
+                                  ? `Renamed ${oldPath} to ${newPath}`
+                                  : act.actionType.replace(/_/g, ' ')}
+                              </p>
+                              <p className="text-[11px] text-text-muted mt-0.5">
+                                {formatDateTime(act.createdAt)}
+                                {' · '}
+                                {undone ? (
+                                  <span className="text-warning font-medium">
+                                    Reverted / Undone
+                                  </span>
+                                ) : (
+                                  <span className="text-success font-medium">Active</span>
+                                )}
+                              </p>
+                            </div>
+
+                            {!undone && (
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                loading={undoBusyId === act.id}
+                                onClick={() =>
+                                  setConfirmDialog({ kind: 'undo-action', actionId: act.id })
+                                }
+                              >
+                                Undo Action
+                              </Button>
+                            )}
+                          </div>
+
+                          {isRename && (
+                            <div className="mt-3 pt-3 border-t border-border/40">
+                              <DiffViewer oldText={oldPath} newText={newPath} />
+                            </div>
+                          )}
+                        </Panel>
+                      );
+                    })}
+                  </div>
+                )}
+              </LoadablePanel>
+            </div>
+          )}
+
+          {tabId === 'sharing' && (
+            <div className="space-y-4">
+              <Panel padding="sm">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-sm font-semibold text-text">Workspace Access Controls</h2>
+                    <p className="text-xs text-text-muted mt-0.5">
+                      Share this file across distinct organizational tenants with time-bound
+                      permissions.
+                    </p>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setShareDialogOpen(true)}
+                  >
+                    Share Access
+                  </Button>
+                </div>
+              </Panel>
+
+              <LoadablePanel
+                loading={sharesLoading}
+                error={sharesError}
+                onRetry={() => void fetchShares()}
+                label="sharing information"
+              >
+                {shares.length === 0 ? (
+                  <EmptyState
+                    icon={<FileTextIcon size={24} />}
+                    title="Not shared"
+                    description={`This document is private to workspace ${workspaceId}.`}
+                  />
+                ) : (
+                  <ul className="flex flex-col gap-3" data-testid="document-share-list">
+                    {shares.map((sh) => {
+                      const targetWs = sh.targetWorkspaceId;
+                      const perm = legacySharePermission(sh.permission);
+                      const exp = sh.expiresAt;
+
+                      return (
+                        <li key={sh.id}>
+                          <Panel padding="sm">
+                            <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono font-medium text-text">
+                                    {targetWs}
+                                  </span>
+                                  <Badge
+                                    variant={perm === 'write' ? 'primary' : 'default'}
+                                    size="sm"
+                                  >
+                                    {perm === 'write' ? 'Read & write' : 'Read only'}
+                                  </Badge>
+                                </div>
+                                <p className="text-[11px] text-text-dim">
+                                  {exp ? `Expires ${formatDateTime(exp)}` : 'Indefinite access'}
+                                  {' · granted '}
+                                  {formatDate(sh.createdAt)}
+                                </p>
+                              </div>
+
+                              <Button
+                                type="button"
+                                variant="danger"
+                                size="sm"
+                                loading={revokeBusyId === sh.id}
+                                aria-label={`Revoke ${perm === 'write' ? 'read and write' : 'read'} access for workspace ${targetWs}`}
+                                onClick={() => void handleShareRevoke(sh.id)}
+                              >
+                                Revoke
+                              </Button>
+                            </div>
+                          </Panel>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </LoadablePanel>
+            </div>
+          )}
+        </TabPanel>
+      ))}
 
       {/* Share Dialog */}
       <DocumentShareDialog
@@ -1469,4 +1389,5 @@ export function DocumentDetailView({
     </div>
   );
 }
+
 export default DocumentDetailView;

@@ -33,7 +33,7 @@ export function AchievementsCertificates({
     if (!docList?.documents || docList.documents.length === 0) return [];
 
     return docList.documents
-      .filter((doc) => !doc.deleted_at)
+      .filter((doc) => !doc.deletedAt)
       .slice(0, 6)
       .map((doc) => {
         const rawTitle =
@@ -44,7 +44,7 @@ export function AchievementsCertificates({
         const formattedTitle = rawTitle
           .replace(/[_-]/g, ' ')
           .replace(/\b\w/g, (c) => c.toUpperCase());
-        const d = doc.created_at ? new Date(doc.created_at) : new Date();
+        const d = doc.createdAt ? new Date(doc.createdAt) : new Date();
         const dateStr = d.toLocaleDateString([], { month: 'short', year: 'numeric' });
 
         return {

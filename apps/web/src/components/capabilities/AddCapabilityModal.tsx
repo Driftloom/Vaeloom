@@ -1612,7 +1612,7 @@ function EditorPanel({
           spellCheck={false}
           value={value}
           placeholder={placeholder}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => onChange(event.target.value)}
           className="font-mono text-xs leading-relaxed resize-none"
         />
       )}

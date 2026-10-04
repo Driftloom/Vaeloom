@@ -193,13 +193,26 @@ async def test_G_rejection_no_execution(client: AsyncClient):
     from temporalio.worker import Worker
     from api.temporal.workflows import ApprovalWorkflow, ApprovalWorkflowInput
     from api.temporal.queues import queue_name
-    from api.temporal.activities import execute_approved_action
+    from api.temporal.activities import execute_approved_action, record_workflow_metric
 
     async with await WorkflowEnvironment.start_time_skipping() as env:
-        async with Worker(env.client, task_queue=queue_name("approvals"), workflows=[ApprovalWorkflow], activities=[execute_approved_action]):
+        async with Worker(
+            env.client,
+            task_queue=queue_name("approvals"),
+            workflows=[ApprovalWorkflow],
+            activities=[execute_approved_action, record_workflow_metric],
+        ):
             inp = ApprovalWorkflowInput(approval_id=str(uuid.uuid4()), timeout_seconds=60)
-            handle = await env.client.start_workflow(ApprovalWorkflow.run, inp, id=f"approval:{ws_id}:{inp.approval_id}", task_queue=queue_name("approvals"))
-            await handle.signal("decision", {"decision": "REJECTED", "reason": "user rejected"})
+            handle = await env.client.start_workflow(
+                ApprovalWorkflow.run,
+                inp,
+                id=f"approval:{ws_id}:{inp.approval_id}",
+                task_queue=queue_name("approvals"),
+            )
+            await handle.signal(
+                "decision",
+                {"approval_id": inp.approval_id, "decision": "REJECTED", "reason": "user rejected"},
+            )
             res = await handle.result()
             assert res["status"] == "REJECTED"
 

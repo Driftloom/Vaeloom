@@ -13,7 +13,15 @@ from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models.schema import Document, DocumentAction, DocumentShare, DocumentVersion, Folder
+from ..models.schema import (
+    Document,
+    DocumentAction,
+    DocumentShare,
+    DocumentVersion,
+    Folder,
+    Workspace,
+    WorkspaceUser,
+)
 from .file_security_service import file_security_service
 from .storage_service import storage_service
 
@@ -50,6 +58,27 @@ ACTION_RESTORE = "document_restore"
 ACTION_VERSION_CREATE = "document_version_create"
 ACTION_VERSION_RESTORE = "document_version_restore"
 ACTION_SHARE = "document_share"
+
+# Permission values that grant write access through a share. Compared
+# case-insensitively because rows written before the Literal["read","write"]
+# contract may hold uppercase; "read_write" is a legacy alias that was
+# persisted by earlier callers and must keep resolving to write.
+SHARE_WRITE_PERMISSIONS = ("write", "admin", "read_write")
+
+
+def _live_share_predicate(db):
+    """SQL predicate matching shares that have not lapsed.
+
+    NULL ``expires_at`` means the share never expires. The comparison is done in
+    SQL (not Python) so it stays on the ``idx_document_shares_target`` index.
+    ``DocumentShare.expires_at`` is TIMESTAMPTZ on PostgreSQL and comes back
+    naive from SQLite, so the bound is normalized to match the stored frame.
+    """
+    now = datetime.now(UTC)
+    dialect = getattr(getattr(db, "bind", None), "dialect", None)
+    if getattr(dialect, "name", "") == "sqlite":
+        now = now.replace(tzinfo=None)
+    return or_(DocumentShare.expires_at.is_(None), DocumentShare.expires_at > now)
 
 
 class DocumentNotFound(Exception):
@@ -630,16 +659,18 @@ class DocumentService:
         )
         doc = result.scalar_one_or_none()
         if not doc:
-            # Check if shared with this workspace
+            # Check if shared with this workspace. Lapsed shares are excluded in the
+            # WHERE clause, so an expired grant never reaches the fallback below.
             share_stmt = select(DocumentShare).where(
                 DocumentShare.document_id == doc_id,
                 DocumentShare.target_workspace_id == w_id,
+                _live_share_predicate(db),
             )
             share = (await db.execute(share_stmt)).scalar_one_or_none()
             if share:
                 # P0-03: Share privilege escalation check
                 if required_permission in ("write", "admin"):
-                    if (share.permission or "").lower() not in ("write", "admin"):
+                    if (share.permission or "").lower() not in SHARE_WRITE_PERMISSIONS:
                         raise HTTPException(
                             status_code=403,
                             detail="Forbidden: Document share has read-only permission",
@@ -840,12 +871,21 @@ class DocumentService:
             "document_ids": deleted_ids,
         }
 
-    async def list_versions(self, document_id: str, workspace_id: str, db=None) -> list[DocumentVersion]:
+    async def list_versions(
+        self,
+        document_id: str,
+        workspace_id: str,
+        db=None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[DocumentVersion]:
         doc = await self.get_document(document_id, workspace_id, db, required_permission="read")
         stmt = (
             select(DocumentVersion)
             .where(DocumentVersion.document_id == doc.id)
             .order_by(DocumentVersion.version_number.desc())
+            .limit(max(int(limit), 1))
+            .offset(max(int(offset), 0))
         )
         result = await db.execute(stmt)
         return list(result.scalars().all())
@@ -1057,13 +1097,42 @@ class DocumentService:
         expires_at: datetime | None = None,
         db=None,
     ) -> DocumentShare:
-        doc = await self.get_document(document_id, source_workspace_id, db)
+        # Sharing propagates access, so it is a write on the source document. Requiring
+        # "write" here stops a holder of a read-only share from re-sharing it onward.
+        doc = await self.get_document(
+            document_id, source_workspace_id, db, required_permission="write"
+        )
         t_wid = uuid.UUID(str(target_workspace_id))
         s_wid = uuid.UUID(str(source_workspace_id))
         u_id = uuid.UUID(str(granted_by)) if granted_by else None
 
         if t_wid == s_wid:
             raise HTTPException(status_code=400, detail="Cannot share document with its own workspace")
+
+        # The target must be a workspace the caller actually belongs to. Without this
+        # check a share row can name any workspace UUID, including one belonging to a
+        # different tenant, and that row then satisfies the get_document share
+        # fallback for the target — granting a third party read on the document.
+        # Raised as DocumentNotFound so the endpoint cannot be used to probe which
+        # workspace IDs exist or whom they belong to.
+        target_reachable = False
+        if u_id is not None:
+            member_subquery = select(WorkspaceUser.workspace_id).where(
+                WorkspaceUser.workspace_id == t_wid,
+                WorkspaceUser.user_id == u_id,
+            )
+            target_reachable = bool(
+                (
+                    await db.execute(
+                        select(Workspace.id).where(
+                            Workspace.id == t_wid,
+                            or_(Workspace.user_id == u_id, Workspace.id.in_(member_subquery)),
+                        )
+                    )
+                ).scalar_one_or_none()
+            )
+        if not target_reachable:
+            raise DocumentNotFound(f"Target workspace {target_workspace_id} not found")
 
         # Check existing share
         exist_stmt = select(DocumentShare).where(
@@ -1100,9 +1169,32 @@ class DocumentService:
         await db.refresh(share)
         return share
 
-    async def list_shares(self, document_id: str, workspace_id: str, db=None) -> list[DocumentShare]:
+    async def list_shares(
+        self,
+        document_id: str,
+        workspace_id: str,
+        db=None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[DocumentShare]:
         doc = await self.get_document(document_id, workspace_id, db)
-        stmt = select(DocumentShare).where(DocumentShare.document_id == doc.id)
+        w_id = uuid.UUID(str(workspace_id))
+        # Only shares this workspace is an endpoint of. Returning every row for the
+        # document would disclose target workspace ids the caller has no
+        # relationship with.
+        stmt = (
+            select(DocumentShare)
+            .where(
+                DocumentShare.document_id == doc.id,
+                or_(
+                    DocumentShare.source_workspace_id == w_id,
+                    DocumentShare.target_workspace_id == w_id,
+                ),
+            )
+            .order_by(DocumentShare.created_at.desc())
+            .limit(max(int(limit), 1))
+            .offset(max(int(offset), 0))
+        )
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
@@ -1158,7 +1250,12 @@ class DocumentService:
             .order_by(DocumentAction.created_at.desc())
             .limit(50)
         )
-        return list(result.scalars().all())
+        # The row cap above is a display cap; the reported total must count every
+        # action, otherwise a doc with more than 50 actions reports total == 50.
+        count_result = await db.execute(
+            select(func.count(DocumentAction.id)).where(DocumentAction.document_id == doc.id)
+        )
+        return list(result.scalars().all()), count_result.scalar_one()
 
     async def undo_action(self, action_id: str, workspace_id: str, db=None):
         try:

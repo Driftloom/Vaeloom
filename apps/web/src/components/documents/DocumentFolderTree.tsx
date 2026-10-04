@@ -1,18 +1,19 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Modal,
   Button,
   Input,
-  Badge,
   Skeleton,
+  EmptyState,
+  Alert,
+  IconButton,
   PlusIcon,
   TrashIcon,
   ChevronRightIcon,
   ChevronDownIcon,
   FileTextIcon,
-  AlertCircleIcon,
 } from '@vaeloom/ui-kit';
 import {
   documentApi,
@@ -34,6 +35,35 @@ export interface DocumentFolderTreeProps {
   onFolderDeleted?: (folderId: string) => void;
   className?: string;
 }
+
+/**
+ * Visible keyboard indicator for the custom row buttons.
+ *
+ * `focus-visible` (not `focus`) is deliberate and matches `Button`/`IconButton`
+ * in the ui-kit: the global `:focus-visible` outline in globals.css is the
+ * keyboard indicator, and a bare `focus:` ring duplicated it on every mouse
+ * click.
+ */
+const ROW_FOCUS =
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-surface-100';
+
+/**
+ * Per-row action container.
+ *
+ * Previously `hidden group-hover:flex`, which is an ACCESSIBILITY FAILURE and not
+ * merely a cosmetic one: `display:none` removes the buttons from the tab order
+ * and from the accessibility tree, so `focus-within` could never fire because
+ * focus could never land inside. Opacity is used instead — it keeps the buttons
+ * focusable and exposed while making them invisible, and `focus-within` reveals
+ * them the moment keyboard focus enters. `pointer-events-none` stops the
+ * invisible strip from swallowing clicks meant for the row behind it.
+ */
+const ACTIONS_VISIBILITY =
+  'flex items-center gap-0.5 shrink-0 ml-1 opacity-0 transition-opacity pointer-events-none ' +
+  'group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto';
+
+/** Fixed-width spacer so leaf rows stay aligned with rows that have a chevron. */
+const CHEVRON_SPACER = 'w-7 shrink-0';
 
 const FolderIcon: React.FC<{ size?: number; className?: string; open?: boolean }> = ({
   size = 16,
@@ -62,6 +92,23 @@ const FolderIcon: React.FC<{ size?: number; className?: string; open?: boolean }
     )}
   </svg>
 );
+
+/** Parameters for {@link renderFolderRow}; see the implementation for the layout. */
+interface FolderRowParams {
+  /** `null` is the synthetic "All Documents" root. */
+  rowId: string | null;
+  name: string;
+  count: number;
+  isSelected: boolean;
+  isExpanded: boolean;
+  hasChildren: boolean;
+  /** Tree depth; drives the only inline style in this file. `undefined` = no indent. */
+  indent?: number;
+  icon: React.ReactNode;
+  /** Disclosure toggle, or a spacer for leaf rows. */
+  expandControl: React.ReactNode;
+  actions: React.ReactNode;
+}
 
 export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
   workspaceId,
@@ -96,16 +143,19 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  // Scoped to the <nav> so ArrowUp/ArrowDown only ever walk folder rows.
+  const navRef = useRef<HTMLElement>(null);
+
   // Count documents per folder
   const docCountByFolder = useMemo(() => {
     const counts: Record<string, number> = { root: 0 };
     if (!documents) return counts;
 
     for (const doc of documents) {
-      if (!doc.folder_id) {
+      if (!doc.folderId) {
         counts['root'] = (counts['root'] ?? 0) + 1;
       } else {
-        const fId = String(doc.folder_id);
+        const fId = String(doc.folderId);
         counts[fId] = (counts[fId] ?? 0) + 1;
       }
     }
@@ -150,7 +200,7 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
     }
   }, [initialFolders, initialFolderTree, workspaceId, refreshFolders]);
 
-  const toggleExpand = (folderId: string, e: React.MouseEvent) => {
+  const toggleExpand = (folderId: string, e: React.SyntheticEvent) => {
     e.stopPropagation();
     setExpandedFolderIds((prev) => {
       const next = new Set(prev);
@@ -163,7 +213,7 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
     });
   };
 
-  const handleOpenCreateModal = (parentId: string | null = null, e?: React.MouseEvent) => {
+  const handleOpenCreateModal = (parentId: string | null = null, e?: React.SyntheticEvent) => {
     e?.stopPropagation();
     if (onCreateFolder) {
       onCreateFolder(parentId);
@@ -201,7 +251,7 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
     }
   };
 
-  const handleDeleteTrigger = (folderId: string, name: string, e?: React.MouseEvent) => {
+  const handleDeleteTrigger = (folderId: string, name: string, e?: React.SyntheticEvent) => {
     e?.stopPropagation();
     if (onDeleteFolder) {
       onDeleteFolder(folderId, name);
@@ -210,9 +260,10 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
     setDeleteError(null);
     setDeleteTarget({
       id: folderId,
-      workspace_id: workspaceId || '',
+      workspaceId: workspaceId || '',
       name,
-      created_at: '',
+      createdAt: '',
+      updatedAt: '',
     });
   };
 
@@ -237,84 +288,176 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
     }
   };
 
+  /**
+   * Move focus to the next/previous VISIBLE row.
+   *
+   * Visibility is read from the DOM rather than recomputed from state: collapsed
+   * children are not rendered at all, so `querySelectorAll` in document order is
+   * by construction the list of rows a sighted user can see. Recomputing the
+   * flattened tree in state would be a second source of truth that could drift
+   * from what actually rendered.
+   */
+  const moveRowFocus = useCallback((from: HTMLButtonElement, delta: 1 | -1) => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const rows = Array.from(nav.querySelectorAll<HTMLButtonElement>('[data-folder-row]'));
+    const index = rows.indexOf(from);
+    if (index === -1) return;
+    rows[index + delta]?.focus();
+  }, []);
+
+  const handleRowKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLButtonElement>, folderId: string | null) => {
+      if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+        // A native <button> already activates on Enter/Space, so this handler is
+        // only here to make the activation explicit and testable.
+        // `preventDefault` suppresses the synthesized click, so `onSelectFolder`
+        // fires exactly once per key press instead of twice.
+        event.preventDefault();
+        onSelectFolder(folderId);
+        return;
+      }
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        // Without this the whole page scrolls under a keyboard user who is
+        // arrowing through the tree.
+        event.preventDefault();
+        moveRowFocus(event.currentTarget, event.key === 'ArrowDown' ? 1 : -1);
+      }
+    },
+    [moveRowFocus, onSelectFolder],
+  );
+
+  /**
+   * One selectable folder row.
+   *
+   * The row is a real `<button>` rather than a `<div onClick>`: it is in the tab
+   * order, exposes button semantics to assistive tech, and fires on Enter/Space
+   * natively. The per-row action buttons are SIBLINGS of that button, not
+   * children — nested interactive content inside a `<button>` is invalid HTML and
+   * screen readers flatten it into a single unreadable control.
+   */
+  const renderFolderRow = ({
+    rowId,
+    name,
+    count,
+    isSelected,
+    isExpanded,
+    hasChildren,
+    indent,
+    icon,
+    expandControl,
+    actions,
+  }: FolderRowParams): React.ReactElement => {
+    const accessibleName = count > 0 ? `${name}, ${count} document${count === 1 ? '' : 's'}` : name;
+
+    return (
+      <div
+        className="group flex items-center rounded-lg text-xs font-medium transition-colors"
+        style={indent === undefined ? undefined : { paddingLeft: `${indent * 12 + 4}px` }}
+      >
+        {expandControl}
+        <button
+          type="button"
+          data-folder-row=""
+          data-folder-id={rowId ?? 'root'}
+          aria-current={isSelected ? 'true' : undefined}
+          aria-expanded={hasChildren ? isExpanded : undefined}
+          aria-label={accessibleName}
+          onClick={() => onSelectFolder(rowId)}
+          onKeyDown={(e) => handleRowKeyDown(e, rowId)}
+          className={`flex items-center justify-between gap-1.5 flex-1 min-w-0 py-1.5 pl-1.5 pr-2 rounded-lg border text-left ${ROW_FOCUS} ${
+            isSelected
+              ? 'bg-action/10 text-action border-action/30'
+              : 'border-transparent text-text-muted hover:text-text hover:bg-surface-hover'
+          }`}
+        >
+          <span className="flex items-center gap-1.5 min-w-0">
+            {icon}
+            <span className="truncate">{name}</span>
+          </span>
+          {count > 0 && (
+            <span
+              className={`px-1.5 py-0.2 rounded-full text-[10px] tabular-nums font-semibold shrink-0 ${
+                isSelected ? 'bg-action/20 text-action' : 'bg-surface-200 text-text-muted'
+              }`}
+            >
+              {count}
+            </span>
+          )}
+        </button>
+        <div className={ACTIONS_VISIBILITY}>{actions}</div>
+      </div>
+    );
+  };
+
   // Helper to render tree nodes recursively
-  const renderTreeItem = (item: FolderTreeItem, depth = 0) => {
+  const renderTreeItem = (item: FolderTreeItem, depth = 0): React.ReactElement => {
     const isSelected = selectedFolderId === item.id;
-    const hasChildren = item.children && item.children.length > 0;
+    const hasChildren = Boolean(item.children && item.children.length > 0);
     const isExpanded = expandedFolderIds.has(item.id);
     const count = docCountByFolder[item.id] ?? 0;
 
     return (
       <div key={item.id} className="space-y-0.5 select-none">
-        <div
-          onClick={() => onSelectFolder(item.id)}
-          style={{ paddingLeft: `${depth * 12 + 8}px` }}
-          className={`group flex items-center justify-between py-1.5 pr-2 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
-            isSelected
-              ? 'bg-action/10 text-action border border-action/30'
-              : 'text-text-muted hover:text-text hover:bg-surface-hover'
-          }`}
-        >
-          <div className="flex items-center gap-1.5 min-w-0">
-            {hasChildren ? (
-              <button
-                type="button"
-                onClick={(e) => toggleExpand(item.id, e)}
-                className="p-0.5 rounded hover:bg-surface-200 text-text-muted hover:text-text shrink-0"
-                aria-label={isExpanded ? 'Collapse folder' : 'Expand folder'}
-              >
-                {isExpanded ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />}
-              </button>
-            ) : (
-              <span className="w-3.5 shrink-0" />
-            )}
-
+        {renderFolderRow({
+          rowId: item.id,
+          name: item.name,
+          count,
+          isSelected,
+          isExpanded,
+          hasChildren,
+          indent: depth,
+          icon: (
             <FolderIcon
               size={15}
               open={isExpanded}
-              className={`shrink-0 ${isSelected ? 'text-action' : 'text-text-muted group-hover:text-text'}`}
+              className={`shrink-0 ${isSelected ? 'text-action' : 'text-text-muted'}`}
             />
-
-            <span className="truncate">{item.name}</span>
-          </div>
-
-          <div className="flex items-center gap-1 shrink-0">
-            {count > 0 && (
-              <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] tabular-nums font-semibold ${
-                  isSelected ? 'bg-action/20 text-action' : 'bg-surface-200 text-text-muted'
-                }`}
-              >
-                {count}
-              </span>
-            )}
-
-            {/* Quick action buttons on hover */}
-            <div className="hidden group-hover:flex items-center gap-0.5 ml-1">
-              <button
-                type="button"
-                onClick={(e) => handleOpenCreateModal(item.id, e)}
-                className="p-1 rounded text-text-muted hover:text-action hover:bg-surface-200"
+          ),
+          expandControl: hasChildren ? (
+            <IconButton
+              variant="ghost"
+              size="sm"
+              className="shrink-0"
+              aria-expanded={isExpanded}
+              aria-label={
+                isExpanded ? `Collapse folder ${item.name}` : `Expand folder ${item.name}`
+              }
+              onClick={(e) => toggleExpand(item.id, e)}
+            >
+              {isExpanded ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />}
+            </IconButton>
+          ) : (
+            <span className={CHEVRON_SPACER} aria-hidden="true" />
+          ),
+          actions: (
+            <>
+              <IconButton
+                variant="ghost"
+                size="sm"
+                className="shrink-0"
+                aria-label={`Add subfolder to ${item.name}`}
                 title="Add subfolder"
-                aria-label="Add subfolder"
+                onClick={(e) => handleOpenCreateModal(item.id, e)}
               >
                 <PlusIcon size={12} />
-              </button>
-              <button
-                type="button"
-                onClick={(e) => handleDeleteTrigger(item.id, item.name, e)}
-                className="p-1 rounded text-text-muted hover:text-error hover:bg-error/10"
+              </IconButton>
+              <IconButton
+                variant="ghost"
+                size="sm"
+                className="shrink-0 text-text-muted hover:text-error hover:bg-error/10"
+                aria-label={`Delete folder ${item.name}`}
                 title="Delete folder"
-                aria-label="Delete folder"
+                onClick={(e) => handleDeleteTrigger(item.id, item.name, e)}
               >
                 <TrashIcon size={12} />
-              </button>
-            </div>
-          </div>
-        </div>
+              </IconButton>
+            </>
+          ),
+        })}
 
         {hasChildren && isExpanded && (
-          <div className="space-y-0.5" role="group">
+          <div className="space-y-0.5" role="group" aria-label={`Contents of folder ${item.name}`}>
             {item.children.map((child) => renderTreeItem(child, depth + 1))}
           </div>
         )}
@@ -323,7 +466,7 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
   };
 
   return (
-    <div className={`space-y-4 ${className}`} role="region" aria-label="Folders Navigation">
+    <div className={`space-y-4 ${className}`}>
       {/* Top Header */}
       <div className="flex items-center justify-between px-1">
         <span className="text-xs font-semibold text-text uppercase tracking-wider">Folders</span>
@@ -340,46 +483,38 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
       </div>
 
       {error && (
-        <div className="p-2.5 rounded-lg bg-error/10 border border-error/20 text-xs text-error flex items-start gap-2">
-          <AlertCircleIcon size={14} className="shrink-0 mt-0.5" />
-          <span>{error}</span>
-        </div>
+        <Alert
+          variant="danger"
+          description={`Could not load folders. ${error}`}
+          className="text-xs"
+        />
       )}
 
       {/* Navigation Tree */}
-      <nav className="space-y-0.5" aria-label="Folders">
+      <nav ref={navRef} className="space-y-0.5" aria-label="Folders">
         {/* All / Root Folder Selection */}
-        <div
-          onClick={() => onSelectFolder(null)}
-          className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
-            selectedFolderId === null
-              ? 'bg-action/10 text-action border border-action/30'
-              : 'text-text-muted hover:text-text hover:bg-surface-hover'
-          }`}
-        >
-          <div className="flex items-center gap-2 truncate">
+        {renderFolderRow({
+          rowId: null,
+          name: 'All Documents',
+          count: totalWorkspaceDocs,
+          isSelected: selectedFolderId === null,
+          isExpanded: false,
+          hasChildren: false,
+          indent: 0,
+          icon: (
             <FileTextIcon
               size={15}
               className={selectedFolderId === null ? 'text-action' : 'text-text-muted'}
             />
-            <span className="truncate">All Documents</span>
-          </div>
-          {totalWorkspaceDocs > 0 && (
-            <span
-              className={`px-1.5 py-0.2 rounded-full text-[10px] tabular-nums font-semibold ${
-                selectedFolderId === null
-                  ? 'bg-action/20 text-action'
-                  : 'bg-surface-200 text-text-muted'
-              }`}
-            >
-              {totalWorkspaceDocs}
-            </span>
-          )}
-        </div>
+          ),
+          expandControl: <span className={CHEVRON_SPACER} aria-hidden="true" />,
+          actions: <></>,
+        })}
 
         {/* Loading state skeleton */}
         {loading && (
-          <div className="space-y-1.5 py-2 px-2">
+          <div className="space-y-1.5 py-2 px-2" role="status" aria-live="polite" aria-busy="true">
+            <span className="sr-only">Loading folders…</span>
             <Skeleton className="w-full h-6 rounded-md" />
             <Skeleton className="w-4/5 h-6 rounded-md ml-3" />
             <Skeleton className="w-3/4 h-6 rounded-md" />
@@ -396,62 +531,52 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
         {/* Fallback flat list if tree is empty but flat folders exist */}
         {!loading && folderTree.length === 0 && folders.length > 0 && (
           <div className="space-y-0.5 pt-1">
-            {folders.map((folder) => {
-              const isSelected = selectedFolderId === folder.id;
-              const count = docCountByFolder[folder.id] ?? 0;
-              return (
-                <div
-                  key={folder.id}
-                  onClick={() => onSelectFolder(folder.id)}
-                  className={`group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
-                    isSelected
-                      ? 'bg-action/10 text-action border border-action/30'
-                      : 'text-text-muted hover:text-text hover:bg-surface-hover'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 truncate">
+            {folders.map((folder) => (
+              <React.Fragment key={folder.id}>
+                {renderFolderRow({
+                  rowId: folder.id,
+                  name: folder.name,
+                  count: docCountByFolder[folder.id] ?? 0,
+                  isSelected: selectedFolderId === folder.id,
+                  isExpanded: false,
+                  hasChildren: false,
+                  icon: (
                     <FolderIcon
                       size={15}
-                      className={
-                        isSelected ? 'text-action' : 'text-text-muted group-hover:text-text'
-                      }
+                      className={selectedFolderId === folder.id ? 'text-action' : 'text-text-muted'}
                     />
-                    <span className="truncate">{folder.name}</span>
-                  </div>
-
-                  <div className="flex items-center gap-1 shrink-0">
-                    {count > 0 && (
-                      <span className="px-1.5 py-0.2 rounded-full text-[10px] tabular-nums bg-surface-200 text-text-muted font-semibold">
-                        {count}
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={(e) => handleDeleteTrigger(folder.id, folder.name, e)}
-                      className="hidden group-hover:inline-block p-1 rounded text-text-muted hover:text-error hover:bg-error/10"
+                  ),
+                  expandControl: <span className={CHEVRON_SPACER} aria-hidden="true" />,
+                  actions: (
+                    <IconButton
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0 text-text-muted hover:text-error hover:bg-error/10"
+                      aria-label={`Delete folder ${folder.name}`}
                       title="Delete folder"
+                      onClick={(e) => handleDeleteTrigger(folder.id, folder.name, e)}
                     >
                       <TrashIcon size={12} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                    </IconButton>
+                  ),
+                })}
+              </React.Fragment>
+            ))}
           </div>
         )}
 
         {/* Empty state when no folders exist */}
-        {!loading && folders.length === 0 && (
-          <div className="py-4 px-2 text-center text-xs text-text-muted">
-            <p>No folders created yet.</p>
-            <button
-              type="button"
-              onClick={() => handleOpenCreateModal(null)}
-              className="text-action hover:underline mt-1 inline-block"
-            >
-              Create your first folder
-            </button>
-          </div>
+        {!loading && folders.length === 0 && folderTree.length === 0 && (
+          <EmptyState
+            icon={<FileTextIcon size={24} />}
+            title="No folders yet"
+            description="Folders group documents so you can browse and filter them. Create your first folder to get started."
+            action={{
+              label: 'Create your first folder',
+              onClick: () => handleOpenCreateModal(null),
+            }}
+            className="py-6 px-4"
+          />
         )}
       </nav>
 
@@ -510,11 +635,7 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
             inside will remain in your workspace and revert to the root level.
           </p>
 
-          {deleteError && (
-            <p className="text-xs text-error bg-error/10 p-2 rounded border border-error/20">
-              {deleteError}
-            </p>
-          )}
+          {deleteError && <Alert variant="danger" description={deleteError} />}
 
           <div className="flex justify-end gap-2 pt-2">
             <Button

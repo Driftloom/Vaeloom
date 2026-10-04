@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -116,8 +116,10 @@ class DocumentVersionResponse(BaseModel):
 # Share Schemas
 class DocumentShareCreate(BaseModel):
     target_workspace_id: uuid.UUID
-    permission: str = Field("read", description="Permission level: read, edit")
-    expires_at: datetime | None = None
+    permission: Literal["read", "write"] = Field(
+        "read", description="Access granted to the target workspace: read (view only) or write (mutate)"
+    )
+    expires_at: datetime | None = Field(None, description="UTC expiry; null means the share never expires")
 
 
 class DocumentShareResponse(BaseModel):
@@ -144,7 +146,7 @@ class BulkUploadResponse(BaseModel):
 
 
 class BulkDownloadRequest(BaseModel):
-    document_ids: list[uuid.UUID]
+    document_ids: list[uuid.UUID] = Field(..., min_length=1, max_length=100)
 
 
 # Audit & Compare Schemas
@@ -208,7 +210,7 @@ class DocumentSyncMemoryResponse(BaseModel):
 
 
 class BulkSyncMemoryRequest(BaseModel):
-    document_ids: list[uuid.UUID] = Field(..., min_length=1)
+    document_ids: list[uuid.UUID] = Field(..., min_length=1, max_length=100)
 
 
 class BulkSyncMemoryResponse(BaseModel):

@@ -20,6 +20,7 @@ jobs:
   lint-typecheck:
     name: Lint & TypeCheck
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
@@ -49,6 +50,7 @@ jobs:
   test:
     name: Test (with coverage)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
@@ -76,6 +78,7 @@ jobs:
   python-checks:
     name: Python Lint & Type Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
@@ -86,6 +89,7 @@ jobs:
             apps/api/pyproject.toml
             packages/python-common/pyproject.toml
       - run: pip install ruff mypy -e packages/python-common
+        name: Install Python dependencies
       - name: Architecture Verification
         run: python scripts/verify_architecture.py
       - run: ruff check apps/api/src packages/python-common/src
@@ -94,6 +98,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [lint-typecheck, test, python-checks]
     steps:
       - uses: actions/checkout@v7
@@ -123,6 +128,7 @@ jobs:
   docker-build:
     name: Docker Build
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [build]
     strategy:
       matrix:

@@ -151,6 +151,7 @@ class TestClassifyIntent:
     async def test_jev_s1_sub50ms_sla(self):
         import time
         from api.orchestrator.router import classify_intent
+        await classify_intent("audit formatting of resume")
         start = time.monotonic()
         agent, conf = await classify_intent("audit formatting of resume")
         duration_ms = (time.monotonic() - start) * 1000

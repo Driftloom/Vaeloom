@@ -59,10 +59,10 @@ CATEGORY_AGENT_MAP = {
 CATEGORY_KEYWORDS = {
     "document_organization": ["organize", "file", "rename", "folder", "categorize", "duplicate", "move", "workspace", "sprawl", "hierarchy", "pdf", "synthesize", "citation"],
     "career_resume": ["resume", "cv", "bullet", "achievement", "ats", "score", "tailor"],
-    "job_search": ["job", "search", "apply", "application", "internship", "fellowship", "co-op", "career", "role", "position"],
+    "job_search": ["job", "job search", "apply", "application", "internship", "fellowship", "co-op", "career", "role", "position"],
     "communication": ["email", "gmail", "inbox", "draft", "reply", "mail"],
     "schedule_time": ["schedule", "deadline", "calendar", "reminder", "conflict", "event", "meeting", "availability", "slot"],
-    "memory_extraction": ["extract", "memory", "entity", "knowledge", "graph", "remember", "vault", "obsidian", "second brain", "notes", "sync vault"],
+    "memory_extraction": ["extract", "memory", "entity", "knowledge", "graph", "remember", "vault", "obsidian", "notes", "sync vault"],
     "planning_research": ["plan", "planning", "roadmap", "research", "strategy", "milestone", "goal", "research"],
     "career_development": ["career", "path", "skill", "course", "learn", "training", "certification"],
     "research_github": ["company", "industry", "trend", "github", "repository", "profile"],
@@ -282,24 +282,8 @@ async def route_intent_and_plan(message: str, workspace_id: str | None = None) -
 
 
 async def classify_intent(message: str, workspace_id: str | None = None) -> tuple[str, float]:
-    """Authoritative semantic intent classification via the zero-trust 6-layer RoutingEngine.
-
-    Combines TypeSafe AI Jev System 1 with Gemma / LLM System 2.
-    Falls back to legacy heuristic scoring if cognitive engine is offline.
-    """
+    """Authoritative deterministic intent classification via keyword heuristics and capability scoring."""
     clean_message = message.split("\n\n[")[0].strip() if "\n\n[" in message else message
-    # ── Primary: Zero-Trust 6-Layer Cognitive Routing Engine ─────────
-    try:
-        from .routing import routing_engine
-        env, plan = await routing_engine.route(
-            query=clean_message,
-            workspace_id=workspace_id or "00000000-0000-0000-0000-000000000001",
-        )
-        if env and env.selected_agent:
-            return env.selected_agent, env.confidence
-    except Exception as exc:
-        logger.debug(f"ROUTER_ENGINE: routing_engine fallback to legacy heuristics: {exc}")
-
     msg_lower = clean_message.lower()
 
     # ── Stage 0: Conversational greeting / small-talk fast-path ──────────────
@@ -345,45 +329,134 @@ async def classify_intent(message: str, workspace_id: str | None = None) -> tupl
         logger.info(f"ROUTER_DISTRESS: query='{message[:50]}' -> conversation (emotional containment fast-path)")
         return "conversation", 0.95
 
-    # ── Stage 1: Dynamic Capability Resolution via Capability Registry ─────────
+    # ── Stage 1: Coarse category — collect all scores ─────────────────────────
+    scores: dict[str, int] = {}
+    for category, keywords in CATEGORY_KEYWORDS.items():
+        scores[category] = sum(1 for kw in keywords if kw in msg_lower)
+
+    best_score = max(scores.values()) if scores else 0
+    if best_score == 0:
+        # Check LLM before default memory fallback
+        llm_match = await _llm_classify_intent(message)
+        if llm_match:
+            logger.info(f"ROUTER_LLM_CLASSIFY: query='{message[:50]}' fallback -> {llm_match[0]} ({llm_match[1]:.2f})")
+            return llm_match
+        return "memory", 0.5  # Strict negative control: nonsense / empty must fallback to memory
+
+    # Gather all categories tied at best_score and break tie via disambiguation strength
+    tied = [cat for cat, sc in scores.items() if sc == best_score]
+    if len(tied) == 1:
+        best_category = tied[0]
+    else:
+        # Secondary: count of stage-2 disambiguator hits inside tied categories
+        def _secondary(cat: str) -> int:
+            if cat == "career_resume":
+                return sum(1 for kw in ["score", "ats", "gap", "keyword"] if kw in msg_lower) + sum(1 for kw in ["resume", "cv", "bullet"] if kw in msg_lower)
+            if cat == "job_search":
+                return sum(1 for kw in ["apply", "application", "submit", "cover letter"] if kw in msg_lower)
+            if cat == "career_development":
+                return sum(1 for kw in ["course", "learn", "training", "certification", "study"] if kw in msg_lower)
+            if cat == "research_github":
+                return sum(1 for kw in ["github", "repository", "repo", "profile"] if kw in msg_lower)
+            if cat == "planning_research":
+                return sum(1 for kw in ["plan", "roadmap", "milestone", "goal", "strategy"] if kw in msg_lower)
+            if cat == "reminders_analytics":
+                return sum(1 for kw in ["deadline", "remind", "follow up", "task", "todo"] if kw in msg_lower)
+            if cat == "integrations":
+                return sum(1 for kw in ["connector", "integration", "connect", "setup", "configure"] if kw in msg_lower)
+            return 0
+        tied_sorted = sorted(tied, key=lambda c: _secondary(c), reverse=True)
+        # Muse §7: capability-aware tie-break. When disambiguation strength
+        # also ties, prefer the category whose agent scores higher on
+        # capability/availability/cost — never by dictionary order alone.
+        try:
+            _top_secs = sorted({_secondary(c) for c in tied_sorted}, reverse=True)
+            if len(_top_secs) > 1 and _top_secs[0] == _top_secs[1]:
+                _tied_cats = [c for c in tied_sorted if _secondary(c) == _top_secs[0]]
+                _cands: list[str] = []
+                for _c in _tied_cats:
+                    _cands.extend(CATEGORY_AGENT_MAP.get(_c, []))
+                _ranked = score_agent_candidates(message, sorted(set(_cands)))
+                if _ranked:
+                    _by_agent = {r["agent"]: r["score"] for r in _ranked}
+                    _cat_score = {c: max([_by_agent.get(a, 0.0) for a in CATEGORY_AGENT_MAP.get(c, [])] or [0.0]) for c in _tied_cats}
+                    _best_cat = max(_tied_cats, key=lambda c: (_cat_score[c], -_tied_cats.index(c)))
+                    if _cat_score[_best_cat] > 0:
+                        tied_sorted = sorted(tied_sorted, key=lambda c: (c != _best_cat, tied_sorted.index(c)))
+        except Exception:
+            pass
+        best_category = tied_sorted[0]
+
+    confidence = min(best_score / 3.0, 1.0)
+    if best_score == 2 and confidence < 0.75:
+        if len(tied) == 1 or _secondary(best_category) > 0:  # type: ignore
+            confidence = 0.8
+
+    # Stage 2: Pick specific agent within category
+    agents_in_category = CATEGORY_AGENT_MAP.get(best_category, ["memory"])
+
+    if len(agents_in_category) == 1:
+        fast_agent = agents_in_category[0]
+    elif best_category == "document_organization":
+        if any(kw in msg_lower for kw in ["pdf", "fill", "form"]):
+            fast_agent = "pdf"
+        elif any(kw in msg_lower for kw in ["synthesize", "citation", "deep", "q&a"]):
+            fast_agent = "document"
+        elif any(kw in msg_lower for kw in ["workspace", "hierarchy", "sprawl", "hygiene"]):
+            fast_agent = "workspace"
+        else:
+            fast_agent = "organization"
+    elif best_category == "career_resume":
+        fast_agent = "ats" if any(kw in msg_lower for kw in ["score", "ats", "gap", "keyword"]) else "resume"
+    elif best_category == "job_search":
+        if any(kw in msg_lower for kw in ["internship", "intern", "co-op", "fellowship"]):
+            fast_agent = "internship"
+        elif any(kw in msg_lower for kw in ["apply", "application", "submit", "cover letter"]):
+            fast_agent = "application"
+        else:
+            fast_agent = "job_search"
+    elif best_category == "schedule_time":
+        fast_agent = "calendar" if any(kw in msg_lower for kw in ["calendar", "open slot", "availability", "free time"]) else "scheduler"
+    elif best_category == "career_development":
+        fast_agent = "learning" if any(kw in msg_lower for kw in ["course", "learn", "training", "certification", "study"]) else "career"
+    elif best_category == "research_github":
+        fast_agent = "github" if any(kw in msg_lower for kw in ["github", "repository", "repo", "profile"]) else "research"
+    elif best_category == "planning_research":
+        fast_agent = "planning" if any(kw in msg_lower for kw in ["plan", "roadmap", "milestone", "goal", "strategy"]) else "research"
+    elif best_category == "reminders_analytics":
+        fast_agent = "reminder" if any(kw in msg_lower for kw in ["deadline", "remind", "follow up", "task", "todo"]) else "analytics"
+    elif best_category == "reflection":
+        fast_agent = "self_improvement" if any(kw in msg_lower for kw in ["accuracy", "critique", "benchmark", "improve prompt"]) else "reflection"
+    elif best_category == "integrations":
+        fast_agent = "connector" if any(kw in msg_lower for kw in ["connector", "integration", "connect", "setup", "configure"]) else "plugin"
+    else:
+        fast_agent = agents_in_category[0]
+
+    # If confident, return fast-path
+    if confidence >= 0.75:
+        return fast_agent, confidence
+
+    # Muse §7: capability-aware arbitration before the micro-LLM fallback.
     try:
-        from .capability_registry import capability_registry
-        candidates = capability_registry.resolve_candidate_capabilities(message, top_k=5)
-        if candidates:
-            top_cap = candidates[0]
-            top_agent = top_cap.agent_id
-
-            has_explicit_cue = any(
-                len(clean_msg) >= 3 and clean_msg in ex.lower()
-                for ex in top_cap.semantic_exemplars
-            )
-            confidence = 0.90 if has_explicit_cue else 0.85
-
-            try:
-                _arb_cands = sorted({c.agent_id for c in candidates})
-                _arb = score_agent_candidates(message, _arb_cands)
-                if _arb and _arb[0]["score"] >= 0.6:
-                    top_agent = _arb[0]["agent"]
-                    confidence = max(confidence, min(0.95, _arb[0]["score"]))
-            except Exception:
-                pass
-
-            logger.info(
-                "ROUTER_CAPABILITY_RESOLVE: query='%s' -> agent=%s cap=%s conf=%.2f",
-                message[:50], top_agent, top_cap.capability_id, confidence,
-            )
-            return top_agent, confidence
-    except Exception as exc:
-        logger.debug("ROUTER_CAPABILITY_ERROR: %s", exc)
+        _arb_cands = sorted(set(agents_in_category + [fast_agent]))
+        _arb = score_agent_candidates(message, _arb_cands)
+        if len(_arb) >= 1:
+            _second = _arb[1]["score"] if len(_arb) > 1 else 0.0
+            if _arb[0]["score"] >= 0.6 and (_arb[0]["score"] - _second) >= 0.15:
+                logger.info(f"ROUTER_SCORER: query='{message[:50]}' fast={fast_agent}({confidence:.2f}) -> scorer={_arb[0]['agent']}({_arb[0]['score']:.2f})")
+                return _arb[0]["agent"], max(confidence, min(0.85, _arb[0]["score"]))
+    except Exception:
+        pass
 
     # For ambiguous or low-confidence queries, trigger micro-LLM intent calibration
     llm_match = await _llm_classify_intent(message)
     if llm_match:
-        logger.info("ROUTER_LLM_CLASSIFY: query='%s' -> llm=%s (%.2f)", message[:50], llm_match[0], llm_match[1])
+        logger.info(f"ROUTER_LLM_CLASSIFY: query='{message[:50]}' fast={fast_agent}({confidence:.2f}) -> llm={llm_match[0]}({llm_match[1]:.2f})")
         return llm_match
 
-    # Conversational partner fallback
-    return "conversation", 0.85
+    # Log telemetry for low-confidence routes
+    logger.info(f"ROUTER_LOW_CONFIDENCE: query='{message[:50]}' agent={fast_agent} conf={confidence:.2f}")
+    return fast_agent, confidence
 
 
 
@@ -533,25 +606,35 @@ async def handle(request: UserRequest) -> dict[str, Any]:
         logger.info(f"Explicit agent override: {agent_name} (confidence={confidence})")
     else:
         try:
-            agent_name, confidence, execution_plan = await route_intent_and_plan(request.message, workspace_id=request.workspace_id)
-        except Exception:
+            agent_name, confidence = await classify_intent(request.message, workspace_id=request.workspace_id)
+        except TypeError:
             agent_name, confidence = await classify_intent(request.message)
-            execution_plan = None
         logger.info(f"Classified: agent={agent_name}, confidence={confidence}")
-
-    if execution_plan:
-        request.execution_plan = execution_plan
-
 
     # ── 1b. MVP scope lock ─────────────────────────────────────────
     if settings.mvp_scope_enforced and agent_name not in MVP_CANONICAL_AGENTS:
         return _handle_out_of_scope(agent_name, confidence)
 
-    # ── 2. Low confidence → consultative assistance ─────────────────
+    # ── 2. Low confidence → ask clarification ──────────────────────
     if confidence < 0.7:
-        logger.info(f"Low confidence ({confidence:.2f}) — routing to consultative conversation partner")
-        agent_name = "conversation"
-        confidence = 0.85
+        logger.info(f"Low confidence ({confidence}) — asking clarification")
+        return {
+            "agent_name": "orchestrator",
+            "action": "ask_clarification",
+            "confidence": confidence,
+            "result": {
+                "summary": "I'm not sure which specialist to route this to.",
+                "details": None,
+                "proposals": [],
+                "questions": [
+                    "Could you clarify what you'd like help with? "
+                    "Options: organize files, build roadmap/plan, research, build/score resume, career guidance, "
+                    "learning courses, company research, GitHub analysis, coding prep, "
+                    "reminders, analytics, recommendations, weekly reflection, "
+                    "security scan, integrations, plugins, email, schedule."
+                ],
+            },
+        }
 
 
     # ── 2b. LangGraph direct path (gated, opt-in) ────────────────────

@@ -7,6 +7,7 @@ import {
   Button,
   Progress,
   Spinner,
+  Alert,
   UploadIcon,
   CheckIcon,
   XIcon,
@@ -15,6 +16,7 @@ import {
   TrashIcon,
 } from '@vaeloom/ui-kit';
 import { documentApi, type DocumentResponse } from '@/lib/api-client';
+import { formatBytes } from '@/lib/document-format';
 
 export type UploadItemStatus =
   'queued' | 'uploading' | 'scanning' | 'clean' | 'quarantined' | 'error';
@@ -49,34 +51,41 @@ export interface DocumentUploadQueueProps {
   className?: string;
 }
 
-function formatBytes(bytes: number): string {
-  if (!bytes || bytes <= 0) return '0 B';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function getScanBadge(status: UploadItemStatus, doc?: DocumentResponse) {
+/**
+ * Status badge for one queue row.
+ *
+ * The second parameter is gone: it accepted a `DocumentResponse` that the switch
+ * never read, so every branch decided on the client-side status alone and the
+ * caller believed the document's own `scanStatus` was being consulted.
+ *
+ * The trailing glyphs (`✓ ◌ ⚠`) were bare text inside the badge and were read
+ * aloud as "check mark" / "open circle" / "warning sign" after the word they
+ * decorate. They are now `aria-hidden` and the word carries the meaning.
+ */
+function getScanBadge(status: UploadItemStatus) {
   switch (status) {
     case 'clean':
       return (
         <Badge variant="success" size="sm" className="flex items-center gap-1">
           <CheckIcon size={12} />
-          Clean ✓
+          Clean
+          <span aria-hidden="true">✓</span>
         </Badge>
       );
     case 'scanning':
       return (
         <Badge variant="warning" size="sm" className="flex items-center gap-1">
           <Spinner size="sm" className="w-3 h-3 text-warning" />
-          Scanning ◌
+          Scanning
+          <span aria-hidden="true">◌</span>
         </Badge>
       );
     case 'quarantined':
       return (
         <Badge variant="error" size="sm" className="flex items-center gap-1">
           <AlertTriangleIcon size={12} />
-          Quarantined ⚠
+          Quarantined
+          <span aria-hidden="true">⚠</span>
         </Badge>
       );
     case 'uploading':
@@ -122,6 +131,16 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
   const folderCacheRef = useRef<Map<string, string>>(new Map());
 
   const activeQueue = controlledQueue !== undefined ? controlledQueue : internalQueue;
+
+  /**
+   * Whether uploads can actually run.
+   *
+   * The worker effect below bails on a falsy `workspaceId`, so without one every
+   * queued file sat in the list for ever with a "Queued" badge and no error
+   * anywhere — a fully-functional-looking drop zone that did nothing. This flag
+   * drives both the disabled drop zone and the page-level alert.
+   */
+  const hasWorkspace = typeof workspaceId === 'string' && workspaceId.length > 0;
 
   // Accessible ARIA announcement helper
   const announce = useCallback((msg: string) => {
@@ -170,6 +189,11 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
   const enqueueFilesWithPaths = useCallback(
     async (filesWithPaths: Array<{ file: File; relativePath?: string }>) => {
       if (filesWithPaths.length === 0) return;
+      // Refuse at the door rather than queueing files the worker can never send.
+      if (!hasWorkspace) {
+        announce('Uploads are unavailable: no workspace is selected.');
+        return;
+      }
       announce(`Processing ${filesWithPaths.length} items for upload...`);
 
       const newItems: UploadQueueItem[] = [];
@@ -199,7 +223,7 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
       setInternalQueue((prev) => [...prev, ...newItems]);
       announce(`Enqueued ${newItems.length} file(s) for upload. Zero silent drops enabled.`);
     },
-    [targetFolderId, ensureFolderPath, announce],
+    [targetFolderId, ensureFolderPath, announce, hasWorkspace],
   );
 
   // Zero Silent Drops: Every file passed into enqueue is queued
@@ -207,6 +231,10 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
     (files: FileList | File[]) => {
       const fileList = Array.from(files);
       if (fileList.length === 0) return;
+      if (!hasWorkspace) {
+        announce('Uploads are unavailable: no workspace is selected.');
+        return;
+      }
 
       const newItems: UploadQueueItem[] = fileList.map((file) => ({
         id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -221,7 +249,7 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
       setInternalQueue((prev) => [...prev, ...newItems]);
       announce(`Enqueued ${newItems.length} file(s) for upload. Zero silent drops enabled.`);
     },
-    [targetFolderId, announce],
+    [targetFolderId, announce, hasWorkspace],
   );
 
   // Active queue worker: picks next queued item sequentially (when uncontrolled)
@@ -260,7 +288,7 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
           destFolderId,
         );
 
-        const scanStatus = doc.scan_status;
+        const scanStatus = doc.scanStatus;
         let finalStatus: UploadItemStatus = 'clean';
         if (scanStatus === 'MALICIOUS' || scanStatus === 'REJECTED') {
           finalStatus = 'quarantined';
@@ -478,22 +506,48 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
         {ariaAnnouncement}
       </div>
 
-      {/* Drop Zone Header */}
+      {!hasWorkspace && (
+        <Alert
+          variant="danger"
+          description="Uploads are unavailable: no workspace is selected, so files cannot be sent anywhere. Select a workspace, then upload again."
+        />
+      )}
+
+      {/* Drop Zone Header.
+          Kept as `role="region"`: the two inline buttons inside it are the real
+          accessible controls, and re-labelling the container as a button would
+          nest interactive content inside a button role. It is focusable and
+          handles Enter/Space so the large click target is keyboard-operable, and
+          `aria-disabled` announces that it will not respond without a workspace. */}
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-        className={`relative border-2 border-dashed rounded-xl p-6 sm:p-8 text-center cursor-pointer transition-all duration-200 ${
+        onClick={() => {
+          if (hasWorkspace) fileInputRef.current?.click();
+        }}
+        onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
+          if (!hasWorkspace) return;
+          if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+            e.preventDefault();
+            fileInputRef.current?.click();
+          }
+        }}
+        tabIndex={hasWorkspace ? 0 : -1}
+        aria-disabled={hasWorkspace ? undefined : true}
+        className={`relative border-2 border-dashed rounded-xl p-6 sm:p-8 text-center transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-100 ${
+          hasWorkspace ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
+        } ${
           isDragOver
             ? 'border-action bg-action/5 shadow-inner scale-[0.99]'
             : 'border-border hover:border-action/50 hover:bg-surface-100'
         }`}
         role="region"
-        aria-label="Upload files: Drag and drop files or folders here, or browse files"
+        aria-label="Upload files: Drag and drop files or folders here, or press Enter to browse files"
       >
         <div className="flex flex-col items-center justify-center space-y-2">
           <div
+            aria-hidden="true"
             className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
               isDragOver ? 'bg-action/20 text-action' : 'bg-surface-200 text-text-muted'
             }`}
@@ -503,15 +557,16 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
 
           <div>
             <p className="text-sm font-semibold text-text">
-              Drag & drop files or folders here, or{' '}
+              Drag &amp; drop files or folders here, or{' '}
               <button
                 type="button"
                 aria-label="Upload files"
+                disabled={!hasWorkspace}
                 onClick={(e) => {
                   e.stopPropagation();
                   fileInputRef.current?.click();
                 }}
-                className="text-action underline hover:text-action-hover font-semibold"
+                className="text-action underline hover:text-action-hover font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:text-text-muted disabled:no-underline disabled:cursor-not-allowed"
               >
                 browse files
               </button>{' '}
@@ -519,11 +574,12 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
               <button
                 type="button"
                 aria-label="Upload folder"
+                disabled={!hasWorkspace}
                 onClick={(e) => {
                   e.stopPropagation();
                   folderInputRef.current?.click();
                 }}
-                className="text-action underline hover:text-action-hover font-semibold"
+                className="text-action underline hover:text-action-hover font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:text-text-muted disabled:no-underline disabled:cursor-not-allowed"
               >
                 upload folder
               </button>
@@ -541,10 +597,15 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
         <div className="space-y-3 pt-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-text">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-text">
                 Upload Queue ({activeQueue.length})
-              </span>
-              {isProcessing && <Spinner size="sm" />}
+              </h3>
+              {isProcessing && (
+                <>
+                  <Spinner size="sm" />
+                  <span className="sr-only">Upload in progress</span>
+                </>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -590,7 +651,8 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
                     </span>
                     {item.folderPath && (
                       <span className="px-1.5 py-0.5 rounded bg-surface-200 text-text-muted text-[10px] font-mono shrink-0">
-                        📁 {item.folderPath}
+                        {/* Decorative glyph; the path itself is the content. */}
+                        <span aria-hidden="true">📁</span> {item.folderPath}
                       </span>
                     )}
                     <span className="text-text-muted tabular-nums shrink-0">
@@ -599,13 +661,13 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    {getScanBadge(item.status, item.doc)}
+                    {getScanBadge(item.status)}
 
                     {item.status !== 'uploading' && (
                       <button
                         type="button"
                         onClick={(e) => handleRemoveItem(item.id, e)}
-                        className="p-1 rounded text-text-muted hover:text-error hover:bg-error/10 transition-colors"
+                        className="p-1 rounded text-text-muted hover:text-error hover:bg-error/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-surface-100"
                         title="Remove from queue"
                         aria-label={`Remove ${item.name} from queue`}
                       >
@@ -615,20 +677,35 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
                   </div>
                 </div>
 
-                {/* Progress bar during upload */}
+                {/*
+                  Progress bar during upload.
+                  The old markup rendered an UNLABELLED `Progress` (so its
+                  accessible name was the literal string "Progress") plus a visible
+                  "{n}%" twin, which meant a screen reader announced the same
+                  number twice: once from aria-valuenow and once from the sibling
+                  span. Passing a per-file `label` gives the bar a distinct name,
+                  and the twin is `aria-hidden` because the bar already announces
+                  the value. "Uploading to S3 object store..." is folded into the
+                  label rather than kept as a second, separately-read sentence.
+                */}
                 {item.status === 'uploading' && (
                   <div className="space-y-1">
-                    <Progress value={item.progress} max={100} size="sm" variant="primary" />
-                    <div className="flex justify-between text-[11px] text-text-muted">
-                      <span>Uploading to S3 object store...</span>
-                      <span className="tabular-nums">{item.progress}%</span>
-                    </div>
+                    <Progress
+                      value={item.progress}
+                      max={100}
+                      size="sm"
+                      variant="primary"
+                      label={`Uploading ${item.name} to the S3 object store`}
+                    />
                   </div>
                 )}
 
                 {/* Error message */}
                 {item.status === 'error' && item.error && (
-                  <p className="text-[11px] text-error bg-error/10 p-1.5 rounded border border-error/20">
+                  <p
+                    role="alert"
+                    className="text-[11px] text-error bg-error/10 p-1.5 rounded border border-error/20"
+                  >
                     {item.error}
                   </p>
                 )}

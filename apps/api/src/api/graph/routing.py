@@ -19,15 +19,15 @@ except Exception:  # pragma: no cover
 
 try:
     from ..orchestrator.supervisor import (  # type: ignore
-        PARALLEL_SAFE,
-        SEQUENTIAL_CHAINS,
         _build_dag,
         _detect_subtasks,
     )
+    PARALLEL_SAFE = set()
+    SEQUENTIAL_CHAINS = []
 except Exception:  # pragma: no cover
     PARALLEL_SAFE = set()
     SEQUENTIAL_CHAINS = []
-    def _detect_subtasks(msg: str):  # type: ignore
+    async def _detect_subtasks(msg: str):  # type: ignore
         return []
     def _build_dag(subtasks):  # type: ignore
         return [[s] for s in subtasks]
@@ -122,6 +122,12 @@ async def route_classify_structured(task: str) -> dict[str, Any]:
 
 
 async def supervisor_dag(task: str) -> list[list[str]]:
+    try:
+        from ..orchestrator.supervisor import is_multi_agent_request
+        if not is_multi_agent_request(task or ""):
+            return []
+    except Exception:
+        pass
     subtasks = await _detect_subtasks(task or "")
     if not subtasks:
         # fallback handled by caller (needs async classify) — return empty to let route decide

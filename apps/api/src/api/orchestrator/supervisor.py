@@ -63,10 +63,10 @@ async def _detect_subtasks(message: str) -> list[tuple[str, float]]:
     # 1. Dynamic semantic capability matching
     try:
         cap_candidates = capability_registry.resolve_candidate_capabilities(message)
-        for cap, score in cap_candidates:
-            if score >= 0.2:
-                if cap.agent_name not in [c[0] for c in candidates]:
-                    candidates.append((cap.agent_name, min(score, 1.0)))
+        for cap in cap_candidates:
+            aid = getattr(cap, "agent_id", None) or getattr(cap, "agent_name", None)
+            if aid and aid not in [c[0] for c in candidates]:
+                candidates.append((aid, 0.8))
     except Exception as exc:
         logger.debug("Dynamic capability matching fallback in supervisor: %s", exc)
 

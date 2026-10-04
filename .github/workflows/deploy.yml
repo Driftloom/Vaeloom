@@ -31,6 +31,7 @@ jobs:
   terraform-plan:
     name: Terraform Plan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: infra/terraform
@@ -56,6 +57,7 @@ jobs:
   build-and-push:
     name: Build & Push
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       id-token: write
       contents: read
@@ -123,6 +125,7 @@ jobs:
   load-test-gate:
     name: Load Test Gate
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [build-and-push]
     steps:
       - uses: actions/checkout@v7
@@ -138,6 +141,7 @@ jobs:
   deploy:
     name: Deploy to ${{ github.event.inputs.environment || 'staging' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [terraform-plan, build-and-push, load-test-gate]
     steps:
       - uses: actions/checkout@v7
@@ -163,6 +167,7 @@ jobs:
   slack-notify:
     name: Slack Notification
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [deploy]
     if: always()
     steps:

@@ -17,6 +17,7 @@ permissions:
 jobs:
   sbom:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,6 +39,7 @@ jobs:
 
   image:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [sbom]
     steps:
       - uses: actions/checkout@v4
@@ -64,6 +66,7 @@ jobs:
 
   github-release:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [image]
     steps:
       - uses: actions/checkout@v4

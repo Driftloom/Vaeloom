@@ -14,7 +14,13 @@ import {
   CheckIcon,
   ClockIcon,
 } from '@vaeloom/ui-kit';
-import { documentApi, type DocumentResponse, type DocumentShareResponse } from '@/lib/api-client';
+import {
+  documentApi,
+  legacySharePermission,
+  type DocumentResponse,
+  type DocumentSharePermission,
+  type DocumentShareResponse,
+} from '@/lib/api-client';
 
 export interface DocumentShareDialogProps {
   isOpen: boolean;
@@ -27,7 +33,7 @@ export interface DocumentShareDialogProps {
   loadingShares?: boolean;
   onShare?: (
     targetWorkspaceId: string,
-    permission: string,
+    permission: DocumentSharePermission,
     expiresAt?: string,
   ) => Promise<unknown> | void;
   onRevoke?: (shareId: string) => Promise<unknown> | void;
@@ -36,8 +42,8 @@ export interface DocumentShareDialogProps {
 }
 
 const PERMISSION_OPTIONS = [
-  { value: 'READ', label: 'Read Only (View & Download)' },
-  { value: 'READ_WRITE', label: 'Read & Write (Edit & Upload Versions)' },
+  { value: 'read', label: 'Read Only (View & Download)' },
+  { value: 'write', label: 'Read & Write (Edit & Upload Versions)' },
 ];
 
 function getDocName(doc?: DocumentResponse | null, fallback = 'Document'): string {
@@ -61,11 +67,7 @@ export const DocumentShareDialog: React.FC<DocumentShareDialogProps> = ({
   onShareRevoked,
 }) => {
   const activeDocId = propDocumentId || document?.id || '';
-  const activeWorkspaceId =
-    propWorkspaceId ||
-    document?.workspace_id ||
-    (document as unknown as Record<string, string>)?.['workspaceId'] ||
-    '';
+  const activeWorkspaceId = propWorkspaceId || document?.workspaceId || '';
   const displayName = propDocumentName || getDocName(document);
 
   const [internalShares, setInternalShares] = useState<DocumentShareResponse[]>([]);
@@ -77,7 +79,7 @@ export const DocumentShareDialog: React.FC<DocumentShareDialogProps> = ({
 
   // Form State
   const [targetWorkspaceId, setTargetWorkspaceId] = useState('');
-  const [permission, setPermission] = useState('READ');
+  const [permission, setPermission] = useState<DocumentSharePermission>('read');
   const [expiresAt, setExpiresAt] = useState('');
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -107,7 +109,7 @@ export const DocumentShareDialog: React.FC<DocumentShareDialogProps> = ({
       setCreateError(null);
       setCreateSuccess(null);
       setTargetWorkspaceId('');
-      setPermission('READ');
+      setPermission('read');
       setExpiresAt('');
     }
   }, [isOpen, fetchShares]);
@@ -204,7 +206,7 @@ export const DocumentShareDialog: React.FC<DocumentShareDialogProps> = ({
                   label="Permission Level"
                   options={PERMISSION_OPTIONS}
                   value={permission}
-                  onChange={(val: string) => setPermission(val)}
+                  onChange={(val: string) => setPermission(val as DocumentSharePermission)}
                 />
 
                 <Input
@@ -277,9 +279,9 @@ export const DocumentShareDialog: React.FC<DocumentShareDialogProps> = ({
           {activeShares.length > 0 && (
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
               {activeShares.map((share) => {
-                const targetWid = share.targetWorkspaceId || share.target_workspace_id || '';
-                const perm = share.permission || 'READ';
-                const exp = share.expiresAt || share.expires_at;
+                const targetWid = share.targetWorkspaceId || '';
+                const perm = legacySharePermission(share.permission);
+                const exp = share.expiresAt;
 
                 return (
                   <div
@@ -292,11 +294,8 @@ export const DocumentShareDialog: React.FC<DocumentShareDialogProps> = ({
                         <span className="font-mono text-text font-medium truncate">
                           {targetWid}
                         </span>
-                        <Badge
-                          variant={perm.toUpperCase().includes('WRITE') ? 'primary' : 'default'}
-                          size="sm"
-                        >
-                          {perm}
+                        <Badge variant={perm === 'write' ? 'primary' : 'default'} size="sm">
+                          {perm === 'write' ? 'Read & write' : 'Read only'}
                         </Badge>
                       </div>
 

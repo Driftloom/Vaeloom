@@ -24,12 +24,27 @@ import {
 export interface DocumentAuditPanelProps {
   documentId: string;
   workspaceId: string;
+  /**
+   * A pre-fetched audit to render immediately.
+   *
+   * The only current caller (`DocumentDetailView`) does not pass this, so every
+   * mount starts in the "No Audit Results Yet" empty state and stays there until
+   * the user runs an audit. That is deliberate: an audit is an expensive
+   * user-initiated action, not something to fire on mount. The prop path is kept
+   * correct for a caller that does have a result in hand — `audit` is seeded from
+   * it and re-synced whenever the reference changes, and `onAuditComplete` fires
+   * on every successful run.
+   */
   initialAudit?: DocumentAuditResponse | null;
   onAuditComplete?: (audit: DocumentAuditResponse) => void;
   className?: string;
 }
 
 type CheckFilter = 'all' | 'failed' | 'passed';
+
+/** Visible keyboard indicator; matches the ui-kit Button/IconButton contract. */
+const TOGGLE_FOCUS =
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-100';
 
 function getVerdictBadgeVariant(
   verdict: string,
@@ -89,22 +104,16 @@ export const DocumentAuditPanel: React.FC<DocumentAuditPanelProps> = ({
     }
   }, []);
 
-  // Safe extraction supporting snake_case and camelCase
-  const qualityScore = Math.round(audit?.qualityScore ?? audit?.quality_score ?? 0);
+  // Safe extraction from transformKeys-normalized DocumentAuditResponse
+  const qualityScore = Math.round(audit?.qualityScore ?? 0);
   const verdict = audit?.verdict ?? 'UNKNOWN';
-  const totalChecks = audit?.totalChecks ?? audit?.total_checks ?? (audit?.checks?.length || 0);
-  const passedChecks =
-    audit?.passedChecks ??
-    audit?.passed_checks ??
-    audit?.checks?.filter((c) => c.passed).length ??
-    0;
-  const failedChecks =
-    audit?.failedChecks ??
-    audit?.failed_checks ??
-    audit?.checks?.filter((c) => !c.passed).length ??
-    0;
+  const totalChecks = audit?.totalChecks ?? (audit?.checks?.length || 0);
+  const passedChecks = audit?.passedChecks ?? audit?.checks?.filter((c) => c.passed).length ?? 0;
+  const failedChecks = audit?.failedChecks ?? audit?.checks?.filter((c) => !c.passed).length ?? 0;
 
-  const checks: DocumentAuditCheckItem[] = audit?.checks ?? [];
+  // Memoised: `audit?.checks ?? []` allocated a fresh array on every render when
+  // there is no audit, which made it an unstable `useMemo` dependency.
+  const checks: DocumentAuditCheckItem[] = React.useMemo(() => audit?.checks ?? [], [audit]);
   const categories: Record<string, DocumentAuditCategoryScore> = audit?.categories ?? {};
   const recommendations: string[] = audit?.recommendations ?? [];
 
@@ -124,7 +133,7 @@ export const DocumentAuditPanel: React.FC<DocumentAuditPanelProps> = ({
             <h3 className="text-lg font-semibold text-text">AI Document Quality Audit</h3>
           </div>
           <p className="text-xs text-text-muted mt-1">
-            Deterministic rule engines & LLM semantic parseability checks
+            Deterministic rule engines &amp; LLM semantic parseability checks
           </p>
         </div>
 
@@ -172,7 +181,12 @@ export const DocumentAuditPanel: React.FC<DocumentAuditPanelProps> = ({
 
       {/* Loading state without prior audit */}
       {loading && !audit && (
-        <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
+        <div
+          className="py-12 flex flex-col items-center justify-center text-center space-y-3"
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+        >
           <Spinner size="lg" />
           <p className="text-sm font-medium text-text">Auditing Document Quality...</p>
           <p className="text-xs text-text-muted max-w-sm">
@@ -206,7 +220,15 @@ export const DocumentAuditPanel: React.FC<DocumentAuditPanelProps> = ({
           {/* Top Score Banner */}
           <div className="p-4 sm:p-5 rounded-xl bg-surface-100 border border-border flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="flex items-center gap-4">
+              {/*
+                `role="img"` because the previous version put an `aria-label` on a
+                plain <div>: without a role the label has no accessible object to
+                attach to and most assistive tech discarded it entirely. The score
+                number is also rendered as text inside, so the visual is unchanged.
+              */}
               <div
+                role="img"
+                aria-label={`Overall Quality Score: ${qualityScore} out of 100, verdict ${verdict.replace(/_/g, ' ')}`}
                 className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold tracking-tight border-4 ${
                   qualityScore >= 80
                     ? 'border-success text-success bg-success/10'
@@ -214,7 +236,6 @@ export const DocumentAuditPanel: React.FC<DocumentAuditPanelProps> = ({
                       ? 'border-warning text-warning bg-warning/10'
                       : 'border-error text-error bg-error/10'
                 }`}
-                aria-label={`Overall Quality Score: ${qualityScore} out of 100`}
               >
                 {qualityScore}
               </div>
@@ -255,7 +276,9 @@ export const DocumentAuditPanel: React.FC<DocumentAuditPanelProps> = ({
             </div>
           </div>
 
-          {/* Category Breakdown Bars */}
+          {/* Category Breakdown Bars. `label` is passed so each progressbar gets a
+              DISTINCT accessible name — Progress falls back to the literal string
+              "Progress", which left every bar in this section identically named. */}
           {Object.keys(categories).length > 0 && (
             <div className="space-y-3">
               <h4 className="text-xs font-semibold text-text uppercase tracking-wider">
@@ -266,6 +289,7 @@ export const DocumentAuditPanel: React.FC<DocumentAuditPanelProps> = ({
                   const pct = Math.min(100, Math.max(0, Math.round(catScore.score)));
                   const progressVariant: 'success' | 'warning' | 'primary' =
                     pct >= 80 ? 'success' : pct >= 50 ? 'warning' : 'primary';
+                  const categoryName = formatCategoryName(catKey);
 
                   return (
                     <div
@@ -273,12 +297,18 @@ export const DocumentAuditPanel: React.FC<DocumentAuditPanelProps> = ({
                       className="p-3 rounded-lg bg-surface-50 border border-border-subtle space-y-1.5"
                     >
                       <div className="flex justify-between items-center text-xs">
-                        <span className="font-medium text-text">{formatCategoryName(catKey)}</span>
+                        <span className="font-medium text-text">{categoryName}</span>
                         <span className="text-text-muted tabular-nums">
                           {catScore.passed}/{catScore.total} passed ({pct}%)
                         </span>
                       </div>
-                      <Progress value={pct} max={100} size="sm" variant={progressVariant} />
+                      <Progress
+                        value={pct}
+                        max={100}
+                        size="sm"
+                        variant={progressVariant}
+                        label={`${categoryName} score`}
+                      />
                     </div>
                   );
                 })}
@@ -303,7 +333,10 @@ export const DocumentAuditPanel: React.FC<DocumentAuditPanelProps> = ({
                     className="p-3 rounded-lg bg-accent/5 border border-accent/20 flex items-start justify-between gap-3 text-xs"
                   >
                     <div className="flex items-start gap-2.5">
-                      <span className="w-5 h-5 rounded-full bg-accent/10 text-accent font-semibold flex items-center justify-center shrink-0 text-[10px]">
+                      <span
+                        aria-hidden="true"
+                        className="w-5 h-5 rounded-full bg-accent/10 text-accent font-semibold flex items-center justify-center shrink-0 text-[10px]"
+                      >
                         {idx + 1}
                       </span>
                       <p className="text-text leading-relaxed mt-0.5">{rec}</p>
@@ -314,7 +347,10 @@ export const DocumentAuditPanel: React.FC<DocumentAuditPanelProps> = ({
                       size="sm"
                       onClick={() => handleCopyRecommendation(rec, idx)}
                       className="shrink-0 h-7 px-2 text-xs"
-                      title="Copy recommendation"
+                      // The visible label is just "Copy", which is ambiguous once
+                      // there are several recommendations; `title` alone would not
+                      // have been an accessible name either.
+                      aria-label={`Copy recommendation ${idx + 1} of ${recommendations.length}`}
                     >
                       {copiedIndex === idx ? (
                         <>
@@ -341,14 +377,21 @@ export const DocumentAuditPanel: React.FC<DocumentAuditPanelProps> = ({
                 Inspection Checks ({filteredChecks.length})
               </h4>
 
-              {/* Filter controls */}
-              <div className="inline-flex rounded-lg border border-border p-0.5 bg-surface-100 text-xs">
+              {/* Filter controls. `role="group"` names the set and `aria-pressed`
+                  states which segment is active — without either, a screen-reader
+                  user hears three identical buttons and cannot tell the filter. */}
+              <div
+                role="group"
+                aria-label="Filter inspection checks"
+                className="inline-flex rounded-lg border border-border p-0.5 bg-surface-100 text-xs"
+              >
                 {(['all', 'failed', 'passed'] as CheckFilter[]).map((tab) => (
                   <button
                     key={tab}
                     type="button"
+                    aria-pressed={checkFilter === tab}
                     onClick={() => setCheckFilter(tab)}
-                    className={`px-2.5 py-1 rounded-md font-medium capitalize transition-colors ${
+                    className={`px-2.5 py-1 rounded-md font-medium capitalize transition-colors ${TOGGLE_FOCUS} ${
                       checkFilter === tab
                         ? 'bg-surface text-text shadow-sm'
                         : 'text-text-muted hover:text-text'
@@ -364,8 +407,10 @@ export const DocumentAuditPanel: React.FC<DocumentAuditPanelProps> = ({
             </div>
 
             {filteredChecks.length === 0 ? (
-              <p className="text-xs text-text-muted italic py-3 text-center">
-                No checks match the selected filter.
+              <p role="status" className="text-xs text-text-muted italic py-3 text-center">
+                {checks.length === 0
+                  ? 'This audit reported no individual checks.'
+                  : 'No checks match the selected filter.'}
               </p>
             ) : (
               <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
@@ -380,15 +425,14 @@ export const DocumentAuditPanel: React.FC<DocumentAuditPanelProps> = ({
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2">
-                        {item.passed ? (
-                          <div className="w-4 h-4 rounded-full bg-success/20 text-success flex items-center justify-center shrink-0 mt-0.5">
-                            <CheckIcon size={10} />
-                          </div>
-                        ) : (
-                          <div className="w-4 h-4 rounded-full bg-error/20 text-error flex items-center justify-center shrink-0 mt-0.5">
-                            <AlertTriangleIcon size={10} />
-                          </div>
-                        )}
+                        <div
+                          aria-hidden="true"
+                          className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                            item.passed ? 'bg-success/20 text-success' : 'bg-error/20 text-error'
+                          }`}
+                        >
+                          {item.passed ? <CheckIcon size={10} /> : <AlertTriangleIcon size={10} />}
+                        </div>
                         <div>
                           <span className="font-semibold text-text">{item.name}</span>
                           <span className="ml-2 text-[10px] text-text-muted uppercase tracking-wider">
@@ -398,14 +442,22 @@ export const DocumentAuditPanel: React.FC<DocumentAuditPanelProps> = ({
                         </div>
                       </div>
 
-                      <div className="shrink-0 text-right">
-                        <span
+                      {/*
+                        Pass/fail was previously signalled only by border and icon
+                        colour. The badge gives it a text equivalent, so the state
+                        survives a greyscale or colour-blind reading.
+                      */}
+                      <div className="shrink-0 text-right space-y-1">
+                        <Badge variant={item.passed ? 'success' : 'error'} size="sm">
+                          {item.passed ? 'Passed' : 'Failed'}
+                        </Badge>
+                        <div
                           className={`font-semibold tabular-nums ${
                             item.passed ? 'text-success' : 'text-error'
                           }`}
                         >
                           {item.passed ? `+${item.score}` : '0'} pts
-                        </span>
+                        </div>
                       </div>
                     </div>
 
