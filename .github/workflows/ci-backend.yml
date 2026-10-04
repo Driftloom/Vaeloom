@@ -30,4 +30,4 @@ jobs:
         run: python ../../scripts/gen_openapi.py && git diff --exit-code ../../specs/api/openapi.yaml ../../docs/backend/openapi.yaml
       - name: Temporal workflow tests (serial — WorkflowEnvironment time-skipping not xdist-safe)
         run: python -m pytest tests/temporal -q -o addopts="" --timeout=120
-      - run: python -m pytest tests/ -q -o addopts="" --timeout=120 --timeout-method=thread --cov=src/api/ --cov-report=xml --cov-report=term --ignore=tests/temporal
+      - run: python -m pytest tests/ -q -o addopts="-n 4 --dist loadfile" --timeout=120 --timeout-method=thread --cov=src/api/ --cov-report=xml --cov-report=term --ignore=tests/temporal --ignore=tests/integration --ignore=tests/adversarial

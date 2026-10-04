@@ -92,7 +92,7 @@ def _mock_extract(content: str) -> ExtractedFacts:
     for skill_name, skill_type, aliases in skill_gazetteer:
         pattern = r"\b" + re.escape(skill_name) + r"\b"
         if re.search(pattern, content, re.IGNORECASE):
-            add_entity(skill_name, skill_type, 0.95, aliases)
+            add_entity(skill_name, skill_type, 0.9, aliases)
 
     # 2. Certificates & Badges
     cert_matches = re.findall(r"([A-Za-z0-9_\-\s]{2,40}(?:Certificate|Badge|Certification|Credential|License|Degree|Diploma))", content, re.IGNORECASE)
@@ -116,11 +116,13 @@ def _mock_extract(content: str) -> ExtractedFacts:
             break
 
     if not person_name:
-        words = re.findall(r"\b[A-Z][a-zA-Z0-9]{2,}\b", content[:250])
-        capitalized = [w for w in words if w.lower() not in {"document", "resume", "curriculum", "vitae", "summary", "profile", "contact", "email", "phone", "badge", "certificate"}]
-        if len(capitalized) >= 2:
-            candidate = " ".join(capitalized[:3])
-            person_name = add_entity(candidate, "Person", 0.85)
+        lines = [line.strip() for line in content.splitlines() if line.strip()]
+        if lines:
+            first_line = lines[0]
+            if re.match(r"^[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2}$", first_line):
+                candidate_words = first_line.split()
+                if not any(w.lower() in seen_names for w in candidate_words):
+                    person_name = add_entity(first_line, "Person", 0.85)
 
     # 4. Organizations / Universities
     org_matches = re.findall(r"([A-Z][a-zA-Z0-9\s]{2,30}(?:University|College|Institute|Technologies|Solutions|Labs|Inc|LLC|Corp|Corporation))", content)

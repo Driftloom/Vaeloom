@@ -2533,7 +2533,9 @@ export function AddCapabilityModal({
           spellCheck={false}
           value={testPayload}
           helperText="A sample input for your own run(input) call. It is not sent anywhere: draft validation reads the handler and the manifest."
-          onChange={(event) => setTestPayload(event.target.value)}
+          onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
+            setTestPayload(event.target.value)
+          }
           onBlur={() => {
             // Local parse only, and it never blocks the draft call: this payload
             // is not part of the request, so a malformed sample is a note about
@@ -2547,7 +2549,9 @@ export function AddCapabilityModal({
         rows={3}
         spellCheck={false}
         value={pluginPermissions}
-        onChange={(event) => setPluginPermissions(event.target.value)}
+        onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
+          setPluginPermissions(event.target.value)
+        }
         error={permissionsIssue ?? undefined}
         helperText="The registry requires an object. Edit it to match what the hook does; nothing on this form grants it."
       />

@@ -16,7 +16,7 @@ import {
   TrashIcon,
 } from '@vaeloom/ui-kit';
 import { documentApi, type DocumentResponse } from '@/lib/api-client';
-import { formatBytes } from '@/lib/document-format';
+import { formatBytes, scanStateOf } from '@/lib/document-format';
 
 export type UploadItemStatus =
   'queued' | 'uploading' | 'scanning' | 'clean' | 'quarantined' | 'error';
@@ -288,12 +288,20 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
           destFolderId,
         );
 
-        const scanStatus = doc.scanStatus;
-        let finalStatus: UploadItemStatus = 'clean';
-        if (scanStatus === 'MALICIOUS' || scanStatus === 'REJECTED') {
+        /*
+          `scanStateOf` replaces three case-sensitive `===` compares against
+          uppercase literals. The backend's own queries compare against lowercase
+          `'quarantined'` (`tools/executor.py:437,489`) and rows written before the
+          uppercase migration still hold it, so an exact `=== 'MALICIOUS'` test
+          reported a real threat to the user as "verified clean" — the single worst
+          thing this badge can get wrong.
+        */
+        const scanState = scanStateOf(doc.scanStatus);
+        let finalStatus: UploadItemStatus;
+        if (scanState === 'quarantined') {
           finalStatus = 'quarantined';
           announce(`Warning: ${nextItem.name} was quarantined by security scanner.`);
-        } else if (scanStatus === 'PENDING') {
+        } else if (scanState === 'scanning') {
           finalStatus = 'scanning';
           announce(`${nextItem.name} uploaded successfully, scan in progress.`);
         } else {

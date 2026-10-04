@@ -63,8 +63,8 @@ export function PageHeader({
   return (
     <header className={`space-y-3 ${className}`}>
       {breadcrumb}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 flex-1">
           {eyebrow && <p className="eyebrow mb-1.5 text-text-muted">{eyebrow}</p>}
           <h1 id={headingId} className="text-3xl font-display font-medium text-text tracking-tight">
             {title}

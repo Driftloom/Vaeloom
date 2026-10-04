@@ -1521,9 +1521,11 @@ export function ConnectorsView({
                 {tab.badge !== null && tab.badge !== undefined && tab.badge > 0 && (
                   <span
                     className={`px-1.5 py-0.2 rounded-full text-2xs font-mono border ${
-                      tab.id === 'yours'
-                        ? 'bg-success/15 text-success border-success/30'
-                        : 'bg-primary/10 text-primary border-primary/20'
+                      activeSubTab === tab.id
+                        ? 'bg-white/20 text-action-fg border-white/30'
+                        : tab.id === 'yours'
+                          ? 'bg-success/15 text-success border-success/30'
+                          : 'bg-surface-elevated text-text-secondary border-border'
                     }`}
                   >
                     {tab.id === 'discover' && composioEnabled === false

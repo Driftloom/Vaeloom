@@ -104,7 +104,8 @@ GOLDEN_SCENARIOS = [
 @pytest.mark.parametrize("query,expected_agent", GOLDEN_SCENARIOS)
 async def test_golden_routing_scenarios(query: str, expected_agent: str):
     """Assert each scenario routes to the exact authoritative specialist."""
-    intent, conf = await classify_intent(query)
+    envelope, _ = await routing_engine.route(query, workspace_id="11111111-1111-1111-1111-111111111111")
+    intent, conf = envelope.selected_agent, envelope.confidence
     assert intent == expected_agent, f"Query '{query}' expected '{expected_agent}', got '{intent}'"
     assert conf >= 0.70, f"Confidence {conf} was below zero-trust threshold for '{query}'"
 

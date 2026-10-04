@@ -600,7 +600,6 @@ async def handle(request: UserRequest) -> dict[str, Any]:
 
     # ── 1. Intent Classification (explicit agent override for enterprise chat) ──
     preferred = getattr(request, 'preferred_agent', None)
-    execution_plan = None
     if preferred and preferred in AGENT_REGISTRY:
         agent_name, confidence = preferred, 0.98
         logger.info(f"Explicit agent override: {agent_name} (confidence={confidence})")
