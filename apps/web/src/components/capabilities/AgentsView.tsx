@@ -1024,7 +1024,9 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                       label="Probe message (sent for validation only)"
                       rows={3}
                       value={testPrompt}
-                      onChange={(e) => setTestPrompt(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                        setTestPrompt(e.target.value)
+                      }
                       placeholder="Optional. This endpoint validates the agent's contract; it never sends the message to an LLM."
                       helperText="POST /api/v1/agents/capabilities/test validates the agent's declared contract against the live registry. It performs no planning run and no LLM call."
                     />

@@ -209,7 +209,9 @@ export const SkillPlaygroundDrawer: React.FC<SkillPlaygroundDrawerProps> = ({
               <Textarea
                 id={id}
                 value={testPrompt}
-                onChange={(e) => setTestPrompt(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  setTestPrompt(e.target.value)
+                }
                 rows={4}
                 className="font-mono text-xs leading-relaxed resize-y"
                 placeholder="Enter a prompt to simulate agent execution..."

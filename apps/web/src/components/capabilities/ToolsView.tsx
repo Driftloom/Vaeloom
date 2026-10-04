@@ -1034,7 +1034,9 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
                     label="JSON input payload"
                     rows={6}
                     value={testInputJson}
-                    onChange={(e) => setTestInputJson(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                      setTestInputJson(e.target.value)
+                    }
                     className="font-mono text-xs"
                   />
 

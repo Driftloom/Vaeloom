@@ -65,7 +65,7 @@ export const RenameDocumentModal: React.FC<RenameDocumentModalProps> = ({
         <Input
           label="New File Name"
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValue(e.target.value)}
           error={failure ?? error ?? undefined}
           helperText="Include the extension. The rename replaces the whole document path."
           autoFocus

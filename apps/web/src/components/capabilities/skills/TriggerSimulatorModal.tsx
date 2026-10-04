@@ -96,7 +96,9 @@ export const TriggerSimulatorModal: React.FC<TriggerSimulatorModalProps> = ({
               <Textarea
                 id={id}
                 value={candidateQuery}
-                onChange={(e) => setCandidateQuery(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  setCandidateQuery(e.target.value)
+                }
                 rows={3}
                 className="font-mono text-xs leading-relaxed resize-y"
                 placeholder="e.g. Audit my resume bullets for ATS keywords..."

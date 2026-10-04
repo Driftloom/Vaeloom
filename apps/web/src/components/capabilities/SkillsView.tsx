@@ -685,7 +685,9 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                               id={id}
                               aria-describedby={saveError ? errorId : undefined}
                               value={editedDoc}
-                              onChange={(event) => setEditedDoc(event.target.value)}
+                              onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
+                                setEditedDoc(event.target.value)
+                              }
                               onKeyDown={(event) => {
                                 if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
                                   event.preventDefault();
