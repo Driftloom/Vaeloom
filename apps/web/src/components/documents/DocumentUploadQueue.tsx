@@ -129,6 +129,9 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const folderCacheRef = useRef<Map<string, string>>(new Map());
+  const isProcessingRef = useRef(false);
+  const activeItemIdRef = useRef<string | null>(null);
+  const hasCalledAllCompletedRef = useRef(false);
 
   const activeQueue = controlledQueue !== undefined ? controlledQueue : internalQueue;
 
@@ -254,7 +257,7 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
 
   // Active queue worker: picks next queued item sequentially (when uncontrolled)
   useEffect(() => {
-    if (!workspaceId || isProcessing || controlledQueue !== undefined) return;
+    if (!workspaceId || isProcessingRef.current || controlledQueue !== undefined) return;
 
     const nextItem = internalQueue.find((q) => q.status === 'queued');
     if (!nextItem) {
@@ -262,11 +265,18 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
         internalQueue.length > 0 &&
         internalQueue.every((q) => q.status !== 'queued' && q.status !== 'uploading')
       ) {
-        onAllCompleted?.();
+        if (!hasCalledAllCompletedRef.current) {
+          hasCalledAllCompletedRef.current = true;
+          onAllCompleted?.();
+        }
       }
       return;
     }
 
+    if (activeItemIdRef.current === nextItem.id) return;
+    hasCalledAllCompletedRef.current = false;
+    activeItemIdRef.current = nextItem.id;
+    isProcessingRef.current = true;
     setIsProcessing(true);
 
     const processItem = async () => {
@@ -338,6 +348,8 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
         );
         announce(`Upload error for ${nextItem.name}: ${errorMsg}`);
       } finally {
+        activeItemIdRef.current = null;
+        isProcessingRef.current = false;
         setIsProcessing(false);
       }
     };
@@ -574,7 +586,7 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
                   e.stopPropagation();
                   fileInputRef.current?.click();
                 }}
-                className="text-action underline hover:text-action-hover font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:text-text-muted disabled:no-underline disabled:cursor-not-allowed"
+                className="text-primary underline hover:text-primary-hover font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:text-text-muted disabled:no-underline disabled:cursor-not-allowed"
               >
                 browse files
               </button>{' '}
@@ -587,7 +599,7 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
                   e.stopPropagation();
                   folderInputRef.current?.click();
                 }}
-                className="text-action underline hover:text-action-hover font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:text-text-muted disabled:no-underline disabled:cursor-not-allowed"
+                className="text-primary underline hover:text-primary-hover font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:text-text-muted disabled:no-underline disabled:cursor-not-allowed"
               >
                 upload folder
               </button>

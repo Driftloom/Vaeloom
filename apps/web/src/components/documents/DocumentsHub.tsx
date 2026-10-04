@@ -189,6 +189,14 @@ export function DocumentsHub({
     }
   }, [pendingConfirm, folders, list, versions, actions, toast]);
 
+  const handleUploadComplete = useCallback(
+    (doc: DocumentResponse) => {
+      list.prependDocument(doc);
+      toast({ tone: 'success', title: 'Upload complete', detail: doc.path });
+    },
+    [list.prependDocument, toast],
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -216,10 +224,7 @@ export function DocumentsHub({
       <DocumentUploadQueue
         workspaceId={currentWorkspaceId}
         targetFolderId={list.selectedFolderId}
-        onUploadComplete={(doc) => {
-          list.prependDocument(doc);
-          toast({ tone: 'success', title: 'Upload complete', detail: doc.path });
-        }}
+        onUploadComplete={handleUploadComplete}
         onFolderCreated={folders.retry}
         onAllCompleted={list.refresh}
       />
@@ -241,7 +246,7 @@ export function DocumentsHub({
           }}
         />
 
-        <div className="lg:col-span-3 space-y-4">
+        <div className="lg:col-span-3 min-w-0 space-y-4">
           {selectedFolderName && (
             <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl border border-primary/30 bg-primary/5 text-xs text-text">
               <span className="flex items-center gap-2">

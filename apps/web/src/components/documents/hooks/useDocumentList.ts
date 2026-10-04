@@ -185,17 +185,22 @@ export function useDocumentList(workspaceId: string): UseDocumentListResult {
   }, [workspaceId, search, selectedFolderId, includeArchived, page]);
 
   useEffect(() => {
-    void runFetch();
-  }, [runFetch]);
-
-  // Switching workspaces invalidates the page, the selection and the "has rows"
-  // memory. Done as an effect (not inside `selectFolder`) so it also fires when
-  // the workspace id arrives from the router after the first render.
-  useEffect(() => {
+    // Switching workspaces invalidates the page, the selection and the "has rows"
+    // memory. Done as an effect (not inside `selectFolder`) so it also fires when
+    // the workspace id arrives from the router after the first render.
+    //
+    // Declared BEFORE the fetch effect on purpose: effects run in declaration
+    // order, so clearing `hasRows` first is what makes a workspace switch show
+    // the blocking loader rather than one tick of "Refreshing…" over the previous
+    // workspace's rows.
     setPageState(1);
     setSelectedIds(new Set<string>());
     hasRows.current = false;
   }, [workspaceId]);
+
+  useEffect(() => {
+    void runFetch();
+  }, [runFetch]);
 
   /**
    * A page count from the search endpoint's result length would be a guess, so

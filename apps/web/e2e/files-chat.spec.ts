@@ -17,7 +17,7 @@ test.describe('files', () => {
         (res) => res.url().includes(DOCS_API) && res.request().method() === 'POST',
         { timeout: 30_000 },
       ),
-      page.setInputFiles('input[type="file"]', {
+      page.setInputFiles('input[type="file"]:not([webkitdirectory])', {
         name: fileName,
         mimeType: 'text/plain',
         buffer: Buffer.from('Phase 02B e2e upload'),
@@ -34,7 +34,7 @@ test.describe('files', () => {
     // Row actions are View Document and Share Document only (files/page.tsx:1057,
     //1083); rename/archive live on the bulk toolbar, so the old test's
     // row-level rename/archive click targeted buttons that do not exist.
-    await row.getByRole('checkbox', { name: `Select ${fileName}` }).check();
+    await row.getByRole('checkbox', { name: `Select ${fileName}` }).check({ force: true });
     const toolbar = page.getByText('1 document(s) selected');
     await expect(toolbar).toBeVisible();
     await expect(page.getByRole('button', { name: 'Download (.zip)' })).toBeEnabled();
@@ -74,7 +74,7 @@ test.describe('files', () => {
         (res) => res.url().includes(DOCS_API) && res.request().method() === 'POST',
         { timeout: 30_000 },
       ),
-      page.setInputFiles('input[type="file"]', {
+      page.setInputFiles('input[type="file"]:not([webkitdirectory])', {
         name: fileName,
         mimeType: 'text/plain',
         buffer: Buffer.from(`marker:${marker}`),

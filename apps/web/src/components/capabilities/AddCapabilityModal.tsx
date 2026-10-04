@@ -2702,7 +2702,7 @@ export function AddCapabilityModal({
               { id: 'import', label: 'Import Git / File' },
             ]}
             activeTab={activeTab}
-            onTabChange={(id) => setActiveTab(id as ModalTab)}
+            onTabChange={(id: string) => setActiveTab(id as ModalTab)}
           />
 
           {/* ── Presets ─────────────────────────────────────────────────── */}

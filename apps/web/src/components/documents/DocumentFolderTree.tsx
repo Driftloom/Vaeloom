@@ -367,7 +367,7 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
           onKeyDown={(e) => handleRowKeyDown(e, rowId)}
           className={`flex items-center justify-between gap-1.5 flex-1 min-w-0 py-1.5 pl-1.5 pr-2 rounded-lg border text-left ${ROW_FOCUS} ${
             isSelected
-              ? 'bg-action/10 text-action border-action/30'
+              ? 'bg-primary/10 text-primary border-primary/30'
               : 'border-transparent text-text-muted hover:text-text hover:bg-surface-hover'
           }`}
         >
@@ -378,7 +378,7 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
           {count > 0 && (
             <span
               className={`px-1.5 py-0.2 rounded-full text-[10px] tabular-nums font-semibold shrink-0 ${
-                isSelected ? 'bg-action/20 text-action' : 'bg-surface-200 text-text-muted'
+                isSelected ? 'bg-primary/20 text-primary' : 'bg-surface-200 text-text-muted'
               }`}
             >
               {count}

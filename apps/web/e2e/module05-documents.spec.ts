@@ -28,7 +28,7 @@ test.describe('Module 05 — Documents & Security Workflow', () => {
         (res) => res.url().includes(DOCS_API) && res.request().method() === 'POST',
         { timeout: 30_000 },
       ),
-      page.setInputFiles('input[type="file"]', {
+      page.setInputFiles('input[type="file"]:not([webkitdirectory])', {
         name: maliciousName,
         mimeType: 'text/html',
         buffer: Buffer.from('<script>alert("xss")</script>'),
@@ -49,7 +49,7 @@ test.describe('Module 05 — Documents & Security Workflow', () => {
         (res) => res.url().includes(DOCS_API) && res.request().method() === 'POST',
         { timeout: 30_000 },
       ),
-      page.setInputFiles('input[type="file"]', {
+      page.setInputFiles('input[type="file"]:not([webkitdirectory])', {
         name: controlName,
         mimeType: 'text/plain',
         buffer: Buffer.from('Enterprise Document Lifecycle Verification Content'),
@@ -99,7 +99,7 @@ test.describe('Module 05 — Documents & Security Workflow', () => {
         (res) => res.url().includes(DOCS_API) && res.request().method() === 'POST',
         { timeout: 30_000 },
       ),
-      page.setInputFiles('input[type="file"]', {
+      page.setInputFiles('input[type="file"]:not([webkitdirectory])', {
         name: fileName,
         mimeType: 'text/plain',
         buffer: Buffer.from('Enterprise Document Lifecycle Verification Content'),

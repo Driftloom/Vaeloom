@@ -51,7 +51,7 @@ export const DocumentsFolderRail: React.FC<DocumentsFolderRailProps> = ({
   onDeleteFolder,
   onChanged,
 }) => (
-  <div className="lg:col-span-1 p-4 rounded-xl border border-border/70 bg-surface/40 backdrop-blur-sm space-y-3">
+  <div className="lg:col-span-1 min-w-0 p-4 rounded-xl border border-border/70 bg-surface/40 backdrop-blur-sm space-y-3">
     {folders.error ? (
       <Alert variant="danger" description={`Could not load folders. ${folders.error}`}>
         <Button variant="outline" size="sm" className="mt-2" onClick={folders.retry}>
