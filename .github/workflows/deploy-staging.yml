@@ -35,16 +35,29 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Check deployment credentials
+        id: check-creds
+        run: |
+          if [ -z "${{ secrets.AWS_DEPLOY_ROLE_ARN }}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "AWS_DEPLOY_ROLE_ARN is not configured; skipping staging deployment."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Configure AWS credentials
+        if: steps.check-creds.outputs.configured == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Update kubeconfig
+        if: steps.check-creds.outputs.configured == 'true'
         run: aws eks update-kubeconfig --name "$EKS_CLUSTER" --region "$AWS_REGION"
 
       - name: Deploy web image
+        if: steps.check-creds.outputs.configured == 'true'
         # Tag with the exact commit "Docker Build" produced the image for
         # (docker-build.yml tags with github.sha == this run's head_sha),
         # not this workflow's own github.sha.
@@ -55,6 +68,7 @@ jobs:
           kubectl rollout status deployment/vaeloom-web -n "$NAMESPACE" --timeout=180s
 
       - name: Post-deploy smoke check
+        if: steps.check-creds.outputs.configured == 'true'
         run: |
           set -euo pipefail
           POD=$(kubectl get pod -n "$NAMESPACE" -l app.kubernetes.io/name=web \
@@ -63,7 +77,7 @@ jobs:
             wget -qO- "http://localhost:3000/api/health" | grep -qi 'ok\|healthy\|status'
 
       - name: Rollback on failure
-        if: failure()
+        if: failure() && steps.check-creds.outputs.configured == 'true'
         run: |
           kubectl rollout undo deployment/vaeloom-web -n "$NAMESPACE"
           kubectl rollout status deployment/vaeloom-web -n "$NAMESPACE" --timeout=120s
