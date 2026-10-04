@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { IconButton } from '@vaeloom/ui-kit';
 import {
   ArrowDownIcon,
+  ClockIcon,
   DatabaseIcon,
   DownloadIcon,
   EditIcon,
@@ -117,6 +118,16 @@ export const DocumentRowActions: React.FC<DocumentRowActionsProps> = ({ doc, han
         onClick={() => handlers.onSyncMemory(doc)}
       >
         <DatabaseIcon size={14} />
+      </IconButton>
+
+      <IconButton
+        variant="ghost"
+        size="sm"
+        aria-label={`Version history for ${fileName}`}
+        title="Version history"
+        onClick={() => handlers.onOpenVersions(doc)}
+      >
+        <ClockIcon size={14} />
       </IconButton>
 
       <IconButton

@@ -664,7 +664,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                 { id: 'schema', label: 'Input schema' },
               ]}
               activeTab={detailPane}
-              onTabChange={(id) => setDetailPane(id as 'doc' | 'schema')}
+              onTabChange={(id: string) => setDetailPane(id as 'doc' | 'schema')}
             />
 
             <div className="flex-1 overflow-y-auto overscroll-y-contain p-4 sm:p-5 pb-16 bg-background min-h-0">

@@ -94,8 +94,11 @@ export const BULK_SELECTION_ID = 'bulk-selection';
  *    `EXTENSION_MAP`, because it is not a file format.
  *  - `path` states what it is and contains no `/`, so `getFileName` renders it
  *    verbatim as the dialog's heading.
- *  - `metadata` carries the selection size under a key named for its synthetic
- *    origin, so it cannot be mistaken for ingestion metadata.
+ *
+ * The selection size is carried in `path` only. It is deliberately NOT placed in
+ * `metadata`: that bag models what the ingestion pipeline persists, and seeding
+ * it with a UI-only key would put a fabricated field on something the dialog
+ * renders as though it came from the server.
  *
  * `folderId` is `null` rather than the currently-filtered folder: "the folder
  * these documents are collectively in" is not a thing, and pre-selecting a
@@ -108,7 +111,7 @@ export function bulkSelectionProxy(count: number, workspaceId: string): Document
     path: `${count} selected document${count === 1 ? '' : 's'} (bulk move)`,
     folderId: null,
     type: 'collection',
-    metadata: { syntheticBulkSelectionCount: count },
+    metadata: null,
     createdAt: '',
     updatedAt: '',
     deletedAt: null,

@@ -1522,7 +1522,7 @@ export function ConnectorsView({
                   <span
                     className={`px-1.5 py-0.2 rounded-full text-2xs font-mono border ${
                       activeSubTab === tab.id
-                        ? 'bg-white/20 text-action-fg border-white/30'
+                        ? 'bg-black/30 text-white border-white/20'
                         : tab.id === 'yours'
                           ? 'bg-success/15 text-success border-success/30'
                           : 'bg-surface-elevated text-text-secondary border-border'

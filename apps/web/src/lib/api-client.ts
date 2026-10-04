@@ -917,9 +917,20 @@ export interface DocumentMetadata {
   folder?: string;
   /** Path before a `move_file` tool call moved it (`executor.py:2278`). */
   previousPath?: string;
-  /** Extensible bag of dynamic metadata properties parser- or agent-specific. */
-  [key: string]: unknown;
 }
+
+/**
+ * Free-form metadata written by the ingestion pipeline, whose keys depend on the
+ * per-parser extras (`ingestion/pipeline.py:104`) and so cannot be enumerated.
+ *
+ * Deliberately NOT an index signature on `DocumentMetadata`. An open bag there
+ * silently re-admitted the whole class of bug this contract fix closed:
+ * `metadata['size_bytes']`, `metadata['version_number']` and `metadata['title']`
+ * all type-checked while resolving to `undefined`, which is how the documents UI
+ * shipped "Invalid Date" dates and dead badges. Pipeline-specific keys are read
+ * through this type at the call site, where the cast is visible and reviewable.
+ */
+export type DocumentDynamicMetadata = Record<string, unknown>;
 
 /**
  * `Document.scan_status`.

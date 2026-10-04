@@ -21,25 +21,23 @@ import { DocumentRowActions, type DocumentRowHandlers } from './DocumentRowActio
 import { isVaultNote } from './documentCategories';
 
 /**
- * The revision number the ingestion pipeline recorded on a row.
+ * The revision number for a row in the documents list.
  *
- * `metadata` has an index signature because different pipelines write different
- * keys, and the revision has been spelled three ways over the life of the
- * feature, so all three are read. `null` means "the backend never told us",
- * which the cell renders as text rather than as a revision of `0`.
+ * The backend does not persist a revision number in `metadata` — the authoritative
+ * value comes from `DocumentVersionResponse.versionNumber` via
+ * `documentApi.listVersions`, which is per-document. Fetching it for every row
+ * would be an N+1 request on the hot path, so this returns `null` and the cell
+ * renders "Not reported" rather than fabricating a `0` or echoing a stale key.
+ * Revision history stays reachable through the row action menu, which opens the
+ * versions modal.
  */
-function documentVersionOf(doc: DocumentResponse): string | null {
-  const raw =
-    doc.metadata?.['version'] ??
-    doc.metadata?.['version_number'] ??
-    doc.metadata?.['versionNumber'];
-  if (raw === undefined || raw === null || raw === '') return null;
-  return String(raw);
+function documentVersionOf(_doc: DocumentResponse): string | null {
+  return null;
 }
 
 /** The `metadata.size` value as a positive byte count, or `null` when unknown. */
 function sizeBytesOf(doc: DocumentResponse): number | null {
-  const raw = doc.metadata?.size ?? doc.metadata?.['size_bytes'];
+  const raw = doc.metadata?.size;
   const n = typeof raw === 'number' ? raw : Number(raw);
   return Number.isFinite(n) && n > 0 ? n : null;
 }

@@ -75,12 +75,12 @@ export interface DocumentStatsBarProps {
 
 /**
  * The size the backend recorded, in bytes. `DocumentMetadata` declares `size`
- * (`len(content)`), not `size_bytes`; the legacy key is kept as a fallback because
- * rows written before the rename can still carry it and `metadata` has an index
- * signature.
+ * (`len(content)`), not `size_bytes`. There is deliberately no fallback to the
+ * legacy key: rows written before the rename carry `size`, because `size` is
+ * what the backend has always written (`document_service.py:443`).
  */
 function documentSizeBytes(doc: DocumentResponse): number {
-  const raw = doc.metadata?.size ?? doc.metadata?.['size_bytes'] ?? null;
+  const raw = doc.metadata?.size ?? null;
   const n = typeof raw === 'number' ? raw : Number(raw ?? 0);
   return Number.isFinite(n) && n > 0 ? n : 0;
 }

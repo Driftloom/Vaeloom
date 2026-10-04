@@ -56,7 +56,7 @@ export const DocumentsToolbar: React.FC<DocumentsToolbarProps> = ({
         <Tabs
           tabs={DOCUMENT_CATEGORIES.map(({ id, label }) => ({ id, label }))}
           activeTab={category}
-          onTabChange={(id) => onCategoryChange(id as DocumentCategoryId)}
+          onTabChange={(id: string) => onCategoryChange(id as DocumentCategoryId)}
           variant="pills"
           size="sm"
           ariaLabel="Document categories"

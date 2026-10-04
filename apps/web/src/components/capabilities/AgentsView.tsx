@@ -776,7 +776,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
               <Tabs
                 tabs={detailTabs}
                 activeTab={detailSubTab}
-                onTabChange={(id) => setDetailSubTab(id as DetailSubTab)}
+                onTabChange={(id: string) => setDetailSubTab(id as DetailSubTab)}
                 variant="underline"
                 size="sm"
                 ariaLabel={`${formatAgentTitle(selectedAgent.name)} detail`}

@@ -63,6 +63,10 @@ export function DocumentsHub({
   const { toast } = useToast();
 
   const list = useDocumentList(currentWorkspaceId);
+  // Destructured so the dependency is the stable callback itself rather than a
+  // property access on `list`, which `react-hooks/exhaustive-deps` cannot prove
+  // stable and reports as a missing dependency on every render.
+  const { prependDocument } = list;
   const folders = useDocumentFolders(currentWorkspaceId);
   const viewer = useDocumentViewer(currentWorkspaceId);
   const versions = useDocumentVersions(currentWorkspaceId);
@@ -191,10 +195,10 @@ export function DocumentsHub({
 
   const handleUploadComplete = useCallback(
     (doc: DocumentResponse) => {
-      list.prependDocument(doc);
+      prependDocument(doc);
       toast({ tone: 'success', title: 'Upload complete', detail: doc.path });
     },
-    [list.prependDocument, toast],
+    [prependDocument, toast],
   );
 
   return (

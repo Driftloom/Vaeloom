@@ -537,9 +537,13 @@ export function DocumentPreview({
             className="flex flex-col items-center justify-center"
           >
             <div className={`w-full flex items-center justify-center ${sizes.scroller}`}>
+              {/* eslint-disable-next-line @next/next/no-img-element --
+                `next/image` cannot optimize a `blob:` URL: the optimizer fetches
+                over HTTP and this object URL exists only in the tab that created
+                it. The bytes came from an authenticated, workspace-scoped API
+                call rather than a public CDN path, so there is no origin server
+                to hand to the optimizer. */}
               <img
-                // `next/image` cannot optimize a `blob:` URL — the optimizer has
-                // no HTTP endpoint to fetch from — so this stays a raw element.
                 src={url}
                 alt={fileName || 'Document preview image'}
                 className={`rounded-lg shadow-lg object-contain transition-all ${

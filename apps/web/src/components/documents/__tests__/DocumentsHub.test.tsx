@@ -416,7 +416,7 @@ describe('DocumentsHub — the folder filter is server-side', () => {
     expect(screen.getByText('sample_financials.csv')).toBeInTheDocument();
     expect(screen.getByText('architecture_spec.md')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Legal Contracts, 1 document' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Legal Contracts, 1 document' }));
 
     await waitFor(() =>
       expect(documentApi.list).toHaveBeenCalledWith(
@@ -437,7 +437,7 @@ describe('DocumentsHub — the folder filter is server-side', () => {
   it('returns to every folder and drops folder_id from the request', async () => {
     await renderLoaded();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Legal Contracts, 1 document' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Legal Contracts, 1 document' }));
     await waitFor(() =>
       expect(documentApi.list).toHaveBeenCalledWith(
         expect.objectContaining({ folder_id: 'f-legal' }),

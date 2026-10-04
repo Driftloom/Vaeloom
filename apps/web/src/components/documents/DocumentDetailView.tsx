@@ -987,7 +987,7 @@ export function DocumentDetailView({
         // `Tabs` hands back an untyped string. Guarding against an id that is not
         // in DETAIL_TABS keeps `activeTab` from ever holding a value no panel
         // matches, which would render a tablist with no tabpanel at all.
-        onTabChange={(id) => {
+        onTabChange={(id: string) => {
           if (DETAIL_TABS.includes(id as DetailTab)) setActiveTab(id as DetailTab);
         }}
         variant="underline"

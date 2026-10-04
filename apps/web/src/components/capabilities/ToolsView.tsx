@@ -826,7 +826,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
               <Tabs
                 tabs={detailTabs}
                 activeTab={detailSubTab}
-                onTabChange={(id) => setDetailSubTab(id as DetailSubTab)}
+                onTabChange={(id: string) => setDetailSubTab(id as DetailSubTab)}
                 variant="underline"
                 size="sm"
                 ariaLabel={`${activeRow.name} detail`}

@@ -127,11 +127,10 @@ export interface WorkspaceScoped {
  * The workspace a document belongs to, for code that must build a per-document
  * URL.
  *
- * Prefers the declared camelCase `workspaceId`, because that is what
- * `transformKeys` produces for every `documentApi` response. The `workspace_id`
- * lookup is a deliberate fallback for hand-constructed objects that never passed
- * through the transform — a test fixture, or a row assembled locally — and is
- * not reachable through the API client.
+ * Reads the camelCase `workspaceId`, which is what `transformKeys` produces for
+ * every `documentApi` response. There is deliberately no snake_case fallback:
+ * a hand-constructed fixture that spells it `workspace_id` is a bug in the
+ * fixture, and papering over it here is how that bug reaches production.
  *
  * @param doc The document. `null`/`undefined` is accepted.
  * @param fallbackWorkspaceId Used when the document does not carry an id.
@@ -140,13 +139,11 @@ export interface WorkspaceScoped {
  * URL or compare against another id.
  */
 export function docWorkspaceId(
-  doc: (WorkspaceScoped & Record<string, unknown>) | null | undefined,
+  doc: WorkspaceScoped | null | undefined,
   fallbackWorkspaceId?: string | null,
 ): string {
   const camel = doc?.workspaceId;
   if (typeof camel === 'string' && camel.length > 0) return camel;
-  const legacy = doc?.['workspace_id'];
-  if (typeof legacy === 'string' && legacy.length > 0) return legacy;
   return fallbackWorkspaceId ?? '';
 }
 

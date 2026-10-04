@@ -590,9 +590,13 @@ describe('docWorkspaceId', () => {
     expect(docWorkspaceId({ workspaceId: 'ws-1' })).toBe('ws-1');
   });
 
-  it('falls back to the snake_case field for hand-built objects', () => {
-    expect(docWorkspaceId({ workspace_id: 'ws-legacy' })).toBe('ws-legacy');
-    expect(docWorkspaceId({ workspaceId: '', workspace_id: 'ws-legacy' })).toBe('ws-legacy');
+  it('ignores the snake_case field rather than papering over a bad fixture', () => {
+    // `workspace_id` cannot reach the client: `transformKeys` renames it before
+    // any component sees the row. Accepting it here would let a hand-built object
+    // with the wrong casing pass silently — the exact defect class this module
+    // was extracted to eliminate.
+    expect(docWorkspaceId({ workspace_id: 'ws-legacy' } as never)).toBe('');
+    expect(docWorkspaceId({ workspaceId: '', workspace_id: 'ws-legacy' } as never)).toBe('');
   });
 
   it('uses the supplied fallback before giving up', () => {

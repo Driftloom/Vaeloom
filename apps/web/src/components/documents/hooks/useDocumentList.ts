@@ -281,7 +281,7 @@ export function useDocumentList(workspaceId: string): UseDocumentListResult {
     let known = 0;
     for (const doc of documents) {
       if (!selectedIds.has(doc.id)) continue;
-      const raw = doc.metadata?.size ?? doc.metadata?.['size_bytes'];
+      const raw = doc.metadata?.size;
       const n = typeof raw === 'number' ? raw : Number(raw);
       if (Number.isFinite(n) && n > 0) {
         sum += n;
