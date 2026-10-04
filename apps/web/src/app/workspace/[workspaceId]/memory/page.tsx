@@ -556,12 +556,14 @@ function MemoryGraphPageContent() {
                   >
                     <div
                       className="absolute top-3 left-3 z-10 p-1 flex items-center justify-center"
-                      onClick={(e) => toggleSelectMemory(m.id, e)}
+                      onClick={(e: React.MouseEvent) => toggleSelectMemory(m.id, e)}
                     >
                       <input
                         type="checkbox"
                         checked={isSelected}
-                        onChange={(e) => toggleSelectMemory(m.id, e)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          toggleSelectMemory(m.id, e)
+                        }
                         aria-label={`Select memory ${m.title || m.id}`}
                         className="w-6 h-6 min-w-[24px] min-h-[24px] rounded border-[var(--color-border)] text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                       />

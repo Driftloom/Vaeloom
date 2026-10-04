@@ -423,7 +423,7 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
               aria-label={
                 isExpanded ? `Collapse folder ${item.name}` : `Expand folder ${item.name}`
               }
-              onClick={(e) => toggleExpand(item.id, e)}
+              onClick={(e: React.MouseEvent) => toggleExpand(item.id, e)}
             >
               {isExpanded ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />}
             </IconButton>
@@ -438,7 +438,7 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
                 className="shrink-0"
                 aria-label={`Add subfolder to ${item.name}`}
                 title="Add subfolder"
-                onClick={(e) => handleOpenCreateModal(item.id, e)}
+                onClick={(e: React.MouseEvent) => handleOpenCreateModal(item.id, e)}
               >
                 <PlusIcon size={12} />
               </IconButton>
@@ -448,7 +448,7 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
                 className="shrink-0 text-text-muted hover:text-error hover:bg-error/10"
                 aria-label={`Delete folder ${item.name}`}
                 title="Delete folder"
-                onClick={(e) => handleDeleteTrigger(item.id, item.name, e)}
+                onClick={(e: React.MouseEvent) => handleDeleteTrigger(item.id, item.name, e)}
               >
                 <TrashIcon size={12} />
               </IconButton>
@@ -554,7 +554,9 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
                       className="shrink-0 text-text-muted hover:text-error hover:bg-error/10"
                       aria-label={`Delete folder ${folder.name}`}
                       title="Delete folder"
-                      onClick={(e) => handleDeleteTrigger(folder.id, folder.name, e)}
+                      onClick={(e: React.MouseEvent) =>
+                        handleDeleteTrigger(folder.id, folder.name, e)
+                      }
                     >
                       <TrashIcon size={12} />
                     </IconButton>
