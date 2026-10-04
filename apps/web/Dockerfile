@@ -6,14 +6,14 @@ RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 
 WORKDIR /app
 
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY .npmrc pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/web/package.json apps/web/next.config.js apps/web/tsconfig.json ./apps/web/
 COPY packages/shared-types packages/shared-types/
 COPY packages/ui-kit packages/ui-kit/
 COPY packages/tsconfig packages/tsconfig/
 COPY packages/eslint-config packages/eslint-config/
 
-RUN pnpm install --frozen-lockfile --filter @vaeloom/web
+RUN pnpm install --frozen-lockfile --filter @vaeloom/web... --filter @vaeloom/ui-kit
 
 COPY apps/web/ ./apps/web/
 

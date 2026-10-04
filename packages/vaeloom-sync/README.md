@@ -74,16 +74,19 @@ vaultsync start /path/to/my-vault
 
 ## 3. CLI Commands
 
-| Command                                      | Description                                                           |
-| -------------------------------------------- | --------------------------------------------------------------------- |
-| `vaultsync status [vaultPath]`               | Shows last push/pull time, commit hash, and pending conflict files.   |
-| `vaultsync status [vaultPath] --json`        | Outputs status as structured JSON.                                    |
-| `vaultsync start [vaultPath]`                | Starts the continuous background sync watcher.                        |
-| `vaultsync sync [vaultPath]`                 | Executes an immediate one-shot commit, pull with rebase, and push.    |
-| `vaultsync init [vaultPath]`                 | Sets up git, installs `.gitignore`, and configures remote repository. |
-| `vaultsync conflicts [vaultPath]`            | Lists all unreviewed `.conflict-*.md` files.                          |
-| `vaultsync resolve <file> --keep-local`      | Discards the incoming conflict file, keeping your local version.      |
-| `vaultsync resolve <file> --accept-incoming` | Replaces your local version with the incoming version.                |
+| Command                                      | Description                                                                           |
+| -------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `vaultsync status [vaultPath]`               | Shows last push/pull time, commit hash, the newest error, and pending conflict files. |
+| `vaultsync status [vaultPath] --json`        | Outputs status as structured JSON.                                                    |
+| `vaultsync start [vaultPath]`                | Starts the continuous background sync watcher.                                        |
+| `vaultsync sync [vaultPath]`                 | Executes an immediate one-shot commit, pull with rebase, and push.                    |
+| `vaultsync init [vaultPath]`                 | Sets up git, installs `.gitignore`, and configures remote repository.                 |
+| `vaultsync conflicts [vaultPath]`            | Lists all unreviewed `.conflict-*.md` files.                                          |
+| `vaultsync resolve <file> --keep-local`      | Discards the incoming conflict file, keeping your local version.                      |
+| `vaultsync resolve <file> --accept-incoming` | Replaces your local version with the incoming version.                                |
+
+`resolve` refuses any path that resolves outside the vault, so a malformed or
+injected filename cannot read, overwrite, or delete a file elsewhere on disk.
 
 ---
 
@@ -98,14 +101,20 @@ When a rebase conflict occurs on any Markdown file:
    ```
    (e.g., `MeetingNotes.conflict-2026-10-01.md`).
 2. **Local copy retained**: Your local version is kept untouched in
-   `<filename>.md`.
-3. **Automatic rebase continue**: Both files are staged, and git rebase finishes
-   cleanly without aborting.
-4. **Logged & tracked**: The event is recorded in `.vaeloom/sync.log` and
-   `.vaeloom/conflicts.json`.
-5. **Resolution**: You can review the side-by-side diff in Obsidian, in the
-   Vaeloom Memory web interface under the **Vault Sync** tab, or resolve via
-   CLI:
+   `<filename>.md`, byte for byte.
+3. **Repeated conflicts the same day** get a flat counter so nothing collides
+   and every name maps back to the same note:
+   ```
+   MeetingNotes.conflict-2026-10-01.md
+   MeetingNotes.conflict-2026-10-01-2.md
+   MeetingNotes.conflict-2026-10-01-3.md
+   ```
+4. **Automatic rebase continue**: Both files are staged, and git rebase finishes
+   cleanly without aborting. If the rebase still cannot continue, the failure is
+   logged and **push is blocked** rather than building on a broken history.
+5. **Logged & tracked**: The event is recorded in `.vaeloom/sync.log` and
+   `.vaeloom/conflicts.json` (both device-local).
+6. **Resolution**: Review the side-by-side diff in Obsidian, or resolve via CLI:
    ```bash
    # Keep your local note and discard the conflict file:
    vaultsync resolve MeetingNotes.conflict-2026-10-01.md --keep-local
@@ -131,9 +140,11 @@ ping-pong between machines:
 .trash/
 .trash/**
 
-# Vaeloom sync cache and logs
+# Vaeloom device-local runtime state
 .vaeloom/cache/**
 .vaeloom/sync.log
+.vaeloom/sync-config.json
+.vaeloom/conflicts.json
 
 # System files
 .DS_Store
@@ -141,6 +152,13 @@ Thumbs.db
 desktop.ini
 *.tmp
 ```
+
+> **Why `.vaeloom/sync-config.json` and `.vaeloom/conflicts.json` are ignored:**
+> both are per-device state. `sync-config.json` holds your machine's remote and
+> branch, and `conflicts.json` is rewritten by a read-modify-write that has no
+> merge — syncing it would let two machines overwrite each other's conflict
+> ledger, which is the exact failure this tool exists to prevent. Your **notes**
+> are what sync; the daemon's bookkeeping stays local.
 
 ---
 
@@ -194,3 +212,48 @@ your private GitHub repo:
 
 - An encrypted-vault workflow.
 - A proprietary version-history UI. `git log` is the history.
+
+---
+
+## 9. When Sync Cannot Proceed
+
+`vaultsync` never reports success it did not achieve. If a step fails, the
+reason is written to `.vaeloom/sync.log`, surfaced by `vaultsync status`, and
+the operation stops rather than pushing on top of a broken history.
+
+| Symptom in `status`                                    | Meaning                                                                  | Fix                                                                                                                    |
+| ------------------------------------------------------ | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `Last Error: ...rebase... reason other than conflicts` | Git refused the rebase (uncommitted local edits, missing upstream, auth) | Commit or stash local edits, then `vaultsync sync`                                                                     |
+| `Last Error: a rebase is already in progress...`       | A previous rebase could not finish                                       | `git rebase --abort` inside the vault, then `vaultsync sync`. **Push is blocked** until you do — this protects history |
+| `PUSH BLOCKED` in the log                              | Local commits were made, but pushing would entangle an unresolved rebase | Resolve or abort the rebase, then `vaultsync sync`                                                                     |
+| `GIT UNAVAILABLE` in the log                           | No `git` binary on PATH                                                  | None needed. Sync is off; notes and in-app memory work normally. Install Git to enable sync                            |
+| `PULL SKIPPED: no git remote configured`               | `--remote` was never set                                                 | `vaultsync init <path> --remote <url>`. Running local-only is intentional and logged once, not silently                |
+
+**No `git` installed is a supported state, not a failure.** The vault stays a
+plain folder of Markdown, in-app memory is unaffected, and `vaultsync start`
+logs one clear line and exits without touching anything.
+
+### Recovering a stuck rebase
+
+```bash
+cd /path/to/my-vault
+git rebase --abort        # returns you to your last commit; nothing is lost
+vaultsync sync            # retry cleanly
+```
+
+Aborting is always safe: your local commits stay on your branch, and the remote
+version is still on the remote. Nothing is discarded.
+
+---
+
+## 10. Tests
+
+```bash
+cd packages/vaeloom-sync
+npm test
+```
+
+`tests/integration.test.ts` drives **real `git`** against a real bare remote
+across simulated machines. It asserts exact file bytes, exact log lines, and
+that negative cases are refused — including a path-traversal attempt on
+`resolve` that must leave the file outside the vault untouched.
