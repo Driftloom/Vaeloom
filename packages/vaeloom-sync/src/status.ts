@@ -7,30 +7,35 @@ import { findOutstandingConflictFiles, loadConflictRecords, getSyncLogPath } fro
 export interface VaultStatusReport {
   vaultPath: string;
   isGitRepo: boolean;
+  isGitAvailable: boolean;
   branch: string;
   remoteUrl: string | null;
   lastCommit: { hash: string; message: string; date: string } | null;
   uncommittedChanges: boolean;
   lastPushTime: string | null;
   lastPullTime: string | null;
+  lastError: string | null;
   outstandingConflicts: string[];
   recentLogs: string[];
 }
 
 export async function getVaultStatus(config: VaultSyncConfig): Promise<VaultStatusReport> {
   const git = new GitClient(config.vaultPath);
+  const gitAvailable = await git.isGitAvailable();
   const isRepo = await git.isGitRepo();
 
   if (!isRepo) {
     return {
       vaultPath: config.vaultPath,
       isGitRepo: false,
+      isGitAvailable: gitAvailable,
       branch: 'none',
       remoteUrl: null,
       lastCommit: null,
       uncommittedChanges: false,
       lastPushTime: null,
       lastPullTime: null,
+      lastError: null,
       outstandingConflicts: [],
       recentLogs: [],
     };
@@ -41,10 +46,12 @@ export async function getVaultStatus(config: VaultSyncConfig): Promise<VaultStat
   const lastCommit = await git.getLatestCommit();
   const uncommittedChanges = await git.hasUncommittedChanges();
   const outstandingConflicts = findOutstandingConflictFiles(config.vaultPath);
+  const rebaseInProgress = await git.isRebaseInProgress();
 
-  // Extract last pull and push times from sync.log if available
+  // Extract last pull/push times and the newest error from sync.log.
   let lastPushTime: string | null = null;
   let lastPullTime: string | null = null;
+  let lastError: string | null = null;
   const recentLogs: string[] = [];
 
   const logFile = getSyncLogPath(config.vaultPath);
@@ -64,22 +71,36 @@ export async function getVaultStatus(config: VaultSyncConfig): Promise<VaultStat
           const match = line.match(/\[(.*?)\]/);
           if (match) lastPullTime = match[1] || null;
         }
-        if (lastPushTime && lastPullTime) break;
+        // Surface the newest failure so a silent sync break is visible.
+        if (
+          !lastError &&
+          /\b(PULL ERROR|PUSH ERROR|PUSH BLOCKED|PULL EXCEPTION|REBASE WARNING):/.test(line)
+        ) {
+          lastError = line.replace(/^\[[^\]]*\]\s*/, '');
+        }
+        if (lastPushTime && lastPullTime && lastError) break;
       }
     } catch {
       // Ignore read errors
     }
   }
 
+  if (rebaseInProgress) {
+    lastError =
+      'A rebase is in progress and unresolved. Push is blocked to protect history. Run `git rebase --abort` inside the vault to cancel, then retry.';
+  }
+
   return {
     vaultPath: config.vaultPath,
     isGitRepo: true,
+    isGitAvailable: gitAvailable,
     branch,
     remoteUrl,
     lastCommit,
     uncommittedChanges,
     lastPushTime,
     lastPullTime,
+    lastError,
     outstandingConflicts,
     recentLogs,
   };
@@ -91,6 +112,9 @@ export function formatStatusReport(report: VaultStatusReport): string {
   lines.push('  VAELOOM VAULT SYNC STATUS');
   lines.push('======================================================');
   lines.push(`Vault Location : ${report.vaultPath}`);
+  if (!report.isGitAvailable) {
+    lines.push('Git Binary     : NOT FOUND (sync disabled; notes + in-app memory still work)');
+  }
   lines.push(
     `Git Repository : ${report.isGitRepo ? 'Initialized (OK)' : 'Not Initialized (run vaultsync init)'}`,
   );
@@ -109,6 +133,12 @@ export function formatStatusReport(report: VaultStatusReport): string {
     `Last Push Time : ${report.lastPushTime ? new Date(report.lastPushTime).toLocaleString() : 'Never'}`,
   );
   lines.push('------------------------------------------------------');
+
+  if (report.lastError) {
+    lines.push(`Last Error     : ${report.lastError}`);
+  } else {
+    lines.push('Last Error     : None');
+  }
 
   if (report.outstandingConflicts.length === 0) {
     lines.push('Conflicts      : 0 outstanding conflict files (In Sync)');

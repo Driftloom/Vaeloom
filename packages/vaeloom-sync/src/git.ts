@@ -15,20 +15,37 @@ export interface GitExecResult {
 export class GitClient {
   constructor(public readonly cwd: string) {}
 
-  public async exec(args: string[]): Promise<GitExecResult> {
+  /**
+   * `trim: false` returns stdout byte-for-byte. Required when reading file
+   * content out of the git index: trimming strips trailing newlines, which
+   * would make every recovered conflict file differ from the original and
+   * churn the watcher forever.
+   */
+  public async exec(args: string[], opts: { trim?: boolean } = {}): Promise<GitExecResult> {
+    const trim = opts.trim !== false;
+    const normalize = (value: string | undefined, fallback: string): string => {
+      const raw = value ?? fallback;
+      return trim ? raw.trim() : raw;
+    };
     try {
       const { stdout, stderr } = await execFileAsync('git', args, {
         cwd: this.cwd,
         windowsHide: true,
         maxBuffer: 10 * 1024 * 1024,
+        env: {
+          ...process.env,
+          GIT_TERMINAL_PROMPT: '0',
+          GIT_EDITOR: 'true',
+          GIT_SEQUENCE_EDITOR: 'true',
+        },
       });
-      return { stdout: stdout.trim(), stderr: stderr.trim(), code: 0 };
+      return { stdout: normalize(stdout, ''), stderr: normalize(stderr, ''), code: 0 };
     } catch (err: unknown) {
       const error = err as { stdout?: string; stderr?: string; code?: number; message?: string };
       return {
-        stdout: error.stdout ? error.stdout.trim() : '',
-        stderr: error.stderr ? error.stderr.trim() : error.message || 'Unknown git error',
-        code: error.code ?? 1,
+        stdout: normalize(error.stdout, ''),
+        stderr: normalize(error.stderr, error.message || 'Unknown git error'),
+        code: typeof error.code === 'number' ? error.code : 1,
       };
     }
   }
@@ -36,6 +53,15 @@ export class GitClient {
   public async isGitRepo(): Promise<boolean> {
     const res = await this.exec(['rev-parse', '--is-inside-work-tree']);
     return res.code === 0 && res.stdout === 'true';
+  }
+
+  /**
+   * True when a usable `git` binary is on PATH. Callers must degrade to
+   * in-app-only memory rather than looping on failures when this is false.
+   */
+  public async isGitAvailable(): Promise<boolean> {
+    const res = await this.exec(['--version']);
+    return res.code === 0 && res.stdout.toLowerCase().startsWith('git version');
   }
 
   public async initRepo(defaultBranch = 'main'): Promise<void> {
@@ -178,8 +204,11 @@ export class GitClient {
   }
 
   public async getIncomingFileContent(relativeFilePath: string): Promise<string | null> {
-    // Stage 3 in git index is the incoming remote version during merge/rebase
-    const res = await this.exec(['show', `:3:${relativeFilePath}`]);
+    // In git rebase: stage 2 is upstream/remote (incoming), stage 3 is the local commit being applied.
+    // In git merge: stage 3 is MERGE_HEAD (incoming), stage 2 is HEAD (local).
+    const isRebase = await this.isRebaseInProgress();
+    const stage = isRebase ? ':2:' : ':3:';
+    const res = await this.exec(['show', `${stage}${relativeFilePath}`], { trim: false });
     if (res.code === 0) {
       return res.stdout;
     }
@@ -187,11 +216,49 @@ export class GitClient {
   }
 
   public async getLocalFileContent(relativeFilePath: string): Promise<string | null> {
-    // Stage 2 in git index is the local/target version
-    const res = await this.exec(['show', `:2:${relativeFilePath}`]);
+    // In git rebase: stage 3 is the local commit being applied.
+    // In git merge: stage 2 is HEAD (local).
+    const isRebase = await this.isRebaseInProgress();
+    const stage = isRebase ? ':3:' : ':2:';
+    const res = await this.exec(['show', `${stage}${relativeFilePath}`], { trim: false });
     if (res.code === 0) {
       return res.stdout;
     }
     return null;
+  }
+
+  /**
+   * True when the failure left a rebase/merge half-finished on disk.
+   * Distinguishes "there are conflicts to resolve" from every other rebase
+   * failure (dirty tree, bad upstream, auth) which needs different handling.
+   */
+  public async isRepoInConflictState(): Promise<boolean> {
+    const res = await this.exec(['ls-files', '--unmerged']);
+    if (res.code !== 0) return false;
+    return res.stdout.split(/\r?\n/).filter((l) => l.length > 0).length > 0;
+  }
+
+  /** Files with unmerged index entries, forward-slash normalized. */
+  public async getUnmergedFiles(): Promise<string[]> {
+    const res = await this.exec(['ls-files', '--unmerged']);
+    if (res.code !== 0) return [];
+    const files = new Set<string>();
+    for (const line of res.stdout.split(/\r?\n/)) {
+      if (line.length === 0) continue;
+      // Format: "<mode> <sha> <stage>\t<path>"
+      const tabIdx = line.indexOf('\t');
+      const pathPart = tabIdx === -1 ? line : line.slice(tabIdx + 1);
+      const normalized = pathPart.trim().replace(/\\/g, '/');
+      if (normalized.length > 0) files.add(normalized);
+    }
+    return Array.from(files);
+  }
+
+  /** Paths that would collide with a rebase (local commits not yet pushed). */
+  public async getUnpushedCommitCount(upstream: string): Promise<number> {
+    const res = await this.exec(['rev-list', '--count', `${upstream}..HEAD`]);
+    if (res.code !== 0) return 0;
+    const n = parseInt(res.stdout.trim(), 10);
+    return Number.isFinite(n) ? n : 0;
   }
 }

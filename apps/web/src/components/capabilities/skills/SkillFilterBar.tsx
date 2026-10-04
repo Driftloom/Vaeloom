@@ -83,7 +83,7 @@ export const SkillFilterBar: React.FC<SkillFilterBarProps> = ({
             aria-label="Sort skills"
             options={SORT_OPTIONS}
             value={sort}
-            onChange={(value) => onSortChange(value as SkillSort)}
+            onChange={(value: string) => onSortChange(value as SkillSort)}
             className="text-2xs py-1"
           />
         </div>
@@ -146,7 +146,7 @@ export const SkillFilterBar: React.FC<SkillFilterBarProps> = ({
           aria-label="Filter by trust level"
           options={TRUST_OPTIONS}
           value={trustFilter}
-          onChange={(val) => onTrustFilterChange(val)}
+          onChange={(val: string) => onTrustFilterChange(val)}
           className="text-2xs py-0.5 flex-1 max-w-[150px]"
         />
         <Button

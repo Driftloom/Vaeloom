@@ -25,8 +25,14 @@ export const DEFAULT_CONFIG: Omit<VaultSyncConfig, 'vaultPath'> = {
     '.obsidian/cache*',
     '.obsidian/plugins/obsidian-git/',
     '.trash/**',
+    // Device-local runtime state. These must never sync: sync-config.json
+    // holds machine-specific remote/branch, and conflicts.json is rewritten
+    // by a read-modify-write that has no merge, so syncing it guarantees
+    // cross-machine clobbering.
     '.vaeloom/cache/**',
     '.vaeloom/sync.log',
+    '.vaeloom/sync-config.json',
+    '.vaeloom/conflicts.json',
     '.DS_Store',
     'Thumbs.db',
     'desktop.ini',

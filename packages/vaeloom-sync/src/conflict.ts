@@ -37,6 +37,43 @@ export function getSyncLogPath(vaultPath: string): string {
   return path.join(vaultPath, '.vaeloom', 'sync.log');
 }
 
+/**
+ * Resolve `relativePath` and guarantee the result stays inside the vault.
+ *
+ * `resolveConflictFile` unlinks and overwrites paths derived from CLI/API
+ * input. Without this guard `vaultsync resolve ../../../notes.md` resolves
+ * outside the vault and deletes an arbitrary file. Absolute inputs and `..`
+ * escapes are rejected; existing paths are additionally checked through
+ * realpath so a symlink cannot launder an escape.
+ *
+ * Returns null when the path escapes the vault.
+ */
+export function resolveInsideVault(vaultPath: string, relativePath: string): string | null {
+  if (typeof relativePath !== 'string' || relativePath.trim().length === 0) {
+    return null;
+  }
+  const root = path.resolve(vaultPath);
+  const target = path.resolve(root, relativePath);
+  const rel = path.relative(root, target);
+  // Empty means target === root (the vault dir itself, never a note).
+  if (rel.length === 0 || rel.startsWith('..') || path.isAbsolute(rel)) {
+    return null;
+  }
+  if (fs.existsSync(target)) {
+    try {
+      const realRoot = fs.realpathSync(root);
+      const realTarget = fs.realpathSync(target);
+      const realRel = path.relative(realRoot, realTarget);
+      if (realRel.length === 0 || realRel.startsWith('..') || path.isAbsolute(realRel)) {
+        return null;
+      }
+    } catch {
+      // realpath can fail on a broken symlink; the lexical check above stands.
+    }
+  }
+  return target;
+}
+
 export function logSyncMessage(vaultPath: string, message: string): void {
   const logPath = getSyncLogPath(vaultPath);
   const dir = path.dirname(logPath);
@@ -52,8 +89,21 @@ export function loadConflictRecords(vaultPath: string): ConflictRecord[] {
   if (!fs.existsSync(file)) return [];
   try {
     const raw = fs.readFileSync(file, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as ConflictRecord[]) : [];
+  } catch (err) {
+    // Never silently return [] here: the caller may save over the file and
+    // destroy the ledger. Preserve the unreadable bytes first.
+    try {
+      const backup = `${file}.corrupt-${Date.now()}`;
+      fs.copyFileSync(file, backup);
+      logSyncMessage(
+        vaultPath,
+        `CORRUPT LEDGER: ${file} could not be parsed (${err instanceof Error ? err.message : String(err)}). Original preserved at ${path.basename(backup)}. Starting a fresh ledger.`,
+      );
+    } catch {
+      // Backup itself failed; still do not overwrite silently.
+    }
     return [];
   }
 }
@@ -72,12 +122,64 @@ export function saveConflictRecords(vaultPath: string, records: ConflictRecord[]
  * Incoming versions are written to <name>.conflict-YYYY-MM-DD.md,
  * while local copies are kept in place.
  */
+/**
+ * Strip the conflict suffix to recover the original note path.
+ * Handles repeated counters (`note.conflict-2026-10-04-2-2.md`) so a
+ * same-day repeat conflict never resolves onto another conflict file.
+ */
+export function originalPathFromConflictFile(conflictFilePath: string): string {
+  const dir = path.dirname(conflictFilePath);
+  const ext = path.extname(conflictFilePath);
+  const base = path.basename(conflictFilePath, ext);
+  const originalBase = base.replace(/\.conflict-\d{4}-\d{2}-\d{2}(?:-\d+)*$/, '');
+  const rel = dir === '.' ? `${originalBase}${ext}` : path.join(dir, `${originalBase}${ext}`);
+  return rel;
+}
+
+/**
+ * Pick a conflict filename that does not exist yet.
+ *
+ * The first conflict of the day is `note.conflict-YYYY-MM-DD.md`; subsequent
+ * ones become `-2`, `-3`, ... Incrementing a single counter (rather than
+ * appending to the previous name) keeps names flat and, critically, keeps
+ * `originalPathFromConflictFile` able to recover the real note.
+ */
+export function allocateConflictRelPath(
+  vaultPath: string,
+  conflictedRelPath: string,
+  date: Date = new Date(),
+): string {
+  const candidate = formatConflictFilename(conflictedRelPath, date);
+  if (!fs.existsSync(path.join(vaultPath, candidate))) {
+    return candidate;
+  }
+  const dir = path.dirname(candidate);
+  const ext = path.extname(candidate);
+  const baseNoExt = path.basename(candidate, ext);
+  const join = (name: string): string => (dir === '.' ? name : path.join(dir, name));
+
+  for (let n = 2; n < 1000; n++) {
+    const next = join(`${baseNoExt}-${n}${ext}`);
+    if (!fs.existsSync(path.join(vaultPath, next))) {
+      return next;
+    }
+  }
+  // Pathological case: fall back to a unique suffix rather than looping forever.
+  return join(`${baseNoExt}-${Date.now()}${ext}`);
+}
+
 export async function handleRebaseConflicts(
   git: GitClient,
   vaultPath: string,
 ): Promise<{ resolvedCount: number; records: ConflictRecord[] }> {
-  const status = await git.getStatusSummary();
-  if (status.conflicted.length === 0) {
+  // Prefer git's own unmerged index over parsing porcelain status: this is the
+  // authoritative conflict list and cannot misclassify add/add as content.
+  let conflicted = await git.getUnmergedFiles();
+  if (conflicted.length === 0) {
+    const status = await git.getStatusSummary();
+    conflicted = status.conflicted;
+  }
+  if (conflicted.length === 0) {
     return { resolvedCount: 0, records: [] };
   }
 
@@ -85,8 +187,15 @@ export async function handleRebaseConflicts(
   const newRecords: ConflictRecord[] = [];
   const now = new Date();
 
-  for (const conflictedRelPath of status.conflicted) {
-    const fullOriginalPath = path.join(vaultPath, conflictedRelPath);
+  for (const conflictedRelPath of conflicted) {
+    const fullOriginalPath = resolveInsideVault(vaultPath, conflictedRelPath);
+    if (fullOriginalPath === null) {
+      logSyncMessage(
+        vaultPath,
+        `CONFLICT SKIPPED: '${conflictedRelPath}' resolves outside the vault. Left untouched for manual recovery.`,
+      );
+      continue;
+    }
 
     // Read incoming version from git index stage 3
     const incomingContent = await git.getIncomingFileContent(conflictedRelPath);
@@ -96,25 +205,22 @@ export async function handleRebaseConflicts(
       localContent = fs.readFileSync(fullOriginalPath, 'utf-8');
     }
 
-    let conflictRelPath = formatConflictFilename(conflictedRelPath, now);
-    let fullConflictPath = path.join(vaultPath, conflictRelPath);
-
-    // If a conflict file already exists for today, append a counter
-    let counter = 1;
-    while (fs.existsSync(fullConflictPath)) {
-      const ext = path.extname(conflictedRelPath);
-      const baseNoExt = conflictRelPath.slice(0, -ext.length);
-      conflictRelPath = `${baseNoExt}-${counter}${ext}`;
-      fullConflictPath = path.join(vaultPath, conflictRelPath);
-      counter++;
-    }
+    const conflictRelPath = allocateConflictRelPath(vaultPath, conflictedRelPath, now);
+    const fullConflictPath = path.join(vaultPath, conflictRelPath);
 
     // Write incoming content to conflict file
     if (incomingContent !== null) {
       fs.writeFileSync(fullConflictPath, incomingContent, 'utf-8');
-    } else {
-      // Fallback: copy what currently exists
+    } else if (fs.existsSync(fullOriginalPath)) {
+      // Fallback: the working-tree file still carries <<<<<<< markers, but it
+      // is strictly better than discarding the only remaining copy.
       fs.copyFileSync(fullOriginalPath, fullConflictPath);
+    } else {
+      logSyncMessage(
+        vaultPath,
+        `CONFLICT UNRECOVERABLE: no incoming or local content for '${conflictedRelPath}'. Nothing was written.`,
+      );
+      continue;
     }
 
     // Ensure original file retains our local version
@@ -123,7 +229,7 @@ export async function handleRebaseConflicts(
     }
 
     // Mark both files resolved in git
-    await git.exec(['add', fullOriginalPath, fullConflictPath]);
+    await git.exec(['add', '--', fullOriginalPath, fullConflictPath]);
 
     const record: ConflictRecord = {
       id: `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
@@ -142,16 +248,21 @@ export async function handleRebaseConflicts(
   }
 
   // Continue the rebase now that all conflicted files are resolved
-  const continueRes = await git.continueRebase();
-  if (continueRes.code !== 0) {
-    logSyncMessage(
-      vaultPath,
-      `REBASE WARNING: git rebase --continue exited with code ${continueRes.code}: ${continueRes.stderr}`,
-    );
+  if (newRecords.length > 0) {
+    const continueRes = await git.continueRebase();
+    if (continueRes.code !== 0) {
+      logSyncMessage(
+        vaultPath,
+        `REBASE WARNING: git rebase --continue exited with code ${continueRes.code}: ${continueRes.stderr}. The rebase is still in progress; no data was lost. Run 'vaultsync sync' after resolving remaining files.`,
+      );
+      return { resolvedCount: newRecords.length, records: newRecords };
+    }
   }
 
   const updatedRecords = [...existingRecords, ...newRecords];
-  saveConflictRecords(vaultPath, updatedRecords);
+  if (newRecords.length > 0) {
+    saveConflictRecords(vaultPath, updatedRecords);
+  }
 
   return { resolvedCount: newRecords.length, records: newRecords };
 }
@@ -203,19 +314,35 @@ export async function resolveConflictFile(
   strategy: 'keep-local' | 'accept-incoming',
   git?: GitClient,
 ): Promise<{ success: boolean; message: string }> {
-  const fullConflictPath = path.resolve(vaultPath, conflictFilePath);
+  const fullConflictPath = resolveInsideVault(vaultPath, conflictFilePath);
+  if (fullConflictPath === null) {
+    return {
+      success: false,
+      message: `Refusing to resolve '${conflictFilePath}': path resolves outside the vault.`,
+    };
+  }
   if (!fs.existsSync(fullConflictPath)) {
     return { success: false, message: `Conflict file not found: ${conflictFilePath}` };
   }
 
-  // Deduce original filename
-  const dir = path.dirname(conflictFilePath);
-  const ext = path.extname(conflictFilePath);
-  const base = path.basename(conflictFilePath, ext);
-  const originalBase = base.replace(/\.conflict-\d{4}-\d{2}-\d{2}(-\d+)?$/, '');
-  const originalRelPath =
-    dir === '.' ? `${originalBase}${ext}` : path.join(dir, `${originalBase}${ext}`);
-  const fullOriginalPath = path.resolve(vaultPath, originalRelPath);
+  const originalRelPath = originalPathFromConflictFile(conflictFilePath);
+  const fullOriginalPath = resolveInsideVault(vaultPath, originalRelPath);
+  if (fullOriginalPath === null) {
+    return {
+      success: false,
+      message: `Refusing to resolve '${conflictFilePath}': original path escapes the vault.`,
+    };
+  }
+
+  // Guard the data-loss case: if the recovered "original" is itself still a
+  // conflict file, the caller passed a malformed name and accept-incoming
+  // would overwrite one conflict file with another.
+  if (/\.conflict-\d{4}-\d{2}-\d{2}(?:-\d+)*\.[^.]+$/.test(originalRelPath)) {
+    return {
+      success: false,
+      message: `'${conflictFilePath}' does not match the conflict naming convention; refusing to touch '${originalRelPath}'.`,
+    };
+  }
 
   if (strategy === 'accept-incoming') {
     fs.copyFileSync(fullConflictPath, fullOriginalPath);
@@ -234,9 +361,8 @@ export async function resolveConflictFile(
 
   // Update records
   const records = loadConflictRecords(vaultPath);
-  const target = records.find(
-    (r) => r.conflictFile === conflictFilePath.replace(/\\/g, '/') && !r.resolved,
-  );
+  const normalizedTarget = conflictFilePath.replace(/\\/g, '/');
+  const target = records.find((r) => r.conflictFile === normalizedTarget && !r.resolved);
   if (target) {
     target.resolved = true;
     target.resolutionStrategy = strategy;
@@ -246,7 +372,7 @@ export async function resolveConflictFile(
   if (git) {
     await git.stageAll();
     await git.commit(
-      `vault(resolve): ${strategy === 'accept-incoming' ? 'accept incoming' : 'keep local'} for ${originalRelPath}`,
+      `vault(resolve): ${strategy === 'accept-incoming' ? 'accept incoming' : 'keep local'} for ${originalRelPath.replace(/\\/g, '/')}`,
     );
   }
 

@@ -102,7 +102,12 @@ async def _detect_subtasks(message: str) -> list[tuple[str, float]]:
 
 def _build_dag(subtasks: list[tuple[str, float]]) -> list[list[str]]:
     """Group subtasks into execution layers respecting dynamic dependencies."""
-    agents = [a for a, _ in subtasks]
+    seen: set[str] = set()
+    agents: list[str] = []
+    for a, _ in subtasks:
+        if a not in seen:
+            seen.add(a)
+            agents.append(a)
     if not agents:
         return []
 

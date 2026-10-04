@@ -57,12 +57,12 @@ CATEGORY_AGENT_MAP = {
 
 # Keywords for coarse category classification
 CATEGORY_KEYWORDS = {
-    "document_organization": ["organize", "file", "rename", "folder", "categorize", "duplicate", "move", "workspace", "sprawl", "hierarchy", "pdf", "synthesize", "citation"],
+    "document_organization": ["organize", "file", "rename", "folder", "categorize", "duplicate", "move", "workspace", "sprawl", "hierarchy", "pdf", "synthesize", "citation", "document", "documents", "download"],
     "career_resume": ["resume", "cv", "bullet", "achievement", "ats", "score", "tailor"],
     "job_search": ["job", "job search", "apply", "application", "internship", "fellowship", "co-op", "career", "role", "position"],
     "communication": ["email", "gmail", "inbox", "draft", "reply", "mail"],
     "schedule_time": ["schedule", "deadline", "calendar", "reminder", "conflict", "event", "meeting", "availability", "slot"],
-    "memory_extraction": ["extract", "memory", "entity", "knowledge", "graph", "remember", "vault", "obsidian", "notes", "sync vault"],
+    "memory_extraction": ["extract", "memory", "entity", "knowledge", "graph", "remember", "vault", "obsidian", "notes", "sync vault", "projects"],
     "planning_research": ["plan", "planning", "roadmap", "research", "strategy", "milestone", "goal", "research"],
     "career_development": ["career", "path", "skill", "course", "learn", "training", "certification"],
     "research_github": ["company", "industry", "trend", "github", "repository", "profile"],
@@ -336,12 +336,14 @@ async def classify_intent(message: str, workspace_id: str | None = None) -> tupl
 
     best_score = max(scores.values()) if scores else 0
     if best_score == 0:
-        # Check LLM before default memory fallback
+        # Check LLM before default fallback
         llm_match = await _llm_classify_intent(message)
         if llm_match:
             logger.info(f"ROUTER_LLM_CLASSIFY: query='{message[:50]}' fallback -> {llm_match[0]} ({llm_match[1]:.2f})")
             return llm_match
-        return "memory", 0.5  # Strict negative control: nonsense / empty must fallback to memory
+        if detect_adversarial_prompt(clean_message):
+            return "memory", 0.5  # Adversarial prompt negative control quarantine fallback
+        return "conversation", 0.6  # Boundary, empty, or unclassified queries safely fall back to conversational partner
 
     # Gather all categories tied at best_score and break tie via disambiguation strength
     tied = [cat for cat, sc in scores.items() if sc == best_score]
@@ -364,6 +366,8 @@ async def classify_intent(message: str, workspace_id: str | None = None) -> tupl
                 return sum(1 for kw in ["deadline", "remind", "follow up", "task", "todo"] if kw in msg_lower)
             if cat == "integrations":
                 return sum(1 for kw in ["connector", "integration", "connect", "setup", "configure"] if kw in msg_lower)
+            if cat == "document_organization":
+                return sum(1 for kw in ["organize", "file", "folder", "workspace", "pdf", "document", "download"] if kw in msg_lower)
             return 0
         tied_sorted = sorted(tied, key=lambda c: _secondary(c), reverse=True)
         # Muse §7: capability-aware tie-break. When disambiguation strength
@@ -416,7 +420,12 @@ async def classify_intent(message: str, workspace_id: str | None = None) -> tupl
         else:
             fast_agent = "job_search"
     elif best_category == "schedule_time":
-        fast_agent = "calendar" if any(kw in msg_lower for kw in ["calendar", "open slot", "availability", "free time"]) else "scheduler"
+        if any(kw in msg_lower for kw in ["create", "delete", "conflict", "scheduler"]):
+            fast_agent = "scheduler"
+        elif any(kw in msg_lower for kw in ["calendar", "open slot", "availability", "free time"]):
+            fast_agent = "calendar"
+        else:
+            fast_agent = "scheduler"
     elif best_category == "career_development":
         fast_agent = "learning" if any(kw in msg_lower for kw in ["course", "learn", "training", "certification", "study"]) else "career"
     elif best_category == "research_github":
