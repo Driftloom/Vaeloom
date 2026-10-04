@@ -398,18 +398,30 @@ function CapabilitiesContent() {
       : null;
 
   const initialAgentParam = searchParams?.get('agent') || undefined;
+  const initialSkillParam = searchParams?.get('skill') || undefined;
+  const initialSkillTab =
+    searchParams?.get('skillTab') === 'browse' ||
+    (searchParams?.get('tab') === 'browse' && urlCategory === 'skills')
+      ? 'browse'
+      : 'installed';
 
   const [selectedCategory, setSelectedCategory] = useState<CapabilityCategory>(
     validUrlCategory ?? 'skills',
   );
   const [searchQuery, setSearchQuery] = useState('');
-  const [skillTab, setSkillTab] = useState<SkillTab>('installed');
+  const [skillTab, setSkillTab] = useState<SkillTab>(initialSkillTab);
   const [skillSort, setSkillSort] = useState<SkillSort>('most-used');
-  const [selectedSkillKey, setSelectedSkillKey] = useState('');
+  const [selectedSkillKey, setSelectedSkillKey] = useState(initialSkillParam ?? '');
   const [pendingSkillKey, setPendingSkillKey] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [connectorsAddTrigger, setConnectorsAddTrigger] = useState(0);
   const [importModalOpen, setImportModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (initialSkillParam) {
+      setSelectedSkillKey(initialSkillParam);
+    }
+  }, [initialSkillParam]);
 
   useEffect(() => {
     if (validUrlCategory && validUrlCategory !== selectedCategory) {

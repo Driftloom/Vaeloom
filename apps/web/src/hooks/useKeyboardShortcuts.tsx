@@ -101,7 +101,7 @@ export function KeyboardShortcutsModal() {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={() => setShowModal(false)}
-      onKeyDown={(e) => {
+      onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
         if (e.key === 'Escape') setShowModal(false);
       }}
     >
@@ -110,7 +110,7 @@ export function KeyboardShortcutsModal() {
         aria-modal="true"
         aria-label="Keyboard shortcuts"
         className="bg-surface border border-border rounded-lg shadow-xl p-6 w-full max-w-md max-h-[90dvh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
       >
         <h2 className="text-lg font-display font-semibold text-text mb-4 shrink-0">
           Keyboard Shortcuts

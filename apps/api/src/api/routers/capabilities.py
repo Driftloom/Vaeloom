@@ -1039,6 +1039,14 @@ async def create_capability(
             detail="Capability name contains invalid characters. Use alphanumeric, dashes, dots, or underscores.",
         )
 
+    from ..services.skill_catalog_service import PROHIBITED_EXTERNAL_DOMAINS
+
+    if name.lower() in PROHIBITED_EXTERNAL_DOMAINS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Capability '{name}' is excluded by platform policy. Vaeloom workspace domain is restricted to career intelligence and verified platform tools.",
+        )
+
     # Check for duplicate within workspace and category
     existing = await db.execute(
         select(WorkspaceCapability.id).where(

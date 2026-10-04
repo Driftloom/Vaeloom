@@ -560,6 +560,24 @@ async def cancel_run(
             "failure_code": "CANCELLATION" if not state.is_terminal else None}
 
 
+SLASH_COMMAND_AGENT_MAP: dict[str, str] = {
+    "/ats-audit": "resume",
+    "/ats-resume-builder": "resume",
+    "/tailor-resume": "resume",
+    "/resume": "resume",
+    "/career-coaching": "career",
+    "/career": "career",
+    "/job-radar": "job_search",
+    "/job-search": "job_search",
+    "/jobs": "job_search",
+    "/cover-letter": "resume",
+    "/interview-prep": "career",
+    "/salary-negotiation": "career",
+    "/organize": "organization",
+    "/document": "document",
+}
+
+
 @router.post("/chat", status_code=200)
 async def chat(
     dto: ChatMessage,
@@ -590,11 +608,17 @@ async def chat(
     if not _tenant and isinstance(current_user, dict):
         _tenant = current_user.get("tenant_id") or (current_user.get("tenant") if isinstance(current_user.get("tenant"), str) else None)
     full_message = f"{dto.message}\n\n{bg_context}" if bg_context else dto.message
+
+    pref_agent = dto.agentName.strip().lower() if dto.agentName else None
+    if not pref_agent and dto.message.strip().startswith("/"):
+        first_token = dto.message.strip().split()[0].lower()
+        pref_agent = SLASH_COMMAND_AGENT_MAP.get(first_token)
+
     req = UserRequest(
         request_id=str(uuid.uuid4()),
         message=full_message,
         workspace_id=dto.workspaceId,
-        preferred_agent=dto.agentName.strip().lower() if dto.agentName else None,
+        preferred_agent=pref_agent,
         user_id=str(_uid) if _uid else None,
         tenant_id=str(_tenant) if _tenant else None,
     )
@@ -637,6 +661,9 @@ async def chat_stream(
 
     req_id = str(uuid.uuid4())
     preferred = dto.agentName.strip().lower() if dto.agentName else None
+    if not preferred and dto.message.strip().startswith("/"):
+        first_token = dto.message.strip().split()[0].lower()
+        preferred = SLASH_COMMAND_AGENT_MAP.get(first_token)
     full_message = f"{dto.message}\n\n{bg_context}" if bg_context else dto.message
 
     async def event_gen():

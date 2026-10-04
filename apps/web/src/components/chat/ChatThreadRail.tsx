@@ -355,8 +355,10 @@ export function ChatThreadRail({
                               aria-label={`Rename ${t.title}`}
                               value={draftTitle}
                               autoFocus
-                              onChange={(e) => setDraftTitle(e.target.value)}
-                              onKeyDown={(e) => {
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                setDraftTitle(e.target.value)
+                              }
+                              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
                                   commitRename();

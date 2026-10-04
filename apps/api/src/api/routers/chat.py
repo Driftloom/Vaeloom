@@ -74,12 +74,19 @@ async def send_chat_message(
             await db.close()
     user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
     tenant_id = current_user.get("tenant_id")
+    from .agents import SLASH_COMMAND_AGENT_MAP
+
+    preferred = dto.agent_name.strip().lower() if dto.agent_name else None
+    if not preferred and dto.message.strip().startswith("/"):
+        first_token = dto.message.strip().split()[0].lower()
+        preferred = SLASH_COMMAND_AGENT_MAP.get(first_token)
     full_message = f"{dto.message}\n\n{bg_context}" if bg_context else dto.message
+
     req = UserRequest(
         request_id=str(uuid.uuid4()),
         message=full_message,
         workspace_id=workspace_id,
-        preferred_agent=dto.agent_name.strip().lower() if dto.agent_name else None,
+        preferred_agent=preferred,
         user_id=str(user_id) if user_id else None,
         tenant_id=str(tenant_id) if tenant_id else None,
     )

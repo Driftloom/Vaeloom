@@ -378,8 +378,8 @@ export default function JobsPage() {
               type="search"
               aria-label="Search jobs"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
+              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                 if (e.key === 'Enter') handleSearch();
               }}
               placeholder="e.g. Product Manager in Berlin, React frontend, ML engineer…"

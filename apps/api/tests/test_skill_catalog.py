@@ -960,3 +960,32 @@ class TestDynamicToolWorkspaceScoping:
         finally:
             for reg, snapshot in zip(registries, saved):
                 reg.update(snapshot)
+
+
+class TestPlatformDomainExclusionAndSlashCommands:
+    async def test_create_capability_rejects_prohibited_external_domain(self, client: AsyncClient):
+        headers, workspace_id = await _signup_workspace(client, "prohibiteddom")
+        res = await client.post(
+            "/api/v1/capabilities",
+            json={
+                "workspace_id": workspace_id,
+                "name": "alphafold",
+                "category": "skill",
+                "description": "Biological folding predictor",
+            },
+            headers=headers,
+        )
+        assert res.status_code == 400
+        assert "excluded by platform policy" in res.json()["detail"]
+
+    def test_slash_command_agent_map_resolves_specialist_agents(self):
+        from api.routers.agents import SLASH_COMMAND_AGENT_MAP
+        assert SLASH_COMMAND_AGENT_MAP["/ats-audit"] == "resume"
+        assert SLASH_COMMAND_AGENT_MAP["/career-coaching"] == "career"
+        assert SLASH_COMMAND_AGENT_MAP["/job-radar"] == "job_search"
+
+    def test_prohibited_domains_set_integrity(self):
+        from api.services.skill_catalog_service import PROHIBITED_EXTERNAL_DOMAINS
+        assert "alphafold" in PROHIBITED_EXTERNAL_DOMAINS
+        assert "chembl" in PROHIBITED_EXTERNAL_DOMAINS
+        assert "pdb" in PROHIBITED_EXTERNAL_DOMAINS

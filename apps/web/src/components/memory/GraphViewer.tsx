@@ -690,7 +690,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
                     aria-label={node.label}
                     opacity={!isMatched ? 0.25 : 1}
                     filter={isMatched && matchedNodeIds ? 'url(#glow)' : undefined}
-                    onKeyDown={(e) => {
+                    onKeyDown={(e: React.KeyboardEvent<SVGGElement>) => {
                       if (e.key === 'Enter' || e.key === ' ') setSelected(node);
                     }}
                   >

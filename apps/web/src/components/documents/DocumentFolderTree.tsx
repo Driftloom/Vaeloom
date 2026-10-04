@@ -364,7 +364,7 @@ export const DocumentFolderTree: React.FC<DocumentFolderTreeProps> = ({
           aria-expanded={hasChildren ? isExpanded : undefined}
           aria-label={accessibleName}
           onClick={() => onSelectFolder(rowId)}
-          onKeyDown={(e) => handleRowKeyDown(e, rowId)}
+          onKeyDown={(e: React.KeyboardEvent<HTMLButtonElement>) => handleRowKeyDown(e, rowId)}
           className={`flex items-center justify-between gap-1.5 flex-1 min-w-0 py-1.5 pl-1.5 pr-2 rounded-lg border text-left ${ROW_FOCUS} ${
             isSelected
               ? 'bg-primary/10 text-primary border-primary/30'

@@ -53,6 +53,68 @@ SELF_CHECKS: frozenset[str] = frozenset(
     {"numbered-operating-rules", "triggers-echoed", "scope-cited"}
 )
 
+# Tier 3: External Skills Quarantine / Purge Policy
+# External bioinformatics, genomics, and unrelated science plugins that are
+# permanently excluded from Vaeloom's career intelligence workspace ingestion.
+PROHIBITED_EXTERNAL_DOMAINS: frozenset[str] = frozenset(
+    {
+        "alphafold",
+        "alphafold_database_fetch_and_analyze",
+        "alphagenome",
+        "alphagenome_variant_impact_score",
+        "chembl",
+        "chembl_database",
+        "clinical_trials",
+        "clinical_trials_database",
+        "clinvar",
+        "clinvar_database",
+        "dbsnp",
+        "dbsnp_database",
+        "embl_ebi_ols",
+        "encode_ccres",
+        "encode_ccres_database",
+        "ensembl",
+        "ensembl_database",
+        "foldseek",
+        "foldseek_structural_search",
+        "gnomad",
+        "gnomad_database",
+        "gtex",
+        "gtex_database",
+        "human_protein_atlas",
+        "human_protein_atlas_database",
+        "interpro",
+        "interpro_database",
+        "jaspar",
+        "jaspar_database",
+        "ncbi_sequence_fetch",
+        "openfda",
+        "openfda_database",
+        "opentargets",
+        "opentargets_database",
+        "pdb",
+        "pdb_database",
+        "predictingthepast",
+        "protein_sequence_msa",
+        "protein_sequence_similarity_search",
+        "pubchem",
+        "pubchem_database",
+        "pubmed",
+        "pubmed_database",
+        "pymol",
+        "quickgo",
+        "quickgo_database",
+        "reactome",
+        "reactome_database",
+        "string_database",
+        "ucsc_conservation_and_tfbs",
+        "unibind",
+        "unibind_database",
+        "uniprot",
+        "uniprot_database",
+    }
+)
+
 _SECTION_RE = re.compile(r"^\s{0,3}#{2,3}\s+(?P<title>.+?)\s*$")
 _NUMBERED_RE = re.compile(r"^\s*(?:\d+[.)]|[-*])\s+\S")
 _PLACEHOLDER_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (

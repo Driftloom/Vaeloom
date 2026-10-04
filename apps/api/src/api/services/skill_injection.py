@@ -95,7 +95,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..config import settings
 from ..models.schema import WorkspaceCapability
 from .prompt_compiler import estimate_tokens, quarantine
-from .skill_catalog_service import get_catalog_entry
+from .skill_catalog_service import PROHIBITED_EXTERNAL_DOMAINS, get_catalog_entry
 
 logger = logging.getLogger(__name__)
 
@@ -489,6 +489,11 @@ async def build_skill_directive(
         skill = _resolve(row)
         if not row.enabled:
             skipped.append(SkillSkip(skill.name, "disabled", "enabled is false"))
+            continue
+        if skill.name.lower() in PROHIBITED_EXTERNAL_DOMAINS:
+            skipped.append(
+                SkillSkip(skill.name, "domain_policy_exclusion", "skill is excluded by platform domain policy")
+            )
             continue
         if not skill.required_scope:
             skipped.append(

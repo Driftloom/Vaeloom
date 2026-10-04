@@ -304,10 +304,10 @@ export default function AgentDetailPage() {
           <input
             id="agent-test-prompt"
             value={testPrompt}
-            onChange={(e) => setTestPrompt(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTestPrompt(e.target.value)}
             placeholder={`Enter test prompt for ${agent.name}...`}
             disabled={testRunning}
-            onKeyDown={(e) => {
+            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 void handleRunTest();

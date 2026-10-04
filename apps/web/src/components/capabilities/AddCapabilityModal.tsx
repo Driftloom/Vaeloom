@@ -1449,8 +1449,8 @@ function TagEditor({
           type="text"
           aria-label="Add a tag"
           value={input}
-          onChange={(event) => onInput(event.target.value)}
-          onKeyDown={(event) => {
+          onChange={(event: React.ChangeEvent<HTMLInputElement>) => onInput(event.target.value)}
+          onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
             if (event.key === 'Enter' || event.key === ',') {
               event.preventDefault();
               onAdd(input);

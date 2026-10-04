@@ -849,11 +849,11 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                           disabled={reactRounds.saving}
                           aria-invalid={reactRounds.issue !== null}
                           aria-describedby="agent-react-rounds-state"
-                          onChange={(e) => {
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                             setRoundsText(e.target.value);
                             setReactRounds((previous) => ({ ...previous, issue: null }));
                           }}
-                          onKeyDown={(e) => {
+                          onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                             if (e.key === 'Enter') {
                               e.preventDefault();
                               void handleCommitRounds();
