@@ -1660,7 +1660,7 @@ function pickField<T extends string>(
       label={extra.ariaLabel ? undefined : label}
       aria-label={extra.ariaLabel ?? label}
       value={value}
-      onChange={(next) => onChange(option(next, allowed, value))}
+      onChange={(next: string) => onChange(option(next, allowed, value))}
       options={asOptions(allowed)}
       helperText={extra.helperText}
       error={extra.error}

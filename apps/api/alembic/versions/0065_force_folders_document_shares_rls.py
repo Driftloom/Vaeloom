@@ -125,8 +125,9 @@ def _assert_coverage(bind) -> None:
         # information_schema for the connected database, not from user input.
         rls = bind.execute(
             sa.text(
-                "SELECT rowsecurity, forcerowsecurity FROM pg_tables "
-                f"WHERE schemaname = 'public' AND tablename = '{table}';"
+                "SELECT c.relrowsecurity, c.relforcerowsecurity FROM pg_class c "
+                "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                f"WHERE n.nspname = 'public' AND c.relname = '{table}';"
             )
         ).fetchall()
         if not rls or rls[0][0] is not True:

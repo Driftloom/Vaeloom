@@ -180,8 +180,8 @@ describe('DocumentsHub Enterprise Component', () => {
     await screen.findByText('sample_financials.csv');
 
     // Category tabs
-    expect(screen.getByRole('button', { name: /^all/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /documents/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^all files/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^documents$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /spreadsheets/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /code/i })).toBeInTheDocument();
 

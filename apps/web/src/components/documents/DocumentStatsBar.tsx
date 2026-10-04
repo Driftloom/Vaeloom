@@ -32,13 +32,10 @@ export interface DocumentStatsBarProps {
   totalBytes?: number;
   cleanCount?: number;
   /**
-   * Files whose security scan is still in flight.
-   *
-   * This used to be destructured, listed as a `useMemo` dependency, and then
-   * never read — ESLint flagged the unused dependency and the number was
-   * silently dropped. It now drives its own metric card. The card is omitted
-   * when the prop is absent rather than defaulting to 0, because "0 scanning"
-   * is a claim about the workspace and an absent prop is not a claim.
+   * Files whose security scan is still in flight. Previously destructured, listed
+   * as a `useMemo` dependency and then never read. The card is omitted when the
+   * prop is absent rather than defaulting to 0: "0 scanning" is a claim about the
+   * workspace and an absent prop is not.
    */
   scanningCount?: number;
   quarantinedCount?: number;
@@ -48,10 +45,10 @@ export interface DocumentStatsBarProps {
   activeShares?: number;
   loading?: boolean;
   /**
-   * A load failure message. Supplied by the caller because this component
-   * cannot tell a failed fetch from an empty result on its own — an empty array
-   * is indistinguishable from a request that never came back. Passing it is
-   * what keeps "failed" from rendering as "nothing here".
+   * A load failure message. Supplied by the caller because this component cannot
+   * tell a failed fetch from an empty result — `[]` is indistinguishable from a
+   * request that never came back. Passing it is what keeps "failed" from
+   * rendering as "nothing here".
    */
   error?: string | null;
   onRetry?: () => void;
@@ -60,29 +57,26 @@ export interface DocumentStatsBarProps {
 }
 
 /**
- * WHY THE SHARES / FOLDERS CARDS ARE OPTIONAL.
+ * WHY THE SHARES / FOLDERS / SCANNING CARDS ARE OPTIONAL.
  *
- * `activeShares` was hardcoded to `0` on both the empty and the derived branch,
- * so the "Active Shares" card always rendered `0` while captioned "Hierarchy &
- * shares" with an "Organized" badge — a number with nothing behind it. Nothing
- * on `DocumentResponse` or `DocumentMetadata` describes a share, so it cannot be
- * derived client-side either; it only exists on the backend.
+ * `activeShares` was hardcoded to `0` on both the empty and the derived branch, so
+ * the "Active Shares" card always rendered `0` while captioned "Hierarchy &
+ * shares" with an "Organized" badge — a number with nothing behind it. Nothing on
+ * `DocumentResponse` or `DocumentMetadata` describes a share, so it cannot be
+ * derived client-side either; it only exists on the backend. The card renders ONLY
+ * when a real number is supplied. Relabelling the hardcoded 0 would have been a
+ * fabricated number wearing a better hat. `foldersCount` had the mirror-image bug:
+ * its presence switched the label to "Folders & Shares" while the value stayed
+ * `activeShares`. Both now drive their own labelled cards.
  *
- * The fix is to render the card ONLY when a real number is supplied, and to omit
- * it otherwise. The alternative — relabelling a hardcoded 0 as something else —
- * would still be a fabricated number wearing a better hat.
- *
- * `foldersCount` had the mirror-image bug: its presence switched the label to
- * "Folders & Shares" while the value stayed `activeShares`, so the label
- * described a different quantity from the one on screen.
+ * `scanningCount` was destructured, listed as a `useMemo` dependency, and never
+ * read — ESLint flagged the unused dependency and the number was silently dropped.
  */
 
 /**
- * The size the backend recorded, in bytes.
- *
- * `DocumentMetadata` declares `size` and documents it as `len(content)`, not
- * `size_bytes`; the legacy `size_bytes` key is kept as a fallback because rows
- * written before the rename can still carry it and `metadata` has an index
+ * The size the backend recorded, in bytes. `DocumentMetadata` declares `size`
+ * (`len(content)`), not `size_bytes`; the legacy key is kept as a fallback because
+ * rows written before the rename can still carry it and `metadata` has an index
  * signature.
  */
 function documentSizeBytes(doc: DocumentResponse): number {
@@ -118,6 +112,15 @@ interface MetricCard {
 }
 
 const count = (value: number): string => value.toLocaleString();
+
+/** Badge variant names, taken from the ui-kit `Badge` contract. */
+type BadgeVariant = NonNullable<React.ComponentProps<typeof Badge>['variant']>;
+
+const chip = (variant: BadgeVariant, text: string) => (
+  <Badge variant={variant} size="sm">
+    {text}
+  </Badge>
+);
 
 export const DocumentStatsBar: React.FC<DocumentStatsBarProps> = ({
   stats,
@@ -205,11 +208,7 @@ export const DocumentStatsBar: React.FC<DocumentStatsBarProps> = ({
       label: 'Total Documents',
       value: count(totalDocuments),
       icon: <FileTextIcon size={18} className="text-text-muted" />,
-      badge: (
-        <Badge variant="default" size="sm">
-          Active
-        </Badge>
-      ),
+      badge: chip('default', 'Active'),
       caption: 'Workspace index',
       filterKey: 'all',
     },
@@ -218,11 +217,7 @@ export const DocumentStatsBar: React.FC<DocumentStatsBarProps> = ({
       label: 'Storage Used',
       value: formatBytes(totalSizeBytes),
       icon: <DatabaseIcon size={18} className="text-text-muted" />,
-      badge: (
-        <Badge variant="primary" size="sm">
-          Encrypted
-        </Badge>
-      ),
+      badge: chip('primary', 'Encrypted'),
       caption: 'S3 Object Store',
     },
     {
@@ -230,11 +225,7 @@ export const DocumentStatsBar: React.FC<DocumentStatsBarProps> = ({
       label: 'Clean Scans',
       value: count(cleanScans),
       icon: <ShieldIcon size={18} className="text-success" />,
-      badge: (
-        <Badge variant="success" size="sm">
-          Verified
-        </Badge>
-      ),
+      badge: chip('success', 'Verified'),
       caption: 'Malware screened',
       filterKey: 'clean',
     },
@@ -247,10 +238,9 @@ export const DocumentStatsBar: React.FC<DocumentStatsBarProps> = ({
       label: 'Scanning',
       value: count(computed.scanning),
       icon: <ClockIcon size={18} className="text-warning" />,
-      badge: (
-        <Badge variant={computed.scanning > 0 ? 'warning' : 'default'} size="sm">
-          {computed.scanning > 0 ? 'In Progress' : 'Queue Clear'}
-        </Badge>
+      badge: chip(
+        computed.scanning > 0 ? 'warning' : 'default',
+        computed.scanning > 0 ? 'In Progress' : 'Queue Clear',
       ),
       caption: 'Security scan pending',
     });
@@ -264,11 +254,7 @@ export const DocumentStatsBar: React.FC<DocumentStatsBarProps> = ({
       label: 'Folders',
       value: count(computed.folders),
       icon: null,
-      badge: (
-        <Badge variant="default" size="sm">
-          Organized
-        </Badge>
-      ),
+      badge: chip('default', 'Organized'),
       caption: 'Folder hierarchy',
     });
   }
@@ -279,10 +265,9 @@ export const DocumentStatsBar: React.FC<DocumentStatsBarProps> = ({
       label: 'Active Shares',
       value: count(computed.shares),
       icon: <UsersIcon size={18} className="text-info" />,
-      badge: (
-        <Badge variant={computed.shares > 0 ? 'info' : 'default'} size="sm">
-          {computed.shares > 0 ? 'Shared Out' : 'Not Shared'}
-        </Badge>
+      badge: chip(
+        computed.shares > 0 ? 'info' : 'default',
+        computed.shares > 0 ? 'Shared Out' : 'Not Shared',
       ),
       caption: 'Cross-workspace shares',
       filterKey: 'shared',
@@ -299,10 +284,9 @@ export const DocumentStatsBar: React.FC<DocumentStatsBarProps> = ({
         className={quarantinedFiles > 0 ? 'text-error' : 'text-text-muted'}
       />
     ),
-    badge: (
-      <Badge variant={quarantinedFiles > 0 ? 'error' : 'default'} size="sm">
-        {quarantinedFiles > 0 ? 'Threat Alert' : 'Zero Threats'}
-      </Badge>
+    badge: chip(
+      quarantinedFiles > 0 ? 'error' : 'default',
+      quarantinedFiles > 0 ? 'Threat Alert' : 'Zero Threats',
     ),
     caption: quarantinedFiles > 0 ? 'Requires attention' : 'No infected files',
     filterKey: 'quarantined',
