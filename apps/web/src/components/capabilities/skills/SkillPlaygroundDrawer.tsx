@@ -205,7 +205,7 @@ export const SkillPlaygroundDrawer: React.FC<SkillPlaygroundDrawerProps> = ({
             label="Simulated User Message / Intent"
             hint="Test if this prompt satisfies trigger containment and how the skill compiler compiles it."
           >
-            {({ id }) => (
+            {({ id }: { id: string }) => (
               <Textarea
                 id={id}
                 value={testPrompt}

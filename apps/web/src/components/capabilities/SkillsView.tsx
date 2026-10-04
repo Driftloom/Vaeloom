@@ -680,7 +680,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                           error={saveError ?? undefined}
                           hint="Saved to the workspace capability row when this skill is installed; stored in this browser only when it is not."
                         >
-                          {({ id, errorId }) => (
+                          {({ id, errorId }: { id: string; errorId?: string }) => (
                             <Textarea
                               id={id}
                               aria-describedby={saveError ? errorId : undefined}

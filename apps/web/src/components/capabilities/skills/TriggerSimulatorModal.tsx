@@ -92,7 +92,7 @@ export const TriggerSimulatorModal: React.FC<TriggerSimulatorModalProps> = ({
             label="Simulated User Message / Intent"
             hint="Type a real-world user query or prompt to test trigger containment matching."
           >
-            {({ id }) => (
+            {({ id }: { id: string }) => (
               <Textarea
                 id={id}
                 value={candidateQuery}

@@ -336,13 +336,24 @@ function cellFor(name: string, column: keyof typeof COL): HTMLElement {
 const renderHub = (props: Partial<React.ComponentProps<typeof DocumentsHub>> = {}) =>
   render(<DocumentsHub workspaceId={WS} {...props} />);
 
+/**
+ * How long to wait for an async render to land.
+ *
+ * The repo sets no `asyncUtilTimeout`, so Testing Library defaults to 1s. That
+ * is tight enough to fail intermittently when the full suite runs in parallel —
+ * these tests mock the network and resolve immediately, so a slow tick is
+ * scheduler contention, not a behaviour under test. Widening the wait keeps a
+ * loaded machine from reporting a false failure without weakening any assertion.
+ */
+const ASYNC_WAIT = { timeout: 5000 };
+
 /** Render and wait for the first document list to land. */
 async function renderLoaded(
   props: Partial<React.ComponentProps<typeof DocumentsHub>> = {},
   firstRow = 'sample_financials.csv',
 ) {
   const utils = renderHub(props);
-  await screen.findByRole('button', { name: firstRow });
+  await screen.findByRole('button', { name: firstRow }, ASYNC_WAIT);
   return utils;
 }
 
