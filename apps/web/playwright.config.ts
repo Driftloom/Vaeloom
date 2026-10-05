@@ -105,7 +105,10 @@ export default defineConfig({
   snapshotPathTemplate:
     '{testDir}/{testFileDir}/{testFileName}-snapshots/{arg}{-projectName}{-snapshotSuffix}{ext}',
   expect: {
-    toHaveScreenshot: { maxDiffPixelRatio: 0.05 },
+    toHaveScreenshot: {
+      maxDiffPixelRatio: 0.05,
+      animations: 'disabled',
+    },
   },
   use: {
     // 127.0.0.1 rather than localhost: `localhost` resolves to IPv6 ::1 first on

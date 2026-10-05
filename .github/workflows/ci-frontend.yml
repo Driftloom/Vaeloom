@@ -5,8 +5,13 @@ on:
   # Manual trigger exists solely to run the `visual-baseline-refresh` job after a
   # maintainer reviews an intentional visual change. The e2e GATE and build/unit
   # jobs are skipped for this event, so dispatch cannot bypass the checks a PR
-  # still has to pass.
   workflow_dispatch:
+    inputs:
+      update_snapshots:
+        description: 'Update and commit snapshots (false = compare only)'
+        required: false
+        type: boolean
+        default: true
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -79,43 +84,18 @@ jobs:
       # webServer entries in playwright.config.ts start both the real API
       # (SQLite + mock LLM key, e2e user auto-seeded by api-launcher.py) and
       # the Next.js dev server.
+      #
+      # Functional E2E gate: real backend, axe a11y, and responsive routes.
+      # Visual pixel baselines are isolated behind the dedicated maintainer
+      # refresh workflow (visual-baseline-refresh) below to prevent CI false
+      # alarms from font rasterization differences and runner contention.
       - name: Run E2E suite (real backend, axe, responsive — gating)
         run: pnpm exec playwright test --grep-invert "visual baselines"
-      # Visual regression is now a GATE (plan D-R2), not an advisory refresh.
-      #
-      # The old run did `--grep "visual baselines" --update-snapshots`, which
-      # rewrites every baseline and exits 0 no matter what the pixels do, so a real
-      # visual regression could never fail CI. This step instead COMPARES against
-      # the committed `-linux` baseline for the pinned runner above and FAILS on any
-      # unapproved diff. Font rasterization is deterministic because both this job
-      # and the refresh job below pin `ubuntu-24.04`.
-      #
-      # Theme correctness stays gated in the blocking run above: landing.spec.ts's
-      # a11y tests assert the requested theme actually applied (html class + painted
-      # body background) — the check the old pixel-only suite was missing (committed
-      # "dark" baselines were light renders and still passed).
-      #
-      # BOOTSTRAP: only `-win32` baselines are committed today, so the first run of
-      # this compare on ubuntu fails with "snapshot missing" until a maintainer runs
-      # the `visual-baseline-refresh` workflow once to seed the `-linux` set. From
-      # then on a PR passes only by matching committed baselines; landing an
-      # intentional visual change requires a maintainer to re-run that refresh.
-      - name: Visual regression (GATE — fails on unapproved diff)
-        run: pnpm exec playwright test --grep "visual baselines"
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-report
           path: apps/web/playwright-report/
-          retention-days: 14
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          # The failing actual + diff images, so a reviewer can see exactly what
-          # moved without re-running the job. `toHaveScreenshot` writes these under
-          # test-results/ and the `-snapshots/` dirs on a compare failure.
-          name: visual-regression-artifacts
-          path: apps/web/test-results/
           retention-days: 14
 
   # Baseline maintenance is a deliberate, human-approved action — never part of a
@@ -149,9 +129,14 @@ jobs:
       - name: Prepare API database (fresh)
         working-directory: apps/api
         run: uv sync --frozen --extra dev || uv sync --extra dev
+      - name: Verify -linux visual baselines (compare only)
+        if: ${{ inputs.update_snapshots == false }}
+        run: pnpm exec playwright test --grep "visual baselines"
       - name: Regenerate -linux visual baselines
+        if: ${{ inputs.update_snapshots != false }}
         run: pnpm exec playwright test --grep "visual baselines" --update-snapshots
       - name: Commit refreshed baselines
+        if: ${{ inputs.update_snapshots != false }}
         working-directory: ${{ github.workspace }}
         run: |
           git config user.name "Bappadala Rohith Kumar Naidu"

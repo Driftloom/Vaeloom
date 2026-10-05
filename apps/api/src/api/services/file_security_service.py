@@ -20,6 +20,9 @@ ALLOWED_EXTENSIONS = {
     "jpg",
     "jpeg",
     "webp",
+    "mp4",
+    "webm",
+    "vtt",
 }
 
 # Blocked because they can execute JavaScript (XSS prevention)
@@ -57,6 +60,20 @@ class FileSecurityVerdict(NamedTuple):
 
 
 class FileSecurityService:
+    """Pre-ingestion file upload security checks and integrity verification.
+
+    Note on Antivirus scope:
+    This service performs in-process static verification:
+    1. EICAR standard test signature detection
+    2. Executable / script magic-byte sniffing (MZ, ELF, Mach-O, Shebang)
+    3. Active content & SVG/HTML Stored XSS blocking (P0-01)
+    4. Strict extension and MIME alignment
+    5. Non-printable binary detection in text files
+
+    It is presented in the UI as 'Upload Checks' / 'Security Validation' rather
+    than a full dynamic antivirus sandbox (e.g. ClamAV daemon or GuardDuty).
+    """
+
     @staticmethod
     def sanitize_filename(filename: str) -> str:
         """Sanitize filename to prevent directory traversal and filesystem abuse."""
@@ -229,6 +246,15 @@ class FileSecurityService:
                 "csv": "text/csv",
                 "json": "application/json",
             }[ext]
+
+        elif ext == "mp4":
+            detected_mime = "video/mp4"
+
+        elif ext == "webm":
+            detected_mime = "video/webm"
+
+        elif ext == "vtt":
+            detected_mime = "text/vtt"
 
         else:
             detected_mime = declared_mime or "application/octet-stream"

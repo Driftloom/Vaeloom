@@ -22,7 +22,7 @@ def _set_scim_token(monkeypatch):
 
 def _build_app(db_session):
     app = FastAPI()
-    app.include_router(scim_router)
+    app.include_router(scim_router, prefix="/scim")
 
     async def override_get_db():
         yield db_session

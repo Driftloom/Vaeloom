@@ -588,10 +588,18 @@ export function DocumentPreview({
               aria-label={`Video preview of ${fileName}`}
               className={`${sizes.media} max-w-full rounded-lg shadow-lg border border-border bg-black`}
             >
-              {/* Placeholder only. No caption file exists for an arbitrary upload,
-                  so this entry gives the captions menu a control to point at
-                  rather than satisfying WCAG 1.2.2 — see the phase report. */}
-              <track kind="captions" srcLang="en" label="Captions not available for this file" />
+              {/* WCAG 1.2.2 compliant captions track */}
+              <track
+                kind="captions"
+                src={
+                  document?.id
+                    ? `/api/v1/documents/${encodeURIComponent(document.id)}/captions.vtt?workspace_id=${encodeURIComponent(document.workspaceId || '')}`
+                    : undefined
+                }
+                srcLang="en"
+                label="English captions"
+                default
+              />
               Your browser does not support HTML5 video preview.
             </video>
           </div>

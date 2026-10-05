@@ -256,3 +256,35 @@ class BulkSyncMemoryResponse(BaseModel):
     failed_count: int
     items: list[DocumentSyncMemoryResponse]
 
+
+class DocumentVersionMeta(BaseModel):
+    document_id: uuid.UUID
+    latest_version: int = 1
+    version_count: int = 1
+    latest_created_at: datetime | None = None
+
+
+class BatchVersionsRequest(BaseModel):
+    document_ids: list[uuid.UUID] = Field(..., max_length=200)
+    workspace_id: uuid.UUID
+
+
+class BatchVersionsResponse(BaseModel):
+    versions: dict[str, DocumentVersionMeta]
+
+
+class DocumentCaptionTrackResponse(BaseModel):
+    document_id: uuid.UUID
+    has_captions: bool
+    kind: str = "captions"
+    srclang: str = "en"
+    label: str = "English"
+    caption_url: str | None = None
+    vtt_content: str | None = None
+
+
+class DocumentCaptionUploadRequest(BaseModel):
+    vtt_content: str = Field(..., description="WebVTT formatted caption track string")
+    srclang: str = Field("en", description="Language code e.g. en")
+    label: str = Field("English", description="Human-readable track label")
+

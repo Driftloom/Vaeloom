@@ -265,10 +265,10 @@ async def fix_sqlite_timezone(monkeypatch):
 
     original_refresh = auth_mod.auth_service.refresh_token
 
-    async def fixed_refresh(self, refresh_token, db=None):
+    async def fixed_refresh(self, refresh_token, *args, db=None, **kwargs):
         from datetime import datetime, timezone
         try:
-            return await original_refresh(refresh_token, db=db)
+            return await original_refresh(refresh_token, *args, db=db, **kwargs)
         except TypeError as e:
             if "can't compare offset-naive and offset-aware" in str(e):
                 from sqlalchemy import select

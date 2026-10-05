@@ -29,6 +29,8 @@ async def test_workspace_invitation_flow():
     headers = {"Authorization": "Bearer test-ci", "X-Workspace-ID": ws_id}
 
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        csrf_res = await ac.get("/csrf-token")
+        headers["X-CSRF-Token"] = csrf_res.json()["csrf_token"]
         invite_payload = {"email": "colleague@vaeloom.test", "role": "member"}
         res = await ac.post(f"/api/v1/workspaces/{ws_id}/invites", json=invite_payload, headers=headers)
         # Invalid token yields 401

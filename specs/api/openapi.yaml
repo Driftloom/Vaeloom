@@ -5549,6 +5549,216 @@ paths:
         '429': *id001
       security:
       - BearerAuth: []
+  /api/v1/documents/versions/batch:
+    post:
+      tags:
+      - documents
+      summary: Get Batch Document Versions
+      description: Retrieve version metadata for a batch of documents in a single
+        query (eliminates N+1).
+      operationId: get_batch_document_versions_api_v1_documents_versions_batch_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchVersionsRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchVersionsResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Unauthorized — missing or invalid Bearer JWT access token.
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
+                  detail:
+                    type: string
+                required:
+                - detail
+        '429': *id001
+      security:
+      - BearerAuth: []
+  /api/v1/documents/{document_id}/captions:
+    get:
+      tags:
+      - documents
+      summary: Get Document Captions
+      description: Get metadata for document captions track (WCAG 1.2.2).
+      operationId: get_document_captions_api_v1_documents__document_id__captions_get
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Document Id
+      - name: workspace_id
+        in: query
+        required: true
+        schema:
+          type: string
+          title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCaptionTrackResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Unauthorized — missing or invalid Bearer JWT access token.
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
+                  detail:
+                    type: string
+                required:
+                - detail
+        '429': *id001
+      security:
+      - BearerAuth: []
+    post:
+      tags:
+      - documents
+      summary: Upload Document Captions
+      description: Upload or update WebVTT caption content for a document (WCAG 1.2.2).
+      operationId: upload_document_captions_api_v1_documents__document_id__captions_post
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Document Id
+      - name: workspace_id
+        in: query
+        required: true
+        schema:
+          type: string
+          title: Workspace Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentCaptionUploadRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentCaptionTrackResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Unauthorized — missing or invalid Bearer JWT access token.
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
+                  detail:
+                    type: string
+                required:
+                - detail
+        '429': *id001
+      security:
+      - BearerAuth: []
+  /api/v1/documents/{document_id}/captions.vtt:
+    get:
+      tags:
+      - documents
+      summary: Get Document Captions Vtt
+      description: Serve WebVTT caption stream for video playback (WCAG 1.2.2).
+      operationId: get_document_captions_vtt_api_v1_documents__document_id__captions_vtt_get
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Document Id
+      - name: workspace_id
+        in: query
+        required: true
+        schema:
+          type: string
+          title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Unauthorized — missing or invalid Bearer JWT access token.
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
+                  detail:
+                    type: string
+                required:
+                - detail
+        '429': *id001
+      security:
+      - BearerAuth: []
   /api/v1/documents/{document_id}/versions:
     get:
       tags:
@@ -18950,6 +19160,35 @@ components:
       required:
       - opportunities
       title: BatchMatchRequest
+    BatchVersionsRequest:
+      properties:
+        document_ids:
+          items:
+            type: string
+            format: uuid
+          type: array
+          maxItems: 200
+          title: Document Ids
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+      type: object
+      required:
+      - document_ids
+      - workspace_id
+      title: BatchVersionsRequest
+    BatchVersionsResponse:
+      properties:
+        versions:
+          additionalProperties:
+            $ref: '#/components/schemas/DocumentVersionMeta'
+          type: object
+          title: Versions
+      type: object
+      required:
+      - versions
+      title: BatchVersionsResponse
     BlacklistItem:
       properties:
         id:
@@ -20702,6 +20941,62 @@ components:
       - checks
       - recommendations
       title: DocumentAuditResponse
+    DocumentCaptionTrackResponse:
+      properties:
+        document_id:
+          type: string
+          format: uuid
+          title: Document Id
+        has_captions:
+          type: boolean
+          title: Has Captions
+        kind:
+          type: string
+          title: Kind
+          default: captions
+        srclang:
+          type: string
+          title: Srclang
+          default: en
+        label:
+          type: string
+          title: Label
+          default: English
+        caption_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Caption Url
+        vtt_content:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Vtt Content
+      type: object
+      required:
+      - document_id
+      - has_captions
+      title: DocumentCaptionTrackResponse
+    DocumentCaptionUploadRequest:
+      properties:
+        vtt_content:
+          type: string
+          title: Vtt Content
+          description: WebVTT formatted caption track string
+        srclang:
+          type: string
+          title: Srclang
+          description: Language code e.g. en
+          default: en
+        label:
+          type: string
+          title: Label
+          description: Human-readable track label
+          default: English
+      type: object
+      required:
+      - vtt_content
+      title: DocumentCaptionUploadRequest
     DocumentCompareRequest:
       properties:
         version_a:
@@ -21127,6 +21422,30 @@ components:
           description: List of semantic tags
       type: object
       title: DocumentTagsRequest
+    DocumentVersionMeta:
+      properties:
+        document_id:
+          type: string
+          format: uuid
+          title: Document Id
+        latest_version:
+          type: integer
+          title: Latest Version
+          default: 1
+        version_count:
+          type: integer
+          title: Version Count
+          default: 1
+        latest_created_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Latest Created At
+      type: object
+      required:
+      - document_id
+      title: DocumentVersionMeta
     DocumentVersionResponse:
       properties:
         id:

@@ -1227,6 +1227,17 @@ export interface DocumentVersionResponse {
   createdAt: string;
 }
 
+export interface DocumentVersionMeta {
+  documentId: string;
+  latestVersion: number;
+  versionCount: number;
+  latestCreatedAt?: string | null;
+}
+
+export interface BatchVersionsResponse {
+  versions: Record<string, DocumentVersionMeta>;
+}
+
 /**
  * `GET/POST/DELETE /documents/{id}/shares`. Wire shape:
  * `schemas/document.py:123`.
@@ -1917,6 +1928,12 @@ export const documentApi = {
       `/documents/${encodeURIComponent(documentId)}/versions`,
       { workspace_id: workspaceId },
     );
+  },
+  batchVersions(documentIds: string[], workspaceId: string): Promise<BatchVersionsResponse> {
+    return apiClient.post<BatchVersionsResponse>('/documents/versions/batch', {
+      document_ids: documentIds,
+      workspace_id: workspaceId,
+    });
   },
   async createVersion(
     documentId: string,

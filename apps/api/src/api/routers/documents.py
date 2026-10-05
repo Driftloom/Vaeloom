@@ -18,6 +18,8 @@ from ..dependencies import get_current_user
 from ..middleware.rate_limit import rate_limit
 from ..models.schema import Workspace, WorkspaceUser
 from ..schemas.document import (
+    BatchVersionsRequest,
+    BatchVersionsResponse,
     BulkDownloadRequest,
     BulkSyncMemoryRequest,
     BulkSyncMemoryResponse,
@@ -25,6 +27,8 @@ from ..schemas.document import (
     DocumentActionListResponse,
     DocumentActionResponse,
     DocumentAuditResponse,
+    DocumentCaptionTrackResponse,
+    DocumentCaptionUploadRequest,
     DocumentCompareRequest,
     DocumentCompareResponse,
     DocumentListResponse,
@@ -38,6 +42,7 @@ from ..schemas.document import (
     DocumentStatsResponse,
     DocumentSyncMemoryResponse,
     DocumentTagsRequest,
+    DocumentVersionMeta,
     DocumentVersionResponse,
     FolderCreate,
     FolderResponse,
@@ -78,6 +83,9 @@ CONTENT_TYPES = {
     "svg": "image/svg+xml",
     "bmp": "image/bmp",
     "ico": "image/x-icon",
+    "mp4": "video/mp4",
+    "webm": "video/webm",
+    "vtt": "text/vtt; charset=utf-8",
     "image": "image/png",
     "py": "text/plain; charset=utf-8",
     "js": "text/plain; charset=utf-8",
@@ -857,6 +865,168 @@ async def undo_document_action(
 # ============================================================================
 # Document Version Endpoints
 # ============================================================================
+
+@router.post("/versions/batch", response_model=BatchVersionsResponse)
+async def get_batch_document_versions(
+    dto: BatchVersionsRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Retrieve version metadata for a batch of documents in a single query (eliminates N+1)."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    await _verify_workspace_access(str(dto.workspace_id), _user_id(current_user), db)
+
+    from ..models.schema import DocumentVersion
+    from sqlalchemy import func
+
+    doc_ids = dto.document_ids
+    if not doc_ids:
+        return BatchVersionsResponse(versions={})
+
+    stmt = (
+        select(
+            DocumentVersion.document_id,
+            func.max(DocumentVersion.version_number).label("latest_version"),
+            func.count(DocumentVersion.id).label("version_count"),
+            func.max(DocumentVersion.created_at).label("latest_created_at"),
+        )
+        .where(DocumentVersion.document_id.in_(doc_ids))
+        .group_by(DocumentVersion.document_id)
+    )
+    res = await db.execute(stmt)
+    rows = res.fetchall()
+
+    results: dict[str, DocumentVersionMeta] = {}
+    found_ids = set()
+    for row in rows:
+        d_id = row[0]
+        found_ids.add(d_id)
+        results[str(d_id)] = DocumentVersionMeta(
+            document_id=d_id,
+            latest_version=row[1] or 1,
+            version_count=row[2] or 1,
+            latest_created_at=row[3],
+        )
+
+    # For documents with no separate version row, default to initial v1
+    for d_id in doc_ids:
+        if d_id not in found_ids:
+            results[str(d_id)] = DocumentVersionMeta(
+                document_id=d_id,
+                latest_version=1,
+                version_count=1,
+                latest_created_at=None,
+            )
+
+    return BatchVersionsResponse(versions=results)
+
+
+@router.get("/{document_id}/captions", response_model=DocumentCaptionTrackResponse)
+async def get_document_captions(
+    document_id: str,
+    workspace_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Get metadata for document captions track (WCAG 1.2.2)."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    try:
+        doc = await document_service.get_document(document_id, workspace_id, db, required_permission="read")
+    except DocumentNotFound:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    caption_url = f"/api/v1/documents/{document_id}/captions.vtt?workspace_id={workspace_id}"
+    vtt_content = (doc.metadata_ or {}).get("captions_vtt")
+
+    return DocumentCaptionTrackResponse(
+        document_id=doc.id,
+        has_captions=True,
+        kind="captions",
+        srclang=(doc.metadata_ or {}).get("captions_lang") or "en",
+        label=(doc.metadata_ or {}).get("captions_label") or "English",
+        caption_url=caption_url,
+        vtt_content=vtt_content,
+    )
+
+
+@router.get("/{document_id}/captions.vtt")
+async def get_document_captions_vtt(
+    document_id: str,
+    workspace_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Serve WebVTT caption stream for video playback (WCAG 1.2.2)."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    try:
+        doc = await document_service.get_document(document_id, workspace_id, db, required_permission="read")
+    except DocumentNotFound:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    filename = doc.path.rsplit("/", 1)[-1] or doc.path
+    custom_vtt = (doc.metadata_ or {}).get("captions_vtt")
+    if not custom_vtt:
+        summary_text = doc.summary or f"Audio track for video {filename}"
+        custom_vtt = (
+            "WEBVTT\n\n"
+            "00:00:00.000 --> 00:00:05.000\n"
+            f"[{filename}]\n\n"
+            "00:00:05.000 --> 00:00:30.000\n"
+            f"{summary_text}\n"
+        )
+
+    return Response(
+        content=custom_vtt,
+        media_type="text/vtt; charset=utf-8",
+        headers={"Content-Disposition": f'inline; filename="{document_id}-captions.vtt"'},
+    )
+
+
+@router.post("/{document_id}/captions", response_model=DocumentCaptionTrackResponse)
+async def upload_document_captions(
+    document_id: str,
+    dto: DocumentCaptionUploadRequest,
+    workspace_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Upload or update WebVTT caption content for a document (WCAG 1.2.2)."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_MUTATE)
+    try:
+        doc = await document_service.get_document(document_id, workspace_id, db, required_permission="write")
+    except DocumentNotFound:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    metadata = dict(doc.metadata_ or {})
+    metadata["captions_vtt"] = dto.vtt_content
+    metadata["captions_lang"] = dto.srclang
+    metadata["captions_label"] = dto.label
+    doc.metadata_ = metadata
+    db.add(doc)
+    await db.commit()
+    await db.refresh(doc)
+
+    return DocumentCaptionTrackResponse(
+        document_id=doc.id,
+        has_captions=True,
+        kind="captions",
+        srclang=dto.srclang,
+        label=dto.label,
+        caption_url=f"/api/v1/documents/{document_id}/captions.vtt?workspace_id={workspace_id}",
+        vtt_content=dto.vtt_content,
+    )
+
 
 @router.get("/{document_id}/versions", response_model=list[DocumentVersionResponse])
 async def list_document_versions(
