@@ -24,12 +24,29 @@ class TestEnterpriseDispatch:
             assert isinstance(result, dict), f"{name} did not return dict"
             assert result.get("agent_name") == name or result.get("agent_name") in (name, "organization", "memory"), f"{name} wrong agent_name {result.get('agent_name')}"
             # Should not be fallback error due to unknown agent (fallback has confidence 0 and ask_clarification, but not error)
-            assert result.get("action") in ("suggest", "execute", "ask_clarification", "request_approval", "alert", "info", "build_roadmap", "suggest_milestones", "recommend_resources", "audit_quality")
+            assert result.get("action") in (
+                "suggest",
+                "execute",
+                "ask_clarification",
+                "request_approval",
+                "alert",
+                "info",
+                "build_roadmap",
+                "suggest_milestones",
+                "recommend_resources",
+                "audit_quality",
+                "extract_skills",
+                "compare",
+                "summarize",
+                "search",
+                "archive",
+                "review_duplicate",
+            )
 
     @pytest.mark.asyncio
     async def test_career_dispatch_variants(self):
-        from api.orchestrator.loop import AgentRequest, _dispatch_agent
         from api.agents.career_agent.handler import CareerAgent
+        from api.orchestrator.loop import AgentRequest, _dispatch_agent
         agent = CareerAgent()
         cases = [
             ("skill gap analysis for python", "identify_skill_gaps"),
@@ -44,9 +61,9 @@ class TestEnterpriseDispatch:
 
     @pytest.mark.asyncio
     async def test_gmail_and_drive_no_approval_param(self):
-        from api.orchestrator.loop import AgentRequest, _dispatch_agent
-        from api.agents.gmail_agent.handler import GmailAgent
         from api.agents.drive_agent.handler import DriveAgent
+        from api.agents.gmail_agent.handler import GmailAgent
+        from api.orchestrator.loop import AgentRequest, _dispatch_agent
         gmail = GmailAgent()
         req = AgentRequest(agent=gmail, request_id="t", message="classify inbox", workspace_id="00000000-0000-0000-0000-000000000000", agent_name="gmail")
         res = await _dispatch_agent("GmailAgent", gmail, "hello", req)
@@ -76,9 +93,10 @@ class TestToolRegistry:
 
     @pytest.mark.asyncio
     async def test_executor_live_mocks(self, monkeypatch):
+        from unittest.mock import AsyncMock, MagicMock
+
         from api.tools.definitions import ALL_TOOLS
         from api.tools.executor import execute_tool
-        from unittest.mock import AsyncMock, MagicMock
 
         mock_resp = MagicMock()
         mock_resp.status_code = 200
@@ -114,8 +132,8 @@ class TestReActLoop:
 
     @pytest.mark.asyncio
     async def test_react_returns_none_without_key(self, monkeypatch):
-        from api.orchestrator.loop import _try_react_loop
         from api.agents.career_agent.handler import CareerAgent
+        from api.orchestrator.loop import _try_react_loop
         monkeypatch.setattr("api.orchestrator.loop.settings.llm_api_key", "")
         monkeypatch.setattr("api.orchestrator.loop.settings.ollama_api_key", "", raising=False)
         monkeypatch.setattr("api.orchestrator.loop.settings.groq_api_key", "", raising=False)
@@ -137,8 +155,8 @@ class TestStreamingLoop:
     @pytest.mark.asyncio
     async def test_stream_yields_intent_and_done(self, tmp_path, monkeypatch):
         monkeypatch.setenv("VAELOOM_STATE_DIR", str(tmp_path))
-        from api.orchestrator.loop import AgentRequest, run_agent_loop_stream
         from api.agents.organization_agent.handler import OrganizationAgent
+        from api.orchestrator.loop import AgentRequest, run_agent_loop_stream
         agent = OrganizationAgent()
         req = AgentRequest(agent=agent, request_id="stream-test", message="organize files rename duplicate folder categorize", workspace_id="00000000-0000-0000-0000-000000000000", agent_name="organization")
         events = []
@@ -170,7 +188,7 @@ class TestSupervisor:
 
     @pytest.mark.asyncio
     async def test_detect_and_build_dag(self):
-        from api.orchestrator.supervisor import _detect_subtasks, _build_dag
+        from api.orchestrator.supervisor import _build_dag, _detect_subtasks
         subtasks = await _detect_subtasks("I want to apply for Senior Backend Engineer at Google. Tailor my resume, check ATS, draft cover letter, add calendar event")
         # Should detect at least 2 agents
         assert len(subtasks) >= 2
@@ -206,9 +224,9 @@ class TestRAGAssembler:
     @pytest.mark.asyncio
     async def test_plan_phase_injects_rag_context(self, tmp_path, monkeypatch):
         monkeypatch.setenv("VAELOOM_STATE_DIR", str(tmp_path))
-        from api.orchestrator.loop import plan_phase, AgentRequest
-        from api.orchestrator.state import LoopState
         from api.agents.career_agent.handler import CareerAgent
+        from api.orchestrator.loop import AgentRequest, plan_phase
+        from api.orchestrator.state import LoopState
         agent = CareerAgent()
         req = AgentRequest(agent=agent, request_id="rag-test", message="career path python senior engineer", workspace_id="00000000-0000-0000-0000-000000000000", agent_name="career")
         state = LoopState("rag-test")
@@ -233,8 +251,8 @@ class TestRAGAssembler:
         # Ensure vector path doesn't crash on SQLite mock
         monkeypatch.setenv("VAELOOM_STATE_DIR", str(tmp_path))
         monkeypatch.setattr("api.orchestrator.loop.settings.llm_api_key", "")
-        from api.orchestrator.loop import _assemble_rag_context
         from api.agents.career_agent.handler import CareerAgent
+        from api.orchestrator.loop import _assemble_rag_context
         agent = CareerAgent()
         ctx = await _assemble_rag_context("00000000-0000-0000-0000-000000000000", "test query python", agent)
         assert isinstance(ctx, dict)
@@ -245,8 +263,9 @@ class TestPreferenceFeedback:
 
     @pytest.mark.asyncio
     async def test_ingest_creates_entity(self, db_session):
-        from api.services.approval import _ingest_feedback_preference
         import uuid
+
+        from api.services.approval import _ingest_feedback_preference
         ws = str(uuid.uuid4())
         # Create workspace row so FK passes if enforced (some test dbs ignore FK)
         from sqlalchemy import text
@@ -264,9 +283,11 @@ class TestPreferenceFeedback:
 
     @pytest.mark.asyncio
     async def test_ingest_dedup(self, db_session):
-        from api.services.approval import _ingest_feedback_preference
         import uuid
+
         from sqlalchemy import text
+
+        from api.services.approval import _ingest_feedback_preference
         ws = str(uuid.uuid4())
         try:
             await db_session.execute(text("INSERT INTO workspaces (id, name, user_id, created_at, updated_at) VALUES (:id, 'test', :uid, now(), now())"), {"id": ws, "uid": str(uuid.uuid4())})
@@ -285,23 +306,26 @@ class TestBackgroundDaemon:
     """P2: cron daemon and watchers."""
 
     def test_cron_due_simple(self):
+        from datetime import UTC, datetime
+
         from api.infrastructure.background_daemon import _is_cron_due
-        from datetime import datetime, UTC
         assert _is_cron_due("* * * * *", datetime(2026, 8, 22, 10, 5, tzinfo=UTC)) is True
         assert _is_cron_due("0 6 * * *", datetime(2026, 8, 22, 6, 0, tzinfo=UTC)) is True
         assert _is_cron_due("0 6 * * *", datetime(2026, 8, 22, 7, 0, tzinfo=UTC)) is False
 
     def test_cron_with_croniter(self):
+        from datetime import UTC, datetime
+
         from api.infrastructure.background_daemon import _is_cron_due
-        from datetime import datetime, UTC
         # croniter should handle */5 correctly
         assert _is_cron_due("*/5 * * * *", datetime(2026, 8, 22, 10, 5, tzinfo=UTC)) is True
         assert _is_cron_due("*/5 * * * *", datetime(2026, 8, 22, 10, 6, tzinfo=UTC)) is False
         assert _is_cron_due("0 */2 * * *", datetime(2026, 8, 22, 10, 0, tzinfo=UTC)) is True
 
     def test_simple_cron_match(self):
+        from datetime import UTC, datetime
+
         from api.infrastructure.background_daemon import _simple_cron_match
-        from datetime import datetime, UTC
         assert _simple_cron_match("* * * * *", datetime(2026, 8, 22, 10, 5, tzinfo=UTC)) is True
         assert _simple_cron_match("5 10 * * *", datetime(2026, 8, 22, 10, 5, tzinfo=UTC)) is True
         assert _simple_cron_match("5 10 * * *", datetime(2026, 8, 22, 10, 6, tzinfo=UTC)) is False

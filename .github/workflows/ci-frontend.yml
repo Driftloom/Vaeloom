@@ -8,6 +8,10 @@ on:
   # still has to pass.
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     # Skip on manual dispatch — a dispatch exists only to refresh baselines, so it
