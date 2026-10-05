@@ -30,6 +30,9 @@ jobs:
         run: python ../../scripts/gen_openapi.py && git diff --exit-code ../../specs/api/openapi.yaml ../../docs/backend/openapi.yaml
       - name: Temporal workflow tests (serial — WorkflowEnvironment time-skipping not xdist-safe)
         run: python -m pytest tests/temporal -q -o addopts="" --timeout=120
-      - run: python -m pytest tests/ -q -o addopts="" --timeout=300 --timeout-method=thread --cov=src/api/ --cov-report=xml --cov-report=term --ignore=tests/temporal --ignore=tests/integration --ignore=tests/adversarial --ignore=tests/test_agent_eval_execution.py
+      - name: Agent Hierarchy & Gaps Suite (standalone)
+        run: python -m pytest tests/test_agent_to_agent_hierarchy.py tests/test_agentic_gaps_closure.py -q -o addopts=""
       - name: Agent Evaluation Golden Suite (standalone)
         run: python -m pytest tests/test_agent_eval_execution.py -q -o addopts=""
+      - name: Core API Test Suite
+        run: python -m pytest tests/ -q -o addopts="-n 2 --dist loadfile" --timeout=180 --timeout-method=thread --cov=src/api/ --cov-report=xml --cov-report=term --ignore=tests/temporal --ignore=tests/integration --ignore=tests/adversarial --ignore=tests/test_agent_eval_execution.py --ignore=tests/test_agent_to_agent_hierarchy.py --ignore=tests/test_agentic_gaps_closure.py

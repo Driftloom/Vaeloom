@@ -150,8 +150,8 @@ jobs:
       - name: Commit refreshed baselines
         working-directory: ${{ github.workspace }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "Bappadala Rohith Kumar Naidu"
+          git config user.email "198095685+rohitkumarnaidu@users.noreply.github.com"
           # Scope the add to ONLY the linux baseline PNGs — the bot must never
           # commit source or anything else that changed during the run.
           git add apps/web/e2e/landing.spec.ts-snapshots/*-linux.png \
