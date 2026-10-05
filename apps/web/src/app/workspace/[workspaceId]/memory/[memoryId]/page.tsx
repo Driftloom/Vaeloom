@@ -140,8 +140,7 @@ export default function MemoryDetailPage() {
           description="This memory does not exist or has been deleted."
           action={{
             label: 'Back to Memory Explorer',
-            onClick: () =>
-              router.push(workspaceId ? `/workspace/${workspaceId}/memory` : '/memory'),
+            onClick: () => router.push(`/workspace/${workspaceId}/memory`),
           }}
         />
       </div>
@@ -156,13 +155,18 @@ export default function MemoryDetailPage() {
   const sourceType = (mem['sourceType'] as string) || (mem['source_type'] as string) || '';
   const sourceUri = (mem['sourceUri'] as string) || (mem['source_uri'] as string) || '';
   const sourceLabel = (mem['sourceLabel'] as string) || (mem['source_label'] as string) || '';
-  const confidence = (mem['confidence'] as number) ?? 0.85;
+  // Only render a confidence value the backend actually stored. The previous
+  // `?? 0.85` fired for essentially every record (the Memory type has no
+  // `confidence` field), displaying an 85% score that was never computed.
+  const metadata = (mem['metadata'] as Record<string, unknown>) || {};
+  const rawConfidence = mem['confidence'] ?? metadata['confidence'];
+  const confidence =
+    typeof rawConfidence === 'number' && rawConfidence > 0 ? rawConfidence : undefined;
   const status = (mem['status'] as string) || 'active';
   const tags = (mem['tags'] as string[]) || [];
   const createdAt = (mem['createdAt'] as string) || (mem['created_at'] as string) || '';
   const updatedAt = (mem['updatedAt'] as string) || (mem['updated_at'] as string) || '';
   const supersedesId = (mem['supersedesId'] as string) || (mem['supersedes_id'] as string) || '';
-  const metadata = (mem['metadata'] as Record<string, unknown>) || {};
   const documentId = (metadata['document_id'] as string) || '';
 
   const isSuperseded = status === 'superseded';
@@ -170,7 +174,7 @@ export default function MemoryDetailPage() {
   const breadcrumbItems = [
     {
       label: 'Memory',
-      href: workspaceId ? `/workspace/${workspaceId}/memory` : '/memory',
+      href: `/workspace/${workspaceId}/memory`,
     },
     {
       label: title,
@@ -209,7 +213,7 @@ export default function MemoryDetailPage() {
         <Badge variant={isSuperseded ? 'warning' : 'success'} size="sm">
           {isSuperseded ? '● SUPERSEDED' : '● ACTIVE'}
         </Badge>
-        <ConfidenceIndicator score={confidence} />
+        {confidence !== undefined && <ConfidenceIndicator score={confidence} />}
         {sourceType && (
           <span className="text-xs text-[var(--color-text-muted)] font-mono">
             Source: <strong className="text-[var(--color-text-primary)]">{sourceType}</strong>

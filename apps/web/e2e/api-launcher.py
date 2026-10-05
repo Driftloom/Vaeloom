@@ -79,6 +79,33 @@ def ensure_sqlite_tables() -> None:
     if not url.startswith("sqlite"):
         return
     path = url.split("///", 1)[-1]
+
+    # Start every run from an empty database.
+    #
+    # `e2e.db` is a repo-root file that nothing deleted, so each run inherited the
+    # previous run's rows. That was survivable while the suite wrote only isolated
+    # fixtures; it stopped being survivable once chat history moved server-side.
+    # Visual baselines stopped meaning anything first: the `memory` and `schedule`
+    # @375 shots were rendering rows an earlier spec left behind, so the committed
+    # pixels had baked another test's leakage into the expected image. Selectors
+    # stopped being unique second, because the chat thread rail now accumulates a
+    # thread per run. Both surface as product bugs and are not.
+    #
+    # The reset lives here rather than in a Playwright `globalSetup` hook because
+    # this function is what opens the file, so it is the one place guaranteed to run
+    # before anything reads it. The `-wal` and `-shm` sidecars go too: reattaching
+    # them to a fresh database resurrects rows.
+    for suffix in ("", "-wal", "-shm"):
+        try:
+            os.remove(path + suffix)
+        except FileNotFoundError:
+            pass
+        except OSError:
+            # A locked sidecar means another process still holds the database, which
+            # is a real problem — but not one this function should mask by silently
+            # running against a stale file.
+            print(f"[api-launcher] could not remove {path + suffix}", flush=True)
+
     conn = sqlite3.connect(path)
     try:
         for ddl in _DDL:

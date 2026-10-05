@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..dependencies import get_current_user
+from ..middleware.rate_limit import rate_limit
 from ..models.schema import Workspace, WorkspaceUser
 from ..schemas.document import (
     BulkDownloadRequest,
@@ -28,10 +29,13 @@ from ..schemas.document import (
     DocumentCompareResponse,
     DocumentListResponse,
     DocumentMoveRequest,
+    DocumentProcessResponse,
     DocumentRenameRequest,
     DocumentResponse,
+    DocumentSearchResponse,
     DocumentShareCreate,
     DocumentShareResponse,
+    DocumentStatsResponse,
     DocumentSyncMemoryResponse,
     DocumentTagsRequest,
     DocumentVersionResponse,
@@ -46,6 +50,7 @@ from ..services.document_service import (
     DocumentNotFound,
     document_service,
 )
+from ..services.document_stats_service import workspace_document_stats
 from ..services.folder_service import folder_service
 
 router = APIRouter()
@@ -152,6 +157,11 @@ _MAX_BULOAD_FILES = 50
 # ============================================================================
 
 @router.post("", response_model=DocumentResponse, status_code=201)
+# 30/minute is half the platform default of 60/minute. Every upload streams the
+# body through a spooled file, hashes it, and runs magic-byte inspection before
+# the row is written, so the cost is far above a metadata read and an unbounded
+# member could otherwise fill object storage at the default allowance.
+@rate_limit(max_requests=30, window_seconds=60)
 async def upload_document(
     file: UploadFile = File(...),
     workspace_id: str | None = Query(None),
@@ -234,6 +244,10 @@ async def list_documents(
     offset: int | None = Query(default=None, ge=0, description="Standard pagination rows to skip"),
     include_archived: bool = Query(default=False),
     status: str | None = Query(default=None),
+    category: str | None = Query(
+        default=None,
+        description="Filter on the JSONB metadata.category key (written by the categorize_document tool)",
+    ),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
@@ -252,6 +266,7 @@ async def list_documents(
         page_size=page_size,
         include_archived=include_archived,
         status=status,
+        category=category,
         db=db,
     )
     return DocumentListResponse(
@@ -262,7 +277,7 @@ async def list_documents(
     )
 
 
-@router.get("/search", response_model=list[DocumentResponse])
+@router.get("/search", response_model=DocumentSearchResponse)
 async def search_documents(
     q: str = Query(..., min_length=1),
     workspace_id: str = Query(...),
@@ -276,7 +291,7 @@ async def search_documents(
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     await _verify_workspace_access(workspace_id, _user_id(current_user), db)
-    docs = await document_service.search_documents(
+    docs, total = await document_service.search_documents(
         workspace_id=workspace_id,
         query=q,
         folder_id=folder_id,
@@ -284,7 +299,31 @@ async def search_documents(
         offset=offset,
         db=db,
     )
-    return [DocumentResponse.model_validate(d) for d in docs]
+    return DocumentSearchResponse(
+        documents=[DocumentResponse.model_validate(d) for d in docs],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/stats", response_model=DocumentStatsResponse)
+async def get_document_stats(
+    workspace_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Workspace-wide document aggregates for the list header.
+
+    Read-only, so plain membership is the bar — no mutation role. Declared
+    before the `/{document_id}` routes so "stats" can never be captured as a
+    document id.
+    """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db)
+    return DocumentStatsResponse(**await workspace_document_stats(workspace_id, db))
 
 
 # ============================================================================
@@ -293,6 +332,11 @@ async def search_documents(
 
 @router.post("/bulk/upload", response_model=BulkUploadResponse, status_code=200)
 @router.post("/bulk", response_model=BulkUploadResponse, status_code=200, operation_id="bulk_upload_documents_alias")
+# One request may carry up to _MAX_BULOAD_FILES (50) files, each up to 100MB, so a
+# single call can move 5GB through the process. 5 per 5 minutes caps that at
+# ~5GB/5min per member while still letting a real import finish; the per-file
+# ceiling is a size guard, not a throughput guard.
+@rate_limit(max_requests=5, window_seconds=300)
 async def bulk_upload_documents(
     files: list[UploadFile] = File(...),
     workspace_id: str = Query(...),
@@ -1041,4 +1085,94 @@ async def sync_document_to_memory(
         return DocumentSyncMemoryResponse.model_validate(res)
     except DocumentNotFound:
         raise HTTPException(status_code=404, detail="Document not found")
+
+
+# ============================================================================
+# Document Ingestion Endpoints
+# ============================================================================
+
+@router.post("/{document_id}/process", response_model=DocumentProcessResponse)
+# Parsing is CPU-bound (a PDF page render or an OCR pass per page) and every
+# chunk is embedded, so one call can occupy a worker for seconds. 10 per 5
+# minutes keeps a member from turning a retry loop into a queue of its own.
+@rate_limit(max_requests=10, window_seconds=300)
+async def process_document(
+    document_id: str,
+    workspace_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Run the ingestion pipeline over an already-uploaded document.
+
+    The caller pointed at `/workspaces/{workspace_id}/documents/{document_id}/process`,
+    a path that has never existed; the ingest trigger swallowed the 404 and
+    reported success, so ingestion silently no-opped.
+    """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    # P0-02: ingestion writes chunks, embeddings and (via dedup) new versions, so
+    # member-level role or above is the floor.
+    await _verify_workspace_access(workspace_id, _user_id(current_user), db, required_roles=_ROLES_WRITE)
+    try:
+        # required_permission="write" so a holder of a READ share on this document
+        # cannot ingest it — get_document falls back to the share when the document
+        # lives in another workspace, and that fallback has to be permission-checked.
+        # get_content below resolves read-level only, so this call is what enforces
+        # the write requirement.
+        await document_service.get_document(
+            document_id=document_id,
+            workspace_id=workspace_id,
+            db=db,
+            required_permission="write",
+        )
+        content, _doc_type, path = await document_service.get_content(
+            document_id, workspace_id, db
+        )
+    except DocumentNotFound:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    if not content:
+        raise HTTPException(status_code=404, detail="Document has no stored content")
+
+    from ..ingestion.parsers import PARSERS
+    from ..ingestion.pipeline import run_pipeline
+
+    filename = path.rsplit("/", 1)[-1] or path
+    # Idempotency is inherited from the pipeline's own content-hash dedup
+    # (ingestion/dedup.check_dedup), not reimplemented here: a repeat call resolves
+    # to the existing document and adds a version to it instead of a second
+    # document row.
+    result = await run_pipeline(
+        workspace_id=workspace_id,
+        filename=filename,
+        content=content,
+        user_id=_user_id(current_user),
+    )
+
+    if result.get("status") == "success":
+        return DocumentProcessResponse(
+            document_id=document_id,
+            status="processed",
+            # run_pipeline reports the real chunk count; anything else would be a
+            # number this endpoint invented.
+            chunks_indexed=int(result.get("chunk_count") or 0),
+        )
+
+    reason = str(result.get("reason") or "ingestion failed")
+    # run_pipeline is total: it converts UnsupportedFormatError AND infrastructure
+    # failures alike into {"status": "error"}. The parsers themselves swallow their
+    # own per-file errors (PDFParser returns an error document instead of raising),
+    # so an error on a format that HAS a registered parser means the failure was
+    # after parsing — a real 5xx. An unregistered format is a normal outcome and
+    # must not read as a server error to the caller.
+    ext = f".{filename.rsplit('.', 1)[-1].lower()}" if "." in filename else ""
+    if ext in PARSERS:
+        raise HTTPException(status_code=500, detail=f"Document ingestion failed: {reason}")
+
+    return DocumentProcessResponse(
+        document_id=document_id,
+        status="skipped",
+        detail=reason,
+    )
 

@@ -1,31 +1,32 @@
 /**
  * The category taxonomy for the documents list.
  *
- * WHY THE CATEGORY SET LIVES IN THE CLIENT
+ * WHY THE SET OF CATEGORIES LIVES IN THE CLIENT BUT THE FILTERING DOES NOT
  *
- * `GET /documents` has no category parameter, and it cannot grow one from the
- * data it already serves. `Document.metadata.category` is a free-form string
- * written ad hoc by the `categorize_document` tool (`tools/executor.py:919`) —
- * `vault_note`, `finance`, `resume`, whatever the tool decided — so it cannot
- * enumerate a stable set of buckets, and a bucket derived from it would change
- * meaning between workspaces. The category tabs are therefore a product-level
- * taxonomy expressed in the UI and applied to the rows already fetched. The
- * SERVER-side narrowing that matters for scale is the folder filter, which is a
- * real query parameter and is applied there.
+ * These are two separate things and they used to be conflated in one comment:
  *
- * WHY THE BUCKETS ARE DERIVED FROM `previewKind`
+ *  - WHICH BUCKETS EXIST is a product decision with no server-side source. No
+ *    endpoint enumerates categories, and the stored data cannot produce a stable
+ *    set: `Document.metadata.category` is a free-form string written ad hoc by the
+ *    `categorize_document` tool (`tools/executor.py:919`) — `vault_note`,
+ *    `finance`, `resume`, whatever the tool decided — so a bucket derived from it
+ *    would mean something different in every workspace. The six ids below are
+ *    therefore declared here and sent to the server as `?category=`, which is the
+ *    only place the list knows about them.
  *
- * The old `CATEGORY_EXTENSIONS` table re-listed ~35 extensions in this file and
- * had already drifted from the merged classifier in `@/lib/document-format`: it
- * put `rtf` in documents (correct by accident), omitted `avif`, and listed `tsv`
- * only under spreadsheets while `previewKind` classifies it as `csv`. Rather than
- * move the drift, the buckets now ask the one shared classifier:
- * `previewKind(detectedMimeType, ext, type, { path })`. Two supplements remain
- * because `previewKind` deliberately answers `'none'` for Office zip containers
- * — they are not renderable, which is true and does not make them spreadsheets.
+ *  - WHICH ROWS MATCH is decided by the server. `GET /documents` takes
+ *    `category` (`DocumentListParams`), exactly as it takes `folder_id`, and the
+ *    client no longer filters. Filtering a single page in the browser could only
+ *    ever match rows that happened to be on that page, so a category with 300
+ *    matches would show "1 of 50 rows on this page match" — true, and useless.
+ *    The UI used to say as much in a caption, because the narrower row set was
+ *    accompanied by the unfiltered server total in the same bar.
+ *
+ * `isVaultNote` stays, and it is NOT a filter: the table uses it to badge a row
+ * that is mirrored from the workspace vault, which is a fact about one row rather
+ * than a query over many.
  */
 
-import { extensionOf, previewKind, type PreviewKind } from '@/lib/document-format';
 import type { DocumentResponse, FolderResponse } from '@/lib/api-client';
 
 export type DocumentCategoryId =
@@ -36,7 +37,15 @@ export interface DocumentCategory {
   label: string;
 }
 
-/** The tab order shown in the toolbar. `all` and `vault_notes` are not extensions. */
+/**
+ * The tab order shown in the toolbar, and the ids sent as `?category=`.
+ *
+ * `'all'` is a UI sentinel for "do not filter" and is never sent: `useDocumentList`
+ * turns it into an absent parameter, which `encodeParams` drops so the route sees
+ * its `None` default. Every other id goes over the wire verbatim, so the server
+ * has to recognise exactly these spellings — `vault_notes`,
+ * `documents`, `spreadsheets`, `images`, `code`.
+ */
 export const DOCUMENT_CATEGORIES: readonly DocumentCategory[] = [
   { id: 'all', label: 'All Files' },
   { id: 'vault_notes', label: 'Vault Notes' },
@@ -45,6 +54,11 @@ export const DOCUMENT_CATEGORIES: readonly DocumentCategory[] = [
   { id: 'images', label: 'Images' },
   { id: 'code', label: 'Code' },
 ] as const;
+
+/** The label for a category id, or the id itself if it is not in the taxonomy. */
+export function categoryLabel(id: DocumentCategoryId): string {
+  return DOCUMENT_CATEGORIES.find((category) => category.id === id)?.label ?? id;
+}
 
 /**
  * The folder name that marks a row as a vault note.
@@ -56,85 +70,19 @@ export const DOCUMENT_CATEGORIES: readonly DocumentCategory[] = [
 export const VAULT_NOTES_FOLDER_NAME = 'Vault Notes';
 
 /**
- * Buckets for the preview kinds that carry one.
- *
- * `previewKind` folds `csv` and `tsv` together, so the spreadsheet bucket needs
- * no extension list of its own.
- */
-const KIND_TO_CATEGORY: Partial<Record<PreviewKind, DocumentCategoryId>> = {
-  markdown: 'documents',
-  text: 'documents',
-  pdf: 'documents',
-  csv: 'spreadsheets',
-  image: 'images',
-  code: 'code',
-};
-
-/**
- * Office / word-processor binaries. `previewKind` returns `'none'` for every one
- * of them, which is a statement about inline rendering and says nothing about
- * which tab the file belongs on.
- */
-const SHEET_EXTENSIONS: ReadonlySet<string> = new Set(['xlsx', 'xls', 'xlsm', 'ods', 'numbers']);
-const DOCUMENT_EXTENSIONS: ReadonlySet<string> = new Set([
-  'doc',
-  'docx',
-  'odt',
-  'ppt',
-  'pptx',
-  'odp',
-  'key',
-  'pages',
-]);
-
-/**
  * Whether a row is a vault note.
  *
  * Three signals, in the order the backend can actually produce them: the
  * `category` the categoriser wrote, the `type` it wrote, and the name of the
  * folder the row currently lives in. All three are checked because none is
  * guaranteed — `metadata.category` is absent on anything never categorised.
+ *
+ * Used for the row's "Vault Synced" badge, NOT for filtering. The `vault_notes`
+ * tab is a server query; this is a per-row marker the server does not send as a
+ * boolean.
  */
 export function isVaultNote(doc: DocumentResponse, folders: readonly FolderResponse[]): boolean {
   if (doc.metadata?.category === 'vault_note' || doc.type === 'vault_note') return true;
   const folderName = folders.find((folder) => folder.id === doc.folderId)?.name;
   return folderName === VAULT_NOTES_FOLDER_NAME;
-}
-
-/**
- * The bucket a row belongs to, or `null` when it cannot be classified.
- *
- * A `null` here is not a hole in the UI: {@link matchesCategory} files such a
- * row under `documents` so that no document becomes unreachable from every tab.
- */
-export function categoryOf(doc: DocumentResponse): DocumentCategoryId | null {
-  const kind = previewKind(doc.detectedMimeType ?? null, null, doc.type, { path: doc.path });
-  const fromKind = KIND_TO_CATEGORY[kind];
-  if (fromKind) return fromKind;
-
-  const ext = extensionOf(doc.path);
-  if (SHEET_EXTENSIONS.has(ext)) return 'spreadsheets';
-  if (DOCUMENT_EXTENSIONS.has(ext)) return 'documents';
-  return null;
-}
-
-/**
- * Whether a row passes the active category filter.
- *
- * @param category The active tab. `'all'` matches everything.
- * @param folders The workspace folders, needed only to resolve vault notes by
- * folder name.
- */
-export function matchesCategory(
-  doc: DocumentResponse,
-  category: DocumentCategoryId,
-  folders: readonly FolderResponse[],
-): boolean {
-  if (category === 'all') return true;
-  if (category === 'vault_notes') return isVaultNote(doc, folders);
-  // An unclassifiable file lands in `documents` rather than in no tab at all:
-  // the previous behaviour hid it from Documents, Spreadsheets, Images AND Code
-  // while still showing it under All Files, so a workspace full of extensionless
-  // rows looked empty on every specific tab.
-  return (categoryOf(doc) ?? 'documents') === category;
 }

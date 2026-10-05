@@ -7,7 +7,12 @@ import { MIN_TOUCH_TARGET } from '../layout/touchTarget';
 export interface MemoryCardProps {
   id: string;
   content: string;
-  confidence: number;
+  /**
+   * Optional on purpose: when the backend has no stored confidence for a memory,
+   * callers must be able to omit it. Making this required pushed callers to
+   * invent a placeholder score, which then rendered as if it were measured.
+   */
+  confidence?: number;
   source: string;
   timestamp: string;
   entityCount?: number;
@@ -34,7 +39,7 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex items-center gap-2">
           <BrainIcon size={16} className="text-accent" />
-          <ConfidenceIndicator score={confidence} showLabel={false} />
+          {confidence !== undefined && <ConfidenceIndicator score={confidence} showLabel={false} />}
           <span className="text-xs text-text-muted tabular-nums">{timestamp}</span>
         </div>
         <div className="flex items-center gap-1">

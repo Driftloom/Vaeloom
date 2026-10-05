@@ -347,22 +347,29 @@ export const memoryApi = {
 
 export interface VaultSyncStatus {
   workspaceId: string;
-  status: 'in_sync' | 'syncing' | 'behind' | 'ahead' | 'diverged' | 'conflict' | 'error';
-  installed?: boolean;
-  isBuiltin?: boolean;
-  daemonStatus?: 'running' | 'paused';
-  version?: string;
+  /** 'unknown' when no client has ever connected — not a reassuring value. */
+  status:
+    'unknown' | 'in_sync' | 'syncing' | 'behind' | 'ahead' | 'diverged' | 'conflict' | 'error';
+  /** True only once a vaultsync client has checked in. */
+  installed: boolean;
+  /** Derived from client heartbeat freshness; 'not_connected' when there is none. */
+  daemonStatus: 'not_connected' | 'running' | 'paused' | 'stale' | 'unknown';
+  lastClientHeartbeat?: string | null;
   branch: string;
-  remoteUrl?: string;
-  vaultPath: string;
+  remoteUrl?: string | null;
+  /** null until configured; the server must not invent a path. */
+  vaultPath?: string | null;
   totalNotes: number;
   vaultMemories: number;
-  lastPullTime?: string;
-  lastPushTime?: string;
+  lastPullTime?: string | null;
+  lastPushTime?: string | null;
   conflictsCount: number;
   autoIngest: boolean;
-  debounceSeconds?: number;
-  rebaseIntervalMinutes?: number;
+  debounceSeconds: number;
+  rebaseIntervalMinutes: number;
+  /** 'client' — git sync runs on the user's machine, not on the server. */
+  engine: 'client';
+  engineNote: string;
 }
 
 export interface VaultConfigUpdateRequest {
@@ -372,6 +379,10 @@ export interface VaultConfigUpdateRequest {
   vault_path?: string;
   auto_ingest?: boolean;
   daemon_status?: 'running' | 'paused';
+  // Previously absent from the wire contract, so the UI's debounce/rebase
+  // number inputs were write-only state that could never be saved.
+  debounce_seconds?: number;
+  rebase_interval_minutes?: number;
 }
 
 export interface VaultNoteItem {
@@ -401,6 +412,19 @@ export interface VaultSyncLog {
   level: string;
   message: string;
   event?: string;
+  executed?: boolean;
+}
+
+export interface VaultSyncTriggerResponse {
+  success: boolean;
+  /** False when no sync actually ran — the server has no git engine. */
+  executed: boolean;
+  workspace_id: string;
+  daemon_status: string;
+  last_pull_time: string | null;
+  last_push_time: string | null;
+  conflicts_count: number;
+  message: string;
 }
 
 export const vaultSyncApi = {
@@ -410,14 +434,10 @@ export const vaultSyncApi = {
   updateConfig(body: VaultConfigUpdateRequest): Promise<{ success: boolean; config: unknown }> {
     return apiClient.post<{ success: boolean; config: unknown }>('/vault-sync/config', body);
   },
-  triggerSync(workspaceId: string): Promise<{
-    success: boolean;
-    status: string;
-    last_pull_time: string;
-    last_push_time: string;
-    message: string;
-  }> {
-    return apiClient.post('/vault-sync/sync', { workspace_id: workspaceId });
+  triggerSync(workspaceId: string): Promise<VaultSyncTriggerResponse> {
+    return apiClient.post<VaultSyncTriggerResponse>('/vault-sync/sync', {
+      workspace_id: workspaceId,
+    });
   },
   getLogs(workspaceId: string): Promise<VaultSyncLog[]> {
     return apiClient.get<VaultSyncLog[]>('/vault-sync/logs', { workspace_id: workspaceId });
@@ -994,6 +1014,127 @@ export interface DocumentListResponse {
 }
 
 /**
+ * `GET /documents/search`. New envelope.
+ *
+ * BREAKING SHAPE CHANGE (see `documentApi.search`): this used to be
+ * `DocumentResponse[]` with no total, and it is now an object. A caller written
+ * against the old signature still COMPILES if it only iterates — `documents` is
+ * not iterable, so the failure is a runtime `TypeError` rather than a type error.
+ * That is why `useDocumentList` re-reads `total` from here instead of deriving
+ * it from the row count.
+ *
+ * Wire shape: `schemas/document.py:36` (`DocumentSearchResponse`), served by
+ * `routers/documents.py:280`. `total` is a `COUNT(*)` over the same filters
+ * rather than `len(documents)`, and `limit`/`offset` are echoed back, so
+ * `Math.ceil(total / limit)` is a real page count and the window size is the
+ * server's, not an assumption.
+ */
+export interface DocumentSearchResponse {
+  documents: DocumentResponse[];
+  /** Every match for `q` under the same filters, not just this window. */
+  total: number;
+  /** Echo of the `limit` the server applied; use it, do not assume PAGE_SIZE. */
+  limit: number;
+  /** Echo of the `offset` the server applied; equals `(page - 1) * limit`. */
+  offset: number;
+}
+
+/**
+ * `GET /documents/stats?workspace_id=`. New workspace-wide aggregate.
+ *
+ * Wire shape: `schemas/document.py:50` (`DocumentStatsResponse`), served by
+ * `routers/documents.py:310` over SQL in
+ * `services/document_stats_service.py:20`.
+ *
+ * WHY THIS EXISTS RATHER THAN BEING DERIVED IN THE UI
+ *
+ * The documents list is ONE PAGE of at most `page_size` rows. Summing
+ * `metadata.size` over that page and captioning the result "Storage Used" claims
+ * a workspace total it cannot have, and the total was previously taken from the
+ * server while the storage/clean/quarantined counts came from the page — four
+ * cards with two different denominators side by side. Every field here is
+ * computed server-side over the whole workspace, so they share a denominator.
+ *
+ * `total_bytes` sums the recorded `metadata.size` (`json_int_key(metadata, 'size')`
+ * — `document_stats_service.py:33`), which is absent on rows whose upload path
+ * never wrote it, so it is a lower bound. `totalDocuments` counts only rows with
+ * a null `deleted_at`; `archivedDocuments` holds the rest.
+ *
+ * Every member is declared optional even though the schema requires all eight.
+ * That is deliberate: a partial or older payload must degrade to "that card is
+ * omitted", never to a fabricated `0`. `DocumentStatsBar` renders a metric card
+ * only for a field it actually received, so `undefined` is the correct way for a
+ * gap to arrive.
+ *
+ * KNOWN BACKEND MISMATCHES — see the report; the client is coded to the contract
+ * above and degrades honestly, but two of these will produce wrong numbers:
+ *
+ *  - `quarantinedCount` and `scanningCount` are `lower(scan_status) =
+ *    'quarantined'` / `'scanning'` (`document_stats_service.py:35-36`), but the
+ *    scanner only ever writes `CLEAN`, `REJECTED` and `MALICIOUS`
+ *    (`file_security_service.py:97,107`) with `CLEAN` as the column default
+ *    (`models/schema.py:357`). Neither word is ever written, so both counts are
+ *    structurally 0 for any row the scanner has seen. `cleanCount` is correct.
+ *  - `category` filtering compares against `metadata->>'category'`
+ *    (`document_service.py:69-83`), a free-form string. See
+ *    `DocumentListParams.category`.
+ */
+export interface DocumentStatsResponse {
+  /** Non-archived documents in the workspace (`deleted_at IS NULL`). */
+  totalDocuments?: number;
+  /** Rows carrying a non-null `deleted_at`. */
+  archivedDocuments?: number;
+  /** Sum of `metadata.size` across the workspace, in bytes. A lower bound. */
+  totalBytes?: number;
+  /** Rows whose `scan_status` is `CLEAN`. This one is computed correctly. */
+  cleanCount?: number;
+  /** Rows the scanner refused or flagged. See the mismatch note above. */
+  quarantinedCount?: number;
+  /** Rows whose scan has not reached a verdict. See the mismatch note above. */
+  scanningCount?: number;
+  /** Folders in the workspace tree. */
+  folderCount?: number;
+  /**
+   * Shares this workspace GRANTED that have not lapsed. Shares pointing INTO the
+   * workspace are deliberately excluded.
+   *
+   * This is the one number `DocumentResponse` cannot express at all — nothing on
+   * a row or in `metadata` describes a share — which is why the "Active Shares"
+   * card had to be omitted rather than estimated before this endpoint existed.
+   */
+  activeShareCount?: number;
+}
+
+/**
+ * `POST /documents/{document_id}/process?workspace_id=`. New ingest trigger.
+ *
+ * Wire shape: `schemas/document.py:67` (`DocumentProcessResponse`), served by
+ * `routers/documents.py:1094`. `document_id` -> `documentId`,
+ * `chunks_indexed` -> `chunksIndexed`.
+ *
+ * `status` is `'processed'` when the body was chunked and indexed, and
+ * `'skipped'` when the format has no registered parser — an unsupported file is
+ * a normal outcome, not an error. A `500` is reserved for a parser that exists
+ * and still failed. `detail` carries the reason on a skip.
+ *
+ * The route requires a WRITE-capable caller (`required_roles=_ROLES_WRITE` plus
+ * `required_permission="write"`) and is rate-limited to 10 calls / 5 minutes, so
+ * an API-key-only service identity needs a member-with-write role in the
+ * workspace or it gets a 403.
+ *
+ * This is the endpoint the `vaeloom.ingest-document` Trigger task calls; see
+ * `apps/web/src/trigger/document-ingest.ts`, which was silently 404ing against a
+ * route that never existed.
+ */
+export interface DocumentProcessResponse {
+  documentId: string;
+  status: 'processed' | 'skipped';
+  chunksIndexed: number;
+  /** Free text, or `null`. The only field that says WHY something was skipped. */
+  detail?: string | null;
+}
+
+/**
  * One audit-trail entry from `GET /documents/{id}/actions`.
  * Wire shape: `schemas/document.py:49`.
  *
@@ -1332,7 +1473,7 @@ export interface FolderUpdateRequest {
 
 /**
  * Query parameters for `GET /documents`. Query strings are never transformed,
- * so these names stay snake_case. Server side: `routers/documents.py:222-234`.
+ * so these names stay snake_case. Server side: `routers/documents.py:237-250`.
  */
 export interface DocumentListParams {
   workspace_id?: string;
@@ -1340,6 +1481,32 @@ export interface DocumentListParams {
   folder_id?: string | null;
   /** `'ACTIVE'`, `'ARCHIVED'`, `'STORAGE_DEGRADED'` — whatever `Document.status` holds. */
   status?: string | null;
+  /**
+   * Server-side category filter. Absent/`null` means "no category filter".
+   *
+   * Accepts a {@link DocumentCategoryId} verbatim except `'all'`, which is sent
+   * as absent because it means "do not filter" rather than "the bucket named
+   * all".
+   *
+   * ⚠ VOCABULARY MISMATCH, CONFIRMED AGAINST THE LANDED ROUTER. The parameter
+   * exists (`routers/documents.py:247-250`) but the predicate behind it is
+   * `lower(metadata->>'category') == category` (`document_service.py:69-83`) —
+   * an equality test against the free-form string the `categorize_document` tool
+   * wrote (`tools/executor.py:919`). The six ids the tab strip sends are
+   * `vault_notes`, `documents`, `spreadsheets`, `images`, `code`; none of those
+   * is a value the stored data ever holds (`vault_note`, singular, is the only
+   * one that comes close), and the four MIME-derived buckets cannot exist there
+   * at all. As landed, every non-`all` tab returns an empty set.
+   *
+   * The client sends the taxonomy id because that is the documented contract, and
+   * an empty result renders as "No documents found" — a visible failure rather
+   * than the silent one a client-side filter produced. The server fix is to
+   * bucket by `detected_mime_type` / extension for the four MIME buckets and by
+   * `metadata.category = 'vault_note'` (or the folder name) for `vault_notes`,
+   * and to reject an unrecognised vocabulary with a 422 rather than matching
+   * nothing. See `parts/documentCategories.ts`.
+   */
+  category?: string | null;
   page?: number;
   /** 1-100. */
   page_size?: number;
@@ -1349,18 +1516,25 @@ export interface DocumentListParams {
 /**
  * Pagination for `GET /documents/search`.
  *
- * The endpoint answers with a BARE ARRAY and no total (`routers/documents.py:260`,
- * `response_model=list[DocumentResponse]`), so a caller cannot render a page
- * count or a "result N of M" line from the response alone — it has to either
- * page until it receives a short page, or treat the number of rows returned as
- * the whole answer. That is a backend gap, not something this client can paper
- * over: there is no `total` field to compute a page count from.
+ * `limit`/`offset` were already accepted; what changed is that the RESPONSE now
+ * carries `total` (see `DocumentSearchResponse`), so this is finally a real page
+ * window rather than a best-effort truncation.
  */
 export interface DocumentSearchParams {
   /** 1-100, server default 50. */
   limit?: number;
   /** >= 0, server default 0. */
   offset?: number;
+  /**
+   * Sent as `category`, same vocabulary as {@link DocumentListParams.category}.
+   *
+   * NOT in the published search contract: `/documents/search` was only given a
+   * paginated envelope. FastAPI ignores undeclared query parameters, so sending
+   * it is harmless today and becomes honoured the moment the parameter is
+   * declared — whereas omitting it would leave a category tab silently ignored
+   * for the whole time a search box is focused.
+   */
+  category?: string | null;
 }
 
 function contentUrl(documentId: string, workspaceId: string): string {
@@ -1506,20 +1680,39 @@ export const documentApi = {
   /**
    * `GET /documents`.
    *
-   * `folder_id` and `status` are forwarded to the server, which is the point:
-   * filtering client-side after a single page has been fetched can only ever
-   * match documents that happen to be in that page, so a non-empty folder
-   * rendered as empty. Pass `folder_id` and let `routers/documents.py:243-251`
-   * scope the query; `total` then reflects the filter too.
+   * `folder_id`, `status` and `category` are all forwarded to the server, which is
+   * the point: filtering client-side after a single page has been fetched can only
+   * ever match documents that happen to be in that page, so a non-empty folder
+   * rendered as empty. Pass `folder_id` and let `routers/documents.py:256-276`
+   * scope the query; `total` then reflects the filter too. Same argument for
+   * `category` — subject to the vocabulary caveat on
+   * {@link DocumentListParams.category}.
    *
-   * A `null`/`undefined` `folder_id` is omitted from the query string by
-   * `encodeParams`, which is the same as the server's `None` default.
+   * A `null`/`undefined` `folder_id` or `category` is omitted from the query
+   * string by `encodeParams`, which is the same as the server's `None` default.
    */
   list(params?: DocumentListParams): Promise<DocumentListResponse> {
     return apiClient.get<DocumentListResponse>(
       '/documents',
       params as Record<string, string | number | boolean | undefined | null>,
     );
+  },
+  /**
+   * `GET /documents/stats?workspace_id=`. Workspace-wide aggregates.
+   *
+   * Route: `routers/documents.py:310`. Read-only, so plain workspace membership
+   * is the bar — no mutation role.
+   *
+   * Loaded on its own schedule, independent of the paged list: the numbers
+   * describe the whole workspace, so they must not be derived from (or blocked
+   * by) whichever page happens to be loaded. A failure here is reported by the
+   * stats bar alone and leaves the document table untouched.
+   *
+   * @see DocumentStatsResponse for why each field is server-computed, and for two
+   * confirmed mismatches in the scan-state counts.
+   */
+  stats(workspaceId: string): Promise<DocumentStatsResponse> {
+    return apiClient.get<DocumentStatsResponse>('/documents/stats', { workspace_id: workspaceId });
   },
   getById(documentId: string, workspaceId: string): Promise<DocumentResponse> {
     return apiClient.get<DocumentResponse>(`/documents/${encodeURIComponent(documentId)}`, {
@@ -1602,26 +1795,59 @@ export const documentApi = {
     );
   },
   /**
-   * `GET /documents/search`.
+   * `GET /documents/search`. Route: `routers/documents.py:280`.
    *
-   * `limit`/`offset` are forwarded to the server. Without them the endpoint
-   * silently truncates at its own default of 50 (`routers/documents.py:265-266`),
-   * which reads as "these were the only matches" rather than as a truncation.
+   * BREAKING RETURN-TYPE CHANGE: this returned `Promise<DocumentResponse[]>`. It
+   * now returns {@link DocumentSearchResponse}. Callers must read `.documents`
+   * and may read `.total` for a real page count. Every caller in this repo
+   * (`hooks/useDocumentList.ts`) has been updated; there is no compatibility
+   * shim, because a shim would have to invent a `total` and the whole point of
+   * the change is to stop inventing one.
    *
-   * The response is a BARE ARRAY of documents with no `total`, so a caller
-   * cannot compute a page count from it — see `DocumentSearchParams`.
+   * `limit`/`offset` are forwarded to the server, and the response echoes both
+   * plus a `total` for the whole match set — so paging during a search is a real
+   * page window rather than a guess.
    */
   search(
     workspaceId: string,
     query: string,
     folderId?: string | null,
     pagination?: DocumentSearchParams,
-  ): Promise<DocumentResponse[]> {
-    const params: Record<string, string | number> = { workspace_id: workspaceId, q: query };
+  ): Promise<DocumentSearchResponse> {
+    const params: Record<string, string | number | null> = {
+      workspace_id: workspaceId,
+      q: query,
+    };
     if (folderId) params['folder_id'] = folderId;
     if (pagination?.limit != null) params['limit'] = pagination.limit;
     if (pagination?.offset != null) params['offset'] = pagination.offset;
-    return apiClient.get<DocumentResponse[]>('/documents/search', params);
+    // `'all'` is the client taxonomy's "do not filter" sentinel and is not a
+    // bucket name, so it is never sent. See `DocumentListParams.category`.
+    if (pagination?.category && pagination.category !== 'all') {
+      params['category'] = pagination.category;
+    }
+    return apiClient.get<DocumentSearchResponse>('/documents/search', params);
+  },
+  /**
+   * `POST /documents/{document_id}/process?workspace_id=`.
+   * Route: `routers/documents.py:1094`.
+   *
+   * Runs the ingestion/chunking pipeline for one document. `workspace_id` is a
+   * QUERY parameter and the route declares no request body, so `postQuery` is
+   * called with `undefined` — a JSON body would be silently discarded.
+   *
+   * `'skipped'` resolves rather than rejects: an unregistered file format is a
+   * normal outcome and the endpoint returns 200 for it. A 500 means a registered
+   * parser failed.
+   *
+   * Rate limited to 10 calls / 5 minutes and gated on a WRITE-capable caller, so
+   * this is not a loop-per-row API. The document list does not call it.
+   */
+  process(documentId: string, workspaceId: string): Promise<DocumentProcessResponse> {
+    return apiClient.postQuery<DocumentProcessResponse>(
+      `/documents/${encodeURIComponent(documentId)}/process`,
+      { workspace_id: workspaceId },
+    );
   },
   listFolders(workspaceId: string, parentId?: string): Promise<FolderResponse[]> {
     const params: Record<string, string> = { workspace_id: workspaceId };

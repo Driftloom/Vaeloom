@@ -2,7 +2,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
@@ -162,16 +162,25 @@ async def list_workspace_document_actions(
         raise HTTPException(status_code=404, detail="Workspace not found or access denied")
     from ..models.schema import DocumentAction
     from ..schemas.document import DocumentActionListResponse, DocumentActionResponse
-    result = await db.execute(
-        select(DocumentAction)
-        .where(DocumentAction.workspace_id == uuid.UUID(workspace_id))
-        .order_by(DocumentAction.created_at.desc())
-        .limit(100)
-    )
-    actions = result.scalars().all()
+    ws_id = uuid.UUID(workspace_id)
+    actions = (
+        await db.execute(
+            select(DocumentAction)
+            .where(DocumentAction.workspace_id == ws_id)
+            .order_by(DocumentAction.created_at.desc())
+            .limit(100)
+        )
+    ).scalars().all()
+    # The row cap above is a display cap; reporting len(actions) would tell a client
+    # holding 100 rows of 3,000 that it had seen them all.
+    total = (
+        await db.execute(
+            select(func.count(DocumentAction.id)).where(DocumentAction.workspace_id == ws_id)
+        )
+    ).scalar_one()
     return DocumentActionListResponse(
         actions=[DocumentActionResponse.model_validate(a) for a in actions],
-        total=len(actions),
+        total=total,
     )
 
 

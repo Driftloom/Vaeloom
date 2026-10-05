@@ -1,24 +1,19 @@
 'use client';
 
 import React from 'react';
-import { Alert, EmptyState, ErrorState, Pagination, TabPanel } from '@vaeloom/ui-kit';
+import { EmptyState, ErrorState, Pagination, TabPanel } from '@vaeloom/ui-kit';
 import { FileTextIcon } from '@vaeloom/ui-kit';
 
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 
-import { PAGE_SIZE, type UseDocumentListResult } from '../hooks/useDocumentList';
+import type { UseDocumentListResult } from '../hooks/useDocumentList';
 import type { UseDocumentFoldersResult } from '../hooks/useDocumentFolders';
 import { DocumentsTable } from './DocumentsTable';
 import type { DocumentRowHandlers } from './DocumentRowActions';
-import type { DocumentCategoryId } from './documentCategories';
 
 export interface DocumentsResultsPanelProps {
   list: UseDocumentListResult;
   folders: UseDocumentFoldersResult;
-  category: DocumentCategoryId;
-  onCategoryChange: (category: DocumentCategoryId) => void;
-  /** Rows after the category filter. */
-  visibleDocuments: UseDocumentListResult['documents'];
   handlers: DocumentRowHandlers;
 }
 
@@ -40,34 +35,36 @@ export interface DocumentsResultsPanelProps {
  * clearing the archive looked instantaneous even when the request took seconds,
  * and a stale page looked current. `refreshing` is now a separate signal that
  * keeps the rows and marks the region `aria-busy` with a visible note.
+ *
+ * WHY PAGINATION IS NO LONGER SUPPRESSED DURING A SEARCH
+ *
+ * It was hidden because `GET /documents/search` answered with a bare array, so
+ * any page count would have been a guess — and a search that filled one page was
+ * announced as possibly truncated. The search response now carries `total`, so
+ * the same `Pagination` that serves the list serves the search, `total` is the
+ * real match count, and page 2 requests `offset=50` instead of being unreachable.
+ *
+ * There is no client-side category filter here any more: `list.documents` is
+ * exactly what the server sent for the active `category`, so the panel renders
+ * `list.documents` rather than a filtered copy of it.
  */
 export const DocumentsResultsPanel: React.FC<DocumentsResultsPanelProps> = ({
   list,
   folders,
-  category,
-  onCategoryChange,
-  visibleDocuments,
   handlers,
 }) => {
   const hasFilters =
-    Boolean(list.searchInput.trim()) || category !== 'all' || list.selectedFolderId;
+    Boolean(list.searchInput.trim()) || list.category !== 'all' || list.selectedFolderId;
 
   const clearFilters = () => {
     list.onSearchInputChange('');
-    onCategoryChange('all');
+    list.setCategory('all');
     list.selectFolder(null);
   };
 
   return (
-    <TabPanel id={category} activeTab={category}>
+    <TabPanel id={list.category} activeTab={list.category}>
       <div className="space-y-3">
-        {list.searchTruncated && (
-          <Alert
-            variant="info"
-            description="This search filled one page, so there may be more matches than are shown. Refine the query to narrow it."
-          />
-        )}
-
         {list.loading && list.documents.length === 0 ? (
           <div className="py-16 flex flex-col items-center justify-center gap-2">
             <LoadingSpinner size="lg" text="Loading documents…" />
@@ -79,7 +76,7 @@ export const DocumentsResultsPanel: React.FC<DocumentsResultsPanelProps> = ({
             onRetry={list.retry}
             actionText="Retry"
           />
-        ) : visibleDocuments.length === 0 ? (
+        ) : list.documents.length === 0 ? (
           <EmptyState
             icon={<FileTextIcon size={24} />}
             title="No documents found"
@@ -94,7 +91,7 @@ export const DocumentsResultsPanel: React.FC<DocumentsResultsPanelProps> = ({
           />
         ) : (
           <DocumentsTable
-            documents={visibleDocuments}
+            documents={list.documents}
             folders={folders.folders}
             selectedIds={list.selectedIds}
             handlers={handlers}
@@ -107,19 +104,13 @@ export const DocumentsResultsPanel: React.FC<DocumentsResultsPanelProps> = ({
           />
         )}
 
-        {/* Pagination is suppressed during a search because
-            `GET /documents/search` answers with a bare array and no total
-            (`DocumentSearchParams`), so any page count derived from it would be
-            a guess presented as a count. */}
-        {!list.searchInput.trim() && (
-          <Pagination
-            currentPage={list.page}
-            totalPages={list.totalPages}
-            totalRecords={list.total}
-            pageSize={PAGE_SIZE}
-            onPageChange={list.setPage}
-          />
-        )}
+        <Pagination
+          currentPage={list.page}
+          totalPages={list.totalPages}
+          totalRecords={list.total}
+          pageSize={list.pageSize}
+          onPageChange={list.setPage}
+        />
       </div>
     </TabPanel>
   );

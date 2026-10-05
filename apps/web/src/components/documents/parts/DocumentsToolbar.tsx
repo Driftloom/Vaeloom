@@ -15,8 +15,13 @@ export interface DocumentsToolbarProps {
   /**
    * A sentence explaining what the active category did to the visible rows.
    *
-   * Rendered only while a specific category is selected, because that is the
-   * only case where the filter silently narrows what is on screen.
+   * Rendered only while a specific category is selected, because that is the only
+   * case where the numbers elsewhere on the screen (the folder-filter count, the
+   * pagination total) stop describing every file. It no longer describes the
+   * filter's IMPLEMENTATION — the caption that said the filtering ran in the
+   * browser is gone, because `category` is a query parameter now
+   * (`DocumentListParams.category`) — only its SCOPE, which is what a reader of
+   * "1 / 4" and "4 matching" actually needs to know.
    */
   filterNote?: string | null;
   className?: string;

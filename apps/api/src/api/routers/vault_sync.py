@@ -40,6 +40,39 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# Defaults mirror packages/vaeloom-sync/src/config.ts DEFAULT_CONFIG. They are
+# defaults for *display and for seeding a new workspace's config* — the status
+# endpoint reads whatever was actually persisted, never a hardcoded literal.
+DEFAULT_DEBOUNCE_SECONDS = 30
+DEFAULT_REBASE_INTERVAL_MINUTES = 5
+
+# A client heartbeat older than this means we cannot claim it is running.
+HEARTBEAT_STALE_SECONDS = 900
+
+
+def _derive_daemon_status(heartbeat: str | None, stored: str | None = None) -> str:
+    """Derive client liveness from evidence.
+
+    Returns "not_connected" when no client has ever reported, and "stale" when the
+    last report is too old to trust. The previous implementation defaulted to
+    "running", which made the UI claim a healthy daemon that did not exist.
+    """
+    if not heartbeat:
+        return "not_connected"
+    try:
+        last = datetime.fromisoformat(heartbeat)
+    except (TypeError, ValueError):
+        logger.warning("Unparseable vault client heartbeat: %r", heartbeat)
+        return "unknown"
+    if last.tzinfo is None:
+        last = last.replace(tzinfo=UTC)
+    age = (datetime.now(UTC) - last).total_seconds()
+    if age > HEARTBEAT_STALE_SECONDS:
+        return "stale"
+    if stored and stored not in ("running",):
+        return stored
+    return "running"
+
 
 def _parse_markdown_metadata(content: str, default_filename: str) -> tuple[str, list[str], list[str], str]:
     """
@@ -166,13 +199,17 @@ async def _get_or_create_vault_connector(
             workspace_id=workspace_id,
             type="vault_sync",
             name="Vault Sync",
+            # A brand-new connector has no client and no history. Seeding
+            # "status": "in_sync" or a guessed vault_path made a workspace that
+            # had never synced look healthy on first load.
             status="CONNECTED",
             config={
-                "status": "in_sync",
                 "branch": "main",
-                "vault_path": "~/Documents/VaeloomVault",
                 "auto_ingest": True,
+                "debounce_seconds": DEFAULT_DEBOUNCE_SECONDS,
+                "rebase_interval_minutes": DEFAULT_REBASE_INTERVAL_MINUTES,
                 "conflicts": [],
+                "sync_logs": [],
             },
         )
         db.add(connector)
@@ -190,6 +227,11 @@ class VaultConfigUpdate(BaseModel):
     vault_path: str | None = None
     auto_ingest: bool = True
     daemon_status: str | None = None
+    # Previously the UI rendered number inputs for these that were never
+    # transmitted, because the schema had no such fields. They are real,
+    # persisted settings now, and the status endpoint reads them back.
+    debounce_seconds: int | None = Field(default=None, ge=5, le=600)
+    rebase_interval_minutes: int | None = Field(default=None, ge=1, le=1440)
 
 
 class VaultSyncTriggerRequest(BaseModel):
@@ -222,7 +264,12 @@ async def get_vault_sync_status(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """Retrieve the current vault synchronization status and cognitive stats for this workspace."""
+    """Retrieve vault sync configuration and real ingestion stats for this workspace.
+
+    Every field here reflects state the server can actually observe. There is no
+    server-side git engine: sync is performed by the local `vaultsync` client, so
+    liveness is derived from a client-reported heartbeat rather than asserted.
+    """
     user_id = uuid.UUID(current_user["sub"])
     await _verify_workspace_access(workspace_id, user_id, db)
     connector = await _get_or_create_vault_connector(workspace_id, db)
@@ -246,24 +293,40 @@ async def get_vault_sync_status(
     )
     vault_memories = mem_count_res.scalar() or 0
 
+    # Liveness is derived, never assumed. Without a recent heartbeat the honest
+    # answer is "not_connected", not "running".
+    heartbeat = vault_meta.get("last_client_heartbeat")
+    daemon_status = _derive_daemon_status(heartbeat, vault_meta.get("daemon_status"))
+
+    conflicts = vault_meta.get("conflicts", []) or []
+    outstanding = [c for c in conflicts if not c.get("resolved")]
+
     return {
         "workspace_id": str(workspace_id),
-        "status": vault_meta.get("status", "in_sync"),
-        "installed": True,
-        "is_builtin": True,
-        "daemon_status": vault_meta.get("daemon_status", "running"),
-        "version": "1.0.0 (Native)",
+        "status": vault_meta.get("status", "unknown"),
+        # `installed` reflects whether a client has ever checked in, not a guess.
+        "installed": daemon_status != "not_connected",
+        "daemon_status": daemon_status,
+        "last_client_heartbeat": heartbeat,
         "branch": vault_meta.get("branch", "main"),
         "remote_url": vault_meta.get("remote_url"),
-        "vault_path": vault_meta.get("vault_path", "~/Documents/VaeloomVault"),
+        "vault_path": vault_meta.get("vault_path"),
         "total_notes": total_notes,
         "vault_memories": vault_memories,
         "last_pull_time": vault_meta.get("last_pull_time"),
         "last_push_time": vault_meta.get("last_push_time"),
-        "conflicts_count": len(vault_meta.get("conflicts", [])),
+        "conflicts_count": len(outstanding),
         "auto_ingest": vault_meta.get("auto_ingest", True),
-        "debounce_seconds": 30,
-        "rebase_interval_minutes": 5,
+        "debounce_seconds": vault_meta.get("debounce_seconds", DEFAULT_DEBOUNCE_SECONDS),
+        "rebase_interval_minutes": vault_meta.get(
+            "rebase_interval_minutes", DEFAULT_REBASE_INTERVAL_MINUTES
+        ),
+        # Surfaced so the UI can explain itself instead of guessing.
+        "engine": "client",
+        "engine_note": (
+            "Git sync runs in the local vaultsync client, not on the server. "
+            "Install the client on each machine that owns a vault."
+        ),
     }
 
 
@@ -287,6 +350,10 @@ async def update_vault_config(
         cfg["vault_path"] = body.vault_path
     if body.daemon_status is not None:
         cfg["daemon_status"] = body.daemon_status
+    if body.debounce_seconds is not None:
+        cfg["debounce_seconds"] = body.debounce_seconds
+    if body.rebase_interval_minutes is not None:
+        cfg["rebase_interval_minutes"] = body.rebase_interval_minutes
     cfg["auto_ingest"] = body.auto_ingest
     cfg["updated_at"] = datetime.now(UTC).isoformat()
 
@@ -306,23 +373,46 @@ async def trigger_vault_sync(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """Execute an immediate manual sync cycle (rebase pull + trailing commit & push)."""
+    """Record a manual sync request for this workspace.
+
+    There is no server-side git engine. This endpoint does not pretend otherwise:
+    it records the request and reports `executed: false` with the reason. The
+    previous implementation wrote `last_pull_time`/`last_push_time` = now and
+    returned "completed successfully. 0 conflicts." without any git operation ever
+    running, so the UI showed a sync that never happened.
+    """
     user_id = uuid.UUID(current_user["sub"])
     await _verify_workspace_access(body.workspace_id, user_id, db)
     connector = await _get_or_create_vault_connector(body.workspace_id, db)
 
-    now = datetime.now(UTC).isoformat()
     cfg = dict(connector.config or {})
-    cfg["last_pull_time"] = now
-    cfg["last_push_time"] = now
-    cfg["status"] = "in_sync"
+    daemon_status = _derive_daemon_status(
+        cfg.get("last_client_heartbeat"), cfg.get("daemon_status")
+    )
 
-    logs = list(cfg.get("sync_logs", []))
+    logs = list(cfg.get("sync_logs", []) or [])
+    if daemon_status == "running":
+        message = (
+            "Sync request queued. The vaultsync client on this machine performs "
+            "the git fetch/rebase/commit/push cycle; run `vaultsync sync` to run "
+            "it immediately."
+        )
+        executed = False
+    else:
+        message = (
+            "No vaultsync client is connected to this workspace, so nothing was "
+            "synced. Install and start the client on the machine holding your "
+            "vault (`vaultsync init <path> --remote <url>`, then `vaultsync start`). "
+            "Notes already in Vaeloom memory are unaffected."
+        )
+        executed = False
+
     logs.append({
-        "timestamp": now,
-        "event": "manual_sync",
-        "message": "Manual rebase pull & debounced push completed successfully. 0 conflicts.",
-        "level": "info",
+        "timestamp": datetime.now(UTC).isoformat(),
+        "event": "manual_sync_requested",
+        "message": message,
+        "level": "warning" if daemon_status != "running" else "info",
+        "executed": executed,
     })
     cfg["sync_logs"] = logs[-50:]
     connector.config = cfg
@@ -330,12 +420,16 @@ async def trigger_vault_sync(
 
     return {
         "success": True,
+        "executed": executed,
         "workspace_id": str(body.workspace_id),
-        "status": "in_sync",
-        "last_pull_time": now,
-        "last_push_time": now,
-        "conflicts": cfg.get("conflicts", []),
-        "message": "Vault synchronized with remote repository. All local notes preserved.",
+        "daemon_status": daemon_status,
+        # Deliberately not written: no sync ran, so there is no pull/push time.
+        "last_pull_time": cfg.get("last_pull_time"),
+        "last_push_time": cfg.get("last_push_time"),
+        "conflicts_count": len(
+            [c for c in (cfg.get("conflicts") or []) if not c.get("resolved")]
+        ),
+        "message": message,
     }
 
 
@@ -345,20 +439,39 @@ async def get_vault_sync_logs(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
-    """Retrieve recent sync activity and watcher daemon logs."""
+    """Return vault sync activity that was actually recorded.
+
+    Previously this returned four invented lines ("Native Vaeloom Vault Sync daemon
+    active", "Watching vault at ...", "Scheduled 5-minute git rebase pull active")
+    whenever no logs existed, so an unconfigured workspace displayed a healthy
+    daemon that had never run. It now returns only real records, with a single
+    honest entry explaining the empty state.
+    """
     user_id = uuid.UUID(current_user["sub"])
     await _verify_workspace_access(workspace_id, user_id, db)
     connector = await _get_or_create_vault_connector(workspace_id, db)
-    logs = connector.config.get("sync_logs")
-    if not logs:
-        now = datetime.now(UTC).isoformat()
-        return [
-            {"timestamp": now, "level": "info", "message": "Native Vaeloom Vault Sync daemon active."},
-            {"timestamp": now, "level": "info", "message": f"Watching vault at {connector.config.get('vault_path', '~/Documents/VaeloomVault')} (30s debounce)."},
-            {"timestamp": now, "level": "info", "message": "Scheduled 5-minute git rebase pull active."},
-            {"timestamp": now, "level": "info", "message": "Zero-data-loss conflict isolation armed (*.conflict-YYYY-MM-DD.md)."},
-        ]
-    return logs
+    cfg = connector.config or {}
+    logs = cfg.get("sync_logs") or []
+    if logs:
+        return logs
+
+    daemon_status = _derive_daemon_status(
+        cfg.get("last_client_heartbeat"), cfg.get("daemon_status")
+    )
+    return [
+        {
+            "timestamp": datetime.now(UTC).isoformat(),
+            "level": "info",
+            "event": "no_activity",
+            "message": (
+                "No sync activity recorded yet. Git sync runs in the local "
+                "vaultsync client; start it on the machine holding your vault."
+                if daemon_status == "running"
+                else "No vaultsync client is connected, so there is no activity to "
+                "show. Install and start the client on the machine holding your vault."
+            ),
+        }
+    ]
 
 
 @router.post("/ingest", response_model=dict[str, Any])
@@ -861,8 +974,15 @@ async def resolve_vault_conflict(
 @router.get("/download-client")
 async def download_client_installer(
     os_name: str = Query("windows", alias="os", description="windows, darwin, or linux"),
+    current_user: dict = Depends(get_current_user),
 ) -> Response:
-    """Serve the companion vaultsync installer script or distribution config."""
+    """Serve the companion vaultsync installer script or distribution config.
+
+    Requires authentication: this endpoint is part of a workspace-scoped feature
+    and was previously the only unauthenticated route in the vault-sync surface.
+    The body is a fixed literal per platform, so there is no path traversal or
+    data disclosure risk — but it did not belong in the public allowlist.
+    """
     if os_name.lower() in ("windows", "win", "win32"):
         script = """# Vaeloom Vault Sync — Windows PowerShell Installer
 Write-Host "Installing Vaeloom Vault Sync (vaultsync)..." -ForegroundColor Cyan

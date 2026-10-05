@@ -50,18 +50,15 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
     { refreshInterval: 4000 },
   );
 
-  // Configuration Form State
-  const [formVaultPath, setFormVaultPath] = useState(
-    statusData?.vaultPath || '~/Documents/VaeloomVault',
-  );
+  // Configuration Form State - always seeded from the server's real values.
+  const [formVaultPath, setFormVaultPath] = useState(statusData?.vaultPath || '');
   const [formRemoteUrl, setFormRemoteUrl] = useState(statusData?.remoteUrl || '');
   const [formBranch, setFormBranch] = useState(statusData?.branch || 'main');
   const [formAutoIngest, setFormAutoIngest] = useState(statusData?.autoIngest ?? true);
-  const [formDaemonStatus, setFormDaemonStatus] = useState<'running' | 'paused'>(
-    statusData?.daemonStatus === 'paused' ? 'paused' : 'running',
+  const [debounceSeconds, setDebounceSeconds] = useState(statusData?.debounceSeconds ?? 30);
+  const [rebaseIntervalMinutes, setRebounceIntervalMinutes] = useState(
+    statusData?.rebaseIntervalMinutes ?? 5,
   );
-  const [debounceSeconds, setDebounceSeconds] = useState(30);
-  const [rebaseIntervalMinutes, setRebaseIntervalMinutes] = useState(5);
   const [savingConfig, setSavingConfig] = useState(false);
 
   // Ingest form notes state
@@ -72,11 +69,13 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
   // Handle open config modal with current values
   const handleOpenConfig = () => {
     if (statusData) {
-      setFormVaultPath(statusData.vaultPath || '~/Documents/VaeloomVault');
+      setFormVaultPath(statusData.vaultPath || '');
       setFormRemoteUrl(statusData.remoteUrl || '');
       setFormBranch(statusData.branch || 'main');
       setFormAutoIngest(statusData.autoIngest ?? true);
-      setFormDaemonStatus(statusData.daemonStatus === 'paused' ? 'paused' : 'running');
+      // Previously pinned at 30/5 regardless of what the server actually held.
+      setDebounceSeconds(statusData.debounceSeconds ?? 30);
+      setRebounceIntervalMinutes(statusData.rebaseIntervalMinutes ?? 5);
     }
     setConfigModalOpen(true);
   };
@@ -88,11 +87,14 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
     try {
       await vaultSyncApi.updateConfig({
         workspace_id: workspaceId,
-        vault_path: formVaultPath,
+        vault_path: formVaultPath || undefined,
         remote_url: formRemoteUrl || undefined,
         branch: formBranch,
         auto_ingest: formAutoIngest,
-        daemon_status: formDaemonStatus,
+        // Previously omitted, so the debounce/rebase number inputs were
+        // write-only UI state that could never be persisted.
+        debounce_seconds: debounceSeconds,
+        rebase_interval_minutes: rebaseIntervalMinutes,
       });
       await mutateStatus();
       await mutateLogs();
@@ -100,7 +102,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
       toast({
         tone: 'success',
         title: 'Vault settings saved',
-        detail: `Watcher daemon updated: ${formDaemonStatus === 'running' ? 'Active' : 'Paused'}, path: ${formVaultPath}`,
+        detail: `Debounce ${debounceSeconds}s, rebase every ${rebaseIntervalMinutes}m. Your local client reads these on its next config load.`,
       });
     } catch (err) {
       toast({
@@ -113,32 +115,10 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
     }
   };
 
-  // Toggle Daemon Running / Paused
-  const handleToggleDaemon = async () => {
-    const nextStatus = statusData?.daemonStatus === 'paused' ? 'running' : 'paused';
-    try {
-      await vaultSyncApi.updateConfig({
-        workspace_id: workspaceId,
-        daemon_status: nextStatus,
-      });
-      await mutateStatus();
-      await mutateLogs();
-      toast({
-        tone: 'info',
-        title: nextStatus === 'running' ? 'Watcher daemon resumed' : 'Watcher daemon paused',
-        detail:
-          nextStatus === 'running'
-            ? 'Background watcher is actively debouncing markdown edits.'
-            : 'Periodic pull and auto-commit are temporarily paused.',
-      });
-    } catch {
-      toast({
-        tone: 'error',
-        title: 'Failed to toggle daemon',
-        detail: 'An error occurred while signaling the background sync process.',
-      });
-    }
-  };
+  // NOTE: the previous "toggle daemon" button wrote `daemon_status` into the
+  // workspace connector config. There is no server-side watcher process, so that
+  // write controlled nothing while reporting "Watcher daemon resumed". Sync runs
+  // in the local vaultsync client; its liveness now comes from /status instead.
 
   // Trigger Sync Now
   const handleManualSync = useCallback(async () => {
@@ -146,11 +126,13 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
     try {
       const res = await vaultSyncApi.triggerSync(workspaceId);
       await Promise.all([mutateStatus(), mutateConflicts(), mutateLogs()]);
-      toast({
-        tone: 'success',
-        title: 'Vault in sync',
-        detail: res.message || 'Rebase pull and trailing debounced push completed.',
-      });
+      // A 200 does not mean a sync happened: the server has no git engine.
+      // Report what actually occurred instead of always claiming success.
+      if (res.executed) {
+        toast({ tone: 'success', title: 'Vault synced', detail: res.message });
+      } else {
+        toast({ tone: 'info', title: 'Sync request recorded', detail: res.message });
+      }
     } catch (err) {
       toast({
         tone: 'error',
@@ -164,40 +146,37 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
 
   // Ingest to Documents & Graph
   const handleExecuteIngest = async (notesToIngest?: VaultNoteItem[]) => {
+    // Build the payload from real user input only. This previously fell back to
+    // two hardcoded notes ("Vault-Index.md", "Cognitive-Architecture.md") that
+    // were silently written into the workspace's documents and memory on every
+    // ingest, so the vault always contained notes the user never wrote. With no
+    // real notes the payload stays empty and the guard below refuses the request.
+    const payload: VaultNoteItem[] = notesToIngest ? [...notesToIngest] : [];
+
+    if (customNoteTitle.trim() && customNoteContent.trim()) {
+      const cleanName = customNoteTitle.endsWith('.md') ? customNoteTitle : `${customNoteTitle}.md`;
+      payload.push({
+        filename: cleanName,
+        content: customNoteContent.trim(),
+        relative_path: cleanName,
+        tags: customNoteTags
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean),
+      });
+    }
+
+    if (payload.length === 0) {
+      toast({
+        tone: 'warning',
+        title: 'Nothing to ingest',
+        detail: 'Write a note title and body first - no placeholder notes are created for you.',
+      });
+      return;
+    }
+
     setIngesting(true);
     try {
-      const payload: VaultNoteItem[] = notesToIngest || [
-        {
-          filename: 'Vault-Index.md',
-          content:
-            '# Memory Knowledge Vault\n\nCentral hub for all synchronized markdown notes, literature thoughts, and architectural specifications.',
-          relative_path: 'Vault-Index.md',
-          tags: ['index', 'memory', 'vault'],
-        },
-        {
-          filename: 'Cognitive-Architecture.md',
-          content:
-            '# Cognitive Architecture & Multi-Scale Memory\n\nDetailed specifications on episodic, semantic, procedural, and strategic memory rollups.',
-          relative_path: 'Research/Cognitive-Architecture.md',
-          tags: ['research', 'cognitive', 'architecture'],
-        },
-      ];
-
-      if (customNoteTitle.trim() && customNoteContent.trim()) {
-        const cleanName = customNoteTitle.endsWith('.md')
-          ? customNoteTitle
-          : `${customNoteTitle}.md`;
-        payload.push({
-          filename: cleanName,
-          content: customNoteContent.trim(),
-          relative_path: cleanName,
-          tags: customNoteTags
-            .split(',')
-            .map((t) => t.trim())
-            .filter(Boolean),
-        });
-      }
-
       const res = await vaultSyncApi.ingest({
         workspace_id: workspaceId,
         notes: payload,
@@ -210,7 +189,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
       toast({
         tone: 'success',
         title: 'Vault Ingest Complete',
-        detail: `Successfully indexed ${res.ingested_documents} document(s) and synced ${res.created_or_updated_memories} memory node(s).`,
+        detail: `Indexed ${res.ingested_documents} document(s) and synced ${res.created_or_updated_memories} memory node(s).`,
       });
     } catch (err) {
       toast({
@@ -253,7 +232,26 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
 
   const conflicts = conflictsData || [];
   const logs = logsData || [];
-  const daemonRunning = statusData?.daemonStatus !== 'paused';
+  // Liveness comes from the server, derived from the client's heartbeat. The old
+  // `!== 'paused'` check meant an absent field read as "running", so a workspace
+  // with no client at all displayed "In Sync / Active".
+  const daemonStatus = statusData?.daemonStatus ?? 'not_connected';
+  const clientConnected = daemonStatus === 'running';
+
+  const engineLabel = useMemo(() => {
+    switch (daemonStatus) {
+      case 'running':
+        return 'Client Connected';
+      case 'stale':
+        return 'Client Unresponsive';
+      case 'paused':
+        return 'Client Paused';
+      case 'unknown':
+        return 'Client Status Unknown';
+      default:
+        return 'No Client Connected';
+    }
+  }, [daemonStatus]);
 
   const statusBadge = useMemo(() => {
     if (statusData?.status === 'syncing' || syncing) {
@@ -266,11 +264,16 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
         dot: 'warning' as const,
       };
     }
-    if (!daemonRunning) {
-      return { variant: 'default' as const, label: 'Daemon Paused', dot: 'disabled' as const };
+    if (!clientConnected) {
+      // Never claim health we cannot evidence.
+      return {
+        variant: 'default' as const,
+        label: daemonStatus === 'stale' ? 'Client Unresponsive' : 'Not Connected',
+        dot: 'disabled' as const,
+      };
     }
-    return { variant: 'success' as const, label: 'In Sync · Active', dot: 'active' as const };
-  }, [statusData?.status, syncing, conflicts.length, daemonRunning]);
+    return { variant: 'success' as const, label: 'Client Connected', dot: 'active' as const };
+  }, [statusData?.status, syncing, conflicts.length, clientConnected, daemonStatus]);
 
   return (
     <div className="space-y-6">
@@ -278,8 +281,8 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Sync Engine"
-          value={daemonRunning ? 'Active & Watching' : 'Paused'}
-          caption="Built-in Zero-Telemetry Daemon"
+          value={engineLabel}
+          caption="Runs on your machine (vaultsync client)"
         />
         <StatCard
           label="Last Pull (Rebase)"
@@ -289,7 +292,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
                   hour: '2-digit',
                   minute: '2-digit',
                 })
-              : 'Recent'
+              : 'Never'
           }
           caption={`${rebaseIntervalMinutes}m scheduled pull`}
         />
@@ -301,14 +304,14 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
                   hour: '2-digit',
                   minute: '2-digit',
                 })
-              : 'Recent'
+              : 'Never'
           }
           caption={`${debounceSeconds}s debounced commit`}
         />
         <StatCard
           label="Active Conflicts"
           value={String(conflicts.length)}
-          caption={conflicts.length > 0 ? 'Action Required' : 'Zero Data Loss Protocol'}
+          caption={conflicts.length > 0 ? 'Action Required' : 'None outstanding'}
         />
       </div>
 
@@ -327,9 +330,6 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
               <Badge variant={statusBadge.variant} size="sm">
                 {statusBadge.label}
               </Badge>
-              <Badge variant="mono" size="sm">
-                Built-in v1.0.0
-              </Badge>
             </div>
             <p className="text-xs text-[var(--color-text-secondary)] font-mono">
               {statusData?.remoteUrl ? (
@@ -344,7 +344,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
                   No remote configured (local-only vault watcher)
                 </span>
               )}{' '}
-              • Branch:{' '}
+              - Branch:{' '}
               <span className="text-[var(--color-text-primary)] font-medium">
                 {statusData?.branch || 'main'}
               </span>
@@ -352,16 +352,13 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleToggleDaemon}>
-              {daemonRunning ? 'Pause Watcher' : 'Resume Watcher'}
-            </Button>
             <Button
               variant="secondary"
               size="sm"
               loading={syncing}
               onClick={() => void handleManualSync()}
             >
-              Trigger Sync Now
+              Request Sync
             </Button>
             <Button
               variant="outline"
@@ -392,16 +389,22 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
               <p>
                 <strong className="text-[var(--color-text-primary)]">Local Path:</strong>{' '}
                 <code className="font-mono text-[var(--color-brand-primary,#818cf8)] font-medium break-all">
-                  {statusData?.vaultPath || '~/Documents/VaeloomVault'}
+                  {statusData?.vaultPath || 'Not configured'}
                 </code>
               </p>
               <p>
-                <strong className="text-[var(--color-text-primary)]">Watcher Engine:</strong>{' '}
-                {daemonRunning ? 'Active background fs event loop' : 'Paused by user'}
+                <strong className="text-[var(--color-text-primary)]">Vault Client:</strong>{' '}
+                {engineLabel}
+                {statusData?.lastClientHeartbeat && (
+                  <span className="text-[var(--color-text-muted)]">
+                    {' '}
+                    / last seen {new Date(statusData.lastClientHeartbeat).toLocaleString()}
+                  </span>
+                )}
               </p>
               <p>
                 <strong className="text-[var(--color-text-primary)]">Debounce Window:</strong>{' '}
-                {debounceSeconds}s after keystrokes cease
+                {debounceSeconds}s after edits cease
               </p>
             </div>
           </div>
@@ -464,15 +467,15 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
           <div className="flex items-center gap-2">
             <span
               className={`w-2 h-2 rounded-full ${
-                daemonRunning ? 'bg-emerald-500 animate-pulse' : 'bg-[var(--color-text-muted)]'
+                clientConnected ? 'bg-emerald-500 animate-pulse' : 'bg-[var(--color-text-muted)]'
               }`}
             />
             <h3 className="text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider">
-              Live Sync Daemon Activity Log
+              Sync Activity Log
             </h3>
           </div>
           <span className="text-[11px] text-[var(--color-text-muted)] font-mono">
-            Auto-refreshing every 4s • Local Watcher
+            Auto-refreshing every 4s
           </span>
         </div>
 
@@ -522,7 +525,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
             )}
           </div>
           <span className="text-xs text-[var(--color-text-muted)] font-mono">
-            {conflicts.length === 0 ? 'All notes in sync' : 'Requires user resolution'}
+            {conflicts.length === 0 ? 'None reported by the client' : 'Requires user resolution'}
           </span>
         </div>
 
@@ -544,10 +547,19 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
                   key={conflict.id}
                   className="p-3.5 bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
                 >
-                  <div className="min-w-0 flex-1">
+                  <div
+                    className="min-w-0 flex-1 cursor-pointer"
+                    onClick={() => {
+                      setSelectedConflict({
+                        ...conflict,
+                        conflict_file: conflictFileName,
+                      });
+                      setDiffModalOpen(true);
+                    }}
+                  >
                     <div className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
-                      <p className="font-mono text-xs text-[var(--color-text-primary)] font-medium truncate">
+                      <p className="font-mono text-xs text-[var(--color-text-primary)] font-medium truncate hover:underline">
                         {conflictFileName}
                       </p>
                     </div>
@@ -556,7 +568,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
                       <span className="text-[var(--color-text-secondary)] font-semibold">
                         {conflict.file}
                       </span>{' '}
-                      • Detected at: {new Date(conflict.detected_at).toLocaleString()}
+                      - Detected at: {new Date(conflict.detected_at).toLocaleString()}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -571,7 +583,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
                         setDiffModalOpen(true);
                       }}
                     >
-                      Compare Diff
+                      Review &amp; Resolve
                     </Button>
                     <Button
                       variant="secondary"
@@ -606,27 +618,35 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
       >
         <form onSubmit={handleSaveConfig} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
+            <label
+              htmlFor="vault-sync-path"
+              className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1"
+            >
               Local Vault Folder Path
             </label>
             <input
+              id="vault-sync-path"
               type="text"
               value={formVaultPath}
               onChange={(e) => setFormVaultPath(e.target.value)}
               placeholder="e.g. ~/Documents/VaeloomVault or C:\Notes\Vault"
               className="w-full px-3 py-2 text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] text-[var(--color-text-primary)] font-mono focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)]"
-              required
             />
             <p className="text-[11px] text-[var(--color-text-muted)] mt-1">
-              Local folder path containing your plain Markdown notes.
+              Optional, and informational only. The vaultsync client owns its real local path; this
+              is just a note for your team.
             </p>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
+            <label
+              htmlFor="vault-sync-remote"
+              className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1"
+            >
               Private Git Remote Repository URL
             </label>
             <input
+              id="vault-sync-remote"
               type="text"
               value={formRemoteUrl}
               onChange={(e) => setFormRemoteUrl(e.target.value)}
@@ -640,10 +660,14 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
+              <label
+                htmlFor="vault-sync-branch"
+                className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1"
+              >
                 Sync Branch
               </label>
               <input
+                id="vault-sync-branch"
                 type="text"
                 value={formBranch}
                 onChange={(e) => setFormBranch(e.target.value)}
@@ -654,25 +678,28 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
             </div>
             <div>
               <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
-                Daemon Status
+                Client Status (read-only)
               </label>
-              <select
-                value={formDaemonStatus}
-                onChange={(e) => setFormDaemonStatus(e.target.value as 'running' | 'paused')}
-                className="w-full px-3 py-2 text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)]"
-              >
-                <option value="running">Running (Active Watcher)</option>
-                <option value="paused">Paused</option>
-              </select>
+              <p className="w-full px-3 py-2 text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] text-[var(--color-text-secondary)]">
+                {engineLabel}
+              </p>
+              <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+                Sync runs in the vaultsync client on your machine, so this cannot be changed from
+                the web app. Start or stop it locally with <code>vaultsync start</code>.
+              </p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
+              <label
+                htmlFor="vault-sync-debounce"
+                className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1"
+              >
                 Debounce Commit (seconds)
               </label>
               <input
+                id="vault-sync-debounce"
                 type="number"
                 min={5}
                 max={300}
@@ -682,15 +709,19 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
+              <label
+                htmlFor="vault-sync-rebase"
+                className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1"
+              >
                 Rebase Pull Interval (mins)
               </label>
               <input
+                id="vault-sync-rebase"
                 type="number"
                 min={1}
                 max={60}
                 value={rebaseIntervalMinutes}
-                onChange={(e) => setRebaseIntervalMinutes(Number(e.target.value))}
+                onChange={(e) => setRebounceIntervalMinutes(Number(e.target.value))}
                 className="w-full px-3 py-2 text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] text-[var(--color-text-primary)] font-mono focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)]"
               />
             </div>
@@ -760,10 +791,14 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
               Add Note for Immediate Indexing (Optional)
             </h4>
             <div>
-              <label className="block text-[11px] font-medium text-[var(--color-text-secondary)] mb-1">
+              <label
+                htmlFor="vault-note-filename"
+                className="block text-[11px] font-medium text-[var(--color-text-secondary)] mb-1"
+              >
                 Note Filename
               </label>
               <input
+                id="vault-note-filename"
                 type="text"
                 placeholder="e.g. Distributed-Consensus.md"
                 value={customNoteTitle}
@@ -772,10 +807,14 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
               />
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-[var(--color-text-secondary)] mb-1">
+              <label
+                htmlFor="vault-note-content"
+                className="block text-[11px] font-medium text-[var(--color-text-secondary)] mb-1"
+              >
                 Note Content (Markdown)
               </label>
               <textarea
+                id="vault-note-content"
                 rows={4}
                 placeholder="# Distributed Consensus..."
                 value={customNoteContent}
@@ -784,10 +823,14 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
               />
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-[var(--color-text-secondary)] mb-1">
+              <label
+                htmlFor="vault-note-tags"
+                className="block text-[11px] font-medium text-[var(--color-text-secondary)] mb-1"
+              >
                 Tags (comma separated)
               </label>
               <input
+                id="vault-note-tags"
                 type="text"
                 value={customNoteTags}
                 onChange={(e) => setCustomNoteTags(e.target.value)}
@@ -828,10 +871,28 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
               .
             </p>
 
-            <DiffViewer
-              oldText={`# ${selectedConflict.file}\n\nLocal changes on this machine.\nPreserved locally.`}
-              newText={`# Incoming Version (${selectedConflict.conflict_file})\n\nRemote changes from secondary device.\nPreserved safely.`}
-            />
+            {/* The conflicts API returns file paths and heads, never note bodies.
+                The old code rendered two invented strings here, so every conflict
+                looked like a real content diff regardless of what differed. Show
+                the facts we actually have and point at the files on disk. */}
+            <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-3 space-y-2 text-xs">
+              <p className="font-semibold text-[var(--color-text-primary)]">
+                Note contents are not available over the API
+              </p>
+              <p className="text-[var(--color-text-secondary)]">
+                Vaeloom stores the conflict on disk, not in the database. Open{' '}
+                <code className="font-mono">{selectedConflict.file}</code> and{' '}
+                <code className="font-mono">{selectedConflict.conflict_file}</code> side by side in
+                your editor or Obsidian to compare them. Resolving below tells the vaultsync client
+                which file to keep.
+              </p>
+              {selectedConflict.local_head && selectedConflict.remote_head && (
+                <p className="font-mono text-[11px] text-[var(--color-text-muted)]">
+                  local {selectedConflict.local_head.slice(0, 8)} / remote{' '}
+                  {selectedConflict.remote_head.slice(0, 8)}
+                </p>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono pt-2">
               <div className="rounded-lg border border-[var(--color-border)] p-3 bg-[var(--color-surface-subtle)] space-y-2">

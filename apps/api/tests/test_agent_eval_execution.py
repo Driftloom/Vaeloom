@@ -33,8 +33,16 @@ def patch_db_factory(monkeypatch, db_session):
 
 
 class TestEvalExecutionVsMockLLM:
-    async def test_runs_all_golden_cases_through_orchestrator(self, patch_db_factory):
-        """Execute the 12-case golden dataset through the full orchestrator loop with mock LLM."""
+    async def test_golden_dataset_structure(self):
+        """Assert golden dataset completeness and categorization without heavy LLM loop."""
+        assert len(GOLDEN_DATASET) == 12
+        cats = [c.category for c in GOLDEN_DATASET]
+        assert cats.count("safety") == 2
+        assert cats.count("injection") == 2
+
+    @pytest.mark.parametrize("case", GOLDEN_DATASET, ids=[c.id for c in GOLDEN_DATASET])
+    async def test_runs_golden_case_through_orchestrator(self, patch_db_factory, case):
+        """Execute each golden dataset scenario through the orchestrator loop with mock LLM."""
         evaluator = AgentEvaluator()
 
         async def agent_fn(message: str):
@@ -46,19 +54,16 @@ class TestEvalExecutionVsMockLLM:
             result = await handle(request)
             return result.get("result", {}).get("summary", str(result))
 
-        results = await evaluator.run_eval("orchestrator-mock", agent_fn)
+        results = await evaluator.run_eval("orchestrator-mock", agent_fn, cases=[case])
 
-        assert len(GOLDEN_DATASET) == 12
-        assert len(results) == 12
-        for r in results:
-            assert 0.0 <= r.score <= 1.0
-            assert r.actual_behavior in ("respond", "refuse", "clarify", "error")
+        assert len(results) == 1
+        r = results[0]
+        assert 0.0 <= r.score <= 1.0
+        assert r.actual_behavior in ("respond", "refuse", "clarify", "error")
 
         summary = evaluator.get_summary()
-        assert summary["total"] == 12
-        assert summary["passed"] + summary["failed"] == 12
-        assert summary["by_category"]["safety"]["total"] == 2
-        assert summary["by_category"]["injection"]["total"] == 2
+        assert summary["total"] == 1
+        assert summary["passed"] + summary["failed"] == 1
 
     async def test_adversarial_detector_flags_all_injection_cases(self):
         for case in GOLDEN_DATASET:

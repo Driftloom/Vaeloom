@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { documentApi, type DocumentResponse } from '@/lib/api-client';
 
 import { useDebouncedValue } from './useDebouncedValue';
+import type { DocumentCategoryId } from '../parts/documentCategories';
 
 /**
  * Rows per page. `GET /documents` accepts `page_size` in 1..100
@@ -24,15 +25,20 @@ export interface UseDocumentListResult {
   /**
    * Total matching rows across ALL pages, as reported by the server.
    *
-   * While a search is active this is the number of rows the search endpoint
-   * returned, which is a LOWER BOUND, not a workspace total:
-   * `GET /documents/search` answers with a bare array and no count
-   * (`DocumentSearchParams`). It is used to decide whether to offer pagination,
-   * and pagination is suppressed during a search precisely because this number
-   * cannot be trusted as a total.
+   * For the list this is `DocumentListResponse.total`. For a search it is the
+   * search envelope's `total`, which counts EVERY match rather than the returned
+   * window — that is why pagination is no longer suppressed while a search is
+   * active. It is scoped to the active filters, so with a folder or category
+   * selected it is not a workspace-wide document count.
    */
   total: number;
-  /** 1-based. Always at least 1. Forced to 1 while a search is active. */
+  /**
+   * The window size the SERVER applied for the current request. `PAGE_SIZE` for
+   * the list; the echoed `limit` for a search, which is authoritative rather than
+   * assumed. Never below 1.
+   */
+  pageSize: number;
+  /** 1-based. Always at least 1. */
   page: number;
   /** Never less than 1. */
   totalPages: number;
@@ -58,10 +64,17 @@ export interface UseDocumentListResult {
   selectFolder: (folderId: string | null) => void;
 
   /**
-   * True when a search filled exactly one page, which means the endpoint may
-   * have truncated and there may be more matches than are visible.
+   * The active category tab. `'all'` means no category filter, and is sent as an
+   * absent query parameter rather than as the string `all`.
+   *
+   * Owned here rather than in the hub so the change runs through the same
+   * `resetPaging` as every other filter — a category switch that left the user on
+   * page 4 of the previous category would show an empty table.
    */
-  searchTruncated: boolean;
+  category: DocumentCategoryId;
+  setCategory: (category: DocumentCategoryId) => void;
+  /** `null` for `'all'`: what actually goes on the wire. */
+  categoryParam: string | null;
 
   selectedIds: ReadonlySet<string>;
   selectionCount: number;
@@ -90,8 +103,9 @@ export interface UseDocumentListResult {
  *  - The folder filter was applied to the FIRST PAGE client-side
  *    (`docs.filter(d => d.folderId === folderId)`) while `total` came from the
  *    unfiltered server count, so a folder rendered as empty and the pagination
- *    count disagreed with the rows. `folder_id` is now a query parameter, which
- *    is the whole reason the server exposes it.
+ *    count disagreed with the rows. `folder_id` is now a query parameter, which is
+ *    the whole reason the server exposes it. The same argument now applies to the
+ *    category filter (`category`).
  *
  *  - `setPage` was declared and never called, so `page` was permanently 1 and
  *    `total` was write-only. `Pagination` needs both, so both are now derived
@@ -107,6 +121,7 @@ export interface UseDocumentListResult {
 export function useDocumentList(workspaceId: string): UseDocumentListResult {
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
   const [total, setTotal] = useState(0);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
   const [page, setPageState] = useState(1);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -115,9 +130,17 @@ export function useDocumentList(workspaceId: string): UseDocumentListResult {
   const [searchInput, setSearchInput] = useState('');
   const [includeArchived, setIncludeArchived] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [category, setCategoryState] = useState<DocumentCategoryId>('all');
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => new Set<string>());
 
   const search = useDebouncedValue(searchInput.trim(), SEARCH_DEBOUNCE_MS);
+
+  /**
+   * `'all'` is a UI sentinel for "do not filter", not the name of a bucket, so it
+   * becomes an absent parameter — which `encodeParams` drops, matching the
+   * server's `None` default.
+   */
+  const categoryParam = category === 'all' ? null : category;
 
   /**
    * Monotonic request id. Without it, a slow page-1 request that resolves after
@@ -152,17 +175,28 @@ export function useDocumentList(workspaceId: string): UseDocumentListResult {
         const results = await documentApi.search(workspaceId, search, selectedFolderId, {
           limit: PAGE_SIZE,
           offset: (page - 1) * PAGE_SIZE,
+          category: categoryParam,
         });
         if (id !== requestId.current) return;
-        const rows = Array.isArray(results) ? results : [];
+        // The envelope is required, but a defensive read costs nothing: a bare
+        // array here would make `results.documents` undefined and render an empty
+        // table instead of throwing, which is exactly the "silently nothing"
+        // failure the envelope was introduced to remove.
+        const rows = Array.isArray(results?.documents) ? results.documents : [];
         setDocuments(rows);
-        setTotal(rows.length);
+        setTotal(
+          typeof results?.total === 'number' && results.total >= 0 ? results.total : rows.length,
+        );
+        setPageSize(
+          typeof results?.limit === 'number' && results.limit > 0 ? results.limit : PAGE_SIZE,
+        );
       } else {
         const response = await documentApi.list({
           workspace_id: workspaceId,
           // Server-side folder filter. `null` is omitted from the query string by
           // `encodeParams`, which is the same as the route's `None` default.
           folder_id: selectedFolderId,
+          category: categoryParam,
           include_archived: includeArchived,
           page,
           page_size: PAGE_SIZE,
@@ -171,6 +205,7 @@ export function useDocumentList(workspaceId: string): UseDocumentListResult {
         const rows = Array.isArray(response?.documents) ? response.documents : [];
         setDocuments(rows);
         setTotal(typeof response?.total === 'number' ? response.total : rows.length);
+        setPageSize(PAGE_SIZE);
       }
       hasRows.current = true;
     } catch (err) {
@@ -182,7 +217,7 @@ export function useDocumentList(workspaceId: string): UseDocumentListResult {
         setRefreshing(false);
       }
     }
-  }, [workspaceId, search, selectedFolderId, includeArchived, page]);
+  }, [workspaceId, search, selectedFolderId, categoryParam, includeArchived, page]);
 
   useEffect(() => {
     // Switching workspaces invalidates the page, the selection and the "has rows"
@@ -203,10 +238,14 @@ export function useDocumentList(workspaceId: string): UseDocumentListResult {
   }, [runFetch]);
 
   /**
-   * A page count from the search endpoint's result length would be a guess, so
-   * it is 1 while a search is active.
+   * A page count derived from the server's own `total`.
+   *
+   * This used to be forced to 1 while a search was active, because the search
+   * endpoint returned a bare array with no count and any page number would have
+   * been a guess presented as a count. `DocumentSearchResponse.total` is the real
+   * number of matches, so the same arithmetic applies to both endpoints.
    */
-  const totalPages = search ? 1 : Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   // Clamp a page that the newest result set has made out of range. Guarded on
   // `page > 1` because `totalPages` is floored at 1, so this cannot ping-pong.
@@ -224,6 +263,10 @@ export function useDocumentList(workspaceId: string): UseDocumentListResult {
    * Dropping the selection is not cosmetic: a selection survives a filter
    * change, so "Delete Selected" would act on rows the user can no longer see
    * — and on rows from a different page than the one being displayed.
+   *
+   * EVERY filter goes through here, which is what makes the "changing the query
+   * returns to page 1" behaviour true for the search field, the folder rail, the
+   * archive switch and the category tabs from one implementation rather than four.
    */
   const resetPaging = useCallback(() => {
     setPageState(1);
@@ -246,6 +289,14 @@ export function useDocumentList(workspaceId: string): UseDocumentListResult {
   const selectFolder = useCallback(
     (folderId: string | null) => {
       setSelectedFolderId(folderId);
+      resetPaging();
+    },
+    [resetPaging],
+  );
+
+  const setCategory = useCallback(
+    (next: DocumentCategoryId) => {
+      setCategoryState(next);
       resetPaging();
     },
     [resetPaging],
@@ -305,24 +356,37 @@ export function useDocumentList(workspaceId: string): UseDocumentListResult {
     });
   }, []);
 
+  /**
+   * `retry` and `refresh` are the same request, so they are the same callback and
+   * both are STABLE across renders. They were previously inline arrows, which
+   * meant a fresh identity on every render; anything that lists them in a
+   * `useCallback` dependency (the hub's `refreshDocuments`, every mutation in
+   * `useDocumentActions`) re-created itself on every render and `eslint
+   * react-hooks/exhaustive-deps` had no choice but to complain about it.
+   */
+  const refresh = useCallback(() => void runFetch(), [runFetch]);
+
   return {
     documents,
     total,
+    pageSize,
     page,
     totalPages,
     setPage,
     loading,
     refreshing,
     error,
-    retry: () => void runFetch(),
-    refresh: () => void runFetch(),
+    retry: refresh,
+    refresh,
     searchInput,
     onSearchInputChange,
     includeArchived,
     toggleArchived,
     selectedFolderId,
     selectFolder,
-    searchTruncated: Boolean(search) && documents.length === PAGE_SIZE,
+    category,
+    setCategory,
+    categoryParam,
     selectedIds,
     selectionCount: selectedIds.size,
     selectedBytes,

@@ -146,29 +146,99 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         except Exception:
             pass
 
-    def _get_limits(self, request: Request) -> tuple[int, int]:
+    def _resolve_endpoint_limit(self, request: Request) -> tuple[tuple[int, int] | None, str | None]:
+        """Find the decorated limit and the route's path template for a request.
+
+        Returns `(config, route_path)`. `route_path` is the full registered pattern
+        (`/api/v1/documents/{document_id}`), not the concrete URL, and callers must
+        use it for bucketing.
+
+        `BaseHTTPMiddleware.dispatch` runs before Starlette routes the request, so
+        `scope["route"]` is still None here. Two shapes have to be handled:
+
+        * A plain `APIRoute`, matched with its own `.matches`.
+        * The lazy `_IncludedRouter` wrapper FastAPI 0.141 puts around every
+          `include_router`. It has no `.endpoint` and its children's `path` is
+          relative to the router, with the include prefix held separately on
+          `include_context.prefix`. Its own `_match` is what Starlette calls during
+          routing, so it is used here to stay faithful to real dispatch.
+
+        The previous implementation only handled the first shape, so no
+        `@rate_limit` on an included router was ever enforced: the platform default
+        applied instead while the response header advertised the decorator value.
+        """
         route = request.scope.get("route")
-        if route and route.endpoint:
-            config = _resolve_rate_limit(route.endpoint)
-            if config:
-                return config
+        if route is not None:
+            endpoint = getattr(route, "endpoint", None)
+            if endpoint is not None:
+                config = _resolve_rate_limit(endpoint)
+                if config:
+                    return config, getattr(route, "path", None)
 
-        # Starlette BaseHTTPMiddleware runs before route dispatching; match app.routes
         app = getattr(request, "app", None)
-        if app and hasattr(app, "routes"):
-            for r in app.routes:
-                if hasattr(r, "matches"):
-                    match, _ = r.matches(request.scope)
-                    if match.name == "FULL" and hasattr(r, "endpoint"):
-                        config = _resolve_rate_limit(r.endpoint)
-                        if config:
-                            return config
+        for r in getattr(app, "routes", None) or []:
+            wrapper_match = getattr(r, "_match", None)
+            if wrapper_match is not None:
+                prefix = ""
+                ctx = getattr(r, "include_context", None)
+                if ctx is not None:
+                    prefix = getattr(ctx, "prefix", "") or ""
+                try:
+                    matched = wrapper_match(request.scope)
+                except Exception:
+                    continue
+                if not matched:
+                    continue
+                match, _child_scope, child_route = matched[0], matched[1], matched[2]
+                if getattr(match, "name", None) != "FULL":
+                    continue
+                endpoint = getattr(child_route, "endpoint", None)
+                if endpoint is None:
+                    continue
+                config = _resolve_rate_limit(endpoint)
+                if config:
+                    return config, f"{prefix}{getattr(child_route, 'path', '')}"
+                continue
 
+            matches = getattr(r, "matches", None)
+            if matches is None:
+                continue
+            try:
+                match, _ = r.matches(request.scope)
+            except Exception:
+                continue
+            if getattr(match, "name", None) != "FULL":
+                continue
+            endpoint = getattr(r, "endpoint", None)
+            if endpoint is None:
+                continue
+            config = _resolve_rate_limit(endpoint)
+            if config:
+                return config, getattr(r, "path", None)
+
+        return None, None
+
+    def _get_limits(self, request: Request) -> tuple[int, int]:
+        config, _route_path = self._resolve_endpoint_limit(request)
+        if config:
+            return config
         return self.default_max_requests, self.default_window_seconds
 
-    async def _add_rate_limit_headers(self, request: Request, response: Response, client_key: str) -> None:
+    def _bucket_segment(self, request: Request, route_path: str | None) -> str:
+        """Stable identity for rate-limit bucketing.
+
+        The route's path template is used in preference to the concrete URL so that
+        parameterised routes share one bucket. Keying on the concrete path would
+        give every distinct document/workspace id its own counter, making a
+        per-endpoint limit trivially bypassable by varying the id.
+        """
+        return route_path or request.url.path
+
+    async def _add_rate_limit_headers(
+        self, request: Request, response: Response, client_key: str, route_path: str | None
+    ) -> None:
         max_req, window_sec = self._get_limits(request)
-        key = f"rl:{client_key}:{request.url.path}"
+        key = f"rl:{client_key}:{self._bucket_segment(request, route_path)}"
         if hasattr(self.backend, "get_remaining"):
             try:
                 remaining = await self.backend.get_remaining(key, max_req, window_sec)
@@ -221,7 +291,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             request.client.host if request.client else "unknown"
         )
         max_req, window_sec = self._get_limits(request)
-        key = f"rl:{client_key}:{request.url.path}"
+        _config, route_path = self._resolve_endpoint_limit(request)
+        key = f"rl:{client_key}:{self._bucket_segment(request, route_path)}"
 
         try:
             allowed, retry_after = await self.backend.check_and_record(key, max_req, window_sec)
@@ -244,5 +315,5 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                            headers={"Retry-After": str(retry_after)})
 
         response = await call_next(request)
-        await self._add_rate_limit_headers(request, response, client_key)
+        await self._add_rate_limit_headers(request, response, client_key, route_path)
         return response

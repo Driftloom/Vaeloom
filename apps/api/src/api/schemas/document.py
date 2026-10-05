@@ -33,6 +33,44 @@ class DocumentListResponse(BaseModel):
     page_size: int = 20
 
 
+class DocumentSearchResponse(BaseModel):
+    """Paginated envelope for `GET /documents/search`.
+
+    A bare list cannot express how many rows matched, so a client silently
+    truncated at the page size had no way to tell that from "these were all the
+    matches". `total` is the COUNT(*) over the same filters, not len(documents).
+    """
+
+    documents: list[DocumentResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+class DocumentStatsResponse(BaseModel):
+    """Workspace-wide aggregates for the documents list header.
+
+    Every field is computed in SQL over the whole workspace, never over the rows
+    of the current page, so the counts and the document total share a denominator.
+    """
+
+    total_documents: int
+    archived_documents: int
+    total_bytes: int
+    clean_count: int
+    quarantined_count: int
+    scanning_count: int
+    folder_count: int
+    active_share_count: int
+
+
+class DocumentProcessResponse(BaseModel):
+    document_id: str
+    status: Literal["processed", "skipped"]
+    chunks_indexed: int = 0
+    detail: str | None = None
+
+
 class DocumentRenameRequest(BaseModel):
     path: str = Field(..., min_length=1, max_length=1000)
 

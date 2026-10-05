@@ -23,7 +23,7 @@ import { PageHeader } from '@/components/shared/Page';
 import { MemoryCorrectionPanel } from '@/components/memory/MemoryCorrectionPanel';
 import { ScaleMemoryViewer } from '@/components/memory/ScaleMemoryViewer';
 import { VaultSyncPanel } from '@/components/memory/VaultSyncPanel';
-import { memoryApi, memoryFeedApi } from '@/lib/api-client';
+import { memoryApi, memoryFeedApi, vaultSyncApi } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import type { Memory } from '@vaeloom/shared-types';
@@ -41,19 +41,19 @@ function formatRelative(iso: string | null | undefined) {
   return new Date(iso).toLocaleDateString();
 }
 
+// These must match the backend MemoryType enum. The previous list used
+// profile/career/skill/project/decision/goal/insight/task/relationship, none of
+// which are valid memory types, so selecting any of them filtered every row out
+// and the UI looked like an empty result set rather than a broken filter.
 const TYPE_FILTERS: FilterOption[] = [
   { id: 'all', label: 'All Types' },
-  { id: 'profile', label: 'Profile' },
-  { id: 'career', label: 'Career' },
-  { id: 'skill', label: 'Skills' },
-  { id: 'project', label: 'Projects' },
-  { id: 'decision', label: 'Decisions' },
-  { id: 'goal', label: 'Goals' },
-  { id: 'note', label: 'Notes' },
   { id: 'document', label: 'Documents' },
-  { id: 'insight', label: 'Insights' },
-  { id: 'task', label: 'Tasks' },
-  { id: 'relationship', label: 'Relationships' },
+  { id: 'email', label: 'Email' },
+  { id: 'code', label: 'Code' },
+  { id: 'note', label: 'Notes' },
+  { id: 'conversation', label: 'Conversations' },
+  { id: 'webpage', label: 'Webpages' },
+  { id: 'structured', label: 'Structured' },
 ];
 
 function MemoryGraphPageContent() {
@@ -112,6 +112,37 @@ function MemoryGraphPageContent() {
     const res = memoriesRes as { memories?: Memory[]; items?: Memory[] };
     return res.memories ?? res.items ?? [];
   }, [memoriesRes]);
+
+  // Real vault client state for the sync stat. This tile previously rendered a
+  // hardcoded "Healthy" with no query behind it, on a page where the Vault panel
+  // polls real status 500ms later.
+  const { data: vaultStatus } = useSWR(
+    workspaceId ? `vault-sync-status-${workspaceId}` : null,
+    () => vaultSyncApi.getStatus(workspaceId),
+    { refreshInterval: 15000 },
+  );
+
+  const vaultSyncLabel = useMemo(() => {
+    if (!vaultStatus) return 'Loading…';
+    switch (vaultStatus.daemonStatus) {
+      case 'running':
+        return 'Connected';
+      case 'stale':
+        return 'Unresponsive';
+      case 'paused':
+        return 'Paused';
+      default:
+        return 'Not Connected';
+    }
+  }, [vaultStatus]);
+
+  const vaultSyncCaption = useMemo(() => {
+    if (!vaultStatus) return 'Checking vault client';
+    if (vaultStatus.daemonStatus !== 'running') {
+      return 'No vault client reporting';
+    }
+    return `${vaultStatus.debounceSeconds}s debounce & ${vaultStatus.rebaseIntervalMinutes}m rebase`;
+  }, [vaultStatus]);
 
   // Client-side search and filtering
   const filteredMemories = useMemo(() => {
@@ -415,7 +446,7 @@ function MemoryGraphPageContent() {
           value={String(feedData?.stats?.superseded ?? 0)}
           caption="Immutable version audit trail"
         />
-        <StatCard label="Vault Git Sync" value="Healthy" caption="30s debounce & 5m rebase" />
+        <StatCard label="Vault Git Sync" value={vaultSyncLabel} caption={vaultSyncCaption} />
       </div>
 
       {/* Dedicated Workbench Quick Navigation Links */}
@@ -535,7 +566,15 @@ function MemoryGraphPageContent() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredMemories.map((m) => {
-                const confScore = (m.metadata?.['confidence'] as number) ?? 0.85;
+                // Only surface a confidence score the backend actually stored.
+                // The old `?? 0.85` invented a number for every memory that had
+                // none, so the UI displayed a confident-looking 85% that was
+                // never computed.
+                const storedConfidence = m.metadata?.['confidence'];
+                const confScore =
+                  typeof storedConfidence === 'number' && storedConfidence > 0
+                    ? storedConfidence
+                    : undefined;
                 const sourceText =
                   m.source?.label || m.source?.type || (m.source?.uri ? 'file' : 'manual');
                 const contentStr =

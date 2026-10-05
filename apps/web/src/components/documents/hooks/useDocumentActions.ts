@@ -7,6 +7,7 @@ import { getFileName } from '@/lib/document-format';
 
 import type { UseDocumentFoldersResult } from './useDocumentFolders';
 import type { UseDocumentListResult } from './useDocumentList';
+import type { UseDocumentStatsResult } from './useDocumentStats';
 
 /**
  * The notification callback, declared structurally so this hook does not depend
@@ -23,6 +24,16 @@ export interface UseDocumentActionsParams {
   notify: Notify;
   list: UseDocumentListResult;
   folders: UseDocumentFoldersResult;
+  /**
+   * `useDocumentStats`'s result, when the hub has one.
+   *
+   * Every mutation here changes a workspace-wide aggregate — an archive moves a
+   * row out of the total, a folder creation changes the folder count, a delete
+   * changes the byte total — so the stats bar has to be refetched alongside the
+   * list or it keeps describing the workspace as it was before the click. Optional
+   * so this hook stays usable on its own; when absent, only the list refreshes.
+   */
+  stats?: UseDocumentStatsResult;
 }
 
 export interface UseDocumentActionsResult {
@@ -69,12 +80,15 @@ const message = (err: unknown, fallback: string): string =>
  * the hub and the actions share one list, one selection and one request sequence.
  * @param folders `useDocumentFolders`'s result, for the folder refresh that a
  * move or an auto-organize run implies.
+ * @param stats `useDocumentStats`'s result, so the workspace aggregates are
+ * refetched with the list after every mutation.
  */
 export function useDocumentActions({
   workspaceId,
   notify,
   list,
   folders,
+  stats,
 }: UseDocumentActionsParams): UseDocumentActionsResult {
   const [busy, setBusy] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -82,6 +96,16 @@ export function useDocumentActions({
   const [syncingDocId, setSyncingDocId] = useState<string | null>(null);
 
   const { refresh, selectionCount, clearSelection, selectedIds, dropDocuments } = list;
+
+  /**
+   * One refresh for the pair of things a mutation invalidates. Every handler below
+   * calls this instead of `refresh()`, so there is exactly one place that knows a
+   * document write also moves a workspace aggregate.
+   */
+  const refreshDocuments = useCallback(() => {
+    refresh();
+    stats?.refresh();
+  }, [refresh, stats]);
 
   const requireWorkspace = useCallback(() => {
     if (!workspaceId) throw new Error('No workspace selected.');
@@ -99,7 +123,7 @@ export function useDocumentActions({
           title: 'Archived',
           detail: `${getFileName(doc.path)} moved to archive.`,
         });
-        refresh();
+        refreshDocuments();
       } catch (err) {
         notify({
           tone: 'error',
@@ -111,7 +135,7 @@ export function useDocumentActions({
         setBusy(false);
       }
     },
-    [requireWorkspace, notify, refresh],
+    [requireWorkspace, notify, refreshDocuments],
   );
 
   const restoreDocument = useCallback(
@@ -125,7 +149,7 @@ export function useDocumentActions({
           title: 'Restored',
           detail: `${getFileName(doc.path)} restored to the workspace.`,
         });
-        refresh();
+        refreshDocuments();
       } catch (err) {
         notify({
           tone: 'error',
@@ -137,7 +161,7 @@ export function useDocumentActions({
         setBusy(false);
       }
     },
-    [requireWorkspace, notify, refresh],
+    [requireWorkspace, notify, refreshDocuments],
   );
 
   const deleteDocument = useCallback(
@@ -154,7 +178,7 @@ export function useDocumentActions({
         // Drop the row locally as well as refreshing: the list is the selection's
         // scope, and a row that no longer exists must not stay actionable.
         dropDocuments([doc.id]);
-        refresh();
+        refreshDocuments();
         folders.retry();
       } catch (err) {
         notify({
@@ -167,7 +191,7 @@ export function useDocumentActions({
         setBusy(false);
       }
     },
-    [requireWorkspace, notify, refresh, folders, dropDocuments],
+    [requireWorkspace, notify, refreshDocuments, folders, dropDocuments],
   );
 
   const renameDocument = useCallback(
@@ -177,7 +201,7 @@ export function useDocumentActions({
       try {
         await documentApi.rename(doc.id, ws, nextName.trim());
         notify({ tone: 'success', title: 'Renamed', detail: `Document renamed to ${nextName}.` });
-        refresh();
+        refreshDocuments();
       } catch (err) {
         notify({
           tone: 'error',
@@ -189,7 +213,7 @@ export function useDocumentActions({
         setBusy(false);
       }
     },
-    [requireWorkspace, notify, refresh],
+    [requireWorkspace, notify, refreshDocuments],
   );
 
   const syncMemory = useCallback(
@@ -203,7 +227,7 @@ export function useDocumentActions({
           title: 'Synced to Memory',
           detail: `"${getFileName(path)}" is indexed into workspace memory.`,
         });
-        refresh();
+        refreshDocuments();
       } catch (err) {
         notify({
           tone: 'error',
@@ -214,7 +238,7 @@ export function useDocumentActions({
         setSyncingDocId(null);
       }
     },
-    [requireWorkspace, notify, refresh],
+    [requireWorkspace, notify, refreshDocuments],
   );
 
   const bulkDownload = useCallback(async () => {
@@ -259,7 +283,7 @@ export function useDocumentActions({
         detail: `${selectionCount} document(s) moved to archive.`,
       });
       clearSelection();
-      refresh();
+      refreshDocuments();
     } catch (err) {
       notify({
         tone: 'error',
@@ -269,7 +293,7 @@ export function useDocumentActions({
     } finally {
       setBulkBusy(false);
     }
-  }, [requireWorkspace, selectionCount, selectedIds, clearSelection, refresh, notify]);
+  }, [requireWorkspace, selectionCount, selectedIds, clearSelection, refreshDocuments, notify]);
 
   const bulkDelete = useCallback(async () => {
     const ws = requireWorkspace();
@@ -287,7 +311,7 @@ export function useDocumentActions({
       });
       dropDocuments(removed);
       clearSelection();
-      refresh();
+      refreshDocuments();
       folders.retry();
     } catch (err) {
       notify({
@@ -304,7 +328,7 @@ export function useDocumentActions({
     selectedIds,
     dropDocuments,
     clearSelection,
-    refresh,
+    refreshDocuments,
     folders,
     notify,
   ]);
@@ -320,7 +344,7 @@ export function useDocumentActions({
         title: 'Bulk Memory Sync Complete',
         detail: `Indexed ${response?.syncedCount ?? 0} document(s) into Memory.`,
       });
-      refresh();
+      refreshDocuments();
     } catch (err) {
       notify({
         tone: 'error',
@@ -330,7 +354,7 @@ export function useDocumentActions({
     } finally {
       setBulkBusy(false);
     }
-  }, [requireWorkspace, selectionCount, selectedIds, refresh, notify]);
+  }, [requireWorkspace, selectionCount, selectedIds, refreshDocuments, notify]);
 
   const bulkMove = useCallback(
     async (targetFolderId: string | null) => {
@@ -347,7 +371,7 @@ export function useDocumentActions({
           detail: `Moved ${selectionCount} document(s).`,
         });
         clearSelection();
-        refresh();
+        refreshDocuments();
         folders.retry();
       } catch (err) {
         notify({
@@ -360,7 +384,15 @@ export function useDocumentActions({
         setBulkBusy(false);
       }
     },
-    [requireWorkspace, selectionCount, selectedIds, clearSelection, refresh, folders, notify],
+    [
+      requireWorkspace,
+      selectionCount,
+      selectedIds,
+      clearSelection,
+      refreshDocuments,
+      folders,
+      notify,
+    ],
   );
 
   const autoOrganize = useCallback(async () => {
@@ -383,7 +415,7 @@ export function useDocumentActions({
           detail: 'No unorganized documents found in this workspace.',
         });
       }
-      refresh();
+      refreshDocuments();
     } catch (err) {
       notify({
         tone: 'error',
@@ -393,7 +425,7 @@ export function useDocumentActions({
     } finally {
       setAutoOrganizeBusy(false);
     }
-  }, [requireWorkspace, folders, refresh, notify]);
+  }, [requireWorkspace, folders, refreshDocuments, notify]);
 
   return {
     busy,

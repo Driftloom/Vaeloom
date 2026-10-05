@@ -76,6 +76,12 @@ async def run_pipeline(
                             size_bytes=len(content),
                         )
                         session.add(new_version)
+                        # The primary key is generated on flush, so reading `.id`
+                        # before this point yields None. Downstream that string is fed
+                        # to `uuid.UUID(...)` when building DocumentChunk rows, which
+                        # raised for every chunk and left the document with no
+                        # retrievable content.
+                        await session.flush()
 
                         # Update document metadata
                         existing_doc.updated_at = datetime.now(UTC)
@@ -114,6 +120,9 @@ async def run_pipeline(
                         size_bytes=len(content),
                     )
                     session.add(first_version)
+                    # Primary key is assigned on flush; see the existing-version
+                    # branch above for why this must happen before the id is read.
+                    await session.flush()
 
                     logger.info(f"Created new document {document_id} with version 1")
                     version_id = str(first_version.id)

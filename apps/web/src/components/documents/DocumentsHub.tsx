@@ -19,6 +19,7 @@ import { DocumentMoveDialog } from './DocumentMoveDialog';
 import { useDocumentActions } from './hooks/useDocumentActions';
 import { useDocumentFolders } from './hooks/useDocumentFolders';
 import { useDocumentList } from './hooks/useDocumentList';
+import { useDocumentStats } from './hooks/useDocumentStats';
 import { useDocumentVersions } from './hooks/useDocumentVersions';
 import { useDocumentViewer } from './hooks/useDocumentViewer';
 import { useFolderUpload } from './hooks/useFolderUpload';
@@ -31,7 +32,7 @@ import { DocumentsResultsPanel } from './parts/DocumentsResultsPanel';
 import { DocumentsToolbar } from './parts/DocumentsToolbar';
 import { DocumentVersionHistoryModal } from './parts/DocumentVersionHistoryModal';
 import { RenameDocumentModal } from './parts/RenameDocumentModal';
-import { matchesCategory, type DocumentCategoryId } from './parts/documentCategories';
+import { categoryLabel } from './parts/documentCategories';
 import {
   bulkSelectionProxy,
   confirmCopy,
@@ -67,6 +68,10 @@ export function DocumentsHub({
   // property access on `list`, which `react-hooks/exhaustive-deps` cannot prove
   // stable and reports as a missing dependency on every render.
   const { prependDocument } = list;
+  // A second, independent request. The list is one page; these are workspace
+  // aggregates, so they are neither derived from the page nor blocked by it, and
+  // a failure here is reported by the stats bar alone.
+  const stats = useDocumentStats(currentWorkspaceId);
   const folders = useDocumentFolders(currentWorkspaceId);
   const viewer = useDocumentViewer(currentWorkspaceId);
   const versions = useDocumentVersions(currentWorkspaceId);
@@ -75,16 +80,19 @@ export function DocumentsHub({
     notify: toast,
     list,
     folders,
+    stats,
   });
   const folderUpload = useFolderUpload({
     workspaceId: currentWorkspaceId,
     selectedFolderId: list.selectedFolderId,
     notify: toast,
     onFoldersChanged: folders.retry,
-    onDocumentsChanged: list.refresh,
+    onDocumentsChanged: () => {
+      list.refresh();
+      stats.refresh();
+    },
   });
 
-  const [category, setCategory] = useState<DocumentCategoryId>('all');
   const [shareDoc, setShareDoc] = useState<DocumentResponse | null>(null);
   const [moveDoc, setMoveDoc] = useState<DocumentResponse | null>(null);
   const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
@@ -103,25 +111,39 @@ export function DocumentsHub({
     toast({ tone: 'error', title: 'Preview failed', detail: viewer.error });
   }, [viewer.error, toast]);
 
-  /**
-   * The category filter narrows the rows ALREADY FETCHED; the folder filter is
-   * the only one the server applies. The toolbar is told which it is.
-   */
-  const visibleDocuments = useMemo(
-    () => list.documents.filter((doc) => matchesCategory(doc, category, folders.folders)),
-    [list.documents, category, folders.folders],
-  );
-
   const selectedFolderName = useMemo(
     () => folders.folders.find((folder) => folder.id === list.selectedFolderId)?.name ?? null,
     [folders.folders, list.selectedFolderId],
   );
 
+  /**
+   * What the category tab is doing, stated accurately.
+   *
+   * The old note counted how many rows on the CURRENT page matched and ended
+   * "This filter runs in the browser, not on the server." Both halves were true
+   * then and neither is now: `category` is a query parameter, the server returns
+   * only matching rows, and `list.total` is the filtered count. What is worth
+   * telling the user is that the totals around this table are scoped to the
+   * filter — which is exactly the mixed-denominator confusion the workspace-level
+   * stats bar exists to fix.
+   */
   const categoryFilterNote = useMemo(() => {
-    if (category === 'all') return null;
-    const scope = list.total > list.documents.length ? 'rows on this page' : 'results';
-    return `${visibleDocuments.length} of ${list.documents.length} ${scope} match "${category}". This filter runs in the browser, not on the server.`;
-  }, [category, list.total, list.documents.length, visibleDocuments.length]);
+    if (list.category === 'all') return null;
+    return `Filtered on the server to "${categoryLabel(list.category)}". The counts and page total below describe this filtered set, not every file in the workspace.`;
+  }, [list.category]);
+
+  /**
+   * The single "something changed" signal for this screen.
+   *
+   * A document write moves three things at once: the visible rows, the workspace
+   * aggregates behind the stats bar, and (for folder operations) the tree. Calling
+   * only `list.refresh()` is what left the counters describing the workspace as it
+   * was before the click, so every refresh path here goes through this one helper.
+   */
+  const refreshDocuments = useCallback(() => {
+    list.refresh();
+    stats.refresh();
+  }, [list, stats]);
 
   const rowHandlers = useMemo<DocumentRowHandlers>(
     () => ({
@@ -168,7 +190,7 @@ export function DocumentsHub({
         // Deleting the folder you are browsing empties the filter, so the rail
         // would otherwise keep selecting an id that no longer exists.
         if (list.selectedFolderId === target.folderId) list.selectFolder(null);
-        list.refresh();
+        refreshDocuments();
         toast({
           tone: 'success',
           title: 'Folder deleted',
@@ -176,7 +198,7 @@ export function DocumentsHub({
         });
       } else if (target.kind === 'restore-version') {
         await versions.confirmRestore();
-        list.refresh();
+        refreshDocuments();
       } else if (target.kind === 'archive-document') {
         await actions.archiveDocument({ id: target.docId, path: target.name });
       } else if (target.kind === 'delete-document') {
@@ -191,14 +213,18 @@ export function DocumentsHub({
       setConfirmBusy(false);
       setPendingConfirm(null);
     }
-  }, [pendingConfirm, folders, list, versions, actions, toast]);
+  }, [pendingConfirm, folders, list, versions, actions, toast, refreshDocuments]);
 
   const handleUploadComplete = useCallback(
     (doc: DocumentResponse) => {
       prependDocument(doc);
+      // An upload moves the document total and the byte total, so the aggregates
+      // are refetched here rather than waiting for `onAllCompleted`, which only
+      // fires once the whole queue has drained.
+      stats.refresh();
       toast({ tone: 'success', title: 'Upload complete', detail: doc.path });
     },
-    [prependDocument, toast],
+    [prependDocument, stats, toast],
   );
 
   return (
@@ -217,12 +243,16 @@ export function DocumentsHub({
       />
 
       <DocumentStatsBar
-        documents={list.documents}
-        totalCount={list.total}
-        foldersCount={folders.folders.length}
-        loading={list.loading && list.documents.length === 0}
-        error={list.error}
-        onRetry={list.retry}
+        totalCount={stats.stats?.totalDocuments}
+        totalBytes={stats.stats?.totalBytes}
+        cleanCount={stats.stats?.cleanCount}
+        scanningCount={stats.stats?.scanningCount}
+        quarantinedCount={stats.stats?.quarantinedCount}
+        foldersCount={stats.stats?.folderCount}
+        activeShares={stats.stats?.activeShareCount}
+        loading={stats.loading}
+        error={stats.error}
+        onRetry={stats.retry}
       />
 
       <DocumentUploadQueue
@@ -230,7 +260,7 @@ export function DocumentsHub({
         targetFolderId={list.selectedFolderId}
         onUploadComplete={handleUploadComplete}
         onFolderCreated={folders.retry}
-        onAllCompleted={list.refresh}
+        onAllCompleted={refreshDocuments}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
@@ -246,7 +276,7 @@ export function DocumentsHub({
           }
           onChanged={() => {
             folders.retry();
-            list.refresh();
+            refreshDocuments();
           }}
         />
 
@@ -258,7 +288,10 @@ export function DocumentsHub({
                 <span className="px-2 py-0.5 rounded bg-surface border border-border font-medium text-primary">
                   {selectedFolderName}
                 </span>
-                <span className="text-text-muted">({list.total} matching)</span>
+                {/* Scope stated, not implied: this number is the server's count for
+                    THIS FOLDER, sitting a few pixels below cards that count the whole
+                    workspace. "matching" alone left that distinction to be inferred. */}
+                <span className="text-text-muted">({list.total} matching in this folder)</span>
               </span>
               <Button variant="ghost" size="sm" onClick={() => list.selectFolder(null)}>
                 Show All Files
@@ -268,8 +301,8 @@ export function DocumentsHub({
           )}
 
           <DocumentsToolbar
-            category={category}
-            onCategoryChange={setCategory}
+            category={list.category}
+            onCategoryChange={list.setCategory}
             searchValue={list.searchInput}
             onSearchChange={list.onSearchInputChange}
             includeArchived={list.includeArchived}
@@ -289,14 +322,7 @@ export function DocumentsHub({
             onClear={list.clearSelection}
           />
 
-          <DocumentsResultsPanel
-            list={list}
-            folders={folders}
-            category={category}
-            onCategoryChange={setCategory}
-            visibleDocuments={visibleDocuments}
-            handlers={rowHandlers}
-          />
+          <DocumentsResultsPanel list={list} folders={folders} handlers={rowHandlers} />
         </div>
       </div>
 
@@ -315,7 +341,7 @@ export function DocumentsHub({
         documentId={shareDoc?.id ?? ''}
         workspaceId={currentWorkspaceId}
         documentName={shareDoc ? getFileName(shareDoc.path) : ''}
-        onShareCreated={list.refresh}
+        onShareCreated={refreshDocuments}
       />
 
       <DocumentVersionHistoryModal
@@ -366,7 +392,7 @@ export function DocumentsHub({
               detail: 'Document moved successfully.',
             });
             folders.retry();
-            list.refresh();
+            refreshDocuments();
           }}
         />
       )}

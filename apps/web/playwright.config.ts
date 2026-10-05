@@ -76,7 +76,12 @@ const E2E_DIST_DIR = process.env['NEXT_DIST_DIR'] ?? '.next-build';
 const WEB_SERVER = {
   build: {
     command: `pnpm build && pnpm next start -p ${E2E_WEB_PORT}`,
-    timeout: 600_000,
+    // 10 minutes was not enough for a 25-package monorepo build when the machine
+    // is also running a backend suite, and hitting it reports
+    // "Process from config.webServer was not able to start" — which reads like a
+    // build break rather than a slow one. A generous timeout costs nothing when the
+    // build is fast; a tight one produces a misleading failure.
+    timeout: 900_000,
   },
   dev: {
     command: `pnpm next dev -p ${E2E_WEB_PORT}`,

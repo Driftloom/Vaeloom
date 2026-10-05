@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import String, cast, func, or_, select
+from sqlalchemy import Integer, Numeric, String, case, cast, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -64,6 +64,35 @@ ACTION_SHARE = "document_share"
 # contract may hold uppercase; "read_write" is a legacy alias that was
 # persisted by earlier callers and must keep resolving to write.
 SHARE_WRITE_PERMISSIONS = ("write", "admin", "read_write")
+
+
+def json_category_predicate(column, category: str):
+    """Predicate matching rows whose JSONB ``category`` key equals ``category``.
+
+    ``column[key].as_string()`` is the dialect-aware form of a JSON path read:
+    SQLAlchemy compiles it to ``->> 'category'`` on PostgreSQL and to
+    ``JSON_EXTRACT(col, '$."category"')`` on SQLite, so the same expression is
+    correct on both without a dialect branch. ``func.json_extract`` was rejected:
+    it compiles on both dialects but PostgreSQL has no such function, so the
+    statement would only fail in production.
+
+    The comparison is case-insensitive because the writers are inconsistent:
+    ``vault_sync`` stores ``vault_note`` while ``categorize_document`` stores
+    whatever string the caller passed.
+    """
+    return func.lower(column["category"].as_string()) == category.strip().lower()
+
+
+def json_int_key(column, key: str):
+    """Numeric read of a JSONB key, or NULL when the key is absent or not numeric.
+
+    SQLite's ``CAST`` of a non-numeric string yields 0, so ``size_bytes`` needs a
+    numeric guard or a garbage value silently contributes to the workspace total.
+    PostgreSQL would raise instead of coercing.
+    """
+    raw = column[key].as_string()
+    numeric = cast(raw, Numeric)
+    return case((or_(raw.is_(None), raw == "", numeric.is_(None)), None), else_=cast(numeric, Integer))
 
 
 def _live_share_predicate(db):
@@ -612,6 +641,7 @@ class DocumentService:
         page_size: int = 20,
         include_archived: bool = False,
         status: str | None = None,
+        category: str | None = None,
         db=None,
     ):
         w_id = uuid.UUID(str(workspace_id))
@@ -628,6 +658,9 @@ class DocumentService:
 
         if status:
             filters.append(Document.status == status.upper())
+
+        if category:
+            filters.append(json_category_predicate(Document.metadata_, category))
 
         count_result = await db.execute(select(func.count()).where(*filters))
         total = count_result.scalar_one()
@@ -1061,31 +1094,39 @@ class DocumentService:
         limit: int = 50,
         offset: int = 0,
         db=None,
-    ) -> list[Document]:
+    ) -> tuple[list[Document], int]:
         w_id = uuid.UUID(str(workspace_id))
         clean_q = query.strip()
         if not clean_q:
-            return []
+            return [], 0
 
         search_filter = or_(
             Document.path.ilike(f"%{clean_q}%"),
             Document.summary.ilike(f"%{clean_q}%"),
             cast(Document.metadata_, String).ilike(f"%{clean_q}%"),
         )
+        filters = [
+            Document.workspace_id == w_id,
+            Document.deleted_at.is_(None),
+            search_filter,
+        ]
+        if folder_id:
+            filters.append(Document.folder_id == uuid.UUID(str(folder_id)))
+
+        # COUNT(*) over the identical filter set: reporting len(rows) would make a
+        # truncated page indistinguishable from a complete result set.
+        count_result = await db.execute(select(func.count()).where(*filters))
+        total = count_result.scalar_one()
+
         stmt = (
             select(Document)
-            .where(
-                Document.workspace_id == w_id,
-                Document.deleted_at.is_(None),
-                search_filter,
-            )
+            .where(*filters)
+            .order_by(Document.created_at.desc())
+            .limit(limit)
+            .offset(offset)
         )
-        if folder_id:
-            stmt = stmt.where(Document.folder_id == uuid.UUID(str(folder_id)))
-
-        stmt = stmt.order_by(Document.created_at.desc()).limit(limit).offset(offset)
         result = await db.execute(stmt)
-        return list(result.scalars().all())
+        return list(result.scalars().all()), total
 
     async def share_document(
         self,

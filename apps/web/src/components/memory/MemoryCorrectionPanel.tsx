@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
+import useSWR from 'swr';
 import { Modal, ErrorState, Button, SearchField, Badge, EmptyState } from '@vaeloom/ui-kit';
 import { memoryApi, ApiError } from '@/lib/api-client';
 import { DiffViewer } from '@/components/shared/DiffViewer';
@@ -12,9 +13,6 @@ interface MemoryCorrectionPanelProps {
 }
 
 export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProps = {}) {
-  const [memories, setMemories] = useState<Memory[]>([]);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Memory | null>(null);
   const [draftTitle, setDraftTitle] = useState('');
   const [draftSummary, setDraftSummary] = useState('');
@@ -25,35 +23,34 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setLoadError(null);
-    try {
-      const res = await memoryApi.list({
-        page_size: 100,
-        ...(workspaceId ? { workspace_id: workspaceId } : {}),
-      });
-      const rows = Array.isArray(res)
-        ? res
-        : ((res as { memories?: Memory[]; items?: Memory[] }).memories ??
-          (res as { memories?: Memory[]; items?: Memory[] }).items ??
-          []);
-      setMemories(rows.filter((m) => m.status !== 'deleted'));
-    } catch (err) {
-      setMemories([]);
-      setLoadError(
-        err instanceof ApiError
-          ? `Could not load memories (HTTP ${err.status}).`
-          : 'Could not load memories. Check your connection and retry.',
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [workspaceId]);
+  // SWR instead of useState+useEffect+manual load(): the Corrections tab and the
+  // /memory/corrections route each ran their own GET /memories, and neither
+  // revalidated when the memory page superseded a record. Now they share the
+  // parent page's cache key and stay in step.
+  const {
+    data: memoriesData,
+    error: loadErrorRaw,
+    isLoading: loading,
+    mutate: reload,
+  } = useSWR(workspaceId ? `memories-${workspaceId}` : 'memories-all', () =>
+    memoryApi.list({ page_size: 100, ...(workspaceId ? { workspace_id: workspaceId } : {}) }),
+  );
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const memories: Memory[] = useMemo(() => {
+    if (!memoriesData) return [];
+    const rows = Array.isArray(memoriesData)
+      ? (memoriesData as Memory[])
+      : ((memoriesData as { memories?: Memory[]; items?: Memory[] }).memories ??
+        (memoriesData as { memories?: Memory[]; items?: Memory[] }).items ??
+        []);
+    return rows.filter((m) => m.status !== 'deleted');
+  }, [memoriesData]);
+
+  const loadError: string | null = loadErrorRaw
+    ? loadErrorRaw instanceof ApiError
+      ? `Could not load memories (HTTP ${loadErrorRaw.status}).`
+      : 'Could not load memories. Check your connection and retry.'
+    : null;
 
   const filteredMemories = useMemo(() => {
     return memories.filter((m) => {
@@ -123,7 +120,7 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
         detail: `Original memory #${editing.id.slice(0, 8)} preserved as superseded in provenance ledger.`,
       });
       setEditing(null);
-      await load();
+      await reload();
     } catch (err) {
       toast({
         tone: 'error',
@@ -156,7 +153,7 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
             data loss.
           </p>
         </div>
-        <Button variant="secondary" size="sm" onClick={() => void load()}>
+        <Button variant="secondary" size="sm" onClick={() => void reload()}>
           Refresh Memories
         </Button>
       </header>
@@ -210,7 +207,7 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
           ))}
         </div>
       ) : loadError ? (
-        <ErrorState message={loadError} onRetry={() => void load()} />
+        <ErrorState message={loadError} onRetry={() => void reload()} />
       ) : filteredMemories.length === 0 ? (
         <EmptyState
           title={searchQuery ? 'No matching memories' : 'No memories found'}

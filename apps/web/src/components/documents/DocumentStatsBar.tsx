@@ -10,8 +10,7 @@ import {
   ClockIcon,
   AlertTriangleIcon,
 } from '@vaeloom/ui-kit';
-import type { DocumentResponse } from '@/lib/api-client';
-import { formatBytes, scanStateOf } from '@/lib/document-format';
+import { formatBytes } from '@/lib/document-format';
 
 export interface DocumentStats {
   totalDocuments: number;
@@ -26,16 +25,13 @@ export type DocumentStatsFilter = 'all' | 'clean' | 'quarantined' | 'shared';
 
 export interface DocumentStatsBarProps {
   stats?: Partial<DocumentStats>;
-  documents?: DocumentResponse[];
   // Direct flat props passed by Hub components
   totalCount?: number;
   totalBytes?: number;
   cleanCount?: number;
   /**
-   * Files whose security scan is still in flight. Previously destructured, listed
-   * as a `useMemo` dependency and then never read. The card is omitted when the
-   * prop is absent rather than defaulting to 0: "0 scanning" is a claim about the
-   * workspace and an absent prop is not.
+   * Files whose security scan is still in flight. Renders its own card only when
+   * supplied; see the module note on honesty below.
    */
   scanningCount?: number;
   quarantinedCount?: number;
@@ -57,33 +53,26 @@ export interface DocumentStatsBarProps {
 }
 
 /**
- * WHY THE SHARES / FOLDERS / SCANNING CARDS ARE OPTIONAL.
+ * WHY EVERY CARD IS OPTIONAL, AND WHY NOTHING IS DERIVED HERE ANY MORE.
  *
- * `activeShares` was hardcoded to `0` on both the empty and the derived branch, so
- * the "Active Shares" card always rendered `0` while captioned "Hierarchy &
- * shares" with an "Organized" badge — a number with nothing behind it. Nothing on
- * `DocumentResponse` or `DocumentMetadata` describes a share, so it cannot be
- * derived client-side either; it only exists on the backend. The card renders ONLY
- * when a real number is supplied. Relabelling the hardcoded 0 would have been a
- * fabricated number wearing a better hat. `foldersCount` had the mirror-image bug:
- * its presence switched the label to "Folders & Shares" while the value stayed
- * `activeShares`. Both now drive their own labelled cards.
+ * There is no `documents` prop. The bar used to take the current page and sum
+ * `metadata.size`, `scanStatus` and the row count over it, while taking the
+ * document total from the server's unfiltered count — four cards, two
+ * denominators, all captioned as if they described the workspace. Every number
+ * now arrives from `GET /documents/stats`, which counts the whole workspace, and
+ * a card whose field was not supplied is OMITTED rather than defaulted to 0: "0
+ * scanning" and "0 clean" are claims about the workspace, and an absent prop is
+ * not a claim.
  *
- * `scanningCount` was destructured, listed as a `useMemo` dependency, and never
- * read — ESLint flagged the unused dependency and the number was silently dropped.
+ * That rule is why the "Active Shares" card was omitted for so long:
+ * `activeShares` was hardcoded to `0` on both the empty and the derived branch,
+ * so the card always rendered `0` under a "Hierarchy & shares / Organized" badge
+ * — a number with nothing behind it. Nothing on `DocumentResponse` or
+ * `DocumentMetadata` describes a share, so it cannot be derived client-side
+ * either; it only exists on the backend. Now that `stats` supplies it, the card
+ * appears — and `foldersCount` no longer borrows the shares value to relabel
+ * itself.
  */
-
-/**
- * The size the backend recorded, in bytes. `DocumentMetadata` declares `size`
- * (`len(content)`), not `size_bytes`. There is deliberately no fallback to the
- * legacy key: rows written before the rename carry `size`, because `size` is
- * what the backend has always written (`document_service.py:443`).
- */
-function documentSizeBytes(doc: DocumentResponse): number {
-  const raw = doc.metadata?.size ?? null;
-  const n = typeof raw === 'number' ? raw : Number(raw ?? 0);
-  return Number.isFinite(n) && n > 0 ? n : 0;
-}
 
 /** Visible keyboard indicator; matches the ui-kit Button contract. */
 const CARD_FOCUS =
@@ -100,6 +89,13 @@ const GRID_BY_CARD_COUNT: Record<number, string> = {
 };
 const GRID_FALLBACK = 'grid-cols-2 md:grid-cols-3 lg:grid-cols-6';
 
+/**
+ * Skeleton width, used before the response arrives and therefore before the card
+ * count is knowable. Four is the width of the bar the endpoint can fill
+ * (total, storage, clean, quarantined) plus the optional ones.
+ */
+const LOADING_PLACEHOLDERS = 4;
+
 interface MetricCard {
   id: string;
   label: string;
@@ -113,6 +109,18 @@ interface MetricCard {
 
 const count = (value: number): string => value.toLocaleString();
 
+/**
+ * Accept only a finite number.
+ *
+ * `undefined`, `null`, `NaN` and a string all collapse to `undefined`, which is
+ * what makes "the server did not send this field" and "the server sent
+ * nonsense" behave the same way: no card. Both are handled by the bar rather
+ * than by `||` fallbacks, which would silently turn a missing count into `0`.
+ */
+function metricOf(value: number | null | undefined): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
 /** Badge variant names, taken from the ui-kit `Badge` contract. */
 type BadgeVariant = NonNullable<React.ComponentProps<typeof Badge>['variant']>;
 
@@ -124,7 +132,6 @@ const chip = (variant: BadgeVariant, text: string) => (
 
 export const DocumentStatsBar: React.FC<DocumentStatsBarProps> = ({
   stats,
-  documents,
   totalCount,
   totalBytes,
   cleanCount,
@@ -138,72 +145,36 @@ export const DocumentStatsBar: React.FC<DocumentStatsBarProps> = ({
   onFilterClick,
   className = '',
 }) => {
-  // Compute metrics supporting flat props, stats object, or documents array.
-  const computed = React.useMemo(() => {
-    const derived = {
-      totalDocuments: 0,
-      totalSizeBytes: 0,
-      cleanScans: 0,
-      scanning: 0,
-      quarantinedFiles: 0,
-    };
+  // Flat props win over the `stats` object, and both are optional throughout: a
+  // metric with no value anywhere is simply not rendered.
+  const metrics = React.useMemo(
+    () => ({
+      totalDocuments: metricOf(totalCount ?? stats?.totalDocuments),
+      totalSizeBytes: metricOf(totalBytes ?? stats?.totalSizeBytes),
+      cleanScans: metricOf(cleanCount ?? stats?.cleanScans),
+      quarantinedFiles: metricOf(quarantinedCount ?? stats?.quarantinedFiles),
+      scanning: metricOf(scanningCount),
+      folders: metricOf(foldersCount),
+      shares: metricOf(activeShares ?? stats?.activeShares),
+    }),
+    [
+      stats,
+      totalCount,
+      totalBytes,
+      cleanCount,
+      scanningCount,
+      quarantinedCount,
+      foldersCount,
+      activeShares,
+    ],
+  );
 
-    if (documents) {
-      derived.totalDocuments = documents.length;
-      for (const doc of documents) {
-        derived.totalSizeBytes += documentSizeBytes(doc);
-        // `scanStateOf` is the case-insensitive mapper; the previous
-        // `doc.scanStatus === 'CLEAN'` string compares classified every
-        // lowercase row (which the backend does write) as neither clean nor
-        // quarantined, so both badges silently dropped to 0.
-        const state = scanStateOf(doc.scanStatus);
-        if (state === 'clean') derived.cleanScans += 1;
-        else if (state === 'quarantined') derived.quarantinedFiles += 1;
-        else if (state === 'scanning') derived.scanning += 1;
-      }
-    }
+  const { totalDocuments, totalSizeBytes, cleanScans, quarantinedFiles } = metrics;
 
-    const totalDocuments = totalCount ?? stats?.totalDocuments ?? derived.totalDocuments;
-    const totalSizeBytes = totalBytes ?? stats?.totalSizeBytes ?? derived.totalSizeBytes;
-    const cleanScans = cleanCount ?? stats?.cleanScans ?? derived.cleanScans;
-    const quarantinedFiles =
-      quarantinedCount ?? stats?.quarantinedFiles ?? derived.quarantinedFiles;
+  const cards: MetricCard[] = [];
 
-    return {
-      totalDocuments,
-      totalSizeBytes,
-      cleanScans,
-      quarantinedFiles,
-      // Derived-only, and only trusted when no explicit count was supplied.
-      scanning: scanningCount ?? derived.scanning,
-      scanningProvided: scanningCount !== undefined,
-      foldersProvided: foldersCount !== undefined,
-      sharesProvided: activeShares !== undefined || stats?.activeShares !== undefined,
-      shares: activeShares ?? stats?.activeShares ?? 0,
-      folders: foldersCount ?? 0,
-      /** An explicitly supplied source of truth exists, so 0 means "really 0". */
-      hasDataSource:
-        totalCount !== undefined ||
-        documents !== undefined ||
-        stats !== undefined ||
-        totalBytes !== undefined,
-    };
-  }, [
-    stats,
-    documents,
-    totalCount,
-    totalBytes,
-    cleanCount,
-    scanningCount,
-    quarantinedCount,
-    foldersCount,
-    activeShares,
-  ]);
-
-  const { totalDocuments, totalSizeBytes, cleanScans, quarantinedFiles } = computed;
-
-  const cards: MetricCard[] = [
-    {
+  if (totalDocuments !== undefined) {
+    cards.push({
       id: 'total',
       label: 'Total Documents',
       value: count(totalDocuments),
@@ -211,16 +182,22 @@ export const DocumentStatsBar: React.FC<DocumentStatsBarProps> = ({
       badge: chip('default', 'Active'),
       caption: 'Workspace index',
       filterKey: 'all',
-    },
-    {
+    });
+  }
+
+  if (totalSizeBytes !== undefined) {
+    cards.push({
       id: 'storage',
       label: 'Storage Used',
       value: formatBytes(totalSizeBytes),
       icon: <DatabaseIcon size={18} className="text-text-muted" />,
       badge: chip('primary', 'Encrypted'),
       caption: 'S3 Object Store',
-    },
-    {
+    });
+  }
+
+  if (cleanScans !== undefined) {
+    cards.push({
       id: 'clean',
       label: 'Clean Scans',
       value: count(cleanScans),
@@ -228,19 +205,19 @@ export const DocumentStatsBar: React.FC<DocumentStatsBarProps> = ({
       badge: chip('success', 'Verified'),
       caption: 'Malware screened',
       filterKey: 'clean',
-    },
-  ];
+    });
+  }
 
   // Only shown when the workspace really has scans in flight.
-  if (computed.scanningProvided) {
+  if (metrics.scanning !== undefined) {
     cards.push({
       id: 'scanning',
       label: 'Scanning',
-      value: count(computed.scanning),
+      value: count(metrics.scanning),
       icon: <ClockIcon size={18} className="text-warning" />,
       badge: chip(
-        computed.scanning > 0 ? 'warning' : 'default',
-        computed.scanning > 0 ? 'In Progress' : 'Queue Clear',
+        metrics.scanning > 0 ? 'warning' : 'default',
+        metrics.scanning > 0 ? 'In Progress' : 'Queue Clear',
       ),
       caption: 'Security scan pending',
     });
@@ -248,64 +225,65 @@ export const DocumentStatsBar: React.FC<DocumentStatsBarProps> = ({
 
   // No icon: the ui-kit ships no folder glyph, and borrowing a users/briefcase
   // icon would label the number with the wrong metaphor.
-  if (computed.foldersProvided) {
+  if (metrics.folders !== undefined) {
     cards.push({
       id: 'folders',
       label: 'Folders',
-      value: count(computed.folders),
+      value: count(metrics.folders),
       icon: null,
       badge: chip('default', 'Organized'),
       caption: 'Folder hierarchy',
     });
   }
 
-  if (computed.sharesProvided) {
+  if (metrics.shares !== undefined) {
     cards.push({
       id: 'shares',
       label: 'Active Shares',
-      value: count(computed.shares),
+      value: count(metrics.shares),
       icon: <UsersIcon size={18} className="text-info" />,
       badge: chip(
-        computed.shares > 0 ? 'info' : 'default',
-        computed.shares > 0 ? 'Shared Out' : 'Not Shared',
+        metrics.shares > 0 ? 'info' : 'default',
+        metrics.shares > 0 ? 'Shared Out' : 'Not Shared',
       ),
       caption: 'Cross-workspace shares',
       filterKey: 'shared',
     });
   }
 
-  cards.push({
-    id: 'quarantined',
-    label: 'Quarantined / Alerts',
-    value: count(quarantinedFiles),
-    icon: (
-      <AlertTriangleIcon
-        size={18}
-        className={quarantinedFiles > 0 ? 'text-error' : 'text-text-muted'}
-      />
-    ),
-    badge: chip(
-      quarantinedFiles > 0 ? 'error' : 'default',
-      quarantinedFiles > 0 ? 'Threat Alert' : 'Zero Threats',
-    ),
-    caption: quarantinedFiles > 0 ? 'Requires attention' : 'No infected files',
-    filterKey: 'quarantined',
-  });
+  if (quarantinedFiles !== undefined) {
+    cards.push({
+      id: 'quarantined',
+      label: 'Quarantined / Alerts',
+      value: count(quarantinedFiles),
+      icon: (
+        <AlertTriangleIcon
+          size={18}
+          className={quarantinedFiles > 0 ? 'text-error' : 'text-text-muted'}
+        />
+      ),
+      badge: chip(
+        quarantinedFiles > 0 ? 'error' : 'default',
+        quarantinedFiles > 0 ? 'Threat Alert' : 'Zero Threats',
+      ),
+      caption: quarantinedFiles > 0 ? 'Requires attention' : 'No infected files',
+      filterKey: 'quarantined',
+    });
+  }
 
   if (loading) {
     // `role="status"` on the container, not just an `aria-label` on a plain div —
     // the previous version put the label on an element with no role, so assistive
     // tech never announced it and a screen-reader user got silent skeletons.
-    const loadingCount = cards.length;
     return (
       <div
-        className={`grid ${GRID_BY_CARD_COUNT[loadingCount] ?? GRID_FALLBACK} gap-3 sm:gap-4 ${className}`}
+        className={`grid ${GRID_BY_CARD_COUNT[LOADING_PLACEHOLDERS] ?? GRID_FALLBACK} gap-3 sm:gap-4 ${className}`}
         role="status"
         aria-live="polite"
         aria-busy="true"
       >
         <span className="sr-only">Loading document metrics…</span>
-        {Array.from({ length: loadingCount }).map((_, i) => (
+        {Array.from({ length: LOADING_PLACEHOLDERS }).map((_, i) => (
           <Card key={i} padding="sm" className="space-y-2">
             <div className="flex justify-between items-center">
               <Skeleton className="w-16 h-4" />
@@ -333,8 +311,11 @@ export const DocumentStatsBar: React.FC<DocumentStatsBarProps> = ({
     );
   }
 
-  // An explicitly empty workspace is a real, distinct answer from a failure.
-  if (computed.hasDataSource && totalDocuments === 0) {
+  // An explicitly empty workspace is a real, distinct answer from a failure — but
+  // only when there is nothing else worth showing. A workspace can hold folders
+  // and shares with zero documents, and collapsing the bar into an empty state
+  // would hide counts the server just told us about.
+  if (totalDocuments === 0 && cards.length === 1) {
     return (
       <EmptyState
         icon={<FileTextIcon size={24} />}
@@ -344,6 +325,11 @@ export const DocumentStatsBar: React.FC<DocumentStatsBarProps> = ({
       />
     );
   }
+
+  // The server answered but carried no metric at all. There is nothing honest to
+  // render: an empty grid would be invisible, and the cards below are all zeros or
+  // absent values. Deliberately silent rather than an invented "all 0".
+  if (cards.length === 0) return null;
 
   const gridClass = GRID_BY_CARD_COUNT[cards.length] ?? GRID_FALLBACK;
 

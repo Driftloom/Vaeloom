@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Badge, Button, Checkbox, DataTable, Spinner, type ColumnDef } from '@vaeloom/ui-kit';
+import { Badge, Checkbox, DataTable, Spinner, type ColumnDef } from '@vaeloom/ui-kit';
 import { FileTextIcon } from '@vaeloom/ui-kit';
 
 import type { DocumentResponse, FolderResponse } from '@/lib/api-client';
@@ -21,19 +21,34 @@ import { DocumentRowActions, type DocumentRowHandlers } from './DocumentRowActio
 import { isVaultNote } from './documentCategories';
 
 /**
- * The revision number for a row in the documents list.
+ * THERE IS NO VERSION COLUMN, AND THAT IS THE POINT.
  *
- * The backend does not persist a revision number in `metadata` — the authoritative
- * value comes from `DocumentVersionResponse.versionNumber` via
- * `documentApi.listVersions`, which is per-document. Fetching it for every row
- * would be an N+1 request on the hot path, so this returns `null` and the cell
- * renders "Not reported" rather than fabricating a `0` or echoing a stale key.
- * Revision history stays reachable through the row action menu, which opens the
- * versions modal.
+ * There used to be one. Its cell asked `documentVersionOf(doc)`, which returns
+ * `null` unconditionally, so every row rendered "Not reported" under a header
+ * that claimed to be showing a version — a column whose entire output was an
+ * admission that it had no data, repeated 50 times down the page. The button it
+ * was supposed to render (`handlers.onOpenVersions`) was therefore dead code, and
+ * a review found it unreachable.
+ *
+ * The authoritative revision is `DocumentVersionResponse.versionNumber`
+ * (`schemas/document.py:107`), served per document by
+ * `GET /documents/{id}/versions` (`routers/documents.py:817`). The list is up to
+ * 50 rows, so rendering a real number in a column means 50 requests on the hot
+ * path — an N+1 on the screen everyone opens first. Options (b) "fetch on
+ * expand/hover" and (c) "batch endpoint" were considered:
+ *
+ *  - (b) needs a row-expansion or hover affordance the table does not have. It
+ *    would add a new interaction to a list, plus a loading state per row, to
+ *    surface a number the user can already get one click away.
+ *  - (c) was not on the table: no batch versions endpoint exists.
+ *
+ * So the column is gone and revision history lives where it is actually
+ * reachable: the clock button in {@link DocumentRowActions}, which opens
+ * `DocumentVersionHistoryModal` and is labelled `Version history for <file>`. The
+ * document detail view also already computes the current revision from the same
+ * `listVersions` call (`DocumentDetailView.tsx:657-665`) and shows it as `v{n}`.
+ * Nothing that a version column would have told the user is now unreachable.
  */
-function documentVersionOf(_doc: DocumentResponse): string | null {
-  return null;
-}
 
 /** The `metadata.size` value as a positive byte count, or `null` when unknown. */
 function sizeBytesOf(doc: DocumentResponse): number | null {
@@ -231,25 +246,6 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
           <Badge variant={variant} size="sm">
             {label}
           </Badge>
-        );
-      },
-    },
-    {
-      key: 'version',
-      header: 'Version',
-      render: (_value, doc) => {
-        const version = documentVersionOf(doc);
-        if (!version) return <span className="text-text-dim text-xs">Not reported</span>;
-        return (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 px-2 font-mono text-xs"
-            title="View revision history"
-            onClick={() => handlers.onOpenVersions(doc)}
-          >
-            v{version}
-          </Button>
         );
       },
     },

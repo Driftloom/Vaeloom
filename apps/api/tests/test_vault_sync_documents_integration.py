@@ -138,7 +138,9 @@ Contains tag #daily and links to [[Cognitive Brain Engine]].
             headers=headers,
         )
         assert doc_search_res.status_code == 200
-        search_docs = doc_search_res.json()
+        search_body = doc_search_res.json()
+        search_docs = search_body["documents"]
+        assert search_body["total"] == len(search_docs)
         assert len(search_docs) >= 1
         assert any("Cognitive-Brain.md" in d["path"] for d in search_docs)
 
@@ -148,7 +150,7 @@ Contains tag #daily and links to [[Cognitive Brain Engine]].
             headers=headers,
         )
         assert tag_search_res.status_code == 200
-        tag_docs = tag_search_res.json()
+        tag_docs = tag_search_res.json()["documents"]
         assert len(tag_docs) >= 1
 
         # 6. Verify Memory Search includes vault notes

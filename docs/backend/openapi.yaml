@@ -4043,6 +4043,18 @@ paths:
           - type: string
           - type: 'null'
           title: Status
+      - name: category
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Filter on the JSONB metadata.category key (written by the categorize_document
+            tool)
+          title: Category
+        description: Filter on the JSONB metadata.category key (written by the categorize_document
+          tool)
       responses:
         '200':
           description: Successful Response
@@ -4127,10 +4139,61 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/DocumentResponse'
-                title: Response Search Documents Api V1 Documents Search Get
+                $ref: '#/components/schemas/DocumentSearchResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Unauthorized — missing or invalid Bearer JWT access token.
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
+                  detail:
+                    type: string
+                required:
+                - detail
+        '429': *id001
+      security:
+      - BearerAuth: []
+  /api/v1/documents/stats:
+    get:
+      tags:
+      - documents
+      summary: Get Document Stats
+      description: 'Workspace-wide document aggregates for the list header.
+
+
+        Read-only, so plain membership is the bar — no mutation role. Declared
+
+        before the `/{document_id}` routes so "stats" can never be captured as a
+
+        document id.'
+      operationId: get_document_stats_api_v1_documents_stats_get
+      parameters:
+      - name: workspace_id
+        in: query
+        required: true
+        schema:
+          type: string
+          title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentStatsResponse'
         '422':
           description: Validation Error
           content:
@@ -6111,6 +6174,66 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DocumentSyncMemoryResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Unauthorized — missing or invalid Bearer JWT access token.
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
+                  detail:
+                    type: string
+                required:
+                - detail
+        '429': *id001
+      security:
+      - BearerAuth: []
+  /api/v1/documents/{document_id}/process:
+    post:
+      tags:
+      - documents
+      summary: Process Document
+      description: 'Run the ingestion pipeline over an already-uploaded document.
+
+
+        The caller pointed at `/workspaces/{workspace_id}/documents/{document_id}/process`,
+
+        a path that has never existed; the ingest trigger swallowed the 404 and
+
+        reported success, so ingestion silently no-opped.'
+      operationId: process_document_api_v1_documents__document_id__process_post
+      parameters:
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Document Id
+      - name: workspace_id
+        in: query
+        required: true
+        schema:
+          type: string
+          title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentProcessResponse'
         '422':
           description: Validation Error
           content:
@@ -17471,8 +17594,17 @@ paths:
       tags:
       - vault-sync
       summary: Get Vault Sync Status
-      description: Retrieve the current vault synchronization status and cognitive
-        stats for this workspace.
+      description: 'Retrieve vault sync configuration and real ingestion stats for
+        this workspace.
+
+
+        Every field here reflects state the server can actually observe. There is
+        no
+
+        server-side git engine: sync is performed by the local `vaultsync` client,
+        so
+
+        liveness is derived from a client-reported heartbeat rather than asserted.'
       operationId: get_vault_sync_status_api_v1_vault_sync_status_get
       parameters:
       - name: workspace_id
@@ -17572,8 +17704,19 @@ paths:
       tags:
       - vault-sync
       summary: Trigger Vault Sync
-      description: Execute an immediate manual sync cycle (rebase pull + trailing
-        commit & push).
+      description: 'Record a manual sync request for this workspace.
+
+
+        There is no server-side git engine. This endpoint does not pretend otherwise:
+
+        it records the request and reports `executed: false` with the reason. The
+
+        previous implementation wrote `last_pull_time`/`last_push_time` = now and
+
+        returned "completed successfully. 0 conflicts." without any git operation
+        ever
+
+        running, so the UI showed a sync that never happened.'
       operationId: trigger_vault_sync_api_v1_vault_sync_sync_post
       requestBody:
         content:
@@ -17621,7 +17764,18 @@ paths:
       tags:
       - vault-sync
       summary: Get Vault Sync Logs
-      description: Retrieve recent sync activity and watcher daemon logs.
+      description: 'Return vault sync activity that was actually recorded.
+
+
+        Previously this returned four invented lines ("Native Vaeloom Vault Sync daemon
+
+        active", "Watching vault at ...", "Scheduled 5-minute git rebase pull active")
+
+        whenever no logs existed, so an unconfigured workspace displayed a healthy
+
+        daemon that had never run. It now returns only real records, with a single
+
+        honest entry explaining the empty state.'
       operationId: get_vault_sync_logs_api_v1_vault_sync_logs_get
       parameters:
       - name: workspace_id
@@ -17850,8 +18004,17 @@ paths:
       tags:
       - vault-sync
       summary: Download Client Installer
-      description: Serve the companion vaultsync installer script or distribution
+      description: 'Serve the companion vaultsync installer script or distribution
         config.
+
+
+        Requires authentication: this endpoint is part of a workspace-scoped feature
+
+        and was previously the only unauthenticated route in the vault-sync surface.
+
+        The body is a fixed literal per platform, so there is no path traversal or
+
+        data disclosure risk — but it did not belong in the public allowlist.'
       operationId: download_client_installer_api_v1_vault_sync_download_client_get
       parameters:
       - name: os
@@ -17875,8 +18038,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Unauthorized — missing or invalid Bearer JWT access token.
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
+                  detail:
+                    type: string
+                required:
+                - detail
         '429': *id001
-      security: []
+      security:
+      - BearerAuth: []
 components:
   schemas:
     APIKeyResponse:
@@ -20630,6 +20811,31 @@ components:
           description: Target folder ID, or null to move to workspace root
       type: object
       title: DocumentMoveRequest
+    DocumentProcessResponse:
+      properties:
+        document_id:
+          type: string
+          title: Document Id
+        status:
+          type: string
+          enum:
+          - processed
+          - skipped
+          title: Status
+        chunks_indexed:
+          type: integer
+          title: Chunks Indexed
+          default: 0
+        detail:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Detail
+      type: object
+      required:
+      - document_id
+      - status
+      title: DocumentProcessResponse
     DocumentRenameRequest:
       properties:
         path:
@@ -20726,6 +20932,37 @@ components:
       - created_at
       - updated_at
       title: DocumentResponse
+    DocumentSearchResponse:
+      properties:
+        documents:
+          items:
+            $ref: '#/components/schemas/DocumentResponse'
+          type: array
+          title: Documents
+        total:
+          type: integer
+          title: Total
+        limit:
+          type: integer
+          title: Limit
+        offset:
+          type: integer
+          title: Offset
+      type: object
+      required:
+      - documents
+      - total
+      - limit
+      - offset
+      title: DocumentSearchResponse
+      description: 'Paginated envelope for `GET /documents/search`.
+
+
+        A bare list cannot express how many rows matched, so a client silently
+
+        truncated at the page size had no way to tell that from "these were all the
+
+        matches". `total` is the COUNT(*) over the same filters, not len(documents).'
     DocumentShareCreate:
       properties:
         target_workspace_id:
@@ -20798,6 +21035,49 @@ components:
       - permission
       - created_at
       title: DocumentShareResponse
+    DocumentStatsResponse:
+      properties:
+        total_documents:
+          type: integer
+          title: Total Documents
+        archived_documents:
+          type: integer
+          title: Archived Documents
+        total_bytes:
+          type: integer
+          title: Total Bytes
+        clean_count:
+          type: integer
+          title: Clean Count
+        quarantined_count:
+          type: integer
+          title: Quarantined Count
+        scanning_count:
+          type: integer
+          title: Scanning Count
+        folder_count:
+          type: integer
+          title: Folder Count
+        active_share_count:
+          type: integer
+          title: Active Share Count
+      type: object
+      required:
+      - total_documents
+      - archived_documents
+      - total_bytes
+      - clean_count
+      - quarantined_count
+      - scanning_count
+      - folder_count
+      - active_share_count
+      title: DocumentStatsResponse
+      description: 'Workspace-wide aggregates for the documents list header.
+
+
+        Every field is computed in SQL over the whole workspace, never over the rows
+
+        of the current page, so the counts and the document total share a denominator.'
     DocumentSyncMemoryResponse:
       properties:
         success:
@@ -26931,6 +27211,20 @@ components:
           - type: string
           - type: 'null'
           title: Daemon Status
+        debounce_seconds:
+          anyOf:
+          - type: integer
+            maximum: 600.0
+            minimum: 5.0
+          - type: 'null'
+          title: Debounce Seconds
+        rebase_interval_minutes:
+          anyOf:
+          - type: integer
+            maximum: 1440.0
+            minimum: 1.0
+          - type: 'null'
+          title: Rebase Interval Minutes
       type: object
       required:
       - workspace_id

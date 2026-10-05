@@ -12,15 +12,19 @@ from .exception_handler import denial as _denial
 
 # /metrics stays public: Prometheus scrapes without credentials, and route
 # counters carry no PII. Edge protections (IP allowlist, WAF) still apply.
+#
+# Interactive docs and the OpenAPI schema are deliberately NOT listed. An
+# unauthenticated /openapi.json hands a stranger the entire API surface — every
+# route, every parameter, every response schema — which is reconnaissance for
+# everything else, and nothing in the build depends on them being open
+# (scripts/gen_openapi.py calls app.openapi() in-process). They remain reachable
+# to a caller presenting a valid token.
 PUBLIC_PATHS = frozenset({
     "/health",
     "/health/ready",
     "/health/startup",
     "/metrics",
     "/csrf-token",
-    "/docs",
-    "/redoc",
-    "/openapi.json",
     "/api/v1/auth/signup",
     "/api/v1/auth/login",
     "/api/v1/auth/refresh",
@@ -34,7 +38,6 @@ PUBLIC_PATHS = frozenset({
     "/api/v1/auth/saml/login",
     "/api/v1/gmail/webhook",
     "/api/v1/consent/scopes",
-    "/api/v1/vault-sync/download-client",
 })
 PUBLIC_PREFIXES = frozenset({
     "/api/v1/auth/sso/",

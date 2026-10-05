@@ -292,7 +292,10 @@ test.describe('visual baselines', () => {
           await page.evaluate((t) => localStorage.setItem('theme', t), theme);
           await page.goto(seg, { waitUntil: 'networkidle' });
           await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 30_000 });
-          await page.waitForTimeout(600);
+          // Settle after the heading is present rather than before: the command
+          // catalog lands after first paint, so a fixed wait either way races it.
+          await page.waitForLoadState('networkidle');
+          await page.waitForTimeout(400);
           await expect(page).toHaveScreenshot(`${name}-${theme}-${vp}.png`);
         });
       }
@@ -310,8 +313,14 @@ test.describe('visual baselines', () => {
           await page.evaluate((t) => localStorage.setItem('theme', t), theme);
           await gotoWorkspace(page, wsId, seg);
           await page.waitForLoadState('domcontentloaded');
-          await page.waitForTimeout(1400);
-          await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 30_000 });
+          // Wait for the network to settle so the shot is deterministic, but bound
+          // it. The workspace dashboard polls, so `networkidle` never fires there and
+          // an unbounded wait turns a screenshot into a 120 s timeout. A short
+          // best-effort wait gives the chat command catalog time to land — which is
+          // what made the empty state render as "Loading commands…" in some runs and
+          // the resolved chips in others — without hanging on a page that never idles.
+          await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => {});
+          await page.waitForTimeout(400);
           await expect(page).toHaveScreenshot(`${name}-${theme}-${vp}.png`);
         });
       }
