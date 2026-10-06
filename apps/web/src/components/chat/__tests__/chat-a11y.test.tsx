@@ -918,7 +918,11 @@ describe('ChatHeader', () => {
         onNewChat={jest.fn()}
       />,
     );
-    expect(screen.getByText('7 agents · QA gate')).toBeInTheDocument();
+    // Count only. The header used to hardcode "· QA gate" on every render; the
+    // backend never reports gate state here, so that string asserted a capability
+    // the data did not support. Asserted absent so it cannot creep back in.
+    expect(screen.getByText('7 agents')).toBeInTheDocument();
+    expect(screen.queryByText(/QA gate/)).not.toBeInTheDocument();
   });
 });
 

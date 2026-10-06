@@ -92,13 +92,54 @@ class TestBatchDocumentVersions:
 
 
 class TestWCAGVideoCaptions:
-    async def test_captions_metadata_and_vtt_stream(self, client: AsyncClient):
+    async def test_captions_absent_is_reported_as_absent(self, client: AsyncClient):
+        """No uploaded track means no track — not a synthesised one.
+
+        This endpoint used to build a WebVTT payload out of the filename and the
+        document summary, timed as if it were dialogue, and report
+        `has_captions: true` regardless. A deaf viewer then got a captions
+        affordance carrying content that misrepresented the audio, which is worse
+        than offering nothing. Absence must be reported as absence.
+        """
+        headers = await _auth(client, "captions_absent@vaeloom.test")
+        ws_id = await _workspace(client, headers)
+
+        doc_id = await _upload(client, headers, ws_id, "no_captions_here.mp4", b"not really a video")
+
+        res = await client.get(f"/api/v1/documents/{doc_id}/captions?workspace_id={ws_id}", headers=headers)
+        assert res.status_code == 200, res.text
+        meta = res.json()
+        assert meta["has_captions"] is False
+        assert meta["kind"] == "captions"
+        assert meta["srclang"] == "en"
+        assert "captions.vtt" in meta["caption_url"]
+
+        # And the stream itself must 404 rather than serve invented cues.
+        vtt_res = await client.get(f"/api/v1/documents/{doc_id}/captions.vtt?workspace_id={ws_id}", headers=headers)
+        assert vtt_res.status_code == 404, vtt_res.text
+        assert "WEBVTT" not in vtt_res.text
+        # The filename must never be presented as a spoken caption.
+        assert "no_captions_here.mp4" not in vtt_res.text
+
+    async def test_captions_metadata_and_vtt_stream_after_upload(self, client: AsyncClient):
+        """Once real WebVTT exists, both endpoints report and serve it."""
         headers = await _auth(client, "captions_test@vaeloom.test")
         ws_id = await _workspace(client, headers)
 
         doc_id = await _upload(client, headers, ws_id, "interview_demo.txt", b"demo transcript text")
 
-        # 1. Get captions metadata
+        vtt = (
+            "WEBVTT\n\n"
+            "00:00:00.000 --> 00:00:03.000\n"
+            "Thank you for joining us.\n"
+        )
+        up = await client.post(
+            f"/api/v1/documents/{doc_id}/captions?workspace_id={ws_id}",
+            json={"vtt_content": vtt, "srclang": "en", "label": "English"},
+            headers=headers,
+        )
+        assert up.status_code in (200, 201), up.text
+
         res = await client.get(f"/api/v1/documents/{doc_id}/captions?workspace_id={ws_id}", headers=headers)
         assert res.status_code == 200, res.text
         meta = res.json()
@@ -107,12 +148,12 @@ class TestWCAGVideoCaptions:
         assert meta["srclang"] == "en"
         assert "captions.vtt" in meta["caption_url"]
 
-        # 2. Get WebVTT subtitle stream
         vtt_res = await client.get(f"/api/v1/documents/{doc_id}/captions.vtt?workspace_id={ws_id}", headers=headers)
         assert vtt_res.status_code == 200, vtt_res.text
         assert "text/vtt" in vtt_res.headers["content-type"]
         assert "WEBVTT" in vtt_res.text
-        assert "00:00:00.000 -->" in vtt_res.text
+        # The uploaded cue is served verbatim, not a synthesised one.
+        assert "Thank you for joining us." in vtt_res.text
 
     async def test_upload_custom_vtt_captions(self, client: AsyncClient):
         headers = await _auth(client, "custom_vtt@vaeloom.test")

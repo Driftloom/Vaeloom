@@ -10,11 +10,13 @@ import type { UseDocumentListResult } from '../hooks/useDocumentList';
 import type { UseDocumentFoldersResult } from '../hooks/useDocumentFolders';
 import { DocumentsTable } from './DocumentsTable';
 import type { DocumentRowHandlers } from './DocumentRowActions';
+import { useBatchDocumentVersions } from '../hooks/useBatchDocumentVersions';
 
 export interface DocumentsResultsPanelProps {
   list: UseDocumentListResult;
   folders: UseDocumentFoldersResult;
   handlers: DocumentRowHandlers;
+  workspaceId?: string;
 }
 
 /**
@@ -52,7 +54,15 @@ export const DocumentsResultsPanel: React.FC<DocumentsResultsPanelProps> = ({
   list,
   folders,
   handlers,
+  workspaceId,
 }) => {
+  // One request per page of rows, not one per row: the backend keeps no revision
+  // number on the document row, so this is the only source for the Version cell.
+  const { versionsByDocumentId } = useBatchDocumentVersions(
+    workspaceId,
+    list.documents.map((d) => d.id),
+  );
+
   const hasFilters =
     Boolean(list.searchInput.trim()) || list.category !== 'all' || list.selectedFolderId;
 
@@ -101,6 +111,7 @@ export const DocumentsResultsPanel: React.FC<DocumentsResultsPanelProps> = ({
             onToggleSelectAll={list.toggleSelectAllVisible}
             loading={list.loading}
             refreshing={list.refreshing}
+            versionsByDocumentId={versionsByDocumentId}
           />
         )}
 

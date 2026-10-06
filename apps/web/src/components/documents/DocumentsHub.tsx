@@ -322,7 +322,12 @@ export function DocumentsHub({
             onClear={list.clearSelection}
           />
 
-          <DocumentsResultsPanel list={list} folders={folders} handlers={rowHandlers} />
+          <DocumentsResultsPanel
+            list={list}
+            folders={folders}
+            handlers={rowHandlers}
+            workspaceId={currentWorkspaceId}
+          />
         </div>
       </div>
 

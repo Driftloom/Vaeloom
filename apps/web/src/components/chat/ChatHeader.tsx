@@ -94,8 +94,12 @@ export function ChatHeader({
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
+        {/* Count only. This previously appended a hardcoded "· QA gate" on every
+            render — the backend sends no gate state with the chat header, so it
+            asserted a capability that was never reported. Agent count is real
+            wire data and null-guarded while loading. */}
         <span className="hidden text-xs text-text-dim lg:inline">
-          {agentCount === null ? 'Loading agents…' : `${agentCount} agents · QA gate`}
+          {agentCount === null ? 'Loading agents…' : `${agentCount} agents`}
         </span>
 
         <label

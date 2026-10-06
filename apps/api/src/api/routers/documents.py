@@ -945,7 +945,9 @@ async def get_document_captions(
 
     return DocumentCaptionTrackResponse(
         document_id=doc.id,
-        has_captions=True,
+        # Reflects whether a track actually exists. Reporting True unconditionally
+        # made every video advertise captions it did not have.
+        has_captions=bool(vtt_content),
         kind="captions",
         srclang=(doc.metadata_ or {}).get("captions_lang") or "en",
         label=(doc.metadata_ or {}).get("captions_label") or "English",
@@ -961,7 +963,20 @@ async def get_document_captions_vtt(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    """Serve WebVTT caption stream for video playback (WCAG 1.2.2)."""
+    """Serve WebVTT caption stream for video playback (WCAG 1.2.2).
+
+    404 when the document has no caption track. This endpoint previously
+    synthesised one from `doc.summary` and the filename, timed 00:00-00:05 and
+    00:05-00:30. That is not a caption track: it renders the filename in
+    brackets and the document summary as if they were the video's dialogue, and
+    the player's caption affordance then lights up for a track that misrepresents
+    the audio. For a deaf or hard-of-hearing viewer that is worse than offering
+    nothing, so absence is reported as absence and the `<track>` element simply
+    fails to load.
+
+    Real captions are supplied by `POST /{document_id}/captions`, which persists
+    `captions_vtt` into the document's metadata.
+    """
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
@@ -971,16 +986,11 @@ async def get_document_captions_vtt(
     except DocumentNotFound:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    filename = doc.path.rsplit("/", 1)[-1] or doc.path
     custom_vtt = (doc.metadata_ or {}).get("captions_vtt")
     if not custom_vtt:
-        summary_text = doc.summary or f"Audio track for video {filename}"
-        custom_vtt = (
-            "WEBVTT\n\n"
-            "00:00:00.000 --> 00:00:05.000\n"
-            f"[{filename}]\n\n"
-            "00:00:05.000 --> 00:00:30.000\n"
-            f"{summary_text}\n"
+        raise HTTPException(
+            status_code=404,
+            detail="No caption track for this document",
         )
 
     return Response(

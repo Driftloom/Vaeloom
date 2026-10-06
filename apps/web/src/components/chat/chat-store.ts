@@ -86,6 +86,21 @@ const EMPTY_MESSAGES: ChatMessage[] = [];
 /** Write-behind debounce. Long enough to coalesce a burst, short enough to feel immediate. */
 const PERSIST_DEBOUNCE_MS = 400;
 const RETRY_MAX_MS = 30_000;
+/**
+ * Hard ceiling on unacknowledged writes per workspace.
+ *
+ * The outbox holds only server-unconfirmed messages, which is what makes keeping
+ * it in localStorage defensible. But "only unconfirmed" is a statement about
+ * *scope*, not about *size*: with the API unreachable, a long offline session
+ * enqueues one entry per terminal message and the queue — plus its localStorage
+ * mirror — grows until the storage quota throws, which surfaces as a generic
+ * sync error rather than anything actionable.
+ *
+ * When the cap is hit the OLDEST pending write is evicted: recent messages are
+ * the ones a user would still expect to see land, and an evicted entry is
+ * surfaced as a sync error so the loss is disclosed rather than silent.
+ */
+const MAX_PENDING_WRITES = 200;
 
 /** Pre-server era key. Read once for the migration, cleared only on a confirmed upload. */
 const legacyThreadsKey = (workspaceId: string): string => `vaeloom.threads.${workspaceId}`;
@@ -514,7 +529,17 @@ export function useChatStore(workspaceId: string): ChatStore {
         const idx = prev.findIndex((p) => p.body.client_id === body.client_id);
         const attempts = idx >= 0 ? (prev[idx]?.attempts ?? 0) : 0;
         const entry: PendingWrite = { conversationId: target, body, attempts };
-        if (idx < 0) return [...prev, entry];
+        if (idx < 0) {
+          const next = [...prev, entry];
+          // Editing an existing entry never grows the queue, so it can't evict.
+          if (next.length <= MAX_PENDING_WRITES) return next;
+          setSyncError(
+            (prev) =>
+              prev ??
+              `${MAX_PENDING_WRITES} unsent messages queued; the oldest were dropped. Reconnect to sync the rest.`,
+          );
+          return next.slice(next.length - MAX_PENDING_WRITES);
+        }
         const next = [...prev];
         next[idx] = entry;
         return next;

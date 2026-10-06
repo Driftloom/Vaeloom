@@ -47,10 +47,13 @@ was skipped" into "the deploy fails". ``0062`` already attached after it, and
 ``0063`` adds two more tables after that, so the guard can no longer see them.
 ``_assert_coverage`` at the end of ``upgrade`` repeats the same end-state check,
 so the property the audit depended on survives this revision rather than being
-silently lost. It is also noted as a concern in the task report: the invariant
-test ``test_head_includes_the_rls_coverage_guard`` in
-``tests/test_migration_chain_pg.py`` still pins the head to ``0060``, which was
-already stale before this revision.
+silently lost.
+
+The invariant test ``test_head_includes_the_rls_coverage_guard`` in
+``tests/test_migration_chain_pg.py`` used to pin the head to the literal ``0060``,
+which went stale as soon as any later revision landed. It now asserts the
+*invariant* — whatever the head is, it re-checks RLS coverage — so adding a
+revision no longer breaks the test.
 """
 
 import importlib.util

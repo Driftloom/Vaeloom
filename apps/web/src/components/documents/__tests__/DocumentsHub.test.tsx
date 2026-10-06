@@ -66,6 +66,10 @@ jest.mock('@/lib/api-client', () => ({
     // Reads
     list: jest.fn(),
     search: jest.fn(),
+    // Feeds the Version column. Mocked for the same reason as `stats`: an
+    // unmocked call throws inside the hook, the hook's catch swallows it, and the
+    // column quietly renders a dash while the suite stays green.
+    batchVersions: jest.fn(),
     // Added with the workspace aggregates. WITHOUT this entry the hook's
     // `documentApi.stats(...)` threw a TypeError on every test, was swallowed by
     // the hook's own catch, and every render silently showed the stats ERROR
@@ -329,6 +333,8 @@ beforeEach(() => {
   (documentApi.list as jest.Mock).mockImplementation(listImpl);
   (documentApi.search as jest.Mock).mockImplementation(searchImpl);
   (documentApi.stats as jest.Mock).mockResolvedValue(STATS);
+  // Default: no revisions known. Tests that assert the Version cell override this.
+  (documentApi.batchVersions as jest.Mock).mockResolvedValue({ versions: {} });
   (documentApi.listFolders as jest.Mock).mockResolvedValue(folders);
   (documentApi.getFolderTree as jest.Mock).mockResolvedValue(folderTree);
   (documentApi.createFolder as jest.Mock).mockImplementation(
@@ -520,21 +526,32 @@ describe('DocumentsHub — document rows render real values', () => {
     expect(cellFor('sample_financials.csv', 'security')).toHaveTextContent('Not reported');
   });
 
-  it('has no Version column, because a column of "Not reported" is not a version', async () => {
+  it('shows a Version column only when it can be populated, never "Not reported"', async () => {
+    // This column was removed once because its cell rendered "Not reported" for
+    // every row while its history button was unreachable dead code. It is back
+    // because the number now has a real source — one batched
+    // `POST /documents/versions/batch` per page — instead of a key the backend
+    // never writes. When that batch has not resolved the cell must render the
+    // placeholder, never a guessed revision.
     await renderLoaded();
+    await waitFor(() => expect(documentApi.batchVersions).toHaveBeenCalled(), ASYNC_WAIT);
 
-    // The exact header row. `Version` used to sit between Security and Size and
-    // rendered "Not reported" for all 50 rows, while its history button was
-    // unreachable dead code. History is reachable through the row action instead,
-    // which this also proves.
-    expect(headerLabels()).toEqual(['Select', 'Name', 'Security', 'Size', 'Updated', 'Actions']);
-    expect(screen.queryByRole('columnheader', { name: 'Version' })).not.toBeInTheDocument();
+    expect(headerLabels()).toEqual([
+      'Select',
+      'Name',
+      'Security',
+      'Version',
+      'Size',
+      'Updated',
+      'Actions',
+    ]);
+    // No revision is known for these fixtures, so nothing may claim one.
     expect(screen.queryByText('Not reported')).not.toBeInTheDocument();
-
-    // Nothing in the table asks the versions endpoint for a number it cannot show.
+    expect(screen.queryByRole('button', { name: /^v\d/ })).toBeNull();
+    // And the table never falls back to a per-row fetch for it.
     expect(documentApi.listVersions).not.toHaveBeenCalled();
 
-    // And the feature the column was supposed to surface is still reachable.
+    // The feature the column surfaces is still reachable from the row actions.
     expect(
       within(rowFor('sample_financials.csv')).getByRole('button', {
         name: 'Version history for sample_financials.csv',
@@ -1413,5 +1430,42 @@ describe('DocumentsHub — search paginates instead of truncating', () => {
 
     await waitFor(() => expect(documentApi.search).toHaveBeenCalled(), ASYNC_WAIT);
     expect(await screen.findByText('1 / 1', undefined, ASYNC_WAIT)).toBeInTheDocument();
+  });
+});
+describe('DocumentsHub — Version column', () => {
+  it('renders the latest revision from ONE batched request, not one per row', async () => {
+    (documentApi.batchVersions as jest.Mock).mockResolvedValue({
+      versions: {
+        'doc-1': { documentId: 'doc-1', latestVersion: 7, versionCount: 7 },
+      },
+    });
+
+    await renderLoaded();
+
+    // The real revision, not a fabricated v1 and not a permanent "Not reported".
+    expect(await screen.findByRole('button', { name: /^v7/ })).toBeInTheDocument();
+    // One call for the page, carrying the visible document ids.
+    await waitFor(() => expect(documentApi.batchVersions).toHaveBeenCalledTimes(1));
+    const [ids] = (documentApi.batchVersions as jest.Mock).mock.calls[0]!;
+    expect(ids).toEqual(expect.arrayContaining(['doc-1']));
+  });
+
+  it('falls back to a placeholder when a document has no known revision', async () => {
+    (documentApi.batchVersions as jest.Mock).mockResolvedValue({ versions: {} });
+    await renderLoaded();
+    await waitFor(() => expect(documentApi.batchVersions).toHaveBeenCalled());
+    // Absent data must render the placeholder, never a guessed revision.
+    expect(screen.queryByRole('button', { name: /^v\d/ })).toBeNull();
+  });
+
+  it('does not block the document list when the batch call fails', async () => {
+    (documentApi.batchVersions as jest.Mock).mockRejectedValue(new Error('boom'));
+    await renderLoaded();
+    // The rows still render: a missing revision number must not cost the user the
+    // ability to open or delete a file.
+    expect(
+      await screen.findByRole('button', { name: 'sample_financials.csv' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^v\d/ })).toBeNull();
   });
 });

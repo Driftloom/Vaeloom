@@ -1949,4 +1949,67 @@ describe('useChatStore', () => {
       expect(convRemove.mock.calls[0]?.[1]).toBe('cv-real');
     });
   });
+
+  describe('the outbox under a permanently unreachable server', () => {
+    // Every write below fails to reach the server, so nothing drains the queue.
+    // The queue is described in the store as "bounded", and without a size cap it
+    // is not: each terminal message appends an entry that is only removed on a
+    // successful flush, and the localStorage mirror eventually throws on quota,
+    // which surfaced as an opaque sync error rather than anything actionable.
+    const failEverything = () => {
+      convAppend.mockResolvedValue({ ok: false, error: 'offline', status: 0 });
+    };
+
+    it('caps the queue and discloses the eviction instead of growing without limit', async () => {
+      failEverything();
+      seedThread([msg({ id: 'u1', role: 'user', text: 'earlier' })], 'cv-real');
+      const { result } = await renderStore();
+
+      // Push well past the cap. Each `send` produces two entries (the user message
+      // and the terminal assistant reply), so 130 sends exceeds the 200 ceiling.
+      for (let i = 0; i < 130; i += 1) {
+        act(() => {
+          result.current.setInput(`msg-${i}`);
+        });
+        await act(async () => {
+          await result.current.send();
+        });
+      }
+      await settleFlush();
+
+      const queue = readPendingQueue(WORKSPACE);
+      expect(queue.length).toBeLessThanOrEqual(200);
+      // Each send appends the user message and then its terminal assistant
+      // reply, so the tail is the newest work. `msg-0` was enqueued first and
+      // must be the eviction victim; `msg-129` was last and must survive.
+      const allText = queue.map((q) => q.body.text).join('\n');
+      expect(allText).toContain('msg-129');
+      expect(allText).not.toContain('msg-0');
+      // And the loss is disclosed rather than silent.
+      expect(result.current.syncError).toMatch(/unsent messages queued/);
+    });
+
+    it('leaves the queue alone while it stays under the cap', async () => {
+      failEverything();
+      seedThread([msg({ id: 'u1', role: 'user', text: 'earlier' })], 'cv-real');
+      const { result } = await renderStore();
+
+      for (let i = 0; i < 3; i += 1) {
+        act(() => {
+          result.current.setInput(`msg-${i}`);
+        });
+        await act(async () => {
+          await result.current.send();
+        });
+      }
+      await settleFlush();
+
+      expect(readPendingQueue(WORKSPACE).length).toBe(6);
+      // No eviction, so the disclosure specifically must NOT fire. The ordinary
+      // offline error is still expected — that is what tells the user writes are
+      // queued — which is why this asserts absence of the cap message rather than
+      // a null syncError.
+      expect(result.current.syncError).not.toMatch(/unsent messages queued/);
+    });
+  });
 });

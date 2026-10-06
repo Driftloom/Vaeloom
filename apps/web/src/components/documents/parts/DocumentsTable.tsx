@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Badge, Checkbox, DataTable, Spinner, type ColumnDef } from '@vaeloom/ui-kit';
+import { Badge, Button, Checkbox, DataTable, Spinner, type ColumnDef } from '@vaeloom/ui-kit';
 import { FileTextIcon } from '@vaeloom/ui-kit';
 
 import type { DocumentResponse, FolderResponse } from '@/lib/api-client';
@@ -86,6 +86,17 @@ export interface DocumentsTableProps {
   loading: boolean;
   /** Rows are on screen and a newer request is in flight. */
   refreshing: boolean;
+  /**
+   * Latest revision per document id, from the single batched
+   * `POST /documents/versions/batch` call for this page.
+   *
+   * The backend keeps no revision number on the document row, so this map is the
+   * only honest source. It is fetched once per page rather than per row: the
+   * previous per-row approach was an N+1 on the hot path. A missing entry means
+   * the batch has not resolved (or failed) and the cell renders an em dash rather
+   * than guessing a revision.
+   */
+  versionsByDocumentId?: Readonly<Record<string, { latestVersion: number; versionCount: number }>>;
   className?: string;
 }
 
@@ -115,6 +126,7 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
   onToggleSelectAll,
   loading,
   refreshing,
+  versionsByDocumentId,
   className = '',
 }) => {
   const columns: ColumnDef<DocumentResponse>[] = [
@@ -246,6 +258,29 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
           <Badge variant={variant} size="sm">
             {label}
           </Badge>
+        );
+      },
+    },
+    {
+      key: 'version',
+      header: 'Version',
+      render: (_value, doc) => {
+        const meta = versionsByDocumentId?.[doc.id];
+        if (!meta || !Number.isFinite(meta.latestVersion) || meta.latestVersion <= 0) {
+          return <span className="text-text-dim text-xs">{PLACEHOLDER}</span>;
+        }
+        const more = meta.versionCount > 1;
+        return (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 px-2 font-mono text-xs"
+            title={`View revision history (${meta.versionCount} ${more ? 'revisions' : 'revision'})`}
+            onClick={() => handlers.onOpenVersions(doc)}
+          >
+            {`v${meta.latestVersion}`}
+            {more ? ` (${meta.versionCount})` : ''}
+          </Button>
         );
       },
     },

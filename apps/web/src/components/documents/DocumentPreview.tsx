@@ -588,7 +588,14 @@ export function DocumentPreview({
               aria-label={`Video preview of ${fileName}`}
               className={`${sizes.media} max-w-full rounded-lg shadow-lg border border-border bg-black`}
             >
-              {/* WCAG 1.2.2 compliant captions track */}
+              {/*
+                Progressive-enhancement hook for captions, not a conformance claim.
+                `src` points at the caption endpoint, which 404s unless real
+                WebVTT was uploaded for this document, so the browser shows no
+                captions affordance when there is nothing to show. Videos without
+                an uploaded track remain non-conformant with WCAG 1.2.2 and this
+                element does not change that.
+              */}
               <track
                 kind="captions"
                 src={
