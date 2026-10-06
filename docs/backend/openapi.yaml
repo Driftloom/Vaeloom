@@ -5712,7 +5712,29 @@ paths:
       tags:
       - documents
       summary: Get Document Captions Vtt
-      description: Serve WebVTT caption stream for video playback (WCAG 1.2.2).
+      description: 'Serve WebVTT caption stream for video playback (WCAG 1.2.2).
+
+
+        404 when the document has no caption track. This endpoint previously
+
+        synthesised one from `doc.summary` and the filename, timed 00:00-00:05 and
+
+        00:05-00:30. That is not a caption track: it renders the filename in
+
+        brackets and the document summary as if they were the video''s dialogue, and
+
+        the player''s caption affordance then lights up for a track that misrepresents
+
+        the audio. For a deaf or hard-of-hearing viewer that is worse than offering
+
+        nothing, so absence is reported as absence and the `<track>` element simply
+
+        fails to load.
+
+
+        Real captions are supplied by `POST /{document_id}/captions`, which persists
+
+        `captions_vtt` into the document''s metadata.'
       operationId: get_document_captions_vtt_api_v1_documents__document_id__captions_vtt_get
       parameters:
       - name: document_id

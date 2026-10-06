@@ -138,6 +138,18 @@ class Settings(BaseSettings):
     storage_secret_key: str = ""
     storage_bucket: str = "vaeloom"
     storage_region: str = "us-east-1"
+
+    # Antivirus scanner daemon (ClamAV) / static fallback configuration
+    antivirus_provider: Literal["clamav", "static", "disabled"] = "static"
+    antivirus_required: bool = False
+    clamav_host: str = "localhost"
+    clamav_port: int = 3310
+    clamav_timeout_seconds: float = 3.0
+
+    # WCAG 1.2.2 automated video captioning / transcription pipeline
+    transcription_enabled: bool = False
+    transcription_provider: Literal["mock", "whisper", "disabled"] = "mock"
+    whisper_api_url: str = ""
     # Object-storage mirror on document upload — opt-in per temporal_enabled
     # precedent. When True, upload PUTs bytes to storage/{ws}/{doc}/{file}
     # and records raw_storage_key (converges upload path with pipeline

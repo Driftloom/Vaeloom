@@ -65,8 +65,8 @@ hung because most packages have no `dev` script). **Always** use:
   2026-10-03, and 254/315 in `specs/api/API-Reference.md` — those two disagreed
   before the audit. History: 162/203 on 2026-09-15, 110 on 2026-08-29, 106 on
   2026-08-23, 99 before)
-- **Web tests (2026-10-03):** jest **700 tests / 32 suites**, all passing
-  (`npx jest`, 50.8s — was "41 jest across 8 suites"). Playwright **95 tests
+- **Web tests (2026-10-06):** jest **917 tests / 39 suites**, all passing
+  (`npx jest`, 33.2s — was "700 tests / 32 suites"). Playwright **95 tests
   across 11 spec files** in `apps/web/e2e` (`npx playwright test --list`; only 3
   `toHaveScreenshot` assertions exist, in `landing.spec.ts` + `quality.spec.ts`
   — was "6 spec files / 73 tests / 40 visual baselines")

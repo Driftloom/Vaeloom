@@ -94,6 +94,27 @@ async def _rowsecurity(table: str) -> bool | None:
         await engine.dispose()
 
 
+async def _forcerowsecurity(table: str) -> bool | None:
+    """`pg_class.relforcerowsecurity` for one table, as a real boolean."""
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    engine = create_async_engine(os.environ["VAELOOM_TEST_PG_URL"])
+    try:
+        async with engine.connect() as conn:
+            result = await conn.execute(
+                sa.text(
+                    "SELECT c.relforcerowsecurity FROM pg_class c "
+                    "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                    "WHERE n.nspname='public' AND c.relname=:t;"
+                ),
+                {"t": table},
+            )
+            row = result.first()
+            return None if row is None else bool(row[0])
+    finally:
+        await engine.dispose()
+
+
 async def test_every_table_has_row_level_security():
     """No table may be readable by every role.
 
@@ -104,6 +125,12 @@ async def test_every_table_has_row_level_security():
     """
     offenders = [t for t in await _base_tables() if await _rowsecurity(t) is not True]
     assert not offenders, f"tables without RLS enabled: {sorted(offenders)}"
+
+
+async def test_every_table_has_forced_row_level_security():
+    """All tables must have FORCE ROW LEVEL SECURITY to prevent owner bypass (0066)."""
+    offenders = [t for t in await _base_tables() if await _forcerowsecurity(t) is not True]
+    assert not offenders, f"tables without FORCED RLS: {sorted(offenders)}"
 
 
 async def test_every_table_has_at_least_one_policy():

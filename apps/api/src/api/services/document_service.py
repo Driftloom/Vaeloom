@@ -457,7 +457,7 @@ class DocumentService:
         filename = file_security_service.sanitize_filename(raw_name)
 
         # 3. Server-side file verification (magic bytes, executable rejection, malware scan)
-        verdict = file_security_service.inspect_file(
+        verdict = await file_security_service.inspect_file_async(
             filename=filename,
             content=content,
             declared_mime=getattr(file, "content_type", None),
@@ -484,6 +484,28 @@ class DocumentService:
             if not f_check.scalar_one_or_none():
                 raise HTTPException(status_code=404, detail="Target folder not found in workspace")
 
+        meta_dict = {
+            "original_name": filename,
+            "size": len(content),
+            "sha256": checksum,
+            "detected_mime": verdict.detected_mime,
+        }
+
+        # Automated video captioning pipeline for WCAG 1.2.2
+        if verdict.detected_mime in ("video/mp4", "video/webm") or filename.lower().endswith((".mp4", ".webm")):
+            try:
+                from .transcription_service import transcription_service
+
+                vtt_text = await transcription_service.transcribe_media(content, filename)
+                if vtt_text:
+                    meta_dict["captions_vtt"] = vtt_text
+                    meta_dict["has_captions"] = True
+                    meta_dict["captions_lang"] = "en"
+                    meta_dict["captions_label"] = "English (Auto-transcribed)"
+                    meta_dict["captions_source"] = "automated_pipeline"
+            except Exception as exc:
+                logger.warning("Automated transcription failed non-fatally for %s: %s", filename, exc)
+
         doc = Document(
             id=uuid.uuid4(),
             workspace_id=w_id,
@@ -496,12 +518,7 @@ class DocumentService:
             detected_mime_type=verdict.detected_mime,
             scan_status=verdict.scan_status,
             scan_result=verdict.rejection_reason,
-            metadata_={
-                "original_name": filename,
-                "size": len(content),
-                "sha256": checksum,
-                "detected_mime": verdict.detected_mime,
-            },
+            metadata_=meta_dict,
         )
         db.add(doc)
         await db.flush()
@@ -958,7 +975,7 @@ class DocumentService:
         raw_name = file.filename or doc.path
         filename = file_security_service.sanitize_filename(raw_name)
 
-        verdict = file_security_service.inspect_file(
+        verdict = await file_security_service.inspect_file_async(
             filename=filename,
             content=content,
             declared_mime=getattr(file, "content_type", None),

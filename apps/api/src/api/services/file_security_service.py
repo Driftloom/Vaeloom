@@ -267,6 +267,31 @@ class FileSecurityService:
         )
 
     @staticmethod
+    async def inspect_file_async(
+        filename: str,
+        content: bytes,
+        declared_mime: str | None = None,
+    ) -> FileSecurityVerdict:
+        """Asynchronously inspect file with static heuristics and active Antivirus engine."""
+        base_verdict = FileSecurityService.inspect_file(filename, content, declared_mime)
+        if not base_verdict.is_safe:
+            return base_verdict
+
+        # Deep antivirus scan via configured provider (ClamAV daemon / static)
+        from api.services.antivirus_service import antivirus_service
+
+        av_result = await antivirus_service.scan_bytes(content, filename)
+        if not av_result.is_clean:
+            return FileSecurityVerdict(
+                is_safe=False,
+                detected_mime=base_verdict.detected_mime,
+                scan_status="MALICIOUS",
+                rejection_reason=f"Malware detected ({av_result.threat_name}) by {av_result.engine} engine",
+            )
+
+        return base_verdict
+
+    @staticmethod
     def _contains_active_content(content: bytes) -> bool:
         """Detect active/executable content patterns in first 64KB (polyglot detection).
 
