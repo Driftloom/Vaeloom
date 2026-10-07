@@ -34,7 +34,30 @@ Environment Variables:
   VAELOOM_BRANCH           Git branch to sync with (default: main)
   VAELOOM_DEBOUNCE_MS      Debounce delay after edits (default: 30000 ms)
   VAELOOM_PULL_INTERVAL_MS Periodic pull interval (default: 300000 ms = 5 min)
+
+Optional Vaeloom API reporting (lets the web app show real sync status):
+  VAELOOM_API_URL          API base, e.g. http://localhost:8000
+  VAELOOM_API_TOKEN        Bearer token for the API
+  VAELOOM_WORKSPACE_ID     Workspace to report status for
+  Without all three the vault still syncs locally; the web app shows
+  "No client connected". Reporting is best-effort and never blocks syncing.
 `);
+}
+
+// Optional API reporting. All three must be present or reporting is skipped,
+// which keeps the vault fully functional without any Vaeloom account.
+function reporterOptionsFromEnv(): {
+  apiBaseUrl?: string;
+  token?: string;
+  workspaceId?: string;
+} {
+  const apiBaseUrl = process.env['VAELOOM_API_URL'];
+  const token = process.env['VAELOOM_API_TOKEN'];
+  const workspaceId = process.env['VAELOOM_WORKSPACE_ID'];
+  if (!apiBaseUrl || !token || !workspaceId) {
+    return {};
+  }
+  return { apiBaseUrl, token, workspaceId };
 }
 
 async function main(): Promise<void> {
@@ -105,7 +128,7 @@ async function main(): Promise<void> {
     case 'start': {
       const vaultPath = resolveVaultPath(targetPath);
       const config = loadConfig(vaultPath);
-      const watcher = new VaultSyncWatcher(config);
+      const watcher = new VaultSyncWatcher(config, reporterOptionsFromEnv());
 
       process.on('SIGINT', async () => {
         console.log('\n[vaultsync] Shutting down watcher...');

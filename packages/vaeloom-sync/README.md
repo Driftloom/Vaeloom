@@ -233,6 +233,39 @@ the operation stops rather than pushing on top of a broken history.
 plain folder of Markdown, in-app memory is unaffected, and `vaultsync start`
 logs one clear line and exits without touching anything.
 
+---
+
+## 11. Reporting Status to Vaeloom (optional)
+
+Vaeloom's server does **not** run a git engine. It has no access to your vault.
+The web app shows real sync state only when your local client reports it.
+
+Without reporting, the web UI correctly displays **"No client connected"** — it
+never invents a healthy daemon.
+
+To enable reporting, set three environment variables before `vaultsync start`:
+
+```bash
+export VAELOOM_API_URL="http://localhost:8000"     # your API base
+export VAELOOM_API_TOKEN="<your bearer token>"     # API token
+export VAELOOM_WORKSPACE_ID="<workspace uuid>"
+vaultsync start ~/Documents/MyVault
+```
+
+What gets reported, every 60 seconds and once at startup:
+
+| Field                               | Source                                                                                         |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `daemon_status`                     | Derived server-side from heartbeat freshness — `running`, `stale`, or `not_connected`          |
+| `last_pull_time` / `last_push_time` | Latest commit timestamp on this machine                                                        |
+| `conflicts`                         | Unresolved entries from `.vaeloom/conflicts.json` **whose `.conflict-*.md` file still exists** |
+| `logs`                              | Last 20 lines of `.vaeloom/sync.log`                                                           |
+| `branch`, `remote_url`, `machine`   | Live from this machine                                                                         |
+
+**Reporting is best-effort and can never break syncing.** If the API is down,
+unreachable, or the token is wrong, the failure is recorded internally and git
+sync carries on unaffected. A vault does not require a Vaeloom account.
+
 ### Recovering a stuck rebase
 
 ```bash

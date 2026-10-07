@@ -254,6 +254,10 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
   }, [daemonStatus]);
 
   const statusBadge = useMemo(() => {
+    if (statusData?.lastError) {
+      // A client-reported failure outranks every other signal.
+      return { variant: 'warning' as const, label: 'Sync Error', dot: 'warning' as const };
+    }
     if (statusData?.status === 'syncing' || syncing) {
       return { variant: 'primary' as const, label: 'Syncing Changes...', dot: 'warning' as const };
     }
@@ -273,7 +277,14 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
       };
     }
     return { variant: 'success' as const, label: 'Client Connected', dot: 'active' as const };
-  }, [statusData?.status, syncing, conflicts.length, clientConnected, daemonStatus]);
+  }, [
+    statusData?.status,
+    statusData?.lastError,
+    syncing,
+    conflicts.length,
+    clientConnected,
+    daemonStatus,
+  ]);
 
   return (
     <div className="space-y-6">
@@ -349,6 +360,15 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
                 {statusData?.branch || 'main'}
               </span>
             </p>
+            {statusData?.lastError && (
+              <div
+                role="alert"
+                className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-xs text-[var(--color-text-secondary)]"
+              >
+                <strong className="text-amber-400">Vault client reported an error: </strong>
+                {statusData.lastError}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

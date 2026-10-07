@@ -3,6 +3,7 @@ import * as path from 'path';
 import { VaultSyncConfig } from './config.js';
 import { GitClient } from './git.js';
 import { handleRebaseConflicts, logSyncMessage } from './conflict.js';
+import { VaultReporter, type VaultReporterOptions } from './reporter.js';
 
 export interface WatcherState {
   isWatching: boolean;
@@ -32,9 +33,14 @@ export class VaultSyncWatcher {
     syncInProgress: false,
   };
   private operationQueue: Promise<void> = Promise.resolve();
+  private reporter: VaultReporter | null = null;
 
-  constructor(public readonly config: VaultSyncConfig) {
+  constructor(
+    public readonly config: VaultSyncConfig,
+    reporterOptions: VaultReporterOptions = {},
+  ) {
     this.git = new GitClient(config.vaultPath);
+    this.reporter = new VaultReporter(config, reporterOptions);
   }
 
   public getState(): WatcherState {
@@ -134,6 +140,11 @@ export class VaultSyncWatcher {
 
     this.state.isWatching = true;
     logSyncMessage(this.config.vaultPath, `Sync daemon started. Watching ${this.config.vaultPath}`);
+
+    // Report real state to the Vaeloom API so the web UI is not guessing.
+    // Optional: without credentials the vault still syncs locally, and the
+    // web app simply keeps showing "No client connected".
+    this.reporter?.start();
   }
 
   /**
@@ -152,6 +163,7 @@ export class VaultSyncWatcher {
       await this.watcher.close();
       this.watcher = null;
     }
+    this.reporter?.stop();
     this.state.isWatching = false;
     logSyncMessage(this.config.vaultPath, 'Sync daemon stopped.');
   }

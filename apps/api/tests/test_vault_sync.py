@@ -256,3 +256,173 @@ class TestVaultSync:
             f"/api/v1/vault-sync/status?workspace_id={ws_a}", headers=headers_b
         )
         assert res.status_code == 403, "cross-workspace read must be denied, not served"
+
+    async def test_cross_workspace_report_is_denied(self, client: AsyncClient):
+        """Negative control: a client must not be able to write into another workspace."""
+        headers_a = await self._auth_header(client)
+        ws_a = await self._create_workspace(client, headers_a)
+
+        headers_b = await self._auth_header(client)
+
+        res = await client.post("/api/v1/vault-sync/report", json={
+            "workspace_id": ws_a,
+            "machine": "attacker",
+            "conflicts": [],
+        }, headers=headers_b)
+        assert res.status_code == 403, "cross-workspace report must be denied"
+
+    # ── client report: closes the honesty loop ─────────────────────────────
+
+    async def test_client_report_makes_status_truthful(self, client: AsyncClient):
+        """A reporting client must flip status from not_connected to running."""
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+
+        before = await client.get(
+            f"/api/v1/vault-sync/status?workspace_id={ws_id}", headers=headers
+        )
+        assert before.json()["daemon_status"] == "not_connected"
+
+        res = await client.post("/api/v1/vault-sync/report", json={
+            "workspace_id": ws_id,
+            "client_version": "0.1.0",
+            "machine": "laptop",
+            "branch": "main",
+            "remote_url": "git@github.com:me/vault.git",
+            "vault_path": "/Users/me/Vault",
+            "sync_state": "idle",
+            "last_pull_time": "2026-10-04T10:00:00+00:00",
+            "last_push_time": "2026-10-04T10:01:00+00:00",
+            "conflicts": [],
+            "logs": [{
+                "timestamp": "2026-10-04T10:01:00+00:00",
+                "level": "info",
+                "message": "PUSH SUCCESS: origin/main",
+                "event": "push",
+            }],
+        }, headers=headers)
+        assert res.status_code == 200
+        assert res.json()["daemon_status"] == "running"
+
+        after = await client.get(
+            f"/api/v1/vault-sync/status?workspace_id={ws_id}", headers=headers
+        )
+        data = after.json()
+        assert data["daemon_status"] == "running"
+        assert data["installed"] is True
+        assert data["status"] == "in_sync"
+        assert data["last_pull_time"] == "2026-10-04T10:00:00+00:00"
+        assert data["last_push_time"] == "2026-10-04T10:01:00+00:00"
+        assert data["remote_url"] == "git@github.com:me/vault.git"
+        assert data["vault_path"] == "/Users/me/Vault"
+        assert data["last_client_heartbeat"] is not None
+        assert data["conflicts_count"] == 0
+
+        # Logs must now be the client's real entries, not the empty-state note.
+        logs_res = await client.get(
+            f"/api/v1/vault-sync/logs?workspace_id={ws_id}", headers=headers
+        )
+        logs = logs_res.json()
+        assert len(logs) == 1
+        assert logs[0]["message"] == "PUSH SUCCESS: origin/main"
+
+    async def test_client_report_surfaces_real_conflicts(self, client: AsyncClient):
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+
+        res = await client.post("/api/v1/vault-sync/report", json={
+            "workspace_id": ws_id,
+            "machine": "laptop",
+            "conflicts": [{
+                "id": "c-1",
+                "file": "Notes/Ideas.md",
+                "conflict_file": "Notes/Ideas.conflict-2026-10-04.md",
+                "detected_at": "2026-10-04T10:00:00+00:00",
+                "local_head": "aaaaaaaabbbbbbbb",
+                "remote_head": "ccccccccdddddddd",
+            }],
+            "logs": [],
+        }, headers=headers)
+        assert res.status_code == 200
+        assert res.json()["reported_conflicts"] == 1
+
+        conflicts = await client.get(
+            f"/api/v1/vault-sync/conflicts?workspace_id={ws_id}", headers=headers
+        )
+        assert conflicts.status_code == 200
+        rows = conflicts.json()
+        assert len(rows) == 1
+        assert rows[0]["conflict_file"] == "Notes/Ideas.conflict-2026-10-04.md"
+        assert rows[0]["local_head"] == "aaaaaaaabbbbbbbb"
+
+        status = await client.get(
+            f"/api/v1/vault-sync/status?workspace_id={ws_id}", headers=headers
+        )
+        assert status.json()["conflicts_count"] == 1
+        assert status.json()["status"] == "conflict"
+
+    async def test_conflicts_clear_when_client_reports_none(self, client: AsyncClient):
+        """A client that resolves its queue must visibly empty the server view."""
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+
+        await client.post("/api/v1/vault-sync/report", json={
+            "workspace_id": ws_id,
+            "conflicts": [{
+                "id": "c-1", "file": "A.md", "conflict_file": "A.conflict-2026-10-04.md",
+            }],
+        }, headers=headers)
+        assert len((await client.get(
+            f"/api/v1/vault-sync/conflicts?workspace_id={ws_id}", headers=headers
+        )).json()) == 1
+
+        # Client resolves and reports an empty ledger.
+        await client.post("/api/v1/vault-sync/report", json={
+            "workspace_id": ws_id, "conflicts": [],
+        }, headers=headers)
+        assert (await client.get(
+            f"/api/v1/vault-sync/conflicts?workspace_id={ws_id}", headers=headers
+        )).json() == []
+
+    async def test_report_error_marks_status_error(self, client: AsyncClient):
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+
+        await client.post("/api/v1/vault-sync/report", json={
+            "workspace_id": ws_id,
+            "last_error": "PULL ERROR: rebase refused (unstaged changes)",
+        }, headers=headers)
+
+        data = (await client.get(
+            f"/api/v1/vault-sync/status?workspace_id={ws_id}", headers=headers
+        )).json()
+        assert data["status"] == "error"
+        # The client is still connected, and the error is visible rather than
+        # swallowed — the UI shows this instead of a healthy badge.
+        assert data["daemon_status"] == "running"
+        assert data["last_client_heartbeat"] is not None
+        assert data["last_error"] == "PULL ERROR: rebase refused (unstaged changes)"
+
+    async def test_report_rejects_malformed_payload(self, client: AsyncClient):
+        """Boundary: bad sync_state and oversized machine name must be rejected."""
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+
+        bad_state = await client.post("/api/v1/vault-sync/report", json={
+            "workspace_id": ws_id, "sync_state": "totally_fine",
+        }, headers=headers)
+        assert bad_state.status_code == 422, "unknown sync_state must be rejected"
+
+        missing_ws = await client.post("/api/v1/vault-sync/report", json={
+            "machine": "laptop",
+        }, headers=headers)
+        assert missing_ws.status_code == 422, "workspace_id is required"
+
+    async def test_report_requires_auth(self, client: AsyncClient):
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+
+        res = await client.post("/api/v1/vault-sync/report", json={
+            "workspace_id": ws_id, "machine": "anon",
+        })
+        assert res.status_code == 401, "client reports must be authenticated"

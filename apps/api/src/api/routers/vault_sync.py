@@ -255,6 +255,45 @@ class ConflictResolveRequest(BaseModel):
     strategy: str = Field(..., pattern="^(keep-local|accept-incoming)$")
 
 
+class VaultClientConflict(BaseModel):
+    id: str = Field(..., max_length=200)
+    file: str = Field(..., max_length=1000)
+    conflict_file: str = Field(..., max_length=1000)
+    detected_at: str | None = None
+    local_head: str | None = Field(default=None, max_length=100)
+    remote_head: str | None = Field(default=None, max_length=100)
+
+
+class VaultClientLog(BaseModel):
+    timestamp: str | None = None
+    level: str = Field(default="info", pattern="^(info|warning|error)$")
+    message: str = Field(..., max_length=2000)
+    event: str | None = Field(default=None, max_length=200)
+    executed: bool | None = None
+
+
+class VaultClientReport(BaseModel):
+    """What the local vaultsync client reports about its own machine.
+
+    The server has no git engine, so this is the only way real client state can
+    reach the API. Before this existed, /status derived liveness from a heartbeat
+    that nothing could ever write, so the feature was permanently "not connected".
+    """
+
+    workspace_id: uuid.UUID
+    client_version: str | None = None
+    machine: str | None = Field(default=None, max_length=200)
+    branch: str | None = Field(default=None, max_length=200)
+    remote_url: str | None = Field(default=None, max_length=2000)
+    vault_path: str | None = Field(default=None, max_length=2000)
+    sync_state: str = Field(default="idle", pattern="^(idle|syncing|error)$")
+    last_pull_time: str | None = None
+    last_push_time: str | None = None
+    last_error: str | None = Field(default=None, max_length=2000)
+    conflicts: list[VaultClientConflict] = Field(default_factory=list)
+    logs: list[VaultClientLog] = Field(default_factory=list)
+
+
 # ── Endpoints ────────────────────────────────────────────────────────────────
 
 
@@ -315,6 +354,9 @@ async def get_vault_sync_status(
         "vault_memories": vault_memories,
         "last_pull_time": vault_meta.get("last_pull_time"),
         "last_push_time": vault_meta.get("last_push_time"),
+        # Surfaced so the UI can show a real client failure instead of a
+        # reassuring badge. Previously any client error was invisible here.
+        "last_error": vault_meta.get("last_error"),
         "conflicts_count": len(outstanding),
         "auto_ingest": vault_meta.get("auto_ingest", True),
         "debounce_seconds": vault_meta.get("debounce_seconds", DEFAULT_DEBOUNCE_SECONDS),
@@ -458,18 +500,23 @@ async def get_vault_sync_logs(
     daemon_status = _derive_daemon_status(
         cfg.get("last_client_heartbeat"), cfg.get("daemon_status")
     )
+    if daemon_status == "running":
+        message = (
+            "No activity reported yet. The vaultsync client is connected but has "
+            "not sent any log entries — run `vaultsync sync` on that machine."
+        )
+    else:
+        message = (
+            "No vaultsync client is connected, so there is no activity to show. "
+            "Install and start the client on the machine holding your vault "
+            "(`vaultsync init <path> --remote <url>`, then `vaultsync start`)."
+        )
     return [
         {
             "timestamp": datetime.now(UTC).isoformat(),
             "level": "info",
             "event": "no_activity",
-            "message": (
-                "No sync activity recorded yet. Git sync runs in the local "
-                "vaultsync client; start it on the machine holding your vault."
-                if daemon_status == "running"
-                else "No vaultsync client is connected, so there is no activity to "
-                "show. Install and start the client on the machine holding your vault."
-            ),
+            "message": message,
         }
     ]
 
@@ -928,17 +975,87 @@ async def ingest_vault_notes(
     }
 
 
+@router.post("/report", response_model=dict[str, Any])
+async def report_vault_client_state(
+    body: VaultClientReport,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Record real state reported by the local vaultsync client.
+
+    This is what makes the rest of the API honest: /status derives daemon liveness
+    from `last_client_heartbeat`, /conflicts returns the client's actual conflict
+    ledger, and /logs returns its actual activity. Without a report path those
+    endpoints could only ever report "nothing to report", which is indistinguishable
+    from "everything is fine".
+
+    Only unresolved conflicts are retained, so a client that clears its queue
+    visibly empties the server's view.
+    """
+    user_id = uuid.UUID(current_user["sub"])
+    await _verify_workspace_access(body.workspace_id, user_id, db)
+    connector = await _get_or_create_vault_connector(body.workspace_id, db)
+
+    now = datetime.now(UTC)
+    cfg = dict(connector.config or {})
+
+    cfg["last_client_heartbeat"] = now.isoformat()
+    cfg["client_version"] = body.client_version
+    cfg["machine"] = body.machine
+    cfg["sync_state"] = body.sync_state
+    cfg["last_pull_time"] = body.last_pull_time
+    cfg["last_push_time"] = body.last_push_time
+    cfg["last_error"] = body.last_error
+    if body.branch:
+        cfg["branch"] = body.branch
+    if body.remote_url:
+        cfg["remote_url"] = body.remote_url
+    if body.vault_path:
+        cfg["vault_path"] = body.vault_path
+
+    # Replace, never merge: the client is the source of truth for its own ledger.
+    cfg["conflicts"] = [c.model_dump() for c in body.conflicts]
+    cfg["sync_logs"] = [log.model_dump() for log in body.logs][-50:]
+
+    # Derive the coarse status from what the client actually reported.
+    if body.last_error:
+        cfg["status"] = "error"
+    elif body.conflicts:
+        cfg["status"] = "conflict"
+    elif body.sync_state == "syncing":
+        cfg["status"] = "syncing"
+    else:
+        cfg["status"] = "in_sync"
+
+    connector.config = cfg
+    await db.commit()
+
+    return {
+        "success": True,
+        "workspace_id": str(body.workspace_id),
+        "received_at": now.isoformat(),
+        "reported_conflicts": len(cfg["conflicts"]),
+        "reported_logs": len(cfg["sync_logs"]),
+        "daemon_status": _derive_daemon_status(cfg["last_client_heartbeat"], None),
+        "status": cfg["status"],
+    }
+
+
 @router.get("/conflicts", response_model=list[dict[str, Any]])
 async def list_vault_conflicts(
     workspace_id: uuid.UUID = Query(..., description="Workspace ID"),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
-    """List any active rebase conflict files recorded for this vault."""
+    """Conflicts most recently reported by the local vaultsync client.
+
+    Empty means "the client reported no conflicts", not "the vault is clean" —
+    check /status for whether a client has ever checked in.
+    """
     user_id = uuid.UUID(current_user["sub"])
     await _verify_workspace_access(workspace_id, user_id, db)
     connector = await _get_or_create_vault_connector(workspace_id, db)
-    return connector.config.get("conflicts", [])
+    return connector.config.get("conflicts", []) or []
 
 
 @router.post("/conflicts/{conflict_id}/resolve", response_model=dict[str, Any])
