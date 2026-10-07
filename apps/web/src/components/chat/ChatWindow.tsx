@@ -33,6 +33,8 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   const searchParams = useSearchParams();
   const docId = searchParams?.get('docId');
   const docName = searchParams?.get('docName');
+  const paramPrompt = searchParams?.get('prompt');
+  const paramAgent = searchParams?.get('agent');
   const { status: connectionStatus } = useRealtime();
 
   // Mobile drawer. Defaults closed: the old component defaulted it open, so a
@@ -54,6 +56,17 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
       }
     }
   }, [docName, docId, store.catalogState]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Deep-link integration from Skills & Capabilities Hub
+  useEffect(() => {
+    if (paramAgent) {
+      store.setSelectedAgent(paramAgent);
+    }
+    if (paramPrompt && !store.input) {
+      store.setInput(paramPrompt);
+      inputRef.current?.focus();
+    }
+  }, [paramPrompt, paramAgent]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const streaming = store.messages.some((m) => m.status === 'streaming');
   const { handleScroll, scrollToBottom, showNewMessages } = useChatAutoScroll(

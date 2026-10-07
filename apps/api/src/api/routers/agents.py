@@ -171,34 +171,6 @@ class ChatMessage(BaseModel):
     maxTokens: int | None = 4096
 
 
-@router.get("/models", response_model=dict[str, Any])
-async def get_model_catalog(
-    current_user: dict = Depends(get_current_user),
-) -> dict[str, Any]:
-    """Return model catalog with providers, tiers, pricing, and health status."""
-    from ..services.model_router import MODEL_CATALOG
-
-    models_list = [
-        {
-            "id": name,
-            "name": name,
-            "provider": cfg.provider,
-            "tier": cfg.tier,
-            "maxTokens": cfg.max_tokens,
-            "costPer1kInput": cfg.cost_per_1k_input,
-            "costPer1kOutput": cfg.cost_per_1k_output,
-            "healthStatus": cfg.health_status,
-            "isActive": cfg.is_active,
-        }
-        for name, cfg in MODEL_CATALOG.items()
-    ]
-    return {
-        "models": models_list,
-        "total": len(models_list),
-        "defaultModel": "gpt-4o-mini",
-    }
-
-
 async def _verify_workspace_access(workspace_id: str, current_user: dict, db: AsyncSession) -> None:
     """Verify caller owns or is member of workspace — fail-closed (IDOR guard).
 
@@ -990,6 +962,146 @@ async def list_agents(
     }
 
 
+@router.get("/models", response_model=dict)
+async def get_models(
+    workspace_id: str | None = Query(default=None),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return authentic live foundation model matrix reporting platform-managed vs BYOK availability."""
+    from ..config import settings
+    user_id = current_user.get("sub") or current_user.get("user_id") if current_user else None
+
+    if workspace_id:
+        await _verify_workspace_access(workspace_id, current_user, db)
+
+    has_user_openai = False
+    has_user_anthropic = False
+    if user_id:
+        try:
+            from ..services.provider_key_service import provider_key_service
+            res_oa = await provider_key_service.resolve_effective(db, str(user_id), "openai", workspace_id=str(workspace_id) if workspace_id else None)
+            if res_oa and res_oa.get("key"):
+                has_user_openai = True
+        except Exception:
+            pass
+        try:
+            from ..services.provider_key_service import provider_key_service
+            res_ant = await provider_key_service.resolve_effective(db, str(user_id), "anthropic", workspace_id=str(workspace_id) if workspace_id else None)
+            if res_ant and res_ant.get("key"):
+                has_user_anthropic = True
+        except Exception:
+            pass
+
+    has_system_openai = bool(getattr(settings, "openai_api_key", None))
+    has_system_anthropic = bool(getattr(settings, "anthropic_api_key", None))
+    has_groq = bool(getattr(settings, "groq_api_key", None) or (getattr(settings, "llm_provider", None) == "groq" and getattr(settings, "llm_api_key", None)))
+    has_gemini = bool(getattr(settings, "gemini_api_key", None))
+    has_ollama = bool(getattr(settings, "ollama_api_key", None) or getattr(settings, "ollama_base_url", None))
+    has_jev = bool(getattr(settings, "jev_api_key", None))
+
+    models = [
+        {
+            "id": "gemma4:31b",
+            "name": "Ollama Cloud Gemma 4 31B",
+            "provider": "ollama",
+            "tier": "balanced",
+            "maxTokens": 32768,
+            "costPer1kInput": 0.0,
+            "costPer1kOutput": 0.0,
+            "status": "ready" if has_ollama else "degraded",
+            "systemRole": "system2",
+            "isPlatformManaged": True,
+            "isDefault": True,
+            "badge": "🟢 Platform Active (System 2)",
+            "description": "Enterprise generative synthesis with XML context fencing & citation grounding.",
+        },
+        {
+            "id": "typesafe-ai/jev",
+            "name": "TypeSafe AI Jev",
+            "provider": "typesafe",
+            "tier": "fast",
+            "maxTokens": 8192,
+            "costPer1kInput": 0.0,
+            "costPer1kOutput": 0.0,
+            "status": "ready" if has_jev else "degraded",
+            "systemRole": "system1",
+            "isPlatformManaged": True,
+            "isDefault": False,
+            "badge": "⚡ System 1 Highway (<50ms)",
+            "description": "Sub-50ms deterministic action routing & semantic similarity scoring.",
+        },
+        {
+            "id": "openai/gpt-oss-120b",
+            "name": "Groq GPT-OSS 120B",
+            "provider": "groq",
+            "tier": "fast",
+            "maxTokens": 131072,
+            "costPer1kInput": 0.00015,
+            "costPer1kOutput": 0.0006,
+            "status": "ready" if has_groq else "degraded",
+            "systemRole": "system2",
+            "isPlatformManaged": True,
+            "isDefault": False,
+            "badge": "🟢 Platform Active",
+            "description": "Ultra-low-latency LPU inference for high-speed agentic execution.",
+        },
+        {
+            "id": "gemini-3.5-flash",
+            "name": "Gemini 3.5 Flash",
+            "provider": "google",
+            "tier": "fast",
+            "maxTokens": 1000000,
+            "costPer1kInput": 0.000075,
+            "costPer1kOutput": 0.0003,
+            "status": "ready" if has_gemini else "degraded",
+            "systemRole": "system2",
+            "isPlatformManaged": True,
+            "isDefault": False,
+            "badge": "🟢 Platform Active",
+            "description": "1M token long-context processing for large document corpora.",
+        },
+        {
+            "id": "gpt-4o",
+            "name": "OpenAI GPT-4o",
+            "provider": "openai",
+            "tier": "powerful",
+            "maxTokens": 128000,
+            "costPer1kInput": 0.0025,
+            "costPer1kOutput": 0.01,
+            "status": "ready" if (has_system_openai or has_user_openai) else "byok_required",
+            "systemRole": "byok",
+            "isPlatformManaged": has_system_openai,
+            "isDefault": False,
+            "badge": "🟢 Active (BYOK)" if has_user_openai else ("🟢 Platform Active" if has_system_openai else "🔑 BYOK Required"),
+            "description": "Requires your OpenAI API Key. Configure in Workspace Settings > BYOK." if not (has_system_openai or has_user_openai) else "Advanced multi-modal reasoning and code generation.",
+        },
+        {
+            "id": "claude-3-5-sonnet-20241022",
+            "name": "Claude 3.5 Sonnet",
+            "provider": "anthropic",
+            "tier": "powerful",
+            "maxTokens": 200000,
+            "costPer1kInput": 0.003,
+            "costPer1kOutput": 0.015,
+            "status": "ready" if (has_system_anthropic or has_user_anthropic) else "byok_required",
+            "systemRole": "byok",
+            "isPlatformManaged": has_system_anthropic,
+            "isDefault": False,
+            "badge": "🟢 Active (BYOK)" if has_user_anthropic else ("🟢 Platform Active" if has_system_anthropic else "🔑 BYOK Required"),
+            "description": "Requires your Anthropic API Key. Configure in Workspace Settings > BYOK." if not (has_system_anthropic or has_user_anthropic) else "High-fidelity strategic writing and complex reasoning.",
+        },
+    ]
+
+    return {
+        "active_default": "gemma4:31b",
+        "models": models,
+        "total": len(models),
+        "platform_managed_count": sum(1 for m in models if m["isPlatformManaged"]),
+        "byok_required_count": sum(1 for m in models if m["status"] == "byok_required"),
+    }
+
+
 @router.get("/{agent_id}", response_model=AgentResponse)
 async def get_agent(
     agent_id: uuid.UUID,
@@ -1156,140 +1268,4 @@ async def schedule_agent(
         pass
     return ScheduleResponse.model_validate(schedule)
 
-
-@router.get("/models", response_model=dict)
-async def get_models(
-    workspace_id: str | None = Query(default=None),
-    current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Return authentic live foundation model matrix reporting platform-managed vs BYOK availability."""
-    from ..config import settings
-    user_id = current_user.get("sub") or current_user.get("user_id") if current_user else None
-
-    has_user_openai = False
-    has_user_anthropic = False
-    if user_id:
-        try:
-            from ..services.provider_key_service import provider_key_service
-            res_oa = await provider_key_service.resolve_effective(db, str(user_id), "openai", workspace_id=str(workspace_id) if workspace_id else None)
-            if res_oa and res_oa.get("key"):
-                has_user_openai = True
-        except Exception:
-            pass
-        try:
-            from ..services.provider_key_service import provider_key_service
-            res_ant = await provider_key_service.resolve_effective(db, str(user_id), "anthropic", workspace_id=str(workspace_id) if workspace_id else None)
-            if res_ant and res_ant.get("key"):
-                has_user_anthropic = True
-        except Exception:
-            pass
-
-    has_system_openai = bool(getattr(settings, "openai_api_key", None))
-    has_system_anthropic = bool(getattr(settings, "anthropic_api_key", None))
-    has_groq = bool(getattr(settings, "groq_api_key", None) or (getattr(settings, "llm_provider", None) == "groq" and getattr(settings, "llm_api_key", None)))
-    has_gemini = bool(getattr(settings, "gemini_api_key", None))
-    has_ollama = bool(getattr(settings, "ollama_api_key", None) or getattr(settings, "ollama_base_url", None))
-    has_jev = bool(getattr(settings, "jev_api_key", None))
-
-    models = [
-        {
-            "id": "gemma4:31b",
-            "name": "Ollama Cloud Gemma 4 31B",
-            "provider": "ollama",
-            "tier": "balanced",
-            "maxTokens": 32768,
-            "costPer1kInput": 0.0,
-            "costPer1kOutput": 0.0,
-            "status": "ready" if has_ollama else "degraded",
-            "systemRole": "system2",
-            "isPlatformManaged": True,
-            "isDefault": True,
-            "badge": "🟢 Platform Active (System 2)",
-            "description": "Enterprise generative synthesis with XML context fencing & citation grounding.",
-        },
-        {
-            "id": "typesafe-ai/jev",
-            "name": "TypeSafe AI Jev",
-            "provider": "typesafe",
-            "tier": "fast",
-            "maxTokens": 8192,
-            "costPer1kInput": 0.0,
-            "costPer1kOutput": 0.0,
-            "status": "ready" if has_jev else "degraded",
-            "systemRole": "system1",
-            "isPlatformManaged": True,
-            "isDefault": False,
-            "badge": "⚡ System 1 Highway (<50ms)",
-            "description": "Sub-50ms deterministic action routing & semantic similarity scoring.",
-        },
-        {
-            "id": "openai/gpt-oss-120b",
-            "name": "Groq GPT-OSS 120B",
-            "provider": "groq",
-            "tier": "fast",
-            "maxTokens": 131072,
-            "costPer1kInput": 0.00015,
-            "costPer1kOutput": 0.0006,
-            "status": "ready" if has_groq else "degraded",
-            "systemRole": "system2",
-            "isPlatformManaged": True,
-            "isDefault": False,
-            "badge": "🟢 Platform Active",
-            "description": "Ultra-low-latency LPU inference for high-speed agentic execution.",
-        },
-        {
-            "id": "gemini-3.5-flash",
-            "name": "Gemini 3.5 Flash",
-            "provider": "google",
-            "tier": "fast",
-            "maxTokens": 1000000,
-            "costPer1kInput": 0.000075,
-            "costPer1kOutput": 0.0003,
-            "status": "ready" if has_gemini else "degraded",
-            "systemRole": "system2",
-            "isPlatformManaged": True,
-            "isDefault": False,
-            "badge": "🟢 Platform Active",
-            "description": "1M token long-context processing for large document corpora.",
-        },
-        {
-            "id": "gpt-4o",
-            "name": "OpenAI GPT-4o",
-            "provider": "openai",
-            "tier": "powerful",
-            "maxTokens": 128000,
-            "costPer1kInput": 0.0025,
-            "costPer1kOutput": 0.01,
-            "status": "ready" if (has_system_openai or has_user_openai) else "byok_required",
-            "systemRole": "byok",
-            "isPlatformManaged": has_system_openai,
-            "isDefault": False,
-            "badge": "🟢 Active (BYOK)" if has_user_openai else ("🟢 Platform Active" if has_system_openai else "🔑 BYOK Required"),
-            "description": "Requires your OpenAI API Key. Configure in Workspace Settings > BYOK." if not (has_system_openai or has_user_openai) else "Advanced multi-modal reasoning and code generation.",
-        },
-        {
-            "id": "claude-3-5-sonnet-20241022",
-            "name": "Claude 3.5 Sonnet",
-            "provider": "anthropic",
-            "tier": "powerful",
-            "maxTokens": 200000,
-            "costPer1kInput": 0.003,
-            "costPer1kOutput": 0.015,
-            "status": "ready" if (has_system_anthropic or has_user_anthropic) else "byok_required",
-            "systemRole": "byok",
-            "isPlatformManaged": has_system_anthropic,
-            "isDefault": False,
-            "badge": "🟢 Active (BYOK)" if has_user_anthropic else ("🟢 Platform Active" if has_system_anthropic else "🔑 BYOK Required"),
-            "description": "Requires your Anthropic API Key. Configure in Workspace Settings > BYOK." if not (has_system_anthropic or has_user_anthropic) else "High-fidelity strategic writing and complex reasoning.",
-        },
-    ]
-
-    return {
-        "active_default": "gemma4:31b",
-        "models": models,
-        "total": len(models),
-        "platform_managed_count": sum(1 for m in models if m["isPlatformManaged"]),
-        "byok_required_count": sum(1 for m in models if m["status"] == "byok_required"),
-    }
 

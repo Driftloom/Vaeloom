@@ -64,6 +64,52 @@ class TestChatFDECompaction:
         )
         assert res.status_code == 404, "Cross-tenant access must return 404"
 
+    async def test_get_models_requires_auth(self, client: AsyncClient):
+        """Negative control: unauthenticated GET /models returns 401."""
+        res = await client.get("/api/v1/agents/models")
+        assert res.status_code == 401
+
+    async def test_get_models_cross_workspace_idor_denied(self, client: AsyncClient):
+        """Negative control: User B cannot query models with User A's workspace ID."""
+        headers_a = await self._auth_header(client)
+        headers_b = await self._auth_header(client)
+        ws_a = await self._create_workspace(client, headers_a)
+
+        res = await client.get(
+            f"/api/v1/agents/models?workspace_id={ws_a}",
+            headers=headers_b,
+        )
+        assert res.status_code == 403, "Cross-workspace access must be denied"
+
+    async def test_get_models_honest_discovery(self, client: AsyncClient):
+        """Honesty verification: default model is gemma4:31b, System 1 is Jev, BYOK models require keys."""
+        headers = await self._auth_header(client)
+        ws = await self._create_workspace(client, headers)
+
+        res = await client.get(
+            f"/api/v1/agents/models?workspace_id={ws}",
+            headers=headers,
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["active_default"] == "gemma4:31b"
+        models = data["models"]
+        
+        # Verify System 2 default
+        gemma = next(m for m in models if m["id"] == "gemma4:31b")
+        assert gemma["isPlatformManaged"] is True
+        assert gemma["systemRole"] == "system2"
+
+        # Verify System 1 fast highway
+        jev = next(m for m in models if m["id"] == "typesafe-ai/jev")
+        assert jev["systemRole"] == "system1"
+
+        # Verify BYOK models
+        gpt4o = next(m for m in models if m["id"] == "gpt-4o")
+        assert gpt4o["systemRole"] == "byok"
+        claude = next(m for m in models if m["id"] == "claude-3-5-sonnet-20241022")
+        assert claude["systemRole"] == "byok"
+
     # ── Unit: Injection Quarantine Boundary ───────────────────────────────────
 
     async def test_quarantine_historical_turns_neutralizes_injection(self):

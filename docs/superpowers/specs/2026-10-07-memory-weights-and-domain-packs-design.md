@@ -245,12 +245,17 @@ two columns. No data is destroyed in phase 1.
 ### Frontend
 
 `packages/shared-types` stops hand-maintaining the union as the source of truth.
-Two supported options, chosen during implementation:
+**Decision: generate the artifact.** A script emits the TS union from the pack
+table; the generated file is committed and CI verifies it is current.
 
-- **Generated artifact** — a script emits the TS union from the pack table.
-  Deterministic, no runtime dependency on pack availability.
-- **Runtime fetch** — packs read via a `GET /memory-type-packs` endpoint and the
-  UI filters from that.
+Rationale: the UI needs a stable type union at compile time for `MemoryCreate`
+payloads. A runtime fetch via `GET /memory-type-packs` would either reintroduce
+`any` at the boundary or require an await before the memory page can render its
+filters. Generation keeps `tsc` honest and turns the drift guard into a CI check
+on a committed file rather than a live call.
+
+Rejected alternative: runtime fetch. Revisit only if packs must change without a
+deploy — which phase 1 does not require.
 
 Either way, one test asserts pack contents and the TS union agree, and fails on
 drift. **That test is the point of the change** — it is what was missing when the
@@ -258,8 +263,9 @@ lists diverged.
 
 ### Testing
 
-- Snapshot test: the `career` pack equals the historical 24 values, in order.
-  Pack drift is then visible in review.
+- Snapshot test: the seeded `career` pack equals the literal 24-value list
+  recorded above, in order. Asserts contents, not count, so pack drift is visible
+  in review.
 - Every type currently used in the codebase resolves under the pack.
 - An unknown type is rejected with an error naming the valid pack.
 - Cross-tenant pack reads denied (negative control).
