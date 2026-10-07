@@ -492,6 +492,32 @@ class Memory(Base):
     )
 
 
+class MemoryTaxonomyLedger(Base):
+    """Append-only provenance for every memory-type remap (migration 0027).
+
+    The table itself is created by migration 0027 (PostgreSQL-only DDL); this ORM
+    mapping exists so the ledger is reachable through the normal session instead
+    of raw SQL. Rows are written by ``memory_service._record_taxonomy_change``.
+
+    Note: the table carries no tenant_id/workspace_id column, so its RLS policy is
+    the service-role policy set in migration 0053. It stores only ids, type names,
+    and a checksum -- never memory content.
+    """
+
+    __tablename__ = "memory_taxonomy_ledger"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    memory_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    from_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    to_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    taxonomy_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    migration_wave: Mapped[str] = mapped_column(String(50), default="CONT-P12")
+    checksum: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (Index("idx_taxonomy_ledger_memory", "memory_id"),)
+
+
 class MemoryRecord(Base):
     __tablename__ = "memory_records"
 

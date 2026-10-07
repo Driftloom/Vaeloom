@@ -1,20 +1,26 @@
 """End-to-end tests for the Document RAG cognitive lifecycle:
-Parsing -> Chunking -> Vector Store Isolation -> Hybrid Retrieval -> Reranking -> Context Budgeting -> Agent Synthesis & Grounded Citations.
+Parsing -> Chunking -> Vector Store Isolation -> Hybrid Retrieval -> Context Budgeting -> Agent Synthesis & Grounded Citations.
+
+Ranking/budgeting is asserted against the live ContextEngine
+(`api.services.context_engine`), which is what `_assemble_rag_context` actually
+uses. These tests previously imported `api.agents.memory_agent.retrieval`, a
+module that was never wired into production and has since been deleted.
 """
 import uuid
-import pytest
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from api.agents.document_agent.handler import DocumentAgent
-from api.agents.memory_agent.retrieval import (
-    RetrievedMemory,
-    fit_to_context_window,
-    rerank,
-)
 from api.config import settings
 from api.infrastructure.vector_store import FallbackVectorStore, VectorRecord
 from api.ingestion.chunking import chunk_text
 from api.ingestion.parsers import parse_document
+from api.services.context_engine import (
+    ContextItem,
+    compress_to_budget,
+    rank_items,
+)
 
 
 @pytest.mark.asyncio
@@ -105,57 +111,64 @@ async def test_vector_store_zero_trust_isolation():
     assert results_b[0].metadata["workspace_id"] == ws_b
 
 
-@pytest.mark.asyncio
-async def test_reranker_deduplication_and_overlap_suppression():
-    """Verify reranking dedupes IDs and suppresses near-duplicate overlapping chunk texts."""
-    memories = [
-        RetrievedMemory(
-            id="mem-1",
+def test_ranker_orders_by_cognitive_priority_then_score():
+    """Live ranking path (ContextEngine) orders by cognitive priority, then score."""
+    items = [
+        ContextItem(
+            kind="memory",
             content="Enterprise agent adoptions grew 34% YoY across North American regions.",
-            relevance_score=0.95,
+            relevance=0.95,
         ),
-        RetrievedMemory(
-            id="mem-1",  # exact duplicate ID
-            content="Enterprise agent adoptions grew 34% YoY across North American regions.",
-            relevance_score=0.95,
-        ),
-        RetrievedMemory(
-            id="mem-2",  # near-duplicate substring overlap
-            content="Enterprise agent adoptions grew 34% YoY",
-            relevance_score=0.80,
-        ),
-        RetrievedMemory(
-            id="mem-3",
+        ContextItem(
+            kind="evidence",
             content="Operating expenses decreased by 12% following cloud infrastructure optimization.",
-            relevance_score=0.88,
+            relevance=0.88,
         ),
+        ContextItem(kind="memory", content="Low relevance archive note.", relevance=0.10),
     ]
 
-    reranked = await rerank(memories, query="financial performance", limit=5)
-    # mem-1 duplicate ID should be removed, and mem-2 substring overlap should be suppressed
-    ids = [r.id for r in reranked]
-    assert "mem-1" in ids
-    assert "mem-3" in ids
-    assert ids.count("mem-1") == 1
-    # mem-1 has highest relevance, then mem-3
-    assert reranked[0].id == "mem-1"
-    assert reranked[1].id == "mem-3"
+    ranked = rank_items(items, limit=5)
+
+    # "evidence" maps to P1_ACTIVE_GROUNDING, which must outrank P3_DYNAMIC_MEMORY
+    # despite the memory's higher raw relevance -- the point of cognitive priority.
+    assert ranked[0].content.startswith("Operating expenses")
+    assert ranked[0].priority == "P1_ACTIVE_GROUNDING"
+    assert ranked[1].priority == "P3_DYNAMIC_MEMORY"
+    # Within the same priority tier, higher score ranks first.
+    assert ranked[1].score > ranked[2].score
 
 
-@pytest.mark.asyncio
-async def test_context_budget_window_fitting():
-    """Verify fit_to_context_window strictly adheres to token allocation limits."""
-    # Create several retrieved chunks totaling ~1500 tokens (4 chars/token -> ~6000 chars)
-    memories = [
-        RetrievedMemory(id=f"mem-{i}", content="A" * 800, relevance_score=1.0 - (i * 0.1))
+def test_context_budget_compression_never_exceeds_budget():
+    """Live budget path (ContextEngine.compress_to_budget) must respect the token cap."""
+    items = [
+        ContextItem(kind="memory", content="A" * 800, relevance=1.0 - (i * 0.05))
         for i in range(10)
     ]
+    total_tokens = sum(i.token_estimate for i in items)
+    assert total_tokens > 1000, "fixture must actually exceed the budget"
 
-    # Available budget: max_context_tokens - 500 (sys) - 1000 (resp) = 1000 tokens (4000 chars)
-    fitted = fit_to_context_window(memories, max_context_tokens=2500)
-    total_chars = sum(len(m.content) for m in fitted)
-    assert total_chars <= 4000
-    assert len(fitted) < len(memories)
+    kept, compressed = compress_to_budget(items, token_budget=1000)
+
+    assert sum(i.token_estimate for i in kept) <= 1000
+    assert len(kept) < len(items), "over-budget items must be dropped"
+    assert compressed, "compression must report what it dropped"
+
+
+def test_context_budget_preserves_grounding_over_dynamic_memory():
+    """A single oversized grounding item must survive compression."""
+    items = [
+        ContextItem(kind="evidence", content="D" * 8000, relevance=0.9),
+        ContextItem(kind="memory", content="m" * 8000, relevance=0.8),
+    ]
+
+    kept, _compressed = compress_to_budget(items, token_budget=600)
+
+    kinds = [i.kind for i in kept]
+    assert "evidence" in kinds, "Active Grounding must be preserved before Dynamic Memory"
+    if "memory" in kinds:
+        assert kinds.index("evidence") < kinds.index("memory")
+    # A hard-truncated item may carry a small marker suffix, so allow that overhead.
+    assert sum(i.token_estimate for i in kept) <= 600 + 4
 
 
 @pytest.mark.asyncio

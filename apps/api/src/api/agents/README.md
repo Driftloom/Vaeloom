@@ -10,7 +10,7 @@ the shared `BaseAgent` harness in `../orchestrator/`.
 | Agent        | Directory             | Purpose                                         |
 | ------------ | --------------------- | ----------------------------------------------- |
 | Organization | `organization_agent/` | Workspace organization, tagging, categorization |
-| Memory       | `memory_agent/`       | Memory extraction, retrieval, merge, versioning |
+| Memory       | `memory_agent/`       | Memory extraction, merge, versioning            |
 | Resume       | `resume_agent/`       | Resume generation and optimization              |
 | ATS          | `ats_agent/`          | ATS score analysis and improvement suggestions  |
 | Job Search   | `job_search_agent/`   | Job discovery and matching                      |
@@ -36,6 +36,22 @@ loop with a QA gate (3 retries).
 Approval gates are enforced in `../orchestrator/loop.py` via `lookup_approval()`
 for consequential actions (job applications, email send, file modify, calendar
 write).
+
+## Where memory retrieval actually lives
+
+`memory_agent/retrieval.py` was **removed** (2026-10-07). It was never imported
+by any production module — only by three test files — so it was a second,
+divergent copy of retrieval logic with its own hardcoded relevance score.
+
+The live retrieval path is `MemoryService.search_memories` in
+`../services/memory_service.py`, reached from:
+
+- `../routers/memory.py` (`GET /memories/search`)
+- `../orchestrator/loop.py` (`_assemble_rag_context`)
+
+It does vector search via `../infrastructure/vector_store.py` (pgvector, HNSW
+via migration 0011) with keyword fallback and RRF fusion. Changes to retrieval
+behavior belong there, not in the agent package.
 
 ## Sub-package: `memory/`
 

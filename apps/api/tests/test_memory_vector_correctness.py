@@ -22,7 +22,7 @@ import pytest
 
 from api.infrastructure.vector_store import FallbackVectorStore, VectorRecord
 from api.models.schema import Memory
-from api.schemas.memory import MemorySearch, MemorySupersedeRequest
+from api.schemas.memory import MemorySearch, MemorySupersedeRequest, MemoryUpdate
 from api.services import llm_service as llm_module
 from api.services.memory_service import MemoryService
 
@@ -484,6 +484,95 @@ class TestSearchHonoursStatusFilter:
         assert filters["source_type"] == "memory"
         assert filters["workspace_id"] == str(ws_id)
 
+class TestTaxonomyLedgerProvenance:
+    """The 0027 ledger table must actually be written (it previously had zero writers)."""
+
+    async def test_type_remap_records_ledger_row(self, svc, db_session, monkeypatch):
+        from api.models.schema import MemoryTaxonomyLedger
+
+        ws_id = uuid.uuid4()
+        mem = await _seed_memory(db_session, ws_id, "active", "typed fact")
+        mem.type = "note"
+
+        added = []
+        orig_add = db_session.add
+
+        def spy(obj):
+            added.append(obj)
+            return orig_add(obj)
+
+        monkeypatch.setattr(db_session, "add", spy)
+
+        updated = await svc.update_memory(
+            db_session,
+            mem.id,
+            MemoryUpdate(type="insight"),
+            tenant_id=None,
+            workspace_id=ws_id,
+        )
+
+        assert updated is not None
+        ledger_rows = [o for o in added if isinstance(o, MemoryTaxonomyLedger)]
+        assert len(ledger_rows) == 1, "a type remap must write exactly one ledger row"
+        row = ledger_rows[0]
+        assert row.from_type == "note"
+        assert row.to_type == "insight"
+        assert row.memory_id == mem.id
+        assert row.taxonomy_version == 2, "insight is an enterprise type"
+        assert row.checksum
+
+    async def test_same_type_change_records_nothing(self, svc, db_session, monkeypatch):
+        ws_id = uuid.uuid4()
+        mem = await _seed_memory(db_session, ws_id, "active", "typed fact")
+        mem.type = "note"
+
+        added = []
+        orig_add = db_session.add
+
+        def spy(obj):
+            added.append(obj)
+            return orig_add(obj)
+
+        monkeypatch.setattr(db_session, "add", spy)
+
+        await svc.update_memory(
+            db_session,
+            mem.id,
+            MemoryUpdate(type="note"),
+            tenant_id=None,
+            workspace_id=ws_id,
+        )
+
+        from api.models.schema import MemoryTaxonomyLedger
+
+        assert not [o for o in added if isinstance(o, MemoryTaxonomyLedger)]
+
+    async def test_ledger_write_failure_does_not_break_update(self, svc, db_session, monkeypatch):
+        """Provenance is best-effort and must never fail the user's write."""
+        ws_id = uuid.uuid4()
+        mem = await _seed_memory(db_session, ws_id, "active", "typed fact")
+        mem.type = "note"
+
+        import api.models.schema as schema_mod
+
+        def boom(*args, **kwargs):
+            raise RuntimeError("ledger unavailable")
+
+        monkeypatch.setattr(schema_mod, "MemoryTaxonomyLedger", boom)
+
+        updated = await svc.update_memory(
+            db_session,
+            mem.id,
+            MemoryUpdate(type="insight"),
+            tenant_id=None,
+            workspace_id=ws_id,
+        )
+
+        assert updated is not None
+        assert updated.type == "insight"
+
+
+class TestScoreProvenance:
     async def test_score_comes_from_real_distance_not_constant(self, svc, monkeypatch):
         ws_id = uuid.uuid4()
         near = MagicMock(spec=Memory)

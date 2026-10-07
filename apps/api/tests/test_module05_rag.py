@@ -1,13 +1,17 @@
 """Test Suite: Module 05 Vector RAG Pipeline (M05-RAG & M05-OCR).
-Verifies parsing, chunking with byte offsets, vector store isolation, reranking, and context window budgeting.
+Verifies parsing, chunking with byte offsets, vector store isolation, ranking, and context window budgeting.
+
+Ranking/budgeting is asserted against the live ContextEngine
+(`api.services.context_engine`). These tests previously imported the deleted,
+never-wired `api.agents.memory_agent.retrieval`.
 """
 import uuid
+
 import pytest
 
-from api.ingestion.parsers import parse_document
-from api.ingestion.chunking import chunk_text
 from api.infrastructure.vector_store import FallbackVectorStore, VectorRecord
-from api.agents.memory_agent.retrieval import RetrievedMemory, rerank, fit_to_context_window
+from api.ingestion.parsers import parse_document
+from api.services.context_engine import ContextItem, compress_to_budget, rank_items
 
 
 @pytest.mark.asyncio
@@ -42,19 +46,22 @@ async def test_vector_store_zero_trust_isolation():
 
 @pytest.mark.asyncio
 async def test_reranking_and_context_budgeting():
-    """Verify deduplication, overlap suppression, and context window token constraints."""
-    memories = [
-        RetrievedMemory(id="m1", content="Strategic growth grew 34% YoY across cloud services.", relevance_score=0.95),
-        RetrievedMemory(id="m1", content="Strategic growth grew 34% YoY across cloud services.", relevance_score=0.95),  # dup id
-        RetrievedMemory(id="m2", content="Strategic growth grew 34% YoY", relevance_score=0.80),  # substring overlap
-        RetrievedMemory(id="m3", content="Operational costs dropped by 14% after rightsizing.", relevance_score=0.90),
+    """Verify ranking order and context window token constraints.
+
+    Asserted against the live ContextEngine used by `_assemble_rag_context`.
+    """
+    items = [
+        ContextItem(kind="memory", content="Strategic growth grew 34% YoY across cloud services.", relevance=0.95),
+        ContextItem(kind="evidence", content="Strategic growth grew 34% YoY", relevance=0.80),
+        ContextItem(kind="evidence", content="Operational costs dropped by 14% after rightsizing.", relevance=0.90),
     ]
 
-    reranked = await rerank(memories, query="growth", limit=5)
-    ids = [m.id for m in reranked]
-    assert ids[0] == "m1"
-    assert len([x for x in ids if x == "m1"]) == 1
-    assert "m3" in ids
+    ranked = rank_items(items, limit=5)
+    # Grounding evidence (P1) outranks dynamic memory (P3) despite lower relevance.
+    assert ranked[0].priority == "P1_ACTIVE_GROUNDING"
+    assert ranked[0].content.startswith("Operational costs")
+    assert ranked[-1].kind == "memory"
 
-    fitted = fit_to_context_window(reranked, max_context_tokens=1550)
+    fitted, _compressed = compress_to_budget(ranked, token_budget=1550)
     assert len(fitted) >= 1
+    assert sum(i.token_estimate for i in fitted) <= 1550 + 4

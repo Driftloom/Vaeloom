@@ -825,7 +825,12 @@ async def _assemble_rag_context(
                 for d in documents:
                     all_cands.append({"id": d["id"], "text": d["path"], "source": "document", "metadata": {"summary": d["summary"], "created_at": None}, "score": 1.0})
                 if all_cands:
-                    # WS01: wire preference_vector into ranking via user_context (learning loop closure)
+                    # WS01: pass the caller's preference context into the weighted ranker
+                    # (relevance/recency/importance/user_preference). Note the ranker
+                    # consumes structured preferences -- preferred_tags/preferred_types --
+                    # NOT the `user_preference_vectors.preference_vector` embedding, which is
+                    # read only by recommendation_service.generate(). Do not assume the
+                    # preference_vector feed reaches ranking.
                     _uc = None
                     try:
                         if preferences:
