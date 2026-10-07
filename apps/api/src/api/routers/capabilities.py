@@ -7,8 +7,8 @@ import time
 import uuid
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field, ValidationError
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +23,7 @@ from ..schemas.capability_draft import (
     Severity,
 )
 from ..services.capability_usage_service import record_usage
+from ..services.github_skills_sync import GitHubSkillSyncResult
 from ..services.skill_catalog_service import (
     AUTONOMY_VALUES,
     catalog_to_wire,
@@ -1530,3 +1531,65 @@ async def test_capability(
             error=str(exc),
             executed=False,
         )
+
+
+class SyncGitHubSkillsRequest(BaseModel):
+    """Body for a remote SKILL.md validation sweep.
+
+    Deliberately carries no credential. A GitHub token used to read a private
+    repository arrives in the ``X-GitHub-Token`` header instead, because request
+    bodies are routinely captured by access logs, APM traces, and error
+    reporters -- a body-borne secret leaks into infrastructure it has no reason
+    to be in.
+    """
+
+    repository: str = Field(
+        default="Driftloom/vaeloom-skills",
+        min_length=1,
+        max_length=200,
+        pattern=r"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$",
+        description="Bare 'owner/repo' slug. URLs are rejected at the edge.",
+    )
+    ref: str = Field(default="master", min_length=1, max_length=128)
+
+    # Reject unknown fields rather than dropping them. Pydantic's default is to
+    # ignore extras, which would make a caller-supplied `auth_token` silently do
+    # nothing -- the worst outcome, because the caller believes they authenticated
+    # a private-repo sweep that actually ran unauthenticated against a public
+    # repo. A 422 is louder and therefore safer.
+    model_config = ConfigDict(extra="forbid")
+
+
+@router.post(
+    "/sync-github",
+    response_model=GitHubSkillSyncResult,
+    status_code=status.HTTP_200_OK,
+)
+async def sync_github_skills(
+    payload: SyncGitHubSkillsRequest = SyncGitHubSkillsRequest(),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    workspace_id: str | None = Depends(get_workspace_id),
+    github_token: str | None = Header(default=None, alias="X-GitHub-Token"),
+):
+    """Validate remote SKILL.md playbooks from a GitHub repository.
+
+    Validation-only: nothing is persisted (see
+    ``services.github_skills_sync``). The result's ``persisted`` field is always
+    ``False``. To install a candidate skill, POST it to ``/capabilities``.
+
+    Requires workspace membership, like every other capability route -- a remote
+    sweep is workspace-scoped because the caller uses the result to decide what
+    that workspace should be able to run.
+    """
+    user_id = _get_user_id(current_user)
+    await _verify_workspace_access(db, user_id, workspace_id)
+
+    from ..services.github_skills_sync import sync_skills_from_github
+
+    return await sync_skills_from_github(
+        repo=payload.repository,
+        ref=payload.ref,
+        auth_token=github_token,
+    )
+
