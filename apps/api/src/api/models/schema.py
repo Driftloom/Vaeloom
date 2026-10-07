@@ -13,6 +13,7 @@ from sqlalchemy import (
     Index,
     Integer,
     LargeBinary,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -516,6 +517,51 @@ class MemoryTaxonomyLedger(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (Index("idx_taxonomy_ledger_memory", "memory_id"),)
+
+
+class RankingWeightProfile(Base):
+    """Learned per-user ranking weights (migration 0067).
+
+    Read by ``services.ranking_weights.effective_weights``, which selects exactly
+    the four weight columns by name from the ``ranking_weight_profiles`` table
+    using a raw ``text()`` statement. Both the table name and those four column
+    names are therefore a contract with that module, not free choices: a rename
+    raises inside the lookup, the raise is swallowed, and every caller silently
+    falls back to env/default weights.
+
+    ``tenant_id`` is stored but deliberately **not** read by that lookup, so
+    isolation is the RLS policy's job alone -- see the policy in migration 0067.
+
+    The weight columns are ``NUMERIC(5,4)`` on the database (weights are ratios,
+    and fixed scale avoids float drift in stored comparisons). ``asdecimal=False``
+    is a Python-side result flag only -- it makes the ORM hand back ``float`` so
+    the ``Mapped[float]`` annotation is truthful, and it does not affect the DDL.
+
+    ``sample_size`` is the observation count behind these weights. It is stored
+    and never read by the resolver; it exists so a learner can refuse to trust a
+    profile fitted from too few signals rather than acting on noise.
+    """
+
+    __tablename__ = "ranking_weight_profiles"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    relevance: Mapped[float] = mapped_column(Numeric(5, 4, asdecimal=False), nullable=False, server_default="0.4")
+    recency: Mapped[float] = mapped_column(Numeric(5, 4, asdecimal=False), nullable=False, server_default="0.3")
+    importance: Mapped[float] = mapped_column(Numeric(5, 4, asdecimal=False), nullable=False, server_default="0.2")
+    user_preference: Mapped[float] = mapped_column(Numeric(5, 4, asdecimal=False), nullable=False, server_default="0.1")
+    sample_size: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        # Load-bearing, not defensive: effective_weights() uses one_or_none(),
+        # and a duplicate profile raises MultipleResultsFound inside a bare
+        # except, i.e. a silent reversion to default weights.
+        UniqueConstraint("workspace_id", "user_id", name="uq_ranking_weight_profiles_workspace_user"),
+        Index("idx_ranking_weight_profiles_workspace_id", "workspace_id"),
+    )
 
 
 class MemoryRecord(Base):
