@@ -39,6 +39,7 @@ import {
   type ConnectorCategory,
   type CategoryFilter,
 } from '@/lib/connectors-catalog';
+import { ConnectorDetailDrawer } from './ConnectorDetailDrawer';
 
 interface ConnectorsViewProps {
   workspaceId: string;
@@ -839,6 +840,41 @@ export function ConnectorsView({
   useEffect(() => {
     void loadDynamicData();
   }, [loadDynamicData]);
+
+  // Real-time OAuth callback handshake via window.opener.postMessage
+  useEffect(() => {
+    function handleOAuthMessage(event: MessageEvent) {
+      if (typeof window === 'undefined') return;
+      if (event.origin !== window.location.origin) return;
+      const data = event.data;
+      if (data && data.type === 'COMPOSIO_AUTH_SUCCESS') {
+        if (oauthPollRef.current !== null) {
+          window.clearTimeout(oauthPollRef.current);
+          oauthPollRef.current = null;
+        }
+        void loadDynamicData();
+        void mutate();
+        toast({
+          tone: 'success',
+          title: `${data.app || 'App'} connected`,
+          detail: 'OAuth handshake completed. Tools and permissions are now active.',
+        });
+      } else if (data && data.type === 'COMPOSIO_AUTH_ERROR') {
+        if (oauthPollRef.current !== null) {
+          window.clearTimeout(oauthPollRef.current);
+          oauthPollRef.current = null;
+        }
+        toast({
+          tone: 'error',
+          title: 'Authorization failed',
+          detail: data.error || 'The provider returned an authorization error.',
+        });
+      }
+    }
+
+    window.addEventListener('message', handleOAuthMessage);
+    return () => window.removeEventListener('message', handleOAuthMessage);
+  }, [loadDynamicData, mutate, toast]);
 
   const byProvider = useMemo(
     () =>
@@ -2240,111 +2276,52 @@ export function ConnectorsView({
         )}
       </div>
 
-      {/* ── Connector detail ───────────────────────────────────────────────── */}
+      {/* ── Connector detail slide-over drawer ──────────────────────────────── */}
       {selectedItemDetails && (
-        <Modal
-          isOpen
+        <ConnectorDetailDrawer
+          isOpen={selectedItemDetails !== null}
           onClose={() => setSelectedItemDetails(null)}
-          title={`Connector: ${rowName(selectedItemDetails)}`}
-          size="md"
-        >
-          <div className="space-y-4 text-xs">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-surface-elevated border border-border">
-              <div className="shrink-0">{rowIcon(selectedItemDetails)}</div>
-              <div className="min-w-0">
-                <span className="text-sm font-semibold text-text">
-                  {rowName(selectedItemDetails)}
-                </span>
-                <p className="text-text-muted mt-0.5">{rowDescription(selectedItemDetails)}</p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="font-semibold text-text block">Permissions</h4>
-              {rowScopes(selectedItemDetails).length > 0 ? (
-                <>
-                  <p className="text-2xs text-text-muted">
-                    Notes shipped with this build&apos;s catalog. They are not read from the
-                    provider, and they are not what an OAuth consent screen will display.
-                  </p>
-                  <ul className="space-y-1.5 font-mono text-2xs text-text-secondary bg-surface p-3 rounded border border-border">
-                    {rowScopes(selectedItemDetails).map((scope) => (
-                      <li key={scope} className="flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                        <span>{scope}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : (
-                <p className="text-2xs text-text-muted bg-surface p-3 rounded border border-border">
-                  This catalog entry declares no scope list. The provider&apos;s consent screen is
-                  the only authority on what will be requested.
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="font-semibold text-text block">Agent assignment</h4>
-              {rowAssignedAgents(selectedItemDetails).length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {rowAssignedAgents(selectedItemDetails).map((agent) => (
-                    <Badge key={agent} variant="primary" size="sm">
-                      {agent}
-                    </Badge>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-2xs text-text-muted">
-                  No agent assignment is declared for this entry. Nothing on this row came from a
-                  server response.
-                </p>
-              )}
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
-              <Button variant="ghost" size="sm" onClick={() => setSelectedItemDetails(null)}>
-                Close
-              </Button>
-              {isRowConnected(selectedItemDetails) ? (
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => {
-                    setPendingDisconnect({
-                      id: rowId(selectedItemDetails),
-                      name: rowName(selectedItemDetails),
-                      isWorkspaceIntegration: false,
-                    });
-                  }}
-                >
-                  Disconnect
-                </Button>
-              ) : rowProvider(selectedItemDetails) === 'native' ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    handleInitiateConnect(selectedItemDetails);
-                    setSelectedItemDetails(null);
-                  }}
-                >
-                  What this means
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setSelectedItemDetails(null);
-                    handleInitiateConnect(selectedItemDetails);
-                  }}
-                >
-                  Connect
-                </Button>
-              )}
-            </div>
-          </div>
-        </Modal>
+          row={{
+            id: rowId(selectedItemDetails),
+            name: rowName(selectedItemDetails),
+            provider: rowProvider(selectedItemDetails),
+            protocol: rowProtocol(selectedItemDetails),
+            category: rowCategoryText(selectedItemDetails),
+            description: rowDescription(selectedItemDetails),
+            scopes: rowScopes(selectedItemDetails),
+            assignedAgents: rowAssignedAgents(selectedItemDetails),
+            composioApp: rowComposioApp(selectedItemDetails),
+            actionCount: rowActionCount(selectedItemDetails),
+            icon: rowIcon(selectedItemDetails),
+          }}
+          connected={isRowConnected(selectedItemDetails)}
+          connectorId={
+            dynamicConnectors.find(
+              (c) =>
+                (c.name && c.name.toLowerCase() === rowName(selectedItemDetails).toLowerCase()) ||
+                (c.config?.['app'] &&
+                  String(c.config['app']).toLowerCase() ===
+                    (rowComposioApp(selectedItemDetails) || '').toLowerCase()),
+            )?.id ?? null
+          }
+          workspaceId={workspaceId}
+          onConnect={() => {
+            const current = selectedItemDetails;
+            setSelectedItemDetails(null);
+            handleInitiateConnect(current);
+          }}
+          onDisconnect={() => {
+            const current = selectedItemDetails;
+            setSelectedItemDetails(null);
+            setPendingDisconnect({
+              id: rowId(current),
+              name: rowName(current),
+              isWorkspaceIntegration: false,
+            });
+          }}
+          connectBusy={busyAction === `composio-${rowComposioApp(selectedItemDetails) ?? ''}`}
+          onRefresh={() => void loadDynamicData()}
+        />
       )}
 
       {/* ── OAuth confirmation ─────────────────────────────────────────────── */}
