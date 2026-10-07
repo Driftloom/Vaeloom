@@ -36,6 +36,44 @@ def _to_uuid(value: str | uuid.UUID | None) -> uuid.UUID | None:
 
 
 class MemoryService:
+    async def _record_taxonomy_change(
+        self,
+        db: AsyncSession,
+        *,
+        memory_id: uuid.UUID,
+        from_type: str,
+        to_type: str,
+        taxonomy_version: int,
+        content_hash: str | None = None,
+        migration_wave: str = "CONT-P12",
+    ) -> None:
+        """Append one provenance row to `memory_taxonomy_ledger`.
+
+        Without this the ledger table (migration 0027) was never written, so the
+        expand-contract taxonomy change had no audit trail. Best-effort: provenance
+        must never fail the user's write. Only ids, type names and a checksum are
+        stored -- never memory content.
+        """
+        if not from_type or not to_type or from_type == to_type:
+            return
+        try:
+            from ..models.schema import MemoryTaxonomyLedger
+
+            checksum = (content_hash or llm_service.compute_content_hash(f"{from_type}->{to_type}"))[:64]
+            db.add(
+                MemoryTaxonomyLedger(
+                    id=uuid.uuid4(),
+                    memory_id=memory_id,
+                    from_type=from_type,
+                    to_type=to_type,
+                    taxonomy_version=taxonomy_version,
+                    migration_wave=migration_wave,
+                    checksum=checksum,
+                )
+            )
+        except Exception as e:
+            logger.debug(f"Taxonomy ledger write skipped: {e}")
+
     async def create_memory(
         self,
         db: AsyncSession,
@@ -278,6 +316,20 @@ class MemoryService:
         for key, value in update_data.items():
             setattr(memory, key, value)
 
+        # Taxonomy provenance: a type remap is exactly what the ledger exists to record.
+        new_type = update_data.get("type")
+        if new_type and new_type != old_state.get("type"):
+            from ..schemas.memory import ENTERPRISE_MEMORY_TYPES
+
+            await self._record_taxonomy_change(
+                db,
+                memory_id=memory.id,
+                from_type=str(old_state.get("type") or ""),
+                to_type=str(new_type),
+                taxonomy_version=2 if new_type in ENTERPRISE_MEMORY_TYPES else 1,
+                content_hash=getattr(memory, "content_hash", None),
+            )
+
         # Durable version row BEFORE flush so single flush persists both (keeps test flush count=1)
         try:
             new_state = {
@@ -355,10 +407,12 @@ class MemoryService:
                 filters: dict[str, Any] = {}
                 if target_ws:
                     filters["workspace_id"] = str(target_ws)
+
                 # The embeddings table is shared with document_chunk rows, which carry
                 # placeholder source_ids. Without this filter they consume top_k slots
                 # and are then silently discarded by the Memory lookup below.
                 filters["source_type"] = "memory"
+
                 vrecords = await vstore.search(
                     query_vector=query_embedding, limit=dto.top_k, filters=filters or None, session=db
                 )
@@ -605,6 +659,21 @@ class MemoryService:
             supersedes_id=old_memory.id,
         )
         db.add(new_memory)
+
+        # 3b. Taxonomy provenance — a supersede can remap the type, which is
+        # exactly the event the ledger exists to record.
+        old_type = getattr(old_memory, "type", None)
+        if new_type and new_type != old_type:
+            from ..schemas.memory import ENTERPRISE_MEMORY_TYPES
+
+            await self._record_taxonomy_change(
+                db,
+                memory_id=old_memory.id,
+                from_type=str(old_type or ""),
+                to_type=str(new_type),
+                taxonomy_version=2 if new_type in ENTERPRISE_MEMORY_TYPES else 1,
+                content_hash=new_memory.content_hash,
+            )
 
         # 4. Durable versioning
         new_state = {
