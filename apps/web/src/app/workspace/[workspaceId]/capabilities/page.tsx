@@ -1061,6 +1061,7 @@ function CapabilitiesContent() {
             error={skillsError as Error | undefined}
             onRetry={() => void mutateSkills()}
             pendingKey={pendingSkillKey}
+            workspaceId={workspaceId}
           />
         </TabPanel>
 

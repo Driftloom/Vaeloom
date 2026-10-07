@@ -17,6 +17,7 @@ import { formatRelativeTime } from '@/lib/capabilities-data';
 import type { SkillRow, SkillSaveOutcome } from './SkillCard';
 import { SkillMarkdownViewer } from './SkillMarkdownViewer';
 import { SkillTelemetryCard } from './SkillTelemetryCard';
+import { SkillIntegrationBar } from './SkillIntegrationBar';
 
 export interface SkillDetailPaneProps {
   selectedRow: SkillRow | null;
@@ -30,6 +31,7 @@ export interface SkillDetailPaneProps {
   onSaveDoc: (key: string, doc: string) => Promise<SkillSaveOutcome>;
   onOpenPlayground: (row: SkillRow) => void;
   detailRef?: React.Ref<HTMLDivElement>;
+  workspaceId?: string;
 }
 
 function DetailSkeleton() {
@@ -55,6 +57,7 @@ export const SkillDetailPane: React.FC<SkillDetailPaneProps> = ({
   onSaveDoc,
   onOpenPlayground,
   detailRef,
+  workspaceId,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedDoc, setEditedDoc] = useState('');
@@ -184,6 +187,9 @@ export const SkillDetailPane: React.FC<SkillDetailPaneProps> = ({
             </>
           ) : (
             <>
+              <Button size="sm" variant="primary" onClick={() => onOpenPlayground(selectedRow)}>
+                ⚡ Test Playground
+              </Button>
               <Button
                 size="sm"
                 variant="ghost"
@@ -245,7 +251,8 @@ export const SkillDetailPane: React.FC<SkillDetailPaneProps> = ({
         </dl>
       </div>
 
-      <div className="p-4 sm:p-5 pb-0 bg-background shrink-0">
+      <div className="p-4 sm:p-5 pb-0 bg-background shrink-0 space-y-4">
+        <SkillIntegrationBar row={selectedRow} workspaceId={workspaceId || 'default'} />
         <SkillTelemetryCard
           row={selectedRow}
           onOpenPlayground={onOpenPlayground}

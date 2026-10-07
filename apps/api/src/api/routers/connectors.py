@@ -8,7 +8,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..dependencies import get_current_user, get_tenant_id, get_workspace_id
+from ..dependencies import (
+    get_current_user,
+    get_current_user_optional,
+    get_tenant_id,
+    get_workspace_id,
+)
 from ..middleware.rate_limit import rate_limit
 from ..models.schema import Workspace, WorkspaceUser
 from ..schemas.connector_ext import (
@@ -173,7 +178,7 @@ async def list_connectors(
 
 @router.get("/composio/status")
 async def get_composio_status(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict | None = Depends(get_current_user_optional),
 ):
     """Check if Composio SaaS integration is enabled and list supported apps."""
     from ..services.composio_catalog import COMPOSIO_SUPPORTED_APPS
@@ -203,9 +208,9 @@ async def list_composio_apps(
     search: str | None = None,
     limit: int = 300,
     offset: int = 0,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict | None = Depends(get_current_user_optional),
 ):
-    """List 260+ supported enterprise SaaS applications from the Composio catalog."""
+    """List 300+ supported enterprise SaaS applications from the Composio catalog."""
     from ..services.composio_service import composio_service
 
     return await composio_service.get_apps(
@@ -781,6 +786,9 @@ async def receive_inbound_webhook(
             except Exception:
                 secret = str(sec_val)
 
+    if secret and not sig_header:
+        raise HTTPException(status_code=401, detail="Webhook signature header is required")
+
     if sig_header:
         if not secret:
             raise HTTPException(status_code=401, detail="No webhook secret configured on connector")
@@ -806,4 +814,7 @@ async def receive_inbound_webhook(
         "event": data.event,
         "dispatched": True,
     }
+
+
+handle_connector_webhook = receive_inbound_webhook
 

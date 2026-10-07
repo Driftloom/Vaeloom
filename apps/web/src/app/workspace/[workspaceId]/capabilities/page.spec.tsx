@@ -496,7 +496,7 @@ describe('CapabilitiesPage', () => {
 
     // Installed, but disabled: it must still be counted and still be listed.
     expect(screen.getByRole('button', { name: /^Installed \(1\)/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Browse \(/i })).toHaveTextContent('Browse (12)');
+    expect(screen.getByRole('button', { name: /^Browse \(/i })).toHaveTextContent('Browse (33)');
     expect(skillRowButton('acceptance-criteria-review')).toBeInTheDocument();
     expect(screen.getAllByText('Disabled').length).toBeGreaterThanOrEqual(1);
 

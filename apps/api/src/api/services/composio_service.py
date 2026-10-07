@@ -381,15 +381,140 @@ class ComposioService:
                 "connection_status": "failed",
             }
 
+    @staticmethod
+    def _resolve_purpose(cats: list[str], name: str, slug: str, desc: str) -> str:
+        """Resolve app purpose category using high-precision regex and token boundaries."""
+        import re
+
+        cat_text = " ".join(cats)
+        norm_slug = slug.replace("-", " ").replace("_", " ")
+        combined = f"{cat_text} {name} {norm_slug} {desc}".lower()
+
+        def has_any(*terms: str) -> bool:
+            for term in terms:
+                escaped = re.escape(term.lower().strip())
+                if re.search(rf"\b{escaped}\b", combined):
+                    return True
+            return False
+
+        # 1. High-precision Career & ATS
+        if has_any(
+            "greenhouse", "lever", "ashby", "workday", "taleo", "bamboohr",
+            "rippling", "recruitee", "breezy hr", "breezyhr", "jazzhr",
+            "smartrecruiters", "jobvite", "bullhorn", "personio", "hibob",
+            "lattice", "culture amp", "gem", "checkr", "seekout", "15five",
+            "leapsome", "charthop", "factorial", "teamtailor", "pinpoint",
+            "hireology", "fountain", "comeet", "eightfold", "phenom", "beamery",
+            "textio", "hackerearth", "hackerrank", "codesignal", "codility",
+            "testgorilla", "criteria corp", "hirevue", "modern hire", "vervoe",
+            "indeed", "ziprecruiter", "glassdoor", "wellfound", "handshake",
+            "monster", "careerbuilder", "dice", "upwork", "fiverr", "toptal",
+            "turing", "contra", "readcv", "peerlist", "applicant tracking",
+            "ats", "recruiting", "recruitment", "talent acquisition",
+            "talent", "hiring", "resume", "job board", "career"
+        ):
+            return "Career & ATS"
+
+        # 2. High-precision Data & Analytics
+        if has_any(
+            "bigquery", "snowflake", "databricks", "clickhouse", "duckdb",
+            "motherduck", "redshift", "tableau", "power bi", "powerbi",
+            "looker", "metabase", "hex", "dbt", "airbyte", "fivetran",
+            "posthog", "mixpanel", "amplitude", "segment", "data warehouse",
+            "lakehouse", "business intelligence", "analytics", "data pipeline",
+            "telemetry analytics", "etl", "elt", "bi reporting"
+        ):
+            return "Data & Analytics"
+
+        # 3. High-precision AI & ML
+        if has_any(
+            "openai", "anthropic", "claude", "chatgpt", "gpt-4", "gpt-4o",
+            "hugging face", "huggingface", "cohere", "perplexity", "langchain",
+            "llamaindex", "weights & biases", "mlflow", "replicate", "runpod",
+            "modal labs", "pinecone", "weaviate", "qdrant", "chroma", "milvus",
+            "artificial intelligence", "machine learning", "llm", "vector database",
+            "model context protocol", "deep learning", "ai agent"
+        ):
+            return "AI & ML"
+
+        # 4. High-precision Startup & Business
+        if has_any(
+            "stripe", "mercury", "brex", "ramp", "hubspot", "salesforce",
+            "linear", "apollo", "pipedrive", "zoho crm", "close crm", "attio",
+            "gong", "outreach", "salesloft", "clay", "lemlist", "instantly",
+            "woodpecker", "phantombuster", "lusha", "hunter.io", "hunter",
+            "clearbit", "zoominfo", "cognism", "freshsales", "copper crm",
+            "insightly", "demandbase", "6sense", "folk crm", "highspot",
+            "seismic", "paypal", "square", "quickbooks", "xero", "shopify",
+            "chargebee", "recurly", "gusto", "wave", "freshbooks", "bill.com",
+            "expensify", "deel", "wise", "paddle", "lemon squeezy", "plaid",
+            "netsuite", "carta", "pulley", "crm", "sales", "invoicing",
+            "billing", "accounting", "banking", "fintech", "prospecting",
+            "lead generation", "payroll", "equity management"
+        ):
+            return "Startup & Business"
+
+        # 5. High-precision Engineering & Cloud
+        if has_any(
+            "aws", "gcp", "azure", "vercel", "supabase", "neon", "postman",
+            "sentry", "datadog", "docker", "kubernetes", "github", "gitlab",
+            "bitbucket", "jira", "pagerduty", "grafana", "prometheus",
+            "argo cd", "argocd", "launchdarkly", "circleci", "jenkins",
+            "vault", "terraform", "pulumi", "cloudflare", "langfuse",
+            "new relic", "splunk", "dynatrace", "honeycomb", "opsgenie",
+            "bugsnag", "rollbar", "sonarqube", "prisma", "hasura", "fly.io",
+            "flyio", "railway", "render", "koyeb", "linearb", "devops",
+            "cloud", "database", "postgresql", "mysql", "redis", "mongodb",
+            "elasticsearch", "algolia", "meilisearch", "typesense", "neo4j",
+            "infrastructure", "ci/cd", "monitoring", "developer tools"
+        ):
+            return "Engineering & Cloud"
+
+        # 6. High-precision Communication & Community
+        if has_any(
+            "slack", "discord", "zoom", "gmail", "resend", "sendgrid",
+            "microsoft teams", "teams", "telegram", "whatsapp", "twitter",
+            "reddit", "youtube", "google meet", "loom", "twilio", "mailchimp",
+            "intercom", "zendesk", "front", "crisp", "freshdesk", "help scout",
+            "customer.io", "klaviyo", "brevo", "convertkit", "postmark",
+            "discourse", "mattermost", "braze", "iterable", "onesignal",
+            "email", "messaging", "chat", "helpdesk", "ticketing", "support"
+        ):
+            return "Communication & Community"
+
+        # 7. High-precision Productivity & Study
+        if has_any(
+            "notion", "obsidian", "google docs", "google sheets", "google slides",
+            "google calendar", "google drive", "google forms", "google keep",
+            "google tasks", "airtable", "coda", "clickup", "asana", "monday",
+            "basecamp", "trello", "confluence", "roam research", "roam",
+            "craft", "evernote", "box", "dropbox", "onedrive", "sharepoint",
+            "microsoft 365", "canva", "figma", "miro", "lucidchart",
+            "whimsical", "todoist", "ticktick", "any.do", "onenote", "height",
+            "wrike", "smartsheet", "superhuman", "grain", "fathom", "otter",
+            "canvas lms", "coursera", "moodle", "blackboard", "udacity",
+            "edx", "duolingo", "khan academy", "teachable", "thinkific",
+            "notes", "calendar", "document", "spreadsheet", "tasks", "wiki",
+            "education", "learning", "study", "classroom"
+        ):
+            return "Productivity & Study"
+
+        return "Productivity & Study"
+
     def bridge_workspace_tools(self, workspace_id: str) -> list[str]:
-        """Discover and bridge workspace SaaS tools from Composio into dynamic executor."""
+        """Discover and bridge workspace SaaS tools from Composio into dynamic executor.
+
+        Dynamically bridges tools for active connected accounts associated with the workspace,
+        while maintaining baseline popular tool support.
+        """
         from ..tools.definitions import ToolDefinition
         from ..tools.executor import mark_approval_gated, register_dynamic_tool
 
         if not self.is_configured:
             return []
 
-        popular_tools = [
+        # Baseline standard actions for enterprise workspaces
+        baseline_tools: list[tuple[str, str, str, bool]] = [
             ("slack", "send_message", "Send Slack message to a channel", False),
             ("slack", "read_channel", "Read messages from a Slack channel", True),
             ("github", "create_issue", "Create a GitHub issue", False),
@@ -399,9 +524,130 @@ class ComposioService:
             ("jira", "create_ticket", "Create a Jira ticket", False),
             ("jira", "list_tickets", "List Jira tickets", True),
         ]
+
+        # Top action templates for common enterprise SaaS integrations
+        known_app_actions: dict[str, list[tuple[str, str, bool]]] = {
+            "linear": [
+                ("create_issue", "Create a Linear issue", False),
+                ("list_issues", "List Linear issues", True),
+                ("update_issue", "Update a Linear issue", False),
+            ],
+            "hubspot": [
+                ("get_contact", "Fetch HubSpot contact details", True),
+                ("create_contact", "Create a contact in HubSpot CRM", False),
+                ("list_deals", "List sales pipeline deals", True),
+            ],
+            "salesforce": [
+                ("query_records", "Execute SOQL query on Salesforce records", True),
+                ("create_lead", "Create a lead record in Salesforce", False),
+                ("update_opportunity", "Update opportunity stage in Salesforce", False),
+            ],
+            "stripe": [
+                ("get_customer", "Fetch Stripe customer account details", True),
+                ("list_invoices", "List recent Stripe customer invoices", True),
+                ("create_payment_link", "Generate a Stripe payment link", False),
+            ],
+            "greenhouse": [
+                ("list_candidates", "List candidates in Greenhouse ATS pipeline", True),
+                ("get_candidate", "Retrieve candidate profile and application", True),
+                ("add_scorecard", "Submit interview scorecard in Greenhouse", False),
+            ],
+            "lever": [
+                ("list_opportunities", "List candidate opportunities in Lever", True),
+                ("get_candidate", "Retrieve candidate details in Lever ATS", True),
+                ("add_note", "Add note to candidate profile in Lever", False),
+            ],
+            "ashby": [
+                ("list_candidates", "Query candidate applications in Ashby ATS", True),
+                ("get_interview_schedules", "Fetch interview schedules in Ashby", True),
+            ],
+            "workday": [
+                ("get_worker_profile", "Retrieve worker profile from Workday HCM", True),
+                ("list_open_positions", "List open job requisitions in Workday", True),
+            ],
+            "google-calendar": [
+                ("list_events", "List upcoming calendar events and availability", True),
+                ("create_event", "Schedule a meeting on Google Calendar", False),
+            ],
+            "discord": [
+                ("send_message", "Post a message to a Discord channel", False),
+                ("read_messages", "Read recent Discord channel messages", True),
+            ],
+            "zoom": [
+                ("create_meeting", "Generate a Zoom meeting link", False),
+                ("list_recordings", "Fetch cloud recordings from Zoom", True),
+            ],
+            "supabase": [
+                ("execute_query", "Run database query on Supabase PostgreSQL", True),
+                ("list_tables", "Inspect schema tables in Supabase project", True),
+            ],
+            "sentry": [
+                ("list_issues", "Query production exception issues in Sentry", True),
+                ("get_issue_details", "Fetch stack trace and event telemetry", True),
+            ],
+            "datadog": [
+                ("query_metrics", "Execute Datadog telemetry metric query", True),
+                ("list_monitors", "Inspect alert monitors in Datadog", True),
+            ],
+        }
+
+        user_id = f"workspace_{workspace_id}"
+        dynamic_tool_tuples: list[tuple[str, str, str, bool]] = list(baseline_tools)
+
+        try:
+            from composio import Composio
+            client = Composio(api_key=self.api_key)
+            accounts = client.connected_accounts.list(user_ids=[user_id])
+            items = getattr(accounts, "items", accounts) if not isinstance(accounts, list) else accounts
+
+            for acc in items:
+                status = getattr(acc, "status", "") or (acc.get("status") if isinstance(acc, dict) else "")
+                if str(status).upper() != "ACTIVE":
+                    continue
+                auth_cfg = getattr(acc, "auth_config_id", "") or (acc.get("auth_config_id") if isinstance(acc, dict) else "")
+                app_n = getattr(acc, "app_name", "") or (acc.get("app_name") if isinstance(acc, dict) else "")
+                slug = (auth_cfg or app_n).lower().strip().replace(" ", "-")
+                if not slug:
+                    continue
+
+                discovered_for_app = False
+                try:
+                    tools_obj = client.tools.get(user_id=user_id, toolkits=[slug])
+                    tool_items = getattr(tools_obj, "items", tools_obj) if not isinstance(tools_obj, list) else tools_obj
+                    if tool_items:
+                        for t in tool_items:
+                            t_name = getattr(t, "name", "") or (t.get("name") if isinstance(t, dict) else "")
+                            t_desc = getattr(t, "description", "") or (t.get("description") if isinstance(t, dict) else "")
+                            action_slug = getattr(t, "slug", t_name) or (t.get("slug", t_name) if isinstance(t, dict) else t_name)
+                            action_clean = str(action_slug).lower().strip()
+                            if action_clean.startswith(f"{slug}_"):
+                                action_clean = action_clean[len(slug) + 1:]
+                            is_read = any(v in action_clean for v in ("get", "list", "read", "fetch", "search", "query", "inspect"))
+                            dynamic_tool_tuples.append((slug, action_clean, t_desc or f"Execute {action_clean} on {slug}", is_read))
+                            discovered_for_app = True
+                except Exception as t_exc:
+                    logger.debug("Live tool discovery for toolkit %s failed: %s", slug, t_exc)
+
+                if not discovered_for_app:
+                    if slug in known_app_actions:
+                        for act, desc, is_read in known_app_actions[slug]:
+                            dynamic_tool_tuples.append((slug, act, desc, is_read))
+                    else:
+                        dynamic_tool_tuples.extend([
+                            (slug, "query", f"Query records and state from {slug}", True),
+                            (slug, "execute", f"Execute action on {slug}", False),
+                        ])
+        except Exception as exc:
+            logger.debug("Failed querying connected accounts for dynamic tool bridging in %s: %s", workspace_id, exc)
+
         registered: list[str] = []
-        for app, action, desc, is_read in popular_tools:
+        seen_names = set()
+        for app, action, desc, is_read in dynamic_tool_tuples:
             tool_name = f"composio__{app}__{action}"
+            if tool_name in seen_names:
+                continue
+            seen_names.add(tool_name)
+
             td = ToolDefinition(
                 name=tool_name,
                 description=f"[Composio:{app}] {desc}",
@@ -425,6 +671,7 @@ class ComposioService:
             if not is_read:
                 mark_approval_gated(tool_name)
             registered.append(tool_name)
+
         return registered
 
     async def get_apps(
@@ -434,7 +681,8 @@ class ComposioService:
         limit: int = 300,
         offset: int = 0,
     ) -> dict[str, Any]:
-        """Fetch Composio apps catalog, with live fallback or local 269+ enterprise catalog."""
+        """Fetch Composio apps catalog, with live fallback or local 350+ enterprise catalog."""
+        import asyncio
         import time
 
         from .composio_catalog import COMPOSIO_SUPPORTED_APPS
@@ -452,47 +700,17 @@ class ComposioService:
                     client = Composio(api_key=self.api_key)
                     live_toolkits = []
                     cursor = None
-                    # Pull all pages (1,400+ toolkits) using cursor pagination
+                    # Pull all pages (1,400+ toolkits) asynchronously using asyncio.to_thread
                     while True:
                         kwargs: dict[str, Any] = {}
                         if cursor:
                             kwargs["cursor"] = cursor
-                        res = client._client.toolkits.list(**kwargs)
+                        res = await asyncio.to_thread(client._client.toolkits.list, **kwargs)
                         items = getattr(res, "items", [])
                         live_toolkits.extend(items)
                         cursor = getattr(res, "next_cursor", None)
                         if not cursor or not items:
                             break
-
-                    def _resolve_purpose(cats: list[str], name: str, slug: str, desc: str) -> str:
-                        full_text = f"{' '.join(cats)} {name} {slug} {desc}".lower()
-                        if any(k in full_text for k in ['educat', 'learning', 'course', 'school', 'academy', 'student', 'tutor', 'classroom', 'moodle', 'canvas lms', 'blackboard', 'coursera', 'udemy', 'quiz', 'duolingo', 'khan', 'teachable', 'thinkific', 'edx', 'scholar']):
-                            return "Education"
-                        if any(k in full_text for k in ['sales & crm', 'crm', 'sales', 'lead generation', 'prospecting', 'hubspot', 'salesforce', 'pipedrive', 'zoho crm', 'close crm', 'apollo', 'outreach', 'salesloft']):
-                            return "Sales & CRM"
-                        if any(k in full_text for k in ['accounting', 'payment', 'stripe', 'paypal', 'quickbooks', 'xero', 'invoicing', 'billing', 'expense', 'tax', 'banking', 'fintech']):
-                            return "Finance & Accounting"
-                        if any(k in full_text for k in ['hr', 'recruiting', 'applicant tracking', 'ats', 'greenhouse', 'lever', 'workday', 'bamboohr', 'rippling', 'gusto', 'talent', 'hiring']):
-                            return "HR & Recruiting"
-                        if any(k in full_text for k in ['legal', 'contract', 'docusign', 'pandadoc', 'ironclad', 'compliance', 'clm', 'case law']):
-                            return "Legal & Compliance"
-                        if any(k in full_text for k in ['developer tools', 'github', 'gitlab', 'bitbucket', 'docker', 'kubernetes', 'aws', 'gcp', 'azure', 'vercel', 'supabase', 'database', 'sql']):
-                            return "Engineering & DevOps"
-                        if any(k in full_text for k in ['artificial intelligence', 'ai agent', 'model context protocol', 'openai', 'anthropic', 'hugging face', 'llm', 'machine learning']):
-                            return "AI & Machine Learning"
-                        if any(k in full_text for k in ['analytics', 'business intelligence', 'data', 'warehouse', 'bigquery', 'snowflake', 'databricks', 'posthog']):
-                            return "Data & Analytics"
-                        if any(k in full_text for k in ['marketing', 'social media', 'twitter', 'linkedin', 'facebook', 'instagram', 'youtube', 'mailchimp', 'klaviyo']):
-                            return "Marketing"
-                        if any(k in full_text for k in ['email', 'phone', 'slack', 'discord', 'telegram', 'whatsapp', 'twilio', 'zoom', 'teams']):
-                            return "Communication"
-                        if any(k in full_text for k in ['support', 'helpdesk', 'zendesk', 'freshdesk', 'intercom', 'ticket']):
-                            return "Customer Support"
-                        if any(k in full_text for k in ['ecommerce', 'e-commerce', 'shopify', 'woocommerce', 'storefront']):
-                            return "E-Commerce"
-                        if any(k in full_text for k in ['security', 'auth0', 'okta', '1password', 'infisical', 'sentry', 'monitoring']):
-                            return "Security & Monitoring"
-                        return "Productivity"
 
                     mapped_apps: list[dict[str, Any]] = []
                     for t in live_toolkits:
@@ -500,7 +718,7 @@ class ComposioService:
                         cats = [getattr(c, "name", str(c)).title() for c in getattr(meta, "categories", [])] if meta else []
                         t_name = getattr(t, "name", t.slug)
                         desc = getattr(meta, "description", "") or f"Connect {t_name} to execute automated agent tools."
-                        primary_cat = _resolve_purpose(cats, t_name, t.slug, desc)
+                        primary_cat = self._resolve_purpose(cats, t_name, t.slug, desc)
                         tools_count = int(getattr(meta, "tools_count", 0)) if meta else 0
                         mapped_apps.append({
                             "id": t.slug,
@@ -520,9 +738,43 @@ class ComposioService:
         if not apps:
             apps = list(COMPOSIO_SUPPORTED_APPS)
 
+        CATEGORY_ALIASES = {
+            "career": "Career & ATS",
+            "ats": "Career & ATS",
+            "career & ats": "Career & ATS",
+            "hr": "Career & ATS",
+            "recruiting": "Career & ATS",
+            "startup": "Startup & Business",
+            "business": "Startup & Business",
+            "startup & business": "Startup & Business",
+            "sales": "Startup & Business",
+            "crm": "Startup & Business",
+            "finance": "Startup & Business",
+            "productivity": "Productivity & Study",
+            "study": "Productivity & Study",
+            "productivity & study": "Productivity & Study",
+            "education": "Productivity & Study",
+            "engineering": "Engineering & Cloud",
+            "cloud": "Engineering & Cloud",
+            "engineering & cloud": "Engineering & Cloud",
+            "devops": "Engineering & Cloud",
+            "communication": "Communication & Community",
+            "community": "Communication & Community",
+            "communication & community": "Communication & Community",
+            "messaging": "Communication & Community",
+            "data & analytics": "Engineering & Cloud",
+            "ai & ml": "Engineering & Cloud",
+        }
+
         if category and category.lower() != "all":
-            cat_lower = category.lower()
-            apps = [a for a in apps if a.get("category", "").lower() == cat_lower]
+            cat_norm = category.lower().strip()
+            target_cat = CATEGORY_ALIASES.get(cat_norm, cat_norm)
+            apps = [
+                a
+                for a in apps
+                if a.get("category", "").lower() == cat_norm
+                or a.get("category", "").lower() == target_cat.lower()
+            ]
 
         if search and search.strip():
             q = search.strip().lower()

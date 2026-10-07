@@ -464,24 +464,41 @@ Implements automated critique and RLAIF reflection loops over completed agent se
     id: 'skill-ats-resume-builder',
     name: 'ats-resume-builder',
     category: 'skills',
-    tags: ['Career', 'Templates'],
+    tags: ['Career', 'Resume', 'Builder', 'Compilation'],
     description:
-      'Parses job descriptions, matches skill gaps, tailors achievement bullets, and compiles clean single-page PDF resumes.',
+      'High-fidelity ATS-optimized resume formatting, single-column architecture, typography standards, and parser-safe compilation.',
     enabled: true,
     source: 'built-in',
     usageCount: 0,
     lastUsedAt: null,
-    requiredScope: 'memory.read,system.document.compile',
-    triggers: ['build resume', 'tailor resume', 'ats match'],
+    requiredScope: 'system.document.compile',
+    triggers: [
+      'ats resume builder',
+      'build resume',
+      'build ats resume',
+      'format resume',
+      'compile resume',
+      'single column resume',
+    ],
     version: '2.0.0',
-    author: 'Vaeloom Career Suite',
-    markdownDoc: `# ATS Resume Builder
+    author: 'Driftloom / Vaeloom Core',
+    markdownDoc: `# ATS Resume Builder & Single-Column Architecture Playbook
 
-## Workflow
-1. Ingest Master Profile and Job Description.
-2. Extract missing technical keywords and soft skills.
-3. Rewrite achievement bullets using Google XYZ formula (*Accomplished [X] as measured by [Y] by doing [Z]*).
-4. Render using Jinja2 + Chromium page-fit loop to ensure exact page constraint.
+## Mission
+Compile clean, elegant, parser-bulletproof resumes that guarantee 100% extraction fidelity across enterprise Applicant Tracking Systems (Workday, Taleo, Greenhouse, Lever, iCIMS, Ashby). Enforce single-column visual hierarchy, typographic best practices, and deterministic section ordering that eliminates layout corruption while presenting an executive aesthetic to human reviewers.
+
+## Operating Rules
+1. **Single-Column Architectural Invariant**: Never emit multi-column layouts, sidebars, floating text boxes, graphic dividers, or embedded HTML/Word tables. The visual flow must strictly follow top-to-bottom linear streaming.
+2. **Deterministic Section Ordering**: Organize document sections in standard industry hierarchy: Header (Name, Contact Data), Professional Experience, Technical Skills, Education, and Certifications.
+3. **Typography & Metric Margins**: Maintain 0.5 to 0.75-inch margins; use universal system fonts (Calibri, Arial, Georgia); strictly ban custom web fonts and vector icon glyphs.
+4. **Clean Plaintext Extraction Verification**: The resulting document must yield 100% intelligible, correctly ordered plaintext when processed through pdftotext or clipboard copy-paste.
+5. **Standardized Header Tokenizer Labels**: Use universal, unambiguous section titles (PROFESSIONAL EXPERIENCE, TECHNICAL SKILLS, EDUCATION).
+6. **Chronological Syntax Normalization**: Enforce uniform date styling across all employment entries: Month YYYY – Month YYYY (e.g., Jan 2022 – Present or 03/2021 – 11/2023).
+7. **Bullet Point Density & Punctuation**: Every bullet point must begin with an active power verb, contain 25 to 45 words, and end with consistent period punctuation.
+8. **Page-Fit Budgeting**: Calibrate total content volume to exact page targets: Under 7 years of experience is strictly 1 page; 8+ years is strictly 2 full pages.
+
+## Output Contract
+Produce a compiled, verified ATS document package with single-column markdown, extraction fidelity verification, and page-budget adherence. Scope for this skill is \`system.document.compile\`.
 `,
   },
   {
@@ -623,6 +640,831 @@ Implements automated critique and RLAIF reflection loops over completed agent se
 2. **Touch & Interaction**: Minimum 44x44px target bounds, 150-300ms micro-interactions.
 3. **Typography & Rhythm**: 4/8dp incremental spacing grid, tabular numbers for metrics.
 4. **Error Recovery**: Immediate inline contextual feedback with actionable remedy links.
+`,
+  },
+  {
+    id: 'skill-career-coaching',
+    name: 'career-coaching',
+    category: 'skills',
+    tags: ['Career', 'Coaching', 'Strategy'],
+    description:
+      'Strategic career pathing, promotion readiness evaluation, skill gap identification, and executive interview preparation for engineering professionals.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: ['career coaching', 'career strategy', 'promotion readiness', 'career path'],
+    version: '2.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Career Coaching & Strategy
+
+## Mission
+Guide candidates through strategic career trajectory modeling, milestone planning, promotion readiness assessments, and interview behavioral preparation anchored on objective market standards.
+
+## Operating Rules
+1. Ingest verified candidate career history, project artifacts, and target role level (e.g., L4 to L6, IC to Staff) from workspace memory.
+2. Benchmark career competencies against industry engineering ladders, identifying critical technical, execution, and leadership gaps.
+3. Formulate structured 30-60-90 day milestone roadmaps with measurable deliverables to substantiate readiness for target promotions or transitions.
+4. Convert candidate experience highlights into high-impact STAR (Situation, Task, Action, Result) narratives suitable for senior behavioral screens.
+5. Provide actionable executive presence guidance, communication framing, and cross-functional influence strategies.
+6. Anchor all compensation expectations and level recommendations on empirical market percentiles (Levels.fyi, Blind) rather than arbitrary estimations.
+
+## Triggers
+Use when the request contains career coaching, career strategy, promotion readiness, or career path.
+
+## Output Contract
+Markdown analysis detailing candidate current-vs-target leveling matrix, identified skill gaps with priority rankings, 90-day execution milestones, and behavioral talking points. Scope for this skill is \`memory.read\`.
+`,
+  },
+  {
+    id: 'skill-ats-audit',
+    name: 'ats-audit',
+    category: 'skills',
+    tags: ['Career', 'ATS', 'Audit'],
+    description:
+      'Comprehensive ATS parseability and format audit across Workday, Greenhouse, Lever, Taleo, and Ashby parsers, identifying layout traps and keyword density anomalies.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'system.document.compile',
+    triggers: ['ats audit', 'audit resume', 'ats format check', 'parseability audit'],
+    version: '2.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# ATS Format & Parseability Audit
+
+## Mission
+Audit candidate resume documents against the parsing specifications of major Applicant Tracking Systems to eliminate layout failures, multi-column corruption, and missing section headers before submission.
+
+## Operating Rules
+1. Verify document layout adheres strictly to single-column top-down linear streams; flag multi-column tables, text boxes, and sidebar graphics as critical parser traps.
+2. Audit section heading nomenclature against universal ATS standard dictionaries (\`EXPERIENCE\`, \`EDUCATION\`, \`SKILLS\`), flagging non-standard creative headers.
+3. Validate date intervals for consistency across \`MM/YYYY - MM/YYYY\` or \`Month YYYY - Present\` conventions, highlighting unaddressed employment gaps exceeding 6 months.
+4. Verify typography and glyphs use standard UTF-8 characters and universal fonts (Georgia, Garamond, Inter, Arial), flagging unparseable custom icon fonts.
+5. Inspect document margins, header/footer text placements, and page breaks to ensure no contact info or critical skills are concealed in ignored footer bands.
+6. Generate an ATS parseability confidence score (0-100) with specific, actionable remediation steps categorized by target ATS engine (Workday, Greenhouse, Lever, Taleo, Ashby).
+
+## Triggers
+Use when the request contains ats audit, audit resume, ats format check, or parseability audit.
+
+## Output Contract
+Markdown audit report containing composite parseability score, engine-specific compatibility flags, detected formatting violations with line locations, and remediation checklist. Scope for this skill is \`system.document.compile\`.
+`,
+  },
+  {
+    id: 'skill-resume-optimization',
+    name: 'resume-optimization',
+    category: 'skills',
+    tags: ['Career', 'Resume', 'Optimization'],
+    description:
+      'Precision resume bullet rewriting, action verb hardening, metric quantification, and recruiter readability scoring using the Google XYZ formula.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: ['optimize resume', 'tailor bullets', 'xyz formula', 'rewrite bullet'],
+    version: '2.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Resume Bullet Optimization
+
+## Mission
+Transform passive job task descriptions into quantified, high-impact accomplishment bullets that highlight candidate engineering ownership and business outcomes without exaggerating achievements.
+
+## Operating Rules
+1. Ingest raw experience bullets and evaluate each against the Google XYZ formula: Accomplished [X], as measured by [Y], by doing [Z].
+2. Replace passive verbs and duty descriptions ("responsible for", "helped with") with decisive leadership and engineering power verbs (Architected, Spearheaded, Refactored, Streamlined).
+3. Extract and amplify verifiable quantitative metrics (throughput, latency, error reduction, revenue, cost savings, user scale) for every project bullet.
+4. Align rewritten bullets directly with target job description competencies while preserving 100% factual accuracy from the candidate's actual work history.
+5. Prevent keyword stuffing by integrating technical competencies naturally into execution context rather than appending isolated keyword lists.
+6. Provide side-by-side Before vs. After comparisons with an Impact Delta rating explaining why the revision elevates candidate competitiveness.
+
+## Triggers
+Use when the request contains optimize resume, tailor bullets, xyz formula, or rewrite bullet.
+
+## Output Contract
+Markdown table contrasting original bullets with optimized XYZ revisions, accompanied by metric explanations, power verb improvements, and estimated impact gain. Scope for this skill is \`memory.read\`.
+`,
+  },
+  {
+    id: 'skill-job-discovery-radar',
+    name: 'job-discovery-radar',
+    category: 'skills',
+    tags: ['Career', 'JobSearch', 'Radar'],
+    description:
+      'Autonomous job discovery, verified career portal monitoring, company hiring intelligence extraction, and live posting validation with SSRF protection.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'system.browser.read',
+    triggers: ['job radar', 'search jobs', 'discover jobs', 'find vacancies'],
+    version: '2.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Job Discovery & Market Radar
+
+## Mission
+Autonomously discover and verify relevant job opportunities across verified company career portals, extract core requirements, and score role fit while enforcing strict URL security and quota budgets.
+
+## Operating Rules
+1. Ingest candidate career targets (role titles, seniority, tech stack, location preferences, remote status) from workspace profile memory.
+2. Search and discover open requisitions across verified platforms and direct ATS domains (Greenhouse, Lever, Ashby, Workday), discarding stale listings older than 30 days.
+3. Validate every outbound target URL through Vaeloom URL guard to prevent SSRF vulnerabilities, enforcing HTTPS-only and rejecting internal IP spaces.
+4. Extract structured job metadata: exact title, hiring team, core technical requirements, nice-to-have qualifications, compensation bands, and visa sponsorship status.
+5. Compute multi-factor match score combining semantic vector relevance, required tech stack overlap, and candidate years of experience.
+6. Rate-limit external browser requests to honor workspace hourly scrape quotas, logging audit trails for every investigated career opportunity.
+
+## Triggers
+Use when the request contains job radar, search jobs, discover jobs, or find vacancies.
+
+## Output Contract
+Markdown table of discovered positions including job title, company name, match score, key requirements summary, verified application link, and discovery timestamp. Scope for this skill is \`system.browser.read\`.
+`,
+  },
+  {
+    id: 'skill-cover-letter-architect',
+    name: 'cover-letter-architect',
+    category: 'skills',
+    tags: ['Career', 'CoverLetter', 'Applications'],
+    description:
+      'Value-first, personalized cover letter drafting connecting candidate achievements to company pain points, mission objectives, and engineering culture.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: ['cover letter', 'draft cover letter', 'application letter', 'write cover letter'],
+    version: '2.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Cover Letter Architect
+
+## Mission
+Draft concise, compelling, and authentic cover letters that establish candidate value within the opening 10 seconds, connecting concrete project achievements directly to the employer's stated challenges.
+
+## Operating Rules
+1. Ingest candidate portfolio highlights, target job description, and employer company research from workspace memory before composing copy.
+2. Open with an attention-grabbing hook referencing specific company products, technical initiatives, or mutual problem spaces; never begin with generic "I am writing to apply" boilerplate.
+3. Structure the narrative into 3 to 4 focused paragraphs (250–400 words total) balancing technical competency, measurable outcomes, and cultural enthusiasm.
+4. Dedicate the primary body paragraph to a specific problem-solution-impact narrative proving the candidate has successfully resolved problems identical to the team's roadmap needs.
+5. Address potential background transitions or non-traditional experience proactively by framing transferable engineering strengths as unique advantages.
+6. Conclude with an assertive yet courteous forward-looking statement inviting strategic technical conversation rather than passive closing platitudes.
+
+## Triggers
+Use when the request contains cover letter, draft cover letter, application letter, or write cover letter.
+
+## Output Contract
+Markdown document containing the complete tailored cover letter, key company hooks cited, talking points for follow-up interviews, and word count verification. Scope for this skill is \`memory.read\`.
+`,
+  },
+  {
+    id: 'skill-star-interview-prep',
+    name: 'star-interview-prep',
+    category: 'skills',
+    tags: ['Career', 'Interview', 'STAR'],
+    description:
+      'Behavioral interview preparation engine transforming candidate experiences into structured, concise Situation-Task-Action-Result (STAR) stories with quantified outcomes.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: ['interview prep', 'star story', 'behavioral interview', 'mock interview'],
+    version: '2.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# STAR Interview Story Prep
+
+## Mission
+Prepare candidates for rigorous behavioral interviews by distilling verified project work into structured, compelling Situation-Task-Action-Result (STAR) stories calibrated for 90-second delivery.
+
+## Operating Rules
+1. Ingest candidate project artifacts and verified work history, mapping key milestones across core behavioral competencies (Leadership, Complexity, Conflict, Failure & Growth).
+2. Structure every story using the strict STAR framework: Situation (15s context), Task (15s ownership), Action (45s specific personal actions), and Result (15s quantified outcome).
+3. Ensure the Action component focuses unambiguously on candidate individual contributions rather than diffuse team actions, highlighting technical decision tradeoffs.
+4. Conclude every narrative with measurable business impact (latency cut, dollars saved, users onboarded) and a reflective learning synthesis.
+5. Provide a 60-second condensed elevator version and high-yield follow-up talking points for each banked story.
+6. Prepare strategic, high-signal reverse questions tailored for engineering hiring managers, technical peers, and executive leaders.
+
+## Triggers
+Use when the request contains interview prep, star story, behavioral interview, or mock interview.
+
+## Output Contract
+Markdown story bank detailing question prompt, 90-second STAR narrative script, key metrics emphasized, and tailored reverse questions for the interviewer. Scope for this skill is \`memory.read\`.
+`,
+  },
+  {
+    id: 'skill-salary-negotiation-playbook',
+    name: 'salary-negotiation-playbook',
+    category: 'skills',
+    tags: ['Career', 'Salary', 'Negotiation'],
+    description:
+      'Total compensation negotiation guide, market percentile benchmarking, equity valuation models, and respectful counter-offer scripts for offers and promotions.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: ['salary negotiation', 'negotiate offer', 'counter offer', 'compensation benchmark'],
+    version: '2.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Salary & Offer Negotiation
+
+## Mission
+Equip candidates with data-driven compensation benchmarks, total remuneration models, and respectful negotiation scripts to secure competitive compensation packages without endangering offers.
+
+## Operating Rules
+1. Calculate full Total Compensation (TC) across all components: Base Salary, Annual Performance Bonus, Equity Grants (RSUs/Options with vesting schedules), and Benefits value.
+2. Establish market percentiles (25th, 50th, 75th, and 90th percentile) using verified compensation data sources (Levels.fyi, Blind) adjusted for geographic tier and role seniority.
+3. Formulate polite, persuasive counter-offer emails and live call scripts that lead with genuine role enthusiasm before presenting data-backed asks.
+4. Prepare contingency fallback levers when base salary is rigid, including signing bonuses, equity refreshers, accelerated review cycles, remote flexibility, and learning stipends.
+5. Provide structured responses for early salary deflection questions, preserving negotiation leverage until written offers are presented.
+6. Verify all agreed adjustments are documented in updated written offer letters prior to final candidate signature.
+
+## Triggers
+Use when the request contains salary negotiation, negotiate offer, counter offer, or compensation benchmark.
+
+## Output Contract
+Markdown negotiation strategy report featuring total compensation breakdown table, market benchmark range, written counter-offer email script, and scenario pushback talking points. Scope for this skill is \`memory.read\`.
+`,
+  },
+  {
+    id: 'skill-linkedin-profile-optimizer',
+    name: 'linkedin-profile-optimizer',
+    category: 'skills',
+    tags: ['Career', 'LinkedIn', 'Profile', 'Recruiter', 'SEO'],
+    description:
+      'Transform candidate LinkedIn profiles into high-ranking, recruiter-optimized landing pages with search-indexed headlines, engaging About sections, and metric-dense Experience entries.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: [
+      'linkedin profile optimizer',
+      'optimize linkedin',
+      'linkedin headline',
+      'linkedin about section',
+      'recruiter search optimization',
+    ],
+    version: '2.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# LinkedIn Profile Optimizer & Recruiter Discovery Playbook
+
+## Mission
+Transform candidate LinkedIn profiles into high-ranking, recruiter-optimized landing pages. Synthesizes search-indexed headlines, engaging 3-hook About sections, and metric-dense Experience entries grounded in the candidate's verified workspace memory vault, achieving maximum discovery across LinkedIn Recruiter searches while maintaining 100% truthful metrics.
+
+## Operating Rules
+1. Three-Part Searchable Headline Architecture: Format headlines using \`[Target Title] | [2-3 Core High-Signal Keywords] | [Quantified Proof or Value Proposition]\` within the 220-character limit.
+2. The 3-Line Mobile Fold Hook: Craft the first 3 lines (210 desktop characters / 140 mobile characters) of the About section to provoke curiosity and compel readers to tap 'see more'.
+3. Google XYZ & Metric Grounding: Format all Experience bullets using the XYZ framework (\`Accomplished [X] as measured by [Y] by doing [Z]\`), sourcing numbers directly from workspace memory (\`memory.read\`). Never fabricate metrics.
+4. Strategic Recruiter Keyword Traversal: Map top recruiter search competencies into Skills and Experience sections naturally without keyword stuffing or deceptive spam.
+5. First-Person Conversational Professional Voice: Write About sections in a polished, first-person narrative ('I build...', 'My focus is...') rather than third-person formality or AI tropes.
+6. Zero AI Tells & Clean Typography: Ban generic AI buzzwords (\`delve\`, \`leverage\`, \`testament to\`, \`in today's fast-paced world\`), straighten curly quotes, and eliminate zero-width spaces.
+7. Featured Section High-Impact Sequencing: Recommend portfolio order: 1) Flagship open-source or product build, 2) Technical deep dive or article, 3) High-signal award or credential.
+8. Strict Scope Discipline: Operates under authorized tool scope \`memory.read\` to read candidate profile and career receipts without unapproved writes.
+
+## Triggers
+Use when requests contain: linkedin profile optimizer, optimize linkedin, linkedin headline, linkedin about section, or recruiter search optimization.
+
+## Output Contract
+Produces an end-to-end LinkedIn profile optimization blueprint containing: 1) 3 Headline Options (with character count and keyword density check), 2) Complete 3-Part About Section, 3) Experience Section Bullet Refinements, 4) Top 5 Recruiter Skills to Pin, 5) Profile Completeness & Rubric Scorecard (0-100). Scope for this skill is \`memory.read\`.
+`,
+  },
+  {
+    id: 'skill-linkedin-interviewer',
+    name: 'linkedin-interviewer',
+    category: 'skills',
+    tags: ['Career', 'LinkedIn', 'Interview', 'Story Bank', 'Branding'],
+    description:
+      'Interview candidate to capture verified career receipts, turning points, failure scars, and defended contrarian positions into a permanent Story Bank.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.write',
+    triggers: [
+      'linkedin interviewer',
+      'interview me',
+      'career interview',
+      'story bank',
+      'extract stories',
+    ],
+    version: '2.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# LinkedIn Interviewer & Career Story Banker
+
+## Mission
+Conduct structured, empathetic diagnostic interviews with the candidate to extract concrete career evidence—scopes, verified metrics, turning points, failure scars, and defended contrarian convictions. Compiles the interview findings into a persistent, un-hallucinated Story Bank that powers all downstream resume bullets, LinkedIn posts, and cover letters.
+
+## Operating Rules
+1. Press Once, Never Interrogate: When the candidate provides a soft answer ('we improved performance'), press once for exact metrics, measurement duration, and tools used. Accept their answer and move on.
+2. Zero Fabrication & No Plausible Inventions: Never invent figures or guess team sizes. If a candidate cannot recall an exact metric, leave the field empty or marked as approximate.
+3. Chase the Turning Points & Scars: Specifically ask what the candidate believed 12-24 months ago that they no longer believe, and what failure or mistake taught them that lesson. Real scars provide 10x more trust than unearned wins.
+4. Capture Defended Positions: Elicit convictions and architectural choices the candidate advocates for that peers or conventional wisdom disagree with.
+5. Verbatim Phrasing Retention: Record the candidate's exact words and lively phrasing rather than flattening them into generic corporate jargon.
+6. Honor Off-Limits Boundaries: Explicitly establish what metrics, client names, or proprietary technologies stay confidential and off-limits.
+7. Strict Scope Discipline: Operates under authorized tool scope \`memory.write\` to persist verified stories into the candidate's workspace memory vault.
+
+## Triggers
+Use when requests contain: linkedin interviewer, interview me, career interview, story bank, or extract stories.
+
+## Output Contract
+Outputs a structured, markdown-formatted Story Bank adhering to the schema: 1) Roles & Scopes, 2) Receipts & Concrete Figures, 3) Turning Points & Scars, 4) Defended Positions, 5) Off-Limits Boundaries. Scope for this skill is \`memory.write\`.
+`,
+  },
+  {
+    id: 'skill-linkedin-humanizer',
+    name: 'linkedin-humanizer',
+    category: 'skills',
+    tags: ['Career', 'LinkedIn', 'Writing', 'Quality', 'Humanizer'],
+    description:
+      'Strip machine tells, invisible unicode smuggling characters, and AI tropes from drafts while strictly preserving authentic facts and numbers.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: [
+      'linkedin humanizer',
+      'humanize post',
+      'strip ai tells',
+      'remove slop',
+      'humanize content',
+    ],
+    version: '2.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# LinkedIn Content Humanizer & AI Tell Stripper
+
+## Mission
+Sanitize AI-generated drafts (resume bullets, LinkedIn posts, About sections, and cover letters) by eliminating machine tells: zero-width unicode format characters, typographic AI fingerprints (excessive em dashes, curly quotes), and overused AI buzzwords (\`delve\`, \`leverage\`, \`seamless\`, \`testament to\`). Replaces cliches with concrete, natural phrasing while strictly preserving the candidate's authentic numbers, metrics, and dates.
+
+## Operating Rules
+1. Never Drop Concrete Numbers: The humanizer must preserve 100% of the candidate's authentic metrics, percentages, dollar figures, and dates. Any edit that drops or alters a number is strictly rejected.
+2. Invisible Character Elimination: Automatically detect and strip zero-width spaces (\`U+200B\`), zero-width joiners, byte-order marks (\`U+FEFF\`), and Unicode tag smuggling characters that survive copy-paste.
+3. Typographic Normalization: Replace machine-generated em dashes with commas or hyphens, straighten curly quotes, and replace ellipses with standard periods.
+4. Lexical Slop Replacement: Replace canonical AI buzzwords (\`delve into\` -> \`look at\`, \`leverage\` -> \`use\`, \`seamless\` -> \`clean\`, \`in today's fast-paced world\` -> \`right now\`) while maintaining grammatical integrity.
+5. Preserve URLs & Code Verbatim: Protect all URLs, email addresses, and technical code identifiers from regex modifications.
+6. Flag Structural Tells: Flag rhetorical reveals ('The kicker?', 'Let that sink in'), rule-of-three triads, and hashtag walls for human revision rather than mangling sentence structure.
+7. Strict Scope Discipline: Operates under authorized tool scope \`memory.read\` without fabricating new facts or claims.
+
+## Triggers
+Use when requests contain: linkedin humanizer, humanize post, strip ai tells, remove slop, or humanize content.
+
+## Output Contract
+Outputs: 1) Cleaned Draft with all invisible chars and slop removed, 2) Audit Report detailing changes made, 3) 5-Check Score across Burstiness, Specificity, Slop Density, Fingerprint, and Voice (0-100 scale). Scope for this skill is \`memory.read\`.
+`,
+  },
+  {
+    id: 'skill-linkedin-post-writer',
+    name: 'linkedin-post-writer',
+    category: 'skills',
+    tags: ['Career', 'LinkedIn', 'Content', 'Thought Leadership', 'Writing'],
+    description:
+      'Draft high-agency career and technical LinkedIn posts using 21 proven hook formulas with zero AI cliches, zero link leakage, and authentic engineering voice.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: [
+      'linkedin post writer',
+      'write linkedin post',
+      'draft post',
+      'linkedin thought leadership',
+      'share technical win',
+    ],
+    version: '2.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# LinkedIn Post Writer & Career Thought Leadership
+
+## Mission
+Draft authentic, high-dwell-time LinkedIn posts showcasing career milestones, technical systems, architecture decisions, and contrarian engineering convictions. Employs 21 battle-tested hook formulas to capture reader attention before the 210-character mobile fold while maintaining zero AI slop, zero fabricated numbers, and a human conversational voice.
+
+## Operating Rules
+1. The Fold is Everything: Line 1 and 2 must capture the reader's interest before LinkedIn's fold (210 chars on desktop, 140 chars on mobile). Never waste line 1 on pleasantries, setups, or greetings.
+2. Numbers Beat Adjectives: Specific figures ($14,200, 31%, 47 minutes) must always replace vague qualifiers ('significant cost', 'massive growth', 'fast deployment').
+3. One Idea Per Post: Focus strictly on one clear insight or lesson. If an idea requires multiple disparate pivots, split it into separate posts.
+4. Zero AI Cliches: Never include prohibited tropes (\`delve\`, \`leverage\`, \`testament to\`, \`in today's fast-paced world\`, \`game-changer\`, rocket or fire emoji chains).
+5. No External Links in Body: Keep external URLs out of the post body to protect algorithmic distribution; instruct links to be placed in the first comment or profile featured section.
+6. Ground in Verified Experience: Pull real facts, roles, and lessons directly from the candidate's Story Bank or workspace memory vault (\`memory.read\`). Never fabricate metrics.
+7. Strict Scope Discipline: Operates under authorized tool scope \`memory.read\` and generates candidate-approved copy ready for publication.
+
+## Triggers
+Use when requests contain: linkedin post writer, write linkedin post, draft post, linkedin thought leadership, or share technical win.
+
+## Output Contract
+Outputs: 1) Selected Hook Formula with ID and rationale, 2) Full Post Draft formatted with whitespace for mobile readability (900-1,300 chars), 3) First-Comment Call to Action with optional link or follow-up question. Scope for this skill is \`memory.read\`.
+`,
+  },
+  {
+    id: 'skill-academic-cv-builder',
+    name: 'academic-cv-builder',
+    category: 'skills',
+    tags: ['Career', 'Resume', 'Academic', 'CV', 'Writing'],
+    description: 'Format CVs for academic positions with publications, grants, and teaching.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: [
+      'academic cv builder',
+      'academic cv',
+      'curriculum vitae',
+      'faculty application',
+      'research cv',
+      'postdoc cv',
+    ],
+    version: '1.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Academic CV Builder & Scholarly Dossier Architecture
+
+## Mission
+Structure, format, and curate comprehensive Curriculum Vitae (CV) documents for academic faculty, postdoc, and research fellow applications across research-intensive and teaching-focused institutions.
+
+## Operating Rules
+1. Comprehensive Chronological Record: Maintain an unabridged, exhaustive record of scholarship, teaching, grants, and academic service; do not artificially constrain CVs to industry 1-page limits.
+2. Standardized Disciplinary Citation Format: Enforce consistent citation style (APA, IEEE, Chicago, or MLA) across all publications, separating peer-reviewed articles, books, chapters, and conference proceedings.
+3. Author Order & Contribution Transparency: Bold candidate name across citations and explicitly denote corresponding author or equal contribution marks.
+4. Grant & Award Precision: Include funding agency, award title, grant number, total monetary amount, funding period, and candidate investigator role (PI/co-PI).
+5. Pedagogical & Course Scope Specificity: Detail course codes, titles, level (undergraduate/graduate), candidate role (instructor of record vs TA), and enrollment sizes.
+6. Strict Grounding in Candidate Vault: Never invent citations, grants, or awards; ground all entries in verified workspace records (\`memory.read\`).
+
+## Triggers
+Use when requests contain: academic cv builder, academic cv, curriculum vitae, faculty application, research cv, postdoc cv.
+
+## Output Contract
+Markdown dossier containing: 1) Education, 2) Academic & Research Appointments, 3) Publications by Category, 4) Grants & Awards, 5) Teaching Experience, 6) Service & Professional Activities. Scope for this skill is \`memory.read\`.
+`,
+  },
+  {
+    id: 'skill-application-form-filler',
+    name: 'application-form-filler',
+    category: 'skills',
+    tags: ['Career', 'Job Search', 'Applications', 'Automation'],
+    description:
+      "Fill out job application form fields with context-aware, tailored answers drawn from the candidate's CV and the job description.",
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: [
+      'application form filler',
+      'fill application',
+      'job application form',
+      'apply to job',
+      'form answers',
+    ],
+    version: '1.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Application Form Filler & Smart Questionnaire Response Engine
+
+## Mission
+Generate tailored, high-signal, and policy-compliant answers for job application form fields, custom screening questions, and ATS portal questionnaires by extracting verified facts from candidate workspace memory.
+
+## Operating Rules
+1. Exact Truthfulness & Zero Fabrication: Answer factual fields (work authorization, notice period, location preference, clearance) strictly from verified vault memory (\`memory.read\`). Never guess legal or immigration status.
+2. Question-Specific Decomposition: Identify the exact core question being asked (behavioral, technical, motivation, situational) and address every sub-prompt directly.
+3. Character & Word Count Enforcement: Adhere strictly to portal character limits (e.g., 150 words, 500 characters) with crisp, impactful prose without trailing ellipses.
+4. Concrete Evidence in Screening Answers: Ground behavioral answers in STAR-method metrics rather than general platitudes.
+5. Diversity & Demographic Sensitivity: For optional EEO/demographic disclosures, provide honest guidance or advise decline options per user preference.
+6. Scope Discipline: Reads verified candidate history and profile details under authorized scope \`memory.read\`.
+
+## Triggers
+Use when requests contain: application form filler, fill application, job application form, apply to job, form answers.
+
+## Output Contract
+Structured mapping of form questions to candidate-tailored responses with character count, source memory citations, and explicit verification flags. Scope for this skill is \`memory.read\`.
+`,
+  },
+  {
+    id: 'skill-career-changer-translator',
+    name: 'career-changer-translator',
+    category: 'skills',
+    tags: ['Career', 'Coaching', 'Transition', 'Strategy'],
+    description:
+      'Translate skills from one industry to another and identify transferable strengths without buzzwords.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: [
+      'career changer translator',
+      'career pivot',
+      'career transition',
+      'transferable skills',
+      'industry change',
+    ],
+    version: '1.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Career Changer Translator & Transferable Competency Mapper
+
+## Mission
+Deconstruct candidate experience across non-traditional or previous industries and map foundational competencies into the target industry's nomenclature, demonstrating immediate domain relevance and problem-solving capability.
+
+## Operating Rules
+1. Functional Abstraction Over Jargon: Strip source-industry specific jargon and restate accomplishments in terms of universal business drivers: revenue, latency, scale, compliance, risk, and team leadership.
+2. Bridge Framing: Establish explicit bridges between prior discipline methods (e.g., clinical trials, military logistics, academic research) and target tech/business workflows (e.g., A/B testing, supply chain ops, data science).
+3. Value-First Narrative: Position career change as a distinct competitive advantage (cross-functional insight, resilience, lateral thinking) rather than a deficit to excuse.
+4. Preserved Historical Integrity: Never misrepresent past job titles or falsify duties; translate the impact and methodology while keeping verified titles (\`memory.read\`).
+5. Target Skill Gap Transparency: Openly identify gaps requiring upskilling or certification rather than papering over missing hard requirements.
+6. Scope Discipline: Operates under authorized tool scope \`memory.read\` without side effects.
+
+## Triggers
+Use when requests contain: career changer translator, career pivot, career transition, transferable skills, industry change.
+
+## Output Contract
+Markdown report featuring: 1) Competency Translation Matrix, 2) Reframed Professional Summary, 3) 4-6 Translated High-Impact Bullets, 4) Gap Analysis & Mitigation Recommendations. Scope for this skill is \`memory.read\`.
+`,
+  },
+  {
+    id: 'skill-cold-email-writer',
+    name: 'cold-email-writer',
+    category: 'skills',
+    tags: ['Career', 'Outreach', 'Networking', 'Email', 'Job Search'],
+    description:
+      'Write personalized cold outreach emails to hiring managers and founders — specific, human, not a pitch deck.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: [
+      'cold email writer',
+      'cold email',
+      'hiring manager outreach',
+      'founder outreach',
+      'networking email',
+    ],
+    version: '1.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Cold Email Writer & High-Conversion Outreach Architect
+
+## Mission
+Draft hyper-personalized, concise, and credible cold outreach emails to engineering leaders, hiring managers, and founders that generate high response rates without sounding like generic sales copy or desperate pitches.
+
+## Operating Rules
+1. Extreme Brevity: Keep the total email body strictly between 75 and 150 words. Respect the recipient's finite attention span.
+2. Specific Observation Hook: Open with a hyper-specific observation regarding the recipient's recent engineering blog post, product launch, GitHub commit, or talk. No generic flattery.
+3. Single High-Relevance Proof Point: Include exactly one verified metric or architectural outcome from candidate vault history (\`memory.read\`) directly addressing the team's public pain point.
+4. Low-Friction Single Call-to-Action: Conclude with an effortless, low-commitment ask (e.g., 'Open to a 10-minute chat next Tuesday, or should I speak with someone else on your infra team?').
+5. Clean Human Tone: Zero marketing buzzwords, zero formal Victorian correspondence cliches, zero automated template tells.
+6. Scope Discipline: Operates under authorized scope \`memory.read\` for candidate achievements retrieval.
+
+## Triggers
+Use when requests contain: cold email writer, cold email, hiring manager outreach, founder outreach, networking email.
+
+## Output Contract
+Markdown email package containing: 1) 3 Subject Line Options (< 45 chars), 2) Email Body (< 150 words), 3) Follow-up Snippet (for Day 5 check-in). Scope for this skill is \`memory.read\`.
+`,
+  },
+  {
+    id: 'skill-creative-portfolio-resume',
+    name: 'creative-portfolio-resume',
+    category: 'skills',
+    tags: ['Career', 'Resume', 'Portfolio', 'Design', 'Creative'],
+    description:
+      'Balance visual design with ATS compatibility for creative, UI/UX, and design roles.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'system.document.compile',
+    triggers: [
+      'creative portfolio resume',
+      'creative resume',
+      'design resume',
+      'ux resume',
+      'portfolio resume',
+    ],
+    version: '1.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Creative Portfolio Resume & Dual-Format Design Architecture
+
+## Mission
+Create resumes for UI/UX designers, design engineers, creative directors, and product designers that strike the perfect balance between high-craft typographic elegance and strict machine-readable ATS compliance.
+
+## Operating Rules
+1. Dual-Track Parsing Compliance: Ensure all primary textual content exists in single-column semantic flow that ATS engines parse cleanly while maintaining refined typographic hierarchy.
+2. Design Artifact & Case Study Linking: Integrate prominent, scannable links to live prototypes, design systems, Figma files, and case studies.
+3. Design Systems & Tooling Granularity: Explicitly enumerate design tools, design systems (tokens, components), and prototyping frameworks alongside front-end engineering competencies.
+4. Outcome-Driven Design Metrics: Pair visual and interaction design deliverables with measurable user/business metrics (conversion lift, usability score improvement, design debt reduction).
+5. Strict Layout Safety: Avoid complex floating layers, non-standard glyph fonts, or image-only text that break ATS parsers.
+6. Scope Discipline: Compiles production-ready documents under authorized scope \`system.document.compile\`.
+
+## Triggers
+Use when requests contain: creative portfolio resume, creative resume, design resume, ux resume, portfolio resume.
+
+## Output Contract
+Compiled resume specification ready for PDF rendering with complete typography tokens, portfolio links, and verified case studies. Scope for this skill is \`system.document.compile\`.
+`,
+  },
+  {
+    id: 'skill-executive-resume-writer',
+    name: 'executive-resume-writer',
+    category: 'skills',
+    tags: ['Career', 'Resume', 'Executive', 'Leadership', 'Strategy'],
+    description:
+      'Create C-suite and VP level resumes emphasizing strategic leadership, P&L ownership, and board communication.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: [
+      'executive resume writer',
+      'executive resume',
+      'vp resume',
+      'c-suite resume',
+      'director resume',
+      'leadership resume',
+    ],
+    version: '1.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Executive Resume Writer & Strategic Leadership Dossier
+
+## Mission
+Synthesize executive careers (VP, SVP, C-Suite, GM, Managing Director) into authoritative executive resumes that communicate board-level governance, P&L ownership, organizational transformation, and enterprise shareholder value.
+
+## Operating Rules
+1. Enterprise Scale Primacy: Lead every role with the operating scale: P&L size ($M/$B), organizational headcount, global footprint, and reporting line to Board/CEO.
+2. Strategic Transformation Narrative: Frame achievements in terms of enterprise value creation: market entry, turnaround, M&A integration, EBITDA growth, and digital transformation.
+3. Executive Summary as Business Case: Open with an executive value proposition highlighting the candidate's core operating philosophy and strategic impact.
+4. Board & Advisory Presence: Dedicate distinct positioning for board governance, committee leadership, and external industry advisory appointments.
+5. High-Impact Scannable Typography: Enforce crisp executive formatting with strategic callout blocks for milestone acquisitions or exits.
+6. Scope Discipline: Reads verified executive career history out of workspace memory under scope \`memory.read\`.
+
+## Triggers
+Use when requests contain: executive resume writer, executive resume, vp resume, c-suite resume, director resume, leadership resume.
+
+## Output Contract
+Comprehensive executive resume markdown containing Executive Summary, Board & Governance, Core Operating Competencies, Professional Experience with P&L scope, and Education/Credentials. Scope for this skill is \`memory.read\`.
+`,
+  },
+  {
+    id: 'skill-job-description-analyzer',
+    name: 'job-description-analyzer',
+    category: 'skills',
+    tags: ['Career', 'Job Search', 'Analysis', 'Strategy', 'ATS'],
+    description:
+      'Analyze job postings, calculate match scores, identify requirements gaps, and formulate application strategy.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: [
+      'job description analyzer',
+      'analyze job description',
+      'job posting analysis',
+      'jd breakdown',
+      'job requirements',
+    ],
+    version: '1.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Job Description Analyzer & Hiring Intelligence Engine
+
+## Mission
+Dissect complex job descriptions to extract implicit and explicit requirements, map candidate qualifications against role demands, calculate authentic match scores, and produce actionable application positioning strategies.
+
+## Operating Rules
+1. Four-Tier Qualification Extraction: Separate requirements into 1) Must-have hard skills, 2) Nice-to-have bonus skills, 3) Hidden team/cultural signals, and 4) Core business objectives.
+2. Authentic Match Scoring: Calculate transparent match score percentage based on hard qualification overlap; never artificially inflate scores.
+3. Gap Identification with Mitigation: Highlight every candidate gap alongside a concrete mitigation tactic (parallel experience, demonstrated fast learning, portfolio project).
+4. Hidden Pain Point Detection: Decode boilerplate requirements to identify the real organizational problem the hiring manager is desperate to solve.
+5. Keyword Density Guidance: Extract top 10 ATS search keywords in descending order of frequency and strategic importance.
+6. Scope Discipline: Operates under authorized tool scope \`memory.read\` for candidate profile comparison.
+
+## Triggers
+Use when requests contain: job description analyzer, analyze job description, job posting analysis, jd breakdown, job requirements.
+
+## Output Contract
+Markdown analysis containing: 1) Role Overview & Pain Points, 2) Four-Tier Skills Taxonomy, 3) Candidate Match Score %, 4) Identified Gaps & Mitigation Strategy, 5) ATS Keyword Bank. Scope for this skill is \`memory.read\`.
+`,
+  },
+  {
+    id: 'skill-offer-comparison-analyzer',
+    name: 'offer-comparison-analyzer',
+    category: 'skills',
+    tags: ['Career', 'Compensation', 'Offers', 'Finance', 'Strategy'],
+    description:
+      'Compare multiple job offers side-by-side with total compensation, equity valuation, and cost of living analysis.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: [
+      'offer comparison analyzer',
+      'compare job offers',
+      'offer comparison',
+      'total compensation compare',
+      'multiple offers',
+    ],
+    version: '1.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Offer Comparison Analyzer & Multi-Offer Decision Framework
+
+## Mission
+Deliver rigorous, multi-dimensional comparative analysis of concurrent job offers, balancing total direct compensation (Base, Bonus, Equity, Sign-on) against benefits, cost of living, career trajectory, and qualitative culture fit.
+
+## Operating Rules
+1. Normalized Total Compensation: Model 4-year annualized total compensation (Year 1 vs Years 2-4) taking vesting cliffs, signing bonuses, and expected performance bonuses into account.
+2. Equity Realism & Risk Modeling: Distinguish public liquid RSUs from private options/illiquid shares; model conservative, base, and upside exit scenarios for private equity.
+3. Cost of Living & Tax Adjustment: Normalize offers across different geographic locations using state/local tax models and real cost of living indexes.
+4. Benefits & Hidden Perks Valuation: Quantify monetary value of 401(k) matches, healthcare premiums, PTO policies, learning budgets, and remote work stipends.
+5. Qualitative Career Trajectory Scoring: Score company brand prestige, promotion velocity, mentorship quality, and market resilience.
+6. Scope Discipline: Operates under authorized tool scope \`memory.read\` without persisting sensitive compensation data externally.
+
+## Triggers
+Use when requests contain: offer comparison analyzer, compare job offers, offer comparison, total compensation compare, multiple offers.
+
+## Output Contract
+Markdown decision dossier containing: 1) Side-by-Side Compensation Matrix, 2) 4-Year Cash Flow Projection, 3) Benefits & Equity Risk Analysis, 4) Qualitative Dimension Scorecard, 5) Recommendation & Decision Rationale. Scope for this skill is \`memory.read\`.
+`,
+  },
+  {
+    id: 'skill-portfolio-case-study-writer',
+    name: 'portfolio-case-study-writer',
+    category: 'skills',
+    tags: ['Career', 'Portfolio', 'Case Study', 'Engineering', 'Writing'],
+    description:
+      'Transform resume bullets and system architecture into detailed portfolio case studies and project deep-dives.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: [
+      'portfolio case study writer',
+      'portfolio case study',
+      'project case study',
+      'write case study',
+      'engineering case study',
+    ],
+    version: '1.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Portfolio Case Study Writer & Architecture Narrative Builder
+
+## Mission
+Transform isolated engineering projects, system implementations, and product milestones into compelling, publication-grade technical case studies that demonstrate architectural depth, trade-off analysis, and measurable business impact.
+
+## Operating Rules
+1. Problem-First Narrative Arc: Structure case studies around the authentic business challenge, latency bottleneck, or scaling constraint before discussing technical solutions.
+2. Explicit Trade-off Documentation: Detail alternatives considered, why specific tools/patterns were chosen, and what trade-offs were accepted.
+3. Architecture & Data Flow Clarity: Provide clear architectural breakdowns (microservices, caching layers, data schemas, async queues) suitable for senior/staff engineering reviewers.
+4. Quantified Business Impact: Anchor case study conclusion in verifiable business outcomes (revenue preserved, infrastructure cost reduced, p99 latency dropped).
+5. Candidate Ownership Attribution: Clearly distinguish the candidate's individual design contributions from general team activities (\`memory.read\`).
+6. Scope Discipline: Operates under authorized tool scope \`memory.read\` without side effects.
+
+## Triggers
+Use when requests contain: portfolio case study writer, portfolio case study, project case study, write case study, engineering case study.
+
+## Output Contract
+Markdown case study containing: 1) Executive Summary, 2) Problem Statement & Constraints, 3) Architecture & Implementation, 4) Trade-offs & Decisions, 5) Measurable Impact & Lessons Learned. Scope for this skill is \`memory.read\`.
+`,
+  },
+  {
+    id: 'skill-reference-list-builder',
+    name: 'reference-list-builder',
+    category: 'skills',
+    tags: ['Career', 'References', 'Job Search', 'Dossier'],
+    description:
+      'Format professional references properly, prepare reference dossiers, and prep references with context.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: [
+      'reference list builder',
+      'professional references',
+      'reference list',
+      'reference dossier',
+      'reference preparation',
+    ],
+    version: '1.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Reference List Builder & Candidate Advocacy Dossier
+
+## Mission
+Curate professional reference lists and candidate briefing dossiers that equip advocates with the exact project contexts, key competencies, and shared accomplishments needed to deliver glowing, credible reference checks.
+
+## Operating Rules
+1. Categorized Advocate Roster: Organize references by professional relationship: former managers, peer engineers, cross-functional partners, and direct reports.
+2. Contextual Role Alignment: For each reference, document the shared company, project timeframe, and specific high-impact initiatives worked on together.
+3. Reference Briefing Packet: Generate tailored talking points and refresher notes for each advocate highlighting the specific target role requirements.
+4. Privacy & Consent Safeguards: Advise candidate to obtain explicit permission before sharing contact numbers and private emails; never disclose references prematurely.
+5. Reverse Chronological Experience Grounding: Ensure dates and company names match verified workspace memory (\`memory.read\`).
+6. Scope Discipline: Operates under authorized tool scope \`memory.read\` without external side effects.
+
+## Triggers
+Use when requests contain: reference list builder, professional references, reference list, reference dossier, reference preparation.
+
+## Output Contract
+Markdown dossier containing: 1) Formatted Professional Reference Sheet, 2) Reference Alignment Matrix (who covers which competencies), 3) Advocate Outreach & Briefing Email Templates. Scope for this skill is \`memory.read\`.
 `,
   },
 

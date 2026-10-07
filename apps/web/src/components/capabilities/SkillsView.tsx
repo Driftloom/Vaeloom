@@ -69,6 +69,7 @@ interface SkillsViewProps {
   error?: Error;
   onRetry: () => void;
   pendingKey: string | null;
+  workspaceId?: string;
 }
 
 function isNarrowViewport(): boolean {
@@ -111,6 +112,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
   error,
   onRetry,
   pendingKey,
+  workspaceId,
 }) => {
   const [confirmDelete, setConfirmDelete] = useState<SkillRow | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<SkillCategoryFilter>('all');
@@ -299,7 +301,26 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
               />
             </div>
           ) : (
-            <ul aria-label="Skills" className="divide-y divide-border-subtle">
+            <ul
+              aria-label="Skills"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                  const currentIndex = filteredRows.findIndex((r) => r.key === selectedRow?.key);
+                  if (currentIndex === -1) return;
+                  e.preventDefault();
+                  const nextIndex =
+                    e.key === 'ArrowDown'
+                      ? Math.min(filteredRows.length - 1, currentIndex + 1)
+                      : Math.max(0, currentIndex - 1);
+                  const nextRow = filteredRows[nextIndex];
+                  if (nextRow) {
+                    handleSelect(nextRow.key);
+                  }
+                }
+              }}
+              className="divide-y divide-border-subtle focus:outline-none"
+            >
               {filteredRows.map((row) => {
                 const isSelected = row.key === selectedRow?.key;
                 const isPending = pendingKey === row.key;
@@ -339,6 +360,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
           onSaveDoc={onSaveDoc}
           onOpenPlayground={(row) => setPlaygroundSkill(row)}
           detailRef={detailRef}
+          workspaceId={workspaceId}
         />
       </div>
 
@@ -364,6 +386,8 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
         isOpen={playgroundSkill !== null}
         onClose={() => setPlaygroundSkill(null)}
         selectedSkill={playgroundSkill}
+        workspaceId={workspaceId}
+        onInstall={onInstall}
       />
 
       <TriggerSimulatorModal

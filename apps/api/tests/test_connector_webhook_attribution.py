@@ -173,3 +173,30 @@ class TestConnectorWebhookAttribution:
             headers={"Content-Type": "application/json"},
         )
         assert res.status_code == 401
+
+    async def test_inbound_webhook_secret_configured_signature_omitted_raises_401(self, client: AsyncClient):
+        """When secret is configured on connector and sig_header is omitted, returns 401 'Webhook signature header is required'."""
+        headers, _, wid = await _signup_and_get_workspace(client, "sig-omitted")
+        secret = "mandatory-secret-key"
+
+        conn_res = await client.post(
+            "/api/v1/connectors",
+            json={
+                "name": "Secret-Configured-Conn",
+                "type": "rest",
+                "token_ref": secret,
+                "config": {"url": "https://example.com/api"},
+            },
+            headers=headers,
+        )
+        assert conn_res.status_code == 201
+        cid = conn_res.json()["id"]
+
+        # Call with authenticated operator JWT but no HMAC signature header
+        res = await client.post(
+            f"/api/v1/connectors/{cid}/inbound-webhook",
+            json={"event": "lead.created", "payload": {}},
+            headers={"Authorization": headers["Authorization"]},
+        )
+        assert res.status_code == 401
+        assert res.json()["detail"] == "Webhook signature header is required"

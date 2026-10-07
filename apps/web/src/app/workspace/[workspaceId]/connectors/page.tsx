@@ -1,31 +1,34 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { useParams, useRouter } from 'next/navigation';
 
-export default function ConnectorsPage() {
-  const params = useParams();
+interface ConnectorsPageProps {
+  params?: Promise<{ workspaceId: string }> | { workspaceId: string };
+}
+
+export default function ConnectorsPage(_props?: ConnectorsPageProps) {
+  const routeParams = useParams();
   const router = useRouter();
-  const workspaceId = (params?.['workspaceId'] as string) || 'default-workspace';
+  const workspaceId = (routeParams?.['workspaceId'] as string) || 'default-workspace';
+  const targetUrl = `/workspace/${workspaceId}/capabilities?category=connectors`;
 
   useEffect(() => {
-    router.replace(`/workspace/${workspaceId}/capabilities?category=connectors`);
-  }, [router, workspaceId]);
+    router.replace(targetUrl);
+  }, [router, targetUrl]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-      <LoadingSpinner text="Redirecting to Connectors Directory..." />
-      <p className="mt-4 text-xs text-text-muted">
-        Connectors are now unified under Capabilities.{' '}
-        <Link
-          href={`/workspace/${workspaceId}/capabilities?category=connectors`}
-          className="text-primary hover:underline"
-        >
-          Click here if not redirected automatically.
-        </Link>
+    <div className="flex flex-col items-center justify-center min-h-[50vh] p-6 text-center">
+      <h2 className="text-base font-semibold text-text mb-2">
+        Connectors are now unified under Capabilities
+      </h2>
+      <p className="text-sm text-text-muted mb-4">
+        Redirecting you to the unified capabilities matrix...
       </p>
+      <Link href={targetUrl} className="text-sm text-action hover:underline font-medium">
+        Click here if you are not redirected automatically
+      </Link>
     </div>
   );
 }

@@ -77,8 +77,8 @@ async def _create_skill(client: AsyncClient, headers: dict, name: str, config: d
 class TestCatalogIntegrity:
     """Unit-level guarantees about the catalog itself, no HTTP involved."""
 
-    def test_catalog_has_twelve_bundled_skills(self):
-        assert len(SKILL_CATALOG) == 12
+    def test_catalog_has_thirty_three_bundled_skills(self):
+        assert len(SKILL_CATALOG) == 33
         assert all(e.bundled is True for e in SKILL_CATALOG)
 
     def test_slugs_are_unique_and_non_empty(self):
@@ -259,7 +259,7 @@ class TestCatalogEndpoint:
         res = await client.get("/api/v1/capabilities/catalog", headers=headers)
         assert res.status_code == 200
         entries = res.json()
-        assert len(entries) == 12
+        assert len(entries) == 33
         assert len(entries) >= 12
         assert {e["slug"] for e in entries} == {e.slug for e in SKILL_CATALOG}
 
@@ -299,12 +299,12 @@ class TestCatalogEndpoint:
         )
         assert res.status_code == 200
         items = res.json()
-        assert len(items) == 12
+        assert len(items) == 33
 
         installed = [i for i in items if i["installed"]]
         browsable = [i for i in items if not i["installed"]]
         assert len(installed) == 1
-        assert len(browsable) == 11
+        assert len(browsable) == 32
 
         row = installed[0]
         assert row["name"] == "agent-building"

@@ -34,8 +34,10 @@ import {
   AUTHORITATIVE_CATALOG,
   renderCatalogIcon,
   PlusIcon,
+  CATEGORY_FILTERS,
   type ConnectorDefinition,
   type ConnectorCategory,
+  type CategoryFilter,
 } from '@/lib/connectors-catalog';
 
 interface ConnectorsViewProps {
@@ -87,84 +89,6 @@ const PROVIDER_META: Record<string, { name: string; intent: string }> = {
 // implementation was a 60-branch `if/else` ladder over category substrings that
 // never grew a `Marketing` branch, so Marketing fell through to a generic
 // `cat.includes(sel)` and silently matched a different set than every other chip.
-interface CategoryFilter {
-  id: ConnectorCategory;
-  label: string;
-  /** Matched against the row's category text, lowercased. */
-  terms: readonly string[];
-  /** Matched against the row's provider / id / protocol instead of its category. */
-  providerTerms?: readonly string[];
-  idIncludes?: readonly string[];
-  protocolIncludes?: readonly string[];
-}
-
-const CATEGORY_FILTERS: readonly CategoryFilter[] = [
-  { id: 'All', label: 'All Purposes & Sectors', terms: [] },
-  {
-    id: 'Education',
-    label: 'Education & Learning',
-    terms: ['education', 'learning', 'course', 'academy', 'training'],
-  },
-  { id: 'Sales', label: 'Sales & CRM', terms: ['sales', 'crm', 'lead', 'revenue'] },
-  {
-    id: 'Productivity',
-    label: 'Productivity & Tasks',
-    terms: ['productivity', 'task', 'project', 'workspace'],
-  },
-  {
-    id: 'Engineering',
-    label: 'Engineering & DevOps',
-    terms: ['engineering', 'devops', 'developer', 'infrastructure', 'database'],
-  },
-  {
-    id: 'Financial',
-    label: 'Finance & Accounting',
-    terms: ['finance', 'financial', 'accounting', 'banking', 'tax', 'payments'],
-  },
-  { id: 'Legal', label: 'Legal & Contracts', terms: ['legal', 'contract', 'compliance'] },
-  {
-    id: 'HR',
-    label: 'HR, Recruiting & Talent',
-    terms: ['hr', 'talent', 'recruit', 'hiring', 'people', 'payroll'],
-  },
-  { id: 'AI & ML', label: 'AI, Agents & ML', terms: ['ai', 'machine learning', 'intelligence'] },
-  {
-    id: 'Data & Analytics',
-    label: 'Data, Analytics & BI',
-    terms: ['analytics', 'data', 'bi', 'warehouse'],
-  },
-  {
-    id: 'Communication',
-    label: 'Communication & Messaging',
-    terms: ['communication', 'messaging', 'email', 'chat', 'social'],
-  },
-  {
-    id: 'Marketing',
-    label: 'Marketing & Social',
-    terms: ['marketing', 'social', 'campaign', 'seo', 'brand', 'advertis', 'content'],
-  },
-  { id: 'Support', label: 'Customer Support', terms: ['support', 'helpdesk', 'ticket', 'service'] },
-  {
-    id: 'E-Commerce',
-    label: 'E-Commerce & Retail',
-    terms: ['commerce', 'retail', 'store', 'ecommerce', 'marketplace'],
-  },
-  {
-    id: 'Google',
-    label: 'Google Workspace',
-    terms: ['google', 'gmail', 'drive', 'calendar', 'workspace'],
-    idIncludes: ['google', 'gmail'],
-  },
-  { id: 'Native', label: 'Native Sovereign', terms: [], providerTerms: ['native'] },
-  {
-    id: 'MCP',
-    label: 'Model Context Protocol (MCP)',
-    terms: [],
-    protocolIncludes: ['MCP'],
-    providerTerms: ['mcp'],
-  },
-];
-
 const ALL_CATEGORY_FILTER: CategoryFilter = CATEGORY_FILTERS[0] as CategoryFilter;
 
 // ─── Catalog rows ────────────────────────────────────────────────────────────
@@ -291,6 +215,54 @@ const CATEGORY_ICONS: Partial<Record<ConnectorCategory, React.ReactNode>> = {
       <circle cx="12" cy="12" r="10" />
       <line x1="2" y1="12" x2="22" y2="12" />
       <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
+  ),
+  'Career & ATS': (
+    <svg
+      className="w-3.5 h-3.5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+    </svg>
+  ),
+  'Startup & Business': (
+    <svg
+      className="w-3.5 h-3.5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <line x1="12" y1="1" x2="12" y2="23" />
+      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+    </svg>
+  ),
+  'Productivity & Study': (
+    <svg
+      className="w-3.5 h-3.5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </svg>
+  ),
+  'Developer Tools & Cloud': (
+    <svg
+      className="w-3.5 h-3.5"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <polyline points="16 18 22 12 16 6" />
+      <polyline points="8 6 2 12 8 18" />
     </svg>
   ),
   Productivity: (
@@ -536,6 +508,70 @@ function readBuiltinServers(res: {
 }): BuiltinMcpServer[] {
   const servers = res.builtinServers ?? res.builtin_servers;
   return Array.isArray(servers) ? servers : [];
+}
+
+const SHELL_METACHARACTERS = /[;&|`$><\n\r]/;
+
+type CommandParseResult = { ok: true; argv: string[] } | { ok: false; error: string };
+
+/**
+ * Split user-entered CLI arguments into argv, honouring quotes and escapes,
+ * preventing accidental splitting of arguments with spaces and denying shell metacharacters.
+ */
+function parseCommandLineArgs(input: string): CommandParseResult {
+  const trimmed = input.trim();
+  if (!trimmed) return { ok: true, argv: [] };
+
+  const argv: string[] = [];
+  let current = '';
+  let quote: '"' | "'" | null = null;
+  let started = false;
+
+  for (let i = 0; i < trimmed.length; i += 1) {
+    const ch = trimmed[i] as string;
+    if (quote) {
+      if (ch === quote) {
+        quote = null;
+        continue;
+      }
+      if (quote === '"' && ch === '\\' && i + 1 < trimmed.length) {
+        i += 1;
+        current += trimmed[i] as string;
+        continue;
+      }
+      current += ch;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      started = true;
+      continue;
+    }
+    if (/\s/.test(ch)) {
+      if (started) {
+        argv.push(current);
+        current = '';
+        started = false;
+      }
+      continue;
+    }
+    current += ch;
+    started = true;
+  }
+
+  if (quote) return { ok: false, error: 'Unbalanced quote in the arguments.' };
+  if (started) argv.push(current);
+
+  for (const arg of argv) {
+    if (SHELL_METACHARACTERS.test(arg)) {
+      return {
+        ok: false,
+        error: 'Shell metacharacters (; & | ` $ > <) are not allowed in arguments.',
+      };
+    }
+  }
+
+  return { ok: true, argv };
 }
 
 // ─── Catalog card ────────────────────────────────────────────────────────────
@@ -895,7 +931,7 @@ export function ConnectorsView({
 
   const topConnectors = useMemo(() => fullCatalogList.filter(rowIsTop), [fullCatalogList]);
   const otherConnectors = useMemo(
-    () => fullCatalogList.filter((row) => !rowIsTop(row)),
+    () => fullCatalogList.filter((row) => !rowIsTop(row)).slice(0, 36),
     [fullCatalogList],
   );
 
@@ -1324,11 +1360,17 @@ export function ConnectorsView({
           if (customMcpTransport === 'stdio') {
             const command = customCommand.trim();
             if (!command) throw new Error('A stdio MCP server needs the executable to run.');
+            if (SHELL_METACHARACTERS.test(command)) {
+              throw new Error(
+                'Shell metacharacters (; & | ` $ > <) are not allowed in the command.',
+              );
+            }
             config['command'] = command;
-            config['args'] = customArgs
-              .split(/\s+/)
-              .map((part) => part.trim())
-              .filter(Boolean);
+            const parsedArgs = parseCommandLineArgs(customArgs);
+            if (!parsedArgs.ok) {
+              throw new Error(parsedArgs.error);
+            }
+            config['args'] = parsedArgs.argv;
           } else {
             const url = customUrl.trim();
             if (!url) throw new Error('A streamable-HTTP MCP server needs a URL.');

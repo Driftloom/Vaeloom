@@ -1,6 +1,7 @@
 import uuid
 import pytest
 from httpx import AsyncClient
+from api.services.skill_catalog_service import SKILL_CATALOG
 
 pytestmark = pytest.mark.asyncio
 
@@ -159,7 +160,7 @@ class TestCapabilitiesE2E:
         assert merged_res.status_code == 200
         merged = merged_res.json()
         browsable = [m for m in merged if not m["installed"]]
-        assert len(browsable) == 12
+        assert len(browsable) == len(SKILL_CATALOG)
         assert all(m["id"] is None and m["enabled"] is False for m in browsable)
         assert all(m["trust_class"] in ("core_trusted", "community") for m in browsable)
         assert all("## Mission" in m["markdown_doc"] for m in browsable)
@@ -167,7 +168,7 @@ class TestCapabilitiesE2E:
         # 10b. The catalog route is not swallowed by the {cap_id} route
         catalog_res = await client.get("/api/v1/capabilities/catalog?category=skill", headers=headers)
         assert catalog_res.status_code == 200
-        assert len(catalog_res.json()) == 12
+        assert len(catalog_res.json()) == len(SKILL_CATALOG)
 
         # 11. Delete capability
         del_res = await client.delete(f"/api/v1/capabilities/{skill_id}", headers=headers)

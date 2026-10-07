@@ -23,6 +23,13 @@ jest.mock('react-markdown', () => {
 
 jest.mock('remark-gfm', () => () => {});
 
+const mockPush = jest.fn();
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockPush, replace: jest.fn(), prefetch: jest.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+  useParams: () => ({ workspaceId: 'ws-test' }),
+}));
+
 const mockTestCapability = jest.fn();
 const mockValidateDraft = jest.fn();
 

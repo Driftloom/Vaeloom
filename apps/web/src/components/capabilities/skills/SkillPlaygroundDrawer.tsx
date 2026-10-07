@@ -12,12 +12,16 @@ import {
   Tooltip,
 } from '@vaeloom/ui-kit';
 import { capabilitiesApi } from '@/lib/api-client';
+import { useRouter } from 'next/navigation';
 import type { SkillRow } from '../SkillsView';
+import { getAgentForSkill } from './SkillIntegrationBar';
 
 interface SkillPlaygroundDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   selectedSkill: SkillRow | null;
+  workspaceId?: string;
+  onInstall?: (key: string) => void;
 }
 
 interface DiagnosticResult {
@@ -35,11 +39,26 @@ interface DiagnosticResult {
   preview: string;
 }
 
+function useSafeRouter() {
+  try {
+    return useRouter();
+  } catch {
+    return {
+      push: (_url: string) => {},
+      replace: (_url: string) => {},
+      prefetch: (_url: string) => {},
+    };
+  }
+}
+
 export const SkillPlaygroundDrawer: React.FC<SkillPlaygroundDrawerProps> = ({
   isOpen,
   onClose,
   selectedSkill,
+  workspaceId,
+  onInstall,
 }) => {
+  const router = useSafeRouter();
   const [testPrompt, setTestPrompt] = useState(
     'Please review my resume bullets and check for ATS formatting errors.',
   );
@@ -48,6 +67,16 @@ export const SkillPlaygroundDrawer: React.FC<SkillPlaygroundDrawerProps> = ({
   const [testError, setTestError] = useState<string | null>(null);
 
   if (!isOpen || !selectedSkill) return null;
+
+  const handleLaunchInChat = () => {
+    if (!workspaceId) return;
+    const agent = getAgentForSkill(selectedSkill.item.name);
+    const query = new URLSearchParams({
+      agent: agent.id,
+      prompt: testPrompt,
+    });
+    router.push(`/workspace/${workspaceId}/chat?${query.toString()}`);
+  };
 
   const handleRunDiagnostic = async () => {
     setIsRunning(true);
@@ -281,7 +310,11 @@ export const SkillPlaygroundDrawer: React.FC<SkillPlaygroundDrawerProps> = ({
               <div className="h-2 w-full bg-surface-hover rounded-full overflow-hidden border border-border/50">
                 <div
                   className={`h-full transition-all duration-500 rounded-full ${
-                    diagnostic.withinBudget ? 'bg-primary' : 'bg-danger'
+                    tokenPercentage <= 60
+                      ? 'bg-success'
+                      : tokenPercentage <= 90
+                        ? 'bg-warning'
+                        : 'bg-danger'
                   }`}
                   style={{ width: `${tokenPercentage}%` }}
                 />
@@ -345,6 +378,30 @@ export const SkillPlaygroundDrawer: React.FC<SkillPlaygroundDrawerProps> = ({
               <pre className="p-2.5 rounded bg-background border border-border/60 font-mono text-2xs text-text overflow-x-auto whitespace-pre-wrap select-text leading-relaxed">
                 {diagnostic.preview}
               </pre>
+            </div>
+
+            {/* Quick Actions Bar */}
+            <div className="p-3 rounded-xl border border-border bg-surface-hover/30 flex items-center justify-between gap-2 flex-wrap">
+              {!selectedSkill.installed && onInstall && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => onInstall(selectedSkill.key)}
+                  className="text-xs"
+                >
+                  ⚡ Install &amp; Activate Skill
+                </Button>
+              )}
+              {workspaceId && (
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={handleLaunchInChat}
+                  className="text-xs"
+                >
+                  💬 Launch in Live Chat
+                </Button>
+              )}
             </div>
           </div>
         )}
