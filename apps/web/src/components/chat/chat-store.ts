@@ -34,6 +34,8 @@ import {
   MAX_THREADS,
   type Attachment,
   type ChatMessage,
+  type ChatTab,
+  type ModelOption,
   type Proposal,
   type ProposalStatus,
   type SlashCommand,
@@ -80,6 +82,90 @@ import {
  * given up. Symmetrically, "saved" is only ever claimed for writes the server
  * confirmed.
  */
+
+const DEFAULT_MODELS: ModelOption[] = [
+  {
+    id: 'gemma4:31b',
+    name: 'Ollama Cloud Gemma 4 31B',
+    provider: 'ollama',
+    tier: 'balanced',
+    maxTokens: 32768,
+    isDefault: true,
+    status: 'ready',
+    systemRole: 'system2',
+    isPlatformManaged: true,
+    badge: '🟢 Platform Active (System 2)',
+    description: 'Enterprise generative synthesis with XML context fencing & citation grounding.',
+  },
+  {
+    id: 'typesafe-ai/jev',
+    name: 'TypeSafe AI Jev',
+    provider: 'typesafe',
+    tier: 'fast',
+    maxTokens: 8192,
+    status: 'ready',
+    systemRole: 'system1',
+    isPlatformManaged: true,
+    badge: '⚡ System 1 Highway (<50ms)',
+    description: 'Sub-50ms deterministic action routing & semantic similarity scoring.',
+  },
+  {
+    id: 'openai/gpt-oss-120b',
+    name: 'Groq GPT-OSS 120B',
+    provider: 'groq',
+    tier: 'fast',
+    maxTokens: 131072,
+    costPer1kInput: 0.00015,
+    costPer1kOutput: 0.0006,
+    status: 'ready',
+    systemRole: 'system2',
+    isPlatformManaged: true,
+    badge: '🟢 Platform Active',
+    description: 'Ultra-low-latency LPU inference for high-speed agentic execution.',
+  },
+  {
+    id: 'gemini-3.5-flash',
+    name: 'Gemini 3.5 Flash',
+    provider: 'google',
+    tier: 'fast',
+    maxTokens: 1000000,
+    costPer1kInput: 0.000075,
+    costPer1kOutput: 0.0003,
+    status: 'ready',
+    systemRole: 'system2',
+    isPlatformManaged: true,
+    badge: '🟢 Platform Active',
+    description: '1M token long-context processing for large document corpora.',
+  },
+  {
+    id: 'gpt-4o',
+    name: 'OpenAI GPT-4o',
+    provider: 'openai',
+    tier: 'powerful',
+    maxTokens: 128000,
+    costPer1kInput: 0.0025,
+    costPer1kOutput: 0.01,
+    status: 'byok_required',
+    systemRole: 'byok',
+    isPlatformManaged: false,
+    badge: '🔑 BYOK Required',
+    description: 'Requires your OpenAI API Key. Configure in Workspace Settings > BYOK.',
+  },
+  {
+    id: 'claude-3-5-sonnet-20241022',
+    name: 'Claude 3.5 Sonnet',
+    provider: 'anthropic',
+    tier: 'powerful',
+    maxTokens: 200000,
+    costPer1kInput: 0.003,
+    costPer1kOutput: 0.015,
+    status: 'byok_required',
+    systemRole: 'byok',
+    isPlatformManaged: false,
+    badge: '🔑 BYOK Required',
+    description: 'Requires your Anthropic API Key. Configure in Workspace Settings > BYOK.',
+  },
+];
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
 
@@ -289,6 +375,22 @@ export interface ChatStore {
   deleteThread: (id: string) => void;
   clearThread: (id: string) => void;
   copyMessage: (messageId: string) => Promise<void>;
+  selectedModel: string;
+  setSelectedModel: (v: string) => void;
+  availableModels: ModelOption[];
+  modelsLoading: boolean;
+  selectedSquad: string[];
+  setSelectedSquad: (v: string[]) => void;
+  toggleSquadAgent: (agentName: string) => void;
+  temperature: number;
+  setTemperature: (v: number) => void;
+  activeTab: ChatTab;
+  setActiveTab: (v: ChatTab) => void;
+  pinMessageToMemory: (messageId: string) => Promise<boolean>;
+  isCompacting: boolean;
+  compactThreadHistory: () => Promise<boolean>;
+  isMemoryDrawerOpen: boolean;
+  setIsMemoryDrawerOpen: (v: boolean) => void;
 }
 
 export function useChatStore(workspaceId: string): ChatStore {
@@ -315,6 +417,21 @@ export function useChatStore(workspaceId: string): ChatStore {
   const [isOffline, setIsOffline] = useState(false);
   const [migration, setMigration] = useState<MigrationState>({ state: 'idle' });
   const [localOnlyNotice, setLocalOnlyNotice] = useState<string | null>(null);
+
+  const [selectedModel, setSelectedModel] = useState<string>('gemma4:31b');
+  const [selectedSquad, setSelectedSquad] = useState<string[]>([]);
+  const [temperature, setTemperature] = useState<number>(0.7);
+  const [activeTab, setActiveTab] = useState<ChatTab>('stream');
+  const [isMemoryDrawerOpen, setIsMemoryDrawerOpen] = useState(false);
+  const [availableModels, setAvailableModels] = useState<ModelOption[]>(DEFAULT_MODELS);
+  const [modelsLoading, setModelsLoading] = useState(true);
+
+  const selectedModelRef = useRef(selectedModel);
+  selectedModelRef.current = selectedModel;
+  const selectedSquadRef = useRef(selectedSquad);
+  selectedSquadRef.current = selectedSquad;
+  const temperatureRef = useRef(temperature);
+  temperatureRef.current = temperature;
 
   // Ref mirrors so the async send pipeline always reads current values instead of
   // closing over a stale render (the old `handleSend` had `messages` in its dep
@@ -357,6 +474,9 @@ export function useChatStore(workspaceId: string): ChatStore {
   durableRef.current = durableMode;
   attachmentRef.current = attachment;
   workflowIdRef.current = workflowId;
+  selectedModelRef.current = selectedModel;
+  selectedSquadRef.current = selectedSquad;
+  temperatureRef.current = temperature;
   offlineRef.current =
     isOffline || (typeof navigator !== 'undefined' && navigator.onLine === false);
 
@@ -572,6 +692,123 @@ export function useChatStore(workspaceId: string): ChatStore {
     },
     [patchThread, queuePersist, serverIdFor],
   );
+
+  const toggleSquadAgent = useCallback((agentName: string) => {
+    setSelectedSquad((prev) =>
+      prev.includes(agentName) ? prev.filter((a) => a !== agentName) : [...prev, agentName],
+    );
+  }, []);
+
+  const pinMessageToMemory = useCallback(
+    async (messageId: string): Promise<boolean> => {
+      const threadId = activeIdRef.current;
+      if (!threadId) return false;
+      const serverId = serverIdFor(threadId);
+      const res = await ConversationApi.pinMessageToMemory(
+        workspaceIdRef.current,
+        serverId,
+        messageId,
+      );
+      if (res.ok) {
+        patchMessage(threadId, messageId, {
+          isPinnedToMemory: true,
+          pinnedMemoryId: res.data.id,
+        });
+        toast({
+          tone: 'success',
+          title: 'Pinned to Memory Vault',
+          detail: res.data.title,
+        });
+        return true;
+      } else {
+        toast({
+          tone: 'error',
+          title: 'Could not pin to memory',
+          detail: res.error,
+        });
+        return false;
+      }
+    },
+    [patchMessage, serverIdFor, toast],
+  );
+
+  const [isCompacting, setIsCompacting] = useState<boolean>(false);
+
+  const compactThreadHistory = useCallback(async (): Promise<boolean> => {
+    const threadId = activeIdRef.current;
+    if (!threadId) return false;
+    const serverId = serverIdFor(threadId);
+    setIsCompacting(true);
+    try {
+      const res = await ConversationApi.compact(workspaceIdRef.current, serverId);
+      if (res.ok) {
+        if (res.data.compacted) {
+          const refreshed = await ConversationApi.get(workspaceIdRef.current, serverId);
+          if (refreshed.ok) {
+            patchThread(threadId, (t) => ({
+              ...t,
+              messages: refreshed.data.messages.map(recordToMessage),
+            }));
+          }
+          toast({
+            tone: 'success',
+            title: 'Context Compacted',
+            detail: `Historical turns summarized. Saved ~${res.data.tokensSaved ?? 0} tokens.`,
+          });
+          return true;
+        } else {
+          toast({
+            tone: 'info',
+            title: 'Compaction Skipped',
+            detail: 'Minimum 5 turns required to compact context.',
+          });
+          return false;
+        }
+      } else {
+        toast({
+          tone: 'error',
+          title: 'Compaction Failed',
+          detail: res.error,
+        });
+        return false;
+      }
+    } catch (err) {
+      toast({
+        tone: 'error',
+        title: 'Compaction Error',
+        detail: (err as Error)?.message || 'Failed to compact conversation history.',
+      });
+      return false;
+    } finally {
+      setIsCompacting(false);
+    }
+  }, [patchThread, serverIdFor, toast]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (typeof agentApi?.listModels !== 'function') {
+      setModelsLoading(false);
+      return;
+    }
+    const p = agentApi.listModels();
+    if (!p || typeof p.then !== 'function') {
+      setModelsLoading(false);
+      return;
+    }
+    p.then((res) => {
+      if (cancelled) return;
+      if (res && Array.isArray(res.models) && res.models.length > 0) {
+        setAvailableModels(res.models as ModelOption[]);
+      }
+    })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setModelsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // ── Derived: the transcript ────────────────────────────────────────────────
   const activeThread = useMemo(
@@ -1348,6 +1585,7 @@ export function useChatStore(workspaceId: string): ChatStore {
         status: 'complete',
         attachments,
       };
+      const isMultiAgentSquad = selectedSquadRef.current.length > 1;
       const agentMessage: ChatMessage = {
         id: nextId('m'),
         role: 'agent',
@@ -1355,11 +1593,9 @@ export function useChatStore(workspaceId: string): ChatStore {
         timestamp: nowIso(),
         status: 'streaming',
         replyTo: userMessage.id,
-        agentName: agentForCall ?? 'assistant',
-        // No confidence, no placeholder tool call. The old code wrote
-        // `confidence: 0.98` and `{name:'routing', status:'running'}` here, which
-        // rendered a green "98% Verified Intent Confidence" badge and a live tool
-        // row before any model had run.
+        agentName: agentForCall ?? (isMultiAgentSquad ? 'supervisor' : 'assistant'),
+        model: selectedModelRef.current,
+        squad: selectedSquadRef.current.length > 0 ? selectedSquadRef.current : undefined,
       };
 
       patchThread(threadId, (t) => ({
@@ -1400,6 +1636,9 @@ export function useChatStore(workspaceId: string): ChatStore {
             agentMessageId: agentMessage.id,
             text: promptText,
             agentForCall,
+            agentNames: isMultiAgentSquad ? selectedSquadRef.current : undefined,
+            model: selectedModelRef.current,
+            temperature: temperatureRef.current,
             signal: controller.signal,
             patchMessage,
           });
@@ -1559,6 +1798,22 @@ export function useChatStore(workspaceId: string): ChatStore {
     deleteThread,
     clearThread,
     copyMessage,
+    selectedModel,
+    setSelectedModel,
+    availableModels,
+    modelsLoading,
+    selectedSquad,
+    setSelectedSquad,
+    toggleSquadAgent,
+    temperature,
+    setTemperature,
+    activeTab,
+    setActiveTab,
+    pinMessageToMemory,
+    isCompacting,
+    compactThreadHistory,
+    isMemoryDrawerOpen,
+    setIsMemoryDrawerOpen,
   };
 }
 
@@ -1581,19 +1836,40 @@ interface StreamedArgs {
   agentMessageId: string;
   text: string;
   agentForCall?: string;
+  agentNames?: string[];
+  model?: string;
+  temperature?: number;
   signal: AbortSignal;
   patchMessage: (threadId: string, messageId: string, patch: Partial<ChatMessage>) => void;
 }
 
 async function runStreamedTurn(args: StreamedArgs): Promise<void> {
-  const { workspaceId, threadId, agentMessageId, text, agentForCall, signal, patchMessage } = args;
+  const {
+    workspaceId,
+    threadId,
+    agentMessageId,
+    text,
+    agentForCall,
+    agentNames,
+    model,
+    temperature,
+    signal,
+    patchMessage,
+  } = args;
   const startedAt = performance.now();
   let acc = emptyAccumulator();
   let lastRender = 0;
 
   try {
     await agentApi.chatStream(
-      { workspaceId, message: text, agentName: agentForCall },
+      {
+        workspaceId,
+        message: text,
+        agentName: agentForCall,
+        agentNames,
+        model,
+        temperature,
+      },
       (event, data) => {
         acc = applyStreamEvent(acc, event, data);
         // Coalesce renders: the old code called setState on every token, which
@@ -1603,7 +1879,10 @@ async function runStreamedTurn(args: StreamedArgs): Promise<void> {
         lastRender = now;
         patchMessage(threadId, agentMessageId, {
           text: acc.text,
-          agentName: acc.agentName ?? agentForCall ?? 'assistant',
+          agentName:
+            acc.agentName ??
+            agentForCall ??
+            (agentNames && agentNames.length > 1 ? 'supervisor' : 'assistant'),
           confidence: acc.confidence,
           toolCalls: acc.toolCalls.length ? acc.toolCalls : undefined,
           citations: acc.citations,
@@ -1611,6 +1890,11 @@ async function runStreamedTurn(args: StreamedArgs): Promise<void> {
           plan: acc.plan,
           phases: acc.phases.length ? acc.phases : undefined,
           status: 'streaming',
+          parallelOutputs:
+            Object.keys(acc.parallelOutputs).length > 0 ? acc.parallelOutputs : undefined,
+          groundingDossier: acc.groundingDossier,
+          tokenUsage: acc.tokenUsage,
+          fallbackNotice: acc.fallbackNotice,
         });
       },
       signal,
@@ -1621,7 +1905,14 @@ async function runStreamedTurn(args: StreamedArgs): Promise<void> {
     // kind, so a stream that died right after `intent` skipped the buffered retry
     // and surfaced a raw network error instead of a working answer.
     if (!acc.sawToken && !acc.text.trim()) {
-      const fallback = await runBufferedTurn({ workspaceId, text, agentForCall });
+      const fallback = await runBufferedTurn({
+        workspaceId,
+        text,
+        agentForCall,
+        agentNames,
+        model,
+        temperature,
+      });
       finalize(patchMessage, threadId, agentMessageId, {
         ...fallback,
         // Reset the clock: the failed stream attempt is not the model's latency.
@@ -1634,7 +1925,14 @@ async function runStreamedTurn(args: StreamedArgs): Promise<void> {
 
   if (signal.aborted) return;
   if (!acc.sawToken && !acc.text.trim()) {
-    const fallback = await runBufferedTurn({ workspaceId, text, agentForCall });
+    const fallback = await runBufferedTurn({
+      workspaceId,
+      text,
+      agentForCall,
+      agentNames,
+      model,
+      temperature,
+    });
     finalize(patchMessage, threadId, agentMessageId, {
       ...fallback,
       latencyMs: Math.round(performance.now() - startedAt),
@@ -1651,6 +1949,9 @@ interface BufferedArgs {
   workspaceId: string;
   text: string;
   agentForCall?: string;
+  agentNames?: string[];
+  model?: string;
+  temperature?: number;
 }
 
 /**
@@ -1663,10 +1964,18 @@ async function runBufferedTurn({
   workspaceId,
   text,
   agentForCall,
+  agentNames,
+  model,
+  temperature,
 }: BufferedArgs): Promise<StreamAccumulator> {
-  const res: unknown = agentForCall
-    ? await agentApi.chat({ workspaceId, message: text, agentName: agentForCall })
-    : await agentApi.chat({ workspaceId, message: text });
+  const res: unknown = await agentApi.chat({
+    workspaceId,
+    message: text,
+    agentName: agentForCall,
+    agentNames,
+    model,
+    temperature,
+  });
   return parseBufferedResponse(res);
 }
 
@@ -1762,6 +2071,41 @@ export function parseBufferedResponse(res: unknown): StreamAccumulator {
   if (typeof telemetry?.s1_ms === 'number') acc.s1LatencyMs = telemetry.s1_ms;
   if (typeof telemetry?.s2_ms === 'number') acc.s2LatencyMs = telemetry.s2_ms;
 
+  const rawDossier = (r['grounding_dossier'] ?? result?.['grounding_dossier']) as
+    StreamEventData | undefined;
+  if (rawDossier && Array.isArray(rawDossier['memories'])) {
+    acc.groundingDossier = {
+      memories: rawDossier['memories'] as any,
+      contextTokenEstimate:
+        typeof rawDossier['context_token_estimate'] === 'number'
+          ? (rawDossier['context_token_estimate'] as number)
+          : undefined,
+    };
+  }
+  const rawUsage = (r['token_usage'] ?? result?.['token_usage'] ?? r['usage']) as
+    StreamEventData | undefined;
+  if (rawUsage && typeof rawUsage['prompt_tokens'] === 'number') {
+    acc.tokenUsage = {
+      promptTokens: rawUsage['prompt_tokens'] as number,
+      completionTokens:
+        typeof rawUsage['completion_tokens'] === 'number'
+          ? (rawUsage['completion_tokens'] as number)
+          : 0,
+      totalTokens:
+        typeof rawUsage['total_tokens'] === 'number'
+          ? (rawUsage['total_tokens'] as number)
+          : (rawUsage['prompt_tokens'] as number),
+      contextWindowLimit:
+        typeof rawUsage['context_window_limit'] === 'number'
+          ? (rawUsage['context_window_limit'] as number)
+          : undefined,
+      contextPercent:
+        typeof rawUsage['context_percent'] === 'number'
+          ? (rawUsage['context_percent'] as number)
+          : undefined,
+    };
+  }
+
   acc.sawToken = acc.text.trim().length > 0;
   acc.terminal = 'done';
   return acc;
@@ -1798,6 +2142,10 @@ function finalize(
     s1LatencyMs: acc.s1LatencyMs,
     s2LatencyMs: acc.s2LatencyMs,
     latencyMs: acc.latencyMs,
+    parallelOutputs: Object.keys(acc.parallelOutputs).length > 0 ? acc.parallelOutputs : undefined,
+    groundingDossier: acc.groundingDossier,
+    tokenUsage: acc.tokenUsage,
+    fallbackNotice: acc.fallbackNotice,
   });
 }
 

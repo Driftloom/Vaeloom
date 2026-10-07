@@ -159,6 +159,8 @@ async def _run_single_agent(
     user_id: str | None = None,
     tenant_id: str | None = None,
     correlation_id: str | None = None,
+    model: str | None = None,
+    temperature: float | None = 0.7,
 ) -> dict[str, Any]:
     """Run one agent via the standard loop and return its output dict."""
     from .loop import run_agent_loop
@@ -189,6 +191,8 @@ async def _run_single_agent(
         user_id=user_id,
         tenant_id=tenant_id,
         correlation_id=correlation_id,
+        model=model,
+        temperature=temperature or 0.7,
     )
     resp = await run_agent_loop(req)
     return {"agent_name": agent_name, "action": "suggest", "confidence": 0.85, "result": {"summary": resp.final_result, "details": resp.final_result, "proposals": [], "questions": []}, "status": resp.status}
@@ -354,36 +358,48 @@ async def run_supervisor(
     user_id: str | None = None,
     tenant_id: str | None = None,
     correlation_id: str | None = None,
+    forced_agents: list[str] | None = None,
+    model: str | None = None,
+    temperature: float | None = 0.7,
 ) -> dict[str, Any]:
     """Execute multi-agent DAG and return merged response."""
     request_id = request_id or str(uuid.uuid4())
-    logger.info(f"SUPERVISOR start: {request_id} message='{message[:80]}'")
+    logger.info(f"SUPERVISOR start: {request_id} message='{message[:80]}' forced_agents={forced_agents}")
 
     async def _safe_call_single(ag: str, ctx: dict[str, Any] | None = None) -> dict[str, Any]:
         try:
             return await _run_single_agent(
                 ag, message, workspace_id, request_id, ctx,
                 user_id=user_id, tenant_id=tenant_id, correlation_id=correlation_id,
+                model=model, temperature=temperature,
             )
         except TypeError:
             return await _run_single_agent(ag, message, workspace_id, request_id, ctx)
 
-    subtasks = await _detect_subtasks(message)
+    if forced_agents:
+        subtasks = [(ag, 1.0) for ag in forced_agents if ag in AGENT_REGISTRY] or [(ag, 1.0) for ag in forced_agents]
+    else:
+        subtasks = await _detect_subtasks(message)
+
     if len(subtasks) < 2:
         # Not actually multi-agent — delegate to single agent path
         top_agent = subtasks[0][0] if subtasks else "memory"
         single = await _safe_call_single(top_agent)
         return single
 
-    # Try LLM planner first when enabled, fallback to heuristic
-    candidate_names = [a for a, _ in subtasks]
-    llm_layers = await _try_llm_planner(message, candidate_names)
-    if llm_layers is not None:
-        layers = llm_layers
-        planner = "llm"
-    else:
+    if forced_agents:
         layers = _build_dag(subtasks)
-        planner = "heuristic"
+        planner = "forced_squad"
+    else:
+        # Try LLM planner first when enabled, fallback to heuristic
+        candidate_names = [a for a, _ in subtasks]
+        llm_layers = await _try_llm_planner(message, candidate_names)
+        if llm_layers is not None:
+            layers = llm_layers
+            planner = "llm"
+        else:
+            layers = _build_dag(subtasks)
+            planner = "heuristic"
     logger.info(f"SUPERVISOR DAG: {layers} from subtasks {subtasks} (planner={planner})")
 
     context: dict[str, Any] = {}
@@ -730,21 +746,28 @@ async def run_supervisor_stream(
     user_id: str | None = None,
     tenant_id: str | None = None,
     correlation_id: str | None = None,
+    forced_agents: list[str] | None = None,
+    model: str | None = None,
+    temperature: float | None = 0.7,
 ):
     """Streaming variant — yields per-agent events plus final merged done.
 
     Single-agent requests delegate to the full orchestrator stream so clients
-    receive REAL token events (ADR-033); multi-agent layers keep agent-level
-    granularity (parallel sub-run tokens would interleave chaotically).
+    receive REAL token events; multi-agent squads execute concurrent streams
+    emitting tagged events (`agent_start`, `agent_token`, `agent_phase`, `agent_done`).
     """
     request_id = request_id or str(uuid.uuid4())
-    subtasks = await _detect_subtasks(message)
+    if forced_agents:
+        subtasks = [(ag, 1.0) for ag in forced_agents if ag in AGENT_REGISTRY] or [(ag, 1.0) for ag in forced_agents]
+    else:
+        subtasks = await _detect_subtasks(message)
 
     async def _safe_stream_single(ag: str, ctx: dict[str, Any] | None = None) -> dict[str, Any]:
         try:
             return await _run_single_agent(
                 ag, message, workspace_id, request_id, ctx,
                 user_id=user_id, tenant_id=tenant_id, correlation_id=correlation_id,
+                model=model, temperature=temperature,
             )
         except TypeError:
             return await _run_single_agent(ag, message, workspace_id, request_id, ctx)
@@ -766,6 +789,8 @@ async def run_supervisor_stream(
                 user_id=user_id,
                 tenant_id=tenant_id,
                 correlation_id=correlation_id,
+                model=model,
+                temperature=temperature or 0.7,
             )
             async for evt in run_agent_loop_stream(agent_req):
                 etype = evt.get("event")
@@ -795,16 +820,20 @@ async def run_supervisor_stream(
         yield {"event": "done", "data": result}
         return
 
-    candidate_names = [a for a, _ in subtasks]
-    llm_layers = await _try_llm_planner(message, candidate_names)
-    if llm_layers is not None:
-        layers = llm_layers
-        planner = "llm"
-    else:
+    if forced_agents:
         layers = _build_dag(subtasks)
-        planner = "heuristic"
+        planner = "forced_squad"
+    else:
+        candidate_names = [a for a, _ in subtasks]
+        llm_layers = await _try_llm_planner(message, candidate_names)
+        if llm_layers is not None:
+            layers = llm_layers
+            planner = "llm"
+        else:
+            layers = _build_dag(subtasks)
+            planner = "heuristic"
     logger.info(f"SUPERVISOR stream DAG: {layers} (planner={planner})")
-    yield {"event": "supervisor_start", "data": {"dag": layers, "subtasks": [a for a, _ in subtasks], "planner": planner}}
+    yield {"event": "supervisor_start", "data": {"dag": layers, "subtasks": [a for a, _ in subtasks], "planner": planner, "mode": "parallel"}}
 
     context: dict[str, Any] = {}
     all_proposals: list[dict[str, Any]] = []
@@ -814,14 +843,142 @@ async def run_supervisor_stream(
     for layer_idx, layer in enumerate(layers):
         yield {"event": "supervisor_layer_start", "data": {"layer": layer_idx, "agents": layer, "planner": planner}}
         if len(layer) == 1:
-            result = await _safe_stream_single(layer[0], context)
-            results = [result]
+            ag = layer[0]
+            agent_cls = AGENT_REGISTRY.get(ag)
+            if agent_cls is not None:
+                yield {"event": "agent_start", "data": {"agent": ag, "agent_name": ag, "phase": "plan"}}
+                from .loop import AgentRequest as _AgentRequest
+                from .loop import run_agent_loop_stream
+
+                enriched_msg = message
+                if context:
+                    ctx_parts = [f"[from:{k} untrusted]{str(v)[:300]}[end:{k}]" for k, v in context.items()]
+                    enriched_msg = f"{message}\n\n[Prior step outputs: {'; '.join(ctx_parts)}]"
+
+                agent_req = _AgentRequest(
+                    agent=agent_cls(),
+                    request_id=f"{request_id}-{ag}",
+                    message=enriched_msg,
+                    workspace_id=workspace_id,
+                    agent_name=ag,
+                    user_id=user_id,
+                    tenant_id=tenant_id,
+                    correlation_id=correlation_id,
+                    model=model,
+                    temperature=temperature or 0.7,
+                )
+                accumulated_text = ""
+                status = "success"
+                async for evt in run_agent_loop_stream(agent_req):
+                    etype = evt.get("event")
+                    edata = evt.get("data") or {}
+                    if etype == "token":
+                        tok = edata.get("token") or edata.get("text") or ""
+                        accumulated_text += tok
+                        yield {"event": "agent_token", "data": {"agent": ag, "agent_name": ag, "token": tok}}
+                    elif etype in ("act", "tool_start", "tool_result", "reflect", "observe"):
+                        yield {"event": "agent_phase", "data": {"agent": ag, "agent_name": ag, "phase": etype, "data": edata}}
+                    elif etype == "done":
+                        status = edata.get("status", "success")
+                        if edata.get("result"):
+                            accumulated_text = str(edata.get("result") or accumulated_text)
+
+                result = {
+                    "agent_name": ag,
+                    "action": "suggest",
+                    "confidence": 0.85,
+                    "result": {"summary": accumulated_text, "details": accumulated_text, "proposals": [], "questions": []},
+                    "status": status,
+                }
+                yield {"event": "agent_done", "data": {"agent": ag, "agent_name": ag, "status": status, "result": result["result"]}}
+                yield {"event": "supervisor_agent_done", "data": result}
+                results = [result]
+            else:
+                result = await _safe_stream_single(ag, context)
+                yield {"event": "agent_done", "data": {"agent": ag, "agent_name": ag, "status": result.get("status", "success"), "result": result.get("result", {})}}
+                yield {"event": "supervisor_agent_done", "data": result}
+                results = [result]
         else:
             yield {"event": "supervisor_parallel", "data": {"agents": layer}}
-            results = await asyncio.gather(*[_safe_stream_single(ag, context) for ag in layer])
+            queue: asyncio.Queue = asyncio.Queue()
+            agent_results_map: dict[str, dict[str, Any]] = {}
+
+            async def _stream_worker(ag: str):
+                agent_cls = AGENT_REGISTRY.get(ag)
+                if not agent_cls:
+                    res = await _safe_stream_single(ag, context)
+                    agent_results_map[ag] = res
+                    await queue.put({"event": "agent_done", "data": {"agent": ag, "agent_name": ag, "status": "error", "result": res.get("result", {})}})
+                    await queue.put({"event": "supervisor_agent_done", "data": res})
+                    return
+
+                await queue.put({"event": "agent_start", "data": {"agent": ag, "agent_name": ag, "phase": "plan"}})
+                enriched_msg = message
+                if context:
+                    ctx_parts = [f"[from:{k} untrusted]{str(v)[:300]}[end:{k}]" for k, v in context.items()]
+                    enriched_msg = f"{message}\n\n[Prior step outputs: {'; '.join(ctx_parts)}]"
+
+                from .loop import AgentRequest as _AgentRequest
+                from .loop import run_agent_loop_stream
+
+                agent_req = _AgentRequest(
+                    agent=agent_cls(),
+                    request_id=f"{request_id}-{ag}",
+                    message=enriched_msg,
+                    workspace_id=workspace_id,
+                    agent_name=ag,
+                    user_id=user_id,
+                    tenant_id=tenant_id,
+                    correlation_id=correlation_id,
+                    model=model,
+                    temperature=temperature or 0.7,
+                )
+                accumulated_text = ""
+                status = "success"
+                try:
+                    async for evt in run_agent_loop_stream(agent_req):
+                        etype = evt.get("event")
+                        edata = evt.get("data") or {}
+                        if etype == "token":
+                            tok = edata.get("token") or edata.get("text") or ""
+                            accumulated_text += tok
+                            await queue.put({"event": "agent_token", "data": {"agent": ag, "agent_name": ag, "token": tok}})
+                        elif etype in ("act", "tool_start", "tool_result", "reflect", "observe"):
+                            await queue.put({"event": "agent_phase", "data": {"agent": ag, "agent_name": ag, "phase": etype, "data": edata}})
+                        elif etype == "done":
+                            status = edata.get("status", "success")
+                            if edata.get("result"):
+                                accumulated_text = str(edata.get("result") or accumulated_text)
+                except Exception as exc:
+                    logger.warning(f"Error streaming parallel agent {ag}: {exc}")
+                    status = "error"
+                    if not accumulated_text:
+                        accumulated_text = f"Agent encountered an error: {exc}"
+
+                res = {
+                    "agent_name": ag,
+                    "action": "suggest",
+                    "confidence": 0.85,
+                    "result": {"summary": accumulated_text, "details": accumulated_text, "proposals": [], "questions": []},
+                    "status": status,
+                }
+                agent_results_map[ag] = res
+                await queue.put({"event": "agent_done", "data": {"agent": ag, "agent_name": ag, "status": status, "result": res["result"]}})
+                await queue.put({"event": "supervisor_agent_done", "data": res})
+
+            tasks = [asyncio.create_task(_stream_worker(ag)) for ag in layer]
+            while any(not t.done() for t in tasks) or not queue.empty():
+                try:
+                    item = await asyncio.wait_for(queue.get(), timeout=0.05)
+                    yield item
+                    queue.task_done()
+                except asyncio.TimeoutError:
+                    pass
+
+            await asyncio.gather(*tasks, return_exceptions=True)
+            results = [agent_results_map.get(ag, {"agent_name": ag, "status": "error", "result": {"summary": "No output"}}) for ag in layer]
 
         for r in results:
-            yield {"event": "supervisor_agent_done", "data": r}
             aname = r.get("agent_name", "unknown")
             summary = r.get("result", {}).get("summary", "")
             if summary:
@@ -831,6 +988,28 @@ async def run_supervisor_stream(
             all_proposals.extend(r.get("result", {}).get("proposals", []))
 
     merged_summary = "\n".join(summaries) if summaries else "Multi-agent workflow completed."
+    if len(summaries) >= 2:
+        yield {"event": "supervisor_synthesis_start", "data": {"message": "Synthesizing executive cross-agent overview..."}}
+        try:
+            from ..services.llm_service import llm_service
+            synth_prompt = (
+                "You are the executive multi-agent synthesizer for Vaeloom. "
+                "Synthesize a cohesive, polished executive summary based strictly on these agent findings.\n\n"
+                f"<user_query>{message}</user_query>\n"
+                f"<agent_results>{merged_summary}</agent_results>"
+            )
+            synth_resp = await llm_service.generate_completion(
+                messages=[{"role": "user", "content": synth_prompt}],
+                model=model,
+                temperature=0.3,
+                max_tokens=600,
+            )
+            synth_text = synth_resp.get("content", "").strip()
+            if synth_text:
+                merged_summary = synth_text
+        except Exception as e:
+            logger.debug(f"Stream synthesis fallback: {e}")
+
     final = {
         "agent_name": "supervisor",
         "action": "suggest",
@@ -839,4 +1018,23 @@ async def run_supervisor_stream(
         "supervisor": True,
         "dag": layers,
     }
+    from ..infrastructure.context_budget import estimate_tokens
+    from ..services.llm_service import MODEL_CATALOG
+    p_tokens = estimate_tokens(message)
+    c_tokens = estimate_tokens(merged_summary)
+    total_tok = p_tokens + c_tokens
+    cap = 128000
+    if model and model in MODEL_CATALOG:
+        cap = MODEL_CATALOG[model].context_window
+    yield {
+        "event": "token_usage",
+        "data": {
+            "prompt_tokens": p_tokens,
+            "completion_tokens": c_tokens,
+            "total_tokens": total_tok,
+            "context_window_limit": cap,
+            "context_percent": round((total_tok / cap) * 100, 2),
+        },
+    }
     yield {"event": "done", "data": final}
+

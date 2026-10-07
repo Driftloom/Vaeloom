@@ -25,7 +25,7 @@ from ..schemas.agent import (
     ScheduleResponse,
 )
 from ..services.agent_service import agent_service
-from ..services.memory_service import retrieve_memory_and_vault_context
+from ..services.memory_service import retrieve_grounding_dossier, retrieve_memory_and_vault_context
 
 router = APIRouter()
 
@@ -165,6 +165,38 @@ class ChatMessage(BaseModel):
     workspaceId: str
     message: str
     agentName: str | None = None
+    agentNames: list[str] | None = None
+    model: str | None = None
+    temperature: float | None = 0.7
+    maxTokens: int | None = 4096
+
+
+@router.get("/models", response_model=dict[str, Any])
+async def get_model_catalog(
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Return model catalog with providers, tiers, pricing, and health status."""
+    from ..services.model_router import MODEL_CATALOG
+
+    models_list = [
+        {
+            "id": name,
+            "name": name,
+            "provider": cfg.provider,
+            "tier": cfg.tier,
+            "maxTokens": cfg.max_tokens,
+            "costPer1kInput": cfg.cost_per_1k_input,
+            "costPer1kOutput": cfg.cost_per_1k_output,
+            "healthStatus": cfg.health_status,
+            "isActive": cfg.is_active,
+        }
+        for name, cfg in MODEL_CATALOG.items()
+    ]
+    return {
+        "models": models_list,
+        "total": len(models_list),
+        "defaultModel": "gpt-4o-mini",
+    }
 
 
 async def _verify_workspace_access(workspace_id: str, current_user: dict, db: AsyncSession) -> None:
@@ -565,14 +597,20 @@ SLASH_COMMAND_AGENT_MAP: dict[str, str] = {
     "/ats-resume-builder": "resume",
     "/tailor-resume": "resume",
     "/resume": "resume",
+    "/resume-optimization": "resume",
     "/career-coaching": "career",
     "/career": "career",
     "/job-radar": "job_search",
     "/job-search": "job_search",
+    "/job-discovery-radar": "job_search",
     "/jobs": "job_search",
     "/cover-letter": "resume",
+    "/cover-letter-architect": "resume",
     "/interview-prep": "career",
+    "/star-prep": "career",
+    "/star-interview-prep": "career",
     "/salary-negotiation": "career",
+    "/salary-negotiation-playbook": "career",
     "/organize": "organization",
     "/document": "document",
 }
@@ -621,6 +659,9 @@ async def chat(
         preferred_agent=pref_agent,
         user_id=str(_uid) if _uid else None,
         tenant_id=str(_tenant) if _tenant else None,
+        model=dto.model,
+        temperature=dto.temperature,
+        agent_names=dto.agentNames,
     )
     result = await handle(req)
     return result
@@ -651,13 +692,18 @@ async def chat_stream(
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
         await _verify_workspace_access(dto.workspaceId, current_user, db)
-        bg_context = await retrieve_memory_and_vault_context(dto.workspaceId, dto.message, db)
+        bg_context, dossier_items = await retrieve_grounding_dossier(dto.workspaceId, dto.message, db)
     finally:
         # Crucial P0 Fix: Release DB connection immediately before starting SSE stream
         with contextlib.suppress(Exception):
             await db.commit()
         with contextlib.suppress(Exception):
             await db.close()
+
+    _uid = current_user.get("sub") or current_user.get("user_id") if current_user else None
+    _tenant = getattr(request.state, "tenant_id", None)
+    if not _tenant and isinstance(current_user, dict):
+        _tenant = current_user.get("tenant_id") or (current_user.get("tenant") if isinstance(current_user.get("tenant"), str) else None)
 
     req_id = str(uuid.uuid4())
     preferred = dto.agentName.strip().lower() if dto.agentName else None
@@ -668,6 +714,33 @@ async def chat_stream(
 
     async def event_gen():
         try:
+            if dossier_items:
+                from ..infrastructure.context_budget import estimate_tokens
+                est_ctx = estimate_tokens(bg_context)
+                yield f"event: grounding_dossier\ndata: {json.dumps({'memories': dossier_items, 'context_token_estimate': est_ctx}, default=str)}\n\n"
+
+            # ── Explicit parallel agent squad execution ───────────────
+            if dto.agentNames and len(dto.agentNames) > 1:
+                try:
+                    from ..orchestrator.supervisor import run_supervisor_stream
+                    yield f"event: supervisor_start\ndata: {json.dumps({'message': 'Executing parallel agent squad', 'agents': dto.agentNames, 'mode': 'parallel'})}\n\n"
+                    async for sup_evt in run_supervisor_stream(
+                        full_message,
+                        dto.workspaceId,
+                        req_id,
+                        user_id=str(_uid) if _uid else None,
+                        tenant_id=str(_tenant) if _tenant else None,
+                        forced_agents=dto.agentNames,
+                        model=dto.model,
+                        temperature=dto.temperature,
+                    ):
+                        yield f"event: {sup_evt.get('event','data')}\ndata: {json.dumps(sup_evt.get('data', {}))}\n\n"
+                        if sup_evt.get("event") == "done":
+                            return
+                    return
+                except Exception as e:
+                    yield f"event: supervisor_error\ndata: {json.dumps({'message': str(e), 'fallback': 'single-agent'})}\n\n"
+
             # ── Supervisor multi-agent fast-path (before single-agent classification) ──
             # If message looks like a multi-intent complex goal and no explicit agent forced,
             # delegate to the supervisor streaming DAG instead of single-agent loop.
@@ -677,7 +750,15 @@ async def chat_stream(
                     from ..orchestrator.supervisor import run_supervisor_stream
                     if _is_multi(full_message):
                         yield f"event: supervisor_start\ndata: {json.dumps({'message': 'Complex multi-step goal detected — delegating to specialist team'})}\n\n"
-                        async for sup_evt in run_supervisor_stream(full_message, dto.workspaceId, req_id):
+                        async for sup_evt in run_supervisor_stream(
+                            full_message,
+                            dto.workspaceId,
+                            req_id,
+                            user_id=str(_uid) if _uid else None,
+                            tenant_id=str(_tenant) if _tenant else None,
+                            model=dto.model,
+                            temperature=dto.temperature,
+                        ):
                             yield f"event: {sup_evt.get('event','data')}\ndata: {json.dumps(sup_evt.get('data', {}))}\n\n"
                             if sup_evt.get("event") == "done":
                                 # QA gate for supervisor output
@@ -805,9 +886,19 @@ async def chat_stream(
                 yield "event: done\ndata: {}\n\n"
                 return
             agent = agent_cls()
-            agent_req = AgentRequest(agent=agent, request_id=req_id, message=full_message, workspace_id=dto.workspaceId, agent_name=agent_name,
-                                     db=db, user_id=(current_user.get("sub") or current_user.get("user_id")) if current_user else None,
-                                     correlation_id=req_id, execution_plan=plan)
+            agent_req = AgentRequest(
+                agent=agent,
+                request_id=req_id,
+                message=full_message,
+                workspace_id=dto.workspaceId,
+                agent_name=agent_name,
+                db=db,
+                user_id=(current_user.get("sub") or current_user.get("user_id")) if current_user else None,
+                correlation_id=req_id,
+                execution_plan=plan,
+                model=dto.model,
+                temperature=dto.temperature or 0.7,
+            )
 
             final_summary = ""
             async for evt in run_agent_loop_stream(agent_req):
@@ -832,12 +923,30 @@ async def chat_stream(
                             yield f"event: approval_required\ndata: {json.dumps(p, default=str)}\n\n"
                     except Exception:
                         pass
+                    from ..infrastructure.context_budget import estimate_tokens
+                    from ..services.llm_service import MODEL_CATALOG
+                    p_tok = estimate_tokens(full_message)
+                    c_tok = estimate_tokens(final_summary)
+                    tot_tok = p_tok + c_tok
+                    cap = 128000
+                    if dto.model and dto.model in MODEL_CATALOG:
+                        cap = MODEL_CATALOG[dto.model].context_window
+                    yield f"event: token_usage\ndata: {json.dumps({'prompt_tokens': p_tok, 'completion_tokens': c_tok, 'total_tokens': tot_tok, 'context_window_limit': cap, 'context_percent': round((tot_tok / cap) * 100, 2)}, default=str)}\n\n"
                     yield f"event: {ev_type}\ndata: {json.dumps(ev_data, default=str)}\n\n"
                     return
                 # Forward with SSE framing — split token events individually already handled in loop_stream
                 yield f"event: {ev_type}\ndata: {json.dumps(ev_data, default=str)}\n\n"
 
             # Fallback done if loop didn't emit it
+            from ..infrastructure.context_budget import estimate_tokens
+            from ..services.llm_service import MODEL_CATALOG
+            p_tok = estimate_tokens(full_message)
+            c_tok = estimate_tokens(final_summary)
+            tot_tok = p_tok + c_tok
+            cap = 128000
+            if dto.model and dto.model in MODEL_CATALOG:
+                cap = MODEL_CATALOG[dto.model].context_window
+            yield f"event: token_usage\ndata: {json.dumps({'prompt_tokens': p_tok, 'completion_tokens': c_tok, 'total_tokens': tot_tok, 'context_window_limit': cap, 'context_percent': round((tot_tok / cap) * 100, 2)}, default=str)}\n\n"
             yield f"event: done\ndata: {json.dumps({'status': 'completed', 'result': final_summary}, default=str)}\n\n"
 
         except Exception as e:
@@ -1046,3 +1155,141 @@ async def schedule_agent(
     except Exception:
         pass
     return ScheduleResponse.model_validate(schedule)
+
+
+@router.get("/models", response_model=dict)
+async def get_models(
+    workspace_id: str | None = Query(default=None),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return authentic live foundation model matrix reporting platform-managed vs BYOK availability."""
+    from ..config import settings
+    user_id = current_user.get("sub") or current_user.get("user_id") if current_user else None
+
+    has_user_openai = False
+    has_user_anthropic = False
+    if user_id:
+        try:
+            from ..services.provider_key_service import provider_key_service
+            res_oa = await provider_key_service.resolve_effective(db, str(user_id), "openai", workspace_id=str(workspace_id) if workspace_id else None)
+            if res_oa and res_oa.get("key"):
+                has_user_openai = True
+        except Exception:
+            pass
+        try:
+            from ..services.provider_key_service import provider_key_service
+            res_ant = await provider_key_service.resolve_effective(db, str(user_id), "anthropic", workspace_id=str(workspace_id) if workspace_id else None)
+            if res_ant and res_ant.get("key"):
+                has_user_anthropic = True
+        except Exception:
+            pass
+
+    has_system_openai = bool(getattr(settings, "openai_api_key", None))
+    has_system_anthropic = bool(getattr(settings, "anthropic_api_key", None))
+    has_groq = bool(getattr(settings, "groq_api_key", None) or (getattr(settings, "llm_provider", None) == "groq" and getattr(settings, "llm_api_key", None)))
+    has_gemini = bool(getattr(settings, "gemini_api_key", None))
+    has_ollama = bool(getattr(settings, "ollama_api_key", None) or getattr(settings, "ollama_base_url", None))
+    has_jev = bool(getattr(settings, "jev_api_key", None))
+
+    models = [
+        {
+            "id": "gemma4:31b",
+            "name": "Ollama Cloud Gemma 4 31B",
+            "provider": "ollama",
+            "tier": "balanced",
+            "maxTokens": 32768,
+            "costPer1kInput": 0.0,
+            "costPer1kOutput": 0.0,
+            "status": "ready" if has_ollama else "degraded",
+            "systemRole": "system2",
+            "isPlatformManaged": True,
+            "isDefault": True,
+            "badge": "🟢 Platform Active (System 2)",
+            "description": "Enterprise generative synthesis with XML context fencing & citation grounding.",
+        },
+        {
+            "id": "typesafe-ai/jev",
+            "name": "TypeSafe AI Jev",
+            "provider": "typesafe",
+            "tier": "fast",
+            "maxTokens": 8192,
+            "costPer1kInput": 0.0,
+            "costPer1kOutput": 0.0,
+            "status": "ready" if has_jev else "degraded",
+            "systemRole": "system1",
+            "isPlatformManaged": True,
+            "isDefault": False,
+            "badge": "⚡ System 1 Highway (<50ms)",
+            "description": "Sub-50ms deterministic action routing & semantic similarity scoring.",
+        },
+        {
+            "id": "openai/gpt-oss-120b",
+            "name": "Groq GPT-OSS 120B",
+            "provider": "groq",
+            "tier": "fast",
+            "maxTokens": 131072,
+            "costPer1kInput": 0.00015,
+            "costPer1kOutput": 0.0006,
+            "status": "ready" if has_groq else "degraded",
+            "systemRole": "system2",
+            "isPlatformManaged": True,
+            "isDefault": False,
+            "badge": "🟢 Platform Active",
+            "description": "Ultra-low-latency LPU inference for high-speed agentic execution.",
+        },
+        {
+            "id": "gemini-3.5-flash",
+            "name": "Gemini 3.5 Flash",
+            "provider": "google",
+            "tier": "fast",
+            "maxTokens": 1000000,
+            "costPer1kInput": 0.000075,
+            "costPer1kOutput": 0.0003,
+            "status": "ready" if has_gemini else "degraded",
+            "systemRole": "system2",
+            "isPlatformManaged": True,
+            "isDefault": False,
+            "badge": "🟢 Platform Active",
+            "description": "1M token long-context processing for large document corpora.",
+        },
+        {
+            "id": "gpt-4o",
+            "name": "OpenAI GPT-4o",
+            "provider": "openai",
+            "tier": "powerful",
+            "maxTokens": 128000,
+            "costPer1kInput": 0.0025,
+            "costPer1kOutput": 0.01,
+            "status": "ready" if (has_system_openai or has_user_openai) else "byok_required",
+            "systemRole": "byok",
+            "isPlatformManaged": has_system_openai,
+            "isDefault": False,
+            "badge": "🟢 Active (BYOK)" if has_user_openai else ("🟢 Platform Active" if has_system_openai else "🔑 BYOK Required"),
+            "description": "Requires your OpenAI API Key. Configure in Workspace Settings > BYOK." if not (has_system_openai or has_user_openai) else "Advanced multi-modal reasoning and code generation.",
+        },
+        {
+            "id": "claude-3-5-sonnet-20241022",
+            "name": "Claude 3.5 Sonnet",
+            "provider": "anthropic",
+            "tier": "powerful",
+            "maxTokens": 200000,
+            "costPer1kInput": 0.003,
+            "costPer1kOutput": 0.015,
+            "status": "ready" if (has_system_anthropic or has_user_anthropic) else "byok_required",
+            "systemRole": "byok",
+            "isPlatformManaged": has_system_anthropic,
+            "isDefault": False,
+            "badge": "🟢 Active (BYOK)" if has_user_anthropic else ("🟢 Platform Active" if has_system_anthropic else "🔑 BYOK Required"),
+            "description": "Requires your Anthropic API Key. Configure in Workspace Settings > BYOK." if not (has_system_anthropic or has_user_anthropic) else "High-fidelity strategic writing and complex reasoning.",
+        },
+    ]
+
+    return {
+        "active_default": "gemma4:31b",
+        "models": models,
+        "total": len(models),
+        "platform_managed_count": sum(1 for m in models if m["isPlatformManaged"]),
+        "byok_required_count": sum(1 for m in models if m["status"] == "byok_required"),
+    }
+

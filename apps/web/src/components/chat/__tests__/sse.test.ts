@@ -780,4 +780,66 @@ describe('sse reducer', () => {
       expect(Number.isNaN(Date.parse(at(acc.phases, 0).at))).toBe(false);
     });
   });
+
+  describe('parallel agent stream events', () => {
+    it('initializes agent parallelOutput on agent_start', () => {
+      const acc = fold(['agent_start', { agent: 'resume', phase: 'analyzing' }]);
+
+      expect(acc.parallelOutputs['resume']).toEqual({
+        agent: 'resume',
+        status: 'streaming',
+        tokens: '',
+        phase: 'analyzing',
+        summary: undefined,
+      });
+      expect(acc.phases).toContainEqual(
+        expect.objectContaining({ kind: 'supervisor', label: '@resume started' }),
+      );
+    });
+
+    it('accumulates tokens per agent without cross-talk or polluting main text', () => {
+      const acc = fold(
+        ['agent_start', { agent: 'resume' }],
+        ['agent_start', { agent: 'ats' }],
+        ['agent_token', { agent: 'resume', token: 'Resume ' }],
+        ['agent_token', { agent: 'ats', token: 'ATS ' }],
+        ['agent_token', { agent: 'resume', token: 'insights.' }],
+        ['agent_token', { agent: 'ats', token: 'score: 95.' }],
+      );
+
+      expect(acc.text).toBe(''); // tokens are in parallelOutputs, not main text yet
+      expect(acc.parallelOutputs['resume']?.tokens).toBe('Resume insights.');
+      expect(acc.parallelOutputs['ats']?.tokens).toBe('ATS score: 95.');
+    });
+
+    it('updates phase on agent_phase and marks completion on agent_done', () => {
+      const acc = fold(
+        ['agent_start', { agent: 'job_search' }],
+        ['agent_phase', { agent: 'job_search', phase: 'querying scrapers' }],
+        [
+          'agent_done',
+          { agent: 'job_search', status: 'success', summary: 'Found 12 matching roles' },
+        ],
+      );
+
+      const out = acc.parallelOutputs['job_search'];
+      expect(out).toBeDefined();
+      expect(out?.phase).toBe('querying scrapers');
+      expect(out?.status).toBe('completed');
+      expect(out?.summary).toBe('Found 12 matching roles');
+    });
+
+    it('handles synthesis start and subsequent synthesis token stream', () => {
+      const acc = fold(
+        ['supervisor_synthesis_start', { message: 'Synthesizing recommendations...' }],
+        ['token', { token: 'Executive ' }],
+        ['token', { token: 'Summary' }],
+      );
+
+      expect(acc.phases).toContainEqual(
+        expect.objectContaining({ kind: 'supervisor', label: 'Synthesizing recommendations...' }),
+      );
+      expect(acc.text).toBe('Executive Summary');
+    });
+  });
 });

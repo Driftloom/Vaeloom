@@ -16,6 +16,7 @@ export interface ChatMessageListProps {
   onDelete: (messageId: string) => void;
   onDecide: (messageId: string, index: number, decision: 'approve' | 'reject') => void;
   onSend: (text: string) => void;
+  onPinToMemory?: (messageId: string) => void;
   /**
    * The scroll container is owned here, so the auto-scroll hook has to attach to
    * this element rather than a sibling. Passing a ref down keeps the hook's
@@ -38,6 +39,7 @@ export function ChatMessageList({
   onDelete,
   onDecide,
   onSend,
+  onPinToMemory,
   scrollRef,
   onScroll,
   showNewMessages = false,
@@ -92,6 +94,7 @@ export function ChatMessageList({
             onDelete={onDelete}
             onDecide={onDecide}
             onSend={onSend}
+            onPinToMemory={onPinToMemory}
           />
         ))}
       </div>

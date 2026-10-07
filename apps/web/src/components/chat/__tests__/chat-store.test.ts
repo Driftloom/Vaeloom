@@ -34,7 +34,11 @@ import {
 const toastMock = jest.fn();
 
 jest.mock('@/lib/api-client', () => ({
-  agentApi: { chatStream: jest.fn(), chat: jest.fn() },
+  agentApi: {
+    chatStream: jest.fn(),
+    chat: jest.fn(),
+    listModels: jest.fn().mockResolvedValue({ models: [] }),
+  },
   agentCatalogApi: { get: jest.fn() },
   approvalApi: { approve: jest.fn(), reject: jest.fn() },
   documentApi: { upload: jest.fn() },

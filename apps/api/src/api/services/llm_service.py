@@ -1522,7 +1522,7 @@ class LLMService:
         _prov, effective_key = await self._resolve_api_key(
             inferred_provider, user_id=user_id, workspace_id=workspace_id, db=db, explicit_key=api_key_override
         )
-        if inferred_provider in ("openai", "groq", "google", "gemini"):
+        if inferred_provider in ("openai", "groq", "google", "gemini", "ollama"):
             async for chunk in self._openai_completion_stream(messages, effective_model, temperature, max_tokens, api_key=effective_key, provider=inferred_provider):
                 yield chunk
         else:
@@ -1539,6 +1539,15 @@ class LLMService:
         elif provider in ("google", "gemini"):
             url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
             pname = "Gemini"
+        elif provider == "ollama":
+            base_url = getattr(settings, "ollama_base_url", "https://ollama.com") or "https://ollama.com"
+            url = f"{base_url.rstrip('/')}/v1/chat/completions"
+            pname = "Ollama"
+            ollama_key = getattr(settings, "ollama_api_key", "") or os.environ.get("OLLAMA_API_KEY", "")
+            if ollama_key and (not key or key == "ollama"):
+                key = ollama_key
+            if not key:
+                key = "ollama"
         else:
             url = "https://api.openai.com/v1/chat/completions"
             pname = "OpenAI"
@@ -1546,11 +1555,21 @@ class LLMService:
         if not key:
             raise LLMProviderError(f"Missing {pname} API key — configure BYOK")
         _check_failure_injection(provider)
+        req_json: dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": True,
+        }
+        if provider in ("openai", "groq"):
+            req_json["stream_options"] = {"include_usage": True}
+
         async with httpx.AsyncClient(timeout=120.0) as client:
             async with client.stream(
                 "POST", url,
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-                json={"model": model, "messages": messages, "temperature": temperature, "max_tokens": max_tokens, "stream": True},
+                json=req_json,
             ) as resp:
                 if resp.status_code != 200:
                     raise LLMProviderError(f"{pname} streaming completion failed: {resp.status_code}")
@@ -1562,12 +1581,16 @@ class LLMService:
                         break
                     import json
                     data = json.loads(payload)
-                    choice = data["choices"][0]
-                    delta = choice.get("delta", {})
-                    if delta.get("content"):
-                        yield {"type": "content", "text": delta["content"]}
-                    if choice.get("finish_reason"):
-                        yield {"type": "done", "finish_reason": choice["finish_reason"]}
+                    if data.get("usage"):
+                        yield {"type": "usage", "usage": data["usage"]}
+                    choices = data.get("choices") or []
+                    if choices:
+                        choice = choices[0]
+                        delta = choice.get("delta", {})
+                        if delta.get("content"):
+                            yield {"type": "content", "text": delta["content"]}
+                        if choice.get("finish_reason"):
+                            yield {"type": "done", "finish_reason": choice["finish_reason"]}
 
     async def _anthropic_completion_stream(
         self, messages: list[dict[str, Any]], model: str, temperature: float, max_tokens: int, api_key: str | None = None

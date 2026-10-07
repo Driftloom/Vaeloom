@@ -1,9 +1,12 @@
 import type {
   Citation,
   ExecutionPlan,
+  GroundingDossier,
+  ParallelAgentOutput,
   PhaseEvent,
   PhaseKind,
   Proposal,
+  TokenUsageStats,
   ToolCall,
   ToolCallStatus,
 } from './types';
@@ -148,6 +151,10 @@ export interface StreamAccumulator {
   s2LatencyMs?: number;
   /** Client-measured round trip for the turn. */
   latencyMs?: number;
+  parallelOutputs: Record<string, ParallelAgentOutput>;
+  groundingDossier?: GroundingDossier;
+  tokenUsage?: TokenUsageStats;
+  fallbackNotice?: string;
 }
 
 export function emptyAccumulator(): StreamAccumulator {
@@ -159,6 +166,7 @@ export function emptyAccumulator(): StreamAccumulator {
     sawToken: false,
     sawAny: false,
     terminal: null,
+    parallelOutputs: {},
   };
 }
 
@@ -528,15 +536,212 @@ function reduceEvent(
       };
     }
 
+    case 'agent_start': {
+      const agent = str(data['agent']) ?? 'specialist';
+      const existing = next.parallelOutputs[agent];
+      const parallelOutputs = {
+        ...next.parallelOutputs,
+        [agent]: {
+          agent,
+          status: 'streaming' as const,
+          tokens: existing?.tokens ?? '',
+          phase: str(data['phase']) ?? 'executing',
+          summary: existing?.summary,
+        },
+      };
+      return {
+        ...next,
+        parallelOutputs,
+        phases: [...next.phases, phase('supervisor', `@${agent} started`)],
+      };
+    }
+
+    case 'agent_token': {
+      const agent = str(data['agent']) ?? 'specialist';
+      const tok = str(data['token']) ?? str(data['text']) ?? '';
+      if (!tok) return next;
+      const existing = next.parallelOutputs[agent] ?? {
+        agent,
+        status: 'streaming' as const,
+        tokens: '',
+      };
+      const parallelOutputs = {
+        ...next.parallelOutputs,
+        [agent]: {
+          ...existing,
+          tokens: existing.tokens + tok,
+          status: 'streaming' as const,
+        },
+      };
+      return {
+        ...next,
+        parallelOutputs,
+      };
+    }
+
+    case 'agent_phase': {
+      const agent = str(data['agent']) ?? 'specialist';
+      const ph = str(data['phase']) ?? str(data['label']) ?? 'working';
+      const existing = next.parallelOutputs[agent] ?? {
+        agent,
+        status: 'streaming' as const,
+        tokens: '',
+      };
+      const parallelOutputs = {
+        ...next.parallelOutputs,
+        [agent]: {
+          ...existing,
+          phase: ph,
+        },
+      };
+      return {
+        ...next,
+        parallelOutputs,
+      };
+    }
+
+    case 'agent_done': {
+      const agent = str(data['agent']) ?? 'specialist';
+      const isOk =
+        data['status'] === 'success' || data['status'] === 'done' || data['status'] === 'completed';
+      const summary = str(data['summary']) ?? str(data['result']);
+      const existing = next.parallelOutputs[agent] ?? {
+        agent,
+        status: 'streaming' as const,
+        tokens: '',
+      };
+      const parallelOutputs = {
+        ...next.parallelOutputs,
+        [agent]: {
+          ...existing,
+          status: isOk ? ('completed' as const) : ('error' as const),
+          summary: summary ?? existing.summary,
+        },
+      };
+      return {
+        ...next,
+        parallelOutputs,
+      };
+    }
+
+    case 'supervisor_synthesis_start': {
+      return {
+        ...next,
+        phases: [
+          ...next.phases,
+          phase('supervisor', str(data['message']) ?? 'Synthesizing specialist findings'),
+        ],
+      };
+    }
+
     case 'supervisor_error': {
       return {
         ...next,
         phases: [
           ...next.phases,
 
-          phase('error', str(data.message) ?? 'Supervisor failed', {
-            detail: str(data.fallback),
+          phase('error', str(data['message']) ?? 'Supervisor failed', {
+            detail: str(data['fallback']),
             ok: false,
+          }),
+        ],
+      };
+    }
+
+    case 'grounding_dossier': {
+      const dossier = (data['grounding_dossier'] ?? data['dossier'] ?? data) as Record<
+        string,
+        unknown
+      >;
+      if (dossier && typeof dossier === 'object') {
+        const recalled = Array.isArray(dossier['recalledMemories'] ?? dossier['recalled_memories'])
+          ? (
+              (dossier['recalledMemories'] ?? dossier['recalled_memories']) as Array<
+                Record<string, unknown>
+              >
+            ).map((m) => ({
+              id: String(m['id'] || ''),
+              title: String(m['title'] || 'Recalled Memory'),
+              score: typeof m['score'] === 'number' ? m['score'] : undefined,
+              type: typeof m['type'] === 'string' ? m['type'] : undefined,
+              snippet: String(m['snippet'] || m['summary'] || ''),
+            }))
+          : [];
+        const docs = Array.isArray(
+          dossier['authoritativeDocuments'] ?? dossier['authoritative_documents'],
+        )
+          ? (
+              (dossier['authoritativeDocuments'] ?? dossier['authoritative_documents']) as Array<
+                Record<string, unknown>
+              >
+            ).map((d) => ({
+              id: String(d['id'] || ''),
+              title: String(d['title'] || 'Document'),
+              path: typeof d['path'] === 'string' ? d['path'] : undefined,
+            }))
+          : undefined;
+
+        next.groundingDossier = {
+          model: str(dossier['model']) ?? 'gemma4:31b',
+          provider: str(dossier['provider']) ?? 'ollama',
+          cognitiveHighway: (str(dossier['cognitiveHighway']) ??
+            str(dossier['cognitive_highway']) ??
+            'system2') as 'system1' | 'system2' | 'byok',
+          temperature: num(dossier['temperature']) ?? 0.7,
+          systemTokens: num(dossier['systemTokens'] ?? dossier['system_tokens']),
+          contextTokens: num(dossier['contextTokens'] ?? dossier['context_tokens']),
+          historyTokens: num(dossier['historyTokens'] ?? dossier['history_tokens']),
+          outputTokens: num(dossier['outputTokens'] ?? dossier['output_tokens']),
+          totalTokens: num(dossier['totalTokens'] ?? dossier['total_tokens']),
+          recalledMemories: recalled,
+          authoritativeDocuments: docs,
+          injectedProfile: (dossier['injectedProfile'] ??
+            dossier['injected_profile']) as GroundingDossier['injectedProfile'],
+          xmlFencingVerified: Boolean(
+            dossier['xmlFencingVerified'] ?? dossier['xml_fencing_verified'] ?? true,
+          ),
+          overrideMarkersNeutralized: Boolean(
+            dossier['overrideMarkersNeutralized'] ??
+            dossier['override_markers_neutralized'] ??
+            false,
+          ),
+        };
+      }
+      return next;
+    }
+
+    case 'token_usage': {
+      const u = (data['token_usage'] ?? data['usage'] ?? data) as Record<string, unknown>;
+      if (u && typeof u === 'object') {
+        const pTok = num(u['prompt_tokens'] ?? u['promptTokens']) ?? 0;
+        const cTok = num(u['completion_tokens'] ?? u['completionTokens']) ?? 0;
+        const tTok = num(u['total_tokens'] ?? u['totalTokens']) ?? pTok + cTok;
+        const cost = num(u['cost_usd'] ?? u['costUsd']);
+        const lat = num(u['latency_ms'] ?? u['latencyMs']);
+        next.tokenUsage = {
+          promptTokens: pTok,
+          completionTokens: cTok,
+          totalTokens: tTok,
+          costUsd: cost,
+          latencyMs: lat,
+        };
+      }
+      return next;
+    }
+
+    case 'model_fallback': {
+      const orig = str(data['original_model'] ?? data['originalModel']) ?? 'primary';
+      const fb = str(data['fallback_model'] ?? data['fallbackModel']) ?? 'fallback';
+      const reason = str(data['reason']) ?? 'provider rate limit or outage';
+      const notice = `⚡ Resilient Fallback: Executed via ${fb} (originally ${orig} failed due to ${reason})`;
+      next.fallbackNotice = notice;
+      return {
+        ...next,
+        phases: [
+          ...next.phases,
+          phase('observe', `Circuit Breaker Fallback: ${orig} → ${fb}`, {
+            detail: reason,
+            ok: true,
           }),
         ],
       };

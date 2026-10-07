@@ -2,6 +2,8 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { ChatMarkdown } from './ChatMarkdown';
+import { ParallelAgentStreamCard } from './ParallelAgentStreamCard';
+import { GroundingDossierModal } from './GroundingDossierModal';
 import type { Attachment, ChatMessage, ExecutionPlan, PhaseEvent, ProposalStatus } from './types';
 
 export interface ChatMessageItemProps {
@@ -15,6 +17,7 @@ export interface ChatMessageItemProps {
   onDelete: (messageId: string) => void;
   onDecide: (messageId: string, index: number, decision: 'approve' | 'reject') => void;
   onSend: (text: string) => void;
+  onPinToMemory?: (messageId: string) => void;
 }
 
 const COPY_FEEDBACK_MS = 1500;
@@ -184,6 +187,7 @@ function ChatMessageItemComponent({
   onDelete,
   onDecide,
   onSend,
+  onPinToMemory,
 }: ChatMessageItemProps): JSX.Element {
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -192,6 +196,7 @@ function ChatMessageItemComponent({
   /** Index of the proposal awaiting its second click. Approving runs a
    *  destructive action server-side, so one stray click must not fire it. */
   const [confirmingApprove, setConfirmingApprove] = useState<number | null>(null);
+  const [isDossierOpen, setIsDossierOpen] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(
@@ -349,6 +354,64 @@ function ChatMessageItemComponent({
                 🧠 Memory Grounded
               </span>
             )}
+            {message.model && (
+              <span
+                className="inline-flex items-center gap-1 text-2xs font-mono px-1.5 py-0.5 rounded bg-surface-200 text-text-muted border border-border"
+                title={`Engineered with model ${message.model}`}
+              >
+                ⚡ {message.model}
+              </span>
+            )}
+            {message.squad && message.squad.length > 0 && (
+              <span
+                className="inline-flex items-center gap-1 text-2xs font-mono px-1.5 py-0.5 rounded bg-action/10 text-action border border-action/25"
+                title={`Specialist Squad: ${message.squad.join(', ')}`}
+              >
+                👥 Squad ({message.squad.length})
+              </span>
+            )}
+            {message.isPinnedToMemory && (
+              <span
+                className="inline-flex items-center gap-1 text-2xs font-mono px-1.5 py-0.5 rounded bg-success/10 text-success border border-success/20"
+                title="Pinned in Memory Vault"
+              >
+                📌 Vault
+              </span>
+            )}
+            {message.tokenUsage && (
+              <span
+                className="inline-flex items-center gap-1 text-2xs font-mono px-1.5 py-0.5 rounded bg-surface-200 text-text-muted border border-border"
+                title={`Tokens: ${message.tokenUsage.promptTokens} in / ${message.tokenUsage.completionTokens} out (${message.tokenUsage.totalTokens} total)`}
+              >
+                🏷️ {message.tokenUsage.totalTokens} tok
+              </span>
+            )}
+            {(message.groundingDossier || isGroundedInDocument || isGroundedInMemory) && (
+              <button
+                type="button"
+                onClick={() => setIsDossierOpen(true)}
+                className="inline-flex items-center gap-1 text-2xs font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition-colors cursor-pointer"
+                title="Inspect Grounding Provenance Dossier"
+                aria-label="Inspect Grounding Provenance Dossier"
+              >
+                🔍 Grounding Dossier
+              </button>
+            )}
+            {message.fallbackNotice && (
+              <span
+                className="inline-flex items-center gap-1 text-2xs font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30"
+                title={
+                  typeof message.fallbackNotice === 'string'
+                    ? message.fallbackNotice
+                    : `Fell back from ${message.fallbackNotice.requestedModel ?? 'requested'} to ${message.fallbackNotice.activeModel ?? 'active'}: ${message.fallbackNotice.reason ?? ''}`
+                }
+              >
+                ⚠️ Fallback:{' '}
+                {typeof message.fallbackNotice === 'string'
+                  ? message.fallbackNotice
+                  : (message.fallbackNotice.activeModel ?? 'model')}
+              </span>
+            )}
             {message.latencyMs !== undefined && (
               <span className="ml-auto text-2xs font-mono text-text-dim" title="Round trip time">
                 {message.latencyMs}ms
@@ -393,7 +456,14 @@ function ChatMessageItemComponent({
           </div>
         ) : (
           <div className="relative">
-            {groundedContext ? (
+            {message.parallelOutputs && Object.keys(message.parallelOutputs).length > 0 ? (
+              <ParallelAgentStreamCard
+                parallelOutputs={message.parallelOutputs}
+                synthesisText={message.text}
+                isStreaming={message.status === 'streaming'}
+                onSelectAgent={(agent) => onSend(`@${agent} `)}
+              />
+            ) : groundedContext ? (
               <>
                 <details className="mb-2 text-xs bg-surface-50 border border-border/40 rounded-lg p-2.5 text-text-dim">
                   <summary className="cursor-pointer font-medium select-none hover:text-text flex items-center justify-between">
@@ -679,6 +749,23 @@ function ChatMessageItemComponent({
             </button>
           )}
 
+          {!isUser && onPinToMemory && (
+            <button
+              type="button"
+              onClick={() => onPinToMemory(message.id)}
+              disabled={message.isPinnedToMemory}
+              className={`inline-flex items-center gap-1 text-2xs transition-colors ${
+                message.isPinnedToMemory
+                  ? 'text-success cursor-default'
+                  : 'text-text-dim hover:text-text'
+              }`}
+              title={message.isPinnedToMemory ? 'Pinned to Memory Vault' : 'Save to Memory Vault'}
+            >
+              <span>📌</span>
+              <span>{message.isPinnedToMemory ? 'Pinned to Vault' : 'Save to Vault'}</span>
+            </button>
+          )}
+
           {isError && (
             <button
               type="button"
@@ -726,6 +813,13 @@ function ChatMessageItemComponent({
           )}
         </div>
       </div>
+
+      <GroundingDossierModal
+        isOpen={isDossierOpen}
+        onClose={() => setIsDossierOpen(false)}
+        dossier={message.groundingDossier}
+        agentName={message.agentName}
+      />
     </article>
   );
 }

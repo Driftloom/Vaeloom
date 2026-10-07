@@ -247,3 +247,96 @@ async def clear_messages(
     ws_uuid, conv_uuid = _uuid_pair(workspace_id, conversation_id)
     await conversation_service.clear_messages(db=db, workspace_id=ws_uuid, conversation_id=conv_uuid)
     return Response(status_code=204)
+
+
+@router.post(
+    "/{conversation_id}/messages/{message_id}/pin-memory",
+    status_code=201,
+)
+async def pin_message_to_memory(
+    workspace_id: str,
+    conversation_id: str,
+    message_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_tenant_id),
+):
+    """Pin a chat message turn into the workspace Memory vault for durable grounding."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    await _verify_workspace_access(workspace_id, current_user, db)
+
+    import uuid as _uuid
+    from sqlalchemy import select as _sel
+
+    from ..models.schema import ChatMessage
+    from ..schemas.memory import MemoryCreate, MemoryResponse
+    from ..services.memory_service import memory_service
+
+    ws_uuid, conv_uuid = _uuid_pair(workspace_id, conversation_id)
+    try:
+        msg_uuid = _uuid.UUID(str(message_id))
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid message ID format")
+
+    stmt = _sel(ChatMessage).where(ChatMessage.id == msg_uuid, ChatMessage.conversation_id == conv_uuid)
+    res = await db.execute(stmt)
+    msg = res.scalar_one_or_none()
+    if not msg:
+        raise HTTPException(status_code=404, detail="Message not found")
+
+    user_id = current_user.get("sub") or current_user.get("user_id") if current_user else None
+    snippet = (msg.text or "").strip()
+    title = f"Pinned ({msg.role}): {snippet[:48]}..." if len(snippet) > 48 else f"Pinned ({msg.role}): {snippet}"
+
+    dto = MemoryCreate(
+        type="knowledge",
+        domain="chat",
+        title=title,
+        summary=snippet[:240],
+        content=snippet,
+        workspace_id=ws_uuid,
+        source_type="chat_message",
+        source_uri=f"workspaces/{workspace_id}/conversations/{conversation_id}/messages/{message_id}",
+        source_label=f"Conversation turn by {msg.role}",
+        metadata={
+            "pinned_from_chat": True,
+            "message_id": str(msg.id),
+            "conversation_id": str(conv_uuid),
+            "role": msg.role,
+            "agent_name": msg.agent_name,
+        },
+    )
+
+    mem = await memory_service.create_memory(
+        db=db,
+        dto=dto,
+        tenant_id=tenant_id,
+        user_id=str(user_id) if user_id else None,
+        workspace_id=ws_uuid,
+    )
+    return MemoryResponse.model_validate(mem)
+
+
+@router.post(
+    "/{conversation_id}/compact",
+    status_code=200,
+)
+async def compact_conversation_history(
+    workspace_id: str,
+    conversation_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Compact older turns of the conversation into an episodic summary while preserving recent turns."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    await _verify_workspace_access(workspace_id, current_user, db)
+
+    from ..orchestrator.compactor import compact_conversation
+
+    res = await compact_conversation(db, workspace_id, conversation_id)
+    if "error" in res:
+        raise HTTPException(status_code=404, detail=res["error"])
+    return res
+

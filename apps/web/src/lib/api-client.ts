@@ -363,6 +363,8 @@ export interface VaultSyncStatus {
   vaultMemories: number;
   lastPullTime?: string | null;
   lastPushTime?: string | null;
+  /** Real error reported by the client, if any. */
+  lastError?: string | null;
   conflictsCount: number;
   autoIngest: boolean;
   debounceSeconds: number;
@@ -415,6 +417,39 @@ export interface VaultSyncLog {
   executed?: boolean;
 }
 
+export interface VaultClientConflictReport {
+  id: string;
+  file: string;
+  conflict_file: string;
+  detected_at?: string | null;
+  local_head?: string | null;
+  remote_head?: string | null;
+}
+
+export interface VaultClientLogReport {
+  timestamp?: string | null;
+  level?: 'info' | 'warning' | 'error';
+  message: string;
+  event?: string | null;
+  executed?: boolean | null;
+}
+
+/** Payload the local vaultsync client POSTs to make server-side state truthful. */
+export interface VaultClientReport {
+  workspace_id: string;
+  client_version?: string;
+  machine?: string;
+  branch?: string;
+  remote_url?: string;
+  vault_path?: string;
+  sync_state?: 'idle' | 'syncing' | 'error';
+  last_pull_time?: string | null;
+  last_push_time?: string | null;
+  last_error?: string | null;
+  conflicts?: VaultClientConflictReport[];
+  logs?: VaultClientLogReport[];
+}
+
 export interface VaultSyncTriggerResponse {
   success: boolean;
   /** False when no sync actually ran — the server has no git engine. */
@@ -455,6 +490,17 @@ export const vaultSyncApi = {
   },
   getConflicts(workspaceId: string): Promise<VaultConflict[]> {
     return apiClient.get<VaultConflict[]>('/vault-sync/conflicts', { workspace_id: workspaceId });
+  },
+  reportClientState(body: VaultClientReport): Promise<{
+    success: boolean;
+    workspace_id: string;
+    received_at: string;
+    reported_conflicts: number;
+    reported_logs: number;
+    daemon_status: string;
+    status: string;
+  }> {
+    return apiClient.post('/vault-sync/report', body);
   },
   resolveConflict(
     conflictId: string,
@@ -536,6 +582,10 @@ export interface ChatMessage {
   workspaceId: string;
   message: string;
   agentName?: string;
+  agentNames?: string[];
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
 }
 
 /** One decoded SSE block: the lines between two blank lines. */
@@ -653,6 +703,23 @@ export const agentApi = {
   },
   schedule(agentId: string, body: ScheduleRequest): Promise<ScheduleResponse> {
     return apiClient.post<ScheduleResponse>(`/agents/${agentId}/schedule`, body);
+  },
+  listModels(): Promise<{
+    models: Array<{
+      id: string;
+      name: string;
+      provider: string;
+      tier: string;
+      maxTokens: number;
+      costPer1kInput?: number;
+      costPer1kOutput?: number;
+      healthStatus?: string;
+      isActive?: boolean;
+    }>;
+    total: number;
+    defaultModel: string;
+  }> {
+    return apiClient.get('/agents/models');
   },
   chat(body: ChatMessage): Promise<{ reply?: string } & Record<string, unknown>> {
     return apiClient.post('/agents/chat', body);
@@ -1838,27 +1905,6 @@ export const documentApi = {
       params['category'] = pagination.category;
     }
     return apiClient.get<DocumentSearchResponse>('/documents/search', params);
-  },
-  /**
-   * `POST /documents/{document_id}/process?workspace_id=`.
-   * Route: `routers/documents.py:1094`.
-   *
-   * Runs the ingestion/chunking pipeline for one document. `workspace_id` is a
-   * QUERY parameter and the route declares no request body, so `postQuery` is
-   * called with `undefined` — a JSON body would be silently discarded.
-   *
-   * `'skipped'` resolves rather than rejects: an unregistered file format is a
-   * normal outcome and the endpoint returns 200 for it. A 500 means a registered
-   * parser failed.
-   *
-   * Rate limited to 10 calls / 5 minutes and gated on a WRITE-capable caller, so
-   * this is not a loop-per-row API. The document list does not call it.
-   */
-  process(documentId: string, workspaceId: string): Promise<DocumentProcessResponse> {
-    return apiClient.postQuery<DocumentProcessResponse>(
-      `/documents/${encodeURIComponent(documentId)}/process`,
-      { workspace_id: workspaceId },
-    );
   },
   listFolders(workspaceId: string, parentId?: string): Promise<FolderResponse[]> {
     const params: Record<string, string> = { workspace_id: workspaceId };

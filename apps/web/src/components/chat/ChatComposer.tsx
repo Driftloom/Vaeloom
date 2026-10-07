@@ -24,6 +24,8 @@ export interface ChatComposerProps {
   maxLength: number;
   persistenceError?: string | null;
   inputRef?: React.RefObject<HTMLTextAreaElement | null>;
+  selectedSquad?: string[];
+  onToggleSquadAgent?: (agentId: string) => void;
 }
 
 type PopupKind = 'slash' | 'mention';
@@ -92,6 +94,8 @@ export function ChatComposer(props: ChatComposerProps): JSX.Element {
     maxLength,
     persistenceError,
     inputRef,
+    selectedSquad,
+    onToggleSquadAgent,
   } = props;
 
   const [popup, setPopup] = useState<PopupState | null>(null);
@@ -398,6 +402,65 @@ export function ChatComposer(props: ChatComposerProps): JSX.Element {
           </div>
         ) : null}
 
+        {selectedSquad && selectedSquad.length > 0 && (
+          <div className="mb-2 flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10px] uppercase font-mono text-text-dim">Squad:</span>
+            {selectedSquad.map((agentId) => (
+              <span
+                key={agentId}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-action/10 text-action border border-action/30"
+              >
+                <span>@{agentId}</span>
+                {onToggleSquadAgent && (
+                  <button
+                    type="button"
+                    onClick={() => onToggleSquadAgent(agentId)}
+                    className="hover:opacity-75 text-[10px]"
+                    aria-label={`Remove @${agentId} from squad`}
+                  >
+                    ✕
+                  </button>
+                )}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {value.trim().length === 0 && (
+          <div className="mb-2 flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+            {[
+              {
+                label: '🎯 Tailor Resume',
+                prompt: '/tailor-resume Staff Distributed Systems Engineer',
+              },
+              {
+                label: '🔍 Audit ATS Score',
+                prompt: '/ats-audit Evaluate ATS parseability and keywords',
+              },
+              {
+                label: '💼 Discover Verified Jobs',
+                prompt: '/job-radar Senior Full-Stack Engineer remote',
+              },
+              {
+                label: '💬 Behavioral STAR Prep',
+                prompt: '/star-prep Conflict resolution with engineering leadership',
+              },
+            ].map((pill) => (
+              <button
+                key={pill.label}
+                type="button"
+                onClick={() => {
+                  onChange(pill.prompt);
+                  textareaRef.current?.focus();
+                }}
+                className="shrink-0 rounded-full border border-border/60 bg-surface-100/80 px-2.5 py-1 text-[11px] text-text-dim hover:border-action/50 hover:bg-surface-200 hover:text-text transition-all"
+              >
+                {pill.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div
           className={`flex items-end gap-2 rounded-[24px] border bg-surface px-2 py-2 transition-colors motion-reduce:transition-none ${
             dragOver ? 'border-primary ring-2 ring-primary/20' : 'border-border/50'
@@ -540,7 +603,7 @@ export function ChatComposer(props: ChatComposerProps): JSX.Element {
             aria-live={nearLimit ? 'polite' : undefined}
             className={`shrink-0 font-mono text-xs ${nearLimit ? 'text-error' : 'text-text-dim'}`}
           >
-            {length}/{maxLength}
+            ~{Math.max(0, Math.ceil(length / 3.8))} tok · {length}/{maxLength}
           </span>
         </div>
 

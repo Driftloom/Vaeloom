@@ -92,6 +92,86 @@ export interface Attachment {
   error?: string;
 }
 
+export type ModelTier = 'fast' | 'balanced' | 'powerful';
+export type ModelProvider = 'openai' | 'anthropic' | 'groq' | 'google' | 'ollama' | 'typesafe';
+export type ModelStatus = 'ready' | 'byok_required' | 'degraded';
+export type CognitiveSystemRole = 'system1' | 'system2' | 'byok';
+
+export interface ModelOption {
+  id: string;
+  name: string;
+  provider: ModelProvider | string;
+  tier: ModelTier;
+  maxTokens: number;
+  costPer1kInput?: number;
+  costPer1kOutput?: number;
+  inputCostPer1m?: number;
+  outputCostPer1m?: number;
+  description?: string;
+  isDefault?: boolean;
+  contextWindow?: number;
+  healthStatus?: string;
+  isActive?: boolean;
+  status?: ModelStatus;
+  cognitiveRole?: CognitiveSystemRole;
+  systemRole?: CognitiveSystemRole;
+  isPlatformManaged?: boolean;
+  badge?: string;
+}
+
+export interface TokenUsageStats {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  costUsd?: number;
+  latencyMs?: number;
+  contextWindowLimit?: number;
+  contextPercent?: number;
+}
+
+export interface GroundingMemoryItem {
+  id: string;
+  title: string;
+  score?: number;
+  type?: string;
+  snippet: string;
+}
+
+export interface GroundingDossier {
+  model?: string;
+  provider?: string;
+  cognitiveHighway?: 'system1' | 'system2' | 'byok';
+  temperature?: number;
+  systemTokens?: number;
+  contextTokens?: number;
+  historyTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  recalledMemories?: GroundingMemoryItem[];
+  authoritativeDocuments?: Array<{ id: string; title: string; path?: string }>;
+  injectedProfile?: {
+    targetRole?: string;
+    skillsCount?: number;
+    constraintsCount?: number;
+  };
+  xmlFencingVerified?: boolean;
+  overrideMarkersNeutralized?: boolean;
+  memories?: any[];
+  contextTokenEstimate?: number;
+}
+
+export type ChatTab = 'stream' | 'squads' | 'models' | 'memory';
+
+export interface ParallelAgentOutput {
+  agent: string;
+  status: 'streaming' | 'completed' | 'error';
+  tokens: string;
+  phase?: string;
+  latencyMs?: number;
+  summary?: string;
+  error?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: MessageRole;
@@ -111,6 +191,11 @@ export interface ChatMessage {
   attachments?: Attachment[];
   plan?: ExecutionPlan;
   phases?: PhaseEvent[];
+  parallelOutputs?: Record<string, ParallelAgentOutput>;
+  model?: string;
+  squad?: string[];
+  isPinnedToMemory?: boolean;
+  pinnedMemoryId?: string;
   error?: { message: string; code?: string };
   /** Client-measured round trip. Reset when falling back off a failed stream. */
   latencyMs?: number;
@@ -120,6 +205,16 @@ export interface ChatMessage {
   /** Temporal workflow id when this turn ran durably. */
   workflowId?: string;
   edited?: boolean;
+  tokenUsage?: TokenUsageStats;
+  groundingDossier?: GroundingDossier;
+  fallbackNotice?:
+    | string
+    | {
+        requestedModel?: string;
+        activeModel?: string;
+        reason?: string;
+      };
+  isCompactedSummary?: boolean;
   metadata?: {
     grounded_in_memory?: boolean;
     [key: string]: unknown;

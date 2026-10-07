@@ -673,9 +673,66 @@ export const ConversationApi = {
       return failure<MessageRecord>(err, 'Could not save the message.');
     }
   },
+
+  /** `POST /conversations/{id}/messages/{messageId}/pin-memory` → 201. */
+  async pinMessageToMemory(
+    workspaceId: string,
+    conversationId: string,
+    messageId: string,
+    signal?: AbortSignal,
+  ): Promise<ApiResult<{ id: string; type: string; title: string; content: string }>> {
+    try {
+      const res = await api.post<Record<string, unknown>>(
+        `${base(workspaceId)}/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/pin-memory`,
+        {},
+        signal ? { signal } : undefined,
+      );
+      return apiOk(res as { id: string; type: string; title: string; content: string });
+    } catch (err) {
+      return failure<{ id: string; type: string; title: string; content: string }>(
+        err,
+        'Could not pin message to memory vault.',
+      );
+    }
+  },
+
+  /** `POST /conversations/{id}/compact` — sliding-window context compaction. */
+  async compact(
+    workspaceId: string,
+    conversationId: string,
+    signal?: AbortSignal,
+  ): Promise<
+    ApiResult<{ compacted: boolean; preservedTurns: number; summary: string; tokensSaved?: number }>
+  > {
+    try {
+      const res = await api.post<Record<string, unknown>>(
+        `${base(workspaceId)}/${encodeURIComponent(conversationId)}/compact`,
+        {},
+        signal ? { signal } : undefined,
+      );
+      return apiOk(
+        res as unknown as {
+          compacted: boolean;
+          preservedTurns: number;
+          summary: string;
+          tokensSaved?: number;
+        },
+      );
+    } catch (err) {
+      return failure(err, 'Could not compact conversation history.');
+    }
+  },
 };
 
 /** Free functions over the same client, for callers that prefer named helpers. */
+export const compactConversation = (
+  workspaceId: string,
+  conversationId: string,
+  signal?: AbortSignal,
+): Promise<
+  ApiResult<{ compacted: boolean; preservedTurns: number; summary: string; tokensSaved?: number }>
+> => ConversationApi.compact(workspaceId, conversationId, signal);
+
 export const fetchConversations = (
   workspaceId: string,
   params?: ListParams,

@@ -1,6 +1,6 @@
-'use client';
-
-import React from 'react';
+import type { ModelOption } from './types';
+import { ChatModelSelector } from './ChatModelSelector';
+import { ContextWindowGauge } from './ContextWindowGauge';
 
 export interface ChatHeaderProps {
   workspaceId: string;
@@ -12,6 +12,17 @@ export interface ChatHeaderProps {
   drawerOpen: boolean;
   onToggleDrawer: () => void;
   onNewChat: () => void;
+  selectedModel?: string;
+  onSelectModel?: (modelId: string) => void;
+  availableModels?: ModelOption[];
+  temperature?: number;
+  onTemperatureChange?: (temp: number) => void;
+  selectedSquad?: string[];
+  onToggleMemoryDrawer?: () => void;
+  contextTotalTokens?: number;
+  contextMaxTokens?: number;
+  onCompact?: () => void;
+  isCompacting?: boolean;
 }
 
 /**
@@ -29,6 +40,17 @@ export function ChatHeader({
   drawerOpen,
   onToggleDrawer,
   onNewChat,
+  selectedModel,
+  onSelectModel,
+  availableModels,
+  temperature = 0.7,
+  onTemperatureChange,
+  selectedSquad = [],
+  onToggleMemoryDrawer,
+  contextTotalTokens,
+  contextMaxTokens,
+  onCompact,
+  isCompacting,
 }: ChatHeaderProps): JSX.Element {
   // `RealtimeProvider` seeds `status = 'connected'` before a socket exists, so
   // pulsing it as healthy green during `connecting` reported a health the
@@ -85,6 +107,12 @@ export function ChatHeader({
           <span className="truncate">{isAuto ? 'Auto' : agentName}</span>
         </span>
 
+        {selectedSquad.length > 1 && (
+          <span className="hidden sm:inline-flex items-center gap-1 rounded-full border border-action/40 bg-action/10 px-2 py-0.5 text-xs text-action font-mono">
+            ⚡ Squad: {selectedSquad.length}
+          </span>
+        )}
+
         {connectionStatus !== undefined && (
           <span className="hidden items-center gap-1.5 rounded-full border border-border bg-surface-50 px-2 py-0.5 font-mono text-xs sm:inline-flex">
             <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${statusDot}`} />
@@ -93,18 +121,53 @@ export function ChatHeader({
         )}
       </div>
 
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1.5">
+        {contextTotalTokens !== undefined && contextMaxTokens !== undefined && (
+          <div className="hidden lg:block">
+            <ContextWindowGauge
+              totalTokens={contextTotalTokens}
+              maxTokens={contextMaxTokens}
+              modelId={selectedModel ?? 'default'}
+              onCompact={onCompact}
+              isCompacting={isCompacting}
+            />
+          </div>
+        )}
+
+        {selectedModel && onSelectModel && availableModels && (
+          <ChatModelSelector
+            selectedModel={selectedModel}
+            onSelectModel={onSelectModel}
+            availableModels={availableModels}
+            temperature={temperature}
+            onTemperatureChange={onTemperatureChange ?? (() => {})}
+          />
+        )}
+
+        {onToggleMemoryDrawer && (
+          <button
+            type="button"
+            onClick={onToggleMemoryDrawer}
+            title="Open Obsidian Vault & Memory Grounding drawer"
+            aria-label="Open Memory Vault"
+            className="rounded-lg border border-border/50 px-2 py-1 text-xs transition-colors hover:bg-surface-hover text-text inline-flex items-center gap-1"
+          >
+            <span aria-hidden="true">📌</span>
+            <span className="hidden lg:inline text-text-muted">Vault</span>
+          </button>
+        )}
+
         {/* Count only. This previously appended a hardcoded "· QA gate" on every
             render — the backend sends no gate state with the chat header, so it
             asserted a capability that was never reported. Agent count is real
             wire data and null-guarded while loading. */}
-        <span className="hidden text-xs text-text-dim lg:inline">
+        <span className="hidden text-xs text-text-dim xl:inline">
           {agentCount === null ? 'Loading agents…' : `${agentCount} agents`}
         </span>
 
         <label
           title="Route through a durable Temporal workflow so long runs survive a page refresh"
-          className="ml-1 flex cursor-pointer items-center gap-1.5 rounded-full border border-border/50 px-2 py-1 text-xs transition-colors hover:bg-surface-hover motion-reduce:transition-none"
+          className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border/50 px-2 py-1 text-xs transition-colors hover:bg-surface-hover motion-reduce:transition-none"
         >
           <input
             type="checkbox"
@@ -119,7 +182,7 @@ export function ChatHeader({
         <button
           type="button"
           onClick={onNewChat}
-          className="ml-1 rounded-full border border-border/50 px-2.5 py-1.5 text-xs transition-colors hover:bg-surface-hover sm:px-3 motion-reduce:transition-none"
+          className="rounded-full border border-border/50 px-2.5 py-1.5 text-xs transition-colors hover:bg-surface-hover sm:px-3 motion-reduce:transition-none"
         >
           New chat
         </button>
