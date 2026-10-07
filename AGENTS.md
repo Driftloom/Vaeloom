@@ -47,6 +47,16 @@ hung because most packages have no `dev` script). **Always** use:
 
 ## API — Test State
 
+- **WARNING: the full backend suite crashes under xdist** — `INTERNALERROR`,
+  plus a Windows fatal exception `0xc000070a` from the asyncio loop on
+  `tests/security/`. This is finding 39 below and predates the current work.
+  **Do not trust a `-n 4` full-suite pass/fail count** — the crash truncates the
+  run and the reported totals are wrong. Run serially (`-o addopts=""`) or in
+  per-area chunks. Verified green serially on 2026-10-06: agent / orchestrator /
+  memory / vault / react **152**; tools + agents + memory service **239**;
+  `tests/security/test_noauth_private.py` **105**;
+  `tests/test_tools_executor.py` **90**; vault-sync API **18**.
+
 - **4620 tests collected (collection-only re-verified 2026-10-03 via
   `pytest --collect-only -q -o addopts=""`, 24.7s; was 3640, 2731 before that;
   full suite serial `-o addopts=""` 100% reliable; new pipeline suites 349/349
@@ -65,11 +75,86 @@ hung because most packages have no `dev` script). **Always** use:
   2026-10-03, and 254/315 in `specs/api/API-Reference.md` — those two disagreed
   before the audit. History: 162/203 on 2026-09-15, 110 on 2026-08-29, 106 on
   2026-08-23, 99 before)
-- **Web tests (2026-10-06):** jest **917 tests / 39 suites**, all passing
-  (`npx jest`, 33.2s — was "700 tests / 32 suites"). Playwright **95 tests
-  across 11 spec files** in `apps/web/e2e` (`npx playwright test --list`; only 3
-  `toHaveScreenshot` assertions exist, in `landing.spec.ts` + `quality.spec.ts`
-  — was "6 spec files / 73 tests / 40 visual baselines")
+- **Web tests (2026-10-07, re-measured after document modals & audit
+  decompositions, folder rename/move wiring, and chat FDE context
+  engineering):** jest **978 tests / 43 suites**; **978 pass, 0 fail**
+  (`npx jest`, ~22s — 100% GREEN). The capability catalog is expanded to 33
+  first-class career intelligence skills across both backend
+  (`skill_catalog_service.py`, 63/63 tests pass) and frontend
+  (`capabilities-data.ts`, `Browse (33)` in `page.spec.tsx`). Component
+  decompositions: `DocumentDetailView.tsx` (340 lines, down from 1393),
+  `DocumentsHub.tsx` (339 lines, down from 452 via `parts/DocumentsModals.tsx`),
+  `DocumentAuditPanel.tsx` (180 lines, down from 480 via `audit/`). Folder
+  management: rename and reparenting fully wired via `RenameFolderModal` and
+  `MoveFolderModal` calling `documentApi.updateFolder`. New negative-control
+  tests: `src/components/memory/__tests__/VaultSyncPanel.honesty.test.tsx` (10),
+  `src/app/workspace/[workspaceId]/memory/__tests__/memoryPage.honesty.test.tsx`
+  (7). `tsc --noEmit` is **clean (0 errors)** at the time of measurement.
+  Playwright **95 tests across 11 spec files** in `apps/web/e2e`
+  (`npx playwright test --list`; only 3 `toHaveScreenshot` assertions exist, in
+  `landing.spec.ts` + `quality.spec.ts` — was "6 spec files / 73 tests / 40
+  visual baselines")
+- **Live PostgreSQL 16 & Schema-Wide RLS Verification (Migrations 0065 &
+  0066):** Executed against authentic PostgreSQL 16 with pgvector on port 55432
+  (WSL). **27 / 27 LIVE POSTGRESQL TESTS GREEN (0 SKIPS, 0 MOCKS, 0 FAILS)**:
+  `test_migration_chain_pg.py` (10/10), `test_migration_0057_pg.py` (4/4),
+  `test_rls_live_pg.py` (6/6), `test_rls_live_extended.py` (7/7). Verifies 100%
+  of 91 public tables enforce row security (`relrowsecurity`) and forced row
+  security (`relforcerowsecurity`), fail-closed unset GUCs, cross-tenant and
+  cross-workspace read denial, mismatched `WITH CHECK` insert denial, own-scope
+  reading, and sequential ABA connection pool isolation.
+- **Backend Memory & Vault Integration Tests:**
+  `tests/integration/test_memory_api.py` (9/9 pass) and
+  `tests/test_vault_sync_documents_integration.py` (1/1 pass). Async tool audit
+  teardown race resolved via `drain_pending_audit_tasks` in
+  `apps/api/src/api/tools/executor.py` and `apps/api/tests/conftest.py`.
+- **ReAct loop REVIVED (was dead).** `_try_react_loop` lines ~1648-1649 read a
+  bare `request` object that does not exist in that scope, so every round raised
+  `NameError`, which the outer handler swallowed into a `None` return. Because
+  `agent_react_enabled` defaults to **True**, production silently ran static
+  dispatch while the ReAct path appeared enabled. Fixed to use `_rec.model_name`
+  / `settings.llm_model`. Consequences to know about:
+  - ReAct now intercepts `act_phase` before static dispatch, so tests that are
+    _about the static ladder_ must pin `settings.agent_react_enabled = False`
+    (see `TestActPhase::test_dispatch_paths` and `test_qa_loop_gate.py`).
+  - Safety was verified, not assumed: `tests/test_react_revival_safety.py`
+    proves the QA grounding gate still validates ReAct results (a rejected act
+    result never reaches the user) and that both the scope gate and the
+    AgentCard contract gate still deny unauthorised tools.
+  - `run_agent_loop` and the streaming loop each hold their own QA gate
+    (`loop.py:~3336` and `~3678`); both operate on `act_phase`'s result, so
+    ReAct output is gated too.
+- **Agent memory wiring (`tests/test_agent_memory_wiring.py`):** **16 tests**,
+  all passing. Covers audit findings #14-#17: the agent's search tool delegates
+  to `memory_service` (hybrid + RRF, real scores), `create_memory` delegates for
+  embedding + lineage, `_assemble_rag_context` actually queries the `Memory`
+  table, and recalled memory reaches the compiled prompt. Load-bearing verified
+  — disabling the retrieval block fails 4 of them. Workspace-scoping is asserted
+  (a memory from another workspace must never be recalled). Recalled memory is
+  **prepended** to `context_prompt` so token-budget truncation cannot drop it.
+- **Memory taxonomy:** `packages/shared-types` `MemoryType` was a _source
+  format_ list (`document|email|code|note|conversation|webpage|structured`), not
+  the taxonomy the API accepts. Only `document` and `note` overlapped, so 5 of 7
+  memory type filters matched nothing. Now mirrors the backend literal (24
+  values, `apps/api/src/api/schemas/memory.py`). If you change one, change both.
+- **Intent routing anchors:** `router.py` scored categories by raw keyword
+  count, so generic words out-voted domain nouns ("critique my resume" scored
+  reflection=2 vs career_resume=1 and routed to self_improvement).
+  `_CATEGORY_ANCHORS` now weights unambiguous terms (`_ANCHOR_WEIGHT = 3`).
+- **Vault sync (`packages/vaeloom-sync`):** node:test, **25 tests / 3 suites**,
+  all passing (`npm test`, ~9s). `tests/integration.test.ts` drives **real git**
+  against a real bare remote across two simulated machines;
+  `tests/reporter.test.ts` covers client→API status reporting. 7 client bugs
+  were fixed with tests proven to fail against the old code (path-traversal file
+  delete, false `PULL SUCCESS` on failed rebase, `-1-1` conflict naming that
+  resolved onto another conflict file, `.vaeloom` config/ledger being synced,
+  trailing-newline loss, corrupt ledger overwrite, push on top of a stuck
+  rebase).
+- **Vault sync API (`apps/api/tests/test_vault_sync.py`):** **18 tests**, serial
+  ~1-3min (`-o addopts=""`); slow because signup does password hashing. Asserts
+  the API never fabricates: no invented daemon activity, no fake
+  `last_pull_time` on `POST /sync`, `daemon_status` derived from a real client
+  heartbeat, and `/download-client` requiring auth.
 - Python 3.12.13 (per `apps/api/.python-version` pinned via
   `uv python pin 3.12`; `.venv` managed by `uv`)
 - Tests use SQLite with mock backend (`tmp_path` per-test DB via `NullPool`);

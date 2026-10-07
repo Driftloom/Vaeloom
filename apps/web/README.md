@@ -52,6 +52,25 @@ pnpm --filter @vaeloom/web lint
   `integrations` have no typed equivalent yet). Do not add new `api`-object
   usage in fresh files — add or reuse a typed method in `api-client.ts` instead.
 
+## API Layer — Single Entry Point
+
+- **`src/lib/api-client.ts` is the one supported entry point** for application /
+  feature network code. It exports typed, per-domain namespaces (`authApi`,
+  `workspaceApi`, `memoryApi`, `agentApi`, `connectorApi`, `documentApi`,
+  `resumeApi`, `applicationApi`, `approvalApi`, `notificationApi`,
+  `schedulerApi`, …) whose method signatures and return types are the contract.
+  Feature code should import from here.
+- **`src/lib/api.ts` is the shared transport-primitives layer** (`request`,
+  `ApiError`, `transformKeys`, `API_BASE` / `API_PREFIX`, session-marker
+  helpers) that `api-client.ts` is itself built on. Importing those primitives
+  directly is legitimate only for one-off streams or binary downloads that have
+  no typed wrapper.
+- **The flat `api` verb object in `api.ts` is `@deprecated`** for new app use (a
+  legacy untyped SDK surface retained for backward compatibility; ~19 existing
+  modules still import it, and a few namespaces such as `sovereignty` /
+  `integrations` have no typed equivalent yet). Do not add new `api`-object
+  usage in fresh files — add or reuse a typed method in `api-client.ts` instead.
+
 ## Route Structure (41 Page Routes)
 
 - **Authentication (`app/(auth)`):** `/login`, `/signup`, `/forgot-password`,

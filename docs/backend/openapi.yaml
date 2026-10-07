@@ -1736,6 +1736,65 @@ paths:
         '429': *id001
       security:
       - BearerAuth: []
+  /api/v1/workspaces/{workspace_id}/conversations/{conversation_id}/messages/{message_id}/pin-memory:
+    post:
+      tags:
+      - conversations
+      summary: Pin Message To Memory
+      description: Pin a chat message turn into the workspace Memory vault for durable
+        grounding.
+      operationId: pin_message_to_memory_api_v1_workspaces__workspace_id__conversations__conversation_id__messages__message_id__pin_memory_post
+      parameters:
+      - name: workspace_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Workspace Id
+      - name: conversation_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Conversation Id
+      - name: message_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Message Id
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Unauthorized — missing or invalid Bearer JWT access token.
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
+                  detail:
+                    type: string
+                required:
+                - detail
+        '429': *id001
+      security:
+      - BearerAuth: []
   /api/v1/memories:
     get:
       tags:
@@ -2777,6 +2836,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Unauthorized — missing or invalid Bearer JWT access token.
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
+                  detail:
+                    type: string
+                required:
+                - detail
+        '429': *id001
+      security:
+      - BearerAuth: []
+  /api/v1/agents/models:
+    get:
+      tags:
+      - agents
+      summary: Get Model Catalog
+      description: Return model catalog with providers, tiers, pricing, and health
+        status.
+      operationId: get_model_catalog_api_v1_agents_models_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Get Model Catalog Api V1 Agents Models Get
         '401':
           description: Unauthorized — missing or invalid Bearer JWT access token.
           content:
@@ -9432,6 +9528,55 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TestCapabilityResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Unauthorized — missing or invalid Bearer JWT access token.
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
+                  detail:
+                    type: string
+                required:
+                - detail
+        '429': *id001
+      security:
+      - BearerAuth: []
+  /api/v1/capabilities/sync-github:
+    post:
+      tags:
+      - capabilities
+      summary: Sync Github Skills
+      description: Sync and validate remote SKILL.md playbooks from a GitHub repository.
+      operationId: sync_github_skills_api_v1_capabilities_sync_github_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncGitHubSkillsRequest'
+              default:
+                repository: Driftloom/vaeloom-skills
+                ref: master
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                title: Response Sync Github Skills Api V1 Capabilities Sync Github
+                  Post
         '422':
           description: Validation Error
           content:
@@ -18111,12 +18256,82 @@ paths:
         '429': *id001
       security:
       - BearerAuth: []
+  /api/v1/vault-sync/report:
+    post:
+      tags:
+      - vault-sync
+      summary: Report Vault Client State
+      description: 'Record real state reported by the local vaultsync client.
+
+
+        This is what makes the rest of the API honest: /status derives daemon liveness
+
+        from `last_client_heartbeat`, /conflicts returns the client''s actual conflict
+
+        ledger, and /logs returns its actual activity. Without a report path those
+
+        endpoints could only ever report "nothing to report", which is indistinguishable
+
+        from "everything is fine".
+
+
+        Only unresolved conflicts are retained, so a client that clears its queue
+
+        visibly empties the server''s view.'
+      operationId: report_vault_client_state_api_v1_vault_sync_report_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VaultClientReport'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Report Vault Client State Api V1 Vault Sync Report
+                  Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Unauthorized — missing or invalid Bearer JWT access token.
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
+                  detail:
+                    type: string
+                required:
+                - detail
+        '429': *id001
+      security:
+      - BearerAuth: []
   /api/v1/vault-sync/conflicts:
     get:
       tags:
       - vault-sync
       summary: List Vault Conflicts
-      description: List any active rebase conflict files recorded for this vault.
+      description: 'Conflicts most recently reported by the local vaultsync client.
+
+
+        Empty means "the client reported no conflicts", not "the vault is clean" —
+
+        check /status for whether a client has ever checked in.'
       operationId: list_vault_conflicts_api_v1_vault_sync_conflicts_get
       parameters:
       - name: workspace_id
@@ -19708,6 +19923,30 @@ components:
           - type: string
           - type: 'null'
           title: Agentname
+        agentNames:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Agentnames
+        model:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Model
+        temperature:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Temperature
+          default: 0.7
+        maxTokens:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Maxtokens
+          default: 4096
       type: object
       required:
       - workspaceId
@@ -22267,6 +22506,7 @@ components:
           anyOf:
           - type: string
             format: uuid
+          - type: string
           - type: 'null'
           title: Parent Id
       type: object
@@ -23028,6 +23268,13 @@ components:
             format: uuid
           - type: 'null'
           title: Supersedes Id
+        status:
+          anyOf:
+          - type: string
+            maxLength: 20
+          - type: 'null'
+          title: Status
+          description: Optional initial lifecycle status (defaults to active)
       type: object
       required:
       - type
@@ -26475,6 +26722,23 @@ components:
       - config
       - created_at
       title: SubscriptionResponse
+    SyncGitHubSkillsRequest:
+      properties:
+        repository:
+          type: string
+          title: Repository
+          default: Driftloom/vaeloom-skills
+        ref:
+          type: string
+          title: Ref
+          default: master
+        auth_token:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Auth Token
+      type: object
+      title: SyncGitHubSkillsRequest
     SyncStatusResponse:
       properties:
         connector_id:
@@ -27523,6 +27787,152 @@ components:
       - msg
       - type
       title: ValidationError
+    VaultClientConflict:
+      properties:
+        id:
+          type: string
+          maxLength: 200
+          title: Id
+        file:
+          type: string
+          maxLength: 1000
+          title: File
+        conflict_file:
+          type: string
+          maxLength: 1000
+          title: Conflict File
+        detected_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Detected At
+        local_head:
+          anyOf:
+          - type: string
+            maxLength: 100
+          - type: 'null'
+          title: Local Head
+        remote_head:
+          anyOf:
+          - type: string
+            maxLength: 100
+          - type: 'null'
+          title: Remote Head
+      type: object
+      required:
+      - id
+      - file
+      - conflict_file
+      title: VaultClientConflict
+    VaultClientLog:
+      properties:
+        timestamp:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Timestamp
+        level:
+          type: string
+          pattern: ^(info|warning|error)$
+          title: Level
+          default: info
+        message:
+          type: string
+          maxLength: 2000
+          title: Message
+        event:
+          anyOf:
+          - type: string
+            maxLength: 200
+          - type: 'null'
+          title: Event
+        executed:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Executed
+      type: object
+      required:
+      - message
+      title: VaultClientLog
+    VaultClientReport:
+      properties:
+        workspace_id:
+          type: string
+          format: uuid
+          title: Workspace Id
+        client_version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Client Version
+        machine:
+          anyOf:
+          - type: string
+            maxLength: 200
+          - type: 'null'
+          title: Machine
+        branch:
+          anyOf:
+          - type: string
+            maxLength: 200
+          - type: 'null'
+          title: Branch
+        remote_url:
+          anyOf:
+          - type: string
+            maxLength: 2000
+          - type: 'null'
+          title: Remote Url
+        vault_path:
+          anyOf:
+          - type: string
+            maxLength: 2000
+          - type: 'null'
+          title: Vault Path
+        sync_state:
+          type: string
+          pattern: ^(idle|syncing|error)$
+          title: Sync State
+          default: idle
+        last_pull_time:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Last Pull Time
+        last_push_time:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Last Push Time
+        last_error:
+          anyOf:
+          - type: string
+            maxLength: 2000
+          - type: 'null'
+          title: Last Error
+        conflicts:
+          items:
+            $ref: '#/components/schemas/VaultClientConflict'
+          type: array
+          title: Conflicts
+        logs:
+          items:
+            $ref: '#/components/schemas/VaultClientLog'
+          type: array
+          title: Logs
+      type: object
+      required:
+      - workspace_id
+      title: VaultClientReport
+      description: 'What the local vaultsync client reports about its own machine.
+
+
+        The server has no git engine, so this is the only way real client state can
+
+        reach the API. Before this existed, /status derived liveness from a heartbeat
+
+        that nothing could ever write, so the feature was permanently "not connected".'
     VaultConfigUpdate:
       properties:
         workspace_id:
