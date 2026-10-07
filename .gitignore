@@ -26,6 +26,10 @@ dmypy.json
 .uv/
 .uv_cache/
 uv.cache/
+.pyright/
+.pyright_cache/
+pip-log.txt
+pip-delete-this-directory.txt
 
 # Dependencies
 node_modules/
@@ -73,6 +77,9 @@ build/
 *.code-workspace
 *.sublime-project
 *.sublime-workspace
+*.iws
+*.iml
+*.ipr
 .history/
 
 # OS
@@ -101,6 +108,7 @@ $RECYCLE.BIN/
 .env.test
 .env.test.local
 .env*.backup
+.env*.override
 .env.vault
 infra/kubernetes/secrets/*.yaml
 *.pem
@@ -135,6 +143,9 @@ secrets/
 # K8s manifest rather than key material, so it is unaffected.
 *service-account*.json
 *-sa-key.json
+client_secret*.json
+credentials.json
+*.kdbx
 
 # Logs
 logs/
@@ -151,6 +162,9 @@ npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.pnpm-debug.log*
+*.err
+*.out
 
 # Testing
 coverage/
@@ -163,6 +177,8 @@ lcov.info
 *.lprof
 .last-run.json
 **/.last-run.json
+.jest_cache/
+.jest-cache/
 
 # Playwright
 test-results/
@@ -223,6 +239,11 @@ testing/e2e/test-results.json
 .augment/
 .codex/
 .system_generated/
+.claude.json
+.codex.json
+.agents/run/
+.agents/state/
+.agents/artifacts/
 # gstack local browser daemon state (logs, session screenshots). It carries its
 # own nested .gitignore containing `*`, but that self-ignore disappears the
 # moment the directory is cleaned out, and *.log alone does not cover the
@@ -294,6 +315,8 @@ temporal_data/
 *.sqlite3.*
 dev.db*
 *.stale-*
+*.duckdb
+chroma.sqlite3
 
 # Coverage artifacts
 .coverage
