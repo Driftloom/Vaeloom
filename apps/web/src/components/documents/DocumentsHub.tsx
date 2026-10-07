@@ -6,15 +6,11 @@ import { Button, XIcon } from '@vaeloom/ui-kit';
 
 import { PageHeader } from '@/components/shared/Page';
 import { useToast } from '@/components/shared/Toast';
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import type { DocumentResponse } from '@/lib/api-client';
 import { getFileName } from '@/lib/document-format';
 
 import { DocumentStatsBar } from './DocumentStatsBar';
 import { DocumentUploadQueue } from './DocumentUploadQueue';
-import { DocumentShareDialog } from './DocumentShareDialog';
-import { DocumentPreviewModal } from './DocumentPreviewModal';
-import { DocumentMoveDialog } from './DocumentMoveDialog';
 
 import { useDocumentActions } from './hooks/useDocumentActions';
 import { useDocumentFolders } from './hooks/useDocumentFolders';
@@ -24,20 +20,14 @@ import { useDocumentVersions } from './hooks/useDocumentVersions';
 import { useDocumentViewer } from './hooks/useDocumentViewer';
 import { useFolderUpload } from './hooks/useFolderUpload';
 
-import { CreateFolderModal } from './parts/CreateFolderModal';
 import { DocumentsBulkBar } from './parts/DocumentsBulkBar';
 import { DocumentsFolderRail } from './parts/DocumentsFolderRail';
 import { DocumentsHeaderActions } from './parts/DocumentsHeaderActions';
 import { DocumentsResultsPanel } from './parts/DocumentsResultsPanel';
 import { DocumentsToolbar } from './parts/DocumentsToolbar';
-import { DocumentVersionHistoryModal } from './parts/DocumentVersionHistoryModal';
-import { RenameDocumentModal } from './parts/RenameDocumentModal';
+import { DocumentsModals } from './parts/DocumentsModals';
 import { categoryLabel } from './parts/documentCategories';
-import {
-  bulkSelectionProxy,
-  confirmCopy,
-  type PendingConfirm,
-} from './parts/documentConfirmations';
+import type { PendingConfirm } from './parts/documentConfirmations';
 import type { DocumentRowHandlers } from './parts/DocumentRowActions';
 
 export interface DocumentsHubProps {
@@ -331,106 +321,33 @@ export function DocumentsHub({
         </div>
       </div>
 
-      <DocumentPreviewModal
-        isOpen={Boolean(viewer.document)}
-        onClose={viewer.close}
-        document={viewer.document}
-        content={viewer.content}
-        loading={viewer.loading}
+      <DocumentsModals
         workspaceId={currentWorkspaceId}
-      />
-
-      <DocumentShareDialog
-        isOpen={Boolean(shareDoc)}
-        onClose={() => setShareDoc(null)}
-        documentId={shareDoc?.id ?? ''}
-        workspaceId={currentWorkspaceId}
-        documentName={shareDoc ? getFileName(shareDoc.path) : ''}
-        onShareCreated={refreshDocuments}
-      />
-
-      <DocumentVersionHistoryModal
-        doc={versions.document}
-        versions={versions.versions}
-        loading={versions.loading}
-        error={versions.error}
-        busy={versions.busy}
-        onClose={versions.close}
-        onRetry={() => void versions.reload()}
-        onRequestRestore={versions.requestRestore}
-        onUploadRevision={versions.uploadRevision}
-      />
-
-      <CreateFolderModal
-        isOpen={folderModalOpen}
-        parentId={folderModalParentId}
+        viewer={viewer}
+        shareDoc={shareDoc}
+        setShareDoc={setShareDoc}
+        versions={versions}
+        folderModalOpen={folderModalOpen}
+        folderModalParentId={folderModalParentId}
         folders={folders.folders}
-        onClose={() => setFolderModalOpen(false)}
-        onSubmit={submitCreateFolder}
-      />
-
-      <RenameDocumentModal
-        doc={renaming}
-        busy={actions.busy}
-        onClose={() => setRenaming(null)}
-        onSubmit={async (nextName) => {
-          if (!renaming) return;
-          await actions.renameDocument(renaming, nextName);
-          setRenaming(null);
-        }}
-      />
-
-      {/* No `onMove`, so `DocumentMoveDialog` performs the move itself from
-          `workspaceId` + the chosen destination and reports the outcome through
-          `onMoved`. */}
-      {moveDoc && (
-        <DocumentMoveDialog
-          isOpen
-          onClose={() => setMoveDoc(null)}
-          document={moveDoc}
-          workspaceId={currentWorkspaceId}
-          folders={folders.folders}
-          onMoved={() => {
-            toast({
-              tone: 'success',
-              title: 'Document moved',
-              detail: 'Document moved successfully.',
-            });
-            folders.retry();
-            refreshDocuments();
-          }}
-        />
-      )}
-
-      {/* `onMove` IS supplied here, because one dialog call has to move N rows. */}
-      {bulkMoveOpen && list.selectionCount > 0 && (
-        <DocumentMoveDialog
-          isOpen
-          onClose={() => setBulkMoveOpen(false)}
-          document={bulkSelectionProxy(list.selectionCount, currentWorkspaceId)}
-          workspaceId={currentWorkspaceId}
-          folders={folders.folders}
-          onMove={async (targetFolderId) => {
-            try {
-              await actions.bulkMove(targetFolderId);
-              setBulkMoveOpen(false);
-            } catch {
-              // `bulkMove` already toasted. Leave the dialog open on its own error
-              // so the destination can be changed without re-selecting.
-            }
-          }}
-        />
-      )}
-
-      <ConfirmDialog
-        isOpen={pendingConfirm !== null}
-        onClose={() => setPendingConfirm(null)}
-        onConfirm={() => void runConfirm()}
-        title={pendingConfirm ? confirmCopy(pendingConfirm).title : ''}
-        message={pendingConfirm ? confirmCopy(pendingConfirm).message : ''}
-        confirmLabel={confirmBusy ? 'Working…' : 'Confirm'}
-        loading={confirmBusy}
-        variant={pendingConfirm && confirmCopy(pendingConfirm).danger ? 'danger' : 'default'}
+        setFolderModalOpen={setFolderModalOpen}
+        submitCreateFolder={submitCreateFolder}
+        renaming={renaming}
+        setRenaming={setRenaming}
+        renameBusy={actions.busy}
+        onRenameDocument={actions.renameDocument}
+        moveDoc={moveDoc}
+        setMoveDoc={setMoveDoc}
+        bulkMoveOpen={bulkMoveOpen}
+        setBulkMoveOpen={setBulkMoveOpen}
+        selectionCount={list.selectionCount}
+        onBulkMove={actions.bulkMove}
+        pendingConfirm={pendingConfirm}
+        setPendingConfirm={setPendingConfirm}
+        confirmBusy={confirmBusy}
+        runConfirm={runConfirm}
+        onDocumentMoved={folders.retry}
+        refreshDocuments={refreshDocuments}
       />
 
       <input

@@ -30,12 +30,22 @@ export interface UseDocumentFoldersResult {
   createFolder: (name: string, parentId: string | null) => Promise<FolderResponse>;
   /** Rejects; the caller reports the toast. */
   deleteFolder: (folderId: string) => Promise<void>;
+  /** Resolves with the renamed folder. Rejects; the caller reports the toast. */
+  renameFolder: (folderId: string, name: string) => Promise<FolderResponse>;
+  /** Moves folder to another parent or root (`null`). Rejects on cycle or error. */
+  moveFolder: (folderId: string, parentId: string | null) => Promise<FolderResponse>;
+  /** General update method for folder name and/or parent. */
+  updateFolder: (
+    folderId: string,
+    name?: string,
+    parentId?: string | null,
+  ) => Promise<FolderResponse>;
   /** Rejects; the caller reports the toast. */
   autoOrganize: () => Promise<AutoOrganizeResponse>;
 }
 
 /**
- * The workspace's folder list and its tree, plus the three folder mutations.
+ * The workspace's folder list and its tree, plus the folder mutations.
  *
  * Mutations REJECT rather than swallowing. The toast policy (wording, tone,
  * whether an error is even user-visible) belongs to the component that owns
@@ -110,6 +120,32 @@ export function useDocumentFolders(workspaceId: string): UseDocumentFoldersResul
     [workspaceId, refresh],
   );
 
+  const updateFolder = useCallback(
+    async (folderId: string, name?: string, parentId?: string | null) => {
+      if (!workspaceId) throw new Error('No workspace selected.');
+      const trimmedName = name !== undefined ? name.trim() : undefined;
+      if (name !== undefined && !trimmedName) throw new Error('Folder name cannot be empty.');
+      const updated = await documentApi.updateFolder(folderId, workspaceId, trimmedName, parentId);
+      await refresh();
+      return updated;
+    },
+    [workspaceId, refresh],
+  );
+
+  const renameFolder = useCallback(
+    async (folderId: string, name: string) => {
+      return updateFolder(folderId, name, undefined);
+    },
+    [updateFolder],
+  );
+
+  const moveFolder = useCallback(
+    async (folderId: string, parentId: string | null) => {
+      return updateFolder(folderId, undefined, parentId);
+    },
+    [updateFolder],
+  );
+
   const autoOrganize = useCallback(async () => {
     if (!workspaceId) throw new Error('No workspace selected.');
     const response = await documentApi.autoOrganize(workspaceId);
@@ -125,6 +161,9 @@ export function useDocumentFolders(workspaceId: string): UseDocumentFoldersResul
     retry: () => void refresh(),
     createFolder,
     deleteFolder,
+    renameFolder,
+    moveFolder,
+    updateFolder,
     autoOrganize,
   };
 }

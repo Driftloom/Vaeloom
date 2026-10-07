@@ -114,7 +114,7 @@ class FolderCreate(BaseModel):
 
 class FolderUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255)
-    parent_id: uuid.UUID | None = None
+    parent_id: uuid.UUID | str | None = None
 
 
 class FolderResponse(BaseModel):

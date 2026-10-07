@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import { DocumentFolderTree } from '../DocumentFolderTree';
 import type { FolderResponse, FolderTreeItem } from '@/lib/api-client';
 import { documentApi } from '@/lib/api-client';
@@ -10,6 +10,7 @@ jest.mock('@/lib/api-client', () => ({
     getFolderTree: jest.fn().mockResolvedValue([]),
     createFolder: jest.fn(),
     deleteFolder: jest.fn(),
+    updateFolder: jest.fn(),
   },
 }));
 
@@ -353,5 +354,173 @@ describe('DocumentFolderTree flat-list fallback', () => {
     // And the reveal container must not be display-hidden either.
     const container = remove.parentElement as HTMLElement;
     expect(container.className.split(/\s+/)).not.toContain('hidden');
+
+    // Flat list fallback must also expose rename and move action buttons
+    expect(screen.getByRole('button', { name: 'Rename folder Legal Contracts' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Move folder Legal Contracts' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Rename folder Resumes' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Move folder Resumes' })).toBeTruthy();
+  });
+});
+
+describe('DocumentFolderTree rename and move operations', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('delegates to onRenameFolder callback when supplied', () => {
+    const onRenameFolder = jest.fn();
+    render(
+      <DocumentFolderTree
+        workspaceId={WS}
+        selectedFolderId={null}
+        onSelectFolder={jest.fn()}
+        folders={folders}
+        folderTree={folderTree}
+        onRenameFolder={onRenameFolder}
+      />,
+    );
+
+    const renameBtn = screen.getByRole('button', { name: 'Rename folder Legal Contracts' });
+    fireEvent.click(renameBtn);
+
+    expect(onRenameFolder).toHaveBeenCalledTimes(1);
+    expect(onRenameFolder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'f-legal',
+        name: 'Legal Contracts',
+      }),
+    );
+  });
+
+  it('delegates to onMoveFolder callback when supplied', () => {
+    const onMoveFolder = jest.fn();
+    render(
+      <DocumentFolderTree
+        workspaceId={WS}
+        selectedFolderId={null}
+        onSelectFolder={jest.fn()}
+        folders={folders}
+        folderTree={folderTree}
+        onMoveFolder={onMoveFolder}
+      />,
+    );
+
+    const moveBtn = screen.getByRole('button', { name: 'Move folder Legal Contracts' });
+    fireEvent.click(moveBtn);
+
+    expect(onMoveFolder).toHaveBeenCalledTimes(1);
+    expect(onMoveFolder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'f-legal',
+        name: 'Legal Contracts',
+      }),
+    );
+  });
+
+  it('opens internal Rename modal and updates folder on submit', async () => {
+    const onFolderUpdated = jest.fn();
+    (documentApi.updateFolder as jest.Mock).mockResolvedValueOnce({
+      id: 'f-legal',
+      workspaceId: WS,
+      parentId: null,
+      name: 'Legal Agreements',
+      createdAt: '2026-09-30T10:00:00Z',
+      updatedAt: '2026-10-06T10:00:00Z',
+    });
+
+    render(
+      <DocumentFolderTree
+        workspaceId={WS}
+        selectedFolderId={null}
+        onSelectFolder={jest.fn()}
+        folders={folders}
+        folderTree={folderTree}
+        onFolderUpdated={onFolderUpdated}
+      />,
+    );
+
+    const renameBtn = screen.getByRole('button', { name: 'Rename folder Legal Contracts' });
+    fireEvent.click(renameBtn);
+
+    // Modal is open with an input pre-filled with the current folder name
+    const input = screen.getByLabelText('Folder Name') as HTMLInputElement;
+    expect(input.value).toBe('Legal Contracts');
+
+    fireEvent.change(input, { target: { value: 'Legal Agreements' } });
+    const submitBtn = screen.getByRole('button', { name: 'Rename Folder' });
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    expect(documentApi.updateFolder).toHaveBeenCalledWith('f-legal', WS, 'Legal Agreements');
+    expect(onFolderUpdated).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens internal Move modal and updates parent on submit', async () => {
+    const onFolderUpdated = jest.fn();
+    (documentApi.updateFolder as jest.Mock).mockResolvedValueOnce({
+      id: 'f-legal',
+      workspaceId: WS,
+      parentId: 'f-resumes',
+      name: 'Legal Contracts',
+      createdAt: '2026-09-30T10:00:00Z',
+      updatedAt: '2026-10-06T10:00:00Z',
+    });
+
+    render(
+      <DocumentFolderTree
+        workspaceId={WS}
+        selectedFolderId={null}
+        onSelectFolder={jest.fn()}
+        folders={folders}
+        folderTree={folderTree}
+        onFolderUpdated={onFolderUpdated}
+      />,
+    );
+
+    const moveBtn = screen.getByRole('button', { name: 'Move folder Legal Contracts' });
+    fireEvent.click(moveBtn);
+
+    const select = screen.getByLabelText('New Destination') as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: 'f-resumes' } });
+
+    const submitBtn = screen.getByRole('button', { name: 'Move Folder' });
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    expect(documentApi.updateFolder).toHaveBeenCalledWith('f-legal', WS, undefined, 'f-resumes');
+    expect(onFolderUpdated).toHaveBeenCalledTimes(1);
+  });
+
+  it('prevents cycle loops when calculating descendant folders', () => {
+    const { getDescendantFolderIds } = require('../parts/MoveFolderModal');
+    const nestedFolders: FolderResponse[] = [
+      { id: 'f-1', workspaceId: WS, parentId: null, name: 'Root 1', createdAt: '', updatedAt: '' },
+      {
+        id: 'f-2',
+        workspaceId: WS,
+        parentId: 'f-1',
+        name: 'Child 1',
+        createdAt: '',
+        updatedAt: '',
+      },
+      {
+        id: 'f-3',
+        workspaceId: WS,
+        parentId: 'f-2',
+        name: 'Grandchild 1',
+        createdAt: '',
+        updatedAt: '',
+      },
+      { id: 'f-4', workspaceId: WS, parentId: null, name: 'Root 2', createdAt: '', updatedAt: '' },
+    ];
+
+    const descendantsOfF1 = getDescendantFolderIds(nestedFolders, 'f-1');
+    expect(descendantsOfF1.has('f-2')).toBe(true);
+    expect(descendantsOfF1.has('f-3')).toBe(true);
+    expect(descendantsOfF1.has('f-4')).toBe(false);
+    expect(descendantsOfF1.has('f-1')).toBe(false);
   });
 });

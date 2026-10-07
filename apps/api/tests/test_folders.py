@@ -113,3 +113,86 @@ class TestFolders:
             headers=headers,
         )
         assert len(list_res.json()) == 0
+
+    async def test_update_folder_rename(self, client: AsyncClient):
+        headers = await self._auth_header(client, "test_f4@example.com")
+        ws_id = await self._create_workspace(client, headers)
+
+        f = (await client.post(
+            f"/api/v1/documents/folders?workspace_id={ws_id}",
+            json={"name": "Original Name", "parent_id": None},
+            headers=headers,
+        )).json()
+
+        # Rename successfully
+        rename_res = await client.patch(
+            f"/api/v1/documents/folders/{f['id']}?workspace_id={ws_id}",
+            json={"name": "Renamed Folder"},
+            headers=headers,
+        )
+        assert rename_res.status_code == 200
+        assert rename_res.json()["name"] == "Renamed Folder"
+
+        # Reject empty name
+        empty_res = await client.patch(
+            f"/api/v1/documents/folders/{f['id']}?workspace_id={ws_id}",
+            json={"name": "   "},
+            headers=headers,
+        )
+        assert empty_res.status_code == 400
+
+        # Reject path separators
+        slash_res = await client.patch(
+            f"/api/v1/documents/folders/{f['id']}?workspace_id={ws_id}",
+            json={"name": "invalid/name"},
+            headers=headers,
+        )
+        assert slash_res.status_code == 400
+
+    async def test_update_folder_reparent_and_unparent(self, client: AsyncClient):
+        headers = await self._auth_header(client, "test_f5@example.com")
+        ws_id = await self._create_workspace(client, headers)
+
+        parent = (await client.post(
+            f"/api/v1/documents/folders?workspace_id={ws_id}",
+            json={"name": "Parent Folder", "parent_id": None},
+            headers=headers,
+        )).json()
+
+        child = (await client.post(
+            f"/api/v1/documents/folders?workspace_id={ws_id}",
+            json={"name": "Child Folder", "parent_id": None},
+            headers=headers,
+        )).json()
+
+        # Move child into parent
+        move_res = await client.patch(
+            f"/api/v1/documents/folders/{child['id']}?workspace_id={ws_id}",
+            json={"parent_id": parent["id"]},
+            headers=headers,
+        )
+        assert move_res.status_code == 200
+        assert move_res.json()["parent_id"] == parent["id"]
+
+        # Move back to root with null
+        root_res = await client.patch(
+            f"/api/v1/documents/folders/{child['id']}?workspace_id={ws_id}",
+            json={"parent_id": None},
+            headers=headers,
+        )
+        assert root_res.status_code == 200
+        assert root_res.json()["parent_id"] is None
+
+        # Move back into parent, then move to root with string sentinel "null"
+        await client.patch(
+            f"/api/v1/documents/folders/{child['id']}?workspace_id={ws_id}",
+            json={"parent_id": parent["id"]},
+            headers=headers,
+        )
+        sentinel_res = await client.patch(
+            f"/api/v1/documents/folders/{child['id']}?workspace_id={ws_id}",
+            json={"parent_id": "null"},
+            headers=headers,
+        )
+        assert sentinel_res.status_code == 200
+        assert sentinel_res.json()["parent_id"] is None

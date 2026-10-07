@@ -549,6 +549,7 @@ async def update_folder(
         name=dto.name,
         parent_id=dto.parent_id,
         db=db,
+        parent_id_provided="parent_id" in dto.model_fields_set,
     )
     return FolderResponse.model_validate(folder)
 

@@ -3,7 +3,7 @@
 import React from 'react';
 import { Alert, Button } from '@vaeloom/ui-kit';
 
-import type { DocumentResponse } from '@/lib/api-client';
+import type { DocumentResponse, FolderResponse } from '@/lib/api-client';
 
 import type { UseDocumentFoldersResult } from '../hooks/useDocumentFolders';
 import { DocumentFolderTree } from '../DocumentFolderTree';
@@ -15,8 +15,10 @@ export interface DocumentsFolderRailProps {
   folders: UseDocumentFoldersResult;
   selectedFolderId: string | null;
   onSelectFolder: (folderId: string | null) => void;
-  onCreateFolder: (parentId?: string | null) => void;
-  onDeleteFolder: (folderId: string, name: string) => void;
+  onCreateFolder?: (parentId?: string | null) => void;
+  onDeleteFolder?: (folderId: string, name: string) => void;
+  onRenameFolder?: (folder: FolderResponse) => void;
+  onMoveFolder?: (folder: FolderResponse) => void;
   onChanged: () => void;
 }
 
@@ -49,6 +51,8 @@ export const DocumentsFolderRail: React.FC<DocumentsFolderRailProps> = ({
   onSelectFolder,
   onCreateFolder,
   onDeleteFolder,
+  onRenameFolder,
+  onMoveFolder,
   onChanged,
 }) => (
   <div className="lg:col-span-1 min-w-0 p-4 rounded-xl border border-border/70 bg-surface/40 backdrop-blur-sm space-y-3">
@@ -68,8 +72,11 @@ export const DocumentsFolderRail: React.FC<DocumentsFolderRailProps> = ({
         documents={documents}
         onCreateFolder={onCreateFolder}
         onDeleteFolder={onDeleteFolder}
+        onRenameFolder={onRenameFolder}
+        onMoveFolder={onMoveFolder}
         onFolderCreated={onChanged}
         onFolderDeleted={onChanged}
+        onFolderUpdated={onChanged}
       />
     )}
   </div>

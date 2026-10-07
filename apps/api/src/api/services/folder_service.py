@@ -164,6 +164,7 @@ class FolderService:
         name: str | None,
         parent_id: str | uuid.UUID | None,
         db: AsyncSession,
+        parent_id_provided: bool = True,
     ) -> Folder:
         folder = await self.get_folder(folder_id, workspace_id, db)
         ws_id = uuid.UUID(str(workspace_id))
@@ -176,11 +177,14 @@ class FolderService:
                 raise HTTPException(status_code=400, detail="Folder name cannot contain path separators")
             folder.name = clean_name
 
-        if parent_id is not None:
-            if str(parent_id).lower() in ("null", "none", ""):
+        if parent_id_provided:
+            if parent_id is None or str(parent_id).lower() in ("null", "none", ""):
                 folder.parent_id = None
             else:
-                target_p_id = uuid.UUID(str(parent_id))
+                try:
+                    target_p_id = uuid.UUID(str(parent_id))
+                except (ValueError, TypeError):
+                    raise HTTPException(status_code=400, detail="Invalid parent folder ID")
                 if target_p_id == folder.id:
                     raise HTTPException(status_code=400, detail="Folder cannot be its own parent")
 
