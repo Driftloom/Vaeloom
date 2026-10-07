@@ -117,8 +117,69 @@ async def test_polymorphic_vector_store_operations():
     assert len(results) == 2
     assert results[0].id == "m1"
 
-    # Delete with session parameter
+    # Delete with session parameter.
+    #
+    # This search must stay scoped. It previously passed no filters at all, which
+    # the zero-trust guard added in 9e706182 ("feat(api): zero-trust auth...")
+    # rejects -- so the test was asserting behaviour the store is not allowed to
+    # have. An unscoped vector search returns every tenant's rows.
     await vstore.delete(["m1"], session=dummy_session)
-    remaining = await vstore.search([1.0, 0.0], limit=5, session=dummy_session)
+    remaining = await vstore.search(
+        [1.0, 0.0], limit=5, filters={"workspace_id": "w1"}, session=dummy_session
+    )
     assert len(remaining) == 1
     assert remaining[0].id == "m2"
+
+
+async def test_vector_search_refuses_to_run_unscoped():
+    """The zero-trust invariant this store exists to enforce.
+
+    A search with no tenant_id and no workspace_id would return every workspace's
+    rows, so it must raise rather than degrade. This is the negative control for
+    the scoped test above: without it, a store that flagged everything, or
+    silently ignored the missing scope, would pass.
+    """
+    vstore = FallbackVectorStore()
+    await vstore.upsert(
+        [
+            VectorRecord(id="m1", vector=[1.0, 0.0], metadata={"workspace_id": "w1"}),
+            VectorRecord(id="m2", vector=[1.0, 0.0], metadata={"workspace_id": "w2"}),
+        ],
+        session=MagicMock(),
+    )
+
+    for bad_filters in (None, {}, {"source_type": "memory"}, {"other": "x"}):
+        with pytest.raises(ValueError, match="Zero-Trust violation"):
+            await vstore.search([1.0, 0.0], limit=5, filters=bad_filters, session=MagicMock())
+
+
+async def test_vector_search_isolates_workspaces():
+    """Two workspaces in one store; each search sees only its own rows."""
+    vstore = FallbackVectorStore()
+    await vstore.upsert(
+        [
+            VectorRecord(id="a1", vector=[1.0, 0.0], metadata={"workspace_id": "w1"}),
+            VectorRecord(id="a2", vector=[1.0, 0.0], metadata={"workspace_id": "w1"}),
+            VectorRecord(id="b1", vector=[1.0, 0.0], metadata={"workspace_id": "w2"}),
+        ],
+        session=MagicMock(),
+    )
+
+    w1 = await vstore.search([1.0, 0.0], limit=10, filters={"workspace_id": "w1"}, session=MagicMock())
+    w2 = await vstore.search([1.0, 0.0], limit=10, filters={"workspace_id": "w2"}, session=MagicMock())
+
+    assert {r.id for r in w1} == {"a1", "a2"}
+    assert {r.id for r in w2} == {"b1"}
+
+
+async def test_tenant_scope_is_accepted_in_place_of_workspace():
+    """tenant_id alone satisfies the guard; it is not workspace-only."""
+    vstore = FallbackVectorStore()
+    await vstore.upsert(
+        [VectorRecord(id="t1", vector=[1.0, 0.0], metadata={"tenant_id": "t1"})],
+        session=MagicMock(),
+    )
+    found = await vstore.search(
+        [1.0, 0.0], limit=5, filters={"tenant_id": "t1"}, session=MagicMock()
+    )
+    assert [r.id for r in found] == ["t1"]

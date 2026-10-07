@@ -407,12 +407,24 @@ class MemoryService:
                 filters: dict[str, Any] = {}
                 if target_ws:
                     filters["workspace_id"] = str(target_ws)
-
+                elif tenant_id:
+                    # FallbackVectorStore.search raises on an unscoped query:
+                    # "vector search must specify tenant_id or workspace_id filter".
+                    # Passing only source_type below tripped that guard, so every
+                    # tenant-scoped-but-not-workspace-scoped search failed here,
+                    # was swallowed by the except at the bottom of this block, and
+                    # silently degraded to the cosine query. Widen the scope rather
+                    # than the exception.
+                    filters["tenant_id"] = str(tenant_id)
                 # The embeddings table is shared with document_chunk rows, which carry
                 # placeholder source_ids. Without this filter they consume top_k slots
                 # and are then silently discarded by the Memory lookup below.
                 filters["source_type"] = "memory"
-
+                if not (target_ws or tenant_id):
+                    # Neither scope is available. The guard would reject this, and
+                    # the cosine fallback below is the correct path, so skip the
+                    # round trip instead of provoking a guaranteed exception.
+                    raise ValueError("no tenant or workspace scope for vector search")
                 vrecords = await vstore.search(
                     query_vector=query_embedding, limit=dto.top_k, filters=filters or None, session=db
                 )

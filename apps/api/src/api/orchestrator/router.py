@@ -93,7 +93,15 @@ _CATEGORY_ANCHORS: dict[str, tuple[str, ...]] = {
     "integrations": ("connector", "plugin", "integration"),
     "career_development": ("certification", "training", "course"),
     "planning_research": ("roadmap", "milestone"),
-    "reflection": ("weekly", "monthly", "digest"),
+    # "weekly", "monthly" and "digest" are cadence and format words, not domain
+    # nouns: they say how often and in what shape, never about what. Anchoring
+    # them let "generate weekly digest of my job search activity" score
+    # reflection=6 (weekly+digest, both anchored) against job_search=4 and route
+    # a job-search request to self_improvement. They stay counted as keywords at
+    # weight 1, so a genuinely periodic self-review still reaches reflection --
+    # "weekly review of my progress" scores reflection=3 with no rival.
+    # The domain phrase "job search" remains an unambiguous anchor.
+    "reflection": (),
     "reminders_analytics": ("reminder", "deadline", "analytics"),
     "recommendations": ("recommend", "curate"),
 }
