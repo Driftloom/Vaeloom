@@ -86,7 +86,7 @@ import re
 import uuid as uuid_mod
 from collections import OrderedDict
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from sqlalchemy import select
@@ -105,7 +105,30 @@ SKILL_CATEGORY = "skill"
 # instruction documents that compete with memory, evidence and tool schemas for
 # the same window, so they get a minority share and the rest of the prompt is
 # untouched.
-SKILL_DIRECTIVE_TOKEN_BUDGET: int = 1500
+#
+# Measured against the real catalog (33 entries, mean rendered block ~483
+# tokens, all 33 summing to ~16,056):
+#
+#   budget   skills admitted   share of the 8k outer budget
+#     1500            4                   19%   <- previous value
+#     2500            6                   31%
+#     4000           10                   50%   <- this value
+#     6000           14                   75%
+#    16056           33                  201%
+#
+# 1500 admitted only 4 of 33 skills, and selection was alphabetical, so the
+# skills that reached the model were decided by which name sorted first rather
+# than by what the user asked. 4000 admits ~10 skills while holding skills to
+# half the outer budget, leaving room for the memory/evidence/tool layers that
+# share the envelope.
+#
+# The outer compiler spends `max(512, 8000 - system_tokens - 500)` on context,
+# so with a realistic 3k system prompt the envelope is ~4.5k. Raising this
+# toward 8k would be self-defeating: workspace_skills is the first context layer
+# the outer compiler drops (see prompt_compiler), so the excess would simply be
+# truncated back off. Callers with a known envelope should pass
+# `token_budget=` to build_skill_directive rather than editing this constant.
+SKILL_DIRECTIVE_TOKEN_BUDGET: int = 4000
 
 # Reused verbatim from the catalog vocabulary: a workspace that overrode
 # markdown_doc authored the text itself, so no catalog trust claim applies.
@@ -269,6 +292,11 @@ class EnabledSkill:
     version: str
     source: str
     capability_id: str
+    # How many of this skill's declared trigger phrases appeared in the user
+    # message. Populated during eligibility and used only to rank skills that
+    # are ALREADY eligible, so it can never widen what gets injected -- only
+    # decide which eligible skills win a contested budget.
+    match_hits: int = 0
 
 
 @dataclass(frozen=True)
@@ -413,8 +441,9 @@ def _trigger_state(skill: EnabledSkill, haystack: str) -> tuple[bool, str]:
         return True, ""
     if not haystack:
         return False, f"declares triggers {list(triggers)} but no user message was supplied"
-    normalized = [_normalize(t) for t in triggers]
-    hits = [t for t, n in zip(triggers, normalized, strict=True) if n and n in haystack]
+    # Delegated so eligibility and the _order_key ranking cannot disagree about
+    # what matched.
+    hits = _trigger_hits(skill, haystack)
     if hits:
         return True, ",".join(hits)
     return False, f"no trigger {list(triggers)} present in the user message"
@@ -440,11 +469,42 @@ def _render_block(skill: EnabledSkill) -> str:
     return f"{header}\n{safe_doc}"
 
 
-def _order_key(skill: EnabledSkill) -> tuple[int, str]:
-    """Deterministic order: core_trusted catalog documents first (primacy —
-    the earliest rules in a system prompt are the ones followed most reliably),
-    then everything else, alphabetically inside each band."""
-    return (0 if skill.trust_class == "core_trusted" else 1, skill.name)
+def _trigger_hits(skill: EnabledSkill, haystack: str) -> list[str]:
+    """The declared trigger phrases present in ``haystack``.
+
+    Single source of truth for both the eligibility decision
+    (:func:`_trigger_state`) and the relevance ranking (:func:`_order_key`), so
+    the two can never disagree about what matched. A skill declaring no
+    triggers is always eligible and scores zero hits -- it declared no
+    activation condition, so there is no evidence to rank it by.
+    """
+    triggers = [t for t in (skill.triggers or ()) if t.strip()]
+    if not triggers or not haystack:
+        return []
+    return [t for t in triggers if _normalize(t) and _normalize(t) in haystack]
+
+
+def _order_key(skill: EnabledSkill) -> tuple[int, int, str]:
+    """Deterministic order for skills competing for a finite budget.
+
+    1. ``core_trusted`` first. Primacy — the earliest rules in a system prompt
+       are the ones followed most reliably.
+    2. More specific trigger matches first. Within a trust band, a message that
+       activated three of a skill's declared phrases is a better answer than
+       one that activated a single phrase. This only ever reorders skills that
+       already passed eligibility, so it cannot cause an unmatched skill to be
+       injected.
+    3. Name, so the order is total and reproducible.
+
+    Key 2 replaced name-only ordering. Previously the winner was whichever name
+    sorted first, so ``academic-cv-builder`` displaced ``resume-tailor`` on a
+    resume-tailoring request purely because of the alphabet.
+    """
+    return (
+        0 if skill.trust_class == "core_trusted" else 1,
+        -skill.match_hits,
+        skill.name,
+    )
 
 
 async def build_skill_directive(
@@ -518,7 +578,9 @@ async def build_skill_directive(
         if not matched:
             skipped.append(SkillSkip(skill.name, "trigger_not_matched", detail))
             continue
-        eligible.append(skill)
+        # Carry the hit count so _order_key can rank by how specifically this
+        # message activated the skill, instead of by name.
+        eligible.append(replace(skill, match_hits=len(_trigger_hits(skill, haystack))))
 
     eligible.sort(key=_order_key)
 
