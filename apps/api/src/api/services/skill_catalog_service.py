@@ -441,7 +441,13 @@ decisions list, and the resulting plan diff. Scope for this skill is
         required_scope="system.document.compile",
         autonomy="approval_required",
         trust_class="core_trusted",
-        triggers=["build resume", "tailor resume", "ats match", "ats resume builder", "format resume", "compile resume"],
+        triggers=["build resume", "tailor resume", "ats match", "ats resume builder", "format resume", "compile resume",
+                  # Restored from the full reference. Without these two, a user
+                  # asking to "build ats resume" or for a "single column resume"
+                  # activated nothing: the condensed directive is what the
+                  # matcher ever sees. Checked by
+                  # vaeloom-skills/scripts/check_catalog_fidelity.py.
+                  "build ats resume", "single column resume"],
         self_check="numbered-operating-rules",
         markdown_doc="""# ATS Resume Builder & Single-Column Architecture Playbook
 
