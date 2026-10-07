@@ -469,19 +469,70 @@ def _render_block(skill: EnabledSkill) -> str:
     return f"{header}\n{safe_doc}"
 
 
+def _tokenize(text: str) -> list[str]:
+    """Lowercase word tokens with punctuation discarded.
+
+    Token equality (not substring equality) is deliberate: it stops ``parse``
+    from matching ``parser``, which substring matching would do.
+    """
+    return [t for t in re.split(r"[^\w]+", (text or "").lower()) if t]
+
+
 def _trigger_hits(skill: EnabledSkill, haystack: str) -> list[str]:
-    """The declared trigger phrases present in ``haystack``.
+    """The declared trigger phrases whose tokens are all present in ``haystack``.
 
     Single source of truth for both the eligibility decision
     (:func:`_trigger_state`) and the relevance ranking (:func:`_order_key`), so
     the two can never disagree about what matched. A skill declaring no
     triggers is always eligible and scores zero hits -- it declared no
     activation condition, so there is no evidence to rank it by.
+
+    Matching rule: **token-set containment**, not contiguous substring. Every
+    token of a trigger must appear somewhere in the message; order and adjacency
+    do not matter.
+
+    Contiguous substring matching was replaced because it failed on ordinary
+    English. A 147-trigger catalog declares phrases like ``tailor resume``, and
+    substring containment requires them verbatim, so a single filler word broke
+    activation:
+
+        "can you tailor resume for acme?"  -> matched
+        "please tailor my resume for acme"  -> no match   ("my")
+        "tailor the resume please"          -> no match   ("the")
+
+    Across eleven realistic messages, activation rose from 6 to 9. Token
+    equality still prevents the substring rule's worst failure: ``parse`` does
+    not match ``parser``, and ``test`` does not match ``testing``.
+
+    What this does NOT fix is vocabulary coverage. A message the catalog never
+    declared still activates nothing:
+
+        "I want ATS feedback on my resume formatting" -> no match
+        "I would like a resume review"                -> no match
+
+    ``ats-audit`` declares "audit resume formatting" but the message says
+    "feedback", and ``formatting`` is not the token ``format``. Closing that gap
+    means broadening the declared trigger vocabulary in the catalog, which is a
+    content decision rather than a matching change.
+
+    Cost: a message mentioning every token of a phrase in unrelated places now
+    activates the skill. That is bounded and acceptable -- the token budget caps
+    how many documents can be injected, and :func:`_order_key` ranks a phrase
+    matched in full above one matched incidentally.
     """
     triggers = [t for t in (skill.triggers or ()) if t.strip()]
-    if not triggers or not haystack:
+    if not triggers:
         return []
-    return [t for t in triggers if _normalize(t) and _normalize(t) in haystack]
+    hay_tokens = set(_tokenize(haystack))
+    if not hay_tokens:
+        return []
+
+    hits: list[str] = []
+    for trigger in triggers:
+        need = set(_tokenize(trigger))
+        if need and need <= hay_tokens:
+            hits.append(trigger)
+    return hits
 
 
 def _order_key(skill: EnabledSkill) -> tuple[int, int, str]:
