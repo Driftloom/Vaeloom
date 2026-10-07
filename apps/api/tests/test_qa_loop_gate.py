@@ -65,6 +65,12 @@ async def test_llm_grounding_judge_flags_discrepancy(monkeypatch):
 @pytest.mark.asyncio
 async def test_loop_executes_qa_verification_gate(monkeypatch):
     _circuit_breakers.clear()
+    # ReAct pinned off: this test is about the QA grounding gate on the static
+    # path. ReAct (enabled by default) intercepts act_phase first and returns its
+    # own answer, so the gate's input would not be the agent's output.
+    # That ReAct results are still gate-validated is asserted separately in
+    # test_react_revival_safety.py.
+    monkeypatch.setattr(settings, "agent_react_enabled", False)
     valid_output = {
         "agent_name": "resume",
         "action": "suggest",
@@ -95,6 +101,8 @@ async def test_loop_executes_qa_verification_gate(monkeypatch):
 @pytest.mark.asyncio
 async def test_loop_qa_gate_triggers_retry_on_rejection(monkeypatch):
     _circuit_breakers.clear()
+    # Static path only — see test_loop_executes_qa_verification_gate.
+    monkeypatch.setattr(settings, "agent_react_enabled", False)
     import uuid
 
     attempts = 0

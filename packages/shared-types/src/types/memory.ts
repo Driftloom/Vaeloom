@@ -1,9 +1,55 @@
 import type { BaseEntity, UUID, ISO8601 } from './domain';
 
+/**
+ * Memory taxonomy. MUST match `MemoryType` in `apps/api/src/api/schemas/memory.py`.
+ *
+ * This previously declared `document | email | code | note | conversation |
+ * webpage | structured`, which is a *source format* list, not the taxonomy the
+ * API actually accepts. Only `document` and `note` existed in both, so every
+ * other type the UI could send or filter by silently matched nothing — the
+ * backend rejects unknown types and the type filter returned zero rows.
+ *
+ * Backend: 6 canonical + 16 enterprise additive + `note`/`fact` legacy aliases,
+ * per CONT-P12 expand-contract migration 0027.
+ */
 export type MemoryType =
-  'document' | 'email' | 'code' | 'note' | 'conversation' | 'webpage' | 'structured';
+  // canonical 6
+  | 'profile'
+  | 'document'
+  | 'career'
+  | 'episodic'
+  | 'preference'
+  | 'working'
+  // legacy aliases kept for test compat
+  | 'note'
+  | 'fact'
+  // enterprise additive 16 (CONT-P12 ADR-040..043)
+  | 'project'
+  | 'skill'
+  | 'organization'
+  | 'relationship'
+  | 'event'
+  | 'insight'
+  | 'goal'
+  | 'feedback'
+  | 'decision'
+  | 'knowledge'
+  | 'reference'
+  | 'contact'
+  | 'financial'
+  | 'health'
+  | 'learning'
+  | 'workflow';
 
-export type MemoryStatus = 'processing' | 'indexed' | 'failed' | 'archived' | 'deleted';
+export type MemoryStatus =
+  | 'processing'
+  | 'indexed'
+  | 'failed'
+  | 'archived'
+  | 'deleted'
+  // backend writes this on active memories
+  | 'active'
+  | 'superseded';
 
 export interface Memory extends BaseEntity {
   type: MemoryType;

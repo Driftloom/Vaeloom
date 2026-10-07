@@ -53,6 +53,35 @@ class TestTranscriptionUnit:
         assert res is not None
         assert res.startswith("WEBVTT\n")
 
+    @pytest.mark.asyncio
+    async def test_mock_provider_is_refused_outside_local(self):
+        """Fabricated cues must not reach captions in a deployed environment.
+
+        `mock` builds plausible, correctly-timed cues from the filename and
+        duration. Persisting those into `captions_vtt` serves invented dialogue to
+        a deaf or hard-of-hearing viewer under an "Auto-transcribed" label that is
+        indistinguishable from a real transcript, so the combination is refused
+        outside local/test rather than quietly degrading.
+        """
+        from api.services.transcription_service import TranscriptionNotConfiguredError
+
+        deployed = Settings(
+            transcription_enabled=True,
+            transcription_provider="mock",
+            service_environment="production",
+        )
+        svc = TranscriptionService(settings=deployed)
+        with pytest.raises(TranscriptionNotConfiguredError):
+            svc._get_provider()
+
+        # Same config is still fine locally, which is where it is useful.
+        local = Settings(
+            transcription_enabled=True,
+            transcription_provider="mock",
+            service_environment="local",
+        )
+        assert TranscriptionService(settings=local)._get_provider() is not None
+
 
 async def _auth_header(client: AsyncClient, email: str = "transcription_test@vaeloom.test") -> dict[str, str]:
     res = await client.post(

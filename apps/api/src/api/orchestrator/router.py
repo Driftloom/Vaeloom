@@ -62,7 +62,7 @@ CATEGORY_KEYWORDS = {
     "job_search": ["job", "job search", "apply", "application", "internship", "fellowship", "co-op", "career", "role", "position"],
     "communication": ["email", "gmail", "inbox", "draft", "reply", "mail"],
     "schedule_time": ["schedule", "deadline", "calendar", "reminder", "conflict", "event", "meeting", "availability", "slot"],
-    "memory_extraction": ["extract", "memory", "entity", "knowledge", "graph", "remember", "vault", "obsidian", "notes", "sync vault", "projects"],
+    "memory_extraction": ["extract", "memory", "entity", "knowledge", "graph", "remember", "vault", "obsidian", "second brain", "notes", "sync vault", "projects"],
     "planning_research": ["plan", "planning", "roadmap", "research", "strategy", "milestone", "goal", "research"],
     "career_development": ["career", "path", "skill", "course", "learn", "training", "certification"],
     "research_github": ["company", "industry", "trend", "github", "repository", "profile"],
@@ -75,9 +75,34 @@ CATEGORY_KEYWORDS = {
 }
 
 
+# High-precision domain anchors. A hit on one of these is strong evidence of the
+# category; a generic word like "summary", "review" or "critique" is not, and must
+# not be allowed to out-vote one. Weight is tuned so a single anchor beats any
+# plausible pile of generic matches.
+_ANCHOR_WEIGHT = 3
+_CATEGORY_ANCHORS: dict[str, tuple[str, ...]] = {
+    "career_resume": ("resume", "cv", "ats", "cover letter"),
+    "job_search": ("job search", "internship", "fellowship", "co-op", "job posting"),
+    "communication": ("email", "gmail", "inbox", "mail"),
+    "schedule_time": ("calendar", "scheduler", "availability", "open slot"),
+    "memory_extraction": ("vault", "obsidian", "second brain", "sync vault", "memory"),
+    "document_organization": ("pdf", "citation", "duplicate", "folder", "hierarchy"),
+    "coding_interview": ("leetcode", "algorithm", "code review", "interview prep"),
+    "research_github": ("github", "repository"),
+    "security_monitoring": ("pii", "suspicious", "security"),
+    "integrations": ("connector", "plugin", "integration"),
+    "career_development": ("certification", "training", "course"),
+    "planning_research": ("roadmap", "milestone"),
+    "reflection": ("weekly", "monthly", "digest"),
+    "reminders_analytics": ("reminder", "deadline", "analytics"),
+    "recommendations": ("recommend", "curate"),
+}
+
+
 class UserRequest:
     def __init__(self, request_id: str, message: str, workspace_id: str, preferred_agent: str | None = None,
-                 user_id: str | None = None, tenant_id: str | None = None, correlation_id: str | None = None):
+                 user_id: str | None = None, tenant_id: str | None = None, correlation_id: str | None = None,
+                 model: str | None = None, temperature: float | None = 0.7, agent_names: list[str] | None = None):
         self.id = request_id
         self.message = message
         self.workspace_id = workspace_id
@@ -87,6 +112,9 @@ class UserRequest:
         self.user_id = user_id
         self.tenant_id = tenant_id
         self.correlation_id = correlation_id or request_id
+        self.model = model
+        self.temperature = temperature
+        self.agent_names = agent_names
 
 
 # ── Muse §7 capability-aware selection ─────────────────────────────
@@ -330,9 +358,21 @@ async def classify_intent(message: str, workspace_id: str | None = None) -> tupl
         return "conversation", 0.95
 
     # ── Stage 1: Coarse category — collect all scores ─────────────────────────
+    #
+    # Raw hit-counting treated every keyword as equally informative, so generic
+    # English words out-voted unambiguous domain nouns. "Please critique my
+    # resume summary" scored reflection=2 (`summary`, `critique`) against
+    # career_resume=1 (`resume`) and routed to self_improvement, because a
+    # resume request is never a self-reflection request. Unambiguous anchors
+    # now carry extra weight; the generic words are still counted.
     scores: dict[str, int] = {}
     for category, keywords in CATEGORY_KEYWORDS.items():
-        scores[category] = sum(1 for kw in keywords if kw in msg_lower)
+        anchors = _CATEGORY_ANCHORS.get(category, ())
+        score = 0
+        for kw in keywords:
+            if kw in msg_lower:
+                score += _ANCHOR_WEIGHT if kw in anchors else 1
+        scores[category] = score
 
     best_score = max(scores.values()) if scores else 0
     if best_score == 0:
@@ -665,14 +705,12 @@ async def handle(request: UserRequest) -> dict[str, Any]:
     except Exception as e:
         logger.warning(f"GRAPH branch failed, falling back to single-agent: {e}")
 
-    # ── 3. Multi-agent supervisor check (before single-agent guards) ───
-    # If the message spans 2+ intent categories and no explicit agent was forced,
-    # run the hierarchical supervisor DAG instead of single-agent loop.
-    # Supervisor respects MVP scope lock internally (filters to canonical agents when enforced).
-    if not preferred and _is_complex_multi_agent(request.message):
+    # ── 3. Multi-agent supervisor check (forced squad or multi-intent) ───
+    forced_agents = getattr(request, "agent_names", None)
+    if (forced_agents and len(forced_agents) > 1) or (not preferred and _is_complex_multi_agent(request.message)):
         try:
             from .supervisor import run_supervisor
-            logger.info(f"SUPERVISOR triggered for multi-intent request: {request.message[:80]}")
+            logger.info(f"SUPERVISOR triggered (forced={forced_agents}) for: {request.message[:80]}")
             sup_start = time.monotonic()
             supervisor_output = await run_supervisor(
                 request.message,
@@ -681,6 +719,9 @@ async def handle(request: UserRequest) -> dict[str, Any]:
                 user_id=request.user_id,
                 tenant_id=request.tenant_id,
                 correlation_id=getattr(request, "correlation_id", None) or request.id,
+                forced_agents=forced_agents,
+                model=getattr(request, "model", None),
+                temperature=getattr(request, "temperature", 0.7),
             )
             sup_latency = (time.monotonic() - sup_start) * 1000
             # Record metrics for supervisor
@@ -771,6 +812,8 @@ async def handle(request: UserRequest) -> dict[str, Any]:
         user_id=request.user_id,
         tenant_id=request.tenant_id,
         correlation_id=getattr(request, "correlation_id", None) or request.id,
+        model=getattr(request, "model", None),
+        temperature=getattr(request, "temperature", 0.7) or 0.7,
     )
     loop_start = time.monotonic()
     # P1c: OTel span per orchestrator dispatch

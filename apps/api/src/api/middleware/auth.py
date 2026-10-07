@@ -38,6 +38,7 @@ PUBLIC_PATHS = frozenset({
     "/api/v1/auth/saml/login",
     "/api/v1/gmail/webhook",
     "/api/v1/consent/scopes",
+    "/api/v1/connectors/composio/apps",
 })
 PUBLIC_PREFIXES = frozenset({
     "/api/v1/auth/sso/",

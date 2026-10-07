@@ -118,7 +118,8 @@ class PGVectorStore(VectorStore):
         where_clause = " AND ".join(conditions) if conditions else "TRUE"
 
         stmt = text(f"""
-            SELECT id, vector, source_type, source_id, model_version, workspace_id
+            SELECT id, vector, source_type, source_id, model_version, workspace_id,
+                   vector <=> CAST(:vector_str AS vector) AS distance
             FROM embeddings
             WHERE {where_clause} AND vector IS NOT NULL
             ORDER BY vector <=> CAST(:vector_str AS vector)
@@ -131,18 +132,19 @@ class PGVectorStore(VectorStore):
         for row in rows:
             raw_vec = row[1]
             vec = list(raw_vec) if hasattr(raw_vec, "__iter__") else raw_vec
-            records.append(
-                VectorRecord(
-                    id=str(row[0]),
-                    vector=vec,
-                    metadata={
-                        "source_type": row[2],
-                        "source_id": str(row[3]) if row[3] else "",
-                        "model_version": row[4],
-                        "workspace_id": str(row[5]) if row[5] else "",
-                    },
-                )
-            )
+            metadata: dict[str, Any] = {
+                "source_type": row[2],
+                "source_id": str(row[3]) if row[3] else "",
+                "model_version": row[4],
+                "workspace_id": str(row[5]) if row[5] else "",
+            }
+            # Surface the real cosine distance so callers can compute an honest
+            # relevance score instead of fabricating a constant.
+            try:
+                metadata["distance"] = float(row[6])
+            except (TypeError, ValueError, IndexError):
+                metadata["distance"] = None
+            records.append(VectorRecord(id=str(row[0]), vector=vec, metadata=metadata))
         return records
 
     async def search(
@@ -299,6 +301,8 @@ class FallbackVectorStore(VectorStore):
                 if not match:
                     continue
             sim = self._cosine_similarity(query_vector, rec.vector)
+            # Carry the real similarity so callers never invent a score.
+            rec.metadata["distance"] = max(0.0, 1.0 - sim)
             scored.append((sim, rec))
 
         scored.sort(key=lambda x: x[0], reverse=True)

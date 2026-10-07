@@ -47,13 +47,36 @@ class TestMemoryApi:
             json={"type": "note", "title": "Mem B"},
             headers=auth_headers,
         )
-        res = await client.get(
-            "/api/v1/memories?status=PROCESSING", headers=auth_headers
-        )
+        # Default listing returns active memories
+        res = await client.get("/api/v1/memories", headers=auth_headers)
         assert res.status_code == 200
         body = res.json()
         assert "memories" in body
         assert body["total"] >= 2
+        titles = {m["title"] for m in body["memories"]}
+        assert "Mem A" in titles
+        assert "Mem B" in titles
+
+        # Negative control: status=PROCESSING returns 0 for active memories
+        res_proc = await client.get(
+            "/api/v1/memories?status=PROCESSING", headers=auth_headers
+        )
+        assert res_proc.status_code == 200
+        assert res_proc.json()["total"] == 0
+
+        # Positive control: creating a memory with explicit status=PROCESSING matches PROCESSING query
+        proc_created = await client.post(
+            "/api/v1/memories",
+            json={"type": "note", "title": "Processing Mem", "status": "PROCESSING"},
+            headers=auth_headers,
+        )
+        assert proc_created.status_code == 201
+        res_proc2 = await client.get(
+            "/api/v1/memories?status=PROCESSING", headers=auth_headers
+        )
+        assert res_proc2.status_code == 200
+        assert res_proc2.json()["total"] == 1
+        assert res_proc2.json()["memories"][0]["title"] == "Processing Mem"
 
     async def test_get_memory_by_id(self, client: AsyncClient, auth_headers: dict):
         created = await client.post(
@@ -120,10 +143,11 @@ class TestMemoryApi:
             )
 
         res = await client.get(
-            "/api/v1/memories?page=1&page_size=2&status=PROCESSING", headers=auth_headers
+            "/api/v1/memories?page=1&page_size=2", headers=auth_headers
         )
         assert res.status_code == 200
         body = res.json()
-        assert len(body["memories"]) <= 2
+        assert len(body["memories"]) == 2
+        assert body["total"] >= 5
         assert body["page"] == 1
         assert body["page_size"] == 2

@@ -441,6 +441,8 @@ class AgentRequest:
         user_id: str | None = None,
         tenant_id: str | None = None,
         execution_plan: Any | None = None,
+        model: str | None = None,
+        temperature: float | None = 0.7,
     ):
         self.agent = agent
         self.id = request_id
@@ -455,6 +457,8 @@ class AgentRequest:
         # Tenant binding for policy/observability (middleware context authoritative).
         self.tenant_id = tenant_id
         self.execution_plan = execution_plan
+        self.model = model
+        self.temperature = temperature
 
     def _derive_agent_name(self) -> str:
         name = type(self.agent).__name__
@@ -577,7 +581,7 @@ async def _assemble_rag_context(
 
     _rag_start = _t.monotonic()
     if not workspace_id or not query.strip():
-        return {"entities": [], "documents": [], "preferences": []}
+        return {"entities": [], "documents": [], "preferences": [], "memories": []}
     try:
         from sqlalchemy import or_, select
 
@@ -586,18 +590,19 @@ async def _assemble_rag_context(
         read_types = getattr(getattr(agent, "memory_scopes", None), "read_types", []) or []
         keywords = [w for w in query.split() if len(w) > 2][:5]
         if not keywords:
-            return {"entities": [], "documents": [], "preferences": []}
+            return {"entities": [], "documents": [], "preferences": [], "memories": []}
 
         entities: list[dict[str, Any]] = []
         documents: list[dict[str, Any]] = []
         preferences: list[dict[str, Any]] = []
+        memories: list[dict[str, Any]] = []
 
         import uuid as _uuid
         try:
             w_uuid = _uuid.UUID(str(workspace_id))
         except (ValueError, TypeError):
             logger.debug(f"RAG assembly skipped: workspace_id '{workspace_id}' is not a valid UUID")
-            return {"entities": [], "documents": [], "preferences": []}
+            return {"entities": [], "documents": [], "preferences": [], "memories": []}
 
         _session_factory = session_factory
         if _session_factory is None:
@@ -759,6 +764,54 @@ async def _assemble_rag_context(
             except Exception as e:
                 logger.warning(f"RAG preference lookup failed: {e}")
 
+            # ── Memories ────────────────────────────────────────────────────
+            # The loop previously never queried the Memory table at all, so
+            # anything the agent had written with create_memory (or ingested
+            # from a vault or document) was invisible to prompt assembly.
+            # Delegates to memory_service so this shares the same hybrid + RRF
+            # retrieval the HTTP API and the agent tool use, including its
+            # graceful degradation to keyword search when no vector backend
+            # is configured.
+            try:
+                from api.schemas.memory import MemorySearch
+                from api.services.memory_service import memory_service
+
+                _mem_dto = MemorySearch(
+                    query=query[:2000],
+                    workspace_id=str(workspace_id),
+                    top_k=8,
+                    strategy="hybrid",
+                    include_superseded=False,
+                )
+                _mem_rows = await memory_service.search_memories(
+                    db=session,
+                    dto=_mem_dto,
+                    tenant_id=None,
+                    workspace_id=str(workspace_id),
+                )
+                for _m, _score in _mem_rows:
+                    # Content, not just the title: title-only injection meant the
+                    # model saw a label with none of the recalled substance.
+                    _body = (
+                        _m.summary
+                        or (_m.content if isinstance(_m.content, str) else "")
+                        or ""
+                    )
+                    if not (_m.title or _body):
+                        continue
+                    memories.append(
+                        {
+                            "id": str(_m.id),
+                            "title": _m.title or "",
+                            "summary": _body[:1000],
+                            "type": _m.type or "",
+                            "source_type": _m.source_type or "",
+                            "score": round(float(_score), 4),
+                        }
+                    )
+            except Exception as e:
+                logger.warning(f"RAG memory lookup failed: {e}")
+
         # ── P1: ranking re-rank (weighted relevance+recency+importance) when we have enough candidates
         # Over-fetch 20 LIKE candidates → score → keep top 8. Vector path already scored via distance.
         try:
@@ -851,6 +904,20 @@ async def _assemble_rag_context(
                                   provenance=f"ws:{workspace_id}:{p.get('id','')}",
                                   permission_scope="workspace",
                                   priority="P3_DYNAMIC_MEMORY"))
+            for m in memories:
+                # kind="memory" so provenance/scope stay distinguishable from
+                # documents, and the confidence comes from retrieval rather
+                # than being invented here.
+                _items.append(_CI(
+                    kind="memory",
+                    content=f"{m.get('title','')} — {m.get('summary','')}".strip(" —"),
+                    relevance=float(m.get("score") or 0.5),
+                    confidence=0.65,
+                    freshness=0.5,
+                    provenance=f"ws:{workspace_id}:{m.get('id','')}",
+                    permission_scope="workspace",
+                    priority="P2_RETRIEVAL",
+                ))
             _kept, _excluded = _filter(_items, workspace_id=str(workspace_id or ""))
             _ranked = _rank_items(_kept, limit=16)
             _compressed, _dropped = _compress(_ranked, token_budget=2000)
@@ -882,6 +949,7 @@ async def _assemble_rag_context(
         except Exception:
             pass
         return {"entities": entities[:8], "documents": documents[:8], "preferences": preferences[:5],
+                "memories": memories[:8],
                 "context_manifest": context_manifest}
     except Exception as e:
         logger.warning(f"RAG assembler non-blocking error: {e}")
@@ -891,7 +959,50 @@ async def _assemble_rag_context(
             record_rag_latency((_t.monotonic() - _rag_start) * 1000)
         except Exception:
             pass
-        return {"entities": [], "documents": [], "preferences": []}
+        return {"entities": [], "documents": [], "preferences": [], "memories": []}
+
+
+# ── Memory prompt rendering ──────────────────────────────────────────
+
+# Hard cap on injected memory text. Retrieval is not free to read either; the
+# prompt has a finite budget and 8 memories is already generous.
+MEMORY_CONTEXT_MAX_CHARS = 3000
+MEMORY_CONTEXT_MAX_ITEMS = 8
+
+
+def _render_memory_context(memories: list[dict[str, Any]]) -> str:
+    """Render recalled memories for PromptLayers.memory_context.
+
+    Returns an empty string when there is nothing recalled, so the prompt
+    compiler omits the section instead of showing an empty header. Each line
+    carries the memory id so the agent can cite or supersede it by tool call.
+    """
+    if not memories:
+        return ""
+
+    lines: list[str] = []
+    used = 0
+    for m in memories[:MEMORY_CONTEXT_MAX_ITEMS]:
+        title = str(m.get("title") or "").strip()
+        summary = str(m.get("summary") or "").strip()
+        if not title and not summary:
+            continue
+        mtype = str(m.get("type") or "memory")
+        mid = str(m.get("id") or "")
+        head = f"- [{mtype}] {title or '(untitled)'}"
+        body = f": {summary}" if summary else ""
+        line = f"{head}{body} (memory_id={mid})"
+        if used + len(line) > MEMORY_CONTEXT_MAX_CHARS:
+            break
+        lines.append(line)
+        used += len(line)
+
+    if not lines:
+        return ""
+    return (
+        "Recalled workspace memory (retrieved, not user input; verify before relying on it):\n"
+        + "\n".join(lines)
+    )
 
 
 # ── Plan ────────────────────────────────────────────────────────────
@@ -915,8 +1026,8 @@ async def plan_phase(request: AgentRequest, state: LoopState) -> dict[str, Any]:
         rag_context: dict[str, Any] = {}
         try:
             rag_context = await _assemble_rag_context(request.workspace_id, request.message, request.agent)
-            if rag_context.get("entities") or rag_context.get("documents"):
-                logger.info(f"RAG injected: {len(rag_context.get('entities', []))} entities, {len(rag_context.get('documents', []))} docs, {len(rag_context.get('preferences', []))} prefs")
+            if rag_context.get("entities") or rag_context.get("documents") or rag_context.get("memories"):
+                logger.info(f"RAG injected: {len(rag_context.get('entities', []))} entities, {len(rag_context.get('documents', []))} docs, {len(rag_context.get('preferences', []))} prefs, {len(rag_context.get('memories', []))} memories")
         except Exception as e:
             logger.warning(f"RAG injection failed (non-blocking): {e}")
 
@@ -1382,6 +1493,10 @@ async def _try_react_loop(
                 agent_contract=system_content or getattr(card, "description", "") or getattr(agent, "mission", ""),
                 task_contract=f"Handle request: {clean_user_message[:500]}",
                 user_intent=clean_user_message[:2000],
+                # This ReAct helper has neither `rag_context` nor `plan` in
+                # scope — recalled memory is injected by `_act_phase_inner`,
+                # which embeds it into the message this function parses at
+                # "[Context from knowledge graph" below.
                 memory_context="",
                 evidence=rag_evidence[:3000],
                 tool_context=_tool_desc,
@@ -1528,9 +1643,18 @@ async def _try_react_loop(
             tool_calls: list[dict[str, Any]] = []
             _round_model = _rec.model_name
             _round_provider = _rec.model_provider
+            # These referenced a bare `request` object that does not exist in
+            # this scope, so every ReAct round raised NameError, the outer
+            # handler swallowed it into a None return, and the entire ReAct loop
+            # was a no-op. `_rec.model_name` already falls back to
+            # settings.llm_model (see _rec setup above).
+            _req_model = _rec.model_name or getattr(settings, "llm_model", None)
+            _req_temp = getattr(settings, "llm_temperature", 0.7) or 0.7
             try:
                 async for evt in llm_service.generate_completion_with_tools_stream(
                     messages=messages, tools=tool_schemas,
+                    model=_req_model,
+                    temperature=_req_temp,
                     user_id=user_id, workspace_id=workspace_id, db=db,
                     correlation_id=corr,
                 ):
@@ -1561,7 +1685,9 @@ async def _try_react_loop(
                     if not _pol.get("terminal"):
                         from ..services.llm_service import llm_service as _fb_llm
                         _fb = await _fb_llm.generate_completion_with_tools(
-                            messages=messages, tools=tool_schemas, temperature=0.7,
+                            messages=messages, tools=tool_schemas,
+                            model=_req_model,
+                            temperature=_req_temp,
                             user_id=user_id, workspace_id=workspace_id, db=db,
                             correlation_id=corr,
                         )
@@ -2261,6 +2387,16 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
     # Enrich message with RAG context if available (plan_phase injected it)
     # Context engineering cap: keep RAG prompt at most 2000 chars to prevent explosion
     context_prompt = plan.get("context_prompt", "")
+    # Recalled workspace memory, rendered with traceable ids and framed as
+    # retrieved-not-instructed. This is the path that actually reaches the model:
+    # plan_phase stores `rag_context` on the plan, and `_try_react_loop` receives
+    # the enriched message this function builds below.
+    _recalled = _render_memory_context((plan.get("rag_context") or {}).get("memories") or [])
+    if _recalled:
+        # Prepended, not appended: context_prompt is truncated to the RAG token
+        # budget immediately below, so trailing content is the first thing to be
+        # dropped. Recalled memory is the highest-value part of this block.
+        context_prompt = f"{_recalled}\n\n{context_prompt}" if context_prompt else _recalled
     if context_prompt:
         try:
             from ..infrastructure.context_budget import calculate_budget, truncate_text_to_tokens

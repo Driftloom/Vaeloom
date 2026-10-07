@@ -5,17 +5,31 @@ pytestmark = pytest.mark.asyncio
 
 
 class TestClassifyIntent:
-    async def test_empty_message_returns_memory_fallback(self):
+    """
+    Fallback contract: unclassified input must be quarantined to
+    ConversationAgent, never routed to a specialist.
+
+    These three tests previously asserted `("memory", 0.5)`. That fallback was
+    replaced by `("conversation", 0.6)` — see router.py:350
+    ("Boundary, empty, or unclassified queries safely fall back to
+    conversation") and the adversarial-quarantine branch at router.py:349. The
+    change is deliberate: ConversationAgent is the containment path (Rogers
+    OARS), so it is the correct destination for input no specialist should
+    claim. The negative-control property the tests exist to protect — nonsense
+    must never false-match a specialist — still holds.
+    """
+
+    async def test_empty_message_returns_conversation_fallback(self):
         from api.orchestrator.router import classify_intent
         agent, confidence = await classify_intent("")
-        assert agent == "memory"
-        assert confidence == 0.5
+        assert agent == "conversation"
+        assert confidence == 0.6
 
-    async def test_unmatched_message_returns_memory_fallback(self):
+    async def test_unmatched_message_returns_conversation_fallback(self):
         from api.orchestrator.router import classify_intent
         agent, confidence = await classify_intent("xyzzy qwerty asdfgh")
-        assert agent == "memory"
-        assert confidence == 0.5
+        assert agent == "conversation"
+        assert confidence == 0.6
 
     async def test_organize_files_returns_organization(self):
         from api.orchestrator.router import classify_intent
@@ -143,10 +157,15 @@ class TestClassifyIntent:
 
     async def test_jev_s1_negative_control(self):
         from api.orchestrator.router import classify_intent
-        # Strict negative control: nonsense must never false-match
+        # Strict negative control: nonsense must never false-match a SPECIALIST.
+        # The safe quarantine is ConversationAgent, not any domain agent.
         agent, conf = await classify_intent("blablabla zzzqqq xyzzy")
-        assert agent == "memory"
-        assert conf == 0.5
+        assert agent == "conversation"
+        assert agent not in (
+            "memory", "resume", "scheduler", "documents", "organization",
+            "job_search", "application", "gmail", "drive", "calendar",
+        )
+        assert conf == 0.6
 
     async def test_jev_s1_sub50ms_sla(self):
         import time

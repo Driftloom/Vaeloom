@@ -14,6 +14,21 @@ from .definitions import ToolDefinition
 
 logger = logging.getLogger(__name__)
 
+_pending_audit_tasks: set[asyncio.Task] = set()
+
+
+async def drain_pending_audit_tasks(timeout: float = 2.0) -> None:
+    """Drain all in-flight asynchronous tool audit log persistence tasks."""
+    if not _pending_audit_tasks:
+        return
+    tasks = [t for t in _pending_audit_tasks if not t.done()]
+    if tasks:
+        done, pending = await asyncio.wait(tasks, timeout=timeout)
+        for t in pending:
+            t.cancel()
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
+
 # Status returned when a mutating connector (Slack send, Gmail/Outlook draft,
 # calendar create, GitHub issue/PR create, ...) is invoked but its backing
 # integration is not configured. We must NOT fake a successful side-effect: the
@@ -40,15 +55,25 @@ def _ws_session(workspace_id):
     RLS-scoped to the tool's workspace (tenant resolved via definer fn when
     absent from context) so handlers work under a least-privilege runtime
     role; falls back to the raw factory when scoping is unavailable.
+
+    The fallback import of the factory is guarded: it used to be bare, so a
+    missing `async_session_factory` raised a NameError deep inside the caller
+    instead of the ImportError that every tool's
+    `except ImportError -> "DB imports unavailable"` contract expects.
     """
     try:
         from ..database import scoped_session
 
         return scoped_session(workspace_id=workspace_id, require=False)
     except Exception:
-        from ..database import async_session_factory
+        pass
 
-        return async_session_factory()
+    try:
+        from ..database import async_session_factory
+    except ImportError as e:
+        raise ImportError(f"DB imports unavailable: {e}") from e
+
+    return async_session_factory()
 
 
 class PermissionDeniedError(PermissionError):
@@ -1249,65 +1274,84 @@ async def _execute_ingest_vault_notes(params: dict[str, Any], workspace_id: str)
 
 
 async def _execute_search_memories(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
-    query = params.get("query", "")
+    """Search memories on behalf of the agent.
+
+    Delegates to memory_service.search_memories so the agent gets the same
+    3-tier hybrid retrieval + RRF fusion the HTTP API uses. This used to
+    hand-roll an ILIKE query against title/summary/content, which meant the
+    agent could never retrieve anything the vector index knew about and never
+    saw superseded history — the good retrieval path was unreachable from the
+    agent loop.
+    """
+    query = str(params.get("query", "") or "").strip()
     category = params.get("category", "all")
-    limit = int(params.get("limit", 10))
+    limit = max(1, min(int(params.get("limit", 10) or 10), 50))
+    strategy = params.get("strategy") or "hybrid"
+    include_superseded = bool(params.get("include_superseded", False))
+
+    if not query:
+        return {
+            "status": "error",
+            "tool": "search_memories",
+            "result": [],
+            "error": "query is required",
+        }
 
     try:
-        import uuid as _uuid
+        from api.schemas.memory import MemorySearch
+        from api.services.memory_service import memory_service
 
-        from sqlalchemy import or_, select
+        dto = MemorySearch(
+            query=query,
+            workspace_id=str(workspace_id),
+            top_k=limit,
+            strategy=strategy if strategy in ("hybrid", "vector", "keyword") else "hybrid",
+            include_superseded=include_superseded,
+            # `all` means no type narrowing; a concrete category narrows it.
+            type=None if category in (None, "", "all") else str(category),
+        )
 
-        from api.models.schema import Memory
-
-        ws_uuid = _uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, _uuid.UUID) else workspace_id
         async with _ws_session(workspace_id) as session:
-            stmt = (
-                select(Memory)
-                .where(Memory.workspace_id == ws_uuid)
-                .where(Memory.deleted_at.is_(None))
+            rows = await memory_service.search_memories(
+                db=session,
+                dto=dto,
+                tenant_id=None,
+                workspace_id=str(workspace_id),
             )
 
-            if category and category != "all":
-                stmt = stmt.where(
-                    or_(
-                        Memory.type == category,
-                        Memory.source_type == category,
-                    )
+            mem_list = []
+            for memory, score in rows:
+                if category not in (None, "", "all") and (
+                    (memory.type or "") != str(category)
+                    and (memory.source_type or "") != str(category)
+                ):
+                    continue
+                mem_list.append(
+                    {
+                        "id": str(memory.id),
+                        "title": memory.title or "",
+                        "summary": memory.summary or "",
+                        "content": memory.content
+                        if isinstance(memory.content, str)
+                        else str(memory.content or ""),
+                        "category": memory.type or "preference",
+                        "source_type": memory.source_type or "agent",
+                        "tags": memory.tags or [],
+                        "created_at": memory.created_at.isoformat() if memory.created_at else None,
+                        # Real retrieval score, so the agent can rank by it.
+                        "score": round(float(score), 4),
+                    }
                 )
 
-            if query:
-                stmt = stmt.where(
-                    or_(
-                        Memory.title.ilike(f"%{query}%"),
-                        Memory.summary.ilike(f"%{query}%"),
-                        Memory.content.ilike(f"%{query}%"),
-                    )
-                )
-
-            stmt = stmt.order_by(Memory.updated_at.desc(), Memory.created_at.desc()).limit(limit)
-            result = await session.execute(stmt)
-            memories = result.scalars().all()
-
-            mem_list = [
-                {
-                    "id": str(m.id),
-                    "title": m.title or "",
-                    "summary": m.summary or "",
-                    "content": m.content if isinstance(m.content, str) else str(m.content or ""),
-                    "category": m.type or "preference",
-                    "source_type": m.source_type or "agent",
-                    "tags": m.tags or [],
-                    "created_at": m.created_at.isoformat() if m.created_at else None,
-                }
-                for m in memories
-            ]
+            mem_list.sort(key=lambda r: r["score"], reverse=True)
+            mem_list = mem_list[:limit]
 
             return {
                 "status": "success",
                 "tool": "search_memories",
                 "result": mem_list,
                 "count": len(mem_list),
+                "strategy": dto.strategy,
             }
     except Exception as e:
         logger.error(f"search_memories failed: {e}")
@@ -1333,37 +1377,43 @@ async def _execute_create_memory(params: dict[str, Any], workspace_id: str) -> d
         }
 
     try:
-        import uuid as _uuid
-
-        from api.models.schema import Memory
-        from api.services.llm_service import llm_service
+        from api.schemas.memory import MemoryCreate, MemoryType
+        from api.services.memory_service import memory_service
         from api.utils.sanitize import sanitize_text
 
-        ws_uuid = _uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, _uuid.UUID) else workspace_id
-        async with _ws_session(workspace_id) as session:
-            sanitized_content = sanitize_text(content)
-            first_line = sanitized_content.splitlines()[0] if sanitized_content else "Memory"
-            title = first_line[:100].strip()
-            summary = sanitized_content[:240].strip().replace("\n", " ")
-            content_hash = llm_service.compute_content_hash(sanitized_content)
+        sanitized_content = sanitize_text(content)
+        first_line = sanitized_content.splitlines()[0] if sanitized_content else "Memory"
 
-            new_mem = Memory(
-                id=_uuid.uuid4(),
-                workspace_id=ws_uuid,
-                type=category or "preference",
-                status="active",
-                title=title,
-                summary=summary,
-                content=sanitized_content,
-                content_hash=content_hash,
-                size=len(sanitized_content.encode("utf-8")),
-                source_type="agent",
-                source_label="Agent Memory",
-                tags=[category] if category else [],
-                metadata_={"confidence": confidence},
+        # Only accept a category the API's MemoryType actually allows. The
+        # agent previously wrote whatever string it liked into Memory.type,
+        # producing rows the taxonomy could not represent.
+        valid_types = set(MemoryType.__args__)
+        resolved_type = category if category in valid_types else "note"
+
+        dto = MemoryCreate(
+            type=resolved_type,  # type: ignore[arg-type]
+            title=first_line[:100].strip() or "Memory",
+            summary=sanitized_content[:240].strip().replace("\n", " "),
+            content=sanitized_content,
+            tags=[resolved_type],
+            workspace_id=str(workspace_id),
+            source_type="agent",
+            source_label="Agent Memory",
+            metadata={"confidence": confidence, "created_by": "agent_tool"},
+        )
+
+        async with _ws_session(workspace_id) as session:
+            # memory_service.create_memory generates the embedding and writes the
+            # provenance lineage. The old direct INSERT skipped both, so every
+            # agent-created memory was permanently invisible to vector search.
+            new_mem = await memory_service.create_memory(
+                db=session,
+                dto=dto,
+                tenant_id=None,
+                user_id=None,
+                workspace_id=workspace_id,
             )
-            session.add(new_mem)
-            await session.commit()
+            has_embedding = getattr(new_mem, "embedding", None) is not None
 
             return {
                 "status": "success",
@@ -1371,6 +1421,10 @@ async def _execute_create_memory(params: dict[str, Any], workspace_id: str) -> d
                 "result": {
                     "id": str(new_mem.id),
                     "status": "created",
+                    "type": new_mem.type,
+                    # Honest: embedding generation can legitimately fail (no
+                    # vector backend configured), so report the real state.
+                    "embedded": has_embedding,
                 },
             }
     except Exception as e:
@@ -3677,6 +3731,9 @@ def _idem_session_cm(workspace_id: str):
     Uses scoped_session (workspace GUC + tenant resolution) so the claim
     works under a least-privilege runtime role; falls back to the raw
     factory when scoping is unavailable (SQLite/tests).
+
+    Same guarded fallback as `_ws_session`: an unguarded import of the factory
+    turns a missing DB module into an opaque NameError for the caller.
     """
     if _IDEM_SESSION_FACTORY_OVERRIDE is not None:
         return _IDEM_SESSION_FACTORY_OVERRIDE(workspace_id)
@@ -3685,9 +3742,14 @@ def _idem_session_cm(workspace_id: str):
 
         return scoped_session(workspace_id=workspace_id, require=False)
     except Exception:
-        from ..database import async_session_factory
+        pass
 
-        return async_session_factory()
+    try:
+        from ..database import async_session_factory
+    except ImportError as e:
+        raise ImportError(f"DB imports unavailable: {e}") from e
+
+    return async_session_factory()
 
 
 async def _claim_tool_effect(
@@ -4497,12 +4559,16 @@ def _audit_log(
                     )
                     s.add(audit_rec)
                     await s.commit()
-            except Exception as _e:
+            except asyncio.CancelledError:
+                pass
+            except BaseException as _e:
                 logger.debug("Async tool audit log write failed: %s", _e)
 
         try:
             loop = asyncio.get_running_loop()
-            loop.create_task(_persist_audit())
+            task = loop.create_task(_persist_audit())
+            _pending_audit_tasks.add(task)
+            task.add_done_callback(_pending_audit_tasks.discard)
         except RuntimeError:
             pass
     except Exception:

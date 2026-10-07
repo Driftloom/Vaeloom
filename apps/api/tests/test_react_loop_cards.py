@@ -38,7 +38,19 @@ class DummyAgent(BaseAgent):
 @pytest.mark.asyncio
 async def test_react_loop_skips_when_no_llm_key(monkeypatch):
     monkeypatch.setattr(settings, "agent_react_enabled", True)
+
+    # The guard in _try_react_loop checks SIX key sources, not just
+    # settings.llm_api_key. This test previously cleared only llm_api_key, so on
+    # any machine with OLLAMA_API_KEY exported (most dev boxes, and CI images
+    # that need the live-provider suites) `has_llm` stayed True and the loop
+    # proceeded. It used to appear green only because the loop was dead
+    # everywhere — a NameError was swallowed and returned None, which is
+    # indistinguishable from a correct skip.
     monkeypatch.setattr(settings, "llm_api_key", "")
+    monkeypatch.setattr(settings, "ollama_api_key", "", raising=False)
+    monkeypatch.setattr(settings, "groq_api_key", "", raising=False)
+    for var in ("OLLAMA_API_KEY", "GROQ_API_KEY", "OPENAI_API_KEY"):
+        monkeypatch.delenv(var, raising=False)
 
     agent = DummyAgent()
     result = await _try_react_loop(agent, "test message", "ws_123", "dummy")

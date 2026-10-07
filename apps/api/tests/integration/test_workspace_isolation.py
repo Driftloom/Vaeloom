@@ -67,7 +67,7 @@ class TestWorkspaceIsolation:
         )
         assert created.status_code == 201
         res = await client.get(
-            "/api/v1/memories?status=PROCESSING", headers=auth_headers
+            "/api/v1/memories", headers=auth_headers
         )
         assert res.status_code == 200
         titles = {m["title"] for m in res.json().get("memories", [])}

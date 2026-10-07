@@ -262,6 +262,44 @@ async def db_session(db_path):
         async with session_factory() as session:
             yield session
     finally:
+        # Drain pending audit and orchestrator background tasks before disposing engine
+        try:
+            import asyncio
+            from api.tools.executor import drain_pending_audit_tasks
+
+            await drain_pending_audit_tasks(timeout=1.0)
+        except Exception:
+            pass
+
+        try:
+            import asyncio
+            from api.orchestrator.loop import _BACKGROUND_TASKS
+
+            if _BACKGROUND_TASKS:
+                pending_bg = [t for t in _BACKGROUND_TASKS if not t.done()]
+                if pending_bg:
+                    _, pending = await asyncio.wait(pending_bg, timeout=1.0)
+                    for t in pending:
+                        t.cancel()
+                    if pending:
+                        await asyncio.gather(*pending, return_exceptions=True)
+        except Exception:
+            pass
+
+        try:
+            import asyncio
+            current_task = asyncio.current_task()
+            all_pending = [
+                t for t in asyncio.all_tasks()
+                if t is not current_task and not t.done()
+            ]
+            if all_pending:
+                for t in all_pending:
+                    t.cancel()
+                await asyncio.gather(*all_pending, return_exceptions=True)
+        except Exception:
+            pass
+
         # Teardown: tmp_path isolates and cleans the SQLite db file; cleanly dispose the engine.
         try:
             await engine.dispose()

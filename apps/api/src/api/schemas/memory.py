@@ -35,6 +35,7 @@ class MemoryCreate(BaseModel):
     source_label: str | None = None
     connector_id: str | None = None
     supersedes_id: uuid.UUID | None = None
+    status: str | None = Field(None, max_length=20, description="Optional initial lifecycle status (defaults to active)")
 
     @model_validator(mode="after")
     def _check_at_least_one_text(self):

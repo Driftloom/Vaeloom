@@ -69,8 +69,8 @@ async def list_memories(
     from ..utils.pagination import resolve_page_params
     query.page, query.page_size = resolve_page_params(query.page, query.page_size, limit, offset)
     target_ws = workspace_id or (str(query.workspace_id) if query.workspace_id else None)
+    user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
     if not target_ws:
-        user_id = current_user.get("sub") or current_user.get("id") or current_user.get("user_id")
         if user_id:
             try:
                 uid = uuid.UUID(str(user_id))
@@ -78,6 +78,11 @@ async def list_memories(
                     select(Workspace.id).where(Workspace.user_id == uid).order_by(Workspace.created_at.asc()).limit(1)
                 )
                 default_ws = ws_res.scalar_one_or_none()
+                if not default_ws:
+                    wu_res = await db.execute(
+                        select(WorkspaceUser.workspace_id).where(WorkspaceUser.user_id == uid).limit(1)
+                    )
+                    default_ws = wu_res.scalar_one_or_none()
                 if default_ws:
                     target_ws = str(default_ws)
             except Exception:
@@ -87,6 +92,13 @@ async def list_memories(
             status_code=400,
             detail="workspace_id is required for memory operations",
         )
+    if user_id:
+        has_access = await check_user_workspace_access(db, user_id, target_ws)
+        if not has_access:
+            raise HTTPException(
+                status_code=403,
+                detail="Forbidden: User does not have access to specified workspace",
+            )
     memories, total = await memory_service.list_memories(db, query, tenant_id, target_ws)
     return {
         "memories": [MemoryResponse.model_validate(m) for m in memories],
@@ -374,6 +386,11 @@ async def create_memory(
                 select(Workspace.id).where(Workspace.user_id == uid).order_by(Workspace.created_at.asc()).limit(1)
             )
             default_ws = ws_res.scalar_one_or_none()
+            if not default_ws:
+                wu_res = await db.execute(
+                    select(WorkspaceUser.workspace_id).where(WorkspaceUser.user_id == uid).limit(1)
+                )
+                default_ws = wu_res.scalar_one_or_none()
             if default_ws:
                 target_ws = str(default_ws)
         except Exception:

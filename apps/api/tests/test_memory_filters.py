@@ -48,7 +48,7 @@ class TestWorkspaceScopedFiltering:
         ws_a = str(uuid.uuid4())
         await _create_active(svc, db_session, title="Scoped", content="x", workspace_id=ws_a)
         await _create_active(svc, db_session, title="Global", content="y")
-        memories, total = await svc.list_memories(db_session, MemoryQuery(), tenant_id=TENANT)
+        memories, total = await svc.list_memories(db_session, MemoryQuery(), tenant_id=TENANT, allow_tenant_wide=True)
         assert total == 2
         assert len(memories) == 2
 
@@ -59,7 +59,7 @@ class TestSupersededHandling:
         await _create_active(
             svc, db_session, title="Updated", content="new", supersedes_id=m1.id,
         )
-        active, active_total = await svc.list_memories(db_session, MemoryQuery(status="active"), tenant_id=TENANT)
+        active, active_total = await svc.list_memories(db_session, MemoryQuery(status="active"), tenant_id=TENANT, allow_tenant_wide=True)
         assert str(m1.id) not in {str(m.id) for m in active}
         assert active_total == 1
 
@@ -69,7 +69,7 @@ class TestSupersededHandling:
             svc, db_session, title="Updated", content="new", supersedes_id=m1.id,
         )
         with_ss, ss_total = await svc.list_memories(
-            db_session, MemoryQuery(status="active", include_superseded=True), tenant_id=TENANT,
+            db_session, MemoryQuery(status="active", include_superseded=True), tenant_id=TENANT, allow_tenant_wide=True,
         )
         assert str(m1.id) in {str(m.id) for m in with_ss}
         assert ss_total == 2
@@ -80,17 +80,17 @@ class TestStatusAll:
         m1 = await _create_active(svc, db_session, title="Doomed", content="aaa")
         await svc.delete_memory(db_session, m1.id, TENANT)
         await _create_active(svc, db_session, title="Alive", content="bbb")
-        all_mem, total = await svc.list_memories(db_session, MemoryQuery(status="all"), tenant_id=TENANT)
+        all_mem, total = await svc.list_memories(db_session, MemoryQuery(status="all"), tenant_id=TENANT, allow_tenant_wide=True)
         assert total == 2
         assert len(all_mem) == 2
 
-        default, _ = await svc.list_memories(db_session, MemoryQuery(), tenant_id=TENANT)
+        default, _ = await svc.list_memories(db_session, MemoryQuery(), tenant_id=TENANT, allow_tenant_wide=True)
         assert len(default) == 1
         assert default[0].title == "Alive"
 
     async def test_status_filter_specific(self, db_session, svc):
         m1 = await _create_active(svc, db_session, title="Doomed", content="aaa")
         await svc.delete_memory(db_session, m1.id, TENANT)
-        deleted, total = await svc.list_memories(db_session, MemoryQuery(status="deleted"), tenant_id=TENANT)
+        deleted, total = await svc.list_memories(db_session, MemoryQuery(status="deleted"), tenant_id=TENANT, allow_tenant_wide=True)
         assert total == 1
         assert deleted[0].title == "Doomed"

@@ -68,17 +68,56 @@ GET_ENTITY = ToolDefinition(
 
 SEARCH_MEMORIES = ToolDefinition(
     name="search_memories",
-    description="Search workspace semantic memories and user knowledge base facts",
+    description="Search workspace semantic memories and user knowledge base "
+    "facts. Uses hybrid vector+keyword retrieval with rank fusion.",
     input_schema={
         "type": "object",
         "properties": {
             "query": {"type": "string"},
-            "category": {"type": "string", "default": "all"},
+            "category": {
+                "type": "string",
+                "default": "all",
+                "description": "Memory type to narrow by, or 'all'. Valid: profile, "
+                "document, career, episodic, preference, working, note, fact, project, "
+                "skill, organization, relationship, event, insight, goal, feedback, "
+                "decision, knowledge, reference, contact, financial, health, learning, workflow.",
+            },
             "limit": {"type": "integer", "default": 10},
+            "strategy": {
+                "type": "string",
+                "enum": ["hybrid", "vector", "keyword"],
+                "default": "hybrid",
+                "description": "hybrid fuses vector and keyword results via RRF; "
+                "vector is semantic only; keyword is exact-text only.",
+            },
+            "include_superseded": {
+                "type": "boolean",
+                "default": False,
+                "description": "Include superseded history so corrections stay auditable.",
+            },
         },
         "required": ["query"],
     },
-    output_schema={"type": "array", "items": {"type": "object"}},
+    output_schema={
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "id": {"type": "string"},
+                "title": {"type": "string"},
+                "summary": {"type": "string"},
+                "content": {"type": "string"},
+                "category": {"type": "string"},
+                "source_type": {"type": "string"},
+                "tags": {"type": "array", "items": {"type": "string"}},
+                "created_at": {"type": "string"},
+                "score": {
+                    "type": "number",
+                    "description": "Real retrieval score from rank fusion; rank by it.",
+                },
+            },
+        },
+    },
     required_scope="memory.read",
     category="memory_read",
 )
@@ -126,7 +165,15 @@ CREATE_MEMORY = ToolDefinition(
         "type": "object",
         "properties": {
             "content": {"type": "string"},
-            "category": {"type": "string", "default": "preference"},
+            "category": {
+                "type": "string",
+                "default": "preference",
+                "description": "Memory type. Valid: profile, document, career, episodic, "
+                "preference, working, note, fact, project, skill, organization, "
+                "relationship, event, insight, goal, feedback, decision, knowledge, "
+                "reference, contact, financial, health, learning, workflow. "
+                "An unrecognised value is stored as 'note'.",
+            },
             "confidence": {"type": "number", "default": 1.0},
         },
         "required": ["content"],
@@ -136,6 +183,12 @@ CREATE_MEMORY = ToolDefinition(
         "properties": {
             "id": {"type": "string"},
             "status": {"type": "string"},
+            "type": {"type": "string"},
+            "embedded": {
+                "type": "boolean",
+                "description": "False when no vector backend was available, so the "
+                "memory is stored but will not match semantic search yet.",
+            },
         },
     },
     required_scope="memory.write",

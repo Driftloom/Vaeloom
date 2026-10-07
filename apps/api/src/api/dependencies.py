@@ -23,6 +23,10 @@ async def get_current_user(request: Request) -> dict:
     return user
 
 
+async def get_current_user_optional(request: Request) -> dict | None:
+    return getattr(request.state, "user", None)
+
+
 async def get_tenant_id(request: Request) -> str | None:
     return getattr(request.state, "tenant_id", None)
 

@@ -10,7 +10,12 @@ import { Tabs, TabPanel } from '@/components/shared/Tabs';
 import { DiffViewer } from '@/components/shared/DiffViewer';
 import { PageHeader } from '@/components/shared/Page';
 import { notificationApi, documentApi } from '@/lib/api-client';
-import type { NotificationResponse, DocumentAction } from '@/lib/api-client';
+import type {
+  NotificationResponse,
+  DocumentAction,
+  DocumentActionListResponse,
+  AgentActionHistory,
+} from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 
 function formatTimestamp(iso: string | null | undefined): string {
@@ -54,7 +59,7 @@ export default function HistoryPage() {
     error: docError,
     isLoading: docLoading,
     mutate: mutateDocs,
-  } = useSWR(workspaceId ? `doc-actions-${workspaceId}` : null, () =>
+  } = useSWR<DocumentActionListResponse>(workspaceId ? `doc-actions-${workspaceId}` : null, () =>
     documentApi.workspaceActions(workspaceId!),
   );
   const {
@@ -62,7 +67,7 @@ export default function HistoryPage() {
     error: agentError,
     isLoading: agentLoading,
     mutate: mutateAgents,
-  } = useSWR(workspaceId ? `agent-actions-${workspaceId}` : null, () =>
+  } = useSWR<AgentActionHistory[]>(workspaceId ? `agent-actions-${workspaceId}` : null, () =>
     documentApi.workspaceAgentActions(workspaceId!),
   );
   const {
@@ -182,7 +187,7 @@ export default function HistoryPage() {
         ) : (
           <>
             <div className="space-y-3">
-              {pagedDocs.map((a) => {
+              {pagedDocs.map((a: DocumentAction) => {
                 const actionType = getActionField<string>(a, 'action_type', 'actionType') ?? '';
                 const oldPath = getActionField<string>(a, 'old_path', 'oldPath');
                 const newPath = getActionField<string>(a, 'new_path', 'newPath');
@@ -267,7 +272,7 @@ export default function HistoryPage() {
         ) : (
           <>
             <div className="space-y-3">
-              {pagedAgents.map((a) => (
+              {pagedAgents.map((a: AgentActionHistory) => (
                 <div key={a.id} className="card">
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <span className="rounded-full bg-ai-proposed/10 border border-ai-proposed/20 px-2 py-0.5 font-mono text-ai-proposed">

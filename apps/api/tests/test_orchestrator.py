@@ -225,7 +225,22 @@ class TestActPhase:
         ("MemoryAgentHandler", "execute", "execute"),
         ("UnknownAgent", "fallback", "execute"),
     ])
-    async def test_dispatch_paths(self, agent_type, method_name, expected_action):
+    async def test_dispatch_paths(self, agent_type, method_name, expected_action, monkeypatch):
+        """
+        Static dispatch paths.
+
+        ReAct is pinned OFF here because this test is about the static ladder:
+        each agent's own method must be dispatched with the declared action. With
+        ReAct enabled (its default) it intercepts first and returns "suggest".
+        That interception was invisible until the loop was fixed — it used to die
+        on a NameError and fall through, so these assertions passed for the wrong
+        reason. ReAct's own behaviour is covered in test_react_revival_safety.py
+        and test_react_loop_cards.py.
+        """
+        from api.config import settings
+
+        monkeypatch.setattr(settings, "agent_react_enabled", False)
+
         from api.orchestrator.loop import act_phase, AgentRequest
         agent = _make_agent(agent_type)
         req = AgentRequest(agent, "r1", "test message", "ws1")
@@ -233,7 +248,12 @@ class TestActPhase:
         result = await act_phase(plan, req)
         assert result["action"] == expected_action, f"{agent_type}: expected {expected_action}, got {result.get('action')}"
 
-    async def test_error_returns_error_dict(self):
+    async def test_error_returns_error_dict(self, monkeypatch):
+        from api.config import settings
+
+        # Static ladder only: this asserts the agent-less failure path.
+        monkeypatch.setattr(settings, "agent_react_enabled", False)
+
         from api.orchestrator.loop import act_phase, AgentRequest
         class FailingAgent:
             pass
@@ -246,7 +266,12 @@ class TestActPhase:
         assert result["confidence"] == 0.0
         assert "Execution error" in result["result"]["summary"]
 
-    async def test_resume_agent_execute_with_profile(self):
+    async def test_resume_agent_execute_with_profile(self, monkeypatch):
+        from api.config import settings
+
+        # Static ladder only — see test_dispatch_paths for why.
+        monkeypatch.setattr(settings, "agent_react_enabled", False)
+
         from api.orchestrator.loop import act_phase, AgentRequest
         agent = _make_agent("ResumeAgent")
         req = AgentRequest(agent, "r1", "Python", "ws1")

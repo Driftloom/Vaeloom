@@ -190,7 +190,17 @@ async def scoped_session(
 
     from .middleware.tenant import TenantContext
 
-    async with async_session_factory() as session:
+    # Resolve the factory through the module globals and fail loudly if it is
+    # absent. Referencing the global directly produced
+    # `NameError: name 'async_session_factory' is not defined` from inside this
+    # generator — which runs lazily, after the caller's own try/except has
+    # already returned — so every tool surfaced an opaque NameError instead of
+    # the "DB imports unavailable" contract they are written against.
+    _factory = globals().get("async_session_factory")
+    if _factory is None:
+        raise ImportError("DB imports unavailable: async_session_factory")
+
+    async with _factory() as session:
         try:
             if _session_dialect(session) == "postgresql":
                 try:

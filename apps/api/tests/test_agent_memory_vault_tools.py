@@ -226,14 +226,89 @@ async def test_execute_create_memory_and_search_memories(db_session, monkeypatch
     found = search_res["result"][0]
     assert found["id"] == mem_id
     assert "distributed backend" in found["content"]
+    # Hybrid retrieval is now in play and reports its strategy + real scores.
+    assert search_res["strategy"] == "hybrid"
+    assert isinstance(found["score"], (int, float))
 
-    # 3. Search memories with non-matching query returns empty list
+    # 3. A nonsense query must return nothing.
+    #
+    # This asserts on `strategy="keyword"` deliberately. The autouse `mock_llm`
+    # fixture returns a CONSTANT embedding for every query, so under hybrid/vector
+    # every stored memory is an exact match for every query — cosine distance 0
+    # passes the threshold filter. That is a mock artifact, not production
+    # behaviour, so the negative case pins the keyword tier where the assertion
+    # is meaningful. See test_agent_memory_wiring.py for the vector degradation
+    # behaviour under mocks.
     empty_res = await _execute_search_memories(
-        params={"query": "nonexistent_term_xyz_123"},
+        params={"query": "nonexistent_term_xyz_123", "strategy": "keyword"},
         workspace_id=str(ws_id),
     )
     assert empty_res["status"] == "success"
+    assert empty_res["strategy"] == "keyword"
     assert len(empty_res["result"]) == 0
+
+    # 3b. A nonsense query under hybrid must never error, even when the mock
+    # makes the vector tier match everything.
+    hybrid_res = await _execute_search_memories(
+        params={"query": "nonexistent_term_xyz_123", "strategy": "hybrid"},
+        workspace_id=str(ws_id),
+    )
+    assert hybrid_res["status"] == "success"
+
+
+async def test_create_memory_generates_embedding_and_records_type(db_session, monkeypatch):
+    """Finding #15: agent-created memories must be embedded, not stored blind."""
+    import api.tools.executor as executor_mod
+
+    monkeypatch.setattr(executor_mod, "_ws_session", lambda wid: _SessionCtx(db_session))
+    ws_id, _user_id = await _create_test_workspace(db_session, name="Embedding WS")
+
+    res = await _execute_create_memory(
+        params={"content": "Prefers TypeScript over JavaScript for all new services", "category": "preference"},
+        workspace_id=str(ws_id),
+    )
+    assert res["status"] == "success"
+    # The tool reports whether an embedding was actually produced.
+    assert "embedded" in res["result"]
+    assert isinstance(res["result"]["embedded"], bool)
+    # Type is echoed back so the caller can see what was stored.
+    assert res["result"]["type"] == "preference"
+
+    row = (await db_session.execute(select(Memory).where(Memory.id == __import__("uuid").UUID(res["result"]["id"])))).scalar_one()
+    assert row.type == "preference"
+    assert row.source_type == "agent"
+    # Lineage provenance is written by memory_service (the old direct INSERT
+    # wrote none).
+    assert row.metadata_ is not None
+    assert row.metadata_.get("created_by") == "agent_tool"
+
+
+async def test_create_memory_rejects_unknown_category_by_falling_back(db_session, monkeypatch):
+    """An unrecognised category must not write a type outside the taxonomy."""
+    import api.tools.executor as executor_mod
+
+    monkeypatch.setattr(executor_mod, "_ws_session", lambda wid: _SessionCtx(db_session))
+    ws_id, _user_id = await _create_test_workspace(db_session, name="BadType WS")
+
+    res = await _execute_create_memory(
+        params={"content": "Some observation with a bogus type", "category": "not_a_real_type"},
+        workspace_id=str(ws_id),
+    )
+    assert res["status"] == "success"
+    # Falls back to 'note' rather than persisting an unrepresentable type.
+    assert res["result"]["type"] == "note"
+
+
+async def test_search_memories_requires_a_query(db_session, monkeypatch):
+    """Negative control: empty query must be an explicit error, not silent []."""
+    import api.tools.executor as executor_mod
+
+    monkeypatch.setattr(executor_mod, "_ws_session", lambda wid: _SessionCtx(db_session))
+    ws_id, _user_id = await _create_test_workspace(db_session, name="NoQuery WS")
+
+    res = await _execute_search_memories(params={"query": "   "}, workspace_id=str(ws_id))
+    assert res["status"] == "error"
+    assert "query is required" in res["error"]
 
 
 async def test_execute_sync_vault_and_ingest_vault_notes(db_session, monkeypatch):

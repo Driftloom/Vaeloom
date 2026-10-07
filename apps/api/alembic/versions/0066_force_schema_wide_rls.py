@@ -115,7 +115,7 @@ def _assert_schema_wide_coverage(bind, tables: list[str]) -> None:
             "Migration chain finished with incomplete RLS coverage.\n  - " + "\n  - ".join(errors)
         )
 
-    logger.info("Migration 0066 verified: 100% of %d tables have forced RLS.", len(tables))
+    logger.info("Migration 0066 verified: 100%% of %d tables have forced RLS.", len(tables))
 
 
 def downgrade() -> None:

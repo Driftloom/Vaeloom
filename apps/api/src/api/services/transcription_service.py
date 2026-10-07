@@ -113,6 +113,14 @@ class WhisperAPIProvider:
         ]
 
 
+class TranscriptionNotConfiguredError(RuntimeError):
+    """Raised when transcription is enabled with a provider that cannot serve it.
+
+    Distinct from a transient failure: it is a deployment misconfiguration, and it
+    is raised rather than silently degrading to fabricated cues.
+    """
+
+
 class TranscriptionService:
     """Manages audio extraction, STT processing, and WebVTT persistence."""
 
@@ -135,6 +143,20 @@ class TranscriptionService:
             return WhisperAPIProvider(
                 endpoint_url=cfg.whisper_api_url,
                 api_key=cfg.openai_api_key,
+            )
+        if mode != "mock":
+            return MockTranscriptionProvider()
+        # `mock` synthesises plausible, correctly-timed cues from the filename and
+        # duration. That is fine for tests and local runs, but persisting it into
+        # `captions_vtt` serves invented dialogue to a deaf or hard-of-hearing
+        # viewer under an "Auto-transcribed" label indistinguishable from a real
+        # transcript. Refuse outside local/test so it cannot be enabled by
+        # accident in a deployed environment.
+        if (cfg.service_environment or "local").lower() not in ("local", "test", "ci"):
+            raise TranscriptionNotConfiguredError(
+                "transcription_provider='mock' is refused outside local/test: it "
+                "fabricates caption cues. Configure transcription_provider='whisper' "
+                "with whisper_api_url for a deployed environment."
             )
         return MockTranscriptionProvider()
 

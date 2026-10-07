@@ -84,11 +84,12 @@ class MemoryService:
         if not derived_summary and dto.content:
             derived_summary = dto.content[:240].strip()
 
+        initial_status = getattr(dto, "status", None) or "active"
         memory = Memory(
             id=uuid.uuid4(),
             type=dto.type,
             domain=dto.domain,
-            status="active",
+            status=initial_status,
             title=sanitize_text(dto.title),
             summary=sanitize_text(derived_summary),
             content=sanitize_text(dto.content),
@@ -157,8 +158,11 @@ class MemoryService:
         # Status handling: default "active" means exclude superseded/deleted unless requested
         conditions: list[Any] = []
         if query.status and query.status != "all":
-            if query.include_superseded and query.status == "active":
-                conditions.append(Memory.status.in_(["READY", "active", "superseded"]))
+            if query.status == "active":
+                if query.include_superseded:
+                    conditions.append(Memory.status.in_(["READY", "active", "superseded"]))
+                else:
+                    conditions.append(Memory.status.in_(["READY", "active"]))
             else:
                 conditions.append(Memory.status == query.status)
         elif query.status == "all":
@@ -351,15 +355,45 @@ class MemoryService:
                 filters: dict[str, Any] = {}
                 if target_ws:
                     filters["workspace_id"] = str(target_ws)
+                # The embeddings table is shared with document_chunk rows, which carry
+                # placeholder source_ids. Without this filter they consume top_k slots
+                # and are then silently discarded by the Memory lookup below.
+                filters["source_type"] = "memory"
                 vrecords = await vstore.search(
                     query_vector=query_embedding, limit=dto.top_k, filters=filters or None, session=db
                 )
                 if vrecords:
                     mem_ids = [_to_uuid(r.metadata.get("source_id") or r.id) for r in vrecords if _to_uuid(r.metadata.get("source_id") or r.id)]
                     if mem_ids:
-                        res = await db.execute(select(Memory).where(Memory.id.in_(mem_ids)))
+                        # Re-apply the caller's visibility rules. The vector store has no
+                        # notion of status, so superseded/deleted rows would otherwise be
+                        # returned even when include_superseded=False.
+                        lookup_conditions: list[Any] = [Memory.id.in_(mem_ids), *status_filter]
+                        if tenant_id:
+                            lookup_conditions.append(Memory.tenant_id == tenant_id)
+                        if target_ws:
+                            ws_uuid = _to_uuid(target_ws)
+                            if ws_uuid is not None:
+                                lookup_conditions.append(Memory.workspace_id == ws_uuid)
+                        if dto.type:
+                            lookup_conditions.append(Memory.type == dto.type)
+                        res = await db.execute(select(Memory).where(*lookup_conditions))
                         mem_map = {m.id: m for m in res.scalars().all()}
-                        vector_results = [(mem_map[mid], 0.95) for mid in mem_ids if mid in mem_map]
+                        scored: list[tuple[Memory, float]] = []
+                        for rec in vrecords:
+                            mid = _to_uuid(rec.metadata.get("source_id") or rec.id)
+                            mem = mem_map.get(mid)
+                            if mem is None:
+                                continue
+                            # Use the real cosine distance when the store provides it;
+                            # never fabricate a constant relevance score.
+                            dist = rec.metadata.get("distance")
+                            if isinstance(dist, (int, float)):
+                                score = max(0.0, min(1.0, 1.0 - float(dist)))
+                            else:
+                                score = 0.0
+                            scored.append((mem, score))
+                        vector_results = scored
             except Exception as e:
                 logger.debug(f"Vector store search failed or bypassed: {e}")
 
@@ -625,6 +659,41 @@ class MemoryService:
             pass
 
         await db.flush()
+
+        # 6. Sync the vector store. Without this the successor is unreachable by
+        # vector search (corrections silently fail) and the predecessor's vector
+        # keeps ranking even though it is now 'superseded'.
+        try:
+            from ..infrastructure.vector_store import (
+                VectorRecord,
+                get_vector_store,
+            )
+
+            vstore = get_vector_store()
+            new_ws = _to_uuid(workspace_id) if workspace_id else old_memory.workspace_id
+            if embedding:
+                await vstore.upsert(
+                    [
+                        VectorRecord(
+                            id=str(new_memory.id),
+                            vector=embedding,
+                            metadata={
+                                "source_type": "memory",
+                                "source_id": str(new_memory.id),
+                                "workspace_id": str(new_ws) if new_ws else "",
+                                "tenant_id": str(new_memory.tenant_id) if new_memory.tenant_id else "",
+                                "title": new_memory.title or "",
+                            },
+                        )
+                    ],
+                    session=db,
+                )
+            # Purge the superseded vector so stale content cannot outrank the
+            # correction it was replaced by.
+            await vstore.delete([str(old_memory.id)], session=db)
+        except Exception as e:
+            logger.debug(f"Vector store sync on supersede bypassed or failed: {e}")
+
         await db.refresh(new_memory)
         return new_memory
 
@@ -791,18 +860,18 @@ class MemoryService:
 memory_service = MemoryService()
 
 
-async def retrieve_memory_and_vault_context(
+async def retrieve_grounding_dossier(
     workspace_id: str | uuid.UUID | None,
     query: str,
     db: AsyncSession,
     limit: int = 5,
-) -> str:
+) -> tuple[str, list[dict[str, Any]]]:
     """
-    Retrieve relevant workspace memories and vault notes as background context
-    for chat queries.
+    Retrieve relevant workspace memories and vault documents as background context
+    and return structured dossier metadata for UI inspectability.
     """
     if not workspace_id or not query:
-        return ""
+        return "", []
 
     try:
         import uuid as _uuid
@@ -866,12 +935,14 @@ async def retrieve_memory_and_vault_context(
         documents = doc_res.scalars().all()
 
         if not memories and not documents:
-            return ""
+            return "", []
 
+        dossier_items: list[dict[str, Any]] = []
         context_lines = [
             "[Background Context from Workspace Memories & Vault Notes]",
             "[COGNITIVE PRECEDENCE DIRECTIVE]: Grounding Documents represent current authoritative facts. Inspect and ground on Active Grounding Documents first. Dynamic Memories represent user preferences and background; do not allow historical memory to override active documents.",
         ]
+
         # Active Grounding Documents FIRST (Claude-style authoritative grounding)
         if documents:
             context_lines.append("\n### 📄 Active Grounding Documents (Authoritative)")
@@ -879,6 +950,14 @@ async def retrieve_memory_and_vault_context(
                 snippet = (d.summary or "").strip()[:350]
                 title = d.path.rsplit("/", 1)[-1] if d.path else "Document"
                 context_lines.append(f"- Active Document ({title}): {snippet}")
+                dossier_items.append({
+                    "id": str(d.id),
+                    "title": title,
+                    "snippet": snippet,
+                    "source": "vault",
+                    "score": 0.95,
+                    "updatedAt": d.updated_at.isoformat() if getattr(d, "updated_at", None) else None,
+                })
 
         # Dynamic Memories SECOND (ChatGPT-style personalization & memory cards)
         if memories:
@@ -886,9 +965,31 @@ async def retrieve_memory_and_vault_context(
             for m in memories:
                 snippet = (m.summary or m.content or "").strip()[:250]
                 context_lines.append(f"- Memory ({m.type or 'fact'}): {m.title} — {snippet}")
+                dossier_items.append({
+                    "id": str(m.id),
+                    "title": m.title,
+                    "snippet": snippet,
+                    "source": "memory",
+                    "score": 0.82,
+                    "updatedAt": m.updated_at.isoformat() if getattr(m, "updated_at", None) else None,
+                })
 
-        return "\n".join(context_lines)
+        return "\n".join(context_lines), dossier_items
     except Exception as e:
-        logger.debug(f"Failed to retrieve memory/vault context: {e}")
-        return ""
+        logger.debug(f"Failed to retrieve grounding dossier: {e}")
+        return "", []
+
+
+async def retrieve_memory_and_vault_context(
+    workspace_id: str | uuid.UUID | None,
+    query: str,
+    db: AsyncSession,
+    limit: int = 5,
+) -> str:
+    """
+    Retrieve relevant workspace memories and vault notes as background context
+    for chat queries.
+    """
+    bg_context, _ = await retrieve_grounding_dossier(workspace_id, query, db, limit=limit)
+    return bg_context
 
