@@ -76,13 +76,16 @@ async def effective_weights(
     stmt = text(
         f"SELECT relevance, recency, importance, user_preference "  # noqa: S608 - fixed identifiers
         f"FROM {_PROFILES_TABLE} "
-        f"WHERE workspace_id = :workspace_id AND user_id = :user_id"
+        f"WHERE workspace_id = :workspace_id AND user_id = :user_id "
+        f"LIMIT 1"
     )
     try:
         result = await db.execute(
             stmt, {"workspace_id": workspace_id, "user_id": user_id}
         )
-        row = result.scalar_one_or_none()
+        # mappings() (not scalar_one_or_none) because this is a multi-column
+        # select: scalar_* would hand back the first column's bare float.
+        row = result.mappings().one_or_none()
     except Exception as exc:  # noqa: BLE001 - resolution must never propagate
         logger.debug(f"Ranking weight profile lookup failed: {exc}")
         return _fallback_weights()
@@ -91,7 +94,7 @@ async def effective_weights(
         return _fallback_weights()
 
     try:
-        return {key: float(getattr(row, key)) for key in WEIGHT_KEYS}
-    except (AttributeError, TypeError, ValueError) as exc:
+        return {key: float(row[key]) for key in WEIGHT_KEYS}
+    except (KeyError, TypeError, ValueError) as exc:
         logger.debug(f"Ranking weight profile row unusable: {exc}")
         return _fallback_weights()
