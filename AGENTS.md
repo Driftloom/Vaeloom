@@ -137,10 +137,70 @@ hung because most packages have no `dev` script). **Always** use:
   the taxonomy the API accepts. Only `document` and `note` overlapped, so 5 of 7
   memory type filters matched nothing. Now mirrors the backend literal (24
   values, `apps/api/src/api/schemas/memory.py`). If you change one, change both.
+
+## Memory Retrieval — Correctness Fixes (2026-10-07)
+
+Two **live correctness bugs** in the vector path, both fixed and proven by
+fail-before/pass-after tests in
+`apps/api/tests/test_memory_vector_correctness.py` (**20 tests**). Reverting the
+fixes fails 9 of them.
+
+- **`supersede_memory` never touched the vector store.** It wrote
+  `Memory.embedding` but never `vstore.upsert` / `vstore.delete`. Since the
+  `embeddings` table is the _primary_ search path, corrections were invisible to
+  search and the superseded vector kept ranking forever — the Corrections UI
+  (supersede flow, diff, ledger) did not work. It now upserts the successor and
+  purges the predecessor, both on the caller's session, best-effort.
+- **The vector path ignored the caller's visibility rules.** It re-queried
+  `Memory` by id with **no** status filter, so `include_superseded=False` did
+  not exclude superseded/deleted rows, and it passed **no** `source_type`,
+  letting `document_chunk` rows (placeholder `source_id`,
+  `ingestion/pipeline.py:287`) consume top-k slots and then be silently dropped.
+  It now applies `status_filter` + tenant + workspace + type.
+- **Honesty:** `PGVectorStore` now returns the real cosine `distance` and
+  `FallbackVectorStore` no longer discards it. The hardcoded
+  `relevance_score = 0.95` that leaked to `MemorySearchResult.score` is gone;
+  unknown distance scores `0.0`, never a flattering constant.
+
+### Corrections to earlier audit claims — read this
+
+- **HNSW indexes already exist.** An audit claimed "no ANN index anywhere."
+  **Wrong.** Migration `0011_hnsw_index.py` creates `idx_embeddings_vector_hnsw`
+  (embeddings) and `idx_memories_embedding_hnsw` (memories), both
+  `vector_cosine_ops`, in the live chain and never dropped. `PGVectorStore`
+  orders by `vector <=>` (cosine), so the index is usable. The ORM
+  `__table_args__` only lists B-tree indexes — that is not the DB state.
+- **`memory_agent/retrieval.py` (448 lines) is deleted.** It was never imported
+  by any production module — only 3 test files. Its ranking/budget logic was
+  already superseded by the live `ContextEngine` (`services/context_engine.py`:
+  filter → cognitive-priority rank → `compress_to_budget` → validate,
+  `token_budget=2000`). Ranking/budget tests were repointed at `ContextEngine`;
+  the merge tests in `test_memory_agent.py` were kept. **Retrieval changes
+  belong in `MemoryService.search_memories`.**
+- **`memory_taxonomy_ledger` had zero writers.** Migration 0027 creates the
+  table (Postgres-only DDL, service-role policy per 0053) but nothing ever wrote
+  it, so the expand-contract taxonomy change had no provenance. There is now a
+  `MemoryTaxonomyLedger` ORM model (`models/schema.py`) and
+  `MemoryService._record_taxonomy_change`, called on type remap in both
+  `update_memory` and `supersede_memory`. Best-effort — provenance never fails
+  the user write. Stores ids, type names and a checksum, never content.
+- **`loop.py` `preference_vector` comment was false.** It claimed the
+  `user_preference_vectors.preference_vector` embedding is wired into ranking.
+  It is **not**: `search_ranking.py` consumes structured `preferred_tags` /
+  `preferred_types` from preference entities. The embedding column is read only
+  by `recommendation_service.generate()`. Comment corrected; do not assume the
+  vector feed reaches ranking.
+
 - **Intent routing anchors:** `router.py` scored categories by raw keyword
   count, so generic words out-voted domain nouns ("critique my resume" scored
   reflection=2 vs career_resume=1 and routed to self_improvement).
   `_CATEGORY_ANCHORS` now weights unambiguous terms (`_ANCHOR_WEIGHT = 3`).
+  **Known pre-existing failure:**
+  `tests/eval/test_golden_retrieval.py:: test_golden_retrieval_routing` case r15
+  ("generate weekly digest of my job search activity") expects `job_search` but
+  gets `reflection`. Reproduces with all memory changes stashed — the drift is
+  between `router.py` (`b6505c04`) and the fixture (`f8e18c4a`). Someone must
+  reconcile the router or the fixture.
 - **Vault sync (`packages/vaeloom-sync`):** node:test, **25 tests / 3 suites**,
   all passing (`npm test`, ~9s). `tests/integration.test.ts` drives **real git**
   against a real bare remote across two simulated machines;

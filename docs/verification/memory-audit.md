@@ -22,13 +22,15 @@ persistent facts).
 
 ## 3. Forensic Code Deficiencies & Violations
 
-1. **Direct Database Queries in Memory Handlers (`SEC-P0-01`)**:
-   - `apps/api/src/api/agents/memory_agent/retrieval.py` directly executes SQL
-     statements:
-     - Line 32: `from sqlalchemy import select, text`
-     - Line 35: `from api.models.schema import Embedding, Entity, MemoryRecord`
-   - Bypasses any policy engine or dynamic memory scope check declared on
-     agents.
+1. **Direct Database Queries in Memory Handlers (`SEC-P0-01`)** — **RESOLVED 2026-10-07**:
+   - An agent-local retrieval module directly executed SQL
+     statements (`from sqlalchemy import select, text`; `from
+     api.models.schema import Embedding, Entity, MemoryRecord`), bypassing any
+     policy engine or dynamic memory scope check declared on agents.
+   - That module was never imported by any production code path — only by three
+     test files. It has been **deleted**. Retrieval now goes exclusively through
+     `MemoryService.search_memories`, which enforces tenant/workspace scoping and
+     the caller's status filters on every query.
 2. **Duplicated Memory Implementations**:
    - `apps/api/src/api/memory/` contains generic memory managers.
    - `apps/api/src/api/agents/memory_agent/` contains extraction, merge, and

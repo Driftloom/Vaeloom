@@ -173,13 +173,20 @@ prioritization (recency, importance, preference) → truncation/compression.
   `query_graph`; `search_service.py` does LIKE across Memory/MemoryRecord/Entity
   with facet extraction; `search_ranking.py` provides weighted scoring
   `relevance 0.4 + recency 0.3 + importance 0.2 + preference 0.1` with optional
-  LLM rerank (`rerank_with_llm`); `agents/memory_agent/retrieval.py` has vector
-  search + cross-encoder-style helpers but not wired to RAG assembler — gap.
+  LLM rerank (`rerank_with_llm`).
+  *(Updated 2026-10-07: an agent-local retrieval module had vector search +
+  cross-encoder-style helpers that were never wired to the RAG assembler. That
+  gap is closed differently — the unused module was **deleted**, and the
+  assembler now delegates to `MemoryService.search_memories` (pgvector HNSW +
+  keyword + RRF, returning real cosine distances) with `ContextEngine`
+  (`context_engine.py`) as the filter → rank → compress → validate policy
+  layer, including an enforced token budget.)*
 - **Context window management:** `_build_context_prompt` concatenates 5+3+3
   lines — max ~600 chars (~150 tokens). No summarization/compression/caching.
-  `DEFAULT_MAX_CONTEXT_TOKENS=8000` in `retrieval.py:8` but not enforced in
-  `llm_service.generate_completion` (max_tokens=4096 output; input context is
-  caller-supplied). No eviction policy; critical evidence preservation is
+  Token budgeting is now enforced by `ContextEngine.compress_to_budget` (default
+  `token_budget=2000`) in the RAG assembler.
+  Output cap remains `llm_service.generate_completion` (max_tokens=4096).
+  No eviction policy; critical evidence preservation is
   manual. Oversized tool outputs sliced `[:4000]` in ReAct loop before feeding
   back — truncation, not summarization.
 - **Context caching/prioritization:** None beyond RAG pre-injection; no prompt

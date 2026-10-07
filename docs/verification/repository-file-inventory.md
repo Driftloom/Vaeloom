@@ -140,7 +140,7 @@
 | `apps/api/src/api/agents/memory_agent/extraction.py`                       | source        |   2.5 KB | Python             | Domain agent handler      |       5 |           0 | `IMPLEMENTED` |
 | `apps/api/src/api/agents/memory_agent/handler.py`                          | source        |   8.6 KB | Python             | Domain agent handler      |      10 |           0 | `IMPLEMENTED` |
 | `apps/api/src/api/agents/memory_agent/merge.py`                            | source        |   3.0 KB | Python             | Domain agent handler      |       7 |           0 | `IMPLEMENTED` |
-| `apps/api/src/api/agents/memory_agent/retrieval.py`                        | source        |  18.5 KB | Python             | Domain agent handler      |      10 |           0 | `IMPLEMENTED` |
+
 | `apps/api/src/api/agents/organization_agent/__init__.py`                   | source        |     29 B | Python             | Domain agent handler      |       0 |           0 | `PARTIAL`     |
 | `apps/api/src/api/agents/organization_agent/handler.py`                    | source        |   6.4 KB | Python             | Domain agent handler      |       8 |           0 | `IMPLEMENTED` |
 | `apps/api/src/api/agents/pdf_agent/__init__.py`                            | source        |     54 B | Python             | Domain agent handler      |       1 |           0 | `PARTIAL`     |

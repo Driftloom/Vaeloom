@@ -298,11 +298,19 @@ This is the live production ranker used during agent execution loop to fuse vect
 
 *Note: Production weights can be dynamically tuned via the `RANKING_WEIGHTS` environment variable JSON.*
 
-#### Path B: Agent Fast-Path Memory Retrieval (`agents/memory_agent/retrieval.py`)
-Heuristic scoring used for fast memory slot matching:
-- **Direct Entity Match**: `0.70`
-- **Memory Record Match**: `0.60`
-- **Fallback Match**: `0.50`
+#### Path B: Agent Fast-Path Memory Retrieval
+
+> **Removed 2026-10-07.** This path described an agent-local retrieval module
+> that was never imported by any production code. It has been deleted.
+>
+> Memory retrieval now runs through **Path A** —
+> `MemoryService.search_memories` (`services/memory_service.py`), which performs
+> vector search against pgvector (HNSW, migration 0011) plus keyword fallback
+> and RRF fusion. It returns **real cosine distances**, not heuristic constants.
+>
+> Ranking and context budgeting are the `ContextEngine` policy layer
+> (`services/context_engine.py`): filter → rank by cognitive priority →
+> compress to token budget → validate.
 
 #### Path C: Document Cross-Encoder Specification (Eval Benchmarking)
 Evaluated in offline benchmarks (`test_golden_retrieval.py`):

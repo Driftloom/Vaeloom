@@ -117,9 +117,11 @@ There is no single RAG pipeline in code — three disjoint paths exist. Weights
 differ by path: docs quote
 `relevance 0.50 + freshness 0.20 + importance 0.15 + confidence 0.15`; the loop
 ranker uses `0.4 / 0.3 / 0.2 / 0.1` (`orchestrator/loop.py:516-711`,
-`search_ranking.py:7`); the memory-agent retriever uses fixed per-source scores
-with dedup and an 8000-token fit (`agents/memory_agent/retrieval.py:420`). No
-cross-encoder on the hot path.
+`search_ranking.py:7`). *(Updated 2026-10-07: the memory-agent retriever's fixed
+per-source scores are gone — that module was never production-wired and has been
+deleted. Retrieval returns real cosine distances from pgvector HNSW via
+`MemoryService.search_memories`, and dedup/token-fitting is the
+`ContextEngine` policy layer.)* No cross-encoder on the hot path.
 
 ```mermaid
 flowchart TD

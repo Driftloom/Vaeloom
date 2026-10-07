@@ -293,10 +293,12 @@ Requirements)
 
 - **Requirement**: Reciprocal rank fusion with overlap suppression; fit
   retrieved context into LLM token allocation budget.
-- **Implementation**: `apps/api/src/api/agents/memory_agent/retrieval.py`
-  (`rerank`, `fit_to_context_window`)
-- **Tests**:
-  `apps/api/tests/test_module05_rag.py::test_reranking_and_context_budgeting`
+- **Implementation**: `apps/api/src/api/services/context_engine.py`
+  (`rank_items`, `compress_to_budget`) for the policy layer, and
+  `MemoryService.search_memories` RRF fusion for hybrid retrieval.
+  *(Corrected 2026-10-07: previously cited an agent-local retrieval module that
+  was never production-wired and has been deleted.)*
+- **Tests**: `apps/api/tests/test_module05_rag.py::test_reranking_and_context_budgeting`
 - **Runtime Evidence**: Near-duplicate overlapping chunks suppressed; token
   window bounded to available budget.
 - **Status**: **PASS (VERIFIED)**
