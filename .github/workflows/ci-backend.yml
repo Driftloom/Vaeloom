@@ -34,13 +34,19 @@ jobs:
       - name: Verify OpenAPI Spec Sync
         run: python ../../scripts/gen_openapi.py && git diff --exit-code ../../specs/api/openapi.yaml ../../docs/backend/openapi.yaml
       - name: Verify generated memory-type union
-        # The committed TS union is generated from CAREER_TYPES and the contract is
-        # byte-exact, so `--check` compares bytes and exits non-zero on any drift
-        # (reordering included -- members are never sorted). It was unwired until
-        # now, and the two pytest guards could not substitute for it: both parse
-        # only the member SET and its order, so a prettier reformat or a hand edit
-        # that preserved those passed the suite and failed only here. A guard that
-        # nothing invokes is not a guard.
+        # The union is generated from CAREER_TYPES and the contract is byte-exact,
+        # so `--check` compares bytes and exits non-zero on any drift -- reordering
+        # and reformatting included, since members are never sorted.
+        #
+        # Why a step and not just the existing test: the drift IS currently caught
+        # by pytest, but only incidentally, because
+        # test_memory_type_packs.py::test_generator_check_mode_passes_on_the_
+        # committed_file_and_fails_on_drift shells out to `--check` against the real
+        # artefact. That makes the guard's existence depend on an unrelated test's
+        # internals: it disappears if that test is deselected, skipped, or sharded
+        # out, and its failure message names a test rather than the file that is
+        # stale. This step is the gate the spec asked for, and it prints the diff
+        # an author needs to regenerate.
         run: python ../../scripts/gen_memory_type_union.py --check
       - name: Temporal workflow tests (serial — WorkflowEnvironment time-skipping not xdist-safe)
         run: python -m pytest tests/temporal -q -o addopts="" --timeout=120
