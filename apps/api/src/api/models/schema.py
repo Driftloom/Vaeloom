@@ -470,6 +470,11 @@ class Memory(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    # Which domain pack legalised this row's type (migration 0068). Nullable so the
+    # column is additive on a hot table; 0068 backfills every existing row to the
+    # career pack, so in practice a populated table has these set.
+    type_pack_slug: Mapped[str | None] = mapped_column(String(64))
+    type_pack_version: Mapped[int | None] = mapped_column(Integer)
 
     user: Mapped["User | None"] = relationship("User", back_populates="memories")
     workspace: Mapped["Workspace | None"] = relationship("Workspace", back_populates="memories")
@@ -517,6 +522,43 @@ class MemoryTaxonomyLedger(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (Index("idx_taxonomy_ledger_memory", "memory_id"),)
+
+
+class MemoryTypePack(Base):
+    """A named, versioned set of legal memory types (migration 0068).
+
+    This table replaces the hard-coded taxonomy that 0027 froze into a CHECK
+    constraint on ``memories``. ``services.memory_type_packs`` reads it through
+    the normal session: ``validate_memory_type`` answers "is this type legal, and
+    under which pack", and the caller stamps ``Memory.type_pack_slug`` /
+    ``type_pack_version`` with the answer so a row remains attributable after the
+    pack it was written under has since been edited.
+
+    ``slug`` is UNIQUE and is the pack's identity. ``version`` is bumped in place
+    rather than by inserting a second row per slug, so "the active pack" is a
+    single row and ``is_active`` is a switch, not a set.
+
+    ``types`` is an ordered list, and the order is part of the contract: it is the
+    order declared in ``schemas/memory.MemoryType`` and reproduced by the seed in
+    0068. The ORM column type matches ``Memory.metadata_``; the database column is
+    JSONB (see 0068). Both serialize a ``list[str]`` identically, so the SQLite
+    suite -- which builds this table from ``Base.metadata`` -- exercises the same
+    shape the migration creates on PostgreSQL.
+
+    The table holds platform configuration, not tenant data: there is no
+    ``tenant_id``/``workspace_id`` column to scope on, so its RLS policy is the
+    service-role policy from 0053, exactly as ``memory_taxonomy_ledger`` is.
+    """
+
+    __tablename__ = "memory_type_packs"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    slug: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    label: Mapped[str] = mapped_column(String(100), nullable=False)
+    types: Mapped[list[str]] = mapped_column(JSON, default=list)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class RankingWeightProfile(Base):
