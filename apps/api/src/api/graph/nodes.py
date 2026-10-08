@@ -98,10 +98,22 @@ async def retrieve_context_node(state: dict[str, Any]) -> dict[str, Any]:
         from ..orchestrator.loop import _assemble_rag_context  # type: ignore
 
         # Bounded timeout — RAG must never block graph indefinitely
+        #
+        # user_id is REQUIRED graph state (state.validate_graph_state rejects a
+        # state without it) and is populated by build_initial_state from trusted
+        # ids, so it is already in hand here. It is forwarded so the learned
+        # per-user ranking weights resolve on this path too. Dropping it is not
+        # "no weights available" — it is a silently dead feature on the path that
+        # takes ALL agent traffic: `langgraph_agent_run_percent=0` means "no
+        # limit" (graph/runner.py:123-125), so one flag flip would route 100% of
+        # streaming agent turns through defaults forever, with no error anywhere.
         try:
             rag = await _asyncio.wait_for(
                 _assemble_rag_context(
-                    state.get("workspace_id") or "", state.get("task") or "", type("A", (), {"memory_scopes": type("S", (), {"read_types": []})()})()
+                    state.get("workspace_id") or "",
+                    state.get("task") or "",
+                    type("A", (), {"memory_scopes": type("S", (), {"read_types": []})()})(),
+                    user_id=state.get("user_id") or None,
                 ),
                 timeout=5.0,
             )

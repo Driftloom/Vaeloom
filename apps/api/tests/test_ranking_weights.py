@@ -630,22 +630,27 @@ def test_partial_weights_dict_is_ignored():
     assert got == pytest.approx(default)
 
 
-def test_identical_weights_produce_identical_scores():
+def test_identical_weights_produce_identical_scores(monkeypatch):
     """Sanity on the ranking path, not on the resolver: same weights in, same
-    order out, regardless of whether they arrived via user_context or not."""
+    order out, regardless of whether they arrived via user_context or not.
+
+    Proves *no weighting leak* -- the explicit path and the implicit path agree
+    -- rather than "learning shifts order".
+
+    ``delenv`` is load-bearing, not hygiene. ``SearchRankingService.__init__``
+    snapshots ``_load_weights()`` from ``RANKING_WEIGHTS``, so with a complete
+    env set the implicit arm uses those weights while the explicit arm uses the
+    defaults below, and the comparison fails on any machine whose environment
+    sets the variable. Take the defaults from ``rw.DEFAULT_WEIGHTS`` rather than a
+    literal so the two arms cannot drift apart when that constant changes.
+    """
+    monkeypatch.delenv("RANKING_WEIGHTS", raising=False)
     svc = SearchRankingService(llm_service=None)
     a, b = _cand("a", 1.0), _cand("b", 1.0)
-    base = svc.rank_results([a, b], "alpha")
+    base = svc.rank_results([dict(a), dict(b)], "alpha")
     boosted = svc.rank_results(
         [dict(a), dict(b)],
         "alpha",
-        user_context={
-            "weights": {
-                "relevance": 0.4,
-                "recency": 0.3,
-                "importance": 0.2,
-                "user_preference": 0.1,
-            }
-        },
+        user_context={"weights": dict(rw.DEFAULT_WEIGHTS)},
     )
     assert base == boosted, "identical weights must produce identical scores"

@@ -618,3 +618,74 @@ class TestResolvedWeightsReachRanker:
             "the resolved profile must survive a factory that commits and "
             "closes on exit, i.e. the real production lifecycle"
         )
+
+
+class TestLangGraphPathForwardsUserId:
+    """The second production caller must not discard an id it already holds.
+
+    ``retrieve_context_node`` is reached with ``user_id`` in hand: it is
+    required graph state (``state.validate_graph_state`` rejects a state without
+    it) and ``build_initial_state`` populates it from trusted ids via
+    ``graph/runner.py:309-310``. Not forwarding it makes learned ranking weights
+    dead on this path -- and this path takes *all* agent traffic when
+    ``langgraph_agent_run_percent=0`` ("no limit", ``graph/runner.py:123-125``),
+    so the feature would look live in logs while silently never applying.
+    """
+
+    @staticmethod
+    def _capture(monkeypatch) -> dict:
+        import api.orchestrator.loop as loop_mod
+
+        seen: dict = {}
+
+        async def _fake(workspace_id, query, agent, session_factory=None, *, user_id=None):
+            seen.update(workspace_id=workspace_id, query=query, user_id=user_id)
+            return {"entities": [], "documents": [], "preferences": [], "memories": []}
+
+        # nodes.py imports _assemble_rag_context INSIDE the function, so patching
+        # the module attribute is what the call site actually reads.
+        monkeypatch.setattr(loop_mod, "_assemble_rag_context", _fake)
+        return seen
+
+    async def test_graph_node_forwards_user_id(self, monkeypatch):
+        from api.graph.nodes import retrieve_context_node
+
+        seen = self._capture(monkeypatch)
+
+        out = await retrieve_context_node(
+            {
+                "workspace_id": "ws-123",
+                "user_id": "user-456",
+                "agent_id": "memory",
+                "request_id": "req-1",
+                "task": "research python career paths",
+            }
+        )
+
+        assert seen.get("workspace_id") == "ws-123", "guard: the fake was not called"
+        assert seen["user_id"] == "user-456", (
+            "the graph node must forward user_id, or learned ranking weights are "
+            "silently dead on this path"
+        )
+        assert out["rag_status"] in ("ok", "empty"), "guard: node completed normally"
+
+    async def test_missing_user_id_becomes_none_not_a_bare_string(self, monkeypatch):
+        """`or None` matters: ``effective_weights`` short-circuits on falsy.
+
+        A forwarded ``""`` still short-circuits, but a forwarded ``"None"`` (what
+        ``build_initial_state`` produces from ``str(None)``) does not -- it would
+        issue a pointless profile lookup against a user that cannot exist.
+        """
+        from api.graph.nodes import retrieve_context_node
+
+        seen = self._capture(monkeypatch)
+
+        await retrieve_context_node(
+            {"workspace_id": "ws-123", "task": "research python career paths"}
+        )
+
+        assert seen.get("workspace_id") == "ws-123", "guard: the fake was not called"
+        assert seen["user_id"] is None, (
+            "an absent user_id must arrive as None, not as an empty or stringified "
+            "placeholder that would skip the falsy short-circuit in effective_weights"
+        )
