@@ -12,6 +12,15 @@ wants to know which pack legalised a type -- to stamp ``type_pack_slug`` and
 re-derive it from a hard-coded slug. Callers therefore write
 ``match.slug``/``match.version`` and never the literal ``"career"``.
 
+The match also carries the vocabulary it was accepted from, so the same call
+settles the expand-contract stamp: ``value in match.enterprise_types`` is the
+question "is this type part of the additive remainder *of the pack that took
+it*", answered from the live registry row. Deriving that answer from a module
+constant instead -- as ``schemas.memory.ENTERPRISE_MEMORY_TYPES`` does, from the
+built-in fallback vocabulary -- labels every type a second domain contributes as
+legacy-canonical the moment it validates, because it is in neither the canonical
+6 nor the career remainder. Two sources, two answers, and no test fails.
+
 Availability is a first-class case
 ----------------------------------
 This registry is read on the write path. A database that predates 0068, or one
@@ -36,7 +45,7 @@ failed probe rolls back to its own savepoint and leaves the caller's work intact
 """
 
 import logging
-from typing import NamedTuple
+from dataclasses import dataclass, field
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -58,21 +67,63 @@ CAREER_TYPES: tuple[str, ...] = (
 )
 
 
-class PackMatch(NamedTuple):
-    """The pack that legalised a memory type, as persisted on the memory row."""
+class MemoryTypeRejected(ValueError):
+    """A memory type that no active pack legalises.
+
+    A ``ValueError`` subclass so that the rejection stays the value error every
+    caller already handles, while an HTTP layer can still single *this* out as a
+    client input error. Nothing else on the write path raises it, which is what
+    makes ``except MemoryTypeRejected -> 422`` honest rather than a catch-all
+    that would relabel any internal ``ValueError`` as a 4xx.
+    """
+
+
+@dataclass(frozen=True)
+class PackMatch:
+    """The pack that legalised a memory type, as persisted on the memory row.
+
+    ``slug`` and ``version`` are the pack's identity and take part in equality;
+    ``types`` is that revision's vocabulary and is excluded from it. A match
+    built without a vocabulary therefore still equals the real thing, so a test
+    can write ``PackMatch("career", 1)`` instead of restating 24 literals --
+    without that, every assertion in the suite that compares a match against a
+    hand-built literal would be restated too.
+
+    Every match ``validate_memory_type`` returns carries the vocabulary of the
+    pack that actually matched. That is the point of keeping it here: the caller
+    stamps provenance *and* its expand-contract version from the pack it was
+    accepted by, so a type contributed by a second domain cannot be labelled by
+    the built-in career vocabulary that merely happens to be imported nearby.
+    """
 
     slug: str
     version: int
+    types: frozenset[str] = field(default=frozenset(), compare=False)
+
+    @property
+    def enterprise_types(self) -> frozenset[str]:
+        """This revision's additive remainder (0027): everything outside the canonical 6.
+
+        Callers ask ``value in match.enterprise_types`` to derive
+        ``taxonomy_version``. The partition helper lives in ``schemas.memory``
+        and is imported lazily because that module imports ``CAREER_TYPES`` from
+        here.
+        """
+        from ..schemas.memory import enterprise_types_for
+
+        return frozenset(enterprise_types_for(set(self.types)))
 
 
-def _invalid(value: str, slugs: tuple[str, ...]) -> ValueError:
+def _invalid(value: str, slugs: tuple[str, ...]) -> MemoryTypeRejected:
     """Build the single rejection error, naming the value and the pack(s).
 
     Naming the packs is the point: the caller's fix is "use a type from one of
     these", which is only actionable if it knows what "these" are.
     """
     named = ", ".join(slugs) if slugs else "none (no active memory type pack is configured)"
-    return ValueError(f"Invalid memory type {value!r}; valid types come from pack(s): {named}")
+    return MemoryTypeRejected(
+        f"Invalid memory type {value!r}; valid types come from pack(s): {named}"
+    )
 
 
 async def _active_packs_or_none(db: AsyncSession) -> list[MemoryTypePack] | None:
@@ -161,11 +212,11 @@ async def validate_memory_type(db: AsyncSession, value: str) -> PackMatch:
     packs = await _active_packs_or_none(db)
     if packs is None:
         if value in CAREER_TYPES:
-            return PackMatch(CAREER_PACK_SLUG, 1)
+            return PackMatch(CAREER_PACK_SLUG, 1, frozenset(CAREER_TYPES))
         raise _invalid(value, (CAREER_PACK_SLUG,))
 
     for pack in packs:
         if value in (pack.types or ()):
-            return PackMatch(pack.slug, pack.version)
+            return PackMatch(pack.slug, pack.version, frozenset(pack.types or ()))
 
     raise _invalid(value, tuple(pack.slug for pack in packs))

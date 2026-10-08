@@ -52,6 +52,7 @@ from api.models.schema import MemoryTypePack
 from api.services.memory_type_packs import (
     CAREER_PACK_SLUG,
     CAREER_TYPES,
+    MemoryTypeRejected,
     PackMatch,
     valid_types,
     validate_memory_type,
@@ -507,6 +508,201 @@ async def test_malformed_registry_result_degrades_instead_of_raising(seeded_pack
     )
     with pytest.raises(ValueError):
         await validate_memory_type(seeded_packs, "not_a_type")
+
+
+# ---------------------------------------------------------------------------
+# Update and supersede: the same guard, and the two ways it must not fire
+# ---------------------------------------------------------------------------
+
+
+async def test_update_memory_rejects_unknown_type(db_session):
+    """0068 dropped the CHECK, so `update_memory` has to enforce the pack itself.
+
+    The negative control is the part that makes it a pack check rather than a
+    blanket refusal: the identical call with a pack member succeeds.
+    """
+    from api.schemas.memory import MemoryCreate, MemoryUpdate
+    from api.services.memory_service import MemoryService
+
+    mem = await MemoryService().create_memory(
+        db_session,
+        MemoryCreate(type="note", title="t", content="body"),
+        tenant_id=None,
+        user_id=None,
+        workspace_id=str(uuid.uuid4()),
+    )
+
+    with pytest.raises(MemoryTypeRejected):
+        await MemoryService().update_memory(
+            db_session, mem.id, MemoryUpdate(type="totally_invalid"), tenant_id=None
+        )
+
+    updated = await MemoryService().update_memory(
+        db_session, mem.id, MemoryUpdate(type="insight"), tenant_id=None
+    )
+    assert updated.type == "insight"
+    # Provenance follows the type: a row whose type moved to another pack
+    # revision must not keep the previous revision stamped on it.
+    assert updated.type_pack_slug == CAREER_PACK_SLUG
+    assert updated.type_pack_version == 1
+
+
+async def test_update_memory_that_does_not_set_type_is_not_revalidated(db_session):
+    """A patch that omits `type` must not read the registry at all.
+
+    This is the `exclude_unset` half of the guard. Memories written before the
+    registry existed carry types no pack offers, and refusing to edit *those*
+    rows would not be validation -- it would make real data unpatchable and
+    report it as a client error. The row here is inserted directly, the way such
+    a row got there: bypassing the write path entirely.
+    """
+    from api.models.schema import Memory
+    from api.schemas.memory import MemoryUpdate
+    from api.services.memory_service import MemoryService
+
+    legacy = Memory(
+        id=uuid.uuid4(),
+        type="pre_registry_type",
+        status="active",
+        title="Old",
+        content_hash="pre-registry-hash",
+        size=0,
+        workspace_id=uuid.uuid4(),
+    )
+    db_session.add(legacy)
+    await db_session.flush()
+
+    # The type on its own is illegal -- that is the premise, not a typo.
+    with pytest.raises(MemoryTypeRejected):
+        await MemoryService().update_memory(
+            db_session, legacy.id, MemoryUpdate(type="pre_registry_type"), tenant_id=None
+        )
+
+    updated = await MemoryService().update_memory(
+        db_session, legacy.id, MemoryUpdate(title="New"), tenant_id=None
+    )
+    assert updated.title == "New"
+    assert updated.type == "pre_registry_type"
+
+
+async def test_supersede_rejects_unknown_type_and_supersede_keeps_legacy_types(db_session):
+    """A supersede is a write: it validates a remapped type, inherits a legacy one."""
+    from api.schemas.memory import MemoryCreate, MemorySupersedeRequest
+    from api.services.memory_service import MemoryService
+
+    svc = MemoryService()
+    mem = await svc.create_memory(
+        db_session,
+        MemoryCreate(type="note", title="t", content="body"),
+        tenant_id=None,
+        user_id=None,
+        workspace_id=str(uuid.uuid4()),
+    )
+
+    with pytest.raises(MemoryTypeRejected):
+        await svc.supersede_memory(
+            db_session,
+            mem.id,
+            MemorySupersedeRequest(reason="remap the type", type="totally_invalid"),
+            tenant_id=None,
+        )
+    # The refusal happens before the status flip, so nothing is half-applied.
+    await db_session.refresh(mem)
+    assert mem.status == "active"
+
+    # An inherited type is not re-validated: superseding a pre-registry row works.
+    from api.models.schema import Memory
+
+    legacy = Memory(
+        id=uuid.uuid4(),
+        type="pre_registry_type",
+        status="active",
+        title="Old",
+        content="old body",
+        content_hash="pre-registry-hash",
+        size=8,
+        workspace_id=uuid.uuid4(),
+    )
+    db_session.add(legacy)
+    await db_session.flush()
+
+    successor = await svc.supersede_memory(
+        db_session,
+        legacy.id,
+        MemorySupersedeRequest(reason="correcting the wording"),
+        tenant_id=None,
+    )
+    assert successor is not None
+    assert successor.type == "pre_registry_type"
+
+
+# ---------------------------------------------------------------------------
+# Expand-contract provenance: the version follows the pack that accepted the type
+# ---------------------------------------------------------------------------
+
+
+async def test_taxonomy_version_follows_the_matching_pack(seeded_packs):
+    """A second domain's type is stamped 2, not the 1 the fallback implied.
+
+    ``taxonomy_version`` used to be derived from ``ENTERPRISE_MEMORY_TYPES``,
+    which is computed from the *built-in fallback* vocabulary. A type a second
+    pack contributes is in neither the canonical 6 nor the career remainder, so
+    the old expression labelled it legacy-canonical (1) -- an expand-contract
+    provenance claim about a type that did not exist when the taxonomy was
+    frozen. Validation and stamping then answered from two different sources.
+
+    The two career assertions are the regression guard: canonical 6 stays 1 and
+    an enterprise addition stays 2, so this is a fix and not a remapping of the
+    whole column.
+    """
+    from api.schemas.memory import MemoryCreate
+    from api.services.memory_service import MemoryService
+
+    seeded_packs.add(
+        MemoryTypePack(
+            slug="medical",
+            version=3,
+            label="Medical",
+            types=["diagnosis", "profile"],
+            is_active=True,
+        )
+    )
+    await seeded_packs.flush()
+
+    svc = MemoryService()
+
+    async def stamp(memory_type: str) -> int:
+        mem = await svc.create_memory(
+            seeded_packs,
+            MemoryCreate(type=memory_type, title="t", content="body"),
+            tenant_id=None,
+            user_id=None,
+            workspace_id=str(uuid.uuid4()),
+        )
+        return mem.taxonomy_version
+
+    # The failure this fixes: legal in the medical pack, stamped legacy.
+    assert await stamp("diagnosis") == 2
+    # Same type name, different pack -- still 2, because the answer now comes
+    # from the pack that accepted it rather than from a career-only constant.
+    assert await stamp("profile") == 1
+    # Unchanged behaviour for the career pack itself.
+    assert await stamp("insight") == 2
+
+
+async def test_pack_match_carries_the_vocabulary_it_matched(seeded_packs):
+    """`PackMatch.types` is what makes the derivation above possible.
+
+    Identity stays (slug, version) -- `PackMatch(CAREER_PACK_SLUG, 1)` must keep
+    equalling a real career match, which is why `types` is excluded from
+    comparison -- while the vocabulary rides along for callers that need to ask
+    whether a value is part of *this* pack's additive remainder.
+    """
+    match = await validate_memory_type(seeded_packs, "insight")
+    assert match == PackMatch(CAREER_PACK_SLUG, 1)
+    assert match.types == frozenset(CAREER_TYPES)
+    assert "insight" in match.enterprise_types
+    assert "profile" not in match.enterprise_types
 
 
 # ---------------------------------------------------------------------------

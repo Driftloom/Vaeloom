@@ -119,8 +119,12 @@ class MemoryService:
                 embedding = None
 
         # CONT-P12 expand-contract: taxonomy_version 1 (legacy 6) vs 2 (expanded 22) — no guess
-        from ..schemas.memory import ENTERPRISE_MEMORY_TYPES
-        taxonomy_version = 2 if dto.type in ENTERPRISE_MEMORY_TYPES else 1
+        # Partitioned from the pack that accepted the type, not from
+        # `ENTERPRISE_MEMORY_TYPES` (which is derived from the built-in fallback
+        # vocabulary): a type a second domain contributes is in neither the
+        # canonical 6 nor the career remainder, and stamping that 1 called
+        # legacy-canonical on provenance the pack table had already accepted.
+        taxonomy_version = 2 if dto.type in pack_match.enterprise_types else 1
         # Lineage: model/prompt/tool/retrieval per CONT-P12-R06 (stored via 0027 lineage JSONB)
         lineage = (dto.metadata or {}).get("lineage") if dto.metadata else None
         if lineage is None:
@@ -308,6 +312,22 @@ class MemoryService:
 
         update_data = dto.model_dump(exclude_unset=True)
 
+        # 0068 dropped `ck_memories_type_valid`, so this is the only guard on the
+        # update path as well -- a PATCH carrying an unrepresentable type would
+        # otherwise land unrepresented and unreported. It runs only when `type` is
+        # actually being rewritten: `exclude_unset` is the whole point, because
+        # re-validating on every patch would make a memory whose stored type
+        # predates the registry unpatchable, and refusing to edit a title is not
+        # validation, it is data loss wearing a validation error's clothes. Runs
+        # before the embedding call so an illegal type costs a registry read.
+        pack_match = None
+        if update_data.get("type") is not None:
+            pack_match = await validate_memory_type(db, update_data["type"])
+            # Re-attribute the row to the pack whose vocabulary now describes it;
+            # otherwise a remapped type keeps the old revision stamped on it.
+            update_data["type_pack_slug"] = pack_match.slug
+            update_data["type_pack_version"] = pack_match.version
+
         if "content" in update_data and update_data["content"] is not None:
             update_data["content"] = sanitize_text(update_data["content"])
             content_for_embedding = update_data.get("content") or memory.content or ""
@@ -330,15 +350,13 @@ class MemoryService:
 
         # Taxonomy provenance: a type remap is exactly what the ledger exists to record.
         new_type = update_data.get("type")
-        if new_type and new_type != old_state.get("type"):
-            from ..schemas.memory import ENTERPRISE_MEMORY_TYPES
-
+        if pack_match is not None and new_type != old_state.get("type"):
             await self._record_taxonomy_change(
                 db,
                 memory_id=memory.id,
                 from_type=str(old_state.get("type") or ""),
                 to_type=str(new_type),
-                taxonomy_version=2 if new_type in ENTERPRISE_MEMORY_TYPES else 1,
+                taxonomy_version=2 if new_type in pack_match.enterprise_types else 1,
                 content_hash=getattr(memory, "content_hash", None),
             )
 
@@ -628,11 +646,24 @@ class MemoryService:
             "metadata": dict(getattr(old_memory, "metadata_", None) or {}),
         }
 
-        # 2. Mark old memory as superseded
+        # 2. Guard the type before touching anything. A supersede is a write and
+        # can carry a type of the caller's choosing, so the registry guards it
+        # too -- but only when a *new* type is actually supplied. Re-validating
+        # an inherited type would make every supersede of a memory written before
+        # the registry impossible, which is the same mistake `update_memory`
+        # avoids by validating only what was set. It runs before the status
+        # mutation below so a rejection leaves no half-applied supersession.
+        pack_match = (
+            await validate_memory_type(db, dto.type)
+            if dto.type is not None and dto.type != old_memory.type
+            else None
+        )
+
+        # 3. Mark old memory as superseded
         old_memory.status = "superseded"
         old_memory.updated_at = datetime.now(UTC)
 
-        # 3. Create successor memory record
+        # 4. Create successor memory record
         new_title = dto.title if dto.title is not None else old_memory.title
         new_summary = dto.summary if dto.summary is not None else old_memory.summary
         new_content = dto.content if dto.content is not None else old_memory.content
@@ -681,25 +712,27 @@ class MemoryService:
             source_type="correction",
             source_label=f"Superseded #{str(old_memory.id)[:8]}: {dto.reason[:60]}",
             supersedes_id=old_memory.id,
+            # Only when the caller remapped the type: otherwise the successor
+            # keeps the provenance NULL it has always had rather than gaining an
+            # unvalidated guess at which pack inherited the vocabulary.
+            type_pack_slug=pack_match.slug if pack_match else None,
+            type_pack_version=pack_match.version if pack_match else None,
         )
         db.add(new_memory)
 
-        # 3b. Taxonomy provenance — a supersede can remap the type, which is
+        # 4b. Taxonomy provenance — a supersede can remap the type, which is
         # exactly the event the ledger exists to record.
-        old_type = getattr(old_memory, "type", None)
-        if new_type and new_type != old_type:
-            from ..schemas.memory import ENTERPRISE_MEMORY_TYPES
-
+        if pack_match is not None:
             await self._record_taxonomy_change(
                 db,
                 memory_id=old_memory.id,
-                from_type=str(old_type or ""),
+                from_type=str(getattr(old_memory, "type", None) or ""),
                 to_type=str(new_type),
-                taxonomy_version=2 if new_type in ENTERPRISE_MEMORY_TYPES else 1,
+                taxonomy_version=2 if new_type in pack_match.enterprise_types else 1,
                 content_hash=new_memory.content_hash,
             )
 
-        # 4. Durable versioning
+        # 5. Durable versioning
         new_state = {
             "title": new_memory.title,
             "summary": new_memory.summary,
@@ -734,7 +767,7 @@ class MemoryService:
         except Exception:
             pass
 
-        # 5. Record agent action / audit event
+        # 6. Record agent action / audit event
         try:
             action = AgentAction(
                 id=uuid.uuid4(),
@@ -753,7 +786,7 @@ class MemoryService:
 
         await db.flush()
 
-        # 6. Sync the vector store. Without this the successor is unreachable by
+        # 7. Sync the vector store. Without this the successor is unreachable by
         # vector search (corrections silently fail) and the predecessor's vector
         # keeps ranking even though it is now 'superseded'.
         try:

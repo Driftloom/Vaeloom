@@ -26,10 +26,31 @@ from ..schemas.memory import (
     MemoryUpdate,
 )
 from ..services.memory_service import memory_service
+from ..services.memory_type_packs import MemoryTypeRejected
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _type_rejected(exc: MemoryTypeRejected) -> HTTPException:
+    """Translate "no active pack offers this type" into a 422.
+
+    422 is the code this endpoint used to return for an unknown type, when
+    ``MemoryCreate.type`` was still a Pydantic ``Literal`` and the request was
+    rejected during parsing. Migration 0068 dropped ``ck_memories_type_valid``
+    and Task 6 widened the field to ``str``, moving the check into the service,
+    where nothing caught it: the request fell through to the generic handler,
+    which answers 500 and logs an exception. A typo in a payload is not a server
+    fault, so it must not spend the 5xx budget or wake anyone up. 422 restores
+    the contract clients were already written against instead of inventing one.
+
+    Mapped per-handler rather than through a global exception handler because the
+    rejection is meaningful only on these three write paths: elsewhere a
+    ``MemoryTypeRejected`` is a bug, and only ``MemoryTypeRejected`` is mapped,
+    so an unrelated internal ``ValueError`` still surfaces as the 500 it is.
+    """
+    return HTTPException(status_code=422, detail=str(exc))
 
 
 async def check_user_workspace_access(
@@ -410,7 +431,12 @@ async def create_memory(
             )
 
     target_ws_uuid = uuid.UUID(str(target_ws))
-    memory = await memory_service.create_memory(db, dto, tenant_id, user_id, workspace_id=target_ws_uuid)
+    try:
+        memory = await memory_service.create_memory(
+            db, dto, tenant_id, user_id, workspace_id=target_ws_uuid
+        )
+    except MemoryTypeRejected as exc:
+        raise _type_rejected(exc) from exc
     return MemoryResponse.model_validate(memory)
 
 
@@ -633,7 +659,12 @@ async def update_memory(
             status_code=403,
             detail="Forbidden: Memory does not belong to specified workspace",
         )
-    updated = await memory_service.update_memory(db, memory_id, dto, tenant_id, str(memory.workspace_id))
+    try:
+        updated = await memory_service.update_memory(
+            db, memory_id, dto, tenant_id, str(memory.workspace_id)
+        )
+    except MemoryTypeRejected as exc:
+        raise _type_rejected(exc) from exc
     if not updated:
         raise HTTPException(status_code=404, detail="Memory not found")
     return MemoryResponse.model_validate(updated)
@@ -702,14 +733,17 @@ async def supersede_memory(
             detail="Forbidden: Memory does not belong to specified workspace",
         )
 
-    new_memory = await memory_service.supersede_memory(
-        db=db,
-        memory_id=memory_id,
-        dto=dto,
-        tenant_id=tenant_id,
-        workspace_id=str(target_ws) if target_ws else None,
-        user_id=str(user_id) if user_id else None,
-    )
+    try:
+        new_memory = await memory_service.supersede_memory(
+            db=db,
+            memory_id=memory_id,
+            dto=dto,
+            tenant_id=tenant_id,
+            workspace_id=str(target_ws) if target_ws else None,
+            user_id=str(user_id) if user_id else None,
+        )
+    except MemoryTypeRejected as exc:
+        raise _type_rejected(exc) from exc
     if not new_memory:
         raise HTTPException(status_code=404, detail="Failed to supersede memory")
     return MemoryResponse.model_validate(new_memory)

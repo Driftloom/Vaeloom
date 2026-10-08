@@ -151,3 +151,124 @@ class TestMemoryApi:
         assert body["total"] >= 5
         assert body["page"] == 1
         assert body["page_size"] == 2
+
+
+class TestMemoryTypeRejectionStatus:
+    """An unknown memory type is a 422, never a 500.
+
+    Migration 0068 dropped ``ck_memories_type_valid`` and Task 6 widened
+    ``MemoryCreate.type`` from a Pydantic ``Literal`` to ``str``, moving the
+    check into ``validate_memory_type``. That removed the 422 the field used to
+    produce during request parsing and left the ``ValueError`` uncaught on its
+    way to the generic exception handler -- which answers 500, logs an
+    exception, and spends a 5xx on a typo in a payload.
+
+    422 is pinned here because it is the code these endpoints returned before
+    the schema was widened. Both the create and the update path are covered,
+    and both are asserted against that same exact code: a client that gets 422
+    on create and 400 (or 500) on update has learned nothing it can act on.
+    """
+
+    async def test_create_with_unknown_type_is_422(self, client: AsyncClient, auth_headers: dict):
+        res = await client.post(
+            "/api/v1/memories",
+            json={"type": "not_a_real_type", "title": "Bad Type"},
+            headers=auth_headers,
+        )
+        assert res.status_code == 422
+        # The message must survive the translation: it is the only thing telling
+        # the caller which value was refused and which pack to take it from.
+        assert "not_a_real_type" in str(res.json()["detail"])
+
+    async def test_create_with_valid_type_still_201(self, client: AsyncClient, auth_headers: dict):
+        """Negative control: 422 above must track the pack, not the endpoint."""
+        res = await client.post(
+            "/api/v1/memories",
+            json={"type": "note", "title": "Good Type"},
+            headers=auth_headers,
+        )
+        assert res.status_code == 201
+
+    async def test_update_with_unknown_type_is_422(self, client: AsyncClient, auth_headers: dict):
+        created = await client.post(
+            "/api/v1/memories",
+            json={"type": "note", "title": "Type Remap Target"},
+            headers=auth_headers,
+        )
+        assert created.status_code == 201
+        mid = created.json()["id"]
+
+        res = await client.put(
+            f"/api/v1/memories/{mid}",
+            json={"type": "not_a_real_type"},
+            headers=auth_headers,
+        )
+        assert res.status_code == 422
+        assert "not_a_real_type" in str(res.json()["detail"])
+
+        # The refusal must be a refusal, not a partial write.
+        after = await client.get(f"/api/v1/memories/{mid}", headers=auth_headers)
+        assert after.status_code == 200
+        assert after.json()["type"] == "note"
+
+    async def test_update_with_valid_type_is_200(self, client: AsyncClient, auth_headers: dict):
+        created = await client.post(
+            "/api/v1/memories",
+            json={"type": "note", "title": "Remap Me"},
+            headers=auth_headers,
+        )
+        mid = created.json()["id"]
+
+        res = await client.put(
+            f"/api/v1/memories/{mid}",
+            json={"type": "insight"},
+            headers=auth_headers,
+        )
+        assert res.status_code == 200
+        assert res.json()["type"] == "insight"
+
+    async def test_update_omitting_type_still_200(self, client: AsyncClient, auth_headers: dict):
+        """A patch that never mentions `type` must not read the registry.
+
+        This is the whole reason the update guard is conditional. If validation
+        ran on every patch, a memory whose stored type predates the pack table
+        would become uneditable, and the refusal would look like validation
+        while actually being the loss of unrelated data.
+        """
+        created = await client.post(
+            "/api/v1/memories",
+            json={"type": "note", "title": "Title Before"},
+            headers=auth_headers,
+        )
+        mid = created.json()["id"]
+
+        res = await client.put(
+            f"/api/v1/memories/{mid}",
+            json={"title": "Title After"},
+            headers=auth_headers,
+        )
+        assert res.status_code == 200
+        assert res.json()["title"] == "Title After"
+        assert res.json()["type"] == "note"
+
+    async def test_supersede_with_unknown_type_is_422(self, client: AsyncClient, auth_headers: dict):
+        """A supersede writes a successor row and can remap its type."""
+        created = await client.post(
+            "/api/v1/memories",
+            json={"type": "note", "title": "Supersede Target", "content": "v1"},
+            headers=auth_headers,
+        )
+        mid = created.json()["id"]
+
+        res = await client.post(
+            f"/api/v1/memories/{mid}/supersede",
+            json={"reason": "correcting the type", "type": "not_a_real_type"},
+            headers=auth_headers,
+        )
+        assert res.status_code == 422
+        assert "not_a_real_type" in str(res.json()["detail"])
+
+        # Nothing may be half-superseded by the refusal: the original survives.
+        after = await client.get(f"/api/v1/memories/{mid}", headers=auth_headers)
+        assert after.status_code == 200
+        assert after.json()["status"] == "active"

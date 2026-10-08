@@ -93,7 +93,10 @@ class MemoryCreate(BaseModel):
 
 
 class MemoryUpdate(BaseModel):
-    type: str | None = Field(None, min_length=1, max_length=100, description="22 types allowed; see 0027 ck_memories_type_valid")
+    # `max_length` matches `memories.type`'s column width, as `MemoryCreate`'s
+    # already did: 100 here admitted a value the column then truncated or
+    # rejected, which is a 500 from the driver rather than a 422 from here.
+    type: str | None = Field(None, min_length=1, max_length=50, description="A memory type from an active domain pack; validated against memory_type_packs at write time (0068) only when this field is set")
     taxonomy_version: int | None = Field(None, ge=1, le=2, description="expand-contract version 1=legacy 6, 2=expanded 22")
     lineage: dict[str, Any] | None = Field(None, description="model/prompt/tool/retrieval lineage per CONT-P12-R06")
     confidence: float | None = Field(None, ge=0.0, le=1.0, description="contradiction/confidence per WS-12.2 task 4")
