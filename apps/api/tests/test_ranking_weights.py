@@ -192,8 +192,172 @@ async def test_select_is_limited_to_one_row(monkeypatch):
     monkeypatch.delenv("RANKING_WEIGHTS", raising=False)
     db = _RealResultDb([])
     await rw.effective_weights(db, "ws", "u")
-    assert len(db.statements) == 1
-    assert "LIMIT 1" in db.statements[0].upper()
+    selects = [s for s in db.statements if s.lstrip().upper().startswith("SELECT")]
+    assert len(selects) == 1, f"expected exactly one SELECT, got {db.statements}"
+    assert "LIMIT 1" in selects[0].upper()
+
+
+# ─── provisioning: the learned tier is reachable ──────────────────────────────
+#
+# Review finding I1: 0067 seeded nothing, nothing else inserted a row, and
+# `record_feedback_signal` returns early when no profile exists *by design*. So
+# `effective_weights` always took `row is None -> _fallback_weights()`, the DB
+# tier was unreachable, and the learner could never move a weight. Deploy 1 was
+# inert while its docs claimed SEC-P2-01 resolved. The tests below are the proof
+# it is no longer inert: the resolver provisions the caller's own row, and once
+# it exists the learner can move it.
+
+
+async def test_resolution_bootstraps_the_callers_profile(monkeypatch):
+    """A user who has never ranked gets a profile on their first rank call.
+
+    Asserted on the row itself, not on the returned weights: provisioning could
+    return the right weights while writing nothing, and the returned weights are
+    the fallback either way. Only the row makes the learned tier reachable.
+    """
+    monkeypatch.delenv("RANKING_WEIGHTS", raising=False)
+    ws, user = uuid.uuid4(), uuid.uuid4()
+    db = _RealResultDb([])
+
+    out = await rw.effective_weights(db, "ws", str(user))
+
+    assert out == rw.DEFAULT_WEIGHTS, "the first call must still return the fallback"
+    inserts = [s for s in db.statements if s.lstrip().upper().startswith("INSERT")]
+    assert len(inserts) == 1, f"expected exactly one INSERT, got {db.statements}"
+    assert "ON CONFLICT" in inserts[0].upper(), (
+        "provisioning sits on the read path, so a concurrent duplicate must "
+        "conflict against the UNIQUE (workspace_id, user_id) constraint"
+    )
+
+
+async def test_provisioning_is_seeded_from_the_resolved_fallback(monkeypatch):
+    """The provisioned row must hold the weights that were just served.
+
+    Otherwise provisioning silently reverts the user: with RANKING_WEIGHTS set,
+    the first rank call returns the env weights and every call after it returns
+    the column defaults (0.4/0.3/0.2/0.1). That is a ranking change with no
+    learning behind it, caused by nothing the user did.
+    """
+    monkeypatch.setenv("RANKING_WEIGHTS", _ENV_ALL_FOUR)
+    db = _db_returning(None)
+
+    out = await rw.effective_weights(db, "ws", "u")
+
+    assert out == {
+        "relevance": 0.5, "recency": 0.2, "importance": 0.2, "user_preference": 0.1
+    }, "precondition: the env weights are what this call served"
+    params = db.execute.await_args_list[-1].args[1]
+    assert {k: float(params[k]) for k in rw.WEIGHT_KEYS} == out, (
+        "the row must be seeded with the same weights the caller was served"
+    )
+
+
+async def test_provisioning_failure_does_not_break_resolution(monkeypatch):
+    """A refused provisioning write must still resolve.
+
+    0067's policy has a WITH CHECK, so a session without the right GUCs is
+    rejected with SQLSTATE 42501; a pre-0067 database has no table at all.
+    Neither is a ranking outage, and neither may escape as an exception --
+    `effective_weights` is documented never to raise and both call sites rely on it.
+    """
+    monkeypatch.delenv("RANKING_WEIGHTS", raising=False)
+    calls = {"n": 0}
+
+    async def _execute(stmt, params=None):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return _db_returning(None).execute.return_value
+        raise RuntimeError("new row violates row-level security policy")
+
+    db = AsyncMock()
+    db.execute = AsyncMock(side_effect=_execute)
+
+    out = await rw.effective_weights(db, "ws", "u")
+
+    assert out == rw.DEFAULT_WEIGHTS
+    assert calls["n"] == 2, "the read must still be attempted, and then the write"
+
+
+async def test_learned_weights_become_reachable_after_provisioning(db_session, monkeypatch):
+    """End-to-end: resolve -> rate -> the next resolve sees the learned weight.
+
+    This is the test I1 actually needed and did not have. Every other test in
+    this file either seeds the profile by hand (`_seed_profile`) or asserts on
+    the fallback, so the whole branch passed while the only thing the feature
+    claims to do -- learning something -- was unreachable. Here the row is
+    created only by the resolver, and the learner moves it.
+    """
+    monkeypatch.delenv("RANKING_WEIGHTS", raising=False)
+    ws, user = str(uuid.uuid4()), str(uuid.uuid4())
+    await db_session.execute(text(_feedback_ddl()))
+
+    # 1. First rank call: nothing exists, so the fallback is served and the row
+    #    is provisioned for this exact (workspace, user).
+    first = await rw.effective_weights(db_session, ws, user)
+    assert first == rw.DEFAULT_WEIGHTS
+
+    rows = (await db_session.execute(
+        select(RankingWeightProfile).where(
+            RankingWeightProfile.workspace_id == ws,
+            RankingWeightProfile.user_id == user,
+        )
+    )).scalars().all()
+    assert len(rows) == 1, "the resolver must have provisioned exactly one row"
+    assert float(rows[0].user_preference) == rw.DEFAULT_WEIGHTS["user_preference"]
+
+    # 2. Rate everything useful, enough to clear MIN_SAMPLES.
+    await _add_feedback(db_session, user, useful=True, count=20)
+    await rw.record_feedback_signal(
+        db_session, user_id=user, workspace_id=ws, useful=True
+    )
+
+    # 3. The next rank call must serve the learned weight, not the default.
+    learned = await rw.effective_weights(db_session, ws, user)
+    assert learned["user_preference"] > rw.DEFAULT_WEIGHTS["user_preference"], (
+        "after 20/20 useful signals the DB tier must win; if this is the "
+        "default, provisioning never wrote a row the learner could find"
+    )
+
+
+async def test_repeated_resolution_does_not_duplicate_the_row(db_session, monkeypatch):
+    """Second and third rank calls must not add rows.
+
+    Provisioning runs on every cold resolution, so the ON CONFLICT clause is what
+    keeps a user's profile count at one. Asserted on the count because the
+    weights would be identical either way.
+    """
+    monkeypatch.delenv("RANKING_WEIGHTS", raising=False)
+    ws, user = str(uuid.uuid4()), str(uuid.uuid4())
+    for _ in range(3):
+        await rw.effective_weights(db_session, ws, user)
+
+    count = (await db_session.execute(
+        select(RankingWeightProfile).where(RankingWeightProfile.workspace_id == ws)
+    )).scalars().all()
+    assert len(count) == 1
+
+
+async def test_provisioning_never_writes_across_workspaces(db_session, monkeypatch):
+    """The provisioned row is the caller's own, in the caller's own workspace.
+
+    The key is (workspace_id, user_id), so the same user ranking in two
+    workspaces gets two rows rather than one row shared by both. Asserted
+    because a narrower key (user_id alone) is the plausible mistake here, and it
+    would let one workspace's learned weights steer another's ranking.
+    """
+    monkeypatch.delenv("RANKING_WEIGHTS", raising=False)
+    user = str(uuid.uuid4())
+    ws_a, ws_b = str(uuid.uuid4()), str(uuid.uuid4())
+
+    await rw.effective_weights(db_session, ws_a, user)
+    await rw.effective_weights(db_session, ws_b, user)
+
+    per_ws = (await db_session.execute(
+        select(RankingWeightProfile.workspace_id).where(
+            RankingWeightProfile.user_id == user
+        )
+    )).scalars().all()
+    assert set(str(w) for w in per_ws) == {ws_a, ws_b}
 
 
 # ─── learning arithmetic ───────────────────────────────────────────────────
@@ -223,8 +387,23 @@ def test_compute_even_rate_holds_steady():
 
 
 async def test_record_feedback_without_profile_is_noop(db_session, monkeypatch):
-    """Review Focus #2: a rating from a user who never ranked must not create
-    a phantom profile."""
+    """The *rating* must not create a profile; the *rank* path provisions it.
+
+    Revisited by the whole-branch review rather than deleted. The assertion is
+    unchanged and still true, but the reason it was written is no longer the
+    whole story: previously this test encoded that nothing anywhere creates a
+    profile, which is exactly the defect (I1 -- the learned tier was unreachable
+    because of it). Provisioning now happens in `effective_weights`
+    (`provision_profile`), so the division of labour is:
+
+      * rank  -> provisions the caller's own `(workspace_id, user_id)` row
+      * rating -> only ever updates a row that already exists
+
+    Keeping the learner non-creating is worth pinning: it is what stops a rating
+    that arrives with a workspace but no ranking history from minting a profile,
+    and it is what keeps the provisioning path the single place a row can
+    originate.
+    """
     ws = str(uuid.uuid4())
     await rw.record_feedback_signal(
         db_session, user_id=str(uuid.uuid4()), workspace_id=ws, useful=True
@@ -232,7 +411,7 @@ async def test_record_feedback_without_profile_is_noop(db_session, monkeypatch):
     rows = (await db_session.execute(
         select(RankingWeightProfile).where(RankingWeightProfile.workspace_id == ws)
     )).scalars().all()
-    assert rows == [], "must not invent a profile for a user with no ranking history"
+    assert rows == [], "the rating path must not invent a profile of its own"
 
 
 async def test_record_feedback_failure_does_not_raise(db_session, monkeypatch):

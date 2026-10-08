@@ -1,7 +1,7 @@
 """CONT-P12: Agent/Model/Retrieval/Memory taxonomy expand-contract tests."""
 
 import pytest
-from api.schemas.memory import MemoryType, ENTERPRISE_MEMORY_TYPES, CANONICAL_6
+from api.schemas.memory import ENTERPRISE_MEMORY_TYPES, CANONICAL_6
 from api.services.prompt_registry import prompt_registry
 from api.services.agent_runtime import agent_runtime
 from api.services.agent_eval import eval_harness
@@ -15,11 +15,16 @@ def test_memory_taxonomy_22_types():
     assert len(ENTERPRISE_MEMORY_TYPES) == 16
     # All enterprise types should be distinct from canonical
     assert CANONICAL_6.isdisjoint(ENTERPRISE_MEMORY_TYPES)
-    # Check literals include new types
-    from typing import get_args
-    types = set(get_args(MemoryType.__value__) if hasattr(MemoryType, "__value__") else get_args(MemoryType))
-    # fallback: check string representation contains enterprise
-    assert "project" in str(MemoryType) or "project" in types or True  # validator checks Literal
+    # The type vocabulary itself is NOT asserted here. `MemoryType` is `str`
+    # (migration 0068 made the vocabulary a domain pack in the database, not a
+    # Literal), so `get_args(MemoryType)` is empty and the only real coverage of
+    # the union is
+    # tests/test_memory_type_packs.py::test_seeded_career_pack_matches_constant
+    # plus `scripts/gen_memory_type_union.py --check`. A `get_args` check plus an
+    # `or True` tail used to sit here: it read as coverage of the type list while
+    # asserting nothing at all, which is worse than no check. What remains below
+    # is what is actually true of the schema — that a canonical and an
+    # enterprise type both construct.
     # Validate creation with enterprise type does not 422
     from api.schemas.memory import MemoryCreate
     import uuid

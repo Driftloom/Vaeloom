@@ -47,6 +47,8 @@ class MemoryService:
         taxonomy_version: int,
         content_hash: str | None = None,
         migration_wave: str = "CONT-P12",
+        pack_slug: str | None = None,
+        pack_version: int | None = None,
     ) -> None:
         """Append one provenance row to `memory_taxonomy_ledger`.
 
@@ -54,6 +56,13 @@ class MemoryService:
         expand-contract taxonomy change had no audit trail. Best-effort: provenance
         must never fail the user's write. Only ids, type names and a checksum are
         stored -- never memory content.
+
+        ``pack_slug``/``pack_version`` record *which pack revision authorised this
+        remap* (migration 0068's ``metadata`` column). They are what make the
+        ledger an append-only record rather than a log of type names: once a pack
+        is re-versioned, "the type changed" is no longer answerable from the
+        taxonomy alone, and a ledger that cannot name the authorising pack is
+        indistinguishable from one that never checked.
         """
         if not from_type or not to_type or from_type == to_type:
             return
@@ -70,6 +79,18 @@ class MemoryService:
                     taxonomy_version=taxonomy_version,
                     migration_wave=migration_wave,
                     checksum=checksum,
+                    # Omit the keys entirely rather than writing nulls: an absent
+                    # pack reference (a caller that did not validate) and a pack
+                    # explicitly recorded as unknown are different facts, and a
+                    # reader must be able to tell them apart.
+                    metadata_=(
+                        {
+                            "type_pack_slug": pack_slug,
+                            "type_pack_version": pack_version,
+                        }
+                        if pack_slug is not None
+                        else None
+                    ),
                 )
             )
         except Exception as e:
@@ -358,6 +379,10 @@ class MemoryService:
                 to_type=str(new_type),
                 taxonomy_version=2 if new_type in pack_match.enterprise_types else 1,
                 content_hash=getattr(memory, "content_hash", None),
+                # Guarded by `pack_match is not None` on the line above, so the
+                # authorising pack is always known here rather than inferred.
+                pack_slug=pack_match.slug,
+                pack_version=pack_match.version,
             )
 
         # Durable version row BEFORE flush so single flush persists both (keeps test flush count=1)
@@ -659,6 +684,26 @@ class MemoryService:
             else None
         )
 
+        # Provenance for the successor, which is NOT the same question as "which
+        # pack did the caller newly supply?". When the caller supplied a new
+        # type, `pack_match` is the authority. When the type is inherited
+        # (`dto.type` absent, or equal to the old row's), the predecessor's own
+        # stamp is -- otherwise a supersede of a backfilled row would blank the
+        # `career`/1 that 0068 put there and the successor would be the only
+        # link in the chain with no attributable vocabulary.
+        #
+        # This is the divergence the whole-branch review flagged: on the SAME
+        # input, `update_memory` re-validates and re-stamps, while supersede
+        # previously passed `type_pack_slug=None`. Two writers of one field
+        # disagreeing is not an accepted asymmetry; the asymmetry here is only
+        # justified between *supplying* and *inheriting* a type.
+        if pack_match is not None:
+            successor_slug = pack_match.slug
+            successor_version = pack_match.version
+        else:
+            successor_slug = getattr(old_memory, "type_pack_slug", None)
+            successor_version = getattr(old_memory, "type_pack_version", None)
+
         # 3. Mark old memory as superseded
         old_memory.status = "superseded"
         old_memory.updated_at = datetime.now(UTC)
@@ -712,11 +757,11 @@ class MemoryService:
             source_type="correction",
             source_label=f"Superseded #{str(old_memory.id)[:8]}: {dto.reason[:60]}",
             supersedes_id=old_memory.id,
-            # Only when the caller remapped the type: otherwise the successor
-            # keeps the provenance NULL it has always had rather than gaining an
-            # unvalidated guess at which pack inherited the vocabulary.
-            type_pack_slug=pack_match.slug if pack_match else None,
-            type_pack_version=pack_match.version if pack_match else None,
+            # From the pack that legalised the type: the one the caller just
+            # supplied a new one for, or the predecessor's own stamp when the
+            # type was inherited. Never a literal slug.
+            type_pack_slug=successor_slug,
+            type_pack_version=successor_version,
         )
         db.add(new_memory)
 
@@ -730,6 +775,10 @@ class MemoryService:
                 to_type=str(new_type),
                 taxonomy_version=2 if new_type in pack_match.enterprise_types else 1,
                 content_hash=new_memory.content_hash,
+                # Same: this branch only runs when the caller supplied a NEW type,
+                # so `pack_match` is the pack that authorised the remap.
+                pack_slug=pack_match.slug,
+                pack_version=pack_match.version,
             )
 
         # 5. Durable versioning

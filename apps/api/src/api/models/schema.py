@@ -519,6 +519,16 @@ class MemoryTaxonomyLedger(Base):
     taxonomy_version: Mapped[int] = mapped_column(Integer, nullable=False)
     migration_wave: Mapped[str] = mapped_column(String(50), default="CONT-P12")
     checksum: Mapped[str] = mapped_column(String(64), nullable=False)
+    # Which domain pack revision authorised this remap (migration 0068), as
+    # {"type_pack_slug": ..., "type_pack_version": ...}. Without it the ledger
+    # records *that* a type changed but not *what made it legal*, which is the
+    # one fact that stops being recoverable once a pack is re-versioned.
+    #
+    # The attribute is `metadata_` because `metadata` is reserved on a
+    # declarative class (`Base.metadata` is the MetaData); the database column
+    # is `metadata`, matching `Memory.metadata_`. Nullable, so rows written
+    # before 0068 carry no pack reference rather than a fabricated one.
+    metadata_: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (Index("idx_taxonomy_ledger_memory", "memory_id"),)

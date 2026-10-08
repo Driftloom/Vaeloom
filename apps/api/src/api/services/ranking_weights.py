@@ -7,6 +7,29 @@ created by a later migration; until then (and on any query failure) resolution
 degrades to the env/default pair rather than raising, because a ranking outage
 must never break the caller.
 
+The learned tier is provisioned, not merely read
+----------------------------------------------
+Resolution is also where a profile row first comes into existence, because it is
+the only path that always runs: the learner in ``record_feedback_signal``
+deliberately refuses to create rows (see its docstring), so without a writer on
+this side the DB tier is unreachable forever and every caller silently receives
+env/default weights. The whole-branch review caught exactly that -- 0067 seeded
+nothing, nothing inserted a row, and ``row is None -> _fallback_weights()`` was
+the only reachable outcome. A learned feature that cannot activate is not a
+learned feature.
+
+The row is the caller's *own* profile, keyed ``(workspace_id, user_id)``, so
+provisioning it invents nothing on anybody's behalf -- there is no workspace-wide
+or shared row for it to collide with, and ``UNIQUE (workspace_id, user_id)``
+makes a duplicate race between two concurrent rank calls a no-op rather than a
+second profile.
+
+It is seeded with the values the fallback was about to return, so the first
+resolution returns exactly what the fallback would have and the second returns
+exactly what the first did. ``RANKING_WEIGHTS`` therefore still governs until
+the learner has something to say, and provisioning never changes a user's
+ranking on its own.
+
 The learning half at the bottom of this module follows the same rule from the
 other direction: it reads and writes the profile table, but it is best-effort
 and swallows its own failures, because failing to learn must never cost the
@@ -16,6 +39,7 @@ user a feedback write that already succeeded.
 import json
 import logging
 import os
+import uuid
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,6 +65,34 @@ _PROFILES_TABLE = "ranking_weight_profiles"
 
 # Table the feedback signal is aggregated from. Owned by 0002, not by this task.
 _FEEDBACK_TABLE = "recommendation_feedback"
+
+# Provisioning statement for a caller who has no profile yet.
+#
+# ON CONFLICT (workspace_id, user_id) DO NOTHING is what makes the write safe to
+# place on the read path: two concurrent rank calls both observe zero rows and
+# both try to provision, and the loser does nothing rather than raising
+# UniqueViolation. It is not an error-swallowing clause -- the constraint is
+# still there, it is just consulted instead of enforced.
+#
+# `tenant_id` is NOT NULL but unread (no policy or query in this module reads
+# it), so it is derived rather than threaded through: `app_tenant_for_workspace`
+# is the SECURITY DEFINER helper `database.scoped_session` already uses to scope
+# a session to a workspace. It resolves from the workspace's owning user, and
+# returns NULL for a workspace that has none -- which makes the INSERT fail the
+# NOT NULL and be contained below. Failing to provision is not a ranking
+# failure, so that is the correct outcome.
+_BOOTSTRAP_SQL = f"""
+    INSERT INTO {_PROFILES_TABLE} (
+        id, tenant_id, workspace_id, user_id,
+        relevance, recency, importance, user_preference, sample_size
+    ) VALUES (
+        :id,
+        app_tenant_for_workspace(:workspace_id),
+        :workspace_id, :user_id,
+        :relevance, :recency, :importance, :user_preference, 0
+    )
+    ON CONFLICT (workspace_id, user_id) DO NOTHING
+"""
 
 # ── learning arithmetic ──────────────────────────────────────────────────────
 #
@@ -116,8 +168,12 @@ async def record_feedback_signal(
     SQLSTATE 42501 -- which, being swallowed here, would read as "learning is
     silently broken" rather than as a permission error.
 
-    No profile is created. A rating from a user who has never ranked must not
-    invent a workspace-wide profile that then outranks nobody's real one.
+    No profile is created *here*. Provisioning lives in ``effective_weights``
+    (``provision_profile``), which is the path that always runs; doing it from
+    the rating side instead would mean a user who never ranks never gets a
+    profile, and the learner would only ever be able to update rows it had
+    somehow obtained. The row is keyed ``(workspace_id, user_id)``, so the
+    caller's own profile is the only thing this can ever address.
 
     ``recommendation_feedback`` has no ``workspace_id`` column (0002), so the
     aggregate is scoped by ``user_id`` alone. That cross-workspace imprecision
@@ -215,13 +271,61 @@ def _fallback_weights() -> dict[str, float]:
     return env_weights() or dict(DEFAULT_WEIGHTS)
 
 
+async def provision_profile(
+    db: AsyncSession, workspace_id: str, user_id: str, weights: dict[str, float]
+) -> bool:
+    """Write the caller's own profile row if it is missing. Best-effort.
+
+    Returns True when the row is (now) present. A failure is logged at debug and
+    reported as False rather than raised: the caller already has the weights it
+    was going to use, so the only consequence of not provisioning is that the
+    next rank call tries again.
+
+    The two failure modes worth naming, because both are contained here and
+    neither is a ranking outage:
+
+    * **RLS ``WITH CHECK`` (SQLSTATE 42501).** 0067's policy governs the write as
+      well as the read, so provisioning only succeeds when the session already
+      carries the workspace and user scope -- which it does on every path that
+      resolved weights in the first place, because ``effective_weights`` refuses
+      to look up a profile without a ``user_id`` and the rank path opens its
+      session with that same ``user_id``.
+    * **The table not existing.** A database that predates 0067 cannot be
+      provisioned into. It also cannot be read from, so it is already on the
+      fallback path before this is reached.
+
+    ``weights`` is seeded verbatim rather than left to the column defaults so
+    that provisioning is behaviour-preserving: with no ``RANKING_WEIGHTS`` set the
+    defaults are what the columns already hold, and with it set the row starts
+    from the env values instead of silently reverting the user to 0.4/0.3/0.2/0.1
+    on their second rank call.
+    """
+    try:
+        await db.execute(
+            text(_BOOTSTRAP_SQL),
+            {
+                "id": str(uuid.uuid4()),
+                "workspace_id": workspace_id,
+                "user_id": user_id,
+                **{key: float(weights[key]) for key in WEIGHT_KEYS},
+            },
+        )
+        return True
+    except Exception as exc:  # noqa: BLE001 - provisioning must never break ranking
+        logger.debug(f"Ranking weight profile provisioning skipped: {exc}")
+        return False
+
+
 async def effective_weights(
     db: AsyncSession, workspace_id: str, user_id: str | None
 ) -> dict[str, float]:
     """Resolve the active weight set. Never raises.
 
     A DB failure is not a ranking failure: it is logged at debug and the
-    env/default pair is returned instead.
+    env/default pair is returned instead. A *missing* row is not a failure at
+    all -- it is the first rank call for this user in this workspace, so the
+    row is provisioned (see the module docstring) and the fallback pair is
+    returned unchanged.
     """
     if not user_id:
         return _fallback_weights()
@@ -244,7 +348,9 @@ async def effective_weights(
         return _fallback_weights()
 
     if row is None:
-        return _fallback_weights()
+        fallback = _fallback_weights()
+        await provision_profile(db, workspace_id, user_id, fallback)
+        return fallback
 
     try:
         return {key: float(row[key]) for key in WEIGHT_KEYS}

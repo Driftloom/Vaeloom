@@ -94,6 +94,7 @@ depends_on: str | Sequence[str] | None = None
 
 _TABLE = "memory_type_packs"
 _MEMORY = "memories"
+_LEDGER = "memory_taxonomy_ledger"
 _POLICY = "p_memory_type_packs_service"
 _CHECK = "ck_memories_type_valid"
 
@@ -246,6 +247,19 @@ def upgrade() -> None:
     run(f"ALTER TABLE {_MEMORY} ADD COLUMN IF NOT EXISTS type_pack_slug VARCHAR(64)")
     run(f"ALTER TABLE {_MEMORY} ADD COLUMN IF NOT EXISTS type_pack_version INTEGER")
 
+    # 4b. Ledger provenance. The ledger (0027) is the append-only record of every
+    # type remap, and without this it cannot say *which pack revision* authorised
+    # the change -- so the one table whose whole job is provenance would be
+    # silent on the only fact that changes when a pack is re-versioned. JSONB
+    # rather than two more columns because the spec's promise is a `metadata_`
+    # bag, because the key set is expected to grow with the packs, and because a
+    # nullable document costs nothing on a table that is write-once and read
+    # during audit.
+    #
+    # IF NOT EXISTS (resumable) and nullable (no table rewrite, and pre-0068 rows
+    # legitimately have no pack reference). ``downgrade`` drops it again.
+    run(f"ALTER TABLE {_LEDGER} ADD COLUMN IF NOT EXISTS metadata JSONB")
+
     # 5. Backfill. Only rows that have no pack yet, so a rerun does not stamp
     # rows that were written under a *different* pack after the first run.
     result = bind.execute(
@@ -373,6 +387,10 @@ def downgrade() -> None:
     # 2. Provenance columns, IF EXISTS so a rerun past a partial failure works.
     run(f"ALTER TABLE {_MEMORY} DROP COLUMN IF EXISTS type_pack_version")
     run(f"ALTER TABLE {_MEMORY} DROP COLUMN IF EXISTS type_pack_slug")
+    # The ledger's pack reference goes with them, for the same reason and because
+    # leaving it behind would describe a pack system this revision has just
+    # removed.
+    run(f"ALTER TABLE {_LEDGER} DROP COLUMN IF EXISTS metadata")
 
     # 3. Drop the policy before the table, so no window exists in which the table
     #    survives without a policy -- which is exactly what _assert_coverage

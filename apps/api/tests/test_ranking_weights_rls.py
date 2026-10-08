@@ -110,9 +110,24 @@ async def test_other_workspace_profile_not_returned(db_session):
         select(RankingWeightProfile).where(RankingWeightProfile.workspace_id == ws_b)
     )).scalars().all()
     assert len(scoped) == 1, "workspace B must see its own profile"
-    assert not (await db_session.execute(
+
+    # NOTE: workspace A is NOT expected to be empty. Since the whole-branch
+    # review's I1 fix, `effective_weights` provisions the caller's own row on
+    # first resolution, so resolving for workspace A legitimately leaves one row
+    # there -- the caller's, freshly written by this very call. The property
+    # under test is that it is *not* workspace B's seeded row, which is a
+    # stronger and more meaningful assertion than an empty count: it fails if
+    # the lookup ever crosses workspaces, and it also fails if provisioning
+    # silently stops happening.
+    in_a = (await db_session.execute(
         select(RankingWeightProfile).where(RankingWeightProfile.workspace_id == ws_a)
-    )).scalars().all(), "workspace A must see zero profiles"
+    )).scalars().all()
+    assert all(row.user_preference != 0.45 for row in in_a), (
+        "workspace A must not contain workspace B's seeded profile"
+    )
+    assert [row.id for row in in_a] != [row.id for row in scoped], (
+        "workspace A's rows and workspace B's rows must be distinct rows"
+    )
 
 
 async def test_other_user_profile_not_returned(db_session):
@@ -296,6 +311,67 @@ async def test_policy_uses_column_cast_not_setting_cast():
     assert "FROM workspace_users wu" in predicate
 
 
+async def test_policy_constrains_the_user_not_only_the_workspace():
+    """The spec asks for a workspace predicate *plus* a user-scope predicate.
+
+    0062's shape -- which this policy is transcribed from -- is workspace-only,
+    because ``workspace_capabilities`` has no per-user dimension. This table's
+    unit *is* one user's profile, so workspace scope alone would let any member
+    of a workspace read every co-member's learned weights. The resolver filters
+    ``user_id`` in its own WHERE, which is why nothing leaks today and also why
+    nothing would catch it: the application filtering a column is not an
+    isolation property, it is an assumption about a query that has not been
+    written yet. RLS is the last line of defence; the finding is that this one
+    was missing its second lock.
+    """
+    mod = _load_migration()
+    predicate = getattr(mod, "_PREDICATE", None) or mod._POLICY_SQL
+    flat = " ".join(predicate.split())
+
+    assert "user_id::text = NULLIF(current_setting('app.user_id', true), '')" in flat, (
+        "the policy must constrain rows by app.user_id, not by workspace alone"
+    )
+
+
+async def test_user_predicate_guards_the_whole_workspace_group():
+    """SQL binds AND tighter than OR, so the grouping is load-bearing.
+
+    Written flat as ``user = GUC AND workspace = GUC OR EXISTS(...)``, the
+    predicate parses as ``user AND (workspace OR EXISTS)`` only by accident of
+    where the parens happen to fall; written as ``workspace OR (EXISTS AND
+    user)`` -- the natural way to bolt a clause onto the end -- it parses as
+    ``workspace OR (...)``, leaving the bare-GUC workspace branch entirely
+    unconstrained by ``user_id``. That is the exact hole the previous test
+    closes, reintroduced by a change that still *contains* the right substring.
+
+    So this asserts the shape, not the presence: the workspace group must be
+    wrapped, and the user comparison must sit outside it.
+    """
+    mod = _load_migration()
+    predicate = getattr(mod, "_PREDICATE", None) or mod._POLICY_SQL
+    flat = " ".join(predicate.split())
+
+    user_clause = "user_id::text = NULLIF(current_setting('app.user_id', true), '')"
+    workspace_clause = (
+        "workspace_id::text = NULLIF(current_setting('app.workspace_id', true), '')"
+    )
+    assert flat.startswith(user_clause + " AND ("), (
+        "the predicate must open with the user comparison and parenthesise the "
+        f"workspace group, got: {flat[:120]!r}"
+    )
+    assert workspace_clause in flat, "the workspace comparison must survive"
+    # Three ANDs in total: the one joining the user clause to the group, the one
+    # inside the `workspaces` EXISTS, and the one inside `workspace_users`. A
+    # fourth means a clause was added to only one branch of the OR -- which is
+    # how the two branches of a membership predicate drift apart in the first
+    # place, and is the shape the migration docstring warns about. Deliberately
+    # a magic number: the failure it causes is a conscious edit to this test, not
+    # a silent divergence.
+    assert flat.count(" AND ") == 3, (
+        f"unexpected AND structure in the predicate: {flat!r}"
+    )
+
+
 async def test_weight_columns_are_bounded_to_zero_and_one():
     """NUMERIC(5,4) alone allows up to 9.9999.
 
@@ -376,6 +452,17 @@ async def test_profile_row_invisible_from_other_workspace_guc():
     that runs ``effective_weights``' real ``text()`` statement against a real
     ``uuid`` column with the real policy active. SQLite cannot stand in: its uuid
     columns are emulated by ``conftest.MockUUID``, and it has no RLS at all.
+
+    Both GUCs are set on every resolve, because 0067's policy constrains rows by
+    ``app.user_id`` as well as ``app.workspace_id``. That matches production,
+    where ``_assemble_rag_context`` opens its session through
+    ``scoped_session(workspace_id=..., user_id=user_id)`` with the same
+    ``user_id`` it then hands to ``effective_weights`` -- so the session GUC, the
+    policy's user predicate and the resolver's WHERE are one identity. Setting
+    the workspace GUC alone would leave the user GUC unset, the predicate
+    NULL-compares false, and every assertion here would "pass" against a policy
+    that returned nothing at all -- which is why the third case below pins the
+    unset-GUC degradation explicitly.
     """
     import asyncpg
 
@@ -399,7 +486,7 @@ async def test_profile_row_invisible_from_other_workspace_guc():
                 pid, tenant, ws, user, pref,
             )
 
-        async def _resolve(workspace):
+        async def _resolve(workspace, resolve_user=user, set_user_guc=True):
             """Run production effective_weights as the app role in one workspace."""
             engine = create_async_engine(_app_url().replace("postgresql://", "postgresql+asyncpg://"))
             try:
@@ -409,9 +496,16 @@ async def test_profile_row_invisible_from_other_workspace_guc():
                             text("SELECT set_config('app.workspace_id', :ws, false)"),
                             {"ws": str(workspace)},
                         )
+                    if set_user_guc and resolve_user is not None:
+                        await conn.execute(
+                            text("SELECT set_config('app.user_id', :u, false)"),
+                            {"u": str(resolve_user)},
+                        )
                     # workspace=None deliberately leaves the GUC truly unset.
                     async with AsyncSession(bind=conn) as session:
-                        return await effective_weights(session, str(workspace or ws_a), str(user))
+                        return await effective_weights(
+                            session, str(workspace or ws_a), str(resolve_user or user)
+                        )
             finally:
                 await engine.dispose()
 
@@ -441,12 +535,114 @@ async def test_profile_row_invisible_from_other_workspace_guc():
 
 
 @requires_pg
+async def test_same_workspace_different_user_sees_nothing():
+    """The negative control for the added user predicate.
+
+    Right workspace, right membership, wrong user. This is the case the
+    workspace-only predicate would have *passed* and the user predicate closes:
+    without it, any member of a workspace can SELECT every co-member's learned
+    profile, and the only thing standing between that and a read is
+    ``effective_weights``' own ``AND user_id = :user_id`` -- the application
+    filter, not the isolation boundary. The data is four floats; what it encodes
+    is how strongly a named colleague's ranking is tuned, and a second query
+    written against this table tomorrow would not carry that filter.
+
+    Read as the *owner* first, so a zero-row result cannot be confused with "the
+    row was never there" or "the policy is broken for everybody".
+    """
+    import asyncpg
+
+    admin = await asyncpg.connect(PG_URL)
+    ws = uuid.uuid4()
+    owner, stranger, tenant = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    pid = uuid.uuid4()
+    try:
+        await _require_table(admin)
+        await admin.execute(GRANT_SQL)
+        await admin.execute(
+            f"INSERT INTO {TABLE} (id, tenant_id, workspace_id, user_id, relevance,"
+            " recency, importance, user_preference, sample_size)"
+            " VALUES ($1, $2, $3, $4, 0.4, 0.3, 0.2, 0.45, 30)",
+            pid, tenant, ws, owner,
+        )
+
+        async def _resolve_for(resolve_user):
+            engine = create_async_engine(_app_url().replace("postgresql://", "postgresql+asyncpg://"))
+            try:
+                async with engine.connect() as conn:
+                    # The stranger's GUCs, in the owner's workspace. Every
+                    # workspace-scope branch of the predicate is satisfied; only
+                    # the user comparison can deny the row.
+                    await conn.execute(
+                        text("SELECT set_config('app.workspace_id', :ws, false)"),
+                        {"ws": str(ws)},
+                    )
+                    await conn.execute(
+                        text("SELECT set_config('app.user_id', :u, false)"),
+                        {"u": str(resolve_user)},
+                    )
+                    async with AsyncSession(bind=conn) as session:
+                        return await effective_weights(session, str(ws), str(resolve_user))
+            finally:
+                await engine.dispose()
+
+        # Control: the owner, in their own workspace, sees their own row. Without
+        # this, "zero rows" would be consistent with a table nobody can read.
+        as_owner = await _resolve_for(owner)
+        assert as_owner["user_preference"] == 0.45, (
+            "precondition: the owner must be able to read their own profile, "
+            "otherwise the assertion below proves nothing"
+        )
+
+        # The stranger, same workspace GUC, is denied. Because the resolver also
+        # filters on user_id, the expected answer is indistinguishable from "no
+        # row exists" -- so the denial is proved structurally as well, by
+        # counting the rows the *policy* returns for the stranger.
+        as_stranger = await _resolve_for(stranger)
+        assert as_stranger["user_preference"] == DEFAULT_WEIGHTS["user_preference"], (
+            "a different user in the same workspace must resolve to the default "
+            "weights; a non-default here means the row leaked"
+        )
+
+        # ...and the structural proof: as the stranger, a SELECT that filters on
+        # nothing at all still returns zero rows. That query cannot be rescued by
+        # the resolver's own WHERE clause, so it can only be the policy denying.
+        engine = create_async_engine(_app_url().replace("postgresql://", "postgresql+asyncpg://"))
+        try:
+            async with engine.connect() as conn:
+                await conn.execute(
+                    text("SELECT set_config('app.workspace_id', :ws, false)"), {"ws": str(ws)}
+                )
+                await conn.execute(
+                    text("SELECT set_config('app.user_id', :u, false)"), {"u": str(stranger)}
+                )
+                visible = await conn.scalar(
+                    text(f"SELECT count(*) FROM {TABLE}")
+                )
+                assert int(visible) == 0, (
+                    "the policy must hide every ranking_weight_profiles row from a "
+                    f"user who owns none of them; the stranger still saw {visible}"
+                )
+        finally:
+            await engine.dispose()
+    finally:
+        await admin.execute(f"DELETE FROM {TABLE} WHERE id = $1", pid)
+        await admin.close()
+
+
+@requires_pg
 async def test_with_check_rejects_insert_into_another_workspace():
     """The WITH CHECK clause is what makes the write path safe.
 
     USING alone governs only SELECT/UPDATE/DELETE, so without WITH CHECK a row
     can be inserted into somebody else's workspace and then simply never read
     back -- a silently wrong profile rather than a visible failure.
+
+    ``app.user_id`` is set to the *inserted row's own* user, so the policy's
+    user predicate passes and the workspace comparison is the only clause that
+    can fail. Setting only the workspace GUC would make the insert doubly
+    invalid and would prove less: the denial could be entirely the user clause,
+    leaving the cross-workspace hole untested.
 
     The insert runs as the non-superuser app role; as a superuser it would
     bypass the policy entirely and prove nothing.
@@ -463,7 +659,7 @@ async def test_with_check_rejects_insert_into_another_workspace():
     from asyncpg import exceptions as pg_exceptions
 
     admin = await asyncpg.connect(PG_URL)
-    ws_guc, ws_other, stray = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    ws_guc, ws_other, stray, stray_user = uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
     try:
         await _require_table(admin)
         await admin.execute(GRANT_SQL.replace("GRANT SELECT ON", "GRANT SELECT, INSERT ON"))
@@ -473,15 +669,17 @@ async def test_with_check_rejects_insert_into_another_workspace():
     app = await asyncpg.connect(_app_url())
     try:
         await app.execute("SELECT set_config('app.workspace_id', $1, false)", str(ws_guc))
+        await app.execute("SELECT set_config('app.user_id', $1, false)", str(stray_user))
         # Row is otherwise perfectly valid: correct columns, every weight inside
-        # 0..1 so the CHECK bounds pass, correct NOT NULLs. Only the RLS
-        # WITH CHECK can reject it.
+        # 0..1 so the CHECK bounds pass, correct NOT NULLs, and a user_id that
+        # matches the caller's own GUC. Only the cross-workspace WITH CHECK can
+        # reject it.
         with pytest.raises(pg_exceptions.InsufficientPrivilegeError) as exc_info:
             await app.execute(
                 f"INSERT INTO {TABLE} (id, tenant_id, workspace_id, user_id, relevance,"
                 " recency, importance, user_preference, sample_size)"
                 " VALUES ($1, $2, $3, $4, 0.4, 0.3, 0.2, 0.1, 1)",
-                stray, uuid.uuid4(), ws_other, uuid.uuid4(),
+                stray, uuid.uuid4(), ws_other, stray_user,
             )
         assert exc_info.value.sqlstate == "42501", (
             "expected an RLS permission denial (SQLSTATE 42501); got "
@@ -497,6 +695,54 @@ async def test_with_check_rejects_insert_into_another_workspace():
             "a rejected insert must leave no row behind"
         )
     finally:
+        await admin.close()
+
+
+@requires_pg
+async def test_insert_into_the_callers_own_profile_succeeds():
+    """The positive control for the same policy.
+
+    The paired negative control above is only meaningful next to this one. A
+    predicate that denied *everything* would pass that test perfectly, so
+    "provisioning is refused" is indistinguishable from "this table is
+    unwritable" without proof that the legitimate write still lands.
+
+    This is the exact shape ``ranking_weights.provision_profile`` issues: the
+    caller's own workspace, the caller's own user, both GUCs set. If the added
+    user predicate over-tightened -- or if the caller could not satisfy it --
+    this is where it shows, as SQLSTATE 42501.
+    """
+    import asyncpg
+
+    admin = await asyncpg.connect(PG_URL)
+    ws, user, tenant, pid = uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    try:
+        await _require_table(admin)
+        await admin.execute(GRANT_SQL.replace("GRANT SELECT ON", "GRANT SELECT, INSERT ON"))
+    finally:
+        await admin.close()
+
+    app = await asyncpg.connect(_app_url())
+    try:
+        await app.execute("SELECT set_config('app.workspace_id', $1, false)", str(ws))
+        await app.execute("SELECT set_config('app.user_id', $1, false)", str(user))
+        await app.execute(
+            f"INSERT INTO {TABLE} (id, tenant_id, workspace_id, user_id, relevance,"
+            " recency, importance, user_preference, sample_size)"
+            " VALUES ($1, $2, $3, $4, 0.4, 0.3, 0.2, 0.1, 0)",
+            pid, tenant, ws, user,
+        )
+    finally:
+        await app.close()
+
+    admin = await asyncpg.connect(PG_URL)
+    try:
+        assert await admin.fetchval(f"SELECT count(*) FROM {TABLE} WHERE id = $1", pid) == 1, (
+            "a caller must be able to write their own profile; if this fails the "
+            "policy is over-tight and provisioning is impossible"
+        )
+    finally:
+        await admin.execute(f"DELETE FROM {TABLE} WHERE id = $1", pid)
         await admin.close()
 
 

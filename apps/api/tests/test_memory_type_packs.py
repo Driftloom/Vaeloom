@@ -557,7 +557,7 @@ async def test_update_memory_that_does_not_set_type_is_not_revalidated(db_sessio
     a row got there: bypassing the write path entirely.
     """
     from api.models.schema import Memory
-    from api.schemas.memory import MemoryUpdate
+    from api.schemas.memory import MemoryCreate, MemoryUpdate
     from api.services.memory_service import MemoryService
 
     legacy = Memory(
@@ -634,6 +634,323 @@ async def test_supersede_rejects_unknown_type_and_supersede_keeps_legacy_types(d
     )
     assert successor is not None
     assert successor.type == "pre_registry_type"
+
+
+# ---------------------------------------------------------------------------
+# Supersede carries provenance forward (whole-branch review, finding I5)
+# ---------------------------------------------------------------------------
+
+
+async def test_same_type_supersede_carries_the_predecessors_pack(db_session):
+    """A supersede that does not change the type must not blank the provenance.
+
+    0068 backfilled every existing row to ``career``/1, so that stamp is the only
+    thing making an old row attributable to a pack revision. Superseding that row
+    without remapping the type used to pass ``type_pack_slug=None`` -- so the
+    successor was the one link in the chain with no attributable vocabulary, and
+    the edit a user makes most often (correct the content, keep the type) silently
+    destroyed the provenance the correction was supposed to inherit.
+
+    ``update_memory`` on this same input re-stamps ``career``/1, which is what
+    makes the divergence a bug rather than an asymmetry: two writers of one field
+    disagreeing on identical input is unhandled, not decided.
+    """
+    from api.schemas.memory import MemoryCreate, MemorySupersedeRequest
+    from api.services.memory_service import MemoryService
+
+    ws = str(uuid.uuid4())
+    svc = MemoryService()
+    original = await svc.create_memory(
+        db_session,
+        MemoryCreate(type="note", title="t", content="body"),
+        tenant_id=None,
+        user_id=None,
+        workspace_id=ws,
+    )
+    assert original.type_pack_slug == CAREER_PACK_SLUG
+    assert original.type_pack_version == 1
+
+    successor = await svc.supersede_memory(
+        db_session,
+        original.id,
+        MemorySupersedeRequest(reason="fixed the wording"),
+        tenant_id=None,
+    )
+
+    assert successor is not None
+    assert successor.type == "note", "precondition: the type really was inherited"
+    assert successor.type_pack_slug == CAREER_PACK_SLUG, (
+        "an unchanged type must carry the predecessor's pack forward; blanking it "
+        "makes the successor unattributable"
+    )
+    assert successor.type_pack_version == 1
+
+
+async def test_same_type_supersede_with_an_explicitly_restated_type(db_session):
+    """``dto.type`` equal to the old type is the same case and must behave the same.
+
+    Separate from the test above because it is a different branch of the guard:
+    the type is *supplied*, so the value is live input rather than an absence, and
+    an implementation that only looked at "was `type` omitted" would handle one
+    of these two and not the other. Both must keep the predecessor's stamp.
+    """
+    from api.schemas.memory import MemoryCreate, MemorySupersedeRequest
+    from api.services.memory_service import MemoryService
+
+    svc = MemoryService()
+    original = await svc.create_memory(
+        db_session,
+        MemoryCreate(type="insight", title="t", content="body"),
+        tenant_id=None,
+        user_id=None,
+        workspace_id=str(uuid.uuid4()),
+    )
+
+    successor = await svc.supersede_memory(
+        db_session,
+        original.id,
+        MemorySupersedeRequest(reason="reaffirmed", type="insight"),
+        tenant_id=None,
+    )
+
+    assert successor.type_pack_slug == CAREER_PACK_SLUG
+    assert successor.type_pack_version == 1
+
+
+async def test_remapped_supersede_takes_the_new_packs_provenance(seeded_packs, db_session):
+    """When the caller *does* remap the type, the new pack wins over the old one.
+
+    The counterpart to the two inheritance tests: carrying the predecessor's stamp
+    forward unconditionally would freeze every correction to the vocabulary it was
+    written under, which is the opposite error.
+    """
+    from api.schemas.memory import MemoryCreate, MemorySupersedeRequest
+    from api.services.memory_service import MemoryService
+
+    # A second, active pack at version 3, so "the new pack" is distinguishable
+    # from both the predecessor's slug and the career version.
+    db_session.add(
+        MemoryTypePack(
+            slug="clinical",
+            version=3,
+            label="Clinical",
+            types=["diagnosis", "intake"],
+            is_active=True,
+        )
+    )
+    await db_session.flush()
+
+    svc = MemoryService()
+    original = await svc.create_memory(
+        db_session,
+        MemoryCreate(type="note", title="t", content="body"),
+        tenant_id=None,
+        user_id=None,
+        workspace_id=str(uuid.uuid4()),
+    )
+
+    successor = await svc.supersede_memory(
+        db_session,
+        original.id,
+        MemorySupersedeRequest(reason="this is a clinical intake now", type="intake"),
+        tenant_id=None,
+    )
+
+    assert successor.type_pack_slug == "clinical"
+    assert successor.type_pack_version == 3
+
+
+async def test_supersede_of_a_row_with_no_provenance_adds_none(db_session):
+    """Inheriting NULL stays NULL -- there is nothing to inherit from.
+
+    A pre-0068 row has no pack stamp, and guessing one would attribute a type to
+    a pack revision that never authorised it. Asserted because the alternative
+    (defaulting to the built-in career pack, which is what the registry fallback
+    uses) looks harmless and is exactly the fabricated provenance I3 is about.
+    """
+    from api.models.schema import Memory
+    from api.schemas.memory import MemoryCreate, MemorySupersedeRequest
+    from api.services.memory_service import MemoryService
+
+    legacy = Memory(
+        id=uuid.uuid4(),
+        type="pre_registry_type",
+        status="active",
+        title="Old",
+        content="old body",
+        content_hash="pre-registry-hash",
+        size=8,
+        workspace_id=uuid.uuid4(),
+    )
+    db_session.add(legacy)
+    await db_session.flush()
+
+    successor = await MemoryService().supersede_memory(
+        db_session,
+        legacy.id,
+        MemorySupersedeRequest(reason="correcting the wording"),
+        tenant_id=None,
+    )
+
+    assert successor.type_pack_slug is None
+    assert successor.type_pack_version is None
+
+
+# ---------------------------------------------------------------------------
+# The ledger records which pack authorised the change (finding I3)
+# ---------------------------------------------------------------------------
+
+
+async def test_update_ledger_row_names_the_authorising_pack(db_session):
+    """A taxonomy remap must record the pack revision that legalised it.
+
+    Without this the ledger says *that* a type changed but not *what made it
+    legal*, and the second half stops being recoverable the moment a pack is
+    re-versioned -- at which point an append-only provenance table that cannot
+    name the authority is indistinguishable from one that never checked. The spec
+    promised this (``metadata_`` on ledger rows) and 0068 delivered nothing, so
+    the promise was quietly dropped instead of being kept.
+    """
+    from api.models.schema import MemoryTaxonomyLedger
+    from api.schemas.memory import MemoryCreate, MemoryUpdate
+    from api.services.memory_service import MemoryService
+
+    svc = MemoryService()
+    original = await svc.create_memory(
+        db_session,
+        MemoryCreate(type="note", title="t", content="body"),
+        tenant_id=None,
+        user_id=None,
+        workspace_id=str(uuid.uuid4()),
+    )
+    await svc.update_memory(
+        db_session, original.id, MemoryUpdate(type="insight"), tenant_id=None
+    )
+
+    rows = (
+        await db_session.execute(
+            select(MemoryTaxonomyLedger).where(
+                MemoryTaxonomyLedger.memory_id == original.id
+            )
+        )
+    ).scalars().all()
+    assert len(rows) == 1, "a type remap must produce exactly one ledger row"
+    assert rows[0].metadata_ == {
+        "type_pack_slug": CAREER_PACK_SLUG,
+        "type_pack_version": 1,
+    }, (
+        "the ledger must name the pack and revision that authorised the remap; "
+        f"got {rows[0].metadata_!r}"
+    )
+
+
+async def test_supersede_ledger_row_names_the_authorising_pack(db_session):
+    """The second writer threads the same two facts.
+
+    ``_record_taxonomy_change`` has two callers and only one of them passing the
+    pack would leave the ledger's completeness dependent on which write path
+    happened to be exercised.
+    """
+    from api.models.schema import MemoryTaxonomyLedger
+    from api.schemas.memory import MemoryCreate, MemorySupersedeRequest
+    from api.services.memory_service import MemoryService
+
+    svc = MemoryService()
+    original = await svc.create_memory(
+        db_session,
+        MemoryCreate(type="note", title="t", content="body"),
+        tenant_id=None,
+        user_id=None,
+        workspace_id=str(uuid.uuid4()),
+    )
+    await svc.supersede_memory(
+        db_session,
+        original.id,
+        MemorySupersedeRequest(reason="remap", type="insight"),
+        tenant_id=None,
+    )
+
+    rows = (
+        await db_session.execute(
+            select(MemoryTaxonomyLedger).where(
+                MemoryTaxonomyLedger.memory_id == original.id
+            )
+        )
+    ).scalars().all()
+    assert len(rows) == 1
+    assert rows[0].metadata_ == {
+        "type_pack_slug": CAREER_PACK_SLUG,
+        "type_pack_version": 1,
+    }
+
+
+async def test_ledger_pack_reference_comes_from_the_matching_pack(seeded_packs, db_session):
+    """The recorded slug must be the pack that accepted the type, not a literal.
+
+    Asserting ``career``/1 everywhere would pass with a hard-coded slug stamped
+    into the ledger -- which is the failure this whole task is about, one column
+    over. A second pack has to move the recorded slug with it.
+    """
+    from api.models.schema import MemoryTaxonomyLedger
+    from api.schemas.memory import MemoryCreate, MemorySupersedeRequest
+    from api.services.memory_service import MemoryService
+
+    db_session.add(
+        MemoryTypePack(
+            slug="clinical",
+            version=4,
+            label="Clinical",
+            types=["diagnosis", "intake"],
+            is_active=True,
+        )
+    )
+    await db_session.flush()
+
+    svc = MemoryService()
+    original = await svc.create_memory(
+        db_session,
+        MemoryCreate(type="note", title="t", content="body"),
+        tenant_id=None,
+        user_id=None,
+        workspace_id=str(uuid.uuid4()),
+    )
+    await svc.supersede_memory(
+        db_session,
+        original.id,
+        MemorySupersedeRequest(reason="remap", type="intake"),
+        tenant_id=None,
+    )
+
+    row = (
+        await db_session.execute(
+            select(MemoryTaxonomyLedger).where(
+                MemoryTaxonomyLedger.memory_id == original.id
+            )
+        )
+    ).scalar_one()
+    assert row.metadata_ == {"type_pack_slug": "clinical", "type_pack_version": 4}
+
+
+def test_migration_adds_and_drops_the_ledger_metadata_column():
+    """The column has to exist in the migration, or the ORM writes nothing.
+
+    Both directions asserted: an ``ADD COLUMN`` in ``upgrade`` without a matching
+    ``DROP COLUMN`` in ``downgrade`` would leave a column describing a pack system
+    a rollback has just removed.
+    """
+    _, up = _render("upgrade", table_present=False)
+    flat_up = [" ".join(s.split()) for s in up]
+    assert _one(
+        flat_up, "ALTER TABLE memory_taxonomy_ledger ADD COLUMN"
+    ) == (
+        "ALTER TABLE memory_taxonomy_ledger ADD COLUMN IF NOT EXISTS metadata JSONB"
+    ), "upgrade must add a nullable JSONB metadata column to memory_taxonomy_ledger"
+
+    _, down = _render("downgrade", table_present=True)
+    flat_down = [" ".join(s.split()) for s in down]
+    assert _one(
+        flat_down, "ALTER TABLE memory_taxonomy_ledger DROP COLUMN"
+    ) == "ALTER TABLE memory_taxonomy_ledger DROP COLUMN IF EXISTS metadata"
 
 
 # ---------------------------------------------------------------------------

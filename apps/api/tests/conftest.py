@@ -229,6 +229,11 @@ def db_path(tmp_path):
     return str(tmp_path / "test.db")
 
 
+# Returned by the SQLite stand-in for app_tenant_for_workspace(). Fixed so a
+# test can assert on it; see the listener below.
+_SQLITE_TENANT_ID = "00000000-0000-0000-0000-0000000000aa"
+
+
 @pytest_asyncio.fixture
 async def db_session(db_path):
     engine = create_async_engine(f"sqlite+aiosqlite:///{db_path}", poolclass=NullPool)
@@ -237,6 +242,24 @@ async def db_session(db_path):
     def _register_sqlite_functions(dbapi_connection, _connection_record):
         dbapi_connection.create_function("cosine_distance", 2, lambda a, b: 0.0)
         dbapi_connection.create_function("set_config", 3, lambda a, b, c: b)
+        # Migration 0036's SECURITY DEFINER workspace->tenant resolver, which
+        # `ranking_weights.provision_profile` calls to fill ranking_weight_
+        # profiles.tenant_id (NOT NULL, but never read by the resolver or by any
+        # RLS predicate -- it is derived, not threaded). Under PostgreSQL the real
+        # function resolves from workspaces.user_id -> users.tenant_id and bypasses
+        # RLS by design; SQLite has neither the function nor RLS, so without this
+        # shim the provisioning INSERT raises "no such function", the raise is
+        # swallowed by its own best-effort guard, and every test that wants to
+        # observe a provisioned row silently observes none.
+        #
+        # It returns a constant rather than resolving anything: what these tests
+        # are about is whether the provisioning write happens and is idempotent,
+        # not whether tenant derivation is correct. That derivation is
+        # PostgreSQL-only and stays unverified here -- the same honest gap the
+        # live-PG suites in test_ranking_weights_rls.py cover.
+        dbapi_connection.create_function(
+            "app_tenant_for_workspace", 1, lambda ws: _SQLITE_TENANT_ID
+        )
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

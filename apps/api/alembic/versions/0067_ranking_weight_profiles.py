@@ -42,6 +42,12 @@ row's workspace via ``workspaces.user_id`` / ``workspace_users``. Writing a fift
 variant of that structure would be the mistake; copying the established one is
 the point.
 
+That workspace group is then *additionally* constrained by a top-level
+``user_id`` predicate, which 0062 has no counterpart for because
+``workspace_capabilities`` has no per-user dimension and this table's whole unit
+is one user's profile. See correction 3 on ``_PREDICATE`` below for why the
+spec asks for it and what it costs.
+
 Its *spelling* is not copied, and that is a deliberate correction. 0062 casts the
 session setting (``... , '')::uuid``); 0063:24-32 calls the column-cast form
 (``workspace_id::text = NULLIF(current_setting(...), '')``) "the safer spelling"
@@ -140,7 +146,7 @@ def _safe(conn, sql: str) -> None:
 
 
 # Transcribed from 0062:137-155 (workspace_capabilities -> ranking_weight_profiles)
-# with two corrections.
+# with three corrections.
 #
 # 1. COLUMN-cast, not setting-cast.
 #    0062 spells the GUC comparison
@@ -164,17 +170,50 @@ def _safe(conn, sql: str) -> None:
 #    governed by different scope than SELECT -- in the one migration whose own
 #    docstring says duplicated RLS variants are what have drifted in the past.
 #    Both clauses interpolate this single constant.
+#
+# 3. A user predicate, not only a workspace predicate.
+#    The spec for this table asks for "a ``workspace_id`` predicate *plus a
+#    user-scope predicate*"; 0062's shape is workspace-only, so copying it
+#    verbatim satisfies half the requirement. On this table the half that is
+#    missing is the one that matters most: ``effective_weights`` reads
+#    ``(workspace_id, user_id)``, so workspace scope alone would let any member
+#    of a workspace SELECT every co-member's learned profile. Today that is
+#    invisible because the reader filters ``user_id`` in its own WHERE -- but
+#    "the application filters it anyway" is not an isolation property, it is an
+#    assumption that stops holding the moment a second query is written against
+#    this table, and RLS is the last line of defence this repo treats it as.
+#    Four floats is not a meaningful prize on its own; a row telling you how
+#    strongly a named colleague prefers recency is.
+#
+#    The ``AND`` wraps the whole workspace group in parentheses because SQL binds
+#    ``AND`` tighter than ``OR``. Written flat, ``a OR b AND c`` parses as
+#    ``a OR (b AND c)`` -- which would leave the bare-GUC workspace branch
+#    unconstrained by ``user_id`` and quietly reintroduce exactly the hole this
+#    clause exists to close, while still reading as correct to anyone skimming
+#    it. The parenthesised form is asserted in
+#    tests/test_ranking_weights_rls.py::test_policy_constrains_the_user_not_only_the_workspace.
+#
+#    Both GUCs must therefore be set on every read and write. They are, on both
+#    paths: ``record_feedback_signal`` calls ``set_rls_session_vars`` with both
+#    before touching the table, and the rank path opens its session through
+#    ``scoped_session(..., user_id=user_id)`` with the same ``user_id`` it then
+#    passes to ``effective_weights``. An unset GUC yields NULL, NULL compares
+#    false, and the row is invisible -- fail-closed, which is the intended
+#    degradation ("no learned weights") rather than a 500.
 _PREDICATE = f"""
-        workspace_id::text = NULLIF(current_setting('app.workspace_id', true), '')
-        OR EXISTS (
-            SELECT 1 FROM workspaces w
-            WHERE w.id = {_TABLE}.workspace_id
-            AND (
-                w.user_id::text = NULLIF(current_setting('app.user_id', true), '')
-                OR EXISTS (
-                    SELECT 1 FROM workspace_users wu
-                    WHERE wu.workspace_id = w.id
-                    AND wu.user_id::text = NULLIF(current_setting('app.user_id', true), '')
+        user_id::text = NULLIF(current_setting('app.user_id', true), '')
+        AND (
+            workspace_id::text = NULLIF(current_setting('app.workspace_id', true), '')
+            OR EXISTS (
+                SELECT 1 FROM workspaces w
+                WHERE w.id = {_TABLE}.workspace_id
+                AND (
+                    w.user_id::text = NULLIF(current_setting('app.user_id', true), '')
+                    OR EXISTS (
+                        SELECT 1 FROM workspace_users wu
+                        WHERE wu.workspace_id = w.id
+                        AND wu.user_id::text = NULLIF(current_setting('app.user_id', true), '')
+                    )
                 )
             )
         )

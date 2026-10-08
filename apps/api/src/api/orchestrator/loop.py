@@ -618,13 +618,30 @@ async def _assemble_rag_context(
         if _session_factory is None:
             # OP-RLS-01: RLS-scoped session so RAG reads work under a
             # least-privilege role (tenant resolved from workspace).
+            #
+            # `user_id` is forwarded explicitly, and that is load-bearing rather
+            # than tidiness. `ranking_weight_profiles`' policy (0067) constrains
+            # rows by BOTH `app.workspace_id` and `app.user_id`; left to the
+            # `TenantContext` contextvar alone, the GUC is populated only on
+            # request paths, so a worker / Temporal / background caller — which
+            # has no ambient context but *does* have an explicit user_id here —
+            # would read zero rows and be silently pinned to default weights.
+            # Passing the same value that `effective_weights` filters on makes
+            # the two agree by construction: the policy's user predicate, the
+            # WHERE clause and the session GUC are the same identity, or the
+            # lookup never happens at all (it short-circuits when user_id is
+            # empty). It also means the provisioning write in
+            # `provision_profile` satisfies the policy's WITH CHECK rather than
+            # being refused with 42501.
             from contextlib import asynccontextmanager as _acm
 
             from ..database import scoped_session
 
             @_acm
             async def _scoped_factory_cm():
-                async with scoped_session(workspace_id=workspace_id, require=False) as _s:
+                async with scoped_session(
+                    workspace_id=workspace_id, user_id=user_id, require=False
+                ) as _s:
                     yield _s
 
             _session_factory = _scoped_factory_cm
