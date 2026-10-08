@@ -68,6 +68,7 @@ sqlalchemy.dialects.postgresql.ARRAY = MockArray
 sqlalchemy.dialects.postgresql.UUID = MockUUID
 
 import re
+import json
 import uuid
 import sqlite3
 
@@ -112,6 +113,8 @@ from api.database import Base, get_db
 from api.middleware.auth import AuthMiddleware
 from api.middleware.exception_handler import unified_exception_handler, generic_exception_handler, validation_exception_handler
 from fastapi.exceptions import RequestValidationError
+
+from api.services.memory_type_packs import CAREER_PACK_SLUG, CAREER_TYPES
 
 
 def _build_test_app(db_session):
@@ -256,6 +259,32 @@ async def db_session(db_path):
         ]
         for q in raw_sql_queries:
             await conn.execute(text(q))
+
+        # Seed the career domain pack, mirroring migration 0068. `upgrade()`
+        # returns early off PostgreSQL, so without this the SQLite database holds
+        # an empty registry -- and an *empty* registry is not a fallback case: it
+        # means "no pack is active", which by design rejects every memory type
+        # (services.memory_type_packs returns [] for empty and only falls back to
+        # the built-in pack when the table cannot be read at all). Since the pack
+        # check is the write path's only type guard, an unseeded test database
+        # rejects every memory write in the suite.
+        #
+        # Written on this connection rather than the test session so it is a
+        # committed row that survives a test's rollback. `id` is supplied
+        # explicitly: the ORM default is Python-side, so raw SQL gets no value.
+        await conn.execute(
+            text(
+                "INSERT INTO memory_type_packs "
+                "(id, slug, version, label, types, is_active) "
+                "VALUES (:id, :slug, 1, 'Career', :types, 1) "
+                "ON CONFLICT (slug) DO NOTHING"
+            ),
+            {
+                "id": str(uuid.uuid4()),
+                "slug": CAREER_PACK_SLUG,
+                "types": json.dumps(list(CAREER_TYPES)),
+            },
+        )
 
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
     try:

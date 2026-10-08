@@ -42,6 +42,7 @@ import io
 import json
 import pathlib
 import re
+import uuid
 
 import pytest
 import sqlalchemy as sa
@@ -111,7 +112,22 @@ def _migration_seed_types() -> tuple[str, ...]:
 
 @pytest.fixture
 async def seeded_packs(db_session):
-    """Materialise the migration's own seed row inside the test database."""
+    """Materialise the migration's own seed row inside the test database.
+
+    Replaces any row ``conftest`` already seeded. The whole point of this
+    fixture is the migration-literal -> table-row link, so it must insert the
+    types parsed out of ``0068`` rather than reuse the constant the rest of the
+    suite gets; a delete-then-insert keeps that link honest while leaving the
+    database in the state a migrated deployment is in.
+    """
+    existing = (
+        await db_session.execute(
+            select(MemoryTypePack).where(MemoryTypePack.slug == CAREER_PACK_SLUG)
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        await db_session.delete(existing)
+        await db_session.flush()
     db_session.add(
         MemoryTypePack(
             slug=CAREER_PACK_SLUG,
@@ -282,6 +298,181 @@ async def test_unreadable_registry_stays_at_debug(seeded_packs, caplog, monkeypa
     assert not [
         r for r in records if "no active memory type pack" in r.getMessage()
     ]
+
+
+# ---------------------------------------------------------------------------
+# Write path: the pack is the guard, not Pydantic
+#
+# Migration 0068 dropped `ck_memories_type_valid`, so `validate_memory_type`
+# inside `create_memory` is now the only thing standing between an agent or an
+# API caller and a `memories.type` the taxonomy cannot represent. These tests
+# exist to pin *who* rejects -- see `test_create_memory_rejects_unknown_type`.
+# ---------------------------------------------------------------------------
+
+
+def test_memory_create_no_longer_whitelists_types():
+    """Pydantic must construct any non-empty string.
+
+    If this fails, the whitelist moved back into the schema and the pack check
+    became unreachable -- which is the drift this task exists to remove.
+    """
+    from api.schemas.memory import MemoryCreate
+
+    dto = MemoryCreate(type="totally_invalid", title="t")
+    assert dto.type == "totally_invalid"
+
+
+def test_memory_create_still_rejects_a_blank_type():
+    """The emptiness rule stays in the schema; only the whitelist leaves.
+
+    Whitespace is not in any pack, so this is not a substitute for the pack
+    check -- it is the cheap shape rule that keeps a blank string from reaching
+    the database as a NOT NULL-but-meaningless value.
+    """
+    import pydantic
+
+    from api.schemas.memory import MemoryCreate
+
+    for blank in ("", "   ", "\t\n"):
+        with pytest.raises(pydantic.ValidationError):
+            MemoryCreate(type=blank, title="t")
+
+
+def test_memory_create_rejects_an_over_long_type():
+    """`max_length=50` matches `memories.type`'s column width."""
+    import pydantic
+
+    from api.schemas.memory import MemoryCreate
+
+    MemoryCreate(type="x" * 50, title="t")
+    with pytest.raises(pydantic.ValidationError):
+        MemoryCreate(type="x" * 51, title="t")
+
+
+async def test_create_memory_rejects_unknown_type(db_session):
+    """The rejection is the *pack's*, proven three ways.
+
+    1. The DTO is built **outside** the ``raises`` block. Pydantic rejecting it
+       there would raise before the service was ever called, and the pack check
+       would be dead code behind it.
+    2. What surfaces is a bare ``ValueError`` carrying `_invalid()`'s wording --
+       the offending value and the pack it should have come from. A Pydantic
+       error would be a ``ValidationError`` with a field-location message.
+    3. The negative control: adding a pack that *contains* the value makes the
+       identical call succeed and stamps that pack's slug on the row. Without
+       this, assertion 2 is satisfiable by any error that happens to mention
+       the word "career"; with it, the rejection provably tracks pack contents.
+    """
+    import pydantic
+
+    from api.schemas.memory import MemoryCreate
+    from api.services.memory_service import MemoryService
+
+    dto = MemoryCreate(type="totally_invalid", title="t")  # (1)
+
+    with pytest.raises(ValueError) as exc:  # (2)
+        await MemoryService().create_memory(db_session, dto, tenant_id=None, user_id=None)
+    assert not isinstance(exc.value, pydantic.ValidationError), (
+        "the write path must reject via the pack registry, not Pydantic; got "
+        f"{type(exc.value).__name__}: {exc.value}"
+    )
+    msg = str(exc.value)
+    assert "totally_invalid" in msg, msg
+    assert CAREER_PACK_SLUG in msg, msg
+
+    db_session.add(
+        MemoryTypePack(
+            slug="extra",
+            version=7,
+            label="Extra",
+            types=["totally_invalid"],
+            is_active=True,
+        )
+    )
+    await db_session.flush()
+
+    mem = await MemoryService().create_memory(  # (3)
+        db_session, dto, tenant_id=None, user_id=None, workspace_id=str(uuid.uuid4())
+    )
+    assert mem.type == "totally_invalid"
+    assert mem.type_pack_slug == "extra"
+    assert mem.type_pack_version == 7
+
+
+async def test_create_memory_records_pack_provenance(db_session):
+    """The row is attributable to the pack revision it was written under."""
+    from api.schemas.memory import MemoryCreate
+    from api.services.memory_service import MemoryService
+
+    mem = await MemoryService().create_memory(
+        db_session,
+        MemoryCreate(type="insight", title="t", content="body"),
+        tenant_id=None,
+        user_id=None,
+        workspace_id=str(uuid.uuid4()),
+    )
+    assert mem.type_pack_slug == CAREER_PACK_SLUG
+    assert mem.type_pack_version == 1
+
+
+async def test_create_memory_takes_provenance_from_the_second_pack(seeded_packs):
+    """Provenance follows the matching pack -- no hard-coded ``"career"`` here.
+
+    The brief's line was ``memory.type_pack_slug = "career"``, which would pass
+    every other test in this file and then silently mislabel every row once a
+    second domain ships. This is the test that fails for that.
+    """
+    from api.schemas.memory import MemoryCreate
+    from api.services.memory_service import MemoryService
+
+    seeded_packs.add(
+        MemoryTypePack(
+            slug="medical",
+            version=3,
+            label="Medical",
+            types=["diagnosis"],
+            is_active=True,
+        )
+    )
+    await seeded_packs.flush()
+
+    mem = await MemoryService().create_memory(
+        seeded_packs,
+        MemoryCreate(type="diagnosis", title="t", content="body"),
+        tenant_id=None,
+        user_id=None,
+        workspace_id=str(uuid.uuid4()),
+    )
+    assert mem.type_pack_slug == "medical"
+    assert mem.type_pack_version == 3
+
+
+def test_enterprise_memory_types_is_still_the_same_sixteen():
+    """Pack-derived, but it must reproduce the literal 16 exactly.
+
+    The constants are now computed from ``CAREER_TYPES`` so they cannot drift
+    from the registry. Deriving them is only safe if the derivation is *equal* to
+    what the hard-coded set said, and that equality is exactly what this asserts
+    -- set equality, not a count, so a rename that kept the cardinality fails.
+    """
+    from api.schemas.memory import CANONICAL_6, ENTERPRISE_MEMORY_TYPES
+
+    assert {
+        "project", "skill", "organization", "relationship", "event", "insight",
+        "goal", "feedback", "decision", "knowledge", "reference", "contact",
+        "financial", "health", "learning", "workflow",
+    } == ENTERPRISE_MEMORY_TYPES
+    assert len(ENTERPRISE_MEMORY_TYPES) == 16
+    assert {
+        "profile", "document", "career", "episodic", "preference", "working",
+    } == CANONICAL_6
+    assert len(CANONICAL_6) == 6
+    assert CANONICAL_6.isdisjoint(ENTERPRISE_MEMORY_TYPES)
+    # "note" and "fact" are legacy aliases, not enterprise additions.
+    assert {"note", "fact"}.isdisjoint(ENTERPRISE_MEMORY_TYPES)
+    # And the three partitions still tile the pack exactly: nothing lost, nothing
+    # double-counted.
+    assert CANONICAL_6 | ENTERPRISE_MEMORY_TYPES | {"note", "fact"} == set(CAREER_TYPES)
 
 
 # ---------------------------------------------------------------------------

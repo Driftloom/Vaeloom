@@ -21,6 +21,7 @@ class MockArray(sa_types.JSON):
     def __init__(self, item_type=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+import json
 import uuid
 
 class MockUUID(sa_types.TypeDecorator):
@@ -62,6 +63,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 import api.models
 from api.config import Settings
 from api.database import Base, get_db
+from api.services.memory_type_packs import CAREER_TYPES
 from api.middleware.auth import AuthMiddleware
 from api.middleware.exception_handler import unified_exception_handler, generic_exception_handler, validation_exception_handler
 from fastapi.exceptions import RequestValidationError
@@ -219,6 +221,21 @@ async def db_session(db_path):
         ]
         for q in raw_sql_queries:
             await conn.execute(text(q))
+
+        # The career domain pack -- migration 0068's seed. `upgrade()` returns
+        # early off PostgreSQL, so without this row the registry is *empty*, and
+        # empty is not a fallback case: it means "no pack is active" and rejects
+        # every memory type, so every memory write in this suite fails. Full
+        # rationale in tests/conftest.py.
+        await conn.execute(
+            text(
+                "INSERT INTO memory_type_packs "
+                "(id, slug, version, label, types, is_active) "
+                "VALUES (:id, 'career', 1, 'Career', :types, 1) "
+                "ON CONFLICT (slug) DO NOTHING"
+            ),
+            {"id": str(uuid.uuid4()), "types": json.dumps(list(CAREER_TYPES))},
+        )
 
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
     try:

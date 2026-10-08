@@ -21,6 +21,7 @@ from ..schemas.memory import (
 )
 from ..utils.sanitize import sanitize_text
 from .llm_service import LLMProviderError, llm_service
+from .memory_type_packs import validate_memory_type
 
 
 def _to_uuid(value: str | uuid.UUID | None) -> uuid.UUID | None:
@@ -95,6 +96,12 @@ class MemoryService:
                 user_id=user_id,
             )
 
+        # 0068 dropped `ck_memories_type_valid`, so this lookup is the only guard
+        # on the write path: nothing downstream re-checks `dto.type`. It runs
+        # before the embedding call so an illegal type costs a registry read and
+        # not an LLM round trip, and its ValueError is the user-facing rejection.
+        pack_match = await validate_memory_type(db, dto.type)
+
         content_for_embedding = dto.content or dto.title or dto.summary or ""
         embedding = None
         if content_for_embedding.strip():
@@ -144,6 +151,11 @@ class MemoryService:
             source_label=dto.source_label,
             connector_id=dto.connector_id,
             supersedes_id=dto.supersedes_id,
+            # Provenance from the pack that legalised the type -- never a literal
+            # slug, or every row would be attributed to the career pack after the
+            # second domain ships.
+            type_pack_slug=pack_match.slug,
+            type_pack_version=pack_match.version,
         )
         # Set additive columns if present (SQLAlchemy will ignore on SQLite if missing)
         try:

@@ -44,6 +44,7 @@ sqlalchemy.dialects.postgresql.ARRAY = MockArray
 sqlalchemy.dialects.postgresql.UUID = MockUUID
 
 import re
+import json
 import sqlite3
 
 sqlite3.register_adapter(uuid.UUID, lambda u: str(u))
@@ -64,6 +65,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import api.models
 from api.database import Base, get_db
+from api.services.memory_type_packs import CAREER_TYPES
 from api.middleware.auth import AuthMiddleware
 from api.middleware.exception_handler import (
     unified_exception_handler,
@@ -170,6 +172,21 @@ async def db_session(db_path):
         ]
         for q in raw_sql_queries:
             await conn.execute(text(q))
+
+        # The career domain pack -- migration 0068's seed. `upgrade()` returns
+        # early off PostgreSQL, so without this row the registry is *empty*, and
+        # empty is not a fallback case: it means "no pack is active" and rejects
+        # every memory type, so every memory write in this suite fails. Full
+        # rationale in tests/conftest.py.
+        await conn.execute(
+            text(
+                "INSERT INTO memory_type_packs "
+                "(id, slug, version, label, types, is_active) "
+                "VALUES (:id, 'career', 1, 'Career', :types, 1) "
+                "ON CONFLICT (slug) DO NOTHING"
+            ),
+            {"id": str(uuid.uuid4()), "types": json.dumps(list(CAREER_TYPES))},
+        )
 
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
     async with session_factory() as session:

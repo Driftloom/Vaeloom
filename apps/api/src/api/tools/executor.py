@@ -1377,32 +1377,39 @@ async def _execute_create_memory(params: dict[str, Any], workspace_id: str) -> d
         }
 
     try:
-        from api.schemas.memory import MemoryCreate, MemoryType
+        from api.schemas.memory import MemoryCreate
         from api.services.memory_service import memory_service
+        from api.services.memory_type_packs import validate_memory_type
         from api.utils.sanitize import sanitize_text
 
         sanitized_content = sanitize_text(content)
         first_line = sanitized_content.splitlines()[0] if sanitized_content else "Memory"
 
-        # Only accept a category the API's MemoryType actually allows. The
-        # agent previously wrote whatever string it liked into Memory.type,
-        # producing rows the taxonomy could not represent.
-        valid_types = set(MemoryType.__args__)
-        resolved_type = category if category in valid_types else "note"
-
-        dto = MemoryCreate(
-            type=resolved_type,  # type: ignore[arg-type]
-            title=first_line[:100].strip() or "Memory",
-            summary=sanitized_content[:240].strip().replace("\n", " "),
-            content=sanitized_content,
-            tags=[resolved_type],
-            workspace_id=str(workspace_id),
-            source_type="agent",
-            source_label="Agent Memory",
-            metadata={"confidence": confidence, "created_by": "agent_tool"},
-        )
-
         async with _ws_session(workspace_id) as session:
+            # Only accept a category an active domain pack actually contains. The
+            # agent previously wrote whatever string it liked into Memory.type,
+            # producing rows the taxonomy could not represent; and reading the
+            # registry here rather than a literal set is what lets a second
+            # domain's categories through without editing this tool. An unknown
+            # category degrades to "note".
+            try:
+                await validate_memory_type(session, category)
+                resolved_type = category
+            except ValueError:
+                resolved_type = "note"
+
+            dto = MemoryCreate(
+                type=resolved_type,
+                title=first_line[:100].strip() or "Memory",
+                summary=sanitized_content[:240].strip().replace("\n", " "),
+                content=sanitized_content,
+                tags=[resolved_type],
+                workspace_id=str(workspace_id),
+                source_type="agent",
+                source_label="Agent Memory",
+                metadata={"confidence": confidence, "created_by": "agent_tool"},
+            )
+
             # memory_service.create_memory generates the embedding and writes the
             # provenance lineage. The old direct INSERT skipped both, so every
             # agent-created memory was permanently invisible to vector search.

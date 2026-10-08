@@ -428,6 +428,36 @@ class TestMemoryTaxonomy:
         assert len(results) == 1
 
 
+def _active_career_pack_result():
+    """Answer for the registry read that `create_memory` now performs first.
+
+    0068 dropped `ck_memories_type_valid`, so `create_memory` asks the active
+    domain pack whether `dto.type` is legal before it builds the row. A session
+    double has to answer every query the code under test makes, and answering
+    this one with a default is not neutral: "no active packs" *rejects every
+    type* by design, which would make the supersession tests below fail on an
+    unrelated assertion.
+    """
+    pack = MagicMock()
+    pack.slug = "career"
+    pack.version = 1
+    pack.types = ["profile", "note", "fact"]
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = [pack]
+    return result
+
+
+def _pack_aware_execute(other_result):
+    """An `execute` double that serves the registry and delegates the rest."""
+
+    async def execute(stmt):
+        if "memory_type_packs" in str(stmt):
+            return _active_career_pack_result()
+        return other_result
+
+    return execute
+
+
 class TestMemorySupersession:
     async def test_create_supersedes_marks_previous(self, svc):
         old = build_mock_memory(id=uuid.uuid4(), status="active")
@@ -435,10 +465,7 @@ class TestMemorySupersession:
         result.scalar_one_or_none.return_value = old
         db = MagicMock()
 
-        async def execute(stmt):
-            return result
-
-        db.execute = execute
+        db.execute = _pack_aware_execute(result)
         db.add = MagicMock()
         db.flush = AsyncMock()
         db.refresh = AsyncMock()
@@ -446,6 +473,9 @@ class TestMemorySupersession:
         memory = await svc.create_memory(db, dto, tenant_id="t-1", user_id="u-1")
         assert memory.supersedes_id == old.id
         assert old.status == "superseded"
+        # Provenance comes from the matching pack, not a hard-coded slug.
+        assert memory.type_pack_slug == "career"
+        assert memory.type_pack_version == 1
 
     async def test_create_supersedes_skips_deleted_previous(self, svc):
         old = build_mock_memory(id=uuid.uuid4(), status="deleted")
@@ -453,10 +483,7 @@ class TestMemorySupersession:
         result.scalar_one_or_none.return_value = old
         db = MagicMock()
 
-        async def execute(stmt):
-            return result
-
-        db.execute = execute
+        db.execute = _pack_aware_execute(result)
         db.add = MagicMock()
         db.flush = AsyncMock()
         db.refresh = AsyncMock()
