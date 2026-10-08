@@ -571,11 +571,18 @@ async def _assemble_rag_context(
     query: str,
     agent: BaseAgent,
     session_factory: Any | None = None,
+    *,
+    user_id: str | None = None,
 ) -> dict[str, Any]:
     """Hybrid RAG: vector-ish + graph lookup before Plan/Act. Non-blocking, best-effort.
 
     session_factory is injectable for tests (defaults to the production
     factory). Production callers must not pass it.
+
+    ``user_id`` is only used to resolve the caller's learned ranking weights
+    (see ``services.ranking_weights``). It is keyword-only and optional so the
+    graph node, which has no user identity to pass on every path, keeps today's
+    behaviour -- env/default weights -- rather than guessing one.
     """
     import time as _t
 
@@ -596,6 +603,9 @@ async def _assemble_rag_context(
         documents: list[dict[str, Any]] = []
         preferences: list[dict[str, Any]] = []
         memories: list[dict[str, Any]] = []
+        # Populated inside the session block below; read by the ranking block,
+        # which runs after that session has been closed. See the comment there.
+        resolved_weights: dict[str, float] | None = None
 
         import uuid as _uuid
         try:
@@ -812,6 +822,39 @@ async def _assemble_rag_context(
             except Exception as e:
                 logger.warning(f"RAG memory lookup failed: {e}")
 
+            # ── Per-user ranking weights ────────────────────────────────
+            # Resolved HERE, inside the session block, and this placement is
+            # load-bearing. The `session` name is still bound after the block,
+            # and an AsyncSession is reusable once closed, so resolving down
+            # there would NOT raise -- it would run on a fresh transaction.
+            # The RLS GUCs that scoped this session were set with
+            # `set_config(..., is_local=true)` (database.scoped_session), so
+            # they died with the previous transaction. On PostgreSQL,
+            # ranking_weight_profiles has FORCE RLS, so the lookup would return
+            # zero rows, fall through to the fallback weights, and every user
+            # would be silently pinned to defaults: the profile is learned
+            # correctly and then ignored, which reads as "learning is broken".
+            # Untestable on SQLite, which has no RLS -- see the placement note
+            # on test_weights_resolve_before_the_session_is_closed.
+            #
+            # Gated on candidates because the ranking block below only runs when
+            # there is something to rank; resolving otherwise would add a query
+            # per agent turn for nothing.
+            if entities or documents:
+                try:
+                    from ..services import ranking_weights as _weights_mod
+
+                    resolved_weights = await _weights_mod.effective_weights(
+                        session, str(workspace_id), user_id
+                    )
+                except Exception as _werr:
+                    # effective_weights never raises by contract. This keeps the
+                    # caller non-fragile if that ever changes: leaving
+                    # resolved_weights None omits the key, and the ranker falls
+                    # back to its env/default set.
+                    logger.debug(f"RAG weight resolution skipped: {_werr}")
+                    resolved_weights = None
+
         # ── P1: ranking re-rank (weighted relevance+recency+importance) when we have enough candidates
         # Over-fetch 20 LIKE candidates → score → keep top 8. Vector path already scored via distance.
         try:
@@ -825,13 +868,27 @@ async def _assemble_rag_context(
                 for d in documents:
                     all_cands.append({"id": d["id"], "text": d["path"], "source": "document", "metadata": {"summary": d["summary"], "created_at": None}, "score": 1.0})
                 if all_cands:
-                    # WS01: pass the caller's preference context into the weighted ranker
-                    # (relevance/recency/importance/user_preference). Note the ranker
-                    # consumes structured preferences -- preferred_tags/preferred_types --
-                    # NOT the `user_preference_vectors.preference_vector` embedding, which is
+                    # WS01: pass the caller's preference context into the weighted
+                    # ranker (relevance/recency/importance/user_preference). Note the
+                    # ranker consumes structured preferences -- preferred_tags /
+                    # preferred_types -- NOT the
+                    # `user_preference_vectors.preference_vector` embedding, which is
                     # read only by recommendation_service.generate(). Do not assume the
                     # preference_vector feed reaches ranking.
-                    _uc = None
+                    #
+                    # `weights` is a different signal from that preference Entity and
+                    # adds no new connection: it is the resolved per-user weight
+                    # profile -- how much each of the four factors counts, not what the
+                    # user's preferences are. Putting it here does not wire
+                    # preference_vector into the ranker.
+                    #
+                    # Built as a dict from the start rather than left None when the
+                    # workspace has no preference entities, because that is the common
+                    # case and weights riding on a None dict would never be applied.
+                    # `_preference_score` treats None and {} identically (both falsy ->
+                    # the 0.5 neutral), so this changes nothing about the preference
+                    # signal itself.
+                    _uc: dict[str, Any] = {}
                     try:
                         if preferences:
                             _tags = [p.get("name","").lower() for p in preferences[:5] if p.get("name")]
@@ -841,9 +898,12 @@ async def _assemble_rag_context(
                             for t in _types:
                                 if isinstance(t, list):
                                     flat_types.extend(t)
-                            _uc = {"preferred_tags": _tags, "preferred_types": flat_types or ["memory","document"]}
+                            _uc["preferred_tags"] = _tags
+                            _uc["preferred_types"] = flat_types or ["memory","document"]
                     except Exception:
-                        _uc = None
+                        _uc = {}
+                    if resolved_weights is not None:
+                        _uc["weights"] = resolved_weights
                     ranked = search_ranking_service.rank_results(all_cands, query, user_context=_uc)
                     # Re-build truncated lists preserving order via rank
                     {r["id"] for r in ranked if r["source"] == "entity"}
@@ -1030,7 +1090,10 @@ async def plan_phase(request: AgentRequest, state: LoopState) -> dict[str, Any]:
         # Automated RAG context injection
         rag_context: dict[str, Any] = {}
         try:
-            rag_context = await _assemble_rag_context(request.workspace_id, request.message, request.agent)
+            rag_context = await _assemble_rag_context(
+                request.workspace_id, request.message, request.agent,
+                user_id=request.user_id,
+            )
             if rag_context.get("entities") or rag_context.get("documents") or rag_context.get("memories"):
                 logger.info(f"RAG injected: {len(rag_context.get('entities', []))} entities, {len(rag_context.get('documents', []))} docs, {len(rag_context.get('preferences', []))} prefs, {len(rag_context.get('memories', []))} memories")
         except Exception as e:

@@ -16,9 +16,8 @@ shaped: each one fails against the pre-wiring code.
 import uuid
 
 import pytest
-from sqlalchemy import select
 
-from api.models.schema import Memory, User, Workspace
+from api.models.schema import Entity, Memory, RankingWeightProfile, User, Workspace
 from api.orchestrator.loop import (
     MEMORY_CONTEXT_MAX_CHARS,
     MEMORY_CONTEXT_MAX_ITEMS,
@@ -49,6 +48,11 @@ class _SessionCtx:
 
 
 async def _ws(db_session, name: str) -> uuid.UUID:
+    ws_id, _user_id = await _ws_with_user(db_session, name)
+    return ws_id
+
+
+async def _ws_with_user(db_session, name: str) -> tuple[uuid.UUID, uuid.UUID]:
     user = User(
         id=uuid.uuid4(),
         email=f"user-{uuid.uuid4().hex[:8]}@example.com",
@@ -59,7 +63,7 @@ async def _ws(db_session, name: str) -> uuid.UUID:
     ws = Workspace(id=uuid.uuid4(), user_id=user.id, name=name)
     db_session.add(ws)
     await db_session.commit()
-    return ws.id
+    return ws.id, user.id
 
 
 def _agent_stub():
@@ -406,3 +410,211 @@ class TestMemorySurvivesContextBudget:
         truncated = composed[:200]
         assert "Recalled workspace memory" in truncated
         assert "Escalation contact" in truncated
+
+
+# ── Task 4: resolved per-user weights reach the ranker ─────────────────
+
+
+def _agent_stub_unfiltered():
+    """read_types=["any"] so the graph lookup is not narrowed by agent scope.
+
+    The default stub declares ["memory", "document"], which filters out the
+    ``preference`` Entity these tests seed -- a known, separate bug (F-07 in the
+    audit trail) that would make the weight wiring untestable here.
+    """
+
+    class _Scopes:
+        read_types = ["any"]
+
+    class _Agent:
+        memory_scopes = _Scopes()
+        mission = "test"
+
+    return _Agent()
+
+
+_LEARNED = {
+    "relevance": 0.7,
+    "recency": 0.15,
+    "importance": 0.1,
+    "user_preference": 0.05,
+}
+
+
+async def _seed_learned_profile(db_session, ws_id, user_id):
+    db_session.add(
+        RankingWeightProfile(
+            tenant_id=uuid.uuid4(),
+            workspace_id=ws_id,
+            user_id=user_id,
+            relevance=_LEARNED["relevance"],
+            recency=_LEARNED["recency"],
+            importance=_LEARNED["importance"],
+            user_preference=_LEARNED["user_preference"],
+            sample_size=25,
+        )
+    )
+    await db_session.commit()
+
+
+def _capture_rank_results(monkeypatch) -> list:
+    """Record every user_context handed to the ranker, then delegate for real."""
+    from api.services.search_ranking import search_ranking_service
+
+    seen: list = []
+    real = search_ranking_service.rank_results
+
+    def _capture(results, query, user_context=None):
+        seen.append(user_context)
+        return real(results, query, user_context=user_context)
+
+    monkeypatch.setattr(search_ranking_service, "rank_results", _capture)
+    return seen
+
+
+class TestResolvedWeightsReachRanker:
+    async def test_resolved_weights_are_passed_into_rank_results(
+        self, db_session, monkeypatch
+    ):
+        """The end of the chain: a stored profile must arrive at the ranker.
+
+        Asserted on the ``user_context`` handed to ``rank_results`` rather than
+        on the resulting score, so a resolver that silently degrades to
+        defaults is caught here instead of being indistinguishable from a
+        weighting that happened not to matter for this candidate set.
+        """
+        ws_id, user_id = await _ws_with_user(db_session, "Weights WS")
+        db_session.add(
+            Entity(
+                id=uuid.uuid4(),
+                workspace_id=ws_id,
+                type="preference",
+                canonical_name="likes alpha-unicorn",
+                aliases=[],
+                metadata_={"importance": 0.9},
+            )
+        )
+        await _seed_learned_profile(db_session, ws_id, user_id)
+        seen = _capture_rank_results(monkeypatch)
+
+        await _assemble_rag_context(
+            str(ws_id),
+            "likes alpha-unicorn",
+            _agent_stub_unfiltered(),
+            session_factory=lambda: _SessionCtx(db_session),
+            user_id=str(user_id),
+        )
+
+        assert seen, "ranking never ran -- the Entity candidate was not retrieved"
+        assert seen[0]["weights"] == pytest.approx(_LEARNED), (
+            "the stored per-user profile must be what the ranker multiplies by"
+        )
+
+    async def test_weights_arrive_without_any_preference_entities(
+        self, db_session, monkeypatch
+    ):
+        """Weights are independent of the preference Entity lookup.
+
+        The preference path leaves ``user_context`` unset when the workspace has
+        no preference entities, which is the common case. If the weights rode
+        along on that dict they would silently never apply for most users --
+        learned weights that look wired and are not.
+        """
+        ws_id, user_id = await _ws_with_user(db_session, "No Prefs WS")
+        db_session.add(
+            Entity(
+                id=uuid.uuid4(),
+                workspace_id=ws_id,
+                type="concept",
+                canonical_name="alpha-unicorn telemetry",
+                aliases=[],
+                metadata_={"importance": 0.9},
+            )
+        )
+        await _seed_learned_profile(db_session, ws_id, user_id)
+        seen = _capture_rank_results(monkeypatch)
+
+        ctx = await _assemble_rag_context(
+            str(ws_id),
+            "alpha-unicorn telemetry",
+            _agent_stub_unfiltered(),
+            session_factory=lambda: _SessionCtx(db_session),
+            user_id=str(user_id),
+        )
+
+        assert not ctx["preferences"], "fixture must have no preference entities"
+        assert seen, "ranking never ran"
+        assert seen[0]["weights"] == pytest.approx(_LEARNED)
+
+    async def test_weights_resolve_before_the_session_is_closed(
+        self, tmp_path, monkeypatch
+    ):
+        """Production-shaped session lifecycle rather than a test double.
+
+        The other two tests inject ``_SessionCtx``, which never closes its
+        session -- so anything about lifecycle is invisible to them. This drives a
+        real ``async_sessionmaker`` on its own file-backed engine: closes on
+        ``__aexit__``, commits on exit, real SQLAlchemy ``Result`` semantics
+        from the resolver's raw ``text()`` statement.
+
+        What it does NOT do: pin the resolution's position inside the session
+        block. Moving the lookup below that block was tried and this test stayed
+        green, because a closed AsyncSession is reusable. The production-only
+        failure is subtler -- ``database.scoped_session`` sets its RLS GUCs with
+        ``set_config(..., is_local=true)``, so they die with the previous
+        transaction and the FORCE-RLS profile table returns zero rows, pinning
+        every user to defaults with no error anywhere. SQLite has no RLS, so
+        that cannot be reproduced here; it needs the live-PostgreSQL suite.
+        """
+        from sqlalchemy.ext.asyncio import (
+            AsyncSession,
+            async_sessionmaker,
+            create_async_engine,
+        )
+        from sqlalchemy.pool import NullPool
+
+        from api.database import Base
+
+        engine = create_async_engine(
+            f"sqlite+aiosqlite:///{tmp_path}/weights.db", poolclass=NullPool
+        )
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        fac = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+        async def _seeded_session(sess_factory):
+            async with sess_factory() as s:
+                return await _ws_with_user(s, "Closed Session WS")
+
+        ws_id, user_id = await _seeded_session(fac)
+        async with fac() as s:
+            s.add(
+                Entity(
+                    id=uuid.uuid4(),
+                    workspace_id=ws_id,
+                    type="concept",
+                    canonical_name="bravo-kestrel signal",
+                    aliases=[],
+                    metadata_={"importance": 0.9},
+                )
+            )
+            await s.commit()
+            await _seed_learned_profile(s, ws_id, user_id)
+
+        seen = _capture_rank_results(monkeypatch)
+        try:
+            await _assemble_rag_context(
+                str(ws_id),
+                "bravo-kestrel signal",
+                _agent_stub_unfiltered(),
+                session_factory=fac,
+                user_id=str(user_id),
+            )
+        finally:
+            await engine.dispose()
+
+        assert seen, "ranking never ran"
+        assert seen[0]["weights"] == pytest.approx(_LEARNED), (
+            "the resolved profile must survive a factory that commits and "
+            "closes on exit, i.e. the real production lifecycle"
+        )

@@ -3,6 +3,7 @@ import os
 from datetime import UTC, datetime
 
 from ..services.llm_service import LLMService
+from ..services.ranking_weights import WEIGHT_KEYS
 
 DEFAULT_WEIGHTS = {
     "relevance": 0.4,
@@ -29,22 +30,42 @@ class SearchRankingService:
         self._weights = _load_weights()
         self._llm = llm_service
 
+    def _resolve_weights(self, user_context: dict | None) -> dict[str, float]:
+        """Per-user weights from the caller's context, else the env/default set.
+
+        ``self._weights`` is frozen at construction (from the environment), so it
+        is the fallback, not the answer: the learned profile arrives per call in
+        ``user_context["weights"]``.
+
+        All four keys or nothing. A partial dict is **ignored, not merged** --
+        merging is the tempting implementation and the dangerous one, because a
+        dict missing one key either raises KeyError mid-score or, with a
+        ``.get(k, 0.0)``, silently pins that factor to zero for every request.
+        Rejecting the whole dict degrades to known-good env/defaults instead.
+        """
+        if user_context:
+            candidate = user_context.get("weights")
+            if isinstance(candidate, dict) and all(k in candidate for k in WEIGHT_KEYS):
+                return candidate
+        return self._weights
+
     def calculate_score(
         self,
         result: dict,
         query: str,
         user_context: dict | None = None,
     ) -> float:
+        weights = self._resolve_weights(user_context)
         relevance = self._relevance_score(result, query)
         recency = self._recency_score(result)
         importance = self._importance_score(result)
         preference = self._preference_score(result, user_context)
 
         return (
-            self._weights["relevance"] * relevance
-            + self._weights["recency"] * recency
-            + self._weights["importance"] * importance
-            + self._weights["user_preference"] * preference
+            weights["relevance"] * relevance
+            + weights["recency"] * recency
+            + weights["importance"] * importance
+            + weights["user_preference"] * preference
         )
 
     def rank_results(

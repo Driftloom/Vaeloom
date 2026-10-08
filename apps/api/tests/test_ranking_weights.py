@@ -6,6 +6,7 @@ from sqlalchemy import create_engine, select, text
 
 from api.models.schema import RankingWeightProfile
 from api.services import ranking_weights as rw
+from api.services.search_ranking import SearchRankingService
 
 pytestmark = pytest.mark.asyncio
 
@@ -570,3 +571,81 @@ async def test_feedback_request_has_no_client_supplied_user_id_field():
     assert not hasattr(dto, "user_id"), (
         "a client-supplied user_id must not survive validation as an attribute"
     )
+
+
+# ─── the ranker consumes the resolved weights ──────────────────────────
+#
+# These drive ``SearchRankingService`` rather than the resolver: resolution was
+# already proven correct above, and a resolver whose result never reaches the
+# ranker is the failure that matters -- the weights would be learned correctly
+# and then ignored, which reads as "learning is broken" from the outside.
+#
+# The candidate is shaped so the four factors are individually distinguishable:
+# text contains the query verbatim (relevance 1.0), no created_at (recency 0.5),
+# metadata importance 1.0, and an empty user context (preference 0.5). So the
+# score is 1.0 only when relevance carries the whole weight.
+
+
+def _cand(i, score: float = 1.0) -> dict:
+    return {
+        "id": str(i),
+        "text": "alpha",
+        "source": "memory",
+        "metadata": {"importance": 1.0},
+        "score": score,
+    }
+
+
+def test_weights_from_user_context_are_applied(monkeypatch):
+    monkeypatch.delenv("RANKING_WEIGHTS", raising=False)
+    svc = SearchRankingService(llm_service=None)
+    w = {"relevance": 1.0, "recency": 0.0, "importance": 0.0, "user_preference": 0.0}
+    got = svc.calculate_score(_cand(1), "alpha", user_context={"weights": w})
+    assert got == pytest.approx(1.0), (
+        "the caller's weight profile must be what multiplies each factor; "
+        "reading env/defaults instead scores this 0.8"
+    )
+
+
+def test_default_weights_used_when_user_context_has_no_weights():
+    svc = SearchRankingService(llm_service=None)
+    plain = svc.calculate_score(_cand(1), "alpha", user_context={"preferred_tags": []})
+    absent = svc.calculate_score(_cand(1), "alpha", user_context=None)
+    assert plain == pytest.approx(absent), "today's behaviour must be unchanged"
+
+
+def test_partial_weights_dict_is_ignored():
+    """A half-specified weights dict must not zero a signal.
+
+    Not merged, not defaulted per key: the whole dict is rejected and the
+    env/default set is used. Merging is the tempting implementation and the
+    dangerous one -- ``weights["recency"]`` on a dict missing that key either
+    raises or, with a ``.get(k, 0)``, silently drops recency to 0.0 forever.
+    """
+    svc = SearchRankingService(llm_service=None)
+    got = svc.calculate_score(
+        _cand(1), "alpha", user_context={"weights": {"relevance": 1.0}}
+    )
+    default = svc.calculate_score(_cand(1), "alpha", user_context=None)
+    assert got == pytest.approx(default)
+
+
+def test_identical_weights_produce_identical_scores():
+    """Sanity on the ranking path, not on the resolver: same weights in, same
+    order out, regardless of whether they arrived via user_context or not."""
+    svc = SearchRankingService(llm_service=None)
+    a, b = _cand("a", 1.0), _cand("b", 1.0)
+    base = svc.rank_results([a, b], "alpha")
+    boosted = svc.rank_results(
+        [dict(a), dict(b)],
+        "alpha",
+        user_context={
+            "weights": {
+                "relevance": 0.4,
+                "recency": 0.3,
+                "importance": 0.2,
+                "user_preference": 0.1,
+            }
+        },
+    )
+    assert base == boosted, "identical weights must produce identical scores"
