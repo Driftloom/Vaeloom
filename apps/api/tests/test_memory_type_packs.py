@@ -17,6 +17,8 @@ migration literal -> table row -> ``CAREER_TYPES`` -> literal list pinned by
 """
 
 import ast
+import importlib.util
+import json
 import pathlib
 
 import pytest
@@ -42,6 +44,20 @@ _MIGRATION = (
     / "versions"
     / "0068_memory_type_packs.py"
 )
+
+
+def _load_migration_module():
+    """Import 0068 itself, to exercise the function that builds the seed payload.
+
+    Safe to execute: the module body only assigns revision strings and constants
+    and defines functions -- no DDL runs at import. ``spec_from_file_location``
+    is used because the filename starts with a digit and cannot be imported by
+    name.
+    """
+    spec = importlib.util.spec_from_file_location("migration_0068", _MIGRATION)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def _migration_seed_types() -> tuple[str, ...]:
@@ -110,6 +126,16 @@ async def test_seeded_career_pack_matches_constant(seeded_packs):
     assert tuple(packs[0].types) == CAREER_TYPES
     assert packs[0].version == 1
     assert packs[0].is_active is True
+
+    # The literal PostgreSQL actually receives, not just the Python constant.
+    # Asserting only the two constants above leaves the rendering step untested,
+    # and an earlier draft of 0068 rendered this payload as a SQL string list
+    # (`['profile', 'document', ...]`) where a JSON array was required -- all
+    # seven other assertions in this module passed while the seed would have
+    # failed at deploy. The `''` -> `'` step undoes the SQL string-literal
+    # escaping `_type_list_sql` applies to the payload it embeds.
+    payload = _load_migration_module()._type_list_sql().replace("''", "'")
+    assert tuple(json.loads(payload)) == CAREER_TYPES
 
 
 async def test_validate_accepts_every_career_type(seeded_packs):

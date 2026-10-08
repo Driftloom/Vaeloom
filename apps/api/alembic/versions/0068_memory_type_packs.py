@@ -132,9 +132,15 @@ def _safe(conn, sql: str) -> None:
 
 
 def _type_list_sql() -> str:
-    """The 24 literals as a SQL string list, for the seed's JSONB payload."""
-    quoted = ", ".join("'" + t.replace("'", "''") + "'" for t in _CAREER_TYPES)
-    return f"[{quoted}]"
+    """The 24 values as a JSON array literal for the seed's JSONB payload.
+
+    JSON, not a SQL string list: the payload is cast ``::jsonb``, so the literal
+    inside the quotes has to be a JSON document. Building it with ``json.dumps``
+    (rather than hand-quoting) is what keeps the seeded array byte-identical to
+    ``_CAREER_TYPES``, and the outer single-quote doubling escapes the SQL string
+    literal the JSON sits in.
+    """
+    return json.dumps(list(_CAREER_TYPES)).replace("'", "''")
 
 
 # Transcribed from 0027_memory_taxonomy_expand_contract.py lines 74-82, which is
@@ -250,7 +256,7 @@ def upgrade() -> None:
         "0068 pre-drop evidence: %s row(s) in %s, distinct types=%s",
         total,
         _MEMORY,
-        {t: c for t, c in present},
+        dict(present),
     )
 
     # 7. Drop the frozen taxonomy. The registry is seeded, readable and
