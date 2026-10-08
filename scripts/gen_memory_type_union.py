@@ -49,10 +49,30 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 API_SRC = REPO_ROOT / "apps" / "api" / "src"
 OUTPUT = REPO_ROOT / "packages" / "shared-types" / "src" / "types" / "memory.generated.ts"
 
-# Same self-guard `gen_openapi.py` uses: the API's package tree has to be
-# importable for the registry read to work, so re-exec under the pinned
-# interpreter rather than failing with an ImportError the reader cannot act on.
-if sys.version_info[:2] != (3, 12):
+PINNED_PYTHON = (3, 12)
+
+
+def _needs_reexec(version_info: tuple[int, int, ...], module_name: str) -> bool:
+    """Whether to re-exec under the pinned interpreter before doing any work.
+
+    Same self-guard ``gen_openapi.py`` uses: the API's package tree has to be
+    importable to read the registry, so running under a bare interpreter should
+    re-exec under ``uv run --project apps/api`` rather than fail with an
+    ``ImportError`` the reader cannot act on.
+
+    Deliberately keyed on ``module_name``. The guard exists to make *running* this
+    file work; at import time it must not fire at all. It used to sit at module
+    scope, where it raised ``SystemExit`` on import under any interpreter but the
+    pinned one -- which contradicted this module's own promise that ``render`` is
+    importable without the API's dependency tree, and made that promise hold only
+    by accident of the repo pinning 3.12. A test pins the split now
+    (``test_version_guard_fires_only_when_run_as_a_script``).
+    """
+    return module_name == "__main__" and version_info[:2] != PINNED_PYTHON
+
+
+def _reexec_under_pinned_interpreter() -> None:
+    """Hand off to the pinned interpreter. Never returns; exits with its status."""
     cmd = [
         "uv", "run", "--project", "apps/api", "python", str(Path(__file__).resolve())
     ] + sys.argv[1:]
@@ -115,9 +135,12 @@ def _career_types() -> list[str]:
     """Read ``CAREER_TYPES`` out of the backend registry, in source order.
 
     Imported lazily and by path rather than at module scope so that ``render``
-    stays importable without the API's dependency tree -- the drift guard
-    imports this module and should not have to pay for SQLAlchemy to check a
-    string.
+    stays importable without the API's dependency tree -- the drift guard imports
+    this module and should not have to pay for SQLAlchemy to check a string. The
+    interpreter self-guard is gated on ``__name__`` for the same reason: importing
+    this module must never re-exec or exit, on any interpreter. Only *running* it
+    needs the API's tree, and therefore only *running* it re-execs under the
+    pinned interpreter.
     """
     if str(API_SRC) not in sys.path:
         sys.path.insert(0, str(API_SRC))
@@ -184,4 +207,6 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    if _needs_reexec(sys.version_info, __name__):
+        _reexec_under_pinned_interpreter()
     raise SystemExit(main())

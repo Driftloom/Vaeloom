@@ -18,4 +18,11 @@ specs/
 evidence/
 .agents/
 docs/
+# Generated artefact: `memory.generated.ts` is rendered byte-for-byte by
+# scripts/gen_memory_type_union.py, and `.lintstagedrc.json` matches `*.ts`, so
+# the pre-commit hook reached it. A prettier reformat (quote flip, collapsed
+# union, semicolon) would pass both drift guards -- they compare member set and
+# order, not bytes -- and fail only `--check`, which nothing runs yet. Ignoring it
+# here keeps the committed file byte-identical to its generator's output.
+*.generated.ts
 

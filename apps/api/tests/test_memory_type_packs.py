@@ -1066,15 +1066,45 @@ _GENERATED_UNION = _REPO / "packages" / "shared-types" / "src" / "types" / "memo
 # this check: the brief's own regex (`'([a-z_]+)'` over the whole text) would
 # have counted an identifier mentioned in prose as a union member.
 #
-# The trailing `;?` is load-bearing, not decoration: the last member is written
-# `| 'workflow';`, and a regex that forgot that silently reports the final
-# member as missing -- which this guard did, on its own first green run.
-_UNION_MEMBER = re.compile(r"^\s*\|\s*'([a-z_]+)'\s*;?\s*$", re.MULTILINE)
+# The member body is `[^']+`, not `[a-z_]+`. Nothing in the domain constrains a
+# pack member's characters -- there is no `pattern=` on `schemas/memory.py` -- so
+# a character class narrower than "anything but a quote" turns a future
+# digit-, hyphen- or capital-bearing member into a spurious `only-in-pack` alarm.
+# That still fails loudly, which is the right *direction*, but a guard that cries
+# wolf on a legitimate pack teaches people to ignore it.
+#
+# Two things this must not become:
+#
+# * `[^']+` will happily swallow a quote-free line that is not a member, so the
+#   anchors stay anchored -- `^\s*\|\s*'...'`. Only a line that genuinely starts
+#   with the union pipe counts, and no line of the emitted header does.
+# * The trailing `;?` is load-bearing, not decoration: the last member is written
+#   `| 'workflow';`, and a regex that forgot that silently reports the final
+#   member as missing -- which this guard did, on its own first green run.
+_UNION_MEMBER = re.compile(r"^\s*\|\s*'([^']+)'\s*;?\s*$", re.MULTILINE)
 
 
 def _generated_members(text: str) -> list[str]:
-    """The union members in the generated file, in the order they are written."""
-    return _UNION_MEMBER.findall(text)
+    """The union members in the generated file, in the order they are written.
+
+    Asserts non-empty on purpose. The obvious implementation of the guard --
+    compare the parsed set to the pack -- treats "parsed nothing" as
+    ``set()``, which is unequal to a 24-member pack and so does fail. It fails
+    *incidentally*, and it fails with a message that blames drift: a file whose
+    union got reformatted or truncated would report ``only-in-pack=[all 24]``,
+    sending the reader to regenerate a file that regenerating cannot fix. Failing
+    on the parse itself names the real cause.
+    """
+    members = _UNION_MEMBER.findall(text)
+    assert members, (
+        "no union members parsed out of the generated file. Expected lines of the "
+        "form `  | 'member'`. This is not drift: the file was almost certainly "
+        "reformatted (union collapsed onto one line, pipes dropped, quotes "
+        "flipped) or truncated. Regenerate it with "
+        "`python scripts/gen_memory_type_union.py`, and if that does not fix it, "
+        "check `.prettierignore` still ignores `*.generated.ts`."
+    )
+    return members
 
 
 def _generated_text() -> str:
@@ -1173,4 +1203,156 @@ from pathlib import Path
 mod.OUTPUT = Path(sys.argv[2])
 sys.exit(mod.main(["--check"]))
 """
+
+
+def _load_generator():
+    """Import the generator by path, in this process, as a plain import.
+
+    ``importlib`` rather than ``sys.path`` surgery because the module is not on
+    any import path and is not a package member. Returning a fresh module object
+    each call keeps the two tests below independent: neither can leave a patched
+    ``subprocess`` behind for the other.
+    """
+    spec = importlib.util.spec_from_file_location("gen_memory_type_union", _GENERATOR)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.mark.parametrize(
+    "member",
+    ["skill_2", "job-search", "Profile", "TYPE_42_x", "9lives", "a-b-c-d"],
+)
+def test_generated_member_parse_accepts_any_character_shape(member):
+    """A pack member is parsed by shape, not by a hand-written character class.
+
+    Nothing in the domain constrains a member's characters -- there is no
+    ``pattern=`` on ``schemas/memory.py`` -- so a future ``skill_2`` or
+    ``job-search`` must read as a member. Under the old ``[a-z_]+`` class such a
+    member simply did not match, and the guard reported it as missing from the
+    *generated* file: drift pointing the wrong way, on a pack that was correct.
+    """
+    text = f"export type GeneratedMemoryType =\n  | '{member}'\n  | 'profile';\n"
+    assert _generated_members(text) == [member, "profile"]
+
+
+@pytest.mark.parametrize(
+    ("case", "text"),
+    [
+        ("empty file", ""),
+        (
+            "header only, union absent",
+            "/** GENERATED FILE -- DO NOT EDIT BY HAND. */\n"
+            "export type GeneratedMemoryType = never;\n",
+        ),
+        (
+            "union collapsed onto one line",
+            "export type GeneratedMemoryType = 'profile' | 'document' | 'career';\n",
+        ),
+        (
+            "pipes dropped, members on their own lines",
+            "export type GeneratedMemoryType =\n  'profile'\n  'document';\n",
+        ),
+        (
+            "members double-quoted by a reformatter",
+            'export type GeneratedMemoryType =\n  | "profile"\n  | "document";\n',
+        ),
+    ],
+)
+def test_generated_member_parse_rejects_an_empty_or_unparseable_union(case, text):
+    """An empty parse is a failure, never a silent "no drift".
+
+    This is the negative control for the relaxed character class. ``[^']+`` is
+    permissive by construction, so the only thing standing between "lenient" and
+    "parses garbage into nothing" is that parsing nothing is itself an error. Both
+    cases matter:
+
+    * a truncated or collapsed union, and
+    * a *quote-style* flip by a reformatter.
+
+    The second is the one this task's Important finding is about. A reformat that
+    changed ``'profile'`` to ``"profile"`` parses to nothing, and without this
+    assertion that would read as ``set()`` -- which happens to differ from the
+    pack and so still fails, but with a message blaming drift and pointing at a
+    regeneration that cannot possibly help.
+    """
+    with pytest.raises(AssertionError, match="no union members"):
+        _generated_members(text)
+
+
+def test_version_guard_fires_only_when_run_as_a_script():
+    """Minor 2: the interpreter self-guard must not run at import.
+
+    It used to sit at module scope and ``raise SystemExit`` under any interpreter
+    but the pinned 3.12, which contradicted this module's own docstring promise
+    that ``render`` is importable without the API's dependency tree. That promise
+    held only because the repo pins 3.12 -- so the bug was latent rather than
+    live, and a latent bug in a docstring/contract mismatch is exactly the kind
+    that becomes a real outage the first time someone runs tooling on 3.11.
+
+    Both halves are pinned here, which is what makes the split a contract rather
+    than a coincidence: importing under a wrong version must not re-exec, and
+    running under a wrong version still must.
+    """
+    gen = _load_generator()
+    assert gen.PINNED_PYTHON == (3, 12)
+
+    # Importing is always safe, whatever the interpreter.
+    for version in ((3, 12, 0), (3, 11, 0), (3, 14, 0)):
+        assert gen._needs_reexec(version, "gen_memory_type_union") is False, version
+    # Running under the pinned interpreter proceeds.
+    assert gen._needs_reexec((3, 12, 9), "__main__") is False
+    # Running under any other interpreter re-execs.
+    assert gen._needs_reexec((3, 11, 0), "__main__") is True
+    assert gen._needs_reexec((3, 14, 0), "__main__") is True
+
+
+def test_generator_import_does_not_re_exec_or_exit():
+    """The guard above is a unit test; this drives the real import on a *wrong* version.
+
+    Without the ``sys.version_info`` patch this test is vacuous: the repo pins
+    3.12, so the version guard does not fire and the test would pass against the
+    old module-scope code unchanged -- a test that cannot fail is worse than no
+    test, because it reads as coverage. ``sys.version_info`` is a plain tuple
+    attribute and is assignable, so the wrong-interpreter case can actually be
+    reproduced here rather than deferred to a machine that happens to run 3.11.
+
+    Every import the module body performs is done *before* the patch, so the only
+    code that observes the fake version is the version guard itself.
+    """
+    import subprocess
+    import sys
+
+    code = (
+        # Pre-import everything the generator's module body needs, so the fake
+        # version cannot break an unrelated import mid-module.
+        "import importlib.util, subprocess, sys, argparse, difflib\n"
+        "from pathlib import Path\n"
+        "real_version = sys.version_info\n"
+        "sys.version_info = (3, 11, 0)\n"
+        "def _boom(*a, **k):\n"
+        "    raise SystemExit(97)\n"
+        "subprocess.call = _boom\n"
+        "try:\n"
+        "    spec = importlib.util.spec_from_file_location('g', sys.argv[1])\n"
+        "    mod = importlib.util.module_from_spec(spec)\n"
+        "    spec.loader.exec_module(mod)\n"
+        "finally:\n"
+        "    sys.version_info = real_version\n"
+        # The guard must not have fired, so both of these must still work.
+        "assert mod.render(['a', 'b']).endswith(\"| 'a'\\n  | 'b';\\n\")\n"
+        "assert mod._needs_reexec((3, 11, 0), 'gen_memory_type_union') is False\n"
+        "print('imported')\n"
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", code, str(_GENERATOR)],
+        capture_output=True,
+        text=True,
+        cwd=str(_REPO),
+    )
+    assert proc.returncode == 0, (
+        f"importing the generator on a wrong interpreter re-execed or exited "
+        f"(code {proc.returncode}; 97 is the stubbed re-exec): {proc.stdout}{proc.stderr}"
+    )
+    assert "imported" in proc.stdout
 
