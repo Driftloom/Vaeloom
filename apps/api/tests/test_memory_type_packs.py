@@ -233,6 +233,57 @@ async def test_no_active_pack_warns_rather_than_falling_back_silently(seeded_pac
     assert "insight" not in await valid_types(seeded_packs)
 
 
+async def test_unreadable_registry_stays_at_debug(seeded_packs, caplog, monkeypatch):
+    """Fix round 2: the fallback level is pinned, not merely intended.
+
+    ``test_no_active_pack_warns_rather_than_falling_back_silently`` covers the
+    warning side; this covers the other one. Until now the split between the two
+    branches rested on code structure alone -- the ``except`` returns before the
+    warning is reached -- so bumping the fallback from ``debug`` to ``warning``
+    would have turned every pre-migration database and every transient probe
+    failure into a permanent, unclearable warning, and nothing would fail. The
+    distinction is a real contract: the fallback is *designed* behaviour, so it
+    must stay below the operator-actionable threshold.
+
+    The pack row is present, so the assertion is about an unreadable registry
+    rather than an empty one -- ``execute`` is replaced with a raise, which is
+    what a database predating 0068 actually looks like from inside the savepoint.
+    """
+    import logging
+
+    from api.services import memory_type_packs as mod
+
+    async def _unreadable(*args, **kwargs):
+        raise sa.exc.OperationalError("SELECT memory_type_packs", {}, Exception("no such table"))
+
+    monkeypatch.setattr(seeded_packs, "execute", _unreadable)
+
+    with caplog.at_level(logging.DEBUG, logger=mod.__name__):
+        # An unreadable registry must still not break memory creation.
+        assert await valid_types(seeded_packs) == set(CAREER_TYPES)
+        assert await validate_memory_type(seeded_packs, "insight") == PackMatch(
+            CAREER_PACK_SLUG, 1
+        )
+        with pytest.raises(ValueError):
+            await validate_memory_type(seeded_packs, "not_a_type")
+
+    records = [r for r in caplog.records if r.name == mod.__name__]
+    assert records, "an unreadable registry must still leave a log record"
+    # The negative control itself: any level bump on either branch fails here.
+    assert [r.levelno for r in records] == [logging.DEBUG] * len(records), (
+        "the unavailable-registry fallback is routine degradation and must stay at "
+        f"DEBUG; got {[r.levelname for r in records]}"
+    )
+    assert all("pack registry unavailable" in r.getMessage() for r in records), (
+        f"unexpected debug record(s): {[r.getMessage() for r in records]}"
+    )
+    # ... and the two branches must stay distinct: this path must not emit the
+    # operator-actionable warning, or the routine case alerts alongside the real one.
+    assert not [
+        r for r in records if "no active memory type pack" in r.getMessage()
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Offline rendering guard
 #

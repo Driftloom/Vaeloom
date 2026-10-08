@@ -102,11 +102,40 @@ jobs:
         # Deliberately NOT `-x` on error: the workflow has to show the real error.
         run: uv run alembic upgrade head
 
+      - name: Capture the head revision from the migration graph
+        working-directory: apps/api
+        # Deliberately not the literal "0068". Everything below is about
+        # downgrading *whatever is at the head* and proving the chain comes back
+        # to it; hard-coding the number meant the next migration failed this job
+        # with "expected 0068 after the round trip, got 0069" -- a diagnostic
+        # that reads like a broken round trip rather than a stale literal, and
+        # whose cheapest fix under pressure is deleting the assertion. Read the
+        # same way `tests/test_migration_chain_pg.py` reads it
+        # (`ScriptDirectory.get_heads()`), and require exactly one head so that
+        # `downgrade -1` below has no ambiguity about what it is undoing.
+        run: |
+          heads=$(uv run python -c "from alembic.config import Config; from alembic.script import ScriptDirectory; print(' '.join(ScriptDirectory.from_config(Config('alembic.ini')).get_heads()))")
+          echo "alembic head(s) = $heads"
+          count=$(printf '%s' "$heads" | wc -w | tr -d ' ')
+          test "$count" = "1" || { echo "::error::expected exactly one alembic head, got [$heads]"; exit 1; }
+          parent=$(uv run python -c "from alembic.config import Config; from alembic.script import ScriptDirectory; s = ScriptDirectory.from_config(Config('alembic.ini')); print(s.get_revision(s.get_heads()[0]).down_revision)")
+          test -n "$parent" && test "$parent" != "None" \
+            || { echo "::error::head revision $heads has no down_revision, so there is no revision to rehearse"; exit 1; }
+          echo "VL_HEAD=$heads" >> "$GITHUB_ENV"
+          echo "VL_PARENT=$parent" >> "$GITHUB_ENV"
+
       - name: Assert the database reached head
         run: |
           version=$(psql -U postgres -d vaeloom_test -tAc "SELECT version_num FROM alembic_version;")
           echo "alembic_version = $version"
           test -n "$version" || { echo "::error::alembic_version is empty"; exit 1; }
+          # Cross-checked against the migration graph, not against a literal.
+          # This is what keeps the round-trip assertion later non-circular:
+          # $VL_HEAD comes from alembic.ini, never from the table the migration
+          # writes, so "it came back to head" is not "it came back to whatever it
+          # was before".
+          test "$version" = "$VL_HEAD" \
+            || { echo "::error::alembic_version is '$version' but the migration graph head is '$VL_HEAD'"; exit 1; }
 
       - name: Migration and RLS invariants
         working-directory: apps/api
@@ -130,14 +159,35 @@ jobs:
       # a failing downgrade must fail this job.
       - name: Downgrade one revision
         working-directory: apps/api
-        # 0068 -> 0067, i.e. undoes exactly the revision under test.
-        run: uv run alembic downgrade 0067
+        # `-1`, never a literal like `0067`. The point of this rehearsal is to
+        # undo exactly one revision -- the head's own -- so the target is that
+        # revision's parent, which the previous step read from the graph as
+        # $VL_PARENT. A literal `0067` looked equivalent while 0068 was the head
+        # and quietly started undoing three revisions (0069, 0068 and 0067) the
+        # day 0069 landed: still green, no longer the rehearsal this job claims
+        # to run, and it would have undone 0068's own ADD CONSTRAINT alongside it.
+        run: uv run alembic downgrade -1
 
       - name: Assert the downgrade landed and restored the memory type CHECK
         run: |
           version=$(psql -U postgres -d vaeloom_test -tAc "SELECT version_num FROM alembic_version;")
-          echo "alembic_version after downgrade = $version"
-          test "$version" = "0067" || { echo "::error::expected 0067 after downgrade, got '$version'"; exit 1; }
+          echo "alembic_version after downgrade = $version (expected $VL_PARENT)"
+          test "$version" = "$VL_PARENT" \
+            || { echo "::error::expected $VL_PARENT after downgrade, got '$version'"; exit 1; }
+
+          # The two assertions below describe 0068's *own* objects, and
+          # `downgrade -1` only undoes 0068 while 0068 is the head. Once a later
+          # revision lands, `memory_type_packs` legitimately survives the
+          # downgrade and the CHECK legitimately stays dropped, so both would
+          # fail against a perfectly correct chain. Skipped with a warning
+          # annotation rather than silently, because losing coverage is a real
+          # (if minor) consequence a reviewer should see in the log: the version
+          # check above, the re-upgrade block, and the re-run invariants in the
+          # final step still exercise the full round trip.
+          if [ "$VL_HEAD" != "0068" ]; then
+            echo "::warning::head is $VL_HEAD, not 0068 -- skipping the 0068-specific downgrade assertions (memory_type_packs dropped, ck_memories_type_valid restored); 'alembic downgrade -1' did not undo 0068"
+            exit 0
+          fi
 
           # 0068's downgrade must drop the pack table and restore 0027's CHECK.
           packs=$(psql -U postgres -d vaeloom_test -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name='memory_type_packs';")
@@ -165,8 +215,15 @@ jobs:
       - name: Assert the round trip returned to head
         run: |
           version=$(psql -U postgres -d vaeloom_test -tAc "SELECT version_num FROM alembic_version;")
-          echo "alembic_version after re-upgrade = $version"
-          test "$version" = "0068" || { echo "::error::expected 0068 after the round trip, got '$version'"; exit 1; }
+          echo "alembic_version after re-upgrade = $version (expected $VL_HEAD)"
+          test "$version" = "$VL_HEAD" \
+            || { echo "::error::expected $VL_HEAD after the round trip, got '$version'"; exit 1; }
+
+          # Everything below is an *end state* assertion, not a 0068 assertion, so
+          # unlike the downgrade block it needs no head guard: any head at or after
+          # 0068 has to satisfy all of it, because `upgrade head` re-applies 0068
+          # on the way up whatever is above it. That is the same contract the
+          # forward "Migration and RLS invariants" step already has.
 
           # Not just "the revision number moved": the table has to be back, and
           # protected, or the round trip proves only that `alembic_version` is a
