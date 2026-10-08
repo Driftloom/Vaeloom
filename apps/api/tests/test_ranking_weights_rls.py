@@ -31,7 +31,7 @@ Live PostgreSQL:
 """
 
 import os
-import re
+import pathlib
 import uuid
 
 import pytest
@@ -204,6 +204,118 @@ async def test_defaults_match_the_migration_server_defaults(db_session):
     assert row.sample_size == 0
 
 
+# ------------------------------------------- migration guards (run always)
+#
+# The three properties below are only observable by executing raw DDL against a
+# PostgreSQL parser, which the default SQLite suite cannot do. They are asserted
+# against the migration's own module-level constants instead of against its raw
+# source text, which is strictly stronger: the constants are what actually gets
+# sent to the server, so comments cannot make them pass, and the USING/WITH CHECK
+# check compares the *interpolated* SQL rather than counting placeholders.
+#
+# Each is a genuine revert-and-red: restoring the pre-fix spelling makes the
+# corresponding assertion fail (confirmed by execution, see the report).
+
+
+def _load_migration():
+    """Import 0067 as a module so its constants can be inspected directly."""
+    import importlib.util
+
+    path = (
+        pathlib.Path(__file__).resolve().parents[1]
+        / "alembic"
+        / "versions"
+        / "0067_ranking_weight_profiles.py"
+    )
+    assert path.exists(), f"migration 0067 not found at {path}"
+    spec = importlib.util.spec_from_file_location("migration_0067_under_test", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+async def test_policy_clauses_share_one_predicate():
+    """USING and WITH CHECK must carry the identical predicate.
+
+    When the predicate was duplicated, editing one clause could silently leave
+    INSERT governed by different scope than SELECT -- invisible-instead-of-rejected,
+    in the one migration whose docstring says duplicated RLS variants are what
+    have drifted before.
+    """
+    mod = _load_migration()
+    assert hasattr(mod, "_PREDICATE"), (
+        "migration 0067 must define a single _PREDICATE constant; the policy "
+        "otherwise duplicates the predicate across USING and WITH CHECK"
+    )
+    policy_sql = mod._POLICY_SQL
+    predicate = mod._PREDICATE
+
+    assert policy_sql.count("CREATE POLICY") == 1, "expected exactly one CREATE POLICY"
+    assert f"USING ({predicate})" in policy_sql, (
+        "the USING clause does not carry _PREDICATE verbatim"
+    )
+    assert f"WITH CHECK ({predicate})" in policy_sql, (
+        "the WITH CHECK clause does not carry _PREDICATE verbatim"
+    )
+    # Exactly one body per clause: a third, divergent copy would push the count
+    # above two, and a single shared constant keeps it at precisely two.
+    assert policy_sql.count(predicate) == 2, (
+        f"expected the predicate body exactly twice (one per clause), found "
+        f"{policy_sql.count(predicate)}"
+    )
+
+
+async def test_policy_uses_column_cast_not_setting_cast():
+    """A GUC comparison must never cast the setting to uuid.
+
+    ``NULLIF(current_setting('app.workspace_id', true), '')::uuid`` raises
+    ``invalid input syntax for type uuid`` from inside policy evaluation when the
+    GUC is not a uuid, and policy evaluation runs on every read -- so a single
+    malformed session GUC turns every profile read into a 500 rather than a
+    permission denial. The column-cast form yields NULL instead and fails closed.
+    """
+    mod = _load_migration()
+    # Fall back to the whole CREATE POLICY body when there is no single
+    # predicate constant, so this test reports the setting-cast problem rather
+    # than an AttributeError -- the point is to name the defect precisely.
+    predicate = getattr(mod, "_PREDICATE", None) or mod._POLICY_SQL
+
+    assert (
+        "workspace_id::text = NULLIF(current_setting('app.workspace_id', true), '')" in predicate
+    ), "the policy must use the column-cast form for the workspace GUC"
+    assert (
+        "w.user_id::text = NULLIF(current_setting('app.user_id', true), '')" in predicate
+    ), "the policy must use the column-cast form for the user GUC"
+    assert ")::uuid" not in predicate, (
+        "found a cast-to-uuid of a session GUC in the policy predicate; a "
+        "non-uuid GUC would raise inside policy evaluation instead of failing closed"
+    )
+    # The member-aware half must survive the rewrite: uuid-to-uuid column
+    # comparison, which cannot raise.
+    assert "WHERE w.id = ranking_weight_profiles.workspace_id" in predicate
+    assert "FROM workspace_users wu" in predicate
+
+
+async def test_weight_columns_are_bounded_to_zero_and_one():
+    """NUMERIC(5,4) alone allows up to 9.9999.
+
+    Without a CHECK, an out-of-range weight is caught only by the column's own
+    precision limit, and a merely-wrong one (e.g. 3.0) is stored happily as a
+    nonsensical score. These constraints are declared inside ``upgrade()``, so
+    unlike the policy there is no module constant to inspect; the named
+    constraint strings are unique to the DDL and appear in no comment.
+    """
+    src = _load_migration().__file__
+    source = pathlib.Path(src).read_text(encoding="utf-8")
+    for column in ("relevance", "recency", "importance", "user_preference"):
+        assert f'name="ck_ranking_weight_profiles_{column}"' in source, (
+            f"{column} has no named CHECK constraint in migration 0067"
+        )
+        assert f'"{column} BETWEEN 0 AND 1"' in source, (
+            f"{column}'s CHECK constraint does not bound it to 0..1"
+        )
+
+
 # ------------------------------------------------------- live PostgreSQL (RLS)
 
 # tests/test_rls_live_pg.py and test_migration_chain_pg.py both use
@@ -338,8 +450,17 @@ async def test_with_check_rejects_insert_into_another_workspace():
 
     The insert runs as the non-superuser app role; as a superuser it would
     bypass the policy entirely and prove nothing.
+
+    The rejection is asserted by SQLSTATE ``42501``
+    (``insufficient_privilege``) specifically, not by matching message text. A
+    broader ``policy|permission|violates`` pattern would also be satisfied by a
+    not-null violation (23502) or a CHECK-constraint violation (23514) -- and
+    since this table now carries CHECK bounds on the weight columns, a
+    mis-specified weight would satisfy such a pattern. That is precisely the
+    "passing for the wrong reason" failure this assertion has to exclude.
     """
     import asyncpg
+    from asyncpg import exceptions as pg_exceptions
 
     admin = await asyncpg.connect(PG_URL)
     ws_guc, ws_other, stray = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
@@ -352,18 +473,20 @@ async def test_with_check_rejects_insert_into_another_workspace():
     app = await asyncpg.connect(_app_url())
     try:
         await app.execute("SELECT set_config('app.workspace_id', $1, false)", str(ws_guc))
-        # Row is otherwise perfectly valid: correct columns, correct defaults,
-        # correct NOT NULLs. Only the RLS WITH CHECK can reject it.
-        with pytest.raises(Exception) as exc_info:
+        # Row is otherwise perfectly valid: correct columns, every weight inside
+        # 0..1 so the CHECK bounds pass, correct NOT NULLs. Only the RLS
+        # WITH CHECK can reject it.
+        with pytest.raises(pg_exceptions.InsufficientPrivilegeError) as exc_info:
             await app.execute(
                 f"INSERT INTO {TABLE} (id, tenant_id, workspace_id, user_id, relevance,"
                 " recency, importance, user_preference, sample_size)"
                 " VALUES ($1, $2, $3, $4, 0.4, 0.3, 0.2, 0.1, 1)",
                 stray, uuid.uuid4(), ws_other, uuid.uuid4(),
             )
-        assert re.search(
-            r"(?i)(policy|permission|violates|row-level)", str(exc_info.value)
-        ), f"insert failed for an unexpected reason: {exc_info.value}"
+        assert exc_info.value.sqlstate == "42501", (
+            "expected an RLS permission denial (SQLSTATE 42501); got "
+            f"{exc_info.value.sqlstate}: {exc_info.value}"
+        )
     finally:
         await app.close()
 

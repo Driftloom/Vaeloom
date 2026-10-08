@@ -32,33 +32,51 @@ deterministic, but a constraint is what stops the duplicate from existing.
 Isolation rests entirely on the policy below
 --------------------------------------------
 The read does **not** filter on ``tenant_id``. It filters on ``workspace_id`` and
-``user_id`` only, so the RLS policy is the whole isolation story. The predicate
-is transcribed from ``0062_capability_usage_telemetry`` (which created the
-workspace-scoped ``workspace_capabilities`` table) with the table reference
+``user_id`` only, so the RLS policy is the whole isolation story. The predicate's
+*structure* is transcribed from ``0062_capability_usage_telemetry`` (which created
+the workspace-scoped ``workspace_capabilities`` table) with the table reference
 substituted -- it is deliberately the *member-aware* form, not the bare
 ``workspace_id = current_setting(...)`` form: it resolves the caller's workspace
 either from the ``app.workspace_id`` GUC or, failing that, from membership of the
-row's workspace via ``workspaces.user_id`` / ``workspace_users``. Copying the
-established predicate rather than writing a fourth variant of it is the point --
-the variants are what have drifted from each other in the past.
+row's workspace via ``workspaces.user_id`` / ``workspace_users``. Writing a fifth
+variant of that structure would be the mistake; copying the established one is
+the point.
 
-``WITH CHECK`` is added, unlike 0062's ``USING``-only policy
--------------------------------------------------------------
-0063's module docstring records the reason: Postgres ORs permissive policies and
-``USING`` governs only ``SELECT``/``UPDATE``/``DELETE``, so a ``USING``-only
-policy leaves ``INSERT`` unconstrained -- which for a per-workspace weight table
-is exactly how a row lands in somebody else's workspace. Both clauses get the
-identical predicate. This is a deliberate, documented superset of 0062, not a
-divergence from the brief.
+Its *spelling* is not copied, and that is a deliberate correction. 0062 casts the
+session setting (``... , '')::uuid``); 0063:24-32 calls the column-cast form
+(``workspace_id::text = NULLIF(current_setting(...), '')``) "the safer spelling"
+and 0063 exists precisely because a non-uuid GUC raises ``invalid input syntax``
+*inside policy evaluation*, which runs on every read -- so one malformed
+``app.workspace_id`` turns every profile read into a 500 rather than a permission
+denial. The column-cast form yields NULL instead, and NULL fails closed. See the
+comment on ``_PREDICATE``.
 
-No foreign keys
----------------
-Unlike 0063's ``conversations``, the columns carry no ``ForeignKey`` to
-``workspaces``/``users``/``tenants``. The brief's column list does not include
-them and they are not needed for the read path; adding them would also make every
-SQLite isolation test require seeded parent rows, which buys no security here
-because the policy -- not referential integrity -- is what enforces scope.
-Flagged for the controller rather than decided silently.
+``USING`` and ``WITH CHECK`` share one predicate constant
+---------------------------------------------------------
+They must be the same predicate, and ``_PREDICATE`` exists so they are the same by
+construction. Copy-pasting them into both clauses is what invites a one-clause
+edit that leaves INSERT governed by different scope than SELECT -- and this file's
+own history is the argument against it: duplicated RLS predicate variants are
+what have drifted from one another in this schema.
+
+Writers must satisfy ``WITH CHECK`` (constraint on downstream work)
+-------------------------------------------------------------------
+PostgreSQL consults ``WITH CHECK`` -- and only ``WITH CHECK`` -- when evaluating
+an INSERT. That is why it is here. The consequence is that **every writer must
+either set the ``app.workspace_id`` session GUC to the target workspace, or be a
+member of that workspace** (via ``workspaces.user_id`` or ``workspace_users``)
+before inserting a profile. A writer that connects without those GUCs does not
+get a silent write: the insert is rejected with SQLSTATE 42501. The learning code
+that populates this table must therefore run inside a scoped session; see the
+Task 2 report for the carry-forward note.
+
+Weights are bounded, not merely precise
+---------------------------------------
+The four weight columns are ``NUMERIC(5,4)``, whose ceiling alone is 9.9999 -- wide
+enough to store a nonsensical score. Each carries a ``CHECK (... BETWEEN 0 AND 1)``
+so an out-of-range weight is refused as a constraint violation rather than
+surfacing later as a broken ranking. Table CHECKs are evaluated independently of
+RLS, so they bind every writer including the table owner.
 
 ``_safe()`` fails loudly
 ------------------------
@@ -121,44 +139,52 @@ def _safe(conn, sql: str) -> None:
         raise
 
 
-# Transcribed from 0062:137-155 (workspace_capabilities -> ranking_weight_profiles).
-# The predicate resolves the caller's workspace from the app.workspace_id GUC or,
-# failing that, from membership of the row's workspace via workspaces.user_id /
-# workspace_users. The identical expression is used for WITH CHECK; see the module
-# docstring for why a USING-only policy is not enough.
+# Transcribed from 0062:137-155 (workspace_capabilities -> ranking_weight_profiles)
+# with two corrections.
+#
+# 1. COLUMN-cast, not setting-cast.
+#    0062 spells the GUC comparison
+#        workspace_id = NULLIF(current_setting('app.workspace_id', true), '')::uuid
+#    Casting the *setting* raises ``invalid input syntax for type uuid`` from
+#    *inside policy evaluation* whenever the session GUC holds anything other
+#    than a uuid -- and policy evaluation runs on every read, so one malformed
+#    ``app.workspace_id`` turns every profile read into a 500 rather than a
+#    permission denial. 0063:24-32 documents the column-cast form
+#    (``workspace_id::text = NULLIF(current_setting(...), '')``) as "the safer
+#    spelling" precisely because a bad GUC then yields NULL, the predicate
+#    evaluates false, and the read fails *closed*. Adopted deliberately, as a
+#    documented departure from the original instruction to copy 0062.
+#    Only the GUC comparisons change; ``w.id = {_TABLE}.workspace_id`` stays a
+#    uuid-to-uuid column comparison, which cannot raise, so the member-aware
+#    half behaves exactly as before.
+#
+# 2. One source of truth.
+#    USING and WITH CHECK must be the same predicate. Copy-pasting them invites
+#    a one-clause edit to desynchronise the two, which would leave INSERT
+#    governed by different scope than SELECT -- in the one migration whose own
+#    docstring says duplicated RLS variants are what have drifted in the past.
+#    Both clauses interpolate this single constant.
+_PREDICATE = f"""
+        workspace_id::text = NULLIF(current_setting('app.workspace_id', true), '')
+        OR EXISTS (
+            SELECT 1 FROM workspaces w
+            WHERE w.id = {_TABLE}.workspace_id
+            AND (
+                w.user_id::text = NULLIF(current_setting('app.user_id', true), '')
+                OR EXISTS (
+                    SELECT 1 FROM workspace_users wu
+                    WHERE wu.workspace_id = w.id
+                    AND wu.user_id::text = NULLIF(current_setting('app.user_id', true), '')
+                )
+            )
+        )
+"""
+
 _POLICY_SQL = f"""
     CREATE POLICY {_POLICY} ON {_TABLE}
     FOR ALL
-    USING (
-        workspace_id = NULLIF(current_setting('app.workspace_id', true), '')::uuid
-        OR EXISTS (
-            SELECT 1 FROM workspaces w
-            WHERE w.id = {_TABLE}.workspace_id
-            AND (
-                w.user_id = NULLIF(current_setting('app.user_id', true), '')::uuid
-                OR EXISTS (
-                    SELECT 1 FROM workspace_users wu
-                    WHERE wu.workspace_id = w.id
-                    AND wu.user_id = NULLIF(current_setting('app.user_id', true), '')::uuid
-                )
-            )
-        )
-    )
-    WITH CHECK (
-        workspace_id = NULLIF(current_setting('app.workspace_id', true), '')::uuid
-        OR EXISTS (
-            SELECT 1 FROM workspaces w
-            WHERE w.id = {_TABLE}.workspace_id
-            AND (
-                w.user_id = NULLIF(current_setting('app.user_id', true), '')::uuid
-                OR EXISTS (
-                    SELECT 1 FROM workspace_users wu
-                    WHERE wu.workspace_id = w.id
-                    AND wu.user_id = NULLIF(current_setting('app.user_id', true), '')::uuid
-                )
-            )
-        )
-    )
+    USING ({_PREDICATE})
+    WITH CHECK ({_PREDICATE})
 """
 
 
@@ -218,6 +244,30 @@ def upgrade() -> None:
                 server_default=sa.text("now()"),
             ),
             sa.UniqueConstraint("workspace_id", "user_id", name=_UNIQUE),
+            # Weights are ratios, so 0..1 is the whole legal domain. NUMERIC(5,4)
+            # alone permits up to 9.9999, which would let a bad learner write a
+            # nonsensical weight that only surfaces as a NumericValueOutOfRange
+            # error at deploy time rather than as a bounded score. These are
+            # table CHECKs, not RLS, so they hold for every writer including the
+            # owner -- FORCE RLS does not apply to constraint checking.
+            # downgrade() needs no matching DROP: dropping the table drops the
+            # constraints with it.
+            sa.CheckConstraint(
+                "relevance BETWEEN 0 AND 1",
+                name="ck_ranking_weight_profiles_relevance",
+            ),
+            sa.CheckConstraint(
+                "recency BETWEEN 0 AND 1",
+                name="ck_ranking_weight_profiles_recency",
+            ),
+            sa.CheckConstraint(
+                "importance BETWEEN 0 AND 1",
+                name="ck_ranking_weight_profiles_importance",
+            ),
+            sa.CheckConstraint(
+                "user_preference BETWEEN 0 AND 1",
+                name="ck_ranking_weight_profiles_user_preference",
+            ),
         )
 
     existing_indexes = {i["name"] for i in inspector.get_indexes(_TABLE)}

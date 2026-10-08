@@ -536,6 +536,11 @@ class RankingWeightProfile(Base):
     and fixed scale avoids float drift in stored comparisons). ``asdecimal=False``
     is a Python-side result flag only -- it makes the ORM hand back ``float`` so
     the ``Mapped[float]`` annotation is truthful, and it does not affect the DDL.
+    ``NUMERIC(5,4)`` alone is not a bound -- it reaches 9.9999 -- so migration
+    0067 adds ``CHECK (... BETWEEN 0 AND 1)`` per weight column. Those are
+    database-side constraints and are deliberately not mirrored here; this ORM
+    mapping is also what the SQLite test suite builds its table from, where a
+    mirrored CHECK would test the ORM rather than the migration.
 
     ``sample_size`` is the observation count behind these weights. It is stored
     and never read by the resolver; it exists so a learner can refuse to trust a
