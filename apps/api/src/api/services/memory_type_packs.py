@@ -96,6 +96,13 @@ async def _active_packs_or_none(db: AsyncSession) -> list[MemoryTypePack] | None
                 .where(MemoryTypePack.is_active.is_(True))
                 .order_by(MemoryTypePack.slug)
             )
+            # Materialising the rows belongs inside the guard, not after it. A
+            # driver that returns something without `.scalars()` -- which is what
+            # every hand-written session double in the suite looks like -- used
+            # to raise AttributeError straight out of here, which is the exact
+            # outage this function exists to prevent: it is an unreadable
+            # registry, and that case has to degrade like every other one.
+            packs = list(result.scalars().all())
     except Exception:
         # Pre-migration database, a failed probe, a locked table. Debug, not
         # warning: the fallback below is the designed behaviour for this input,
@@ -108,7 +115,6 @@ async def _active_packs_or_none(db: AsyncSession) -> list[MemoryTypePack] | None
             exc_info=True,
         )
         return None
-    packs = list(result.scalars().all())
     if not packs:
         # Readable, but nothing active. This is the one condition that is an
         # operator mistake rather than routine degradation, and it is the
