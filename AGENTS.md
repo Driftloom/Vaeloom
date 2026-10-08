@@ -138,6 +138,73 @@ hung because most packages have no `dev` script). **Always** use:
   memory type filters matched nothing. Now mirrors the backend literal (24
   values, `apps/api/src/api/schemas/memory.py`). If you change one, change both.
 
+## Learned Ranking Weights + Domain-Pack Registry (2026-10-07)
+
+Spec:
+`docs/superpowers/specs/2026-10-07-memory-weights-and-domain-packs-design.md` ·
+Plan: `docs/superpowers/plans/2026-10-07-memory-weights-and-domain-packs.md`
+
+Two deploys, landed together but independently reversible.
+
+### Deploy 1 — `ranking_weight_profiles`
+
+- Table `ranking_weight_profiles` (migration **0067**),
+  `UNIQUE (workspace_id, user_id)`, FORCE RLS + scoped policy, and four
+  `CHECK (col BETWEEN 0 AND 1)` on the weight columns.
+- **Resolution order: DB row > `RANKING_WEIGHTS` env > `DEFAULT_WEIGHTS`**, read
+  per rank call in `services/ranking_weights.py`. With no row, behaviour is
+  byte-identical to the pre-2026-07 path.
+- `SearchRankingService._resolve_weights` accepts `user_context["weights"]`
+  **only if all four keys are present** — a partial dict is ignored, never
+  merged.
+- Live on **both** call sites: `orchestrator/loop.py:plan_phase` and
+  `graph/nodes.py:retrieve_context_node`.
+- **Load-bearing subtlety:** RLS GUCs are `set_config(..., is_local=true)`, i.e.
+  transaction-scoped. Resolving weights _after_ the `async with` does not raise
+  — it silently returns zero rows against a FORCE-RLS table and falls back to
+  defaults. The resolution must stay **inside** the session block.
+- **The learning signal is useful-rate only.** `recommendation_feedback` has no
+  `workspace_id` and `recommendations.items` is an opaque JSONB blob, so the
+  original relevance is **not recoverable**. `compute_user_preference` nudges
+  `user_preference` toward `current + SPAN*(rate-0.5)*BLEND`, bounded to
+  `[0.05, 0.5]`, and only moves once `sample_size >= 10`. The aggregate filters
+  on `user_id` only — a known cross-workspace imprecision (a rating in one
+  workspace moves that user's profile in another). The fix is to add
+  `workspace_id` to `recommendation_feedback`.
+- `POST /feedback` enforces `rec_user_id == caller` (**403**). Without it a
+  co-worker's `user_preference` could be steered toward a rail. Two sibling
+  endpoints still take `user_id` from the body with no ownership compare.
+
+### Deploy 2 — `memory_type_packs`
+
+- Table `memory_type_packs` (migration **0068**), seeded with one row: `career`,
+  `version=1`, the 24 types in source order. Service-role RLS policy (platform
+  config, not tenant data), and it **ends with `_assert_coverage`** because
+  `0066` runs before this table exists — dropping that call fails
+  `test_head_includes_the_rls_coverage_guard`.
+- **`ck_memories_type_valid` was DROPPED** in 0068. `downgrade()` restores it
+  verbatim from `0027` (24 literals, incl. `note`/`fact`). The service-layer
+  pack check is therefore the **only** guard on the write path.
+- `schemas/memory.py`: `MemoryType` is now `str`. `MemoryCreate.type` validates
+  for **shape only** (`min_length`/`max_length=50`); the type whitelist must
+  stay out of Pydantic, or the two sources drift again.
+- `MemoryTypeRejected(ValueError)` maps to **422** at the router, on create,
+  update and supersede — preserving the pre-Task-6 client contract. A 5xx here
+  burns the error budget for a routine client mistake.
+- `taxonomy_version` is derived from `pack_match.enterprise_types` — the pack
+  that actually matched, **not** the fallback-derived `ENTERPRISE_MEMORY_TYPES`.
+- Frontend union is **generated**: `scripts/gen_memory_type_union.py` →
+  `packages/shared-types/src/types/memory.generated.ts` (committed, byte-exact).
+  Run `python scripts/gen_memory_type_union.py --check` to verify freshness.
+  `.prettierignore` excludes `*.generated.ts` so lint-staged cannot reformat the
+  artefact and break the byte contract.
+- **Known gaps, deliberately left:** `memory_records` still carries its own
+  frozen `ck_memory_records_type_valid` — trigger for revisiting: the first time
+  a second pack's type must land via that pipeline. `import_memories` builds
+  `Memory(...)` directly and bypasses the pack registry, so today's guarantee is
+  "the three service write paths validate", not "all memory writes". The
+  generator's `--check` is not yet wired into CI.
+
 ## Memory Retrieval — Correctness Fixes (2026-10-07)
 
 Two **live correctness bugs** in the vector path, both fixed and proven by
