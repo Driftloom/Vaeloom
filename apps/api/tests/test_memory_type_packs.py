@@ -475,6 +475,40 @@ def test_enterprise_memory_types_is_still_the_same_sixteen():
     assert CANONICAL_6 | ENTERPRISE_MEMORY_TYPES | {"note", "fact"} == set(CAREER_TYPES)
 
 
+async def test_malformed_registry_result_degrades_instead_of_raising(seeded_packs, monkeypatch):
+    """The write path must not be an outage trigger, whatever the driver returns.
+
+    Surfaced by `test_cont_p12_agent_model_retrieval`, whose session double is an
+    `AsyncMock`: `await db.execute(...)` answers with a mock whose `.scalars()`
+    is a *coroutine*, so `result.scalars().all()` raised `AttributeError`. That
+    used to escape `_active_packs_or_none`, because the rows were materialised
+    after the savepoint rather than inside it -- so the one input the module
+    documents as "must never break memory creation" was the one input that broke
+    it. An unreadable registry has to degrade to the built-in pack whatever shape
+    the failure takes.
+    """
+    from api.services import memory_type_packs as mod
+
+    class _NoScalars:
+        def scalars(self):
+            return self
+
+        def all(self):
+            raise AttributeError("no such thing")
+
+    async def _weird_result(*args, **kwargs):
+        return _NoScalars()
+
+    monkeypatch.setattr(seeded_packs, "execute", _weird_result)
+
+    assert await mod.valid_types(seeded_packs) == set(CAREER_TYPES)
+    assert await validate_memory_type(seeded_packs, "insight") == PackMatch(
+        CAREER_PACK_SLUG, 1
+    )
+    with pytest.raises(ValueError):
+        await validate_memory_type(seeded_packs, "not_a_type")
+
+
 # ---------------------------------------------------------------------------
 # Offline rendering guard
 #
