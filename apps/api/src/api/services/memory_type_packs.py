@@ -108,7 +108,28 @@ async def _active_packs_or_none(db: AsyncSession) -> list[MemoryTypePack] | None
             exc_info=True,
         )
         return None
-    return list(result.scalars().all())
+    packs = list(result.scalars().all())
+    if not packs:
+        # Readable, but nothing active. This is the one condition that is an
+        # operator mistake rather than routine degradation, and it is the
+        # expensive one: with no active pack, `valid_types` is empty and
+        # `validate_memory_type` rejects every value, so every memory write in
+        # every workspace fails. It used to be entirely silent -- the warning
+        # above is for a registry that could not be *read* (pre-migration
+        # database, probe failure), which degrades to the built-in pack and is
+        # logged at debug because it is the designed behaviour. Logged at
+        # warning, not error: nothing here raises, and a crash-loop alert would
+        # misdescribe an operator decision. Deliberately emitted once, here, so
+        # every caller (load_active_packs, valid_types, validate_memory_type)
+        # surfaces it rather than three of them each duplicating the message.
+        logger.warning(
+            "no active memory type pack is configured: every memory type is "
+            "invalid and every memory write will be rejected until a pack is set "
+            "is_active=true. (An unreadable registry falls back to the built-in "
+            "%r pack instead and is logged at debug.)",
+            CAREER_PACK_SLUG,
+        )
+    return packs
 
 
 async def load_active_packs(db: AsyncSession) -> list[MemoryTypePack]:

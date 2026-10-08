@@ -116,6 +116,98 @@ jobs:
         # table the chain never creates.
         run: uv run pytest tests/test_migration_chain_pg.py tests/test_migration_0057_pg.py -v -o addopts=""
 
+      # 0068 drops `ck_memories_type_valid` from `memories` and its downgrade
+      # re-adds it. Nothing else in this workflow exercises the reverse path, and
+      # that asymmetry is a real hole rather than a tidy-up: an `ADD CONSTRAINT`
+      # that references a column or table another migration has since changed
+      # applies cleanly going forward and fails only on the way back, so "upgrade
+      # head" passing says nothing about whether the revision is reversible. It
+      # is also where the pack window bites -- `downgrade` re-validates every
+      # existing `memories.type` against the restored CHECK, so any row written
+      # under a pack-validated type the CHECK does not list aborts the rollback.
+      #
+      # Deliberately NOT `-x` on error, and deliberately no `continue-on-error`:
+      # a failing downgrade must fail this job.
+      - name: Downgrade one revision
+        working-directory: apps/api
+        # 0068 -> 0067, i.e. undoes exactly the revision under test.
+        run: uv run alembic downgrade 0067
+
+      - name: Assert the downgrade landed and restored the memory type CHECK
+        run: |
+          version=$(psql -U postgres -d vaeloom_test -tAc "SELECT version_num FROM alembic_version;")
+          echo "alembic_version after downgrade = $version"
+          test "$version" = "0067" || { echo "::error::expected 0067 after downgrade, got '$version'"; exit 1; }
+
+          # 0068's downgrade must drop the pack table and restore 0027's CHECK.
+          packs=$(psql -U postgres -d vaeloom_test -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name='memory_type_packs';")
+          test "$packs" = "0" || { echo "::error::memory_type_packs survived the downgrade"; exit 1; }
+
+          def=$(psql -U postgres -d vaeloom_test -tAc "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname='ck_memories_type_valid' AND conrelid='memories'::regclass;")
+          if [ -z "$def" ]; then
+            echo "::error::ck_memories_type_valid was not restored on memories"
+            exit 1
+          fi
+          # Compared as an ordered list, not a count: the whole point is that the
+          # restored CHECK is 0027's literal set in 0027's order.
+          found=$(printf '%s' "$def" | grep -o "'[a-z_]*'" | tr -d "'" | paste -sd, -)
+          expected="profile,document,career,episodic,preference,working,note,fact,project,skill,organization,relationship,event,insight,goal,feedback,decision,knowledge,reference,contact,financial,health,learning,workflow"
+          if [ "$found" != "$expected" ]; then
+            echo "::error::restored CHECK lists [$found], expected [$expected]"
+            exit 1
+          fi
+          echo "restored CHECK = $found"
+
+      - name: Re-apply the chain to head
+        working-directory: apps/api
+        run: uv run alembic upgrade head
+
+      - name: Assert the round trip returned to head
+        run: |
+          version=$(psql -U postgres -d vaeloom_test -tAc "SELECT version_num FROM alembic_version;")
+          echo "alembic_version after re-upgrade = $version"
+          test "$version" = "0068" || { echo "::error::expected 0068 after the round trip, got '$version'"; exit 1; }
+
+          # Not just "the revision number moved": the table has to be back, and
+          # protected, or the round trip proves only that `alembic_version` is a
+          # string the migration can write.
+          packs=$(psql -U postgres -d vaeloom_test -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name='memory_type_packs';")
+          test "$packs" = "1" || { echo "::error::memory_type_packs was not recreated"; exit 1; }
+
+          rls=$(psql -U postgres -d vaeloom_test -tAc "SELECT (c.relrowsecurity AND c.relforcerowsecurity)::int FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname='memory_type_packs';")
+          test "$rls" = "1" || { echo "::error::memory_type_packs came back without RLS enabled and forced"; exit 1; }
+
+          pol=$(psql -U postgres -d vaeloom_test -tAc "SELECT count(*) FROM pg_policies WHERE tablename='memory_type_packs';")
+          test "$pol" -ge 1 || { echo "::error::memory_type_packs came back with no RLS policy"; exit 1; }
+
+          # The seed is the whole point of the round trip: a re-created table with
+          # no seeded row would pass every assertion above and leave memory writes
+          # rejected. Compare the stored JSONB against the expected 24 values.
+          # Redefined here because each `run` block is its own shell.
+          expected="profile,document,career,episodic,preference,working,note,fact,project,skill,organization,relationship,event,insight,goal,feedback,decision,knowledge,reference,contact,financial,health,learning,workflow"
+          seeded=$(psql -U postgres -d vaeloom_test -tAc "SELECT types::text FROM memory_type_packs WHERE slug='career' AND is_active;")
+          test -n "$seeded" || { echo "::error::no active career pack after the round trip"; exit 1; }
+          for t in $expected; do
+            case "$seeded" in
+              *"\"$t\""*) ;;
+              *) echo "::error::seeded career pack is missing type '$t': $seeded"; exit 1 ;;
+            esac
+          done
+          echo "seeded career pack = $seeded"
+
+          # The CHECK must be gone again, or the registry is not the only authority.
+          chk=$(psql -U postgres -d vaeloom_test -tAc "SELECT count(*) FROM pg_constraint WHERE conname='ck_memories_type_valid' AND conrelid='memories'::regclass;")
+          test "$chk" = "0" || { echo "::error::ck_memories_type_valid was not re-dropped"; exit 1; }
+
+      - name: Re-run the migration and RLS invariants after the round trip
+        working-directory: apps/api
+        # The forward assertions ran against a database that had never been
+        # rolled back. Running them again proves the round trip left the end state
+        # intact -- including 0068's own `_assert_coverage`, which executes on the
+        # way up and is the only thing that can notice a table created by a
+        # rollback-then-reapply.
+        run: uv run pytest tests/test_migration_chain_pg.py tests/test_migration_0057_pg.py -v -o addopts=""
+
       - name: Upload migration log on failure
         if: failure()
         uses: actions/upload-artifact@v4

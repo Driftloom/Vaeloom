@@ -74,6 +74,17 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 
+# The *defining submodule*, not `sa.dialects.postgresql`. The package attribute
+# is not a reliable route to a PostgreSQL type: in the application's import
+# environment `sqlalchemy.dialects.postgresql.JSONB` resolves to
+# `sqlalchemy.dialects.sqlite.json.JSON`, whose `__init__` takes no `astext_type`,
+# so `sa.dialects.postgresql.JSONB(astext_type=...)` raises `TypeError` and the
+# CREATE TABLE never happens. It renders fine in a bare interpreter and fails in
+# the app -- the worst possible failure mode for a migration, because which one
+# you get depends on what else has been imported. tests/test_memory_type_packs.py
+# executes `upgrade()` offline precisely so this cannot regress unnoticed.
+from sqlalchemy.dialects.postgresql.json import JSONB
+
 from alembic import op
 
 revision: str = "0068"
@@ -190,7 +201,7 @@ def upgrade() -> None:
             # a document, not a row. The ORM maps it as the generic JSON type
             # (matching Memory.metadata_), which round-trips a list[str] the same
             # way against either column type.
-            sa.Column("types", sa.dialects.postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+            sa.Column("types", JSONB(astext_type=sa.Text()), nullable=False),
             sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
             # UNIQUE, not a bare index: `ON CONFLICT (slug) DO NOTHING` below
