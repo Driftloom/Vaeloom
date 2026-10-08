@@ -18,6 +18,12 @@ class GenerateRecommendationRequest(BaseModel):
 class FeedbackRequest(BaseModel):
     recommendation_id: str
     useful: bool
+    # Optional, and NOT taken from the client as authority: the router overwrites
+    # workspace_id from the authenticated request state. Absent workspace_id
+    # makes the learned-weight update a no-op rather than a guess, so an
+    # unscoped rating never steers ranking.
+    workspace_id: str | None = None
+    user_id: str | None = None
 
 
 class TrendingQuery(BaseModel):

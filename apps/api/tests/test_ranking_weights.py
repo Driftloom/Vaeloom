@@ -1,8 +1,10 @@
+import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, select, text
 
+from api.models.schema import RankingWeightProfile
 from api.services import ranking_weights as rw
 
 pytestmark = pytest.mark.asyncio
@@ -191,3 +193,182 @@ async def test_select_is_limited_to_one_row(monkeypatch):
     await rw.effective_weights(db, "ws", "u")
     assert len(db.statements) == 1
     assert "LIMIT 1" in db.statements[0].upper()
+
+
+# ─── learning arithmetic ───────────────────────────────────────────────────
+
+
+def test_compute_needs_minimum_sample():
+    assert rw.compute_user_preference(9, 10, 0.1) == 0.1, "under 10 samples, no movement"
+
+
+def test_compute_all_useful_pushes_up_but_bounded():
+    v = rw.compute_user_preference(100, 100, 0.1)
+    assert v > 0.1
+    assert v <= 0.5
+
+
+def test_compute_all_unhelpful_pushes_down_but_bounded():
+    v = rw.compute_user_preference(0, 100, 0.4)
+    assert v < 0.4
+    assert v >= 0.05
+
+
+def test_compute_even_rate_holds_steady():
+    assert rw.compute_user_preference(5, 10, 0.2) == pytest.approx(0.2)
+
+
+# ─── signal recording ──────────────────────────────────────────────────────
+
+
+async def test_record_feedback_without_profile_is_noop(db_session, monkeypatch):
+    """Review Focus #2: a rating from a user who never ranked must not create
+    a phantom profile."""
+    ws = str(uuid.uuid4())
+    await rw.record_feedback_signal(
+        db_session, user_id=str(uuid.uuid4()), workspace_id=ws, useful=True
+    )
+    rows = (await db_session.execute(
+        select(RankingWeightProfile).where(RankingWeightProfile.workspace_id == ws)
+    )).scalars().all()
+    assert rows == [], "must not invent a profile for a user with no ranking history"
+
+
+async def test_record_feedback_failure_does_not_raise(db_session, monkeypatch):
+    """Best-effort: weight update never breaks the feedback write."""
+    monkeypatch.setattr(
+        rw, "compute_user_preference",
+        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
+    await rw.record_feedback_signal(
+        db_session, user_id=str(uuid.uuid4()), workspace_id=str(uuid.uuid4()), useful=True
+    )
+
+
+# The two tests above are necessary but not sufficient: both take the
+# "no profile -> return" path, so neither actually reaches
+# ``compute_user_preference`` or performs a write. A bug in the aggregate, the
+# UPDATE, or the arithmetic would leave both green. The tests below close that
+# hole on a real session with a real profile row.
+#
+# They need ``recommendation_feedback``, which 0002 creates in PostgreSQL and
+# the SQLite fixture does not, so it is created here from the same column list.
+
+
+def _feedback_ddl() -> str:
+    return (
+        "CREATE TABLE recommendation_feedback ("
+        "id TEXT PRIMARY KEY, recommendation_id TEXT, user_id TEXT, "
+        "tenant_id TEXT, useful INTEGER, created_at TIMESTAMP)"
+    )
+
+
+async def _seed_profile(db_session, *, pref: float = 0.1):
+    ws, user, tenant = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    db_session.add(RankingWeightProfile(
+        tenant_id=tenant, workspace_id=ws, user_id=user,
+        user_preference=pref, sample_size=0,
+    ))
+    await db_session.execute(text(_feedback_ddl()))
+    await db_session.flush()
+    return ws, user
+
+
+async def _add_feedback(db_session, user, useful: bool, count: int):
+    for _ in range(count):
+        await db_session.execute(
+            text(
+                "INSERT INTO recommendation_feedback "
+                "(id, recommendation_id, user_id, useful) VALUES (:id, :r, :u, :ok)"
+            ),
+            {"id": str(uuid.uuid4()), "r": str(uuid.uuid4()), "u": str(user),
+             "ok": 1 if useful else 0},
+        )
+
+
+async def _profile_row(db_session, ws):
+    return (await db_session.execute(
+        select(RankingWeightProfile).where(RankingWeightProfile.workspace_id == ws)
+    )).scalar_one()
+
+
+async def test_all_useful_signal_raises_weight_and_stores_sample_size(db_session):
+    """The load-bearing path: a real profile really does get re-weighted."""
+    ws, user = await _seed_profile(db_session, pref=0.1)
+    await _add_feedback(db_session, user, useful=True, count=20)
+
+    await rw.record_feedback_signal(
+        db_session, user_id=str(user), workspace_id=str(ws), useful=True
+    )
+
+    row = await _profile_row(db_session, ws)
+    assert row.user_preference > 0.1, "20/20 useful must raise user_preference"
+    assert row.user_preference <= rw.PREFERENCE_CEILING
+    assert row.sample_size == 20, "sample_size must record the observation count"
+
+
+async def test_repeated_unhelpful_signals_converge_within_the_check_bounds(db_session):
+    """All-unhelpful is the adversarial case for the table's CHECK constraints.
+
+    Migration 0067 puts ``CHECK (... BETWEEN 0 AND 1)`` on every weight column,
+    so an out-of-range write is refused with SQLSTATE 23514. Driving the weight
+    down over many signals proves the clamp holds at the rail rather than only
+    at the single-step values the arithmetic tests check.
+    """
+    ws, user = await _seed_profile(db_session, pref=0.5)
+    await _add_feedback(db_session, user, useful=False, count=50)
+
+    for _ in range(40):
+        await rw.record_feedback_signal(
+            db_session, user_id=str(user), workspace_id=str(ws), useful=False
+        )
+
+    row = await _profile_row(db_session, ws)
+    assert row.user_preference < 0.5, "all-unhelpful must lower user_preference"
+    assert row.user_preference == pytest.approx(rw.PREFERENCE_FLOOR), (
+        "repeated all-unhelpful signals must settle on the floor, not walk past it"
+    )
+    assert 0.0 <= row.user_preference <= 1.0
+
+
+def test_computed_weight_stays_inside_check_bounds_for_every_rate():
+    """The clamp is the only thing preventing a CHECK violation (SQLSTATE 23514).
+
+    Proved over the whole rate domain from both rails, at several starting
+    weights, rather than at the handful of points the four spec tests use.
+    """
+    for start in (0.0, 0.05, 0.25, 0.5, 0.75, 1.0):
+        for total in (11, 50, 10_000):
+            for useful in range(0, total + 1, max(1, total // 50)):
+                v = rw.compute_user_preference(useful, total, start)
+                assert 0.0 <= v <= 1.0, (start, useful, total, v)
+                assert rw.PREFERENCE_FLOOR <= v <= rw.PREFERENCE_CEILING, (
+                    start, useful, total, v
+                )
+
+
+async def test_missing_workspace_is_a_noop_not_a_cross_workspace_write(db_session):
+    """No workspace context must not learn at all.
+
+    Without the workspace the profile cannot be located, and guessing one would
+    let an unscoped rating steer whichever profile happened to match the user.
+    """
+    ws, user = await _seed_profile(db_session, pref=0.1)
+    await _add_feedback(db_session, user, useful=True, count=20)
+
+    await rw.record_feedback_signal(
+        db_session, user_id=str(user), workspace_id=None, useful=True
+    )
+
+    row = await _profile_row(db_session, ws)
+    assert row.user_preference == 0.1, "no workspace_id must leave the weight alone"
+    assert row.sample_size == 0
+
+
+async def test_empty_user_id_is_a_noop(db_session):
+    ws, user = await _seed_profile(db_session, pref=0.1)
+    await rw.record_feedback_signal(
+        db_session, user_id="", workspace_id=str(ws), useful=True
+    )
+    row = await _profile_row(db_session, ws)
+    assert row.user_preference == 0.1

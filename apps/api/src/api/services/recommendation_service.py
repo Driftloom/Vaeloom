@@ -1,9 +1,13 @@
+import logging
 import uuid
 from typing import Any
 
 from sqlalchemy import text
 
 from ..services.llm_service import llm_service
+from .ranking_weights import record_feedback_signal
+
+logger = logging.getLogger(__name__)
 
 
 class RecommendationService:
@@ -171,27 +175,51 @@ class RecommendationService:
         return result.fetchall()
 
     async def record_feedback(self, dto, db):
+        # user_id is read off the recommendation row, never off the request
+        # body: this service previously never wrote recommendation_feedback
+        # .user_id at all, so every feedback row it created had user_id NULL
+        # and the per-user learning aggregate had nothing to count. It takes
+        # the value from the recommendation being rated, which is
+        # server-derived, so this does not widen the trust boundary.
         rec_result = await db.execute(
-            text("SELECT id FROM recommendations WHERE id = :rid"),
+            text("SELECT id, user_id FROM recommendations WHERE id = :rid"),
             {"rid": uuid.UUID(dto.recommendation_id)},
         )
-        if not rec_result.fetchone():
+        rec_row = rec_result.fetchone()
+        if not rec_row:
             return None
+
+        rec_user_id = getattr(rec_row, "user_id", None)
+        if rec_user_id is None and isinstance(rec_row, (tuple, list)) and len(rec_row) > 1:
+            rec_user_id = rec_row[1]
 
         feedback_id = uuid.uuid4()
         row_result = await db.execute(
             text("""
-                INSERT INTO recommendation_feedback (id, recommendation_id, useful)
-                VALUES (:id, :recommendation_id, :useful)
+                INSERT INTO recommendation_feedback (id, recommendation_id, user_id, useful)
+                VALUES (:id, :recommendation_id, :user_id, :useful)
                 RETURNING id, recommendation_id, useful, created_at
             """),
             {
                 "id": feedback_id,
                 "recommendation_id": uuid.UUID(dto.recommendation_id),
+                "user_id": str(rec_user_id) if rec_user_id is not None else None,
                 "useful": dto.useful,
             },
         )
-        return row_result.fetchone()
+        row = row_result.fetchone()
+
+        # Learning is a side effect of a rating, never a precondition for it.
+        # It runs *after* the insert, and record_feedback_signal swallows its
+        # own failures, so no weight update can cost the user their rating.
+        await record_feedback_signal(
+            db,
+            user_id=str(rec_user_id) if rec_user_id is not None else "",
+            workspace_id=getattr(dto, "workspace_id", None),
+            useful=bool(dto.useful),
+        )
+
+        return row
 
     async def get_trending(self, limit: int, tenant_id: str | None, db, workspace_id: str | None = None):
         params: dict[str, Any] = {"limit": limit, "workspace_id": workspace_id}

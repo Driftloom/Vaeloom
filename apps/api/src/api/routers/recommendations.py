@@ -63,9 +63,16 @@ async def record_feedback(
     dto: FeedbackRequest,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
+    workspace_id: str | None = Depends(get_workspace_id),
 ):
     if not current_user:
         raise HTTPException(status_code=401)
+    # Overwritten from authenticated request state, never from the body: the
+    # learned-weight update is scoped by this value, and a client-supplied
+    # workspace id would be a way to steer somebody else's ranking. Absent
+    # workspace context makes the learning step a no-op (see
+    # ranking_weights.record_feedback_signal), so this never fails a rating.
+    dto.workspace_id = workspace_id
     row = await recommendation_service.record_feedback(dto, db)
     if not row:
         raise HTTPException(status_code=404, detail="Recommendation not found")
