@@ -328,10 +328,11 @@ def _render(fn_name: str, *, table_present: bool, catalogue=None) -> tuple[str, 
     DDL, while everything routed through ``_safe()`` or a bare ``bind.execute``
     reaches the stub bind as raw SQL text.
     """
-    from alembic import op
     from alembic.config import Config
     from alembic.operations import Operations
     from alembic.runtime.environment import EnvironmentContext
+
+    from alembic import op
 
     module = _load_migration_module()
     bind = _StubBind(catalogue)
@@ -494,7 +495,6 @@ def test_emits_backfill_before_dropping_the_check():
 
 def test_downgrade_restores_the_check_constraint_from_0027():
     """The reverse path must re-add 0027's constraint verbatim, and drop in order."""
-    module = _load_migration_module()
     source_0027 = (
         _MIGRATION.parents[0] / "0027_memory_taxonomy_expand_contract.py"
     ).read_text(encoding="utf-8")
