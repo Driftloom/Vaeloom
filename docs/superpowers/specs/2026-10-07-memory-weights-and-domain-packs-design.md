@@ -99,6 +99,21 @@ FORCE RLS with the policy shape used by migration 0062
 plus a user-scope predicate. Both must be present or `0066`'s schema-wide
 invariant fails the chain.
 
+> **As built (2026-10-08).** The setting-cast spelling above was *not* used:
+> 0067 casts the **column** (`workspace_id::text = NULLIF(current_setting(...),
+> '')`) because a non-uuid GUC raises `invalid input syntax` *inside* policy
+> evaluation, which runs on every read — so one malformed `app.workspace_id`
+> would turn every profile read into a 500 instead of a permission denial. See
+> 0067's `_PREDICATE`. The user predicate is a **top-level `AND` around the
+> parenthesised workspace group**, not a fourth clause appended to the `OR`
+> chain: SQL binds `AND` tighter than `OR`, so appending it would leave the
+> bare-GUC workspace branch unconstrained while still reading as correct.
+>
+> The user predicate is also load-bearing for the *writer*: `record_feedback_signal`
+> sets both GUCs, and the rank path opens its session through
+> `scoped_session(workspace_id=..., user_id=user_id, ...)` rather than relying on
+> the `TenantContext` contextvar, which is populated on request paths only.
+
 ### Resolution order
 
 Per rank call, not at construction:
@@ -109,6 +124,26 @@ Per rank call, not at construction:
 
 With no row, behaviour is **byte-identical to today**. That is the invariant the
 first test pins.
+
+> **Amended 2026-10-08 — this section did not specify provisioning, and the
+> whole-branch review found the consequence.** "Else `RANKING_WEIGHTS`/defaults"
+> read as a resolution *order* with nothing writing step 1. 0067 seeds nothing,
+> the learner deliberately declines to create rows, and so `row is None` was the
+> only reachable outcome: the learned tier was inert while the audit entry
+> claimed SEC-P2-01 RESOLVED.
+>
+> As built, resolution also **provisions**: on `row is None` the resolver inserts
+> the caller's own `(workspace_id, user_id)` row with `ON CONFLICT (workspace_id,
+> user_id) DO NOTHING`, seeded from the fallback it is about to return. Three
+> consequences worth stating, because they are what make it safe:
+> - The first call still returns the fallback, and the second returns exactly what
+>   the first did, so provisioning cannot change anybody's ranking on its own.
+>   `RANKING_WEIGHTS` still governs until the learner has something to say.
+> - The row is keyed `(workspace_id, user_id)`, so it is the caller's own profile
+>   and there is no shared row for a rating to invent. The learner's refusal to
+>   create rows stands and is still pinned by a test.
+> - The write is best-effort. A database predating 0067, or a session the policy
+>   refuses, is already on the fallback path before provisioning is reached.
 
 Resolution needs a session. `rank_results`/`calculate_score` are sync and have
 no DB access, so weight resolution happens in the async caller
@@ -232,6 +267,15 @@ pack-derived, not module constants.
 **Taxonomy ledger:** ledger rows record `type_pack_slug` / `type_pack_version` in
 `metadata_` so provenance survives pack versioning. Existing ledger rows keep
 their columns; the pack reference is additive.
+
+> **As built (2026-10-08).** Delivered, after the whole-branch review found the
+> column did not exist: migration 0068 adds a nullable JSONB `metadata` column to
+> `memory_taxonomy_ledger` (with a `downgrade` path), the ORM exposes it as
+> `metadata_` (`metadata` is reserved on a declarative class), and
+> `_record_taxonomy_change` threads the pack slug and version from **both** call
+> sites. A call with no pack reference writes NULL rather than a null-filled
+> document, so "not validated" and "validated against something unknown" stay
+> distinguishable.
 
 ### Phase 2 — contract (later, separate deploy)
 

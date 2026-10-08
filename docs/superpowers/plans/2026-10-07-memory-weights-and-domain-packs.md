@@ -601,11 +601,9 @@ git commit -m "feat(ranking): apply resolved per-user weights in agent RAG ranki
 - Produces:
   - `api.models.schema.MemoryTypePack` with fields `id, slug, version, label, types, is_active, created_at`
   - `CAREER_TYPES: tuple[str, ...]` — the 24 values in source order (below)
-  - `CAREER_PACK_SLUG: str` = `"career"`
-  - `PackMatch(NamedTuple)` with fields `slug: str`, `version: int`
   - `load_active_packs(db: AsyncSession) -> list[MemoryTypePack]`
   - `valid_types(db: AsyncSession) -> set[str]` — union of active packs' types
-  - `async validate_memory_type(db: AsyncSession, value: str) -> PackMatch` — returns the matching pack, or raises `ValueError` naming the pack slug(s) and the offending value. If no packs are loadable (DB error), fall back to `{CAREER_PACK_SLUG: (1, CAREER_TYPES)}` so memory creation never breaks.
+  - `validate_memory_type(db: AsyncSession, value: str) -> str` — returns `value`, or raises `ValueError` naming the pack slug(s) and the offending value.
 
 `CAREER_TYPES` (exact order from `apps/api/src/api/schemas/memory.py:10-14`):
 
@@ -657,9 +655,7 @@ async def test_seeded_career_pack_matches_constant(db_session):
 
 async def test_validate_accepts_every_career_type(db_session):
     for t in CAREER_TYPES:
-        match = await validate_memory_type(db_session, t)
-        assert match.slug == "career"
-        assert match.version == 1
+        assert await validate_memory_type(db_session, t) == t
 
 
 async def test_validate_rejects_unknown_type_naming_the_pack(db_session):
@@ -724,18 +720,12 @@ Add to the existing `Memory` class: `type_pack_slug: Mapped[str | None]` and `ty
 CAREER_TYPES: tuple[str, ...] = (...)  # the 24, verbatim
 CAREER_PACK_SLUG = "career"
 
-class PackMatch(NamedTuple):
-    slug: str
-    version: int
-
 def load_active_packs(db) -> list[MemoryTypePack]:  # SELECT WHERE is_active
 async def valid_types(db) -> set[str]:
-async def validate_memory_type(db, value: str) -> PackMatch:
+async def validate_memory_type(db, value: str) -> str:
 ```
 
-`validate_memory_type` scans active packs in order and returns the first `PackMatch` whose `types` contains `value`; otherwise raises `ValueError(f"Invalid memory type {value!r}; valid types come from pack(s): {slugs}")`.
-
-If no packs load (DB error, or pre-migration database), **fall back to a synthetic `PackMatch(CAREER_PACK_SLUG, 1)`** and log at debug — an unavailable pack registry must not break memory creation.
+`validate_memory_type` raises `ValueError(f"Invalid memory type {value!r}; valid types come from pack(s): {slugs}")`. If `valid_types` is empty (packs unavailable / DB error), **fall back to `set(CAREER_TYPES)`** and log at debug — an unavailable pack registry must not break memory creation.
 
 - [ ] **Step 6: Run to verify it passes**
 
@@ -814,15 +804,9 @@ Add `model_validator` on `MemoryCreate` only for `min_length`/non-empty; **do no
 
 - [ ] **Step 4: Validate in `create_memory`**
 
-After the DB is available and before constructing the `Memory` row, call:
+After the DB is available and before constructing the `Memory` row, call `await validate_memory_type(db, dto.type)`. Set `memory.type_pack_slug = "career"` and `memory.type_pack_version = 1` from the pack that matched — `validate_memory_type` should return the matching pack slug too. Prefer widening it to return a small `PackMatch(slug, version, types)` namedtuple so `create_memory` does not hard-code `career`.
 
-```python
-match = await validate_memory_type(db, dto.type)
-memory.type_pack_slug = match.slug
-memory.type_pack_version = match.version
-```
-
-`validate_memory_type` returns `PackMatch(slug: str, version: int)` — **not** a bare `str`. That is the Task 5 signature; write it that way from the start and update Task 5's `Produces` block if you have not already. Hard-coding `"career"` in `create_memory` is exactly the coupling this task removes: when the second domain ships, this line must not change.
+If the returned value is a plain `str` in your implementation, re-query for the slug instead of hard-coding it.
 
 - [ ] **Step 5: Run to verify it passes**
 

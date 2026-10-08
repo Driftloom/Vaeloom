@@ -383,6 +383,55 @@ def test_compute_even_rate_holds_steady():
     assert rw.compute_user_preference(5, 10, 0.2) == pytest.approx(0.2)
 
 
+async def test_rank_path_opens_its_session_with_the_resolving_user(db_session, monkeypatch):
+    """I2's precondition: ``app.user_id`` is populated on the rank path.
+
+    0067's policy constrains rows by ``app.user_id`` as well as
+    ``app.workspace_id``. The policy's user predicate, the resolver's WHERE
+    clause and the session GUC therefore all have to be the same identity, or
+    the read returns zero rows and the user is silently pinned to defaults --
+    which is a worse outcome than the missing predicate that prompted the change.
+
+    The ambient ``TenantContext`` is NOT sufficient. It is populated by
+    ``TenantMiddleware`` on request paths only, so a worker, a Temporal activity
+    or a background task that calls this with an explicit ``user_id`` and no
+    ambient context would have ``app.user_id`` unset and read nothing. So the
+    value is forwarded into ``scoped_session`` explicitly, and this asserts it.
+
+    SQLite has no RLS, so nothing here can observe a denial. What it observes is
+    the argument, which is the part that is a decision rather than an emergent
+    property: reverting the forwarding -- which compiles, passes every other
+    test in this file, and is invisible on SQLite -- turns this red.
+    """
+    from contextlib import asynccontextmanager
+
+    from api import database as db_mod
+    from api.orchestrator import loop as loop_mod
+
+    recorded: list[dict] = []
+    real_scoped = db_mod.scoped_session
+
+    @asynccontextmanager
+    async def _recording_scoped_session(**kwargs):
+        recorded.append(kwargs)
+        async with real_scoped(workspace_id=None, require=False) as _unused:
+            yield db_session
+
+    monkeypatch.setattr(db_mod, "scoped_session", _recording_scoped_session)
+
+    ws, user = str(uuid.uuid4()), str(uuid.uuid4())
+    agent = type("A", (), {"memory_scopes": type("S", (), {"read_types": []})()})()
+    await loop_mod._assemble_rag_context(ws, "alpha beta gamma", agent, user_id=user)
+
+    assert len(recorded) == 1, f"expected one scoped session, got {recorded}"
+    assert recorded[0].get("user_id") == user, (
+        "the rank path must open its session with the same user_id it hands to "
+        f"effective_weights, or app.user_id rides TenantContext alone and is "
+        f"unset off the request path. Got {recorded[0]!r}"
+    )
+    assert recorded[0].get("workspace_id") == ws
+
+
 # ─── signal recording ──────────────────────────────────────────────────────
 
 

@@ -32,6 +32,7 @@ Live PostgreSQL:
 
 import os
 import pathlib
+import re
 import uuid
 
 import pytest
@@ -328,8 +329,24 @@ async def test_policy_constrains_the_user_not_only_the_workspace():
     predicate = getattr(mod, "_PREDICATE", None) or mod._POLICY_SQL
     flat = " ".join(predicate.split())
 
-    assert "user_id::text = NULLIF(current_setting('app.user_id', true), '')" in flat, (
-        "the policy must constrain rows by app.user_id, not by workspace alone"
+    # Anchored on the character *before* the column, which is what makes this
+    # distinct from the two `app.user_id` comparisons the membership subqueries
+    # already contained. Those are prefixed (`w.user_id`, `wu.user_id`) and
+    # constrain who owns the workspace, not whose profile the row is; a plain
+    # substring test is satisfied by them and would have passed on the
+    # workspace-only predicate this test exists to reject.
+    top_level_user = re.search(
+        r"(?:^|\s)user_id::text = NULLIF\(current_setting\('app\.user_id', true\), ''\)",
+        flat,
+    )
+    assert top_level_user, (
+        "the policy must constrain THIS table's rows by app.user_id, not only "
+        f"constrain workspace ownership through w./wu. Got: {flat[:160]!r}"
+    )
+    # And it must name this table's column, not another table's.
+    assert "ranking_weight_profiles.user_id" not in flat, (
+        "the top-level comparison must be against the unqualified column of "
+        "ranking_weight_profiles; a qualified one would reference another table"
     )
 
 

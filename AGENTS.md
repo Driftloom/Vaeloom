@@ -154,6 +154,31 @@ Two deploys, landed together but independently reversible.
 - **Resolution order: DB row > `RANKING_WEIGHTS` env > `DEFAULT_WEIGHTS`**, read
   per rank call in `services/ranking_weights.py`. With no row, behaviour is
   byte-identical to the pre-2026-07 path.
+- **The resolver provisions the row; the learner never does.** 0067 seeds
+  nothing and `record_feedback_signal` returns early when no profile exists, so
+  without a writer on the _resolution_ side the DB tier is unreachable forever —
+  the whole-branch review found exactly that and the learned feature could never
+  activate. `provision_profile` inserts on first resolution,
+  `ON CONFLICT (workspace_id, user_id) DO NOTHING`. It is seeded from the
+  resolved fallback, so provisioning is behaviour-preserving and
+  `RANKING_WEIGHTS` still governs until the learner has something to say.
+  `tenant_id` is derived via `app_tenant_for_workspace` (the `SECURITY DEFINER`
+  helper `scoped_session` uses); an unresolvable workspace fails NOT NULL and is
+  contained.
+- **The 0067 policy constrains `app.user_id`, not only the workspace** — a
+  top-level `AND` around the parenthesised workspace group (SQL binds `AND`
+  tighter than `OR`, so a flat write would leave the bare-GUC branch
+  unconstrained while still reading as correct). Two GUC consequences, both
+  load-bearing:
+  - `_assemble_rag_context` forwards `user_id` into
+    `scoped_session(workspace_id=..., user_id=user_id, require=False)`. Riding
+    `TenantContext` alone is **not** enough: the contextvar is populated by
+    `TenantMiddleware` on request paths only, so a worker/Temporal/background
+    caller with an explicit `user_id` would have `app.user_id` unset, read zero
+    rows, and be silently pinned to defaults. Policy predicate, resolver `WHERE`
+    and session GUC are now one identity by construction. Pinned by
+    `test_rank_path_opens_its_session_with_the_resolving_user`.
+  - `record_feedback_signal` already called `set_rls_session_vars` with both.
 - `SearchRankingService._resolve_weights` accepts `user_context["weights"]`
   **only if all four keys are present** — a partial dict is ignored, never
   merged.
@@ -193,17 +218,28 @@ Two deploys, landed together but independently reversible.
   burns the error budget for a routine client mistake.
 - `taxonomy_version` is derived from `pack_match.enterprise_types` — the pack
   that actually matched, **not** the fallback-derived `ENTERPRISE_MEMORY_TYPES`.
+- **The taxonomy ledger records which pack authorised a remap.**
+  `memory_taxonomy_ledger.metadata` (JSONB, nullable, added by 0068 with a
+  `downgrade` path) holds `type_pack_slug` / `type_pack_version`, threaded from
+  both `_record_taxonomy_change` call sites. Without it the ledger says _that_ a
+  type changed but not _what made it legal_, which stops being recoverable the
+  moment a pack is re-versioned. The ORM attribute is `metadata_` (mapping the
+  `metadata` column) because `metadata` is reserved on a declarative class.
+- **Supersede carries pack provenance forward** when the type is unchanged,
+  rather than blanking the backfilled `career`/1 the way it did —
+  `update_memory` re-stamps the same input, so the divergence was unhandled. A
+  remap still takes the new pack; inheriting NULL stays NULL.
 - Frontend union is **generated**: `scripts/gen_memory_type_union.py` →
   `packages/shared-types/src/types/memory.generated.ts` (committed, byte-exact).
-  Run `python scripts/gen_memory_type_union.py --check` to verify freshness.
+  Run `python scripts/gen_memory_type_union.py --check` to verify freshness;
+  **it is now a CI step** in `.github/workflows/ci-backend.yml` (`test` job).
   `.prettierignore` excludes `*.generated.ts` so lint-staged cannot reformat the
   artefact and break the byte contract.
 - **Known gaps, deliberately left:** `memory_records` still carries its own
   frozen `ck_memory_records_type_valid` — trigger for revisiting: the first time
   a second pack's type must land via that pipeline. `import_memories` builds
   `Memory(...)` directly and bypasses the pack registry, so today's guarantee is
-  "the three service write paths validate", not "all memory writes". The
-  generator's `--check` is not yet wired into CI.
+  "the three service write paths validate", not "all memory writes".
 
 ## Memory Retrieval — Correctness Fixes (2026-10-07)
 

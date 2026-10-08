@@ -49,15 +49,34 @@ persistent facts).
      guard on the write path. `memory_records` still carries its own frozen
      `ck_memory_records_type_valid`, and `import_memories` builds `Memory(...)`
      directly, bypassing the registry.
-3. **Ranking Weights Could Not Learn (`SEC-P2-01`)** — **RESOLVED 2026-10-07**:
+3. **Ranking Weights Could Not Learn (`SEC-P2-01`)** — **RESOLVED 2026-10-07,
+   corrected 2026-10-08**:
    - Weights were frozen env vars resolved once at import, so nothing could ever
      tune them. Migration **0067** added `ranking_weight_profiles` (FORCE RLS,
      `UNIQUE (workspace_id, user_id)`, four `CHECK (col BETWEEN 0 AND 1)`), and
      resolution is now `DB row > RANKING_WEIGHTS env > DEFAULT_WEIGHTS` per rank
      call. With no row, behaviour is byte-identical to before.
+   - **The first pass of this entry claimed RESOLVED too early, and that claim
+     was false.** 0067 seeded nothing, nothing else inserted a row, and
+     `record_feedback_signal` returns early when no profile exists *by design*
+     ("must not invent a phantom profile") — so `effective_weights` always took
+     `row is None → _fallback_weights()` and the learned tier could not activate
+     in production. The code degraded honestly; the documentation did not. The
+     whole-branch review caught it; see `AGENTS.md` → *Learned Ranking Weights +
+     Domain-Pack Registry*. The fix provisions the row on first resolution
+     (`ON CONFLICT (workspace_id, user_id) DO NOTHING`, seeded from the resolved
+     fallback), which is why the claim is now true rather than withdrawn.
+   - The 0067 policy now constrains `app.user_id` as well as the workspace. The
+     spec asked for a user predicate and the original predicate was
+     workspace-only; on this table that half is the one that matters, because the
+     reader's own `WHERE user_id = …` was the only thing keeping co-members apart.
    - `POST /feedback` previously had **no ownership check**, which this change
      would have weaponised into steering a co-worker's ranking toward a rail. It
      now enforces `rec_user_id == caller` and returns **403**.
+   - **Still not fixed (unchanged):** `recommendation_feedback` has no
+     `workspace_id`, so a rating in one workspace moves that user's profile in
+     another. The fix is to add `workspace_id` to `recommendation_feedback`; it
+     is not a redesign, and it is not done.
 4. **Duplicated Memory Implementations**:
    - `apps/api/src/api/memory/` contains generic memory managers.
    - `apps/api/src/api/agents/memory_agent/` contains extraction, merge, and
