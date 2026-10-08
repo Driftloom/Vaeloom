@@ -1039,3 +1039,138 @@ def test_assert_coverage_fails_when_a_table_is_unprotected(table, state, expecte
         module._assert_coverage(_StubBind(catalogue))
     assert expected in str(exc.value), str(exc.value)
 
+
+# ---------------------------------------------------------------------------
+# The drift guard: the frontend union is generated from the pack, and checked
+#
+# Everything above guards the backend registry. Nothing above could have caught
+# the failure that actually happened: the TypeScript union was a *separate*
+# hand-maintained list, so nothing in this repository ever compared the two.
+# When the pack changed, the union did not, and the symptom was five of seven
+# UI type filters quietly matching nothing while every test stayed green.
+#
+# So the check below is deliberately placed here, in the backend suite, reading
+# the frontend's committed artefact off disk. It reads a file rather than
+# calling the generator, because the artefact is what the web app actually
+# compiles against -- verifying the generator would prove only that a generator
+# is self-consistent, which is not the failure that occurred.
+# ---------------------------------------------------------------------------
+
+_REPO = pathlib.Path(__file__).resolve().parents[3]
+_GENERATOR = _REPO / "scripts" / "gen_memory_type_union.py"
+_GENERATED_UNION = _REPO / "packages" / "shared-types" / "src" / "types" / "memory.generated.ts"
+
+# Only the union's own member lines, i.e. lines of the emitted
+# `  | 'member'` form. Matching union members rather than every quoted word in
+# the file is what keeps the header comment from being able to satisfy or break
+# this check: the brief's own regex (`'([a-z_]+)'` over the whole text) would
+# have counted an identifier mentioned in prose as a union member.
+#
+# The trailing `;?` is load-bearing, not decoration: the last member is written
+# `| 'workflow';`, and a regex that forgot that silently reports the final
+# member as missing -- which this guard did, on its own first green run.
+_UNION_MEMBER = re.compile(r"^\s*\|\s*'([a-z_]+)'\s*;?\s*$", re.MULTILINE)
+
+
+def _generated_members(text: str) -> list[str]:
+    """The union members in the generated file, in the order they are written."""
+    return _UNION_MEMBER.findall(text)
+
+
+def _generated_text() -> str:
+    assert _GENERATED_UNION.exists(), (
+        f"generated union file is missing at {_GENERATED_UNION}; run "
+        "`python scripts/gen_memory_type_union.py`"
+    )
+    return _GENERATED_UNION.read_text(encoding="utf-8")
+
+
+def test_generated_union_matches_career_pack():
+    """The drift guard -- its absence is why frontend and backend diverged before.
+
+    Set equality, and the failure message names *both* directions, because the
+    two mean opposite things to whoever has to fix it: a member only in the pack
+    is a type the UI cannot send or filter by (the original bug), while a member
+    only in the generated file is a type the UI offers that the backend will
+    reject on write. Reporting only the symmetric difference, or only the
+    counts, makes the reader re-derive which side is wrong by hand.
+    """
+    found = set(_generated_members(_generated_text()))
+    pack = set(CAREER_TYPES)
+    assert found == pack, (
+        "generated union drifted from the career pack: "
+        f"only-in-generated={sorted(found - pack)} "
+        f"only-in-pack={sorted(pack - found)}"
+    )
+
+
+def test_generated_union_preserves_the_pack_order():
+    """A sorted union satisfies the set check above and still violates the contract.
+
+    Migration 0068 seeds the pack table from this order, so order is not
+    cosmetic. Without this test, "sort it for tidiness" would pass the drift
+    guard, reorder every seeded database on the next migration run, and produce
+    no test failure anywhere.
+    """
+    assert tuple(_generated_members(_generated_text())) == tuple(CAREER_TYPES)
+
+
+def test_generator_check_mode_passes_on_the_committed_file_and_fails_on_drift(tmp_path):
+    """``--check`` is only a gate if it is a *false* when the file is stale.
+
+    Asserting the happy path alone would be satisfied by a script whose check
+    always exits 0, which is the failure mode a freshness gate is least likely
+    to be caught by -- so both directions are driven here. The drift is a
+    renamed member rather than a deleted one, because that is the shape a real
+    taxonomy change produces and the one a naive count check would miss.
+    """
+    import subprocess
+    import sys
+
+    # Happy path: the committed artefact, exactly as it sits in the tree.
+    proc = subprocess.run(
+        [sys.executable, str(_GENERATOR), "--check"],
+        capture_output=True,
+        text=True,
+        cwd=str(_REPO),
+    )
+    assert proc.returncode == 0, f"--check rejected a fresh file: {proc.stdout}{proc.stderr}"
+
+    # Negative path: the same bytes with one member renamed. Driven through the
+    # real ``main()`` with ``OUTPUT`` repointed at a sandbox file, so proving the
+    # failure cannot write a drifted artefact into the tree.
+    drifted = tmp_path / "memory.generated.ts"
+    drifted.write_bytes(
+        _GENERATED_UNION.read_text(encoding="utf-8")
+        .replace("'insight'", "'insite'", 1)
+        .encode("utf-8")
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", _CHECK_AGAINST, str(_GENERATOR), str(drifted)],
+        capture_output=True,
+        text=True,
+        cwd=str(_REPO),
+    )
+    assert proc.returncode != 0, "--check accepted a drifted file; the CI gate is inert"
+    assert "stale" in proc.stderr, f"a stale file must be named as such: {proc.stderr}"
+    # And it must say what changed, not merely that something did.
+    assert "-  | 'insite'" in proc.stderr and "+  | 'insight'" in proc.stderr, (
+        f"the diff must name the drifted member: {proc.stderr}"
+    )
+
+
+# Imports the generator by path (it lives in scripts/, not an importable package)
+# and repoints its OUTPUT, so the negative case above can never write into the
+# tree. Kept as source rather than a fixture because it has to run in a child
+# process: `--check` is CI's entry point, and testing it in-process would not be
+# testing the thing CI runs.
+_CHECK_AGAINST = """
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("gen_union", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+from pathlib import Path
+mod.OUTPUT = Path(sys.argv[2])
+sys.exit(mod.main(["--check"]))
+"""
+
