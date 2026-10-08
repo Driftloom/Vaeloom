@@ -18,12 +18,12 @@ class GenerateRecommendationRequest(BaseModel):
 class FeedbackRequest(BaseModel):
     recommendation_id: str
     useful: bool
-    # Optional, and NOT taken from the client as authority: the router overwrites
-    # workspace_id from the authenticated request state. Absent workspace_id
-    # makes the learned-weight update a no-op rather than a guess, so an
-    # unscoped rating never steers ranking.
+    # Present but NOT authoritative from the client: the router overwrites it
+    # from authenticated request state. There is deliberately no `user_id` field
+    # -- the rating's owner is read off the recommendation row and checked
+    # against the caller's token, so a body field could only ever be a spoof
+    # trap for whoever wires it next.
     workspace_id: str | None = None
-    user_id: str | None = None
 
 
 class TrendingQuery(BaseModel):

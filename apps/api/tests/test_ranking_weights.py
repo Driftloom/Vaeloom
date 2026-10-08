@@ -256,8 +256,10 @@ async def test_record_feedback_failure_does_not_raise(db_session, monkeypatch):
 
 
 def _feedback_ddl() -> str:
+    # IF NOT EXISTS: the profile and recommendation seeders both need this
+    # table, and a test that calls both must not fail on the second CREATE.
     return (
-        "CREATE TABLE recommendation_feedback ("
+        "CREATE TABLE IF NOT EXISTS recommendation_feedback ("
         "id TEXT PRIMARY KEY, recommendation_id TEXT, user_id TEXT, "
         "tenant_id TEXT, useful INTEGER, created_at TIMESTAMP)"
     )
@@ -372,3 +374,199 @@ async def test_empty_user_id_is_a_noop(db_session):
     )
     row = await _profile_row(db_session, ws)
     assert row.user_preference == 0.1
+
+
+# ─── rating ownership ───────────────────────────────────────────────────────
+#
+# These drive record_feedback end-to-end against a real session rather than
+# mocks, because the whole point is that the ownership comparison happens on
+# the value read back off the recommendation row. A mock row would let the
+# comparison pass without ever touching a database.
+#
+# Why the check is load-bearing: record_feedback attributes the rating to the
+# RECOMMENDATION's owner, so an unauthenticated-as-owner caller who merely knows
+# a recommendation UUID could steer a co-worker's user_preference by up to
+# +/-0.075 per call until it pinned to a rail.
+
+
+def _recommendations_ddl() -> str:
+    return (
+        "CREATE TABLE recommendations ("
+        "id TEXT PRIMARY KEY, user_id TEXT, tenant_id TEXT, items TEXT, "
+        "model_version TEXT, created_at TIMESTAMP)"
+    )
+
+
+async def _seed_recommendation(db_session, owner: str) -> str:
+    """A recommendation owned by ``owner``, plus the tables the path touches."""
+    await db_session.execute(text(_recommendations_ddl()))
+    await db_session.execute(text(_feedback_ddl()))
+    rec_id = str(uuid.uuid4())
+    await db_session.execute(
+        text(
+            "INSERT INTO recommendations (id, user_id, tenant_id, items) "
+            "VALUES (:i, :u, :t, '[]')"
+        ),
+        {"i": rec_id, "u": owner, "t": "tenant-1"},
+    )
+    return rec_id
+
+
+def _feedback_dto(rec_id: str, *, useful: bool = True, workspace_id: str | None = None):
+    from api.schemas.recommendation import FeedbackRequest
+
+    return FeedbackRequest(
+        recommendation_id=rec_id, useful=useful, workspace_id=workspace_id
+    )
+
+
+async def _feedback_rows(db_session) -> list:
+    return (
+        await db_session.execute(
+            text("SELECT user_id FROM recommendation_feedback")
+        )
+    ).all()
+
+
+async def test_owner_can_record_feedback_and_learn(db_session):
+    """The legitimate owner still gets their rating recorded and their weight
+    learned. Guards against the ownership fix over-blocking the happy path."""
+    from api.services.recommendation_service import RecommendationService
+
+    ws, user = await _seed_profile(db_session, pref=0.1)
+    owner = str(user)
+    rec_id = await _seed_recommendation(db_session, owner)
+    await _add_feedback(db_session, user, useful=True, count=0)
+
+    svc = RecommendationService()
+    for _ in range(12):
+        row = await svc.record_feedback(
+            _feedback_dto(rec_id, workspace_id=str(ws)), db_session,
+            caller_user_id=owner,
+        )
+        assert row is not None, "the owner must get a feedback row back"
+
+    assert len(await _feedback_rows(db_session)) == 12
+
+    profile = await _profile_row(db_session, ws)
+    assert profile.user_preference > 0.1, "the owner's own rating must learn"
+    assert profile.sample_size == 12
+
+
+async def test_stranger_cannot_record_feedback_on_another_users_recommendation(db_session):
+    """BLOCKING fix: a forged rating must be refused, not silently learned.
+
+    Asserts all four observable consequences: a 403, no feedback row, and an
+    untouched weight. The rating row and the weight are checked separately
+    because either one alone leaves the poisoning vector open.
+    """
+    from fastapi import HTTPException
+
+    from api.services.recommendation_service import RecommendationService
+
+    ws, victim = await _seed_profile(db_session, pref=0.1)
+    rec_id = await _seed_recommendation(db_session, str(victim))
+    attacker = str(uuid.uuid4())
+
+    svc = RecommendationService()
+    with pytest.raises(HTTPException) as exc_info:
+        await svc.record_feedback(
+            _feedback_dto(rec_id, workspace_id=str(ws)), db_session,
+            caller_user_id=attacker,
+        )
+
+    assert exc_info.value.status_code == 403, (
+        "403, not 404: the caller already proved they hold a token, and the "
+        "sibling read endpoint answers 403 for another user's resource"
+    )
+    assert await _feedback_rows(db_session) == [], (
+        "no feedback row may be written for a recommendation the caller does "
+        "not own -- otherwise the junk rating still pollutes the victim's "
+        "useful-rate aggregate even if the weight write is later skipped"
+    )
+
+    profile = await _profile_row(db_session, ws)
+    assert profile.user_preference == 0.1, (
+        "the victim's learned weight must be untouched by a stranger's rating"
+    )
+    assert profile.sample_size == 0
+
+
+async def test_missing_caller_identity_is_refused_not_assumed(db_session):
+    """Fail closed: no authenticated identity cannot be shown to match, so the
+    rating is refused rather than waved through.
+
+    Without this, a caller that reached the service without an identity (a future
+    endpoint, a direct internal call) would be treated as the owner and the
+    check would be inert exactly when it mattered most.
+    """
+    from fastapi import HTTPException
+
+    from api.services.recommendation_service import RecommendationService
+
+    ws, user = await _seed_profile(db_session, pref=0.1)
+    rec_id = await _seed_recommendation(db_session, str(user))
+
+    svc = RecommendationService()
+    with pytest.raises(HTTPException) as exc_info:
+        await svc.record_feedback(
+            _feedback_dto(rec_id, workspace_id=str(ws)), db_session,
+            caller_user_id=None,
+        )
+    assert exc_info.value.status_code == 403
+    assert await _feedback_rows(db_session) == []
+
+
+async def test_recommendation_with_no_owner_is_refused(db_session):
+    """A recommendation whose owner cannot be resolved is refused.
+
+    ``recommendations.user_id`` is NOT NULL in the migration, so this cannot
+    occur in production -- but an unresolvable owner must not compare equal to
+    a caller's id by accident, and a NULL would otherwise stringify into the
+    attribute check as "None" rather than failing the match.
+    """
+    from fastapi import HTTPException
+
+    from api.services.recommendation_service import RecommendationService
+
+    await db_session.execute(text(_recommendations_ddl()))
+    await db_session.execute(text(_feedback_ddl()))
+    rec_id = str(uuid.uuid4())
+    await db_session.execute(
+        text(
+            "INSERT INTO recommendations (id, user_id, tenant_id, items) "
+            "VALUES (:i, NULL, :t, '[]')"
+        ),
+        {"i": rec_id, "t": "tenant-1"},
+    )
+
+    svc = RecommendationService()
+    with pytest.raises(HTTPException) as exc_info:
+        await svc.record_feedback(_feedback_dto(rec_id), db_session, caller_user_id="u")
+    assert exc_info.value.status_code == 403
+    assert await _feedback_rows(db_session) == []
+
+
+async def test_feedback_request_has_no_client_supplied_user_id_field():
+    """``FeedbackRequest.user_id`` was removed as dead attack surface.
+
+    The rating's owner is read off the recommendation row and compared to the
+    caller's token, so a body field could only ever be a spoof trap. Asserted
+    rather than left to a code comment, because a future "just pass it through"
+    edit is exactly the failure this guards.
+    """
+    from api.schemas.recommendation import FeedbackRequest
+
+    assert "user_id" not in FeedbackRequest.model_fields, (
+        "FeedbackRequest must not accept a client-supplied user_id"
+    )
+    # Pydantic ignores unknown keys by default, so a body carrying user_id is
+    # silently dropped rather than rejected. Asserted because "silently
+    # dropped" is the safe behaviour here (the field is not part of the
+    # contract) but only while the model has no field for it to land in.
+    dto = FeedbackRequest(
+        recommendation_id=str(uuid.uuid4()), useful=True, user_id="someone-else"
+    )
+    assert not hasattr(dto, "user_id"), (
+        "a client-supplied user_id must not survive validation as an attribute"
+    )

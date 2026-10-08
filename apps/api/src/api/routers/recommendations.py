@@ -73,7 +73,16 @@ async def record_feedback(
     # workspace context makes the learning step a no-op (see
     # ranking_weights.record_feedback_signal), so this never fails a rating.
     dto.workspace_id = workspace_id
-    row = await recommendation_service.record_feedback(dto, db)
+    # Same identity derivation as GET /{user_id} below, and for the same reason:
+    # the caller proves who they are here, and the service compares it against
+    # the recommendation's owner so a stranger's rating cannot be attributed
+    # to somebody else. The check itself lives in the service -- it is the only
+    # layer holding both the owner's id and this one -- so there is a single
+    # source of truth for it.
+    current_uid = str(current_user.get("sub") or current_user.get("user_id", ""))
+    row = await recommendation_service.record_feedback(
+        dto, db, caller_user_id=current_uid
+    )
     if not row:
         raise HTTPException(status_code=404, detail="Recommendation not found")
     return {

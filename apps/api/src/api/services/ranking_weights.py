@@ -71,10 +71,12 @@ PREFERENCE_SPAN = 0.3
 # express that -- its target depends only on the rate, so a rate of 0.5 pins
 # every starting weight to the same constant and moves 0.2 to 0.125. Anchoring
 # the step to the neutral rate instead (delta from ``current``, not from a
-# fixed constant) makes the even-rate case an exact zero step at *any* blend
-# factor, and 0.5 is then a plain readability/conservatism choice: at most
-# +/-0.075 per signal, so a user's weight converges over a run of ratings
-# rather than jumping on the first decisive one.
+# fixed constant) makes the even-rate case a zero step for any ``current``
+# already inside [PREFERENCE_FLOOR, PREFERENCE_CEILING] -- outside that band the
+# clamp still normalises into it, which is the intended recovery, not a drift.
+# 0.5 is then a plain readability/conservatism choice: at most +/-0.075 per
+# signal, so a weight converges over a run of ratings rather than jumping on
+# the first decisive one.
 _PREFERENCE_BLEND = 0.5
 
 

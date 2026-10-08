@@ -2,6 +2,7 @@ import logging
 import uuid
 from typing import Any
 
+from fastapi import HTTPException
 from sqlalchemy import text
 
 from ..services.llm_service import llm_service
@@ -174,7 +175,25 @@ class RecommendationService:
         )
         return result.fetchall()
 
-    async def record_feedback(self, dto, db):
+    async def record_feedback(self, dto, db, *, caller_user_id: str | None = None):
+        """Record a rating for a recommendation the caller owns.
+
+        ``caller_user_id`` is the authenticated identity and is REQUIRED for the
+        signal to be recorded. It is compared here, against the recommendation's
+        owner, because this is the only layer holding both values -- the router
+        has no lookup of its own, and adding one would be a second source of
+        truth for the same check.
+
+        The ownership test is load-bearing, not hygiene. The rating is
+        attributed to the recommendation's owner, so without it any
+        authenticated user who learns a recommendation UUID (own UI, XHR
+        history, traffic sniffing) could steer a co-worker's ``user_preference``
+        by up to +/-0.075 per call until it pinned to a rail. 403 rather than
+        404: the caller already proved they hold a token, so "not yours" is the
+        truthful answer, and it matches the sibling read endpoint
+        (``GET /{user_id}``, routers/recommendations.py) so the two do not
+        disagree about what a stranger's resource looks like.
+        """
         # user_id is read off the recommendation row, never off the request
         # body: this service previously never wrote recommendation_feedback
         # .user_id at all, so every feedback row it created had user_id NULL
@@ -192,6 +211,16 @@ class RecommendationService:
         rec_user_id = getattr(rec_row, "user_id", None)
         if rec_user_id is None and isinstance(rec_row, (tuple, list)) and len(rec_row) > 1:
             rec_user_id = rec_row[1]
+
+        # Fail closed: an absent or unresolvable caller identity cannot be shown
+        # to match, so it is treated as a stranger rather than waved through.
+        owner = str(rec_user_id) if rec_user_id is not None else ""
+        caller = str(caller_user_id) if caller_user_id else ""
+        if not caller or not owner or caller != owner:
+            raise HTTPException(
+                status_code=403,
+                detail="Cannot record feedback for another user's recommendation",
+            )
 
         feedback_id = uuid.uuid4()
         row_result = await db.execute(

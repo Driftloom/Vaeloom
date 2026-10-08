@@ -226,16 +226,21 @@ class TestRecordFeedback:
         from api.services.recommendation_service import RecommendationService
         svc = RecommendationService()
         db = AsyncMock()
+        # The recommendation's owner, and the caller who owns it. The trailing
+        # _fetchone entries are the learner (set_config, profile lookup, count,
+        # UPDATE); they are irrelevant here and are asserted on properly with a
+        # real session in tests/test_ranking_weights.py.
         db.execute = AsyncMock(side_effect=[
-            _fetchone(_row(id=uuid.uuid4())),
+            _fetchone(_row(id=uuid.uuid4(), user_id="u-owner")),
             _fetchone(_row(
                 id=str(uuid.uuid4()), recommendation_id=str(uuid.uuid4()), useful=True,
                 created_at="2025-01-01",
             )),
+            _fetchone(None), _fetchone(None), _fetchone(None), _fetchone(None),
         ])
         from api.schemas.recommendation import FeedbackRequest
         dto = FeedbackRequest(recommendation_id=str(uuid.uuid4()), useful=True)
-        result = await svc.record_feedback(dto, db)
+        result = await svc.record_feedback(dto, db, caller_user_id="u-owner")
         assert result is not None
 
     async def test_missing_recommendation_returns_none(self):
@@ -245,7 +250,7 @@ class TestRecordFeedback:
         db.execute = AsyncMock(return_value=_fetchone(None))
         from api.schemas.recommendation import FeedbackRequest
         dto = FeedbackRequest(recommendation_id=str(uuid.uuid4()), useful=False)
-        result = await svc.record_feedback(dto, db)
+        result = await svc.record_feedback(dto, db, caller_user_id="u-owner")
         assert result is None
 
 
