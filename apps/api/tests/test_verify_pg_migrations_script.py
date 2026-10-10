@@ -305,3 +305,348 @@ def test_module_constants_match_the_migration_chain():
     assert script.APP_ROLE == "vaeloom_app"
     assert script.APP_PASSWORD == "vaeloom_app_proof_pw"
     assert script.NONLOGIN_ROLES == ("service_role", "authenticated")
+
+
+# --------------------------------------------------------------------------
+# assert_downgrade_failed_as_expected
+#
+# This is the crux of the whole verification. 0068's downgrade re-adds
+# ck_memories_type_valid, which PostgreSQL validates against every existing row,
+# so a memory written under a second domain pack must make it refuse. Today CI
+# rehearses that downgrade against an EMPTY memories table, where the check has
+# nothing to object to and the step cannot fail.
+#
+# The proof only counts if the refusal is the right refusal. A downgrade that
+# died because of a typo, a missing role or an unrelated permission error is
+# equally non-zero, and accepting it would turn a red run into a green one -- so
+# the assertion demands the constraint name AND the offending value, and an empty
+# output raises rather than passing.
+# --------------------------------------------------------------------------
+
+
+def _expected_refusal_output() -> str:
+    """What a real `alembic downgrade -1` prints when the CHECK refuses the probe row.
+
+    Shaped from PostgreSQL's actual message, which carries the failing row in the
+    DETAIL line -- that is the only place the offending value appears.
+    """
+    _, probe_type, check_name = script.rollback_probe_literals()
+    return (
+        "INFO  [alembic.runtime.migration] Running downgrade 0068 -> 0067\n"
+        "FAILED: 0068_memory_type_packs.py -> 0067\n"
+        "sqlalchemy.exc.DBAPIError: (asyncpg) ERROR:  check constraint "
+        f'"{check_name}" of relation "memories" is violated by some row\n'
+        f"DETAIL:  Failing row contains (... 'note', ..., '{probe_type}', ...).\n"
+    )
+
+
+def test_assert_downgrade_rejects_zero_exitcode():
+    """A downgrade that SUCCEEDED proves the opposite of what this step claims.
+
+    Reaching 0067 with the probe row intact means the restored CHECK accepted a
+    type 0027 does not list, so the safety boundary is gone and the run must fail.
+    """
+    with pytest.raises(RuntimeError):
+        script.assert_downgrade_failed_as_expected(0, _expected_refusal_output())
+
+
+def test_assert_downgrade_rejects_unrelated_failure():
+    """Non-zero is not enough: a permission error is a different failure entirely."""
+    with pytest.raises(RuntimeError) as exc:
+        script.assert_downgrade_failed_as_expected(
+            1, "ERROR:  permission denied for schema public"
+        )
+    assert "ck_memories_type_valid" in str(exc.value), (
+        "the refusal must say which expected token was missing -- otherwise the "
+        "operator cannot tell a permission problem from the proof working"
+    )
+
+
+def test_assert_downgrade_rejects_missing_value():
+    """The constraint is named but the offending value is not: not the proof."""
+    _, probe_type, check_name = script.rollback_probe_literals()
+    output = (
+        f'ERROR:  check constraint "{check_name}" of relation "memories" '
+        "is violated by some row\nDETAIL:  Failing row contains (uuid, document).\n"
+    )
+    assert probe_type not in output, "this control must not accidentally name the value"
+    with pytest.raises(RuntimeError):
+        script.assert_downgrade_failed_as_expected(1, output)
+
+
+def test_assert_downgrade_rejects_missing_constraint():
+    """The value is named but not the constraint: also not the proof."""
+    _, probe_type, check_name = script.rollback_probe_literals()
+    output = (
+        "ERROR:  new row violates check constraint on relation \"memories\"\n"
+        f"DETAIL:  Failing row contains (... '{probe_type}' ...).\n"
+    )
+    assert check_name not in output, "this control must not accidentally name the constraint"
+    with pytest.raises(RuntimeError):
+        script.assert_downgrade_failed_as_expected(1, output)
+
+
+def test_assert_downgrade_accepts_expected_failure():
+    """The one shape that passes: non-zero, naming the constraint and the value."""
+    assert (
+        script.assert_downgrade_failed_as_expected(1, _expected_refusal_output()) is None
+    )
+
+
+def test_assert_downgrade_rejects_empty_output():
+    """Green by emptiness, explicitly.
+
+    Output is captured from a subprocess, so an empty string is a real outcome (a
+    crash before any flush, a redirected stream). A substring test on "" is False
+    for both tokens, so the strict form raises; an `if constraint in output and
+    value in output` gate written as a bare conditional, or an `all(...)` over an
+    empty list of lines, would pass here and report a proof that never happened.
+    """
+    with pytest.raises(RuntimeError) as exc:
+        script.assert_downgrade_failed_as_expected(1, "")
+    message = str(exc.value)
+    _, probe_type, check_name = script.rollback_probe_literals()
+    assert check_name in message and probe_type in message, (
+        f"an empty output must be reported as missing BOTH expected tokens: {message!r}"
+    )
+
+
+def test_rollback_probe_literals_are_stable():
+    """The three literals are the contract between the seed, the assertion and CI.
+
+    Tests above read them through this function rather than retyping them, so a
+    rename cannot pass CI's psql assertions while breaking the Python side. This
+    is the one place they are spelled out.
+    """
+    assert script.rollback_probe_literals() == (
+        "rollback_probe",
+        "job_posting",
+        "ck_memories_type_valid",
+    )
+
+
+# --------------------------------------------------------------------------
+# Step wiring: what each step actually executes
+#
+# alembic and pytest are recorded rather than executed (Ruling C -- `--alembic`
+# may hold a non-executable path, so a test must never hand it one and expect a
+# process). The database work is stubbed for the same reason; the SQL itself is
+# Task 5's real run.
+# --------------------------------------------------------------------------
+
+EXPECTED_LIVE_PG_SUITES = (
+    "tests/test_migration_chain_pg.py",
+    "tests/test_migration_0057_pg.py",
+    "tests/test_rls_live_pg.py",
+    "tests/test_ranking_weights_rls.py",
+)
+
+
+def _live_pg_output(outcome: str = "PASSED") -> str:
+    lines = [f"{path}::test_example {outcome}" for path in EXPECTED_LIVE_PG_SUITES]
+    if outcome == "PASSED":
+        lines.append("4 passed in 3.10s")
+    else:
+        lines.append("1 passed, 3 skipped in 3.10s")
+    return "\n".join(lines) + "\n"
+
+
+def _completed(returncode: int, stdout: str = "", stderr: str = "") -> subprocess.CompletedProcess:
+    return subprocess.CompletedProcess(
+        args=[], returncode=returncode, stdout=stdout, stderr=stderr
+    )
+
+
+def _record_subprocess(monkeypatch, module, results: list) -> list:
+    """Record subprocess.run calls and hand back canned results in order."""
+    calls: list = []
+    queue = list(results)
+
+    def fake_run(cmd, *args, **kwargs):
+        calls.append({"cmd": list(cmd), "kwargs": kwargs})
+        if not queue:
+            raise AssertionError(f"unexpected extra subprocess call: {cmd!r}")
+        return queue.pop(0)
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+    return calls
+
+
+def _stub_database_work(monkeypatch, module) -> list:
+    """Replace the three database-touching helpers, recording what they were given."""
+    calls: list = []
+    monkeypatch.setattr(
+        module, "ensure_roles", lambda pg_url: calls.append(("ensure_roles", pg_url))
+    )
+    monkeypatch.setattr(
+        module, "seed_rollback_probe", lambda pg_url: calls.append(("seed", pg_url))
+    )
+    monkeypatch.setattr(
+        module, "_remove_rollback_probe", lambda pg_url: calls.append(("remove", pg_url))
+    )
+    return calls
+
+
+def _stub_run_env(monkeypatch):
+    """Ignore a developer's exported VAELOOM_TARGET_URL so the walk is deterministic."""
+    monkeypatch.delenv(script.TARGET_URL_ENV_VAR, raising=False)
+    monkeypatch.delenv("VAELOOM_TEST_PG_URL", raising=False)
+
+
+def _passing_run_results() -> list:
+    """Subprocess results for a run where the probe behaves exactly as designed."""
+    return [
+        _completed(0),                                # step 1: alembic upgrade head
+        _completed(0, stdout=_live_pg_output()),      # step 2: live-PG suite
+        _completed(1, stdout=_expected_refusal_output()),  # step 4: downgrade must fail
+        _completed(0),                                # step 6: downgrade must succeed
+        _completed(0),                                # step 7: alembic upgrade head
+        _completed(0, stdout=_live_pg_output()),      # step 8: live-PG suite again
+    ]
+
+
+def test_role_preflight_is_the_first_declared_step():
+    """The migrations GRANT to, and CREATE POLICY for, roles that must already exist."""
+    assert script.VERIFICATION_STEPS[0] == "step_0_ensure_roles", (
+        "ensure_roles must be walked before step 1, or `upgrade head` fails on the "
+        "first GRANT to a role that does not exist yet"
+    )
+    assert len(script.VERIFICATION_STEPS) == 9, (
+        "eight numbered checks plus the role preflight; a shorter tuple means a "
+        "declared verification was dropped"
+    )
+    assert script.VERIFICATION_STEPS[1:] == (
+        "step_1_upgrade_head",
+        "step_2_run_live_pg_suite",
+        "step_3_seed_rollback_probe",
+        "step_4_downgrade_must_fail",
+        "step_5_assert_downgrade_failure_shape",
+        "step_6_remove_probe_and_downgrade",
+        "step_7_upgrade_head_again",
+        "step_8_reassert_invariants",
+    ), "the canonical step names are ratified; they are not ours to renumber"
+
+
+def test_main_drives_every_step_in_order_with_stubbed_effects(monkeypatch, tmp_path):
+    """One full pass over the sequencer, pinning what each step actually executes.
+
+    This is where the argv is checked rather than assumed: the working directory
+    must be apps/api (alembic.ini only resolves there), the live suite must be
+    invoked through the caller's own interpreter under `-v`, and the two
+    downgrades must bracket the refusal.
+    """
+    _stub_run_env(monkeypatch)
+    repo_root = _repo_with_alembic(tmp_path / "repo")
+    api_dir = repo_root / "apps" / "api"
+    db_calls = _stub_database_work(monkeypatch, script)
+    calls = _record_subprocess(monkeypatch, script, _passing_run_results())
+
+    returncode = script.main(["--pg-url", SAFE_URL, "--repo-root", str(repo_root)])
+
+    assert returncode == 0, "a correctly staged run must pass every step"
+    assert db_calls == [("ensure_roles", SAFE_URL), ("seed", SAFE_URL), ("remove", SAFE_URL)], (
+        f"the role preflight, the seed and the teardown are each called once, in "
+        f"that order: {db_calls!r}"
+    )
+    assert [call["cmd"] for call in calls] == [
+        ["alembic", "upgrade", "head"],
+        [sys.executable, "-m", "pytest", *EXPECTED_LIVE_PG_SUITES, "-v", "-o", "addopts="],
+        ["alembic", "downgrade", "-1"],
+        ["alembic", "downgrade", "-1"],
+        ["alembic", "upgrade", "head"],
+        [sys.executable, "-m", "pytest", *EXPECTED_LIVE_PG_SUITES, "-v", "-o", "addopts="],
+    ], f"the executed commands drifted: {[call['cmd'] for call in calls]!r}"
+    for call in calls:
+        assert call["kwargs"]["cwd"] == api_dir, (
+            f"alembic/pytest must run from {api_dir}, not {call['kwargs']['cwd']}"
+        )
+        assert call["kwargs"]["capture_output"] is True
+        assert call["kwargs"]["text"] is True
+    pytest_env = calls[1]["kwargs"]["env"]
+    assert pytest_env["VAELOOM_TEST_PG_URL"] == SAFE_URL, (
+        "without this the live-PG suites skip themselves and the run proves nothing"
+    )
+
+
+def test_main_fails_when_the_live_pg_suite_skips(monkeypatch, tmp_path, capsys):
+    """A skip is not a pass: pytest exits 0 for an all-skipped run (Ruling D)."""
+    _stub_run_env(monkeypatch)
+    repo_root = _repo_with_alembic(tmp_path / "repo")
+    _stub_database_work(monkeypatch, script)
+    results = _passing_run_results()
+    results[1] = _completed(0, stdout=_live_pg_output("SKIPPED"))
+    _record_subprocess(monkeypatch, script, results)
+
+    returncode = script.main(["--pg-url", SAFE_URL, "--repo-root", str(repo_root)])
+
+    assert returncode == 1
+    skipped_line = f"{EXPECTED_LIVE_PG_SUITES[0]}::test_example SKIPPED"
+    stderr = capsys.readouterr().err
+    assert "step_2_run_live_pg_suite" in stderr, (
+        f"the failure must name the step that rejected the suite: {stderr!r}"
+    )
+    assert skipped_line in stderr, (
+        f"the operator must be shown WHICH tests skipped, not just that some did: {stderr!r}"
+    )
+
+
+def test_main_fails_at_step_5_when_the_downgrade_refused_for_another_reason(
+    monkeypatch, tmp_path, capsys
+):
+    """The refusal has to be the constraint's, or a typo reads as a passing proof."""
+    _stub_run_env(monkeypatch)
+    repo_root = _repo_with_alembic(tmp_path / "repo")
+    _stub_database_work(monkeypatch, script)
+    results = _passing_run_results()
+    results[2] = _completed(1, stdout="ERROR:  permission denied for schema public")
+    _record_subprocess(monkeypatch, script, results)
+
+    returncode = script.main(["--pg-url", SAFE_URL, "--repo-root", str(repo_root)])
+
+    assert returncode == 1
+    stderr = capsys.readouterr().err
+    assert "step_5_assert_downgrade_failure_shape" in stderr, (
+        f"the operator must be told which step rejected the downgrade: {stderr!r}"
+    )
+
+
+def test_main_fails_at_step_6_when_the_second_downgrade_also_fails(
+    monkeypatch, tmp_path, capsys
+):
+    """Removing the probe and then failing to roll back is a failure, not a retry."""
+    _stub_run_env(monkeypatch)
+    repo_root = _repo_with_alembic(tmp_path / "repo")
+    _stub_database_work(monkeypatch, script)
+    results = _passing_run_results()
+    results[3] = _completed(1, stdout="ERROR:  relation \"memory_taxonomy_ledger\" does not exist")
+    _record_subprocess(monkeypatch, script, results)
+
+    returncode = script.main(["--pg-url", SAFE_URL, "--repo-root", str(repo_root)])
+
+    assert returncode == 1
+    stderr = capsys.readouterr().err
+    assert "step_6_remove_probe_and_downgrade" in stderr, (
+        f"the teardown's own downgrade failure must be surfaced: {stderr!r}"
+    )
+
+
+def test_role_bootstrap_repairs_a_preexisting_nologin_app_role():
+    """CI creates vaeloom_app as NOLOGIN; a skip-if-exists guard strands it there.
+
+    `tests/test_rls_live_pg.py` then declines to create it, the role can never log
+    in, and `test_pg_live_password_login_succeeds_as_vaeloom_app` is unreachable --
+    which is why that file was never added to CI. The ELSE branch is the fix, so
+    it is asserted here rather than left to the first real run.
+    """
+    sql = script._role_bootstrap_sql(script.APP_ROLE, login=True)
+    assert f"CREATE ROLE {script.APP_ROLE} LOGIN" in sql
+    assert f"ALTER ROLE {script.APP_ROLE} LOGIN PASSWORD" in sql, (
+        "an existing role must be ALTERed, not left as whatever CI made it"
+    )
+    assert script.APP_PASSWORD in sql
+    assert "IF NOT EXISTS (SELECT FROM pg_roles" in sql
+    assert sql.index("CREATE ROLE") < sql.index("ELSE") < sql.index("ALTER ROLE")
+
+    nonlogin = script._role_bootstrap_sql("service_role", login=False)
+    assert f"CREATE ROLE service_role NOLOGIN" in nonlogin
+    assert f"ALTER ROLE service_role NOLOGIN" in nonlogin
