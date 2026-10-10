@@ -32,6 +32,15 @@ def _load_script():
     assert path.exists(), f"verification script not found at {path}"
     spec = importlib.util.spec_from_file_location("verify_pg_migrations_under_test", path)
     module = importlib.util.module_from_spec(spec)
+    # The sys.modules entry is required before exec_module, not decoration after.
+    # The script declares a @dataclasses.dataclass, and dataclasses._is_type
+    # resolves string annotations through sys.modules[cls.__module__]; with the
+    # module unregistered that lookup is None and the decorator raises
+    # AttributeError: 'NoneType' object has no attribute '__dict__'. This is the
+    # documented importlib recipe, and the fix belongs here rather than in the
+    # script -- dropping the dataclass would constrain what the script may
+    # contain in order to accommodate a loader that was skipping a step.
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
@@ -628,6 +637,39 @@ def test_main_fails_at_step_6_when_the_second_downgrade_also_fails(
     assert "step_6_remove_probe_and_downgrade" in stderr, (
         f"the teardown's own downgrade failure must be surfaced: {stderr!r}"
     )
+
+
+def test_main_clears_the_run_context_so_a_second_run_inherits_nothing(
+    monkeypatch, tmp_path
+):
+    """A finished run must leave nothing a later run can mistake for its own evidence.
+
+    ``step_5`` reads the downgrade result ``step_4`` recorded on the shared
+    context. If ``main`` left that context populated, a second ``main()`` in the
+    same interpreter could reach step 5 holding the *previous* run's recorded
+    refusal -- and report a proof it never performed. So both a passing run and
+    a failing one must clear it, and a step reached outside a run must say so
+    rather than judge stale output.
+    """
+    _stub_run_env(monkeypatch)
+    repo_root = _repo_with_alembic(tmp_path / "repo")
+    _stub_database_work(monkeypatch, script)
+    _record_subprocess(monkeypatch, script, _passing_run_results())
+
+    assert script.main(["--pg-url", SAFE_URL, "--repo-root", str(repo_root)]) == 0
+    assert script._CONTEXT is None, "a successful run left its context populated"
+
+    # A second run that dies at the preflight never reaches step 4, so it cannot
+    # have recorded a downgrade result of its own.
+    def boom():
+        raise RuntimeError("refused at the role preflight")
+
+    monkeypatch.setattr(script, "step_0_ensure_roles", boom)
+    assert script.main(["--pg-url", SAFE_URL, "--repo-root", str(repo_root)]) == 1
+    assert script._CONTEXT is None, "a failed run left its context populated"
+
+    with pytest.raises(RuntimeError, match="no verification run is in progress"):
+        script.step_5_assert_downgrade_failure_shape()
 
 
 def test_role_bootstrap_repairs_a_preexisting_nologin_app_role():

@@ -65,10 +65,11 @@ LIVE_PG_SUITES = (
 # from passing as far as an exit-code check is concerned.
 PYTEST_NO_TESTS_COLLECTED = 5
 
-# The ordered proof. A prepended role preflight (step 0) is expected to join this
-# tuple; `main` resolves each name against this module's globals, so adding an
-# entry needs no change here.
+# The ordered proof: the eight numbered checks, preceded by the role preflight
+# they all depend on. `main` resolves each name against this module's globals, so
+# a name that does not resolve fails the run rather than being skipped.
 VERIFICATION_STEPS = (
+    "step_0_ensure_roles",
     "step_1_upgrade_head",
     "step_2_run_live_pg_suite",
     "step_3_seed_rollback_probe",
@@ -534,43 +535,237 @@ def _remove_rollback_probe(pg_url: str) -> None:
 
 
 # --------------------------------------------------------------------------
-# Verification steps. Task 1 ships the sequencer; the bodies land with Task 2.
+# Verification steps
+#
+# Every step takes no arguments, because `main` walks `VERIFICATION_STEPS` and
+# the sequencer is easier to trust when a step cannot be handed a different
+# target than the one the guards approved. What a step needs is therefore
+# recorded on `_CONTEXT` by `main`, once, for the whole run.
 # --------------------------------------------------------------------------
+
+
+@dataclasses.dataclass
+class _RunContext:
+    """Everything the steps need from the command line, resolved exactly once."""
+
+    pg_url: str
+    alembic_cwd: pathlib.Path
+    alembic: str
+    # Filled in by step 4 and read by step 5. Kept on the context rather than
+    # returned, because the two are separate entries in the walked sequence.
+    downgrade_returncode: int | None = None
+    downgrade_output: str | None = None
+
+
+_CONTEXT: _RunContext | None = None
+
+
+def _context() -> _RunContext:
+    """The run in progress, or an error naming the only legitimate caller."""
+    if _CONTEXT is None:
+        raise RuntimeError(
+            "no verification run is in progress. The steps read the target URL and "
+            "the alembic working directory from main(), which is what applied the "
+            "guards; calling one directly means nothing established what it may act "
+            "on."
+        )
+    return _CONTEXT
+
+
+def _merged_output(completed: subprocess.CompletedProcess) -> str:
+    """stdout and stderr together, because the refusal may arrive in either stream."""
+    return f"{completed.stdout or ''}{completed.stderr or ''}"
+
+
+def _alembic(context: _RunContext, *arguments: str) -> subprocess.CompletedProcess:
+    """Run alembic from ``apps/api`` and raise unless it exited zero.
+
+    ``cwd`` is not optional. The migrations import each other relative to
+    ``apps/api``; run from anywhere else alembic fails part-way and leaves a
+    half-migrated database behind.
+    """
+    command = [context.alembic, *arguments]
+    completed = subprocess.run(
+        command,
+        # check=False stated, not defaulted: every caller of this helper wants the
+        # returncode inspected below rather than an exception from inside run().
+        check=False,
+        cwd=context.alembic_cwd,
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(
+            f"`{' '.join(command)}` exited {completed.returncode}:\n"
+            f"{_merged_output(completed)}"
+        )
+    return completed
+
+
+def _skipped_target_tests(output: str) -> list[str]:
+    """The target-file tests pytest reported as SKIPPED, in the order printed.
+
+    Scoped to the four files deliberately: a skip elsewhere in the suite is not
+    this step's business, and an unscoped search would fail on skips that have
+    always been there and say nothing about whether the live proof ran.
+    """
+    prefixes = tuple(f"{path}::" for path in LIVE_PG_SUITES)
+    return [
+        line.strip()
+        for line in output.splitlines()
+        if line.strip().startswith(prefixes) and " SKIPPED" in line
+    ]
+
+
+def _run_live_pg_suite(context: _RunContext, label: str) -> None:
+    """Run the four live-PostgreSQL files, treating a skip as a failure.
+
+    Every test in these files exists only to exercise a real server; they
+    ``skipif`` on the absence of ``VAELOOM_TEST_PG_URL``. A skip is therefore
+    not "nothing to check here" but "the check that was supposed to happen did
+    not", and pytest exits 0 for a fully-skipped run -- so the exit code alone
+    cannot be the verdict. ``5`` (no tests collected) is not a pass either.
+
+    Invoked as ``sys.executable -m pytest`` rather than a bare ``pytest`` so the
+    suites run on the same interpreter that is running this script, under both
+    ``uv run`` in CI and a local virtualenv.
+    """
+    environment = dict(os.environ)
+    environment[PG_URL_ENV_VAR] = context.pg_url
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            *LIVE_PG_SUITES,
+            "-v",
+            "-o",
+            "addopts=",
+        ],
+        check=False,
+        cwd=context.alembic_cwd,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+    output = _merged_output(completed)
+    skipped = _skipped_target_tests(output)
+
+    problems: list[str] = []
+    if completed.returncode == PYTEST_NO_TESTS_COLLECTED:
+        problems.append(
+            f"pytest collected no tests from {' '.join(LIVE_PG_SUITES)}. On PostgreSQL "
+            "that is never right: these files exist to run against a real server."
+        )
+    elif completed.returncode != 0:
+        problems.append(f"pytest exited {completed.returncode}.")
+    if skipped:
+        problems.append(
+            f"{len(skipped)} test(s) in the target files were SKIPPED. A skipped "
+            "live-PostgreSQL test is a check that did not run, and is reported as a "
+            "failure rather than a pass:\n    "
+            + "\n    ".join(skipped)
+        )
+
+    if problems:
+        raise RuntimeError(
+            f"{label} did not pass:\n  - " + "\n  - ".join(problems) + f"\n\n{output}"
+        )
+
+
+def step_0_ensure_roles() -> None:
+    """Provision the roles the chain grants to, before it grants to them.
+
+    First for a mechanical reason, not a stylistic one: ``0005_rls_expanded.py``
+    and ``0047`` issue ``GRANT ... TO service_role, authenticated, vaeloom_app``
+    and ``CREATE POLICY ... TO vaeloom_app``, and those statements fail outright
+    when the named role does not exist. On Supabase they pre-exist, which is why
+    the chain never had to create them and why it failed on any other
+    PostgreSQL.
+    """
+    ensure_roles(_context().pg_url)
 
 
 def step_1_upgrade_head() -> None:
     """Apply the whole chain from empty, via `alembic upgrade head`."""
+    _alembic(_context(), "upgrade", "head")
 
 
 def step_2_run_live_pg_suite() -> None:
     """Run the live-PostgreSQL suites. Any skip is a failure, not a pass."""
+    _run_live_pg_suite(_context(), "the live-PostgreSQL suite (pre-probe)")
 
 
 def step_3_seed_rollback_probe() -> None:
     """Seed a memory whose type is outside the frozen vocabulary."""
+    seed_rollback_probe(_context().pg_url)
 
 
 def step_4_downgrade_must_fail() -> None:
-    """`alembic downgrade -1` must refuse to drop the constraint over that row."""
+    """`alembic downgrade -1` must refuse to drop the constraint over that row.
+
+    Deliberately does not raise on a non-zero exit -- that is the expected
+    outcome here. It records the result for step 5, which is where "failed" is
+    turned into "failed for the right reason". A step that only recorded a
+    boolean would leave that distinction to nobody.
+    """
+    context = _context()
+    command = [context.alembic, "downgrade", "-1"]
+    completed = subprocess.run(
+        command,
+        # check=False is load-bearing here: a non-zero exit is the EXPECTED outcome
+        # of this step. Raising from inside run() would turn the proof into a
+        # traceback and destroy the returncode and output step 5 has to judge.
+        check=False,
+        cwd=context.alembic_cwd,
+        capture_output=True,
+        text=True,
+    )
+    context.downgrade_returncode = completed.returncode
+    context.downgrade_output = _merged_output(completed)
 
 
 def step_5_assert_downgrade_failure_shape() -> None:
     """The refusal must name the constraint AND the offending value."""
+    context = _context()
+    if context.downgrade_returncode is None:
+        raise RuntimeError(
+            "step 4 recorded no downgrade result, so there is nothing to judge. "
+            "Step 4 must run before this one; a missing result here would otherwise "
+            "be indistinguishable from a refusal that was never checked."
+        )
+    assert_downgrade_failed_as_expected(
+        context.downgrade_returncode, context.downgrade_output or ""
+    )
 
 
 def step_6_remove_probe_and_downgrade() -> None:
-    """Remove the probe row, then require `alembic downgrade -1` to succeed."""
+    """Remove the probe, then require `alembic downgrade -1` to succeed.
+
+    The teardown and the downgrade are one step because they are one claim: with
+    the probe gone, rolling back is supposed to work. Splitting them would let a
+    step that deleted nothing be followed by a step that rolled back cleanly and
+    reported success.
+    """
+    context = _context()
+    _remove_rollback_probe(context.pg_url)
+    _alembic(context, "downgrade", "-1")
 
 
 def step_7_upgrade_head_again() -> None:
     """Return to head so the round trip is complete."""
+    _alembic(_context(), "upgrade", "head")
 
 
 def step_8_reassert_invariants() -> None:
     """Re-run the live-PostgreSQL suites to confirm the round trip did no damage."""
+    _run_live_pg_suite(_context(), "the live-PostgreSQL suite (post round trip)")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    global _CONTEXT
+
     args = parse_args(argv)
 
     pg_url = (args.pg_url or "").strip()
@@ -603,18 +798,30 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
 
     try:
-        resolve_alembic_cwd(args.repo_root)
+        alembic_cwd = resolve_alembic_cwd(args.repo_root)
     except RuntimeError as exc:
         print(str(exc), file=sys.stderr)
         return 2
 
-    for step_name in VERIFICATION_STEPS:
-        try:
-            _resolve_step(step_name)()
-        except Exception as exc:
-            print(f"FAILED at {step_name}: {exc}", file=sys.stderr)
-            return 1
-        print(f"[ok] {step_name}")
+    # Only now, with the guards behind it, does anything learn what it may act on.
+    # Steps take no arguments (the sequencer calls them bare), so this is where
+    # the approved target and the resolved alembic working directory are recorded
+    # for the whole walk.
+    _CONTEXT = _RunContext(pg_url=pg_url, alembic_cwd=alembic_cwd, alembic=args.alembic)
+    try:
+        for step_name in VERIFICATION_STEPS:
+            try:
+                _resolve_step(step_name)()
+            except Exception as exc:
+                print(f"FAILED at {step_name}: {exc}", file=sys.stderr)
+                return 1
+            print(f"[ok] {step_name}")
+    finally:
+        # Cleared on every exit, including the early `return 1`. A second main()
+        # in the same interpreter must not inherit the previous run's target, its
+        # alembic working directory, or -- worst of all -- its recorded downgrade
+        # result, which would let step 5 pass on evidence step 4 never gathered.
+        _CONTEXT = None
 
     return 0
 
