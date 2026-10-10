@@ -16,6 +16,7 @@ from __future__ import annotations
 import importlib.util
 import pathlib
 import subprocess
+import sys
 
 import pytest
 
@@ -47,15 +48,30 @@ def _repo_with_alembic(tmp_path: pathlib.Path) -> pathlib.Path:
 
 
 def _fake_alembic(tmp_path: pathlib.Path) -> tuple[pathlib.Path, pathlib.Path]:
-    """A real executable that appends to a log every time it is invoked.
+    """A real program that appends to a log every time it is invoked.
 
-    Returns ``(batch_file, log_file)``. The log not existing afterwards is only
-    evidence of anything because this actually runs -- see the negative control.
+    Returns ``(script_path, log_path)``. This is a ``.py`` file run through
+    ``sys.executable``, not a shell or batch script: CI collects this suite on
+    ``ubuntu-latest`` (``ci-backend.yml:10``), where a shebangless ``.cmd`` with
+    ``0o644`` is not executable at all. One form for both platforms means the
+    control below is exercised locally by the same code CI runs.
     """
     log = tmp_path / "alembic-invocations.log"
-    batch = tmp_path / "alembic.cmd"
-    batch.write_text(f'@echo off\r\necho invoked>>"{log}"\r\nexit /b 0\r\n', encoding="utf-8")
-    return batch, log
+    script = tmp_path / "fake_alembic.py"
+    script.write_text(
+        "import sys\n"
+        "from pathlib import Path\n"
+        f"LOG = Path({str(log)!r})\n"
+        'with LOG.open("a", encoding="utf-8") as _handle:\n'
+        '    _handle.write(" ".join(sys.argv[1:]) + "\\n")\n',
+        encoding="utf-8",
+    )
+    return script, log
+
+
+def _run_fake_alembic(script: pathlib.Path, *args: str) -> None:
+    """The single way the fake is ever invoked, on every platform."""
+    subprocess.run([sys.executable, str(script), *args], check=True)
 
 
 def _forbid_subprocess(monkeypatch, module) -> list:
@@ -140,17 +156,48 @@ def test_negative_control_the_fake_alembic_would_have_recorded(tmp_path):
     """Keeps the assertion above from passing vacuously.
 
     ``not invocation_log.exists()`` only means "the fake was never run" if the
-    fake does record being run. If it stopped recording, the guard test would
-    keep passing while proving nothing.
+    fake does record being run, with the migration arguments it was handed. If
+    it stopped recording, the guard test would keep passing while proving
+    nothing -- which is the green-by-absence failure this suite exists to
+    eliminate, so the control is itself load-bearing and is not skipped on
+    platforms where it is inconvenient.
     """
     fake_alembic, invocation_log = _fake_alembic(tmp_path)
     assert not invocation_log.exists()
 
-    subprocess.run([str(fake_alembic), "upgrade", "head"], check=True)
+    _run_fake_alembic(fake_alembic, "upgrade", "head")
 
     assert invocation_log.exists(), (
         "the fake alembic did not record its own execution, so its absence proves "
         "nothing about the guard test"
+    )
+    assert "upgrade head" in invocation_log.read_text(encoding="utf-8"), (
+        "the fake ran without receiving the migration arguments, so the control "
+        "proves only that some process started"
+    )
+
+
+def test_main_rejects_a_malformed_url_with_exit_2(monkeypatch, tmp_path, capsys):
+    """A typo'd URL is a refusal, not a failed verification step.
+
+    ``urlparse`` raises ``ValueError`` on a malformed URL. Uncaught, that escapes
+    ``main`` as a traceback with exit code 1 -- which this script's own contract
+    defines as "a verification step failed", so the operator reads a broken
+    migration chain when the real cause is a bad paste.
+    """
+    repo_root = _repo_with_alembic(tmp_path / "repo")
+    calls = _forbid_subprocess(monkeypatch, script)
+
+    returncode = script.main(
+        ["--pg-url", "postgresql://u:p@[::1/db", "--repo-root", str(repo_root)]
+    )
+
+    assert returncode == 2, "a malformed URL is a guard rejection, not a step failure"
+    assert calls == [], "the malformed URL escaped before the guard could refuse it"
+    stderr = capsys.readouterr().err
+    assert "Traceback" not in stderr, f"a bad paste must not produce a traceback: {stderr!r}"
+    assert "--pg-url" in stderr and "VAELOOM_TEST_PG_URL" in stderr, (
+        f"the operator must be told both ways to supply a URL: {stderr!r}"
     )
 
 

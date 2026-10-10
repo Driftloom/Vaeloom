@@ -216,6 +216,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     except UnsafeTargetError as exc:
         print(str(exc), file=sys.stderr)
         return 2
+    except ValueError as exc:
+        # A malformed URL raises out of urlparse, not out of the guard. Left
+        # uncaught it escapes main as a traceback with exit code 1, which this
+        # script's own contract defines as "a verification step failed" -- the
+        # operator would read a broken migration chain for a bad paste.
+        print(
+            f"refusing to run: the target URL could not be parsed ({exc}). Check the "
+            f"--pg-url flag, or the {PG_URL_ENV_VAR} environment variable it defaults "
+            "to.",
+            file=sys.stderr,
+        )
+        return 2
 
     try:
         resolve_alembic_cwd(args.repo_root)
