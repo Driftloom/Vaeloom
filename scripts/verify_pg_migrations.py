@@ -193,6 +193,11 @@ PROBE_PACK_SLUG = "rollback_probe"
 PROBE_MEMORY_TYPE = "job_posting"
 RESTORED_CHECK_NAME = "ck_memories_type_valid"
 
+# Namespace for deriving the probe's row identifiers. Fixed rather than uuid4 so
+# the seed and the teardown compute the same values from the same inputs; see
+# _ProbeIds for why that has to be true rather than merely convenient.
+PROBE_ID_NAMESPACE = uuid.UUID("2f7b0d5e-9c41-5a6f-8d13-6e0a4c7b9d52")
+
 
 def rollback_probe_literals() -> tuple[str, str, str]:
     """``(pack slug, memory type, constraint name)`` for the rollback probe.
@@ -400,6 +405,63 @@ def ensure_roles(pg_url: str) -> None:
     _execute(target, statements)
 
 
+@dataclasses.dataclass(frozen=True)
+class _ProbeIds:
+    """The row identifiers this run's probe owns, derivable by either half of it.
+
+    The teardown cannot discover these by querying: ``memories`` carries only the
+    workspace-scoped ``p_memories_workspace`` policy
+    (``0014_memories_rls_workspace_only.py:35-38``), so a lookup for the probe row
+    is filtered by exactly the GUC the teardown is trying to learn. Reading them
+    out of the database is therefore circular -- the only non-circular way for the
+    teardown to learn the probe's scope is to compute it the same way the seed did.
+
+    So they are derived from the target database name rather than drawn at random:
+    two ``uuid5`` calls over a fixed namespace, which the seed and the teardown
+    each perform independently. A random id the teardown cannot reproduce would
+    leave it deleting zero rows under any non-superuser connecting role and
+    raising a message blaming the seed for a fault that is entirely its own.
+    """
+
+    user_id: uuid.UUID
+    workspace_id: uuid.UUID
+    memory_id: uuid.UUID
+
+    @classmethod
+    def for_target(cls, target_url: str) -> _ProbeIds:
+        database = database_name_from_url(target_url)
+        return cls(
+            user_id=uuid.uuid5(PROBE_ID_NAMESPACE, f"probe:user:{database}"),
+            workspace_id=uuid.uuid5(PROBE_ID_NAMESPACE, f"probe:workspace:{database}"),
+            memory_id=uuid.uuid5(PROBE_ID_NAMESPACE, f"probe:memory:{database}"),
+        )
+
+
+def _scope_guc_statements(probe_ids: _ProbeIds) -> list[tuple[str, Mapping[str, object]]]:
+    """The RLS scope the seed writes under and the teardown deletes under.
+
+    One definition, used by both. They must agree on it: the seed needs the GUCs
+    to insert the probe at all, and the teardown needs the *same* values to delete
+    it -- ``memories`` is workspace-scoped, so a teardown that set no GUC, or a
+    different one, would match zero rows under any non-superuser connecting role
+    and report that the probe was never planted.
+
+    ``is_local`` is true on both sides: ``_execute`` runs everything in a single
+    transaction, and the AGENTS.md invariant is that these GUCs must be set inside
+    the session that reads under them.
+    """
+    return [
+        (
+            "SELECT set_config('app.user_id', :user_id, true)",
+            {"user_id": str(probe_ids.user_id)},
+        ),
+        (
+            "SELECT set_config('app.workspace_id', :workspace_id, true)",
+            {"workspace_id": str(probe_ids.workspace_id)},
+        ),
+    ]
+
+
 def seed_rollback_probe(pg_url: str) -> None:
     """Plant a memory whose type only a second, temporary domain pack allows.
 
@@ -416,32 +478,35 @@ def seed_rollback_probe(pg_url: str) -> None:
     rather than an orphan, and the row carries ``type_pack_slug`` so it remains
     attributable after the pack that legalised it is deleted.
 
-    Re-runnable: any earlier probe row is cleared first, and the pack is written
-    with ``ON CONFLICT DO UPDATE`` rather than ``DO NOTHING`` so the vocabulary
-    on disk always matches the vocabulary the refusal assertion expects.
+    Re-runnable: the probe's identifiers are derived from the target database name
+    rather than drawn at random, and every row the seed writes is upserted, so a
+    second run against an already-used database lands on the same ids instead of
+    colliding with the previous run's leftovers. The pack is written with
+    ``ON CONFLICT DO UPDATE`` rather than ``DO NOTHING`` so the vocabulary on disk
+    always matches the vocabulary the refusal assertion expects.
     """
     slug, probe_type, _ = rollback_probe_literals()
     target = _effective_target_url(pg_url)
+    probe_ids = _ProbeIds.for_target(target)
 
-    user_id = uuid.uuid4()
-    workspace_id = uuid.uuid4()
-    memory_id = uuid.uuid4()
+    user_id = probe_ids.user_id
+    workspace_id = probe_ids.workspace_id
+    memory_id = probe_ids.memory_id
     email = f"verify-pg-migrations-{user_id}@verification.invalid"
 
     statements: list[tuple[str, Mapping[str, object]]] = [
         # The proof tables are FORCE-RLS. A superuser ignores the policies, but a
         # non-superuser owner does not, and seeding would then fail on the very
-        # isolation this script is verifying. Set the same GUCs the application
-        # session uses so the seed is correct either way.
-        ("SELECT set_config('app.user_id', :user_id, true)", {"user_id": str(user_id)}),
-        (
-            "SELECT set_config('app.workspace_id', :workspace_id, true)",
-            {"workspace_id": str(workspace_id)},
-        ),
+        # isolation this script is verifying. The teardown sets the same scope,
+        # because it faces the same policies.
+        *_scope_guc_statements(probe_ids),
         ("DELETE FROM memories WHERE type = :probe_type", {"probe_type": probe_type}),
         (
             "INSERT INTO users (id, email, display_name, auth_provider, status, preferences)\n"
-            "VALUES (:user_id, :email, :display_name, 'email', 'ACTIVE', '{}'::jsonb)",
+            "VALUES (:user_id, :email, :display_name, 'email', 'ACTIVE', '{}'::jsonb)\n"
+            "ON CONFLICT (id) DO UPDATE\n"
+            "    SET email = EXCLUDED.email,\n"
+            "        display_name = EXCLUDED.display_name",
             {
                 "user_id": user_id,
                 "email": email,
@@ -450,7 +515,8 @@ def seed_rollback_probe(pg_url: str) -> None:
         ),
         (
             "INSERT INTO workspaces (id, user_id, name)\n"
-            "VALUES (:workspace_id, :user_id, :name)",
+            "VALUES (:workspace_id, :user_id, :name)\n"
+            "ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name",
             {
                 "workspace_id": workspace_id,
                 "user_id": user_id,
@@ -507,17 +573,27 @@ def _remove_rollback_probe(pg_url: str) -> None:
     was never planted, and the ``downgrade -1`` that follows would then succeed
     for the wrong reason -- the same green-by-absence this script exists to
     eliminate, one step later in the sequence.
+
+    It deletes under the same RLS scope the seed wrote under, for the same reason:
+    ``memories`` is workspace-scoped, so without those GUCs this would match zero
+    rows under any non-superuser connecting role and then raise the "the probe was
+    never seeded" complaint, blaming the seed for a fault that is its own.
     """
     slug, probe_type, _ = rollback_probe_literals()
     target = _effective_target_url(pg_url)
 
-    packs_deleted, rows_deleted = _execute(
+    row_counts = _execute(
         target,
         [
+            *_scope_guc_statements(_ProbeIds.for_target(target)),
             ("DELETE FROM memory_type_packs WHERE slug = :slug", {"slug": slug}),
             ("DELETE FROM memories WHERE type = :probe_type", {"probe_type": probe_type}),
         ],
     )
+    # _execute returns one row count per statement, so the two set_config
+    # preludes occupy the leading slots. Taken from the end so the counts keep
+    # their meaning if the prelude ever grows a statement.
+    _, _, packs_deleted, rows_deleted = row_counts
 
     if packs_deleted != 1:
         raise RuntimeError(
@@ -629,9 +705,19 @@ def _run_live_pg_suite(context: _RunContext, label: str) -> None:
     Invoked as ``sys.executable -m pytest`` rather than a bare ``pytest`` so the
     suites run on the same interpreter that is running this script, under both
     ``uv run`` in CI and a local virtualenv.
+
+    The child is pointed at the **effective** target, not the ``--pg-url`` flag.
+    Every other consumer of the target -- alembic (which inherits the ambient
+    environment), ``ensure_roles``, the seed and the teardown -- resolves through
+    ``_effective_target_url``, so when ``VAELOOM_TARGET_URL`` is exported they all
+    act on that database. Handing pytest ``context.pg_url`` instead pointed the
+    suites at a second, unrelated database: alembic would have migrated one,
+    while these eight checks certified another. Re-running the guard here is not
+    redundant either -- before this, an unguarded ``VAELOOM_TARGET_URL`` reached
+    the child unchecked.
     """
     environment = dict(os.environ)
-    environment[PG_URL_ENV_VAR] = context.pg_url
+    environment[PG_URL_ENV_VAR] = _effective_target_url(context.pg_url)
 
     completed = subprocess.run(
         [

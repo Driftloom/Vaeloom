@@ -22,6 +22,9 @@ import pytest
 
 SAFE_URL = "postgresql://postgres:vaeloom_verify_pw@127.0.0.1:5433/vaeloom_test"
 UNSAFE_URL = "postgresql://postgres:pw@127.0.0.1:5432/vaeloom_prod"
+# A second disposable database, so a test can make VAELOOM_TARGET_URL disagree
+# with --pg-url and observe which one actually reaches the subprocesses.
+OTHER_SAFE_URL = "postgresql://postgres:vaeloom_verify_pw@127.0.0.1:5433/vaeloom_rls_proof"
 
 
 def _load_script():
@@ -637,6 +640,120 @@ def test_main_fails_at_step_6_when_the_second_downgrade_also_fails(
     assert "step_6_remove_probe_and_downgrade" in stderr, (
         f"the teardown's own downgrade failure must be surfaced: {stderr!r}"
     )
+
+
+def _record_statements(monkeypatch, module) -> list:
+    """Capture the SQL each database helper hands to _execute, without running it.
+
+    Returns one ``{"target": ..., "statements": [...]}`` record per call. The
+    stand-in row counts are one per statement, which is what both callers expect:
+    the seed ignores the return, and the teardown unpacks the last two.
+    """
+    calls: list = []
+
+    def fake_execute(target_url, statements):
+        calls.append({"target": target_url, "statements": list(statements)})
+        return [1] * len(statements)
+
+    monkeypatch.setattr(module, "_execute", fake_execute)
+    return calls
+
+
+def _rls_scope_statements(statements) -> list:
+    """The `set_config` statements in a statement list, in order."""
+    return [(sql, params) for sql, params in statements if "set_config" in sql]
+
+
+def test_seed_and_teardown_delete_under_the_same_rls_scope(monkeypatch):
+    """A teardown that cannot see the probe's rows blames the probe for it.
+
+    At head `memories` carries only the workspace-scoped `p_memories_workspace`
+    (`0014_memories_rls_workspace_only.py:35-38`) -- no `USING (true)` service
+    policy exists for it, though `memory_type_packs` has one (0068:176-177). So a
+    teardown that deletes without setting `app.workspace_id` matches zero rows
+    under any non-superuser connecting role, and then raises "the probe was never
+    seeded" -- a false red whose diagnosis points at the seed instead of itself.
+    """
+    calls = _record_statements(monkeypatch, script)
+    _stub_run_env(monkeypatch)
+
+    script.seed_rollback_probe(SAFE_URL)
+    seed_scope = _rls_scope_statements(calls.pop()["statements"])
+
+    script._remove_rollback_probe(SAFE_URL)
+    teardown_scope = _rls_scope_statements(calls.pop()["statements"])
+
+    assert seed_scope, "the seed must set the RLS scope before it writes"
+    assert teardown_scope, (
+        "the teardown must set the RLS scope before it deletes, for the same "
+        "reason the seed sets it"
+    )
+    assert [sql for sql, _ in seed_scope] == [
+        "SELECT set_config('app.user_id', :user_id, true)",
+        "SELECT set_config('app.workspace_id', :workspace_id, true)",
+    ], "the scope statements are the contract; pinning the SQL keeps a rename visible"
+    assert teardown_scope == seed_scope, (
+        "the teardown must delete under the scope the seed wrote under -- the same "
+        f"statements and the same values, got {teardown_scope!r} vs {seed_scope!r}"
+    )
+
+
+def test_probe_scope_names_the_probe_workspace_and_is_derived_from_the_target(monkeypatch):
+    """Equal is not enough: the scope has to be the probe's own workspace.
+
+    If the teardown set some other UUID the two halves would still agree with each
+    other and the DELETE would still match nothing. Deriving both from the target
+    database name is what makes the agreement mean something, so it is asserted
+    rather than assumed.
+    """
+    calls = _record_statements(monkeypatch, script)
+    _stub_run_env(monkeypatch)
+    probe_ids = script._ProbeIds.for_target(SAFE_URL)
+
+    script.seed_rollback_probe(SAFE_URL)
+    _, workspace_statement = _rls_scope_statements(calls.pop()["statements"])[1]
+
+    assert workspace_statement == {"workspace_id": str(probe_ids.workspace_id)}, (
+        "the seed must scope to the probe's own workspace"
+    )
+    assert probe_ids == script._ProbeIds.for_target(SAFE_URL), (
+        "the identifiers must be derived, not drawn at random: the teardown "
+        "recomputes them and a random id it cannot reproduce strands it"
+    )
+    assert script._ProbeIds.for_target(OTHER_SAFE_URL) != probe_ids, (
+        "two disposable targets must not share a probe identity"
+    )
+
+
+def test_live_pg_suite_runs_against_the_effective_target_not_the_flag(monkeypatch, tmp_path):
+    """The suites must be pointed at the database alembic actually migrated.
+
+    Alembic (inheriting the ambient environment), `ensure_roles`, the seed and the
+    teardown all resolve through `_effective_target_url`, so an exported
+    `VAELOOM_TARGET_URL` moves all four. Exporting the raw `--pg-url` flag to the
+    pytest child instead would leave steps 2 and 8 certifying a second database --
+    possibly empty or unmigrated -- and reporting green.
+    """
+    monkeypatch.delenv("VAELOOM_TEST_PG_URL", raising=False)
+    monkeypatch.setenv(script.TARGET_URL_ENV_VAR, OTHER_SAFE_URL)
+    repo_root = _repo_with_alembic(tmp_path / "repo")
+    _stub_database_work(monkeypatch, script)
+    calls = _record_subprocess(monkeypatch, script, _passing_run_results())
+
+    returncode = script.main(["--pg-url", SAFE_URL, "--repo-root", str(repo_root)])
+
+    assert returncode == 0
+    pytest_environments = [
+        call["kwargs"]["env"] for call in calls if call["cmd"][1:3] == ["-m", "pytest"]
+    ]
+    assert len(pytest_environments) == 2, (
+        f"both live-PG runs (steps 2 and 8) must be checked, saw {len(pytest_environments)}"
+    )
+    for environment in pytest_environments:
+        assert environment[script.PG_URL_ENV_VAR] == OTHER_SAFE_URL, (
+            "the suites must follow VAELOOM_TARGET_URL, the database every other "
+            "consumer acts on, not the --pg-url flag"
+        )
 
 
 def test_main_clears_the_run_context_so_a_second_run_inherits_nothing(
