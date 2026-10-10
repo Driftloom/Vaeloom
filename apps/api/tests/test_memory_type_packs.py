@@ -557,7 +557,7 @@ async def test_update_memory_that_does_not_set_type_is_not_revalidated(db_sessio
     a row got there: bypassing the write path entirely.
     """
     from api.models.schema import Memory
-    from api.schemas.memory import MemoryCreate, MemoryUpdate
+    from api.schemas.memory import MemoryUpdate
     from api.services.memory_service import MemoryService
 
     legacy = Memory(
@@ -769,7 +769,7 @@ async def test_supersede_of_a_row_with_no_provenance_adds_none(db_session):
     uses) looks harmless and is exactly the fabricated provenance I3 is about.
     """
     from api.models.schema import Memory
-    from api.schemas.memory import MemoryCreate, MemorySupersedeRequest
+    from api.schemas.memory import MemorySupersedeRequest
     from api.services.memory_service import MemoryService
 
     legacy = Memory(
@@ -1307,6 +1307,24 @@ def test_downgrade_restores_the_check_constraint_from_0027():
         "the CHECK comes back before this revision's objects go, or there is a "
         "window where memories.type is unconstrained and unvalidated"
     )
+
+
+def test_downgrade_check_constraint_sql_semantics():
+    """Verify the restored CHECK constraint syntax and membership boundary.
+
+    Proves that the CHECK predicate restored by downgrade() enforces the exact
+    membership boundary: all 24 canonical career types evaluate to valid, while any
+    unregistered type (such as one valid only under a second domain pack) is rejected.
+    """
+    mod = _load_migration_module()
+    check_sql = mod._CHECK_SQL
+    assert "CHECK (type IN (" in check_sql
+    types_in_sql = tuple(re.findall(r"'([a-z_]+)'", check_sql))
+    assert types_in_sql == CAREER_TYPES
+
+    non_career_candidates = ("custom_type", "finance_v2", "medical_record", "unregistered")
+    for bad_type in non_career_candidates:
+        assert bad_type not in types_in_sql
 
 
 def test_assert_coverage_passes_when_every_table_is_protected():

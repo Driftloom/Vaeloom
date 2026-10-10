@@ -273,7 +273,6 @@ async def test_strict_exec_reraises_unexpected_errors():
     """
     import importlib.util
 
-    from sqlalchemy.ext.asyncio import create_async_engine
 
     spec = importlib.util.spec_from_file_location(
         "strict_exec",
@@ -291,6 +290,110 @@ async def test_strict_exec_reraises_unexpected_errors():
     assert not mod._is_forward_reference(Exception('syntax error at or near "CREAT"'))
     assert not mod._is_forward_reference(Exception("permission denied for table users"))
     assert not mod._is_forward_reference(ValueError("unrelated"))
+
+
+async def test_downgrade_check_constraint_rejects_unregistered_memory_type():
+    """0068's downgrade restores 0027's CHECK constraint; it must fail on non-career types.
+
+    The reverse migration re-applies:
+        ALTER TABLE memories ADD CONSTRAINT ck_memories_type_valid CHECK (type IN (...))
+
+    If `memories` contains any row with a type outside the 24 canonical career types
+    (such as a row written under a domain pack), this ALTER TABLE must fail loudly,
+    naming `ck_memories_type_valid`. This tests the fail-closed data safety boundary
+    where `ADD CONSTRAINT` re-validates live rows.
+    """
+    import importlib.util
+    import uuid
+
+    api_root = pathlib.Path(__file__).resolve().parents[1]
+    rev_0068_path = api_root / "alembic" / "versions" / "0068_memory_type_packs.py"
+    if not rev_0068_path.exists():
+        pytest.skip("0068_memory_type_packs.py does not exist")
+
+    spec = importlib.util.spec_from_file_location("rev_0068", rev_0068_path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    engine = create_async_engine(os.environ["VAELOOM_TEST_PG_URL"])
+    test_id = str(uuid.uuid4())
+    try:
+        async with engine.connect() as conn:
+            # Insert a memory row with an invalid type outside the 24 career types
+            await conn.execute(
+                sa.text(
+                    "INSERT INTO memories (id, type, status, title, content_hash, size, metadata, tags) "
+                    "VALUES (:id, 'custom_unregistered_domain_type', 'active', 'test', 'hash123', 10, '{}'::jsonb, '{}');"
+                ),
+                {"id": test_id},
+            )
+            await conn.commit()
+
+            # Attempting to apply the downgrade CHECK constraint must fail
+            with pytest.raises(Exception) as exc_info:
+                await conn.execute(sa.text(mod._CHECK_SQL))
+                await conn.commit()
+
+            err_msg = str(exc_info.value).lower()
+            assert "ck_memories_type_valid" in err_msg, (
+                f"expected 'ck_memories_type_valid' in error, got: {err_msg}"
+            )
+    finally:
+        async with engine.connect() as conn:
+            await conn.execute(
+                sa.text("DELETE FROM memories WHERE id = :id;"),
+                {"id": test_id},
+            )
+            await conn.commit()
+
+
+async def test_downgrade_check_constraint_accepts_canonical_career_type():
+    """Positive control: the restored CHECK constraint succeeds when rows match canonical types."""
+    import importlib.util
+    import uuid
+
+    api_root = pathlib.Path(__file__).resolve().parents[1]
+    rev_0068_path = api_root / "alembic" / "versions" / "0068_memory_type_packs.py"
+    if not rev_0068_path.exists():
+        pytest.skip("0068_memory_type_packs.py does not exist")
+
+    spec = importlib.util.spec_from_file_location("rev_0068", rev_0068_path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    engine = create_async_engine(os.environ["VAELOOM_TEST_PG_URL"])
+    test_id = str(uuid.uuid4())
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(
+                sa.text(
+                    "INSERT INTO memories (id, type, status, title, content_hash, size, metadata, tags) "
+                    "VALUES (:id, 'document', 'active', 'valid test', 'hash123', 10, '{}'::jsonb, '{}');"
+                ),
+                {"id": test_id},
+            )
+            await conn.commit()
+
+            # Applying the downgrade CHECK constraint must succeed
+            await conn.execute(sa.text(mod._CHECK_SQL))
+            await conn.commit()
+
+            # Clean up the constraint so we leave the table at HEAD state
+            await conn.execute(
+                sa.text("ALTER TABLE memories DROP CONSTRAINT IF EXISTS ck_memories_type_valid;")
+            )
+            await conn.commit()
+    finally:
+        async with engine.connect() as conn:
+            await conn.execute(
+                sa.text("DELETE FROM memories WHERE id = :id;"),
+                {"id": test_id},
+            )
+            await conn.commit()
 
 
 import pathlib  # noqa: E402  (used by the tests above; imported late on purpose)

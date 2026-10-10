@@ -424,7 +424,7 @@ requires_pg = pytest.mark.skipif(
 )
 
 APP_ROLE = "vaeloom_app"
-APP_PASSWORD = "vaeloom_app_rls_pw"
+APP_PASSWORD = "vaeloom_app_proof_pw"
 TABLE = "ranking_weight_profiles"
 
 # Isolation (and the read itself) must not depend on tenant_id: effective_weights
