@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..dependencies import get_current_user, get_tenant_id, get_workspace_id
+from ..middleware.rate_limit import rate_limit
 from ..models.schema import Workspace, WorkspaceCapability, WorkspaceUser
 from ..schemas.capability_draft import (
     CapabilityDraftRequest,
@@ -26,10 +27,12 @@ from ..services.capability_usage_service import record_usage
 from ..services.github_skills_sync import GitHubSkillSyncResult
 from ..services.skill_catalog_service import (
     AUTONOMY_VALUES,
+    TRUST_CLASSES,
     catalog_to_wire,
     get_catalog_entry,
     is_bundled_skill,
     list_catalog,
+    tool_scope_vocabulary,
 )
 from ..services.skill_injection import WORKSPACE_AUTHORED_TRUST
 from ..tools.definitions import ALL_TOOLS, ToolDefinition
@@ -1141,6 +1144,58 @@ async def list_capabilities(
     return merged
 
 
+def _validate_config_claims(category: str, config: dict[str, Any] | None) -> None:
+    """Refuse a row whose `config` claims something the runtime cannot honour.
+
+    Scope, autonomy and trust class are validated here because each one
+    silently misbehaves rather than erroring: an unknown scope fails closed at
+    execution time with a permission error the user cannot act on, an unknown
+    autonomy is dropped by `_config_autonomy` so the row reads back as "never
+    declared", and an unknown trust class is surfaced verbatim as a trust badge
+    for a classification the injector never applied.
+
+    The skill *document* is deliberately NOT validated here. Its rules are
+    lint, not safety -- `skill_injection` quarantines and fences whatever text
+    it receives, and `/capabilities/{id}/test` exists precisely to diagnose a
+    document that fails those rules. Hard-blocking on create would make a
+    malformed document undiagnosable, because it could never be created. Draft
+    authors reach for `/validate` and `/test` for that.
+    """
+    if not isinstance(config, dict) or not config:
+        return
+
+    scope = config.get("required_scope")
+    if isinstance(scope, str) and scope.strip():
+        unknown = [
+            part.strip()
+            for part in scope.split(",")
+            if part.strip() and part.strip() not in tool_scope_vocabulary()
+        ]
+        if unknown:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"Unknown required_scope {unknown[0]!r}. A scope the backend does not "
+                    "emit fails closed at execution time with a permission error the user "
+                    "cannot act on."
+                ),
+            )
+
+    autonomy = config.get("autonomy")
+    if isinstance(autonomy, str) and autonomy.strip() and autonomy not in AUTONOMY_VALUES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown autonomy {autonomy!r}. Must be one of: {sorted(AUTONOMY_VALUES)}",
+        )
+
+    trust_class = config.get("trust_class")
+    if isinstance(trust_class, str) and trust_class.strip() and trust_class not in TRUST_CLASSES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown trust_class {trust_class!r}. Must be one of: {sorted(TRUST_CLASSES)}",
+        )
+
+
 @router.post("", response_model=CapabilityResponse, status_code=status.HTTP_201_CREATED)
 async def create_capability(
     payload: CreateCapabilityRequest,
@@ -1193,6 +1248,8 @@ async def create_capability(
     if tenant_id:
         with contextlib.suppress(ValueError, TypeError):
             tid = uuid.UUID(str(tenant_id))
+
+    _validate_config_claims(category, payload.config)
 
     cap = WorkspaceCapability(
         id=uuid.uuid4(),
@@ -1362,6 +1419,14 @@ async def update_capability(
             )
         config_patch["required_scope"] = required
 
+    # Same contract as create: a row must not be able to drift into a claim the
+    # runtime cannot honour. Validated on the merged patch so a partial update
+    # that omits the key keeps whatever is already stored -- and a stored value
+    # that predates this check is surfaced rather than silently accepted.
+    if config_patch:
+        merged = {**(cap.config or {}), **config_patch}
+        _validate_config_claims(cap.category, merged)
+
     if payload.workspace_id is not None:
         # Verification only. The row above was already fetched scoped to the
         # request-verified workspace, so this cannot widen access — it only
@@ -1454,6 +1519,10 @@ async def delete_capability(
 
 
 @router.post("/{cap_id}/test", response_model=TestCapabilityResponse)
+# Dispatches real tool code in the API process. The global default is 60/min,
+# which is indistinguishable from a GET and far too generous for an endpoint
+# that runs code.
+@rate_limit(max_requests=10, window_seconds=60)
 async def test_capability(
     cap_id: uuid.UUID,
     payload: TestCapabilityRequest,
@@ -1738,6 +1807,10 @@ class SyncGitHubSkillsRequest(BaseModel):
     response_model=GitHubSkillSyncResult,
     status_code=status.HTTP_200_OK,
 )
+# Walks a remote repository tree and issues up to 200 outbound fetches. The
+# cheapest denial-of-service on the whole capability surface, and it was
+# previously indistinguishable from a GET in the limiter.
+@rate_limit(max_requests=5, window_seconds=60)
 async def sync_github_skills(
     payload: SyncGitHubSkillsRequest = SyncGitHubSkillsRequest(),
     db: AsyncSession = Depends(get_db),

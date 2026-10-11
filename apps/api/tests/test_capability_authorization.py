@@ -251,6 +251,50 @@ class TestCrossWorkspaceIsolation:
         assert "tenant-a-secret" not in res.text
 
 
+class TestRateLimits:
+    """S15: the expensive routes shared the global 60/min bucket with a GET.
+
+    ``POST /{cap_id}/test`` dispatches tool code in the API process and
+    ``POST /sync-github`` issues up to 200 outbound fetches. Both were
+    indistinguishable from a read in the limiter.
+    """
+
+    # These are synchronous: they inspect route metadata, they make no request.
+    pytestmark = pytest.mark.anyio
+
+    @staticmethod
+    def _route(path: str, method: str = "POST"):
+        import api.routers.capabilities as mod
+        from api.middleware.rate_limit import _resolve_rate_limit
+
+        for route in mod.router.routes:
+            if getattr(route, "path", None) == path and method in getattr(
+                route, "methods", set()
+            ):
+                return _resolve_rate_limit(route.endpoint)
+        raise AssertionError(f"route not found: {method} {path}")
+
+    def test_tool_dispatch_is_rate_limited(self):
+        assert self._route("/{cap_id}/test") == (10, 60)
+
+    def test_github_sweep_is_rate_limited(self):
+        # The cheapest denial-of-service on the surface: one call fans out to
+        # up to 200 outbound fetches.
+        assert self._route("/sync-github") == (5, 60)
+
+    def test_reads_and_cheap_writes_are_not_rate_limited(self):
+        """Negative control.
+
+        If this fails, a blanket limit has been applied and legitimate read
+        traffic would be throttled alongside the two expensive routes.
+        """
+        assert self._route("", method="GET") is None
+        assert self._route("", method="POST") is None
+        assert self._route("/catalog", method="GET") is None
+        assert self._route("/tools/definitions", method="GET") is None
+        assert self._route("/validate", method="POST") is None
+
+
 class TestConfigRedaction:
     """S17: `config` is an unvalidated JSONB blob returned verbatim."""
 

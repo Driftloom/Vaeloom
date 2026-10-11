@@ -1,8 +1,9 @@
 import uuid
 
-import pytest
 from httpx import AsyncClient
+from sqlalchemy import update
 
+from api.models.schema import WorkspaceCapability
 from api.services.skill_catalog_service import (
     CATALOG_BY_SLUG,
     SKILL_CATALOG,
@@ -391,11 +392,31 @@ class TestSkillTestEndpoint:
         assert placeholder[0]["severity"] == "hard"
         assert "line 8" in placeholder[0]["message"]
 
-    async def test_bogus_required_scope_is_flagged(self, client: AsyncClient):
+    async def test_bogus_required_scope_is_flagged(self, client: AsyncClient, db_session):
+        """A stored bogus scope is diagnosed, not merely persisted.
+
+        Create and PATCH now both refuse a `required_scope` outside the live
+        tool vocabulary, so this state is no longer reachable through the API.
+        The rule still matters for rows written before that check existed, so
+        the row is planted directly and the diagnostic is proved against it.
+
+        `SKILL-SCOPE-VOCABULARY` is the rule that stops an unrecognised scope
+        from failing closed at execution time with a permission error the user
+        cannot act on.
+        """
         headers, workspace_id = await _signup_workspace(client, "bogusscope")
-        config = dict(VALID_SKILL_CONFIG)
-        config["required_scope"] = "system.observe"
-        await _create_skill(client, headers, "bogus-scope-skill", config)
+
+        created = await _create_skill(client, headers, "bogus-scope-skill", dict(VALID_SKILL_CONFIG))
+        cap_id = uuid.UUID(created)
+
+        # Plant the legacy shape directly, exactly as a pre-validation row
+        # would look in the column.
+        await db_session.execute(
+            update(WorkspaceCapability)
+            .where(WorkspaceCapability.id == cap_id)
+            .values(config={**VALID_SKILL_CONFIG, "required_scope": "system.observe"})
+        )
+        await db_session.commit()
 
         res = await self._test_skill(client, headers, workspace_id, "bogus-scope-skill")
         assert res.status_code == 200
@@ -406,6 +427,89 @@ class TestSkillTestEndpoint:
         assert "system.observe" in violations[0]["message"]
         assert violations[0]["severity"] == "hard"
         assert violations[0]["line"] is None
+
+    async def test_create_refuses_a_scope_outside_the_vocabulary(self, client: AsyncClient):
+        """The guard the diagnostic above defends against."""
+        headers, _ = await _signup_workspace(client, "scope-guard")
+        config = dict(VALID_SKILL_CONFIG)
+        config["required_scope"] = "system.observe"
+
+        res = await client.post(
+            "/api/v1/capabilities",
+            json={
+                "name": "scope-guard-skill",
+                "category": "skill",
+                "description": "d",
+                "version": "1.0.0",
+                "config": config,
+            },
+            headers=headers,
+        )
+        assert res.status_code == 400
+        assert "system.observe" in res.json()["detail"]
+
+    async def test_patch_refuses_a_scope_outside_the_vocabulary(self, client: AsyncClient):
+        """A partial update must not be a way around the create guard."""
+        headers, _ = await _signup_workspace(client, "scope-patch-guard")
+        cap_id = await _create_skill(
+            client, headers, "scope-patch-skill", dict(VALID_SKILL_CONFIG)
+        )
+
+        res = await client.patch(
+            f"/api/v1/capabilities/{cap_id}",
+            json={"config": {"required_scope": "system.observe"}},
+            headers=headers,
+        )
+        assert res.status_code == 400
+        assert "system.observe" in res.json()["detail"]
+
+        # Negative control: a real scope still updates.
+        ok = await client.patch(
+            f"/api/v1/capabilities/{cap_id}",
+            json={"config": {"required_scope": "memory.read"}},
+            headers=headers,
+        )
+        assert ok.status_code == 200
+
+    async def test_create_refuses_an_unknown_autonomy(self, client: AsyncClient):
+        """An unknown autonomy is dropped on read, so the row would lie."""
+        headers, _ = await _signup_workspace(client, "autonomy-guard")
+        config = dict(VALID_SKILL_CONFIG)
+        config["autonomy"] = "fully-autonomous"
+
+        res = await client.post(
+            "/api/v1/capabilities",
+            json={
+                "name": "autonomy-guard-skill",
+                "category": "skill",
+                "description": "d",
+                "version": "1.0.0",
+                "config": config,
+            },
+            headers=headers,
+        )
+        assert res.status_code == 400
+        assert "fully-autonomous" in res.json()["detail"]
+
+    async def test_create_refuses_an_unknown_trust_class(self, client: AsyncClient):
+        """An unknown trust class is shown verbatim as a trust badge."""
+        headers, _ = await _signup_workspace(client, "trust-guard")
+        config = dict(VALID_SKILL_CONFIG)
+        config["trust_class"] = "certified_awesome"
+
+        res = await client.post(
+            "/api/v1/capabilities",
+            json={
+                "name": "trust-guard-skill",
+                "category": "skill",
+                "description": "d",
+                "version": "1.0.0",
+                "config": config,
+            },
+            headers=headers,
+        )
+        assert res.status_code == 400
+        assert "certified_awesome" in res.json()["detail"]
 
     async def test_missing_mission_section_is_flagged(self, client: AsyncClient):
         headers, workspace_id = await _signup_workspace(client, "nomission")
