@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useId } from 'react';
 
 import { XIcon } from '../../icons';
 import { MIN_TOUCH_TARGET } from '../layout/touchTarget';
 import { lockScroll, unlockScroll } from '../layout/scrollLock';
+import { useFocusTrap } from '../layout/useFocusTrap';
 
 export interface DrawerProps {
   isOpen: boolean;
@@ -32,25 +33,18 @@ export const Drawer: React.FC<DrawerProps> = ({
   children,
   footer,
 }) => {
-  const drawerRef = React.useRef<HTMLDivElement>(null);
+  // `aria-modal` was already declared here, which promises focus containment
+  // this component did not implement. `drawerRef` existed but was never read.
+  const drawerRef = useFocusTrap(isOpen, onClose);
+  const titleId = useId();
 
   React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    if (isOpen) {
-      lockScroll();
-      window.addEventListener('keydown', handleKeyDown);
-    }
+    if (!isOpen) return;
+    lockScroll();
     return () => {
-      if (isOpen) {
-        unlockScroll();
-      }
-      window.removeEventListener('keydown', handleKeyDown);
+      unlockScroll();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -58,9 +52,15 @@ export const Drawer: React.FC<DrawerProps> = ({
 
   return (
     <div
+      ref={drawerRef}
       className="fixed inset-0 z-50 flex justify-end overscroll-contain"
       role="dialog"
       aria-modal="true"
+      // The drawer announced only "dialog": `title` is optional and nothing
+      // ever pointed role="dialog" at the visible heading.
+      aria-labelledby={title ? titleId : undefined}
+      aria-label={title ? undefined : 'Drawer'}
+      tabIndex={-1}
     >
       {/* Backdrop */}
       <div
@@ -71,13 +71,16 @@ export const Drawer: React.FC<DrawerProps> = ({
 
       {/* Drawer Body */}
       <div
-        ref={drawerRef}
         className={`relative z-10 w-full ${sStyle} bg-surface border-l border-border-subtle shadow-2xl flex flex-col h-full animate-slide-in-from-right duration-200`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
           <div>
-            {title && <h3 className="text-base font-semibold text-text">{title}</h3>}
+            {title && (
+              <h3 id={titleId} className="text-base font-semibold text-text">
+                {title}
+              </h3>
+            )}
             {description && <p className="text-xs text-text-secondary mt-0.5">{description}</p>}
           </div>
           <button

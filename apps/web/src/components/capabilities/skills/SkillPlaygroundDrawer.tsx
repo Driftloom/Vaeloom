@@ -10,6 +10,7 @@ import {
   StatusDot,
   Textarea,
   Tooltip,
+  useFocusTrap,
 } from '@vaeloom/ui-kit';
 import { capabilitiesApi } from '@/lib/api-client';
 import { useRouter } from 'next/navigation';
@@ -59,6 +60,9 @@ export const SkillPlaygroundDrawer: React.FC<SkillPlaygroundDrawerProps> = ({
   onInstall,
 }) => {
   const router = useSafeRouter();
+  // Declared aria-modal="true" while trapping nothing, so Tab walked out of the
+  // drawer into the page behind it.
+  const drawerRef = useFocusTrap(isOpen, onClose);
   const [testPrompt, setTestPrompt] = useState(
     'Please review my resume bullets and check for ATS formatting errors.',
   );
@@ -175,9 +179,11 @@ export const SkillPlaygroundDrawer: React.FC<SkillPlaygroundDrawerProps> = ({
 
   return (
     <div
+      ref={drawerRef}
       role="dialog"
       aria-label={`Skill Diagnostic Playground: ${selectedSkill.item.name}`}
       aria-modal="true"
+      tabIndex={-1}
       className="fixed inset-y-0 right-0 z-50 w-full sm:w-[480px] lg:w-[560px] bg-surface border-l border-border shadow-2xl flex flex-col focus:outline-none"
     >
       {/* Header */}

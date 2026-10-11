@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useCallback, useRef, useId } from 'react';
+import React, { useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 
 import { MIN_TOUCH_TARGET } from './layout/touchTarget';
 import { lockScroll, unlockScroll } from './layout/scrollLock';
+import { useFocusTrap } from './layout/useFocusTrap';
 
 export interface ModalProps {
   isOpen: boolean;
@@ -14,9 +15,6 @@ export interface ModalProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
 export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 'md' }) => {
   const sizes: Record<string, string> = {
     sm: 'max-w-sm',
@@ -25,54 +23,16 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
     xl: 'max-w-xl',
   };
 
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const previouslyFocused = useRef<HTMLElement | null>(null);
+  const dialogRef = useFocusTrap(isOpen, onClose);
   const titleId = useId();
-
-  const handleEscape = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    },
-    [onClose],
-  );
-
-  const trapFocus = useCallback((e: KeyboardEvent) => {
-    if (e.key !== 'Tab' || !dialogRef.current) return;
-    const focusables = Array.from(
-      dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-    );
-    if (focusables.length === 0) {
-      e.preventDefault();
-      dialogRef.current.focus();
-      return;
-    }
-    const first = focusables[0] as HTMLElement;
-    const last = focusables[focusables.length - 1] as HTMLElement;
-    if (e.shiftKey && document.activeElement === first) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && document.activeElement === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
-    previouslyFocused.current = document.activeElement as HTMLElement | null;
-    const dialog = dialogRef.current;
-    const focusTarget = dialog?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR) ?? dialog ?? null;
-    focusTarget?.focus();
-    document.addEventListener('keydown', handleEscape);
-    document.addEventListener('keydown', trapFocus);
     lockScroll();
     return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.removeEventListener('keydown', trapFocus);
       unlockScroll();
-      previouslyFocused.current?.focus();
     };
-  }, [isOpen, handleEscape, trapFocus]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

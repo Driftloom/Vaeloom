@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Badge, Button, Spinner, StatusDot, Tooltip } from '@vaeloom/ui-kit';
+import { Badge, Button, Spinner, StatusDot, Tooltip, useFocusTrap } from '@vaeloom/ui-kit';
 import { connectorsApi, type ConnectorHealthResponse, type McpToolInfo } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 
@@ -53,16 +53,9 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
   const [healthStatus, setHealthStatus] = useState<ConnectorHealthResponse | null>(null);
   const [testingHealth, setTestingHealth] = useState(false);
 
-  // Close on Escape key
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  // Escape plus Tab containment. This declared aria-modal="true" while trapping
+  // nothing, so Tab walked out into the page behind the drawer.
+  const drawerRef = useFocusTrap(isOpen, onClose);
 
   // Load tools when tools tab is activated or row changes
   const loadTools = useCallback(async () => {
@@ -144,9 +137,11 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
       />
 
       <div
+        ref={drawerRef}
         role="dialog"
         aria-label={`Connector details: ${row.name}`}
         aria-modal="true"
+        tabIndex={-1}
         className="fixed inset-y-0 right-0 max-w-full flex pl-10"
       >
         <div className="w-screen max-w-xl bg-surface border-l border-border shadow-2xl flex flex-col focus:outline-none">

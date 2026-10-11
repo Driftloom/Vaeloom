@@ -43,6 +43,7 @@ export { Heading } from './components/layout/Heading';
 export { Divider } from './components/layout/Divider';
 export { VisuallyHidden } from './components/layout/VisuallyHidden';
 export { MIN_TOUCH_TARGET } from './components/layout/touchTarget';
+export { FOCUSABLE_SELECTOR, useFocusTrap } from './components/layout/useFocusTrap';
 export {
   lockScroll,
   unlockScroll,
