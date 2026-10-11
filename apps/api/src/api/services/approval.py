@@ -390,26 +390,49 @@ async def _ingest_feedback_preference(
                         try:
                             await db.execute(
                                 text("""
-                                    INSERT INTO user_preference_vectors (user_id, tenant_id, preference_vector, updated_at)
-                                    VALUES (:uid, :tid, CAST(:vec AS vector), now())
-                                    ON CONFLICT (user_id, tenant_id) DO UPDATE
+                                    INSERT INTO user_preference_vectors
+                                        (user_id, tenant_id, workspace_id, preference_vector, updated_at)
+                                    VALUES (:uid, :tid, :wid, CAST(:vec AS vector), now())
+                                    ON CONFLICT (user_id, tenant_id, workspace_id) DO UPDATE
                                     SET preference_vector = CAST(:vec AS vector), updated_at = now()
                                 """),
-                                {"uid": pref_user_id, "tid": tenant_id, "vec": vec_str},
+                                {
+                                    "uid": pref_user_id,
+                                    "tid": tenant_id,
+                                    # 0069: the key is per-workspace and the column
+                                    # is NOT NULL, so omitting it made every insert
+                                    # here raise -- and the raise was swallowed.
+                                    "wid": wid_uuid,
+                                    "vec": vec_str,
+                                },
                             )
                         except Exception:
                             with contextlib.suppress(Exception):
                                 await db.execute(
                                     text("""
-                                        INSERT INTO user_preference_vectors (user_id, tenant_id, preference_vector, updated_at)
-                                        VALUES (:uid, :tid, :vec, :now)
-                                        ON CONFLICT(user_id, tenant_id) DO UPDATE SET preference_vector=:vec, updated_at=:now
+                                        INSERT INTO user_preference_vectors
+                                            (user_id, tenant_id, workspace_id, preference_vector, updated_at)
+                                        VALUES (:uid, :tid, :wid, :vec, :now)
+                                        ON CONFLICT (user_id, tenant_id, workspace_id)
+                                        DO UPDATE SET preference_vector = :vec, updated_at = :now
                                     """),
-                                    {"uid": pref_user_id, "tid": tenant_id, "vec": vec_str, "now": datetime.now(UTC)},
+                                    {
+                                        "uid": pref_user_id,
+                                        "tid": tenant_id,
+                                        "wid": wid_uuid,
+                                        "vec": vec_str,
+                                        "now": datetime.now(UTC),
+                                    },
                                 )
             except Exception as ve:
                 import logging
-                logging.getLogger(__name__).debug(f"Preference vector upsert skipped (non-blocking): {ve}")
+                # warning, not debug: this handler used to swallow a real,
+                # permanent failure -- the statements conflict on a key that 0069
+                # removed, so approvals had quietly stopped updating preference
+                # vectors and only a debug log recorded it.
+                logging.getLogger(__name__).warning(
+                    "Preference vector upsert failed (non-blocking): %s", ve
+                )
     except Exception as e:
         import logging
         logging.getLogger(__name__).warning(f"Preference ingestion failed (non-blocking): {e}")

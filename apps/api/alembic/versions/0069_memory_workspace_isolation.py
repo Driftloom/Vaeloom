@@ -63,10 +63,43 @@ _CHECK = "ck_memory_records_type_valid"
 _POLICY_FEEDBACK = "p_recommendation_feedback_workspace_isolation"
 _POLICY_VECTORS = "p_user_preference_vectors_workspace_isolation"
 
+# The pre-0069 policies on these tables, which this revision REPLACES rather than
+# supplements.
+#
+# PostgreSQL ORs multiple PERMISSIVE policies for the same command, so adding a
+# workspace-scoped policy beside the existing user+tenant one widens access
+# instead of narrowing it. The old predicate is `user_id = me AND tenant_id =
+# mine`; the new one is `workspace_id = current_workspace`, which mentions no
+# user_id at all. Left in place together, the effective predicate becomes
+#
+#     (user_id = me AND tenant_id = mine) OR (workspace_id = my_workspace)
+#
+# which lets any member of a workspace read and update every other member's
+# feedback -- and, because user_id is chosen by whoever issues the INSERT,
+# attribute fabricated ratings to a victim. That is a worse leak than the
+# cross-workspace one 0069 was written to close, introduced by closing it.
+_SUPERSEDED_POLICIES = (
+    (_FEEDBACK, "p_recommendation_feedback_user_tenant"),
+    (_VECTORS, "p_user_preference_vectors_user_tenant"),
+)
+
 # `USING` and `WITH CHECK` share one predicate constant, exactly as 0067 does.
 # Copy-pasting them into two places invites a drift that only shows up as a write
 # accepted by one predicate and rejected by the other.
+_TENANT_PREDICATE = "tenant_id::text = NULLIF(current_setting('app.tenant_id', true), '')"
 _WORKSPACE_PREDICATE = "workspace_id::text = NULLIF(current_setting('app.workspace_id', true), '')"
+_USER_PREDICATE = "user_id::text = NULLIF(current_setting('app.user_id', true), '')"
+
+# BOTH workspace and user, never workspace alone. Workspace scoping answers "whose
+# workspace"; it does not answer "whose row". A policy that only checks the
+# workspace lets any member read a colleague's feedback and -- since user_id is
+# whatever the caller supplies on INSERT -- file a rating in someone else's name.
+# The tenant predicate from the policy this revision replaces is retained, so 0069
+# narrows access to (tenant, workspace, user) rather than loosening it to
+# workspace alone.
+_WORKSPACE_AND_USER_PREDICATE = (
+    f"({_TENANT_PREDICATE}) AND ({_WORKSPACE_PREDICATE}) AND ({_USER_PREDICATE})"
+)
 
 # The 24 literals of 0027_memory_taxonomy_expand_contract.py:89-95, copied rather than
 # retyped. The seeded career pack declares the identical tuple, which is what makes
@@ -252,6 +285,9 @@ def upgrade() -> None:
 
     # 4. Policies that can actually see the new column. Without this the column is
     #    decorative: the policy still scopes on user_id alone.
+    for table, _superseded in _SUPERSEDED_POLICIES:
+        _safe(bind, f"DROP POLICY IF EXISTS {_superseded} ON {table};")
+
     for table, policy in ((_FEEDBACK, _POLICY_FEEDBACK), (_VECTORS, _POLICY_VECTORS)):
         _safe(bind, f"DROP POLICY IF EXISTS {policy} ON {table};")
         _safe(
@@ -259,8 +295,8 @@ def upgrade() -> None:
             f"""
             CREATE POLICY {policy} ON {table}
             FOR ALL
-            USING ({_WORKSPACE_PREDICATE})
-            WITH CHECK ({_WORKSPACE_PREDICATE})
+            USING ({_WORKSPACE_AND_USER_PREDICATE})
+            WITH CHECK ({_WORKSPACE_AND_USER_PREDICATE})
             """,
         )
         _safe(bind, f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
@@ -284,8 +320,23 @@ def downgrade() -> None:
     if bind.dialect.name != "postgresql":
         return
 
+    # Restore the policy this revision replaced. Without it a downgrade leaves the
+    # tables with no policy at all, and RLS with zero policies denies every row --
+    # a rollback that turns a ranking feature into a total outage.
     for table, policy in ((_FEEDBACK, _POLICY_FEEDBACK), (_VECTORS, _POLICY_VECTORS)):
         _safe(bind, f"DROP POLICY IF EXISTS {policy} ON {table};")
+    for table, superseded in _SUPERSEDED_POLICIES:
+        _safe(
+            bind,
+            f"""
+            CREATE POLICY {superseded} ON {table}
+            FOR ALL
+            USING ({_TENANT_PREDICATE} AND {_USER_PREDICATE})
+            WITH CHECK ({_TENANT_PREDICATE} AND {_USER_PREDICATE})
+            """,
+        )
+        _safe(bind, f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
+        _safe(bind, f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY;")
     _safe(bind, f"ALTER TABLE {_FEEDBACK} DROP COLUMN IF EXISTS workspace_id;")
     _safe(
         bind,

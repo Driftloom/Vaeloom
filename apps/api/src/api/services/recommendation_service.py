@@ -183,7 +183,14 @@ class RecommendationService:
         )
         return result.fetchall()
 
-    async def record_feedback(self, dto, db, *, caller_user_id: str | None = None):
+    async def record_feedback(
+        self,
+        dto,
+        db,
+        *,
+        caller_user_id: str | None = None,
+        workspace_id: str | None = None,
+    ):
         """Record a rating for a recommendation the caller owns.
 
         ``caller_user_id`` is the authenticated identity and is REQUIRED for the
@@ -233,8 +240,9 @@ class RecommendationService:
         feedback_id = uuid.uuid4()
         row_result = await db.execute(
             text("""
-                INSERT INTO recommendation_feedback (id, recommendation_id, user_id, useful)
-                VALUES (:id, :recommendation_id, :user_id, :useful)
+                INSERT INTO recommendation_feedback
+                    (id, recommendation_id, user_id, useful, workspace_id)
+                VALUES (:id, :recommendation_id, :user_id, :useful, :workspace_id)
                 RETURNING id, recommendation_id, useful, created_at
             """),
             {
@@ -242,6 +250,12 @@ class RecommendationService:
                 "recommendation_id": uuid.UUID(dto.recommendation_id),
                 "user_id": str(rec_user_id) if rec_user_id is not None else None,
                 "useful": dto.useful,
+                # From authenticated context, never the body: a client-supplied
+                # workspace id would file a rating into somebody else's learning
+                # bucket. A rating with no workspace context still records -- the
+                # row lands quarantined and contributes nothing, rather than
+                # failing the user over a side effect.
+                "workspace_id": workspace_id,
             },
         )
         row = row_result.fetchone()

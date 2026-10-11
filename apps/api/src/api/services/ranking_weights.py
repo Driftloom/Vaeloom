@@ -175,10 +175,12 @@ async def record_feedback_signal(
     somehow obtained. The row is keyed ``(workspace_id, user_id)``, so the
     caller's own profile is the only thing this can ever address.
 
-    ``recommendation_feedback`` has no ``workspace_id`` column (0002), so the
-    aggregate is scoped by ``user_id`` alone. That cross-workspace imprecision
-    is inherent to the schema, not an oversight here: the profile is still
-    located by ``(workspace_id, user_id)``.
+    ``recommendation_feedback`` has carried a nullable ``workspace_id`` since
+    0069, so the aggregate is scoped by workspace as well as by user. Legacy rows
+    are ``NULL`` and are deliberately excluded: a row that cannot say which
+    workspace it belongs to must not be counted as though it belonged to all of
+    them. The profile is located by ``(workspace_id, user_id)`` and the signal is
+    now read on exactly that scope.
     """
     if not user_id or not workspace_id:
         return
@@ -210,9 +212,16 @@ async def record_feedback_signal(
                 text(
                     f"SELECT count(*) AS total, "  # noqa: S608 - fixed identifiers
                     f"COALESCE(SUM(CASE WHEN useful THEN 1 ELSE 0 END), 0) AS useful_count "
-                    f"FROM {_FEEDBACK_TABLE} WHERE user_id = :user_id"
+                    f"FROM {_FEEDBACK_TABLE} "
+                    # Scoped by workspace since 0069. Without this the aggregate
+                    # spans every workspace the user belongs to, so a rating in one
+                    # steers ranking in another -- the leak the column was added to
+                    # close. IS NOT DISTINCT FROM would include quarantined legacy
+                    # rows, so it is an exact match instead: a row with no workspace
+                    # contributes nothing rather than counting everywhere.
+                    f"WHERE user_id = :user_id AND workspace_id = :workspace_id"
                 ),
-                {"user_id": user_id},
+                {"user_id": user_id, "workspace_id": workspace_id},
             )
         ).mappings().one_or_none()
 

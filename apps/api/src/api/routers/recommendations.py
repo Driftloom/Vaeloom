@@ -81,7 +81,7 @@ async def record_feedback(
     # source of truth for it.
     current_uid = str(current_user.get("sub") or current_user.get("user_id", ""))
     row = await recommendation_service.record_feedback(
-        dto, db, caller_user_id=current_uid
+        dto, db, caller_user_id=current_uid, workspace_id=workspace_id
     )
     if not row:
         raise HTTPException(status_code=404, detail="Recommendation not found")

@@ -520,12 +520,20 @@ async def import_memories(
             raise HTTPException(status_code=403, detail="Forbidden: User does not have access to specified workspace")
 
     batch.workspace_id = uuid.UUID(str(target_ws))
-    imported, skipped, errors, ids = await memory_service.import_memories(
-        db=db,
-        batch=batch,
-        tenant_id=tenant_id,
-        user_id=str(user_id) if user_id else None,
-    )
+    try:
+        imported, skipped, errors, ids = await memory_service.import_memories(
+            db=db,
+            batch=batch,
+            tenant_id=tenant_id,
+            user_id=str(user_id) if user_id else None,
+        )
+    except MemoryTypeRejected as exc:
+        # 422, like create/update/supersede. An import carrying a type no active
+        # pack declares is a client mistake; without this it escaped to the generic
+        # handler and became a 5xx, spending error budget on a typo. The service
+        # validates the whole batch before writing, so rejecting here has left no
+        # partial rows behind.
+        raise _type_rejected(exc) from exc
     return MemoryImportResult(
         imported_count=imported,
         skipped_count=skipped,

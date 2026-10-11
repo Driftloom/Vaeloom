@@ -471,6 +471,46 @@ async def test_0069_policies_can_see_the_new_column():
         )
 
 
+async def test_0069_replaces_the_user_tenant_policies_rather_than_adding_to_them():
+    """PostgreSQL ORs PERMISSIVE policies, so adding beside is widening.
+
+    The pre-0069 predicate is `user_id = me AND tenant_id = mine`. A workspace
+    policy left alongside it produces
+        (user_id = me AND tenant_id = mine) OR (workspace_id = my_workspace)
+    which lets any workspace member read and update every other member's rows,
+    and -- because user_id is whatever the caller supplies on INSERT -- file a
+    rating in someone else's name. Exactly one policy per table must remain.
+    """
+    for table, superseded in (
+        ("recommendation_feedback", "p_recommendation_feedback_user_tenant"),
+        ("user_preference_vectors", "p_user_preference_vectors_user_tenant"),
+    ):
+        remaining = await _query(
+            "SELECT policyname FROM pg_policies "
+            f"WHERE tablename = '{table}' AND policyname = '{superseded}';"
+        )
+        assert remaining == [], (
+            f"{table} still carries the pre-0069 policy {superseded!r}. Permissive "
+            "policies are ORed, so it ORs with the workspace policy and grants "
+            "every workspace member access to every other member's rows."
+        )
+
+
+async def test_0069_policy_scopes_on_user_as_well_as_workspace():
+    """Workspace alone answers 'whose workspace', not 'whose row'."""
+    for table in ("recommendation_feedback", "user_preference_vectors"):
+        defs = await _query(
+            "SELECT coalesce(string_agg(pg_get_expr(pol.polqual, pol.polrelid), ' '), '') "
+            "FROM pg_policy pol WHERE pol.polrelid = "
+            f"'{table}'::regclass AND pol.polname LIKE '%workspace%';"
+        )
+        assert defs, f"{table} has no workspace-scoped policy"
+        assert "app.user_id" in defs[0], (
+            f"{table} workspace policy does not read app.user_id, so any member "
+            f"of the workspace can reach every other member's rows: {defs[0][:200]}"
+        )
+
+
 async def test_0069_keeps_rls_enabled_and_forced_on_every_touched_table():
     for table in ("recommendation_feedback", "user_preference_vectors"):
         # _query projects a single column, so concatenate in SQL rather than
@@ -515,20 +555,73 @@ def test_0069_downgrade_restores_the_identical_24_literals():
     )
 
 
-async def test_0069_upgrade_survives_a_populated_preference_vector_table():
-    """A primary key column cannot be NULL, and every legacy vector is NULL.
+async def test_0069_leaves_no_workspace_less_preference_vector():
+    """The end state the upgrade must reach.
 
-    This is the defect the empty-container verification could not see: with no
-    rows, `ADD CONSTRAINT ... PRIMARY KEY (user_id, tenant_id, workspace_id)`
-    succeeds, and the migration only fails later against real data. The upgrade
-    must therefore clear legacy vectors before taking the key.
+    This asserts the RESULT, not the mechanism. The previous version of this test
+    made the same assertion without ever inserting a legacy vector or running
+    `upgrade()`, so it was true by construction on a container that started empty
+    -- and the evidence file reported it as covering the PK/NULL defect. The
+    upgrade-ordering proof belongs to `test_0069_discards_legacy_vectors_before_
+    taking_the_key`, which exercises the real path.
     """
     rows = await _query(
         "SELECT count(*) FROM user_preference_vectors WHERE workspace_id IS NULL;"
     )
     assert rows == ["0"], (
-        "no vector may remain workspace-less after 0069: the primary key rejects "
-        f"NULL, so a surviving row means the key was never taken; found {rows}"
+        "no vector may remain workspace-less: the primary key rejects NULL, so a "
+        f"surviving row means the key was never taken; found {rows}"
+    )
+
+
+def test_0069_discards_legacy_vectors_before_taking_the_key():
+    """A primary key column cannot be NULL, and every legacy vector is NULL.
+
+    With no rows, `ADD CONSTRAINT ... PRIMARY KEY (user_id, tenant_id,
+    workspace_id)` succeeds and the migration only fails later against real data.
+    The upgrade must therefore clear legacy vectors *before* taking the key.
+
+    Order is asserted on the source rather than by running a downgrade/upgrade
+    cycle: the destructive path is the rollback proof the harness already owns,
+    and duplicating it here would double the cost of every CI run for the same
+    guarantee. What is asserted here is the thing that actually broke -- the
+    DELETE precedes the ADD CONSTRAINT, and the column is set NOT NULL between
+    them.
+    """
+    import ast
+
+    tree = ast.parse(pathlib.Path(__file__).resolve().parents[1].joinpath(
+        "alembic", "versions", "0069_memory_workspace_isolation.py"
+    ).read_text(encoding="utf-8"))
+
+    upgrade = next(
+        node for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef) and node.name == "upgrade"
+    )
+    # _safe(bind, sql): the SQL is the SECOND argument, and it is usually an
+    # f-string, so unparse rather than reading .value off a Constant.
+    statements = [
+        ast.unparse(node.args[1])
+        for node in ast.walk(upgrade)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "_safe"
+        and len(node.args) > 1
+    ]
+    joined = "\n".join(statements)
+
+    # The SQL is written as f-strings, so ast.unparse leaves the placeholders in
+    # (DELETE FROM {_VECTORS} ...). Match the fragments that are literal in the
+    # source; the identifiers they omit are constants defined in the same module.
+    delete_at = joined.find("WHERE workspace_id IS NULL")
+    notnull_at = joined.find("ALTER COLUMN workspace_id SET NOT NULL")
+    pk_at = joined.find("PRIMARY KEY (user_id, tenant_id, workspace_id)")
+
+    assert -1 not in (delete_at, notnull_at, pk_at), f"0069 upgrade lost a step:\n{joined}"
+    assert delete_at < notnull_at < pk_at, (
+        "legacy vectors must be deleted, then the column set NOT NULL, and only "
+        f"then the primary key taken -- otherwise the key cannot be created. "
+        f"delete={delete_at} notnull={notnull_at} pk={pk_at}"
     )
 
 
