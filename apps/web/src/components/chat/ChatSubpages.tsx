@@ -246,6 +246,7 @@ export interface ModelMatrixViewProps {
   onSelectModel: (modelId: string) => void;
   temperature: number;
   onTemperatureChange: (temp: number) => void;
+  onSelectAndReturn?: () => void;
 }
 
 export function ModelMatrixView({
@@ -254,15 +255,97 @@ export function ModelMatrixView({
   onSelectModel,
   temperature,
   onTemperatureChange,
+  onSelectAndReturn,
 }: ModelMatrixViewProps): JSX.Element {
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 max-w-5xl mx-auto w-full">
-      <div className="border-b border-border/50 pb-4">
-        <h2 className="text-lg font-semibold text-text">Foundation Model Matrix</h2>
-        <p className="text-xs text-text-dim mt-1">
-          Explore foundation models supporting fast execution, balanced workloads, and deep
-          multi-step reasoning.
-        </p>
+      <div className="border-b border-border/50 pb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-text">Foundation Model Matrix</h2>
+          <p className="text-xs text-text-dim mt-1">
+            Explore foundation models supporting fast execution, balanced workloads, and deep
+            multi-step reasoning.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-mono text-text-muted px-2.5 py-1 rounded-lg border border-border/60 bg-surface-50">
+            Active: <span className="font-semibold text-action">{selectedModel}</span>
+          </span>
+        </div>
+      </div>
+
+      {/* Real-time Parameter Tuner Bar */}
+      <div className="p-4 rounded-xl border border-border/60 bg-surface-50/70 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xs font-semibold text-text uppercase tracking-wider">
+              Inference Hyperparameters
+            </h3>
+            <p className="text-[11px] text-text-dim mt-0.5">
+              Adjust sampling entropy for all agent reasoning loops in this workspace.
+            </p>
+          </div>
+          <span className="font-mono text-xs font-semibold text-action px-2 py-0.5 rounded bg-surface-200 border border-border/60">
+            T: {temperature.toFixed(2)}
+          </span>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-1">
+          <div className="flex-1 flex items-center gap-3">
+            <span className="text-xs text-text-dim font-mono">0.0</span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={temperature}
+              onChange={(e) => onTemperatureChange(parseFloat(e.target.value))}
+              className="flex-1 accent-action cursor-pointer h-1.5 bg-surface-200 rounded-lg"
+              aria-label="Model Temperature"
+            />
+            <span className="text-xs text-text-dim font-mono">1.0</span>
+          </div>
+
+          {/* Quick Presets */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              aria-label="Precise (0.2)"
+              onClick={() => onTemperatureChange(0.2)}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors ${
+                Math.abs(temperature - 0.2) < 0.05
+                  ? 'border-action bg-action/15 text-text font-semibold'
+                  : 'border-border/60 bg-surface-100 hover:bg-surface-hover text-text-muted'
+              }`}
+            >
+              Precise (0.2)
+            </button>
+            <button
+              type="button"
+              aria-label="Balanced (0.7)"
+              onClick={() => onTemperatureChange(0.7)}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors ${
+                Math.abs(temperature - 0.7) < 0.05
+                  ? 'border-action bg-action/15 text-text font-semibold'
+                  : 'border-border/60 bg-surface-100 hover:bg-surface-hover text-text-muted'
+              }`}
+            >
+              Balanced (0.7)
+            </button>
+            <button
+              type="button"
+              aria-label="Creative (1.0)"
+              onClick={() => onTemperatureChange(1.0)}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors ${
+                Math.abs(temperature - 1.0) < 0.05
+                  ? 'border-action bg-action/15 text-text font-semibold'
+                  : 'border-border/60 bg-surface-100 hover:bg-surface-hover text-text-muted'
+              }`}
+            >
+              Creative (1.0)
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -305,7 +388,10 @@ export function ModelMatrixView({
                 </span>
                 <button
                   type="button"
-                  onClick={() => onSelectModel(model.id)}
+                  onClick={() => {
+                    onSelectModel(model.id);
+                    onSelectAndReturn?.();
+                  }}
                   className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${
                     isSelected
                       ? 'border-action bg-action text-action-fg'
