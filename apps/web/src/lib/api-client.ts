@@ -5319,6 +5319,25 @@ export interface ConnectorHealthResponse {
   config_keys?: string[];
 }
 
+/**
+ * `GET /connectors/{id}/usage`. Aggregated from `audit_events` by
+ * `connector_ext_service.usage_summary`, so every field is a recorded fact
+ * rather than an estimate.
+ */
+export interface ConnectorUsageResponse {
+  connector_id: string;
+  name: string;
+  type: string;
+  status: string | null;
+  /** Current stored config version; the value `rollback` expects. */
+  config_version: number;
+  last_synced_at: string | null;
+  /** Event count keyed by action, e.g. `{ created: 1, updated: 3 }`. */
+  events_by_action: Record<string, number>;
+  total_events: number;
+  last_activity_at: string | null;
+}
+
 export const connectorsApi = {
   list(workspaceId?: string, type?: string): Promise<ConnectorItem[]> {
     const params: Record<string, string | undefined> = {};
@@ -5357,6 +5376,26 @@ export const connectorsApi = {
   },
   health(connectorId: string): Promise<ConnectorHealthResponse> {
     return apiClient.get<ConnectorHealthResponse>(`/connectors/${connectorId}/health`);
+  },
+  /**
+   * `GET /connectors/{id}/usage` — lifecycle activity aggregated from
+   * `audit_events` by `connector_ext_service.usage_summary`.
+   *
+   * Backed by the audit table, so this is a real count of recorded events for
+   * this connector, not a running estimate. `config_version` is the version a
+   * `rollback` call takes as its `version`.
+   */
+  usage(connectorId: string): Promise<ConnectorUsageResponse> {
+    return apiClient.get<ConnectorUsageResponse>(`/connectors/${connectorId}/usage`);
+  },
+  /**
+   * `POST /connectors/{id}/rollback` — restore a previous stored config.
+   *
+   * Without this, `PUT /connectors/{id}` overwrites config in place and a bad
+   * edit has no undo path.
+   */
+  rollback(connectorId: string, version: number): Promise<ConnectorItem> {
+    return apiClient.post<ConnectorItem>(`/connectors/${connectorId}/rollback`, { version });
   },
   mcp: {
     listTools(connectorId: string, refresh = false): Promise<McpToolInfo[]> {

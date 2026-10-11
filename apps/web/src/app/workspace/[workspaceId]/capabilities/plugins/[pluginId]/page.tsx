@@ -24,50 +24,16 @@ import { useToast } from '@/components/shared/Toast';
 import { PageHeader } from '@/components/shared/Page';
 import { CapabilitySubpageSkeleton } from '@/components/capabilities/CapabilitySubpageSkeleton';
 
-const BUILTIN_PLUGINS = [
-  {
-    id: 'plug-tag-generator',
-    name: 'tag-generator',
-    description: 'Generates semantic metadata tags from unstructured text documents.',
-    version: '1.0.0',
-    author: 'Vaeloom Core Team',
-    status: 'ACTIVE',
-    entrypoint: 'tag_generator.py',
-    tags: ['NLP', 'Metadata', 'Taxonomy'],
-  },
-  {
-    id: 'plug-summarizer',
-    name: 'summarizer',
-    description: 'Extracts executive bullet summaries and decision logs from long documents.',
-    version: '1.0.0',
-    author: 'Vaeloom Core Team',
-    status: 'ACTIVE',
-    entrypoint: 'summarizer.py',
-    tags: ['Summarization', 'Executive', 'Documents'],
-  },
-  {
-    id: 'plug-sentiment',
-    name: 'sentiment',
-    description: 'Calculates polarity scores and tone metrics for communication logs.',
-    version: '1.0.0',
-    author: 'Vaeloom Core Team',
-    status: 'ACTIVE',
-    entrypoint: 'sentiment.py',
-    tags: ['Tone', 'Sentiment', 'Analytics'],
-  },
-  {
-    id: 'plug-translator',
-    name: 'translator',
-    description: 'Translates technical documentation into multilingual locales.',
-    version: '1.0.0',
-    author: 'Vaeloom Core Team',
-    status: 'ACTIVE',
-    entrypoint: 'translator.py',
-    tags: ['Localization', 'Translation'],
-  },
-];
+// No `BUILTIN_PLUGINS` fallback.
+//
+// It declared four plugins with ids (`plug-*`) the registry never issued,
+// invented `.py` entrypoints, and a hardcoded `status: 'ACTIVE'`. When the
+// registry had no match the page fell back to it and rendered an operator-facing
+// detail view for a plugin that was not registered -- with a healthy-looking
+// status badge. The registry is authoritative; a plugin it does not know about
+// is "not found", which is what the empty state already says.
 
-type SubTab = 'overview' | 'runtime' | 'test';
+type SubTab = 'overview' | 'runtime' | 'activity' | 'test';
 
 export default function PluginSubpage() {
   const params = useParams();
@@ -104,15 +70,28 @@ export default function PluginSubpage() {
         p.name.toLowerCase() === cleanNoPrefix,
     );
     if (remote) return remote;
-
-    const seed = BUILTIN_PLUGINS.find(
-      (p) =>
-        p.id.toLowerCase() === clean ||
-        p.name.toLowerCase() === clean ||
-        p.name.toLowerCase() === cleanNoPrefix,
-    );
-    return seed ?? null;
+    return null;
   }, [decodedPluginId, registry]);
+
+  // `GET /plugins/{id}/executions` and `GET /plugins/{id}/permissions` both
+  // existed on the backend with `pluginApi` wrappers that had zero callers.
+  // An operator deciding whether to grant a plugin an `on_tool_call` hook needs
+  // the real run history and the real declared permissions, not a claim.
+  const {
+    data: executionPage,
+    error: executionsError,
+    isLoading: executionsLoading,
+  } = useSWR(
+    plugin ? ['plugin-executions', plugin.id] : null,
+    () => pluginApi.executions(plugin!.id, { page: 1, page_size: 25 }),
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  );
+
+  const { data: permissionPayload } = useSWR(
+    plugin ? ['plugin-permissions', plugin.id] : null,
+    () => pluginApi.getPermissions(plugin!.id),
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  );
 
   const isActive = plugin?.status === 'ACTIVE';
 
@@ -204,6 +183,7 @@ export default function PluginSubpage() {
   const subTabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'runtime', label: 'Runtime & Sandboxing' },
+    { id: 'activity', label: 'Activity' },
     { id: 'test', label: 'Execution Probe' },
   ];
 
@@ -306,9 +286,15 @@ export default function PluginSubpage() {
                   </div>
                   <div>
                     <span className="text-text-muted">Entrypoint:</span>
-                    <span className="ml-2 font-mono text-text">
-                      {(plugin as any).entrypoint ?? `${plugin.name}.py`}
-                    </span>
+                    {plugin.entry_point ? (
+                      <span className="ml-2 font-mono text-text">{plugin.entry_point}</span>
+                    ) : (
+                      // The registry declares `entry_point`. Guessing
+                      // `${name}.py` printed a path that may not exist, which is
+                      // exactly what an operator reads to decide whether to grant
+                      // this plugin a hook.
+                      <span className="ml-2 text-text-muted">not reported by the registry</span>
+                    )}
                   </div>
                   <div>
                     <span className="text-text-muted">Status:</span>
@@ -346,6 +332,90 @@ export default function PluginSubpage() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </TabPanel>
+
+            <TabPanel id="activity" activeTab={activeTab}>
+              <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
+                <h3 className="text-base font-semibold text-text">Recorded Executions</h3>
+
+                <div>
+                  <span className="text-xs text-text-muted">Declared permissions:</span>
+                  {permissionPayload?.permissions &&
+                  Object.keys(permissionPayload.permissions).length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {Object.entries(permissionPayload.permissions).map(([scope, value]) => (
+                        <Badge key={scope} variant="mono" size="sm">
+                          {String(value) === 'true' || value === true
+                            ? scope
+                            : `${scope}=${String(value)}`}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-text-muted">
+                      The registry declares no permissions for this plugin.
+                    </p>
+                  )}
+                </div>
+
+                {executionsLoading ? (
+                  <p role="status" className="text-xs text-text-muted">
+                    Loading execution history…
+                  </p>
+                ) : executionsError ? (
+                  <p role="alert" className="text-xs text-error">
+                    Execution history is unavailable: {executionsError.message}
+                  </p>
+                ) : executionPage && executionPage.executions.length > 0 ? (
+                  <>
+                    <p className="text-xs text-text-muted">
+                      {executionPage.total} recorded run{executionPage.total === 1 ? '' : 's'},
+                      newest first.
+                    </p>
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-border-subtle text-left">
+                          <th scope="col" className="py-1.5 pr-3 font-medium text-text-muted">
+                            When
+                          </th>
+                          <th scope="col" className="py-1.5 pr-3 font-medium text-text-muted">
+                            Status
+                          </th>
+                          <th scope="col" className="py-1.5 font-medium text-text-muted">
+                            Duration
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {executionPage.executions.map((execution) => (
+                          <tr key={execution.id} className="border-b border-border-subtle/60">
+                            <td className="py-1.5 pr-3 font-mono text-text-secondary">
+                              {execution.created_at}
+                            </td>
+                            <td className="py-1.5 pr-3">
+                              <Badge
+                                variant={execution.status === 'success' ? 'success' : 'warning'}
+                                size="sm"
+                              >
+                                {execution.status}
+                              </Badge>
+                            </td>
+                            <td className="py-1.5 font-mono text-text-secondary">
+                              {execution.duration_ms == null
+                                ? 'not reported'
+                                : `${execution.duration_ms}ms`}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </>
+                ) : (
+                  <p className="text-xs text-text-muted">
+                    No executions have been recorded for this plugin. Nothing has run it.
+                  </p>
+                )}
               </div>
             </TabPanel>
 

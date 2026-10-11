@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
+import { SWRConfig } from 'swr';
 import PluginSubpage from './page';
 import { pluginApi } from '@/lib/api-client';
 
@@ -40,18 +41,41 @@ jest.mock('@/lib/api-client', () => {
       setStatus: jest.fn().mockResolvedValue({ id: 'plug-summarizer', status: 'DISABLED' }),
       execute: jest.fn(),
       delete: jest.fn().mockResolvedValue(undefined),
+      executions: jest.fn().mockResolvedValue({ executions: [], total: 0, page: 1, page_size: 25 }),
+      getPermissions: jest.fn().mockResolvedValue({ permissions: {} }),
     },
   };
 });
 
+/**
+ * Each test gets its own SWR cache.
+ *
+ * SWR keys the execution and permission fetches on the plugin id, and the
+ * provider is module-level, so without isolation a test re-renders the previous
+ * test's resolved payload for the same key and asserts against its neighbour's
+ * data.
+ */
+function renderSubpage() {
+  return render(
+    <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+      <PluginSubpage />
+    </SWRConfig>,
+  );
+}
+
 describe('PluginSubpage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // `clearAllMocks` drops call records but keeps implementations, so a
+    // `jest.spyOn(...).mockResolvedValue(...)` from an earlier test would leak
+    // into the next one. Restoring puts every method back on the module mock's
+    // own default.
+    jest.restoreAllMocks();
     mockParams = { workspaceId: 'ws-test-123', pluginId: 'summarizer' };
   });
 
   it('renders breadcrumbs and plugin header for a known plugin', async () => {
-    render(<PluginSubpage />);
+    renderSubpage();
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 1, name: /summarizer/i })).toBeInTheDocument();
@@ -63,7 +87,7 @@ describe('PluginSubpage', () => {
 
   it('renders empty state when plugin is not found', async () => {
     mockParams = { workspaceId: 'ws-test-123', pluginId: 'unknown-plugin-xyz' };
-    render(<PluginSubpage />);
+    renderSubpage();
 
     await waitFor(() => {
       expect(screen.getByText(/Plugin "unknown-plugin-xyz" not found/i)).toBeInTheDocument();
@@ -78,7 +102,7 @@ describe('PluginSubpage', () => {
     // This was the only destructive action in the capabilities feature that
     // fired on a single click, with no dialog and no undo.
     const deleted = jest.spyOn(pluginApi, 'delete');
-    render(<PluginSubpage />);
+    renderSubpage();
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 1, name: /summarizer/i })).toBeInTheDocument();
     });
@@ -98,7 +122,7 @@ describe('PluginSubpage', () => {
 
   it('deletes only after the confirmation is accepted', async () => {
     const deleted = jest.spyOn(pluginApi, 'delete');
-    render(<PluginSubpage />);
+    renderSubpage();
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 1, name: /summarizer/i })).toBeInTheDocument();
     });
@@ -110,9 +134,83 @@ describe('PluginSubpage', () => {
     await waitFor(() => expect(deleted).toHaveBeenCalledWith('plug-summarizer'));
   });
 
+  describe('the activity tab', () => {
+    async function openActivityTab() {
+      renderSubpage();
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { level: 1, name: /summarizer/i })).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByRole('tab', { name: /activity/i }));
+    }
+
+    it('reads the real run history from the registry', async () => {
+      const executions = jest.spyOn(pluginApi, 'executions').mockResolvedValue({
+        executions: [
+          {
+            id: 'exec-9',
+            plugin_id: 'plug-summarizer',
+            status: 'success',
+            duration_ms: 88,
+            created_at: '2026-10-01T09:00:00Z',
+          },
+          {
+            id: 'exec-8',
+            plugin_id: 'plug-summarizer',
+            status: 'error',
+            created_at: '2026-09-30T09:00:00Z',
+          },
+        ],
+        total: 2,
+        page: 1,
+        page_size: 25,
+      });
+
+      await openActivityTab();
+
+      await waitFor(() => expect(executions).toHaveBeenCalledTimes(1));
+      expect(executions).toHaveBeenCalledWith('plug-summarizer', { page: 1, page_size: 25 });
+
+      expect(await screen.findByText('2026-10-01T09:00:00Z')).toBeInTheDocument();
+      expect(screen.getByText('2026-09-30T09:00:00Z')).toBeInTheDocument();
+      expect(screen.getByText('88ms')).toBeInTheDocument();
+      // An execution with no duration says so rather than inventing one.
+      expect(screen.getByText('not reported')).toBeInTheDocument();
+    });
+
+    it('states plainly when nothing has ever run the plugin', async () => {
+      jest
+        .spyOn(pluginApi, 'executions')
+        .mockResolvedValue({ executions: [], total: 0, page: 1, page_size: 25 });
+
+      await openActivityTab();
+
+      expect(await screen.findByText(/No executions have been recorded/i)).toBeInTheDocument();
+      expect(screen.getByText(/Nothing has run it/i)).toBeInTheDocument();
+    });
+
+    it('renders the permissions the registry declares', async () => {
+      jest.spyOn(pluginApi, 'getPermissions').mockResolvedValue({
+        permissions: { on_tool_call: true, 'network:read': true },
+      });
+
+      await openActivityTab();
+
+      expect(await screen.findByText('on_tool_call')).toBeInTheDocument();
+      expect(screen.getByText('network:read')).toBeInTheDocument();
+    });
+
+    it('says when the registry declares no permissions, instead of rendering none', async () => {
+      jest.spyOn(pluginApi, 'getPermissions').mockResolvedValue({ permissions: {} });
+
+      await openActivityTab();
+
+      expect(await screen.findByText(/registry declares no permissions/i)).toBeInTheDocument();
+    });
+  });
+
   describe('the execution probe', () => {
     async function openProbeTab() {
-      render(<PluginSubpage />);
+      renderSubpage();
       await waitFor(() => {
         expect(screen.getByRole('heading', { level: 1, name: /summarizer/i })).toBeInTheDocument();
       });
