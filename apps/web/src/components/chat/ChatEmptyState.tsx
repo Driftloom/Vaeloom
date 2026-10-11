@@ -171,7 +171,7 @@ export function ChatEmptyState({
             className="flex flex-wrap items-center justify-center gap-2"
           >
             {visibleCommands.map((c) => {
-              const desc = c.description || (c as unknown as { desc?: string }).desc || '';
+              const desc = c.description || c.desc || '';
               return (
                 <button
                   key={c.trigger}

@@ -243,6 +243,7 @@ export interface ChatSkill {
 export interface SlashCommand {
   trigger: string;
   desc: string;
+  description?: string;
   agent: string;
   /**
    * Tailwind class from the backend `AGENT_COLOR_PALETTE`. The backend is the

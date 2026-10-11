@@ -109,7 +109,7 @@ export function parseThoughts(text: string, isStreamingMessage: boolean): Though
   if (!match) {
     return { thoughts: null, content: text, isStreaming: false };
   }
-  const thoughts = match[1].trim();
+  const thoughts = (match[1] ?? '').trim();
   const hasClosing = text.includes('</thought>');
   const content = text.replace(/<thought>[\s\S]*?(?:<\/thought>|$)/, '').trim();
   return {
