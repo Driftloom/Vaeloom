@@ -222,9 +222,10 @@ def assert_downgrade_failed_as_expected(returncode: int, output: str) -> None:
     report a proof that never ran. So all three conditions are required -- a
     non-zero exit, the constraint's name, and the offending value.
 
-    The value is the part that cannot be faked by accident. PostgreSQL prints it
-    in the ``DETAIL`` line naming the failing row, so a message that omits it did
-    not come from this constraint refusing this row.
+    The value is the part that cannot be faked by accident. 0068's downgrade
+    logs it in the pre-restore evidence of distinct types (or PostgreSQL prints
+    it in the DETAIL line for single-row insertions), so a message that omits it
+    did not come from this constraint refusing this row.
 
     An empty ``output`` raises for both missing tokens rather than passing: this
     is the green-by-emptiness failure the whole exercise exists to eliminate, and
@@ -653,27 +654,91 @@ def _merged_output(completed: subprocess.CompletedProcess) -> str:
     return f"{completed.stdout or ''}{completed.stderr or ''}"
 
 
-def _alembic(context: _RunContext, *arguments: str) -> subprocess.CompletedProcess:
-    """Run alembic from ``apps/api`` and raise unless it exited zero.
+def _alembic_environment(context: _RunContext) -> dict[str, str]:
+    """The environment every alembic child must run with.
 
-    ``cwd`` is not optional. The migrations import each other relative to
-    ``apps/api``; run from anywhere else alembic fails part-way and leaves a
-    half-migrated database behind.
+    This is not hygiene, it is the whole ballgame. ``apps/api/alembic/env.py``
+    resolves its DDL target as ``VAELOOM_TARGET_URL`` -> ``DATABASE__URL`` ->
+    ``DATABASE_URL`` -> ``alembic.ini``, and it loads the app settings on the way,
+    which read ``apps/api/.env``. So an alembic child that merely *inherits* the
+    ambient environment will connect to whatever that file names -- a developer's
+    or a hosted project's real database -- while this script's guard sits here,
+    unused, having checked a URL alembic never looked at.
+
+    The first real run of this harness did exactly that: it migrated a remote
+    Supabase project to head and reported success, because step 1 exited 0 and
+    nothing compared the database alembic actually touched against the one this
+    process approved.
+
+    So: set the deliberate override, and actively remove the ambient names. An
+    inherited variable that can point migrations at a shared instance is not a
+    default, it is a hazard.
+    """
+    environment = dict(os.environ)
+    target = _effective_target_url(context.pg_url)
+    environment[TARGET_URL_ENV_VAR] = target
+    environment[PG_URL_ENV_VAR] = target
+    environment["VAELOOM_VERIFY_ACTIVE"] = "1"
+    for ambient in ("DATABASE__URL", "DATABASE_URL", "DATABASE_MIGRATION__URL"):
+        environment.pop(ambient, None)
+    return environment
+
+
+def _alembic_run(context: _RunContext, *arguments: str) -> subprocess.CompletedProcess:
+    """Run alembic from ``apps/api`` with an explicit environment. Never raises.
+
+    This is the ONLY place this module invokes alembic. Every caller goes through
+    here, so there is exactly one place where the environment is set and exactly
+    one place to get it wrong.
+
+    That is not theoretical. This function and ``step_4`` each had their own
+    ``subprocess.run``; the first fix stopped `upgrade head` from connecting to a
+    remote Supabase project, and `downgrade -1` -- the one command in this module
+    that *destroys* schema -- kept inheriting ``.env`` and did it anyway. Step 4
+    cannot use the raising wrapper because a non-zero exit is its expected
+    result, so the non-raising primitive has to be the shared one, not a
+    convenience bolted onto the raising wrapper.
     """
     command = [context.alembic, *arguments]
     completed = subprocess.run(
         command,
         # check=False stated, not defaulted: every caller of this helper wants the
-        # returncode inspected below rather than an exception from inside run().
+        # returncode inspected by itself rather than an exception from inside run().
         check=False,
         cwd=context.alembic_cwd,
+        env=_alembic_environment(context),
         capture_output=True,
         text=True,
     )
+    output = _merged_output(completed)
+    if "ALEMBIC CONNECTING TO:" in output:
+        for line in output.splitlines():
+            if "ALEMBIC CONNECTING TO:" in line:
+                connected_url = line.split("ALEMBIC CONNECTING TO:", 1)[1].strip()
+                from urllib.parse import urlparse
+
+                parsed = urlparse(connected_url)
+                if (parsed.hostname or "").lower() not in ("127.0.0.1", "localhost", ""):
+                    raise RuntimeError(
+                        f"FATAL: Alembic connected to non-local host '{parsed.hostname}': {connected_url}. "
+                        "Verification aborted!"
+                    )
+                db_name = parsed.path.rstrip("/").rsplit("/", 1)[-1]
+                if not db_name.endswith(ALLOWED_DB_SUFFIXES):
+                    raise RuntimeError(
+                        f"FATAL: Alembic connected to unsafe database '{db_name}': {connected_url}. "
+                        "Verification aborted!"
+                    )
+    return completed
+
+
+def _alembic(context: _RunContext, *arguments: str) -> subprocess.CompletedProcess:
+    """Run alembic and raise unless it exited zero. See :func:`_alembic_run`."""
+    completed = _alembic_run(context, *arguments)
     if completed.returncode != 0:
+        shown = " ".join((context.alembic, *arguments))
         raise RuntimeError(
-            f"`{' '.join(command)}` exited {completed.returncode}:\n"
-            f"{_merged_output(completed)}"
+            f"`{shown}` exited {completed.returncode}:\n{_merged_output(completed)}"
         )
     return completed
 
@@ -717,7 +782,14 @@ def _run_live_pg_suite(context: _RunContext, label: str) -> None:
     the child unchecked.
     """
     environment = dict(os.environ)
-    environment[PG_URL_ENV_VAR] = _effective_target_url(context.pg_url)
+    target = _effective_target_url(context.pg_url)
+    environment[TARGET_URL_ENV_VAR] = target
+    # The four suites hand this straight to `create_async_engine`, which resolves
+    # a bare `postgresql://` to the *sync* psycopg2 dialect. That driver is not a
+    # dependency of this project, so exporting the flag verbatim fails all of
+    # them with `No module named 'psycopg2'` -- fourteen errors that read like
+    # broken tests and were really one wrong URL scheme.
+    environment[PG_URL_ENV_VAR] = _async_url(target)
 
     completed = subprocess.run(
         [
@@ -773,9 +845,80 @@ def step_0_ensure_roles() -> None:
     ensure_roles(_context().pg_url)
 
 
+def _alembic_head_revision(alembic_cwd: pathlib.Path) -> str:
+    """The head this repo's migration graph resolves to, read without a database.
+
+    From the local version scripts via alembic's own ``ScriptDirectory``, not via
+    an ``alembic heads`` subprocess: a subprocess would need its own environment
+    handling to avoid the very misdirection this module exists to prevent, and
+    this needs no database at all. It answers "what did we ask for" using only
+    what is on disk, so it cannot be confused by whatever a child connected to.
+    """
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    config = Config(str(alembic_cwd / "alembic.ini"))
+    # alembic.ini names `script_location` relative to the process CWD, and this
+    # module is invoked from the repo root, not from apps/api. Pin it absolutely
+    # so the graph resolves regardless of where the caller stands.
+    config.set_main_option("script_location", str(alembic_cwd / "alembic"))
+    heads = sorted(ScriptDirectory.from_config(config).get_heads())
+    if len(heads) != 1:
+        raise RuntimeError(
+            f"expected exactly one migration head, found {heads or 'none'}. "
+            "A branching migration graph makes 'upgrade head' ambiguous, so the "
+            "verification cannot claim it applied the whole chain."
+        )
+    return heads[0]
+
+
+def _recorded_alembic_head(target_url: str) -> str:
+    """What the target database itself says was applied.
+
+    Read back from the database rather than from alembic's exit code, because the
+    exit code only says the command succeeded -- not that it succeeded *here*.
+    """
+
+    import asyncio
+
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy.pool import NullPool
+
+    async def read() -> str:
+        engine = create_async_engine(_async_url(target_url), poolclass=NullPool)
+        try:
+            async with engine.connect() as connection:
+                result = await connection.execute(text("SELECT version_num FROM alembic_version"))
+                return ",".join(sorted(row[0] for row in result))
+        finally:
+            await engine.dispose()
+
+    return asyncio.run(read())
+
+
 def step_1_upgrade_head() -> None:
-    """Apply the whole chain from empty, via `alembic upgrade head`."""
-    _alembic(_context(), "upgrade", "head")
+    """Apply the whole chain from empty, via `alembic upgrade head`.
+
+    Then read the head back *out of the database* and require it to be the head
+    this script asked for. `alembic upgrade head` exiting 0 proves only that the
+    command worked; on the first real run of this harness it exited 0 having
+    migrated a remote Supabase project to head while this container sat empty,
+    and nothing caught it. Comparing the database against the revision alembic
+    resolved locally turns that silent misdirection into a loud failure.
+    """
+    context = _context()
+    expected = _alembic_head_revision(context.alembic_cwd)
+    _alembic(context, "upgrade", "head")
+
+    actual = _recorded_alembic_head(_effective_target_url(context.pg_url))
+    if actual != expected:
+        raise RuntimeError(
+            f"`alembic upgrade head` reported success but the target database is at "
+            f"'{actual}', not the expected head '{expected}'. The database this run "
+            "guarded is not the one the migrations were applied to -- do not trust "
+            "any later step until this is understood."
+        )
 
 
 def step_2_run_live_pg_suite() -> None:
@@ -797,17 +940,7 @@ def step_4_downgrade_must_fail() -> None:
     boolean would leave that distinction to nobody.
     """
     context = _context()
-    command = [context.alembic, "downgrade", "-1"]
-    completed = subprocess.run(
-        command,
-        # check=False is load-bearing here: a non-zero exit is the EXPECTED outcome
-        # of this step. Raising from inside run() would turn the proof into a
-        # traceback and destroy the returncode and output step 5 has to judge.
-        check=False,
-        cwd=context.alembic_cwd,
-        capture_output=True,
-        text=True,
-    )
+    completed = _alembic_run(context, "downgrade", "-1")
     context.downgrade_returncode = completed.returncode
     context.downgrade_output = _merged_output(completed)
 

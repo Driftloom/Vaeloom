@@ -1,0 +1,100 @@
+PostgreSQL migration verification — evidence
+===========================================
+
+Run: 2026-10-11
+Command: powershell -ExecutionPolicy Bypass -File scripts/run_pg_verification.ps1
+Result: VERIFICATION PASSED (exit 0)
+Target: disposable pgvector/pgvector:pg16 container on 127.0.0.1:5433, database vaeloom_test,
+        created and destroyed by the run. Container and volume removed afterwards.
+
+
+What this proves
+----------------
+
+Migrations 0067 (ranking_weight_profiles) and 0068 (memory_type_packs) had never been
+applied by a real PostgreSQL server. They now have been, twice in the same run (before
+the rollback probe and after the round trip).
+
+Live-PostgreSQL suite, 39 tests, run against a freshly migrated database:
+
+    39 passed, 0 failed, 0 skipped
+
+Previously, 10 of these were skipped because VAELOOM_TEST_PG_URL was unset:
+
+    tests/test_rls_live_pg.py            6 tests  (cross-tenant, cross-workspace,
+                                                  own-scope, WITH CHECK, password login)
+    tests/test_ranking_weights_rls.py    4 tests  (cross-workspace GUC, WITH CHECK,
+                                                  own-profile insert, FORCE RLS)
+
+Those skips are now a failure condition, not a pass: pytest exits 0 for an all-skipped
+run, so a green result that verified nothing was previously indistinguishable from one
+that verified everything.
+
+
+The rollback proof
+------------------
+
+Steps 3 to 6 are the point of the exercise. CI previously rehearsed the 0068 downgrade
+against an EMPTY memories table, so the one irreversible operation in the memory work --
+re-adding ck_memories_type_valid and re-validating every row -- could not fail.
+
+  step_3  Seed a memories row whose type ('job_posting') comes from a temporary
+          domain pack, outside the frozen 24.
+  step_4  alembic downgrade -1  ->  must exit non-zero.
+  step_5  The refusal must name BOTH ck_memories_type_valid AND job_posting. A typo, a
+          missing role or a permission error fails the downgrade too, and a red run
+          that reads like a pass is worse than no run.
+  step_6  Remove the probe; downgrade must now exit 0.
+
+Observed on the passing run: exit 1, output naming the constraint 4 times, the
+pre-restore evidence log line once, and the offending value job_posting once.
+
+
+Defects this harness found on its first real run
+-------------------------------------------------
+
+1. alembic was migrating the wrong database. scripts/verify_pg_migrations.py ran
+   `alembic upgrade head` without an environment, so apps/api/alembic/env.py resolved
+   its DDL target from apps/api/.env -- a remote Supabase project -- while the script's
+   _proof/_test guard sat unused, having checked a URL alembic never read. Fixed:
+   _alembic_environment() sets VAELOOM_TARGET_URL and actively removes DATABASE__URL,
+   DATABASE_URL and DATABASE_MIGRATION__URL from every child.
+
+2. The same bug, twice more, in other consumers: the pytest child was pointed at the
+   --pg-url flag while alembic followed VAELOOM_TARGET_URL, so steps 2 and 8 could
+   certify a different database; and step_4's downgrade called subprocess.run directly,
+   bypassing the guarded wrapper, and inherited .env. Fixed structurally: one
+   _alembic_run() is now the only place an alembic argv is built, and two AST-level
+   tests fail the build if a new call site omits `env` or builds a second one.
+
+3. Alembic's exit code was treated as proof. `alembic upgrade head` exiting 0 says
+   the command worked, not that it worked on the guarded database. Step 1 now reads
+   the head back out of the database and compares it with the head the local migration
+   graph resolves to.
+
+4. Wrong driver scheme. VAELOOM_TEST_PG_URL was exported as postgresql://, which
+   SQLAlchemy resolves to the sync psycopg2 dialect. The four suites hand that URL to
+   create_async_engine, so all 14 failures were `No module named 'psycopg2'` -- one
+   wrong URL scheme presenting as fourteen broken tests. Now exported as
+   postgresql+asyncpg://.
+
+
+What this does NOT prove
+------------------------
+
+- Correctness under concurrent load during a real rollback window.
+- Rollback against a large, production-shaped memories table. The probe is one row.
+- Performance or behaviour at volume. Seeded-data correctness only.
+
+Any statement that 0068 is "verified" means verified in these terms and no others.
+
+
+Reproduce
+---------
+
+    powershell -ExecutionPolicy Bypass -File scripts\run_pg_verification.ps1
+
+Requires Docker. Default host port 5433 (5432 is taken by a local PostgreSQL
+service); override with $env:VAELOOM_PG_VERIFY_PORT. The script refuses to start if
+the port is bound or a container named vaeloom-pg-verify already exists, and always
+removes the container and its volume afterwards.

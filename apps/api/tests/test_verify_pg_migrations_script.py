@@ -26,6 +26,12 @@ UNSAFE_URL = "postgresql://postgres:pw@127.0.0.1:5432/vaeloom_prod"
 # with --pg-url and observe which one actually reaches the subprocesses.
 OTHER_SAFE_URL = "postgresql://postgres:vaeloom_verify_pw@127.0.0.1:5433/vaeloom_rls_proof"
 
+# The suites hand VAELOOM_TEST_PG_URL straight to `create_async_engine`, which
+# resolves a bare `postgresql://` to the sync psycopg2 dialect. Exporting the
+# flag verbatim failed all fourteen with `No module named 'psycopg2'`.
+OTHER_SAFE_ASYNC_URL = OTHER_SAFE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+SAFE_ASYNC_URL = SAFE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 
 def _load_script():
     """Import scripts/verify_pg_migrations.py as a module so its guards can be called."""
@@ -496,6 +502,13 @@ def _stub_database_work(monkeypatch, module) -> list:
     monkeypatch.setattr(
         module, "_remove_rollback_probe", lambda pg_url: calls.append(("remove", pg_url))
     )
+    # Step 1 now reads the applied head back out of the database and compares it
+    # with the head the local migration graph resolves to. The walk tests stage a
+    # stub alembic.ini with no real version scripts, so both sides are stubbed
+    # here; head resolution itself is pinned against the real repo graph by
+    # test_alembic_head_revision_reads_the_real_repo_graph.
+    monkeypatch.setattr(module, "_alembic_head_revision", lambda cwd: "0068_head")
+    monkeypatch.setattr(module, "_recorded_alembic_head", lambda url: "0068_head")
     return calls
 
 
@@ -575,7 +588,7 @@ def test_main_drives_every_step_in_order_with_stubbed_effects(monkeypatch, tmp_p
         assert call["kwargs"]["capture_output"] is True
         assert call["kwargs"]["text"] is True
     pytest_env = calls[1]["kwargs"]["env"]
-    assert pytest_env["VAELOOM_TEST_PG_URL"] == SAFE_URL, (
+    assert pytest_env["VAELOOM_TEST_PG_URL"] == SAFE_ASYNC_URL, (
         "without this the live-PG suites skip themselves and the run proves nothing"
     )
 
@@ -750,7 +763,7 @@ def test_live_pg_suite_runs_against_the_effective_target_not_the_flag(monkeypatc
         f"both live-PG runs (steps 2 and 8) must be checked, saw {len(pytest_environments)}"
     )
     for environment in pytest_environments:
-        assert environment[script.PG_URL_ENV_VAR] == OTHER_SAFE_URL, (
+        assert environment[script.PG_URL_ENV_VAR] == OTHER_SAFE_ASYNC_URL, (
             "the suites must follow VAELOOM_TARGET_URL, the database every other "
             "consumer acts on, not the --pg-url flag"
         )
@@ -809,3 +822,289 @@ def test_role_bootstrap_repairs_a_preexisting_nologin_app_role():
     nonlogin = script._role_bootstrap_sql("service_role", login=False)
     assert f"CREATE ROLE service_role NOLOGIN" in nonlogin
     assert f"ALTER ROLE service_role NOLOGIN" in nonlogin
+
+
+# ---------------------------------------------------------------------------
+# The misdirection guard.
+#
+# On the first real run, `alembic upgrade head` exited 0 having migrated a remote
+# Supabase project named in apps/api/.env, while the guarded container sat empty.
+# alembic resolves its own target from the environment; nothing told it otherwise.
+# These tests pin the two things that make that impossible to repeat silently.
+# ---------------------------------------------------------------------------
+
+
+def test_alembic_environment_pins_the_guarded_target(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://someone:else@remote.example/db")
+    monkeypatch.setenv("DATABASE__URL", "postgresql://someone:else@remote.example/db")
+    monkeypatch.delenv(script.TARGET_URL_ENV_VAR, raising=False)
+
+    context = script._RunContext(pg_url=SAFE_URL, alembic_cwd=pathlib.Path("x"), alembic="alembic")
+    env = script._alembic_environment(context)
+
+    assert env[script.TARGET_URL_ENV_VAR] == SAFE_URL, (
+        "alembic must be pointed explicitly at the database the guards approved"
+    )
+
+
+@pytest.mark.parametrize("name", ["DATABASE_URL", "DATABASE__URL", "DATABASE_MIGRATION__URL"])
+def test_alembic_environment_drops_ambient_database_urls(monkeypatch, name):
+    # These are read by apps/api/alembic/env.py ahead of alembic.ini, and are
+    # populated from the checked-out .env. Inheriting them means migrations can
+    # land on a shared instance while this process believes it is disposable.
+    monkeypatch.setenv(name, "postgresql://someone:else@remote.example/db")
+    monkeypatch.delenv(script.TARGET_URL_ENV_VAR, raising=False)
+
+    context = script._RunContext(pg_url=SAFE_URL, alembic_cwd=pathlib.Path("x"), alembic="alembic")
+    assert name not in script._alembic_environment(context)
+
+
+def test_alembic_is_never_run_without_an_explicit_environment(monkeypatch):
+    _stub_run_env(monkeypatch)
+    seen = {}
+
+    def fake_run(command, **kwargs):
+        seen.update(kwargs)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(script.subprocess, "run", fake_run)
+    context = script._RunContext(pg_url=SAFE_URL, alembic_cwd=pathlib.Path("x"), alembic="alembic")
+    script._alembic(context, "upgrade", "head")
+
+    assert "env" in seen, "`alembic` must never inherit the ambient environment"
+    assert seen["env"][script.TARGET_URL_ENV_VAR] == SAFE_URL
+
+
+def _context_for(safe_url: str = SAFE_URL) -> "script._RunContext":
+    """A run context wired into the module, as `main` would leave it."""
+    context = script._RunContext(
+        pg_url=safe_url, alembic_cwd=pathlib.Path("apps/api"), alembic="alembic"
+    )
+    script._CONTEXT = context
+    return context
+
+
+def test_step_1_rejects_a_database_that_is_not_at_the_expected_head(monkeypatch):
+    # The regression this pins: alembic exits 0 having migrated somewhere else,
+    # so the container under test still has no tables. Exit code alone missed it.
+    _stub_run_env(monkeypatch)
+    monkeypatch.setattr(script, "_alembic", lambda context, *args: None)
+    monkeypatch.setattr(script, "_alembic_head_revision", lambda cwd: "0068_memory_type_packs")
+    monkeypatch.setattr(script, "_recorded_alembic_head", lambda url: "0063_some_older_revision")
+    _context_for()
+
+    with pytest.raises(RuntimeError, match="reported success but the target database"):
+        script.step_1_upgrade_head()
+
+
+def test_step_1_accepts_a_database_at_the_expected_head(monkeypatch):
+    _stub_run_env(monkeypatch)
+    monkeypatch.setattr(script, "_alembic", lambda context, *args: None)
+    monkeypatch.setattr(script, "_alembic_head_revision", lambda cwd: "0068_memory_type_packs")
+    monkeypatch.setattr(script, "_recorded_alembic_head", lambda url: "0068_memory_type_packs")
+    _context_for()
+
+    script.step_1_upgrade_head()  # must not raise
+
+
+def test_alembic_head_revision_rejects_a_branching_migration_graph(monkeypatch):
+    # `upgrade head` is ambiguous with two heads, so "applied the whole chain"
+    # would be an unverifiable claim.
+    from alembic.script import ScriptDirectory
+
+    api_dir = pathlib.Path(__file__).resolve().parents[1]
+    monkeypatch.setattr(ScriptDirectory, "get_heads", lambda self: ["0067_a", "0068_b"])
+    with pytest.raises(RuntimeError, match="exactly one migration head"):
+        script._alembic_head_revision(api_dir)
+
+
+def test_alembic_head_revision_reads_the_real_repo_graph():
+    # Not a stub: the repo's actual migration graph must resolve to one head,
+    # or step 1 could never pass. Cheap, and it fails loudly on a bad merge.
+    api_dir = pathlib.Path(__file__).resolve().parents[1]
+    head = script._alembic_head_revision(api_dir)
+    assert head, "the repository's migration graph must resolve to a head"
+    versions = sorted((api_dir / "alembic" / "versions").glob("*.py"))
+    assert head.startswith(str(max(int(v.name[:4]) for v in versions)).zfill(4)), (
+        f"alembic head {head} does not match the highest-numbered migration file"
+    )
+
+
+def test_every_subprocess_call_in_the_script_passes_an_explicit_env():
+    # Structural, not behavioural: this is the bug that bit three times. A review
+    # found the pytest child inheriting .env; then `upgrade head` did; then
+    # `downgrade -1` -- the one command here that destroys schema -- still did,
+    # because it bypassed the raising wrapper. A new call site that forgets `env`
+    # would put a developer's or a hosted project's database back in reach.
+    import ast
+
+    source = pathlib.Path(script.__file__).read_text(encoding="utf-8")
+    tree = ast.parse(source)
+
+    offenders = []
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
+            continue
+        if node.func.attr != "run" or not isinstance(node.func.value, ast.Attribute):
+            continue
+        if node.func.value.attr != "subprocess":
+            continue
+        keywords = {kw.arg for kw in node.keywords}
+        if "env" not in keywords:
+            offenders.append(node.lineno)
+
+    assert not offenders, (
+        f"subprocess.run at line(s) {offenders} does not pass an explicit env; "
+        "every database-touching child must be pointed deliberately"
+    )
+
+
+def test_alembic_has_a_single_invocation_path():
+    # `_alembic` is the raising wrapper and `_alembic_run` the primitive. Nothing
+    # else may build an alembic command, or the env guarantee fragments again.
+    import ast
+
+    source = pathlib.Path(script.__file__).read_text(encoding="utf-8")
+    tree = ast.parse(source)
+
+    builders = []
+    for node in ast.walk(tree):
+        # `[context.alembic, *arguments]` -- a list literal whose head reads
+        # `.alembic`. Anything else that builds an alembic argv is a second site.
+        if (
+            isinstance(node, ast.List)
+            and node.elts
+            and isinstance(node.elts[0], ast.Attribute)
+            and node.elts[0].attr == "alembic"
+        ):
+            builders.append(node.lineno)
+
+    assert len(builders) == 1, (
+        f"alembic command built at lines {builders}; there must be exactly one "
+        f"construction site (expected only inside _alembic_run)"
+    )
+
+
+def test_step_4_downgrade_uses_the_guarded_invocation_path(monkeypatch):
+    # Step 4 is the destructive one and it cannot use the raising wrapper, so it
+    # is exactly where an unguarded subprocess would creep back in.
+    _stub_run_env(monkeypatch)
+    seen = {}
+
+    def fake_run(context, *arguments):
+        seen["arguments"] = arguments
+        return subprocess.CompletedProcess(["alembic"], 1, "out", "err")
+
+    monkeypatch.setattr(script, "_alembic_run", fake_run)
+    _context_for()
+    script.step_4_downgrade_must_fail()
+
+    assert seen["arguments"] == ("downgrade", "-1")
+
+
+def test_alembic_run_aborts_if_connecting_to_remote_host(monkeypatch):
+    _stub_run_env(monkeypatch)
+    context = script._RunContext(pg_url=SAFE_URL, alembic_cwd=pathlib.Path("x"), alembic="alembic")
+
+    def fake_subprocess_run(command, **kwargs):
+        output = (
+            "ALEMBIC CONNECTING TO: postgresql+asyncpg://postgres:pw@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?ssl=require\n"
+        )
+        return subprocess.CompletedProcess(command, 0, stdout=output, stderr="")
+
+    monkeypatch.setattr(script.subprocess, "run", fake_subprocess_run)
+    with pytest.raises(RuntimeError, match="Alembic connected to non-local host"):
+        script._alembic_run(context, "upgrade", "head")
+
+
+def test_alembic_run_aborts_if_connecting_to_unsafe_database(monkeypatch):
+    _stub_run_env(monkeypatch)
+    context = script._RunContext(pg_url=SAFE_URL, alembic_cwd=pathlib.Path("x"), alembic="alembic")
+
+    def fake_subprocess_run(command, **kwargs):
+        output = "ALEMBIC CONNECTING TO: postgresql://postgres:pw@127.0.0.1:5433/vaeloom_prod\n"
+        return subprocess.CompletedProcess(command, 0, stdout=output, stderr="")
+
+    monkeypatch.setattr(script.subprocess, "run", fake_subprocess_run)
+    with pytest.raises(RuntimeError, match="Alembic connected to unsafe database"):
+        script._alembic_run(context, "upgrade", "head")
+
+
+def test_alembic_env_verification_mode_refuses_remote_host(monkeypatch):
+    import importlib.util
+
+    env_path = pathlib.Path(__file__).resolve().parents[1] / "alembic" / "env.py"
+    spec = importlib.util.spec_from_file_location("alembic_env_test", env_path)
+    alembic_env = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = alembic_env
+    spec.loader.exec_module(alembic_env)
+
+    monkeypatch.setenv("VAELOOM_VERIFY_ACTIVE", "1")
+    monkeypatch.setenv(
+        "VAELOOM_TARGET_URL",
+        "postgresql://postgres:pw@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?ssl=require",
+    )
+    with pytest.raises(RuntimeError, match="REFUSED BY ALEMBIC"):
+        alembic_env.get_database_url()
+
+
+def test_alembic_env_blocks_remote_ddl_without_allow_flag(monkeypatch):
+    import importlib.util
+
+    env_path = pathlib.Path(__file__).resolve().parents[1] / "alembic" / "env.py"
+    spec = importlib.util.spec_from_file_location("alembic_env_test_block", env_path)
+    alembic_env = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = alembic_env
+    spec.loader.exec_module(alembic_env)
+
+    monkeypatch.delenv("VAELOOM_VERIFY_ACTIVE", raising=False)
+    monkeypatch.delenv("ALLOW_REMOTE_DDL", raising=False)
+    monkeypatch.delenv("CI", raising=False)
+    monkeypatch.setenv(
+        "VAELOOM_TARGET_URL",
+        "postgresql://postgres:pw@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?ssl=require",
+    )
+    with pytest.raises(RuntimeError, match="REFUSED BY ALEMBIC: Target database URL points to remote host"):
+        alembic_env.get_database_url()
+
+
+def test_alembic_env_permits_remote_ddl_with_allow_flag(monkeypatch):
+    import importlib.util
+
+    env_path = pathlib.Path(__file__).resolve().parents[1] / "alembic" / "env.py"
+    spec = importlib.util.spec_from_file_location("alembic_env_test_allow", env_path)
+    alembic_env = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = alembic_env
+    spec.loader.exec_module(alembic_env)
+
+    monkeypatch.delenv("VAELOOM_VERIFY_ACTIVE", raising=False)
+    monkeypatch.setenv("ALLOW_REMOTE_DDL", "1")
+    monkeypatch.delenv("CI", raising=False)
+    monkeypatch.setenv(
+        "VAELOOM_TARGET_URL",
+        "postgresql://postgres:pw@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?ssl=require",
+    )
+    url = alembic_env.get_database_url()
+    assert "aws-0-ap-south-1.pooler.supabase.com" in url
+
+
+def test_alembic_env_permits_remote_ddl_in_ci(monkeypatch):
+    import importlib.util
+
+    env_path = pathlib.Path(__file__).resolve().parents[1] / "alembic" / "env.py"
+    spec = importlib.util.spec_from_file_location("alembic_env_test_ci", env_path)
+    alembic_env = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = alembic_env
+    spec.loader.exec_module(alembic_env)
+
+    monkeypatch.delenv("VAELOOM_VERIFY_ACTIVE", raising=False)
+    monkeypatch.delenv("ALLOW_REMOTE_DDL", raising=False)
+    monkeypatch.setenv("CI", "true")
+    monkeypatch.setenv(
+        "VAELOOM_TARGET_URL",
+        "postgresql://postgres:pw@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?ssl=require",
+    )
+    url = alembic_env.get_database_url()
+    assert "aws-0-ap-south-1.pooler.supabase.com" in url
+
+
