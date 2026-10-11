@@ -19,6 +19,14 @@ on:
       - 'apps/api/tests/test_migration*'
       - 'apps/api/tests/test_verify_pg_migrations_script.py'
       - 'apps/api/tests/test_run_pg_verification_wrapper.py'
+      # The other two live-PostgreSQL suites the harness runs. Without these the
+      # filter covered only test_migration*, so a change to either of these alone
+      # would never re-run this job -- and these hold the 10 tests that were
+      # skipped for want of a database before scripts/verify_pg_migrations.py
+      # existed. A gate that does not trigger on the tests it is a gate for is not
+      # a gate.
+      - 'apps/api/tests/test_rls_live_pg.py'
+      - 'apps/api/tests/test_ranking_weights_rls.py'
       - 'apps/api/src/api/main.py'
       - 'apps/api/src/api/config.py'
       - 'scripts/verify_pg_migrations.py'
@@ -31,6 +39,8 @@ on:
       - 'apps/api/tests/test_migration*'
       - 'apps/api/tests/test_verify_pg_migrations_script.py'
       - 'apps/api/tests/test_run_pg_verification_wrapper.py'
+      - 'apps/api/tests/test_rls_live_pg.py'
+      - 'apps/api/tests/test_ranking_weights_rls.py'
       - 'apps/api/src/api/main.py'
       - 'apps/api/src/api/config.py'
       - 'scripts/verify_pg_migrations.py'
