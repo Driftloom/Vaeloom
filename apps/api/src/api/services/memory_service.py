@@ -907,6 +907,22 @@ class MemoryService:
         skipped_count = 0
         error_count = 0
 
+        # Validate the whole batch before writing any of it.
+        #
+        # The loop below builds `Memory(...)` directly, so without this an import
+        # could carry a type no active pack declares and the registry's guarantee
+        # would hold only for the three non-import write paths. Validating first is
+        # also what makes the batch atomic: validating as we go would leave
+        # partial rows behind whenever a later item failed, which is worse than
+        # refusing the whole batch -- the caller can retry the good rows knowing
+        # nothing landed.
+        #
+        # Raises `MemoryTypeRejected`, which the router maps to 422. A batch with
+        # one bad type is a client mistake and must not burn the error budget.
+        for item in batch.memories:
+            if item.type:
+                await validate_memory_type(db, item.type)
+
         existing_hashes = set()
         if batch.deduplicate_by_hash and ws_uuid:
             stmt = select(Memory.content_hash).where(

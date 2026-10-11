@@ -198,8 +198,30 @@ def upgrade() -> None:
     _safe(bind, f"ALTER TABLE {_FEEDBACK} ADD COLUMN IF NOT EXISTS workspace_id uuid NULL;")
 
     # 2. The preference vector becomes per-workspace. Drop the old key before adding
-    #    the new one: PostgreSQL will not replace a primary key in place.
+#    the new one: PostgreSQL will not replace a primary key in place.
+    #
+    #    Legacy vectors are deleted first, and not merely left NULL. A primary key
+    #    column is implicitly NOT NULL, so `ADD CONSTRAINT ... PRIMARY KEY` fails
+    #    outright against a table holding rows whose new column is NULL -- which is
+    #    every existing vector. That failure is invisible on an empty database,
+    #    which is exactly how it was found: the verification container had no rows.
+    #    The vectors are derived data that the service rebuilds from feedback, so
+    #    discarding them is the honest outcome of adding the key, and leaving them
+    #    to fail the migration on first contact with real data is not an option.
     _safe(bind, f"ALTER TABLE {_VECTORS} ADD COLUMN IF NOT EXISTS workspace_id uuid NULL;")
+    legacy_vectors = bind.execute(
+        sa.text(f"SELECT count(*) FROM {_VECTORS} WHERE workspace_id IS NULL")
+    ).scalar()
+    if legacy_vectors:
+        logger.info(
+            "0069 discarding %s preference vector(s) with no workspace: they are "
+            "derived data, a primary key column cannot be NULL, and a vector shared "
+            "across every workspace is the cross-workspace leak this column fixes. "
+            "Each profile rebuilds on its next signal.",
+            legacy_vectors,
+        )
+    _safe(bind, f"DELETE FROM {_VECTORS} WHERE workspace_id IS NULL;")
+    _safe(bind, f"ALTER TABLE {_VECTORS} ALTER COLUMN workspace_id SET NOT NULL;")
     _safe(bind, f"ALTER TABLE {_VECTORS} DROP CONSTRAINT IF EXISTS user_preference_vectors_pkey;")
     _safe(
         bind,

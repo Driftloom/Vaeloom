@@ -98,8 +98,20 @@ async def reindex(
     dto: IndexRequest,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
+    workspace_id: str | None = Depends(get_workspace_id),
 ):
     if not current_user:
         raise HTTPException(status_code=401)
-    results = await recommendation_service.reindex(dto.user_id, dto.tenant_id, db)
+    # Same identity derivation as GET /{user_id} and POST /feedback, and for the
+    # same reason. Without it a caller could rebuild another user's preference
+    # vectors from feedback they never left, and -- since 0069 those vectors are
+    # what scope their ranking -- steer somebody else's recommendations.
+    current_uid = str(current_user.get("sub") or current_user.get("user_id", ""))
+    if dto.user_id != current_uid:
+        raise HTTPException(status_code=403, detail="Cannot reindex another user's preferences")
+    # From authenticated context, never the body: a client-supplied workspace id
+    # would be a way to aim the rebuild at a workspace the caller does not hold.
+    results = await recommendation_service.reindex(
+        dto.user_id, dto.tenant_id, db, workspace_id=workspace_id
+    )
     return results

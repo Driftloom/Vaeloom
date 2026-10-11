@@ -29,8 +29,16 @@ class RecommendationService:
             text("""
                 SELECT preference_vector FROM user_preference_vectors
                 WHERE user_id = :user_id AND tenant_id = :tenant_id
+                  AND workspace_id IS NOT DISTINCT FROM :workspace_id
             """),
-            {"user_id": user_id, "tenant_id": tenant_id},
+            {
+                "user_id": user_id,
+                "tenant_id": tenant_id,
+                # Scoped by workspace since 0069. Without it a rating anywhere
+                # steers ranking everywhere, and nothing errors -- the profile
+                # just drifts toward whatever the user last rated.
+                "workspace_id": getattr(dto, "workspace_id", None),
+            },
         )
         pref_row = pref_vector_result.fetchone()
 
@@ -310,7 +318,21 @@ class RecommendationService:
         merged.sort(key=lambda x: x["score"], reverse=True)
         return merged[:limit]
 
-    async def reindex(self, user_id: str | None, tenant_id: str | None, db):
+    async def reindex(
+        self,
+        user_id: str | None,
+        tenant_id: str | None,
+        db,
+        workspace_id: str | None = None,
+    ):
+        """Rebuild preference vectors from feedback.
+
+        ``workspace_id`` is required for the result to be meaningful: since 0069
+        a vector is per-workspace, so averaging feedback from every workspace into
+        one would rebuild the exact cross-workspace profile this scoping exists to
+        prevent. Callers that cannot supply one get the all-zero sentinel rather
+        than a contaminated vector.
+        """
         params: dict[str, Any] = {}
 
         user_clause = ""
@@ -340,20 +362,30 @@ class RecommendationService:
             avg_result = await db.execute(
                 text("""
                     SELECT AVG(embedding)::text FROM memories
-                    WHERE user_id = :uid AND tenant_id = :tid AND embedding IS NOT NULL
+                    WHERE user_id = :uid AND tenant_id = :tid
+                  AND workspace_id IS NOT DISTINCT FROM :wid
+                  AND embedding IS NOT NULL
                 """),
-                {"uid": uid, "tid": tenant_id or "default"},
+                {"uid": uid, "tid": tenant_id or "default", "wid": workspace_id},
             )
             avg_row = avg_result.fetchone()
             if avg_row and avg_row[0]:
                 await db.execute(
                     text("""
-                        INSERT INTO user_preference_vectors (user_id, tenant_id, preference_vector)
-                        VALUES (:uid, :tid, :vector::vector)
-                        ON CONFLICT (user_id, tenant_id)
+                        INSERT INTO user_preference_vectors (user_id, tenant_id, workspace_id, preference_vector)
+                        VALUES (:uid, :tid, :wid, :vector::vector)
+                        ON CONFLICT (user_id, tenant_id, workspace_id)
                         DO UPDATE SET preference_vector = :vector::vector, updated_at = NOW()
                     """),
-                    {"uid": uid, "tid": tenant_id or "default", "vector": avg_row[0]},
+                    {
+                        "uid": uid,
+                        "tid": tenant_id or "default",
+                        # Per-workspace since 0069. A caller with no workspace
+                        # context learns nothing rather than writing a vector that
+                        # every workspace would then read.
+                        "wid": workspace_id or "00000000-0000-0000-0000-000000000000",
+                        "vector": avg_row[0],
+                    },
                 )
                 results.append({"user_id": str(uid), "status": "reindexed"})
 

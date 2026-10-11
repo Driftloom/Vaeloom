@@ -513,3 +513,31 @@ def test_0069_downgrade_restores_the_identical_24_literals():
         f"0069 restores {len(module._FROZEN_TYPES)} literals, 0027 declares "
         f"{len(literals)}; symmetric difference: {set(literals) ^ set(module._FROZEN_TYPES)}"
     )
+
+
+async def test_0069_upgrade_survives_a_populated_preference_vector_table():
+    """A primary key column cannot be NULL, and every legacy vector is NULL.
+
+    This is the defect the empty-container verification could not see: with no
+    rows, `ADD CONSTRAINT ... PRIMARY KEY (user_id, tenant_id, workspace_id)`
+    succeeds, and the migration only fails later against real data. The upgrade
+    must therefore clear legacy vectors before taking the key.
+    """
+    rows = await _query(
+        "SELECT count(*) FROM user_preference_vectors WHERE workspace_id IS NULL;"
+    )
+    assert rows == ["0"], (
+        "no vector may remain workspace-less after 0069: the primary key rejects "
+        f"NULL, so a surviving row means the key was never taken; found {rows}"
+    )
+
+
+async def test_0069_workspace_on_preference_vectors_is_not_null():
+    nullable = await _query(
+        "SELECT is_nullable FROM information_schema.columns "
+        "WHERE table_name='user_preference_vectors' AND column_name='workspace_id';"
+    )
+    assert nullable == ["NO"], (
+        "workspace_id is part of the primary key and must be NOT NULL, otherwise "
+        f"vectors can be written that the key cannot represent; got {nullable}"
+    )

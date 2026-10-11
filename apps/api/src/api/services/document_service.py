@@ -23,6 +23,7 @@ from ..models.schema import (
     WorkspaceUser,
 )
 from .file_security_service import file_security_service
+from .memory_type_packs import validate_memory_type
 from .storage_service import storage_service
 
 logger = logging.getLogger(__name__)
@@ -608,7 +609,13 @@ class DocumentService:
                 workspace_id=w_id,
             )
 
-            # Also create MemoryRecord for lineage parity
+            # Also create MemoryRecord for lineage parity.
+            # Validated through the domain-pack registry: migration 0069 dropped
+            # ck_memory_records_type_valid, so the registry is now the only thing
+            # between a caller and an unvalidated literal here. The value is
+            # currently a constant, which is exactly why this needs to exist --
+            # a constant that is valid today is how the next edit slips through.
+            await validate_memory_type(db, "document")
             mem_rec = MemoryRecord(
                 workspace_id=w_id,
                 type="document",
@@ -1758,6 +1765,10 @@ class DocumentService:
             )
             mem_id = created.id
 
+            # Validated through the domain-pack registry; see the note at the
+            # other MemoryRecord construction site in this module. Migration 0069
+            # removed the database constraint, so this call is the guard.
+            await validate_memory_type(db, "document")
             mem_rec = MemoryRecord(
                 workspace_id=ws_uuid,
                 type="document",
