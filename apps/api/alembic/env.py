@@ -6,12 +6,12 @@ from pathlib import Path
 try:
     from dotenv import load_dotenv
 
-    # Look for .env in current directory or app root
+    # Look for .env in current directory or app root, never overriding explicit shell variables
     env_path = Path(__file__).resolve().parent.parent / ".env"
     if env_path.exists():
-        load_dotenv(env_path)
+        load_dotenv(env_path, override=False)
     else:
-        load_dotenv()
+        load_dotenv(override=False)
 except Exception:
     pass
 
@@ -23,8 +23,8 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from api.database import Base
 from api.models import *  # noqa: F403 — ensure all models are loaded
 
-config = context.config
-if config.config_file_name is not None:
+config = getattr(context, "config", None)
+if config is not None and config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
@@ -50,12 +50,43 @@ def get_database_url() -> str:
         os.environ.get("VAELOOM_TARGET_URL")
         or os.environ.get("DATABASE__URL")
         or os.environ.get("DATABASE_URL")
-        or config.get_main_option("sqlalchemy.url")
+        or (config.get_main_option("sqlalchemy.url") if config else None)
     )
     if url and url.startswith("postgresql://"):
         url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
     if url and "sslmode=" in url:
         url = url.replace("sslmode=", "ssl=")
+
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url or "")
+    db_name = parsed.path.rstrip("/").rsplit("/", 1)[-1]
+    hostname = (parsed.hostname or "").lower()
+
+    if os.environ.get("VAELOOM_VERIFY_ACTIVE") == "1":
+        if not db_name.endswith(("_proof", "_test")):
+            raise RuntimeError(
+                f"REFUSED BY ALEMBIC: VAELOOM_VERIFY_ACTIVE=1 but target database "
+                f"'{db_name}' does not end with _proof or _test."
+            )
+        if hostname not in ("127.0.0.1", "localhost", ""):
+            raise RuntimeError(
+                f"REFUSED BY ALEMBIC: VAELOOM_VERIFY_ACTIVE=1 but target hostname "
+                f"'{hostname}' is not a local address."
+            )
+    else:
+        # Enterprise Safety Guard: Block accidental migration of remote cloud databases
+        # from a local developer machine unless explicitly authorized.
+        if hostname not in ("127.0.0.1", "localhost", ""):
+            allow_remote = os.environ.get("ALLOW_REMOTE_DDL", "").lower() in ("1", "true", "yes")
+            is_ci = os.environ.get("CI", "").lower() in ("1", "true", "yes")
+            if not allow_remote and not is_ci:
+                raise RuntimeError(
+                    f"REFUSED BY ALEMBIC: Target database URL points to remote host '{hostname}'. "
+                    "Running Alembic migrations against a remote/cloud database from a local machine is "
+                    "blocked by default to prevent accidental data modification. "
+                    "If you explicitly intend to migrate this remote database, set ALLOW_REMOTE_DDL=1."
+                )
     return url
 
 
@@ -113,7 +144,10 @@ def run_migrations_online() -> None:
         asyncio.run(run_async_migrations())
 
 
-if context.is_offline_mode():
-    run_migrations_offline()
-else:
-    run_migrations_online()
+try:
+    if context.is_offline_mode():
+        run_migrations_offline()
+    else:
+        run_migrations_online()
+except (NameError, AttributeError):
+    pass

@@ -380,7 +380,16 @@ def downgrade() -> None:
     # 1. Back to the 0027 constraint. IF NOT EXISTS is not available for ADD
     #    CONSTRAINT in this form, so the drop-then-add keeps a rerun working.
     #    A row holding a type outside these 24 makes this raise -- which is the
-    #    correct outcome, and is why upgrade() logs the distinct type list first.
+    #    correct outcome, and is why upgrade() and downgrade() log the distinct type list first.
+    present = bind.execute(
+        sa.text(f"SELECT type, count(*) FROM {_MEMORY} GROUP BY type ORDER BY type")
+    ).fetchall()
+    logger.info(
+        "0068 pre-restore evidence: %s distinct types in %s: %s",
+        len(present),
+        _MEMORY,
+        dict(present),
+    )
     run(f"ALTER TABLE {_MEMORY} DROP CONSTRAINT IF EXISTS {_CHECK};")
     run(_CHECK_SQL)
 
