@@ -13,7 +13,7 @@ historical information)
 - **Python**: 3.12.13 (`apps/api/.python-version`)
 - **FastAPI**: 0.141.1
 - **Database**: PostgreSQL (Supabase pooler
-  `aws-0-ap-south-1.pooler.supabase.com:6543`) / SQLite in-memory test engine
+  `aws-0-[region].pooler.supabase.com:6543`) / SQLite in-memory test engine
 - **Async Framework**: AnyIO / asyncio with `asyncpg` and `aiosqlite`
 - **Initial Verification Status**: FAILING (Critical P0 and P1 defects
   discovered on fresh runtime probe)

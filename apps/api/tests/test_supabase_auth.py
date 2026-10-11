@@ -27,7 +27,7 @@ class TestSupabaseAuth:
                 "sub": test_uid,
                 "email": test_email,
                 "role": "authenticated",
-                "iss": "https://yygakxcttyaeunvkeybx.supabase.co/auth/v1",
+                "iss": "https://mock-project.supabase.co/auth/v1",
                 "exp": 9999999999,
                 "iat": 1000000000,
                 "user_metadata": {"full_name": "Supabase Test User"},
@@ -64,7 +64,7 @@ class TestSupabaseAuth:
             {
                 "sub": test_uid,
                 "email": test_email,
-                "iss": "https://yygakxcttyaeunvkeybx.supabase.co/auth/v1",
+                "iss": "https://mock-project.supabase.co/auth/v1",
                 "exp": 9999999999,
                 "iat": 1000000000,
             },

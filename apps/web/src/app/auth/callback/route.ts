@@ -18,10 +18,12 @@ export async function GET(request: Request) {
   if (code) {
     try {
       const cookieStore = await cookies();
-      const supabaseUrl =
-        process.env['NEXT_PUBLIC_SUPABASE_URL'] || 'https://yygakxcttyaeunvkeybx.supabase.co';
-      const supabaseAnonKey =
-        process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] || 'mock-anon-key-e2e-fallback';
+      const supabaseUrl = process.env['NEXT_PUBLIC_SUPABASE_URL'] || '';
+      const supabaseAnonKey = process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] || '';
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        return NextResponse.redirect(`${origin}/login?error=supabase_not_configured`);
+      }
 
       const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
         cookies: {

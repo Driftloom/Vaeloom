@@ -97,7 +97,7 @@ proposed:
 1. **`TEST-AUTH-SEC-01`**: `test_reject_unsigned_supabase_jwt`
    - _Target File:_ `tests/security/test_auth_zero_trust_gaps.py`
    - _Scenario:_ Attacker sends a JWT with
-     `"iss": "https://yygakxcttyaeunvkeybx.supabase.co/auth/v1"` and
+     `"iss": "https://mock-project.supabase.co/auth/v1"` and
      `alg: "none"` or invalid signature.
    - _Expected Result:_ HTTP 401 Unauthorized; unsigned token is strictly
      rejected.

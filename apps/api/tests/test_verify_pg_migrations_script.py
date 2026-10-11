@@ -1008,7 +1008,7 @@ def test_alembic_run_aborts_if_connecting_to_remote_host(monkeypatch):
 
     def fake_subprocess_run(command, **kwargs):
         output = (
-            "ALEMBIC CONNECTING TO: postgresql+asyncpg://postgres:pw@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?ssl=require\n"
+            "ALEMBIC CONNECTING TO: postgresql+asyncpg://postgres:pw@mock-remote-db.pooler.supabase.com:6543/postgres?ssl=require\n"
         )
         return subprocess.CompletedProcess(command, 0, stdout=output, stderr="")
 
@@ -1042,7 +1042,7 @@ def test_alembic_env_verification_mode_refuses_remote_host(monkeypatch):
     monkeypatch.setenv("VAELOOM_VERIFY_ACTIVE", "1")
     monkeypatch.setenv(
         "VAELOOM_TARGET_URL",
-        "postgresql://postgres:pw@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?ssl=require",
+        "postgresql://postgres:pw@mock-remote-db.pooler.supabase.com:6543/postgres?ssl=require",
     )
     with pytest.raises(RuntimeError, match="REFUSED BY ALEMBIC"):
         alembic_env.get_database_url()
@@ -1062,7 +1062,7 @@ def test_alembic_env_blocks_remote_ddl_without_allow_flag(monkeypatch):
     monkeypatch.delenv("CI", raising=False)
     monkeypatch.setenv(
         "VAELOOM_TARGET_URL",
-        "postgresql://postgres:pw@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?ssl=require",
+        "postgresql://postgres:pw@mock-remote-db.pooler.supabase.com:6543/postgres?ssl=require",
     )
     with pytest.raises(RuntimeError, match="REFUSED BY ALEMBIC: Target database URL points to remote host"):
         alembic_env.get_database_url()
@@ -1082,10 +1082,10 @@ def test_alembic_env_permits_remote_ddl_with_allow_flag(monkeypatch):
     monkeypatch.delenv("CI", raising=False)
     monkeypatch.setenv(
         "VAELOOM_TARGET_URL",
-        "postgresql://postgres:pw@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?ssl=require",
+        "postgresql://postgres:pw@mock-remote-db.pooler.supabase.com:6543/postgres?ssl=require",
     )
     url = alembic_env.get_database_url()
-    assert "aws-0-ap-south-1.pooler.supabase.com" in url
+    assert "mock-remote-db.pooler.supabase.com" in url
 
 
 def test_alembic_env_permits_remote_ddl_in_ci(monkeypatch):
@@ -1102,9 +1102,9 @@ def test_alembic_env_permits_remote_ddl_in_ci(monkeypatch):
     monkeypatch.setenv("CI", "true")
     monkeypatch.setenv(
         "VAELOOM_TARGET_URL",
-        "postgresql://postgres:pw@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?ssl=require",
+        "postgresql://postgres:pw@mock-remote-db.pooler.supabase.com:6543/postgres?ssl=require",
     )
     url = alembic_env.get_database_url()
-    assert "aws-0-ap-south-1.pooler.supabase.com" in url
+    assert "mock-remote-db.pooler.supabase.com" in url
 
 

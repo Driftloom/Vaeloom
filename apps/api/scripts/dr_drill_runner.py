@@ -72,19 +72,21 @@ ACCEPTED_OPEN_TABLES = {
 
 import urllib.parse
 
-POOLER_HOST = os.environ.get("SUPABASE_DB_HOST", "aws-0-ap-south-1.pooler.supabase.com")
+POOLER_HOST = os.environ.get("SUPABASE_DB_HOST", "")
 POOLER_PORT = os.environ.get("SUPABASE_DB_PORT", "5432")
-ADMIN_USER = os.environ.get("SUPABASE_DB_USER", "postgres.yygakxcttyaeunvkeybx")
+ADMIN_USER = os.environ.get("SUPABASE_DB_USER", "")
 ADMIN_PW = os.environ.get("SUPABASE_DB_PASSWORD") or os.environ.get("PGPASSWORD", "")
 ADMIN_PW_URL = urllib.parse.quote_plus(ADMIN_PW) if ADMIN_PW else ""
 
-SOURCE_URL = f"postgresql://{ADMIN_USER}:{ADMIN_PW_URL}@{POOLER_HOST}:{POOLER_PORT}/{SOURCE_DB_NAME}?sslmode=require"
-TARGET_URL = f"postgresql://{ADMIN_USER}:{ADMIN_PW_URL}@{POOLER_HOST}:{POOLER_PORT}/{TARGET_DB_NAME}?sslmode=require"
+SOURCE_URL = f"postgresql://{ADMIN_USER}:{ADMIN_PW_URL}@{POOLER_HOST}:{POOLER_PORT}/{SOURCE_DB_NAME}?sslmode=require" if (POOLER_HOST and ADMIN_USER) else ""
+TARGET_URL = f"postgresql://{ADMIN_USER}:{ADMIN_PW_URL}@{POOLER_HOST}:{POOLER_PORT}/{TARGET_DB_NAME}?sslmode=require" if (POOLER_HOST and ADMIN_USER) else ""
 
 BACKUP_DIR = os.path.join(os.path.dirname(__file__), "..", "backups")
 
 
 async def seed_source_marker():
+    if not POOLER_HOST or not ADMIN_USER:
+        raise RuntimeError("SUPABASE_DB_HOST and SUPABASE_DB_USER environment variables must be configured")
     print(f"[*] Step 1: Seeding disaster recovery marker data into {SOURCE_DB_NAME}...")
     conn = await asyncpg.connect(SOURCE_URL)
     drill_id = str(uuid.uuid4())

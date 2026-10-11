@@ -35,7 +35,7 @@ async def test_reject_unsigned_supabase_jwt(client: AsyncClient, monkeypatch):
         {
             "sub": test_uid,
             "email": test_email,
-            "iss": "https://yygakxcttyaeunvkeybx.supabase.co/auth/v1",
+            "iss": "https://mock-project.supabase.co/auth/v1",
             "exp": 9999999999,
             "iat": 1000000000,
         },

@@ -18,6 +18,8 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml}\"",
     "gen:openapi": "uv run --project apps/api python scripts/gen_openapi.py",
+    "verify:pg": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_pg_verification.ps1",
+    "verify:migrations": "uv run --project apps/api python scripts/verify_pg_migrations.py",
     "clean": "nx reset && rimraf node_modules packages/*/node_modules apps/*/node_modules",
     "prepare": "husky"
   },

@@ -101,9 +101,9 @@ class Settings(BaseSettings):
     vector_store: str = "pgvector"
 
     sso_providers: dict[str, Any] = {}
-    supabase_url: str = "https://yygakxcttyaeunvkeybx.supabase.co"
+    supabase_url: str = ""
     supabase_jwt_secret: str = ""
-    supabase_anon_key: str = "sb_publishable_fCm8-aIVD0DELI_kQYtf0Q_VJ8jAVRD"
+    supabase_anon_key: str = ""
 
     @field_validator("sso_providers", mode="before")
     @classmethod
@@ -288,7 +288,24 @@ class Settings(BaseSettings):
             single_redis = os.environ.get("REDIS_URL", "")
             if single_redis:
                 kwargs["redis__url"] = single_redis
+        if "supabase_url" not in kwargs and not os.environ.get("SUPABASE_URL"):
+            su_alias = os.environ.get("NEXT_PUBLIC_SUPABASE_URL", "")
+            if su_alias:
+                kwargs["supabase_url"] = su_alias
+        if "supabase_anon_key" not in kwargs and not os.environ.get("SUPABASE_ANON_KEY"):
+            sk_alias = os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY", "")
+            if sk_alias:
+                kwargs["supabase_anon_key"] = sk_alias
         super().__init__(**kwargs)
+        # Supabase aliases (NEXT_PUBLIC_SUPABASE_* from frontend env)
+        if not self.supabase_url:
+            alias = os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or os.environ.get("SUPABASE_URL") or ""
+            if alias:
+                object.__setattr__(self, "supabase_url", alias)
+        if not self.supabase_anon_key:
+            alias = os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY") or os.environ.get("SUPABASE_ANON_KEY") or ""
+            if alias:
+                object.__setattr__(self, "supabase_anon_key", alias)
         # Alias: MICROSOFT_* → MS_GRAPH_* (both accepted)
         if not self.ms_graph_client_id:
             alias = os.environ.get("MICROSOFT_CLIENT_ID") or os.environ.get("MICROSOFT_GRAPH_CLIENT_ID") or ""

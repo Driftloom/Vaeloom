@@ -56,11 +56,14 @@ def upgrade() -> None:
     op.execute(
         """
         CREATE OR REPLACE FUNCTION prevent_audit_events_mutation()
-        RETURNS TRIGGER AS $$
+        RETURNS TRIGGER
+        LANGUAGE plpgsql
+        SET search_path = ''
+        AS $$
         BEGIN
             RAISE EXCEPTION 'audit_events is an immutable, append-only log: UPDATE and DELETE operations are forbidden.';
         END;
-        $$ LANGUAGE plpgsql;
+        $$;
         """
     )
     op.execute("DROP TRIGGER IF EXISTS trg_audit_events_immutable ON audit_events;")
