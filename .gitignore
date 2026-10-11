@@ -551,3 +551,85 @@ pnpm-store/
 # Editable-install metadata. This is a Python monorepo with many packages, and
 # `pip install -e` writes *.egg-info next to each one. None are tracked today.
 *.egg-info/
+
+# ---------------------------------------------------------------------------
+# CLI credential stores that never appear in the tree until someone runs a login
+# ---------------------------------------------------------------------------
+# Each of these is created by an interactive auth command, not by the build, so
+# nothing here is ever produced by `pnpm dev` / `pytest`. They are ignored
+# because they are the on-disk half of a credential: the environment variables
+# in `.env` are covered above, and these are the files the same tools read when
+# the variables are absent.
+
+# PyPI upload token. `.netrc` is covered at line 125 but twine prefers .pypirc,
+# so publishing without noticing would have written a token to a tracked path.
+.pypirc
+
+# libpq password file. Relevant now that scripts/run_pg_verification.ps1 drives
+# psql directly; PGPASSWORD-less local runs fall back to this file.
+.pgpass
+
+# curl's --netrc-file format. Distinct from `.netrc`, so the rule at line 125
+# does not catch it.
+.authinfo
+
+# gcloud's application_default_credentials.json lands in this directory.
+.gcloud/
+
+# `aws configure` writes credentials and config here.
+.aws/
+
+# `docker login` writes base64 registry auths to this config.
+.docker/
+
+# Vault CLI token.
+.vault-token
+
+# ---------------------------------------------------------------------------
+# Key material with no existing rule
+# ---------------------------------------------------------------------------
+# `*.cer` is ignored at line 130, `*.crt` at 129, and `*.kdbx` at 148. These are
+# the sibling suffixes the same tools emit, plus two formats the ignore file has
+# no coverage for at all.
+
+# OpenVPN profiles carry the client private key inline in the config body.
+*.ovpn
+
+# PuTTY private keys. This repo is developed on Windows, so ppkgen is reachable
+# without leaving the toolchain that pnpm/Python already require.
+*.ppk
+
+# KeePass 1.x databases; `*.kdbx` is covered but the legacy extension is not.
+*.kdb
+
+# OpenSSL certificate bodies, as distinct from the existing `*.cer`.
+*.cert
+
+# ---------------------------------------------------------------------------
+# Env files outside the `.env` naming the rules above assume
+# ---------------------------------------------------------------------------
+# The rules at lines 99-112 enumerate specific `.env` names, which leaves two
+# gaps: a file called `config.env` (matched by nothing today) and any future
+# `.env.staging.example`-style name that a rule starts matching by accident.
+# `.example` / `.template` stay tracked, so the templates remain committable.
+*.env
+
+# ---------------------------------------------------------------------------
+# Terraform secrets without disturbing the tracked config
+# ---------------------------------------------------------------------------
+# `*.tfstate` is ignored at lines 420-421. `*.tfvars` is deliberately NOT
+# ignored: infra/terraform/environments/{dev,staging,prod}/terraform.tfvars are
+# tracked and carry sizing and network config, so a blanket rule would hide
+# legitimate edits to them. The auto-generated variants are the ones that carry
+# credentials, and none of them are tracked.
+*.auto.tfvars
+*.auto.tfvars.json
+*.tfvars.json
+
+# ---------------------------------------------------------------------------
+# Secret-bearing manifests outside the path already scoped at line 113
+# ---------------------------------------------------------------------------
+# infra/kubernetes/secrets/*.yaml is covered, but a manifest written to any other
+# directory is not. No tracked file matches this pattern today.
+*secret*.yaml
+*secret*.yml
