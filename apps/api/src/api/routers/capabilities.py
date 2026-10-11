@@ -24,6 +24,7 @@ from ..schemas.capability_draft import (
     Severity,
 )
 from ..services.capability_usage_service import record_usage
+from ..services.audit import AuditLogger
 from ..services.github_skills_sync import GitHubSkillSyncResult
 from ..services.skill_catalog_service import (
     AUTONOMY_VALUES,
@@ -1196,6 +1197,61 @@ def _validate_config_claims(category: str, config: dict[str, Any] | None) -> Non
         )
 
 
+async def _audit(
+    db: AsyncSession,
+    *,
+    action: str,
+    capability_id: str,
+    name: str,
+    category: str,
+    user_id: str | None,
+    tenant_id: str | None,
+    workspace_id: uuid.UUID,
+    details: dict[str, Any] | None = None,
+) -> None:
+    """Record a capability mutation in ``audit_events``.
+
+    This is the durable answer to "who enabled or deleted this, when, and from
+    where". Nothing else in the capability path persists it: ``usage_count``
+    tracks executions, not intent, and ``services.audit.AuditMiddleware`` is
+    defined but never registered in ``main.py`` -- so before this, the answer
+    did not exist anywhere.
+
+    Scoped to capability mutations by choice. A capability is a thing an
+    operator grants execution rights to, so who changed it is a compliance
+    question. Registering ``AuditMiddleware`` globally would add a database
+    write to every request in the product to answer the same question for
+    reads.
+
+    Takes primitives rather than the ORM row so it can be called after a
+    DELETE, where the instance is detached and its attributes are gone.
+
+    Never raises. An audit-table outage must not become a denial of service on
+    the operation itself, which is the same trade ``capability_usage_service``
+    makes. The failure is logged at ERROR rather than WARNING so it is
+    alertable, and the caller still returns its real result.
+    """
+    try:
+        await AuditLogger(db).log(
+            action,
+            resource_type="capability",
+            resource_id=capability_id,
+            details={"name": name, "category": category, **(details or {})},
+            tenant_id=tenant_id,
+            workspace_id=str(workspace_id),
+            user_id=user_id,
+        )
+        await db.commit()
+    except Exception:
+        logger.exception(
+            "Failed to record capability audit event %s for %s; the mutation "
+            "itself succeeded and was NOT rolled back.",
+            action,
+            name,
+        )
+        await db.rollback()
+
+
 @router.post("", response_model=CapabilityResponse, status_code=status.HTTP_201_CREATED)
 async def create_capability(
     payload: CreateCapabilityRequest,
@@ -1310,6 +1366,18 @@ async def create_capability(
     db.add(cap)
     await db.commit()
     await db.refresh(cap)
+
+    await _audit(
+        db,
+        action="capability.created",
+        capability_id=str(cap.id),
+        name=cap.name,
+        category=cap.category,
+        user_id=user_id,
+        tenant_id=tenant_id,
+        workspace_id=wid,
+        details={"enabled": cap.enabled, "type": cap.type},
+    )
 
     logger.info(f"Created capability '{cap.name}' ({cap.category}) for workspace {wid}")
     return _serialize_cap(cap)
@@ -1458,6 +1526,26 @@ async def update_capability(
     # cache that would still answer with the pre-write set.
     if cap.category == "tool":
         invalidate_tool_enable_cache(str(wid))
+
+    # Record what actually changed, not just that something changed. An
+    # enable/disable is a privilege decision and `enabled_after` is the field an
+    # operator needs when asking "who turned this off and when".
+    if payload.enabled is not None or config_patch or payload.status is not None:
+        await _audit(
+            db,
+            action="capability.updated",
+            capability_id=str(cap.id),
+            name=cap.name,
+            category=cap.category,
+            user_id=user_id,
+            tenant_id=None,
+            workspace_id=wid,
+            details={
+                "enabled_after": cap.enabled,
+                "status_after": cap.status,
+                "config_keys_changed": sorted(config_patch.keys()) if config_patch else [],
+            },
+        )
     return _serialize_cap(cap)
 
 
@@ -1509,8 +1597,29 @@ async def delete_capability(
     if cap.category == "tool":
         unregister_dynamic_tools(cap.name, workspace_id=str(wid))
 
+    # Captured before the row goes: after `db.delete()` + commit the instance
+    # is detached and its attributes are gone, and the id is the thing the
+    # audit trail is keyed on.
+    deleted_id = str(cap.id)
+    deleted_name = cap.name
+    deleted_category = cap.category
+    deleted_type = cap.type
+
     await db.delete(cap)
     await db.commit()
+
+    await _audit(
+        db,
+        action="capability.deleted",
+        capability_id=deleted_id,
+        name=deleted_name,
+        category=deleted_category,
+        user_id=user_id,
+        tenant_id=None,
+        workspace_id=wid,
+        details={"type": deleted_type, "usage_count_at_delete": int(cap.usage_count or 0)},
+    )
+
     # Deleting a disabled tool row must un-block it, or the cached set keeps
     # denying a tool the workspace no longer holds a row for.
     if cap.category == "tool":

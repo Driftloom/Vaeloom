@@ -295,6 +295,138 @@ class TestRateLimits:
         assert self._route("/validate", method="POST") is None
 
 
+class TestAuditTrail:
+    """PR2C: who changed a capability, when, and from where.
+
+    Nothing persisted this before. `usage_count` tracks executions rather than
+    intent, and `services.audit.AuditMiddleware` is defined but never
+    registered in `main.py`, so the answer existed nowhere.
+    """
+
+    @staticmethod
+    async def _events(db_session, resource_id: str) -> list:
+        from sqlalchemy import text
+
+        rows = await db_session.execute(
+            text(
+                "SELECT action, resource, resource_id, actor_id, metadata "
+                "FROM audit_events WHERE resource = 'capability' AND resource_id = :rid "
+                "ORDER BY created_at"
+            ),
+            {"rid": resource_id},
+        )
+
+        class _R:
+            def __init__(self, row):
+                self.action, self.resource, self.resource_id, self.actor_id, self.metadata = row
+
+        return [_R(r) for r in rows.fetchall()]
+
+    async def test_create_patch_and_delete_are_each_recorded(self, client: AsyncClient, db_session):
+        headers, _ = await _make_owner(client, "audit-trail")
+
+        created = await client.post(
+            "/api/v1/capabilities",
+            json={"name": "audited-tool", "category": "tool", "description": "d"},
+            headers=headers,
+        )
+        assert created.status_code == 201
+        cap_id = created.json()["id"]
+
+        patched = await client.patch(
+            f"/api/v1/capabilities/{cap_id}",
+            json={"enabled": False},
+            headers=headers,
+        )
+        assert patched.status_code == 200
+
+        deleted = await client.delete(f"/api/v1/capabilities/{cap_id}", headers=headers)
+        assert deleted.status_code == 204
+
+        events = await self._events(db_session, cap_id)
+        assert [e.action for e in events] == [
+            "capability.created",
+            "capability.updated",
+            "capability.deleted",
+        ]
+        for event in events:
+            assert event.resource == "capability"
+            assert event.actor_id, "every audit event must name an actor"
+
+    async def test_an_enable_toggle_records_the_state_it_landed_on(self, client: AsyncClient, db_session):
+        """The field an operator actually asks for after an incident."""
+        import json
+
+        headers, _ = await _make_owner(client, "audit-toggle")
+        created = await client.post(
+            "/api/v1/capabilities",
+            json={"name": "toggle-audited", "category": "tool", "description": "d"},
+            headers=headers,
+        )
+        cap_id = created.json()["id"]
+
+        await client.patch(
+            f"/api/v1/capabilities/{cap_id}",
+            json={"enabled": False},
+            headers=headers,
+        )
+
+        updated = [
+            e
+            for e in await self._events(db_session, cap_id)
+            if e.action == "capability.updated"
+        ]
+        assert len(updated) == 1
+        metadata = json.loads(updated[0].metadata)
+        assert metadata["enabled_after"] is False
+        assert metadata["name"] == "toggle-audited"
+        assert metadata["workspace_id"]
+
+    async def test_a_read_records_nothing(self, client: AsyncClient, db_session):
+        """Negative control for the audit hook.
+
+        The trail is scoped to mutations. If reads started writing here, this
+        would become a per-request database write for no compliance gain.
+        """
+        headers, _ = await _make_owner(client, "audit-read")
+        created = await client.post(
+            "/api/v1/capabilities",
+            json={"name": "read-audited", "category": "tool", "description": "d"},
+            headers=headers,
+        )
+        cap_id = created.json()["id"]
+        before = len(await self._events(db_session, cap_id))
+
+        for _ in range(3):
+            assert (await client.get(f"/api/v1/capabilities/{cap_id}", headers=headers)).status_code == 200
+        assert (await client.get("/api/v1/capabilities", headers=headers)).status_code == 200
+
+        assert len(await self._events(db_session, cap_id)) == before
+
+    async def test_a_rejected_mutation_records_nothing(self, client: AsyncClient, db_session):
+        """A capability the server refused must not appear in the trail."""
+        headers, _ = await _make_owner(client, "audit-reject")
+
+        denied = await client.post(
+            "/api/v1/capabilities",
+            json={"name": "bad/slash", "category": "tool", "description": "d"},
+            headers=headers,
+        )
+        assert denied.status_code == 400
+
+        from sqlalchemy import text
+
+        count = (
+            await db_session.execute(
+                text(
+                    "SELECT COUNT(*) FROM audit_events WHERE resource = 'capability' "
+                    "AND metadata LIKE '%bad/slash%'"
+                )
+            )
+        ).scalar_one()
+        assert count == 0
+
+
 class TestConfigRedaction:
     """S17: `config` is an unvalidated JSONB blob returned verbatim."""
 
