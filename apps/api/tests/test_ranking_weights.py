@@ -306,7 +306,7 @@ async def test_learned_weights_become_reachable_after_provisioning(db_session, m
     assert float(rows[0].user_preference) == rw.DEFAULT_WEIGHTS["user_preference"]
 
     # 2. Rate everything useful, enough to clear MIN_SAMPLES.
-    await _add_feedback(db_session, user, useful=True, count=20)
+    await _add_feedback(db_session, user, useful=True, count=20, workspace=ws)
     await rw.record_feedback_signal(
         db_session, user_id=user, workspace_id=ws, useful=True
     )
@@ -488,9 +488,13 @@ def _feedback_ddl() -> str:
     # IF NOT EXISTS: the profile and recommendation seeders both need this
     # table, and a test that calls both must not fail on the second CREATE.
     return (
+        # workspace_id since migration 0069. Hand-maintained because SQLite
+        # builds this table from SQL rather than from an ORM model, so it has to
+        # track the migration by hand -- a drift the suite surfaced loudly rather
+        # than quietly scoring against the wrong schema.
         "CREATE TABLE IF NOT EXISTS recommendation_feedback ("
         "id TEXT PRIMARY KEY, recommendation_id TEXT, user_id TEXT, "
-        "tenant_id TEXT, useful INTEGER, created_at TIMESTAMP)"
+        "tenant_id TEXT, useful INTEGER, workspace_id TEXT, created_at TIMESTAMP)"
     )
 
 
@@ -505,15 +509,16 @@ async def _seed_profile(db_session, *, pref: float = 0.1):
     return ws, user
 
 
-async def _add_feedback(db_session, user, useful: bool, count: int):
+async def _add_feedback(db_session, user, useful: bool, count: int, workspace=None):
     for _ in range(count):
         await db_session.execute(
             text(
                 "INSERT INTO recommendation_feedback "
-                "(id, recommendation_id, user_id, useful) VALUES (:id, :r, :u, :ok)"
+                "(id, recommendation_id, user_id, useful, workspace_id) "
+                "VALUES (:id, :r, :u, :ok, :ws)"
             ),
             {"id": str(uuid.uuid4()), "r": str(uuid.uuid4()), "u": str(user),
-             "ok": 1 if useful else 0},
+             "ok": 1 if useful else 0, "ws": str(workspace)},
         )
 
 
@@ -526,7 +531,7 @@ async def _profile_row(db_session, ws):
 async def test_all_useful_signal_raises_weight_and_stores_sample_size(db_session):
     """The load-bearing path: a real profile really does get re-weighted."""
     ws, user = await _seed_profile(db_session, pref=0.1)
-    await _add_feedback(db_session, user, useful=True, count=20)
+    await _add_feedback(db_session, user, useful=True, count=20, workspace=ws)
 
     await rw.record_feedback_signal(
         db_session, user_id=str(user), workspace_id=str(ws), useful=True
@@ -547,7 +552,7 @@ async def test_repeated_unhelpful_signals_converge_within_the_check_bounds(db_se
     at the single-step values the arithmetic tests check.
     """
     ws, user = await _seed_profile(db_session, pref=0.5)
-    await _add_feedback(db_session, user, useful=False, count=50)
+    await _add_feedback(db_session, user, useful=False, count=50, workspace=ws)
 
     for _ in range(40):
         await rw.record_feedback_signal(
@@ -585,7 +590,7 @@ async def test_missing_workspace_is_a_noop_not_a_cross_workspace_write(db_sessio
     let an unscoped rating steer whichever profile happened to match the user.
     """
     ws, user = await _seed_profile(db_session, pref=0.1)
-    await _add_feedback(db_session, user, useful=True, count=20)
+    await _add_feedback(db_session, user, useful=True, count=20, workspace=ws)
 
     await rw.record_feedback_signal(
         db_session, user_id=str(user), workspace_id=None, useful=True
@@ -665,13 +670,18 @@ async def test_owner_can_record_feedback_and_learn(db_session):
     ws, user = await _seed_profile(db_session, pref=0.1)
     owner = str(user)
     rec_id = await _seed_recommendation(db_session, owner)
-    await _add_feedback(db_session, user, useful=True, count=0)
+    await _add_feedback(db_session, user, useful=True, count=0, workspace=ws)
 
     svc = RecommendationService()
     for _ in range(12):
         row = await svc.record_feedback(
             _feedback_dto(rec_id, workspace_id=str(ws)), db_session,
             caller_user_id=owner,
+            # From the router this comes from authenticated context. The service
+            # takes it explicitly, so a caller that forgets it writes a
+            # quarantined row the aggregate correctly ignores -- and this test
+            # asserts the row actually learns.
+            workspace_id=str(ws),
         )
         assert row is not None, "the owner must get a feedback row back"
 

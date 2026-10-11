@@ -181,11 +181,41 @@ class TestRecommendationsRouter:
         assert res.status_code == 200
         assert isinstance(res.json(), list)
 
+    @staticmethod
+    def _caller_sub(headers: dict) -> str:
+        from api.config import settings
+        import jwt as pyjwt
+
+        token = headers["Authorization"].replace("Bearer ", "")
+        return pyjwt.decode(
+            token, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
+        )["sub"]
+
     async def test_index_success(self, client: AsyncClient):
         headers = await self._auth_header(client)
-        self._svc.reindex.return_value = [{"user_id": "u1", "status": "reindexed"}]
+        caller = self._caller_sub(headers)
+        self._svc.reindex.return_value = [{"user_id": caller, "status": "reindexed"}]
         res = await client.post("/api/v1/recommendations/index", json={
-            "user_id": "u1", "tenant_id": "default",
+            "user_id": caller, "tenant_id": "default",
         }, headers=headers)
         assert res.status_code == 200
         assert isinstance(res.json(), list)
+
+    async def test_index_rejects_another_users_id(self, client: AsyncClient):
+        """Ownership: a rebuild aimed at someone else is a steering primitive.
+
+        Since 0069 the preference vectors are what scope that user's ranking, so
+        rebuilding another user's is not a nuisance -- it moves their
+        recommendations. Exactly 403: the caller proved they hold a token, so
+        "not yours" is the truthful answer, matching the sibling endpoints.
+        """
+        headers = await self._auth_header(client)
+        res = await client.post("/api/v1/recommendations/index", json={
+            "user_id": "somebody-else", "tenant_id": "default",
+        }, headers=headers)
+        assert res.status_code == 403, (
+            f"expected 403 for another user's id, got {res.status_code}: {res.text}"
+        )
+        assert not self._svc.reindex.called, (
+            "the service must not be reached at all when ownership fails"
+        )
