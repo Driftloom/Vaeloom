@@ -129,14 +129,112 @@ jobs:
     needs: [build-and-push]
     steps:
       - uses: actions/checkout@v7
+
+      # Previously this job started nothing and left BASE_URL at its
+      # localhost default, so k6 ran against a closed port and this gate could
+      # only ever block every deploy. The `Check thresholds` step below it was
+      # an `echo`, which reads as verification but asserts nothing -- and
+      # grafana/k6-action already fails the step when a threshold breaches, so
+      # the echo added no signal either way.
+      #
+      # Raising the API is now part of the gate. If the service cannot start,
+      # this job fails loudly instead of measuring nothing.
+      - name: Start datastores
+        run: |
+          # Only postgres and redis. The `api` service is deliberately not used:
+          # its entrypoint is `alembic upgrade head && uvicorn ...`, and the
+          # migration chain grants to and creates policies `TO` the Supabase
+          # roles `postgres`, `authenticated` and `service_role`. The compose
+          # postgres image is created with POSTGRES_USER=vaeloom, so none of
+          # those roles exist and alembic aborts on `role "service_role" does
+          # not exist`. Observed locally as a 121-restart crash loop that never
+          # bound a port. The roles are provisioned explicitly below instead.
+          docker compose -f docker-compose.yml up -d postgres redis
+
+      - name: Provision Supabase-compatible roles
+        run: |
+          # Mirrors scripts/verify_pg_migrations.py:NONLOGIN_ROLES. They exist
+          # only so `GRANT ... TO` and `CREATE POLICY ... TO` resolve; on
+          # Supabase they are not login roles either.
+          docker compose -f docker-compose.yml exec -T postgres psql -U vaeloom -d vaeloom -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE postgres LOGIN SUPERUSER;
+          CREATE ROLE authenticated NOLOGIN;
+          CREATE ROLE service_role NOLOGIN;
+          SQL
+
+      - name: Run migrations
+        env:
+          VAELOOM_TARGET_URL: postgresql+asyncpg://vaeloom:vaeloom_dev@localhost:5432/vaeloom
+          DATABASE__URL: postgresql+asyncpg://vaeloom:vaeloom_dev@localhost:5432/vaeloom
+          JWT_SECRET: ci-loadtest-jwt-secret-32-chars-long!!
+          ENCRYPTION_KEY: ci-loadtest-encryption-key-for-loadtest-40chars!!
+          OTEL_SDK_DISABLED: 'true'
+        run: |
+          # Run from apps/api: alembic resolves script_location relative to the
+          # working directory, and the repo has no alembic.ini at the root, so
+          # running from the root fails with "No 'script_location' key found in
+          # configuration".
+          #
+          # VAELOOM_TARGET_URL is set deliberately. get_database_url() prefers
+          # it over DATABASE__URL, and a checked-in `.env` carries a remote
+          # Supabase URL that the Remote-DDL guard would otherwise refuse --
+          # correctly. This pins the target to the container.
+          cd apps/api
+          uv run python -m alembic upgrade head
+
+      - name: Start API under test
+        env:
+          VAELOOM_TARGET_URL: postgresql+asyncpg://vaeloom:vaeloom_dev@localhost:5432/vaeloom
+          DATABASE__URL: postgresql+asyncpg://vaeloom:vaeloom_dev@localhost:5432/vaeloom
+          REDIS__URL: redis://localhost:6379/0
+          RATE_LIMIT_REDIS_URL: redis://localhost:6379/1
+          JWT_SECRET: ci-loadtest-jwt-secret-32-chars-long!!
+          ENCRYPTION_KEY: ci-loadtest-encryption-key-for-loadtest-40chars!!
+          ALLOWED_ORIGINS: '["https://app.vaeloom.app"]'
+          SERVICE_ENVIRONMENT: ci
+          OTEL_SDK_DISABLED: 'true'
+          TEMPORAL_ENABLED: 'false'
+        run: |
+          # `local` would turn on SQL echo (database.py:22
+          # `settings.service_environment == "local"`), which logs every query
+          # and inflates the very latency numbers this gate exists to measure.
+          cd apps/api
+          nohup uv run python -m uvicorn api.main:app --host 127.0.0.1 --port 8000 \
+            > "$RUNNER_TEMP/api.log" 2>&1 &
+          echo "$!" > "$RUNNER_TEMP/api.pid"
+
+      - name: Wait for API readiness
+        run: |
+          # /health/ready returns HTTP 200 even when a dependency is down and
+          # the body reads "status": "degraded", so a bare HTTP probe would
+          # happily pass an API with no database. Assert the body instead.
+          for i in $(seq 1 60); do
+            body=$(curl -fsS http://127.0.0.1:8000/health/ready 2>/dev/null || true)
+            if echo "$body" | grep -q '"status":"ok"'; then
+              echo "API ready after $((i * 10))s"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::API never reported status=ok within 600s"
+          tail -100 "$RUNNER_TEMP/api.log" || true
+          exit 1
+
       - name: Run k6 smoke test
         uses: grafana/k6-action@v0.3.1
+        env:
+          BASE_URL: http://127.0.0.1:8000
         with:
           filename: testing/performance/k6-script.js
           flags: --vus 10 --duration 30s
-      - name: Check thresholds
-        run: |
-          echo "Load test gate passed"
+
+      # Thresholds live in the k6 script itself and grafana/k6-action already
+      # fails the step when one breaches, so there is no separate assertion
+      # step to add here. The previous `echo "Load test gate passed"` was the
+      # only thing between a real measurement and a green checkmark.
+      - name: Dump API logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.yml logs api | tail -200
 
   deploy:
     name: Deploy to ${{ github.event.inputs.environment || 'staging' }}
