@@ -43,24 +43,25 @@ The short version:
 
 Run all commands from the **repository root** unless specified otherwise.
 
-| Action                           | Command                                                                                                                                             |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Frontend dev                     | `pnpm dev:web` (or `cd apps/web && pnpm next dev -p 3000` / `make dev-web` on Unix)                                                                 |
-| API dev                          | `pnpm dev:be` (or `make dev-be` on Unix)                                                                                                            |
-| Background queue worker          | `uv run --project apps/api python -m api.workers.queue_worker` (or `make dev-worker`)                                                               |
-| Install Node dependencies        | `pnpm install`                                                                                                                                      |
-| Install Playwright Chromium      | `uv run --project apps/api playwright install chromium` (required for resume PDF builds)                                                            |
-| Backend tests (scoped)           | `uv run --project apps/api python -m pytest apps/api/tests/<path> -q` (or `cd apps/api && uv run python -m pytest <path> -q`)                       |
-| Backend tests (serial, reliable) | `uv run --project apps/api python -m pytest apps/api/tests/ -q -o addopts=""` (or in `apps/api`: `uv run python -m pytest tests/ -q -o addopts=""`) |
-| Backend tests + coverage         | `uv run --project apps/api python -m pytest apps/api/tests/ --cov=api --cov-report=term -q`                                                         |
-| Web tests                        | `cd apps/web && npx jest` (or `pnpm --filter @vaeloom/web test`)                                                                                    |
-| Web typecheck                    | `cd apps/web && npx tsc --noEmit`                                                                                                                   |
-| Typecheck all                    | `pnpm typecheck`                                                                                                                                    |
-| Lint all                         | `pnpm lint`                                                                                                                                         |
-| Regenerate OpenAPI               | `pnpm gen:openapi`                                                                                                                                  |
-| Regenerate memory type union     | `python scripts/gen_memory_type_union.py` (`--check` to verify in CI)                                                                               |
-| Regenerate UI design tokens      | `python scripts/gen_tokens.py` (`--check` to verify in CI)                                                                                          |
-| Verify PG migrations (local)     | `pnpm verify:pg` (or `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_pg_verification.ps1`)                                         |
+| Action                           | Command                                                                                                                                                                                                                                                       |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend dev                     | `pnpm dev:web` (or `cd apps/web && pnpm next dev -p 3000` / `make dev-web` on Unix)                                                                                                                                                                           |
+| API dev                          | `pnpm dev:be` (or `make dev-be` on Unix)                                                                                                                                                                                                                      |
+| Background queue worker          | `uv run --project apps/api python -m api.workers.queue_worker` (or `make dev-worker`)                                                                                                                                                                         |
+| Install Node dependencies        | `pnpm install`                                                                                                                                                                                                                                                |
+| Install Playwright Chromium      | `uv run --project apps/api playwright install chromium` (required for resume PDF builds)                                                                                                                                                                      |
+| Backend tests (scoped)           | `uv run --project apps/api python -m pytest apps/api/tests/<path> -q` (or `cd apps/api && uv run python -m pytest <path> -q`)                                                                                                                                 |
+| Backend tests (serial, reliable) | `uv run --project apps/api python -m pytest apps/api/tests/ -q -o addopts=""` (or in `apps/api`: `uv run python -m pytest tests/ -q -o addopts=""`)                                                                                                           |
+| Backend tests + coverage         | `uv run --project apps/api python -m pytest apps/api/tests/ --cov=api --cov-report=term -q`                                                                                                                                                                   |
+| Web tests                        | `cd apps/web && npx jest` (or `pnpm --filter @vaeloom/web test`)                                                                                                                                                                                              |
+| Web typecheck                    | `cd apps/web && npx tsc --noEmit`                                                                                                                                                                                                                             |
+| Typecheck all                    | `pnpm typecheck`                                                                                                                                                                                                                                              |
+| Lint all                         | `pnpm lint`                                                                                                                                                                                                                                                   |
+| Regenerate OpenAPI               | `pnpm gen:openapi`                                                                                                                                                                                                                                            |
+| Regenerate memory type union     | `python scripts/gen_memory_type_union.py` (`--check` to verify in CI)                                                                                                                                                                                         |
+| Regenerate UI design tokens      | `python scripts/gen_tokens.py` (`--check` to verify in CI)                                                                                                                                                                                                    |
+| Verify PG migrations (local)     | `pnpm verify:pg` (or `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_pg_verification.ps1`)                                                                                                                                                   |
+| Prove the memory rollback        | `pnpm verify:pg` proves apply/isolate/rollback against a disposable pg16. Steps 3-6 plant a row whose type only a temporary pack allows and require the downgrade to REFUSE, naming the constraint and the value. A downgrade that cannot fail is not a test. |
 
 > [!WARNING] **Do not run `uv run --project apps/api` inside `apps/api`**:
 > `--project apps/api` is relative to the current working directory. If you are
@@ -264,10 +265,17 @@ Run them with `-o addopts=""`.
 - **`user_preference_vectors.preference_vector` is not wired into ranking.**
   `search_ranking.py` consumes structured `preferred_tags` / `preferred_types`;
   the embedding column is read only by `recommendation_service.generate()`.
-- **Known gaps, deliberately left**: `memory_records` still carries its own
-  frozen `ck_memory_records_type_valid`, and `import_memories` builds
-  `Memory(...)` directly, bypassing the pack registry. The guarantee today is
-  "the three service write paths validate", not "all memory writes".
+- **Closed in 0069.** `memory_records` no longer carries its own frozen
+  `ck_memory_records_type_valid`, and `import_memories` validates the whole
+  batch through the pack registry before writing any of it. The guarantee is now
+  **all four service write paths validate**, not three of four.
+
+  The two `document_service` `MemoryRecord(...)` sites validate too. Since 0069
+  removed the database constraint, they are the only guard left on
+  `memory_records.type`. Both write the constant `"document"`, which is valid,
+  so this changes no behaviour today - its purpose is that a future edit to
+  either constant cannot slip past the last remaining check. **A third
+  `MemoryRecord(` call site added to that module must validate as well.**
 
 ---
 
@@ -315,11 +323,17 @@ Enforced here, not aspirational.
   the router (`apps/api/src/api/orchestrator/router.py`) returns `reflection`.
   The drift is between `router.py` and the fixture. Reconcile one of them
   deliberately; do not edit the fixture silently.
-- **`recommendation_feedback` has no `workspace_id`**, so `user_preference`
-  learning aggregates on `user_id` alone — a rating in one workspace moves the
-  profile in another. `POST /feedback` enforces `rec_user_id == caller` (403);
-  **two sibling endpoints still take `user_id` from the body with no ownership
-  compare**.
+- **Preference learning is workspace-scoped since 0069.**
+  `recommendation_feedback` has a nullable `workspace_id` and is deliberately
+  NOT backfilled - the parent `recommendations` table has no workspace either,
+  so a backfill would be a guess, and a guessed workspace is the contamination
+  the column prevents. Learning filters on an exact workspace match, so legacy
+  `NULL` rows are quarantined and contribute nothing. `user_preference_vectors`
+  is keyed by `(user_id, tenant_id, workspace_id)`; legacy vectors are
+  discarded, not migrated. **Every endpoint derives `workspace_id` from
+  authenticated context - never from a body.** `POST /feedback` and
+  `POST /index` both enforce that the caller is the subject (403 otherwise), and
+  `POST /index` takes `workspace_id` from context.
 - **Enterprise auth is partial** — SAML exists in
   `apps/api/src/api/services/saml.py` with real `signxml` but is not wired to
   the router; RBAC is a dependency-injection helper, not middleware.
@@ -365,16 +379,16 @@ plugins/
 
 **Where to look**
 
-| Thing                            | Path                                                               |
-| -------------------------------- | ------------------------------------------------------------------ |
-| Phase contracts (governing spec) | `specs/phase-contracts/` — start `00-master-index.md`              |
-| Execution status                 | `specs/phase-contracts/EXECUTION-STATUS.md`                        |
-| Phase evidence, gates, handoffs  | `evidence/phases/<track>/<track>-pXX/`                             |
-| Architecture decisions           | `docs/adr/ADR-001…ADR-045`                                         |
-| Coding guidelines                | `docs/coding-guidelines/GUIDELINES.md` & `EXAMPLES.md`             |
-| Language standards               | `docs/engineering/Coding-Standards.md`                             |
-| OpenAPI (generated, committed)   | `specs/api/openapi.yaml`, `docs/backend/openapi.yaml`              |
-| Migrations                       | `apps/api/alembic/versions/` — head is `0068_memory_type_packs.py` |
+| Thing                            | Path                                                                        |
+| -------------------------------- | --------------------------------------------------------------------------- |
+| Phase contracts (governing spec) | `specs/phase-contracts/` — start `00-master-index.md`                       |
+| Execution status                 | `specs/phase-contracts/EXECUTION-STATUS.md`                                 |
+| Phase evidence, gates, handoffs  | `evidence/phases/<track>/<track>-pXX/`                                      |
+| Architecture decisions           | `docs/adr/ADR-001…ADR-045`                                                  |
+| Coding guidelines                | `docs/coding-guidelines/GUIDELINES.md` & `EXAMPLES.md`                      |
+| Language standards               | `docs/engineering/Coding-Standards.md`                                      |
+| OpenAPI (generated, committed)   | `specs/api/openapi.yaml`, `docs/backend/openapi.yaml`                       |
+| Migrations                       | `apps/api/alembic/versions/` — head is `0069_memory_workspace_isolation.py` |
 
 A knowledge graph of the codebase lives in `graphify-out/` — useful for "who
 calls this" / "what depends on that" before you grep.

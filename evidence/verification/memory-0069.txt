@@ -1,0 +1,100 @@
+Memory closure — migration 0069 evidence
+=======================================
+
+Run: 2026-11-11
+Command: pnpm verify:pg  (scripts/run_pg_verification.ps1)
+Result: VERIFICATION PASSED (exit 0), all nine steps
+
+
+What 0069 changes
+-----------------
+
+1. recommendation_feedback gains a nullable workspace_id, deliberately not
+   backfilled. The parent recommendations table has no workspace either, so any
+   backfill would be a guess, and a guessed workspace is the contamination the
+   column exists to prevent. Learning filters on an exact match, so a NULL row
+   is quarantined and contributes nothing.
+
+2. user_preference_vectors is keyed by (user_id, tenant_id, workspace_id). One
+   vector was previously shared across every workspace a user belonged to.
+   Legacy vectors are discarded, not migrated: they are derived data, and a
+   primary key column cannot be NULL, so the old rows could not have been carried
+   across at all. Each profile rebuilds on its next signal.
+
+3. ck_memory_records_type_valid is dropped from memory_records. Its 24 literals
+   are identical to the seeded career pack, so the domain-pack registry already
+   speaks that table's language and the constraint was a second, separately
+   maintained copy that could drift silently.
+
+
+Tests
+-----
+
+Live PostgreSQL, applied from empty to head:
+
+    47 passed, 0 failed, 0 skipped
+
+Eight of those are new 0069 assertions. Previously, 10 of the suite had never
+executed at all for want of VAELOOM_TEST_PG_URL; a skip is now a failure.
+
+Targeted suites (SQLite + unit), 170 passed:
+
+    tests/test_memory_type_packs.py
+    tests/test_memory_vector_correctness.py
+    tests/test_ranking_weights.py
+    tests/test_verify_pg_migrations_script.py
+
+
+The rollback proof
+------------------
+
+The verification harness plants a row whose type comes from a temporary domain
+pack, outside every frozen vocabulary, then rolls back. Observed on the passing
+run: `alembic downgrade` exits 1 naming ck_memory_records_type_valid, and the
+probe value.
+
+This required widening the harness. With 0069 above 0068, `downgrade -1` alone
+would have targeted only 0069 and never exercised the constraint 0068 reinstates.
+The probe now seeds both memories and memory_records and the rollback spans two
+revisions, so both vocabularies are proven to refuse. A probe that quietly stops
+testing anything is the exact shape of bug this harness exists to catch.
+
+Both migrations log the distinct types before restoring their CHECK, because
+PostgreSQL reports a violated ADD CONSTRAINT as "violated by some row" with no
+DETAIL. Measured, not assumed: on PostgreSQL 16 asyncpg's CheckViolationError
+carries detail = None for this statement form, so the offending value never
+reaches Python through the driver. The pre-restore log is what makes the refusal
+both actionable for an operator and assertable here.
+
+
+Defects found and fixed during this work
+----------------------------------------
+
+- 0069's primary key could not be taken against a populated table. A PK column
+  is implicitly NOT NULL and every legacy vector is NULL, so `ADD CONSTRAINT ...
+  PRIMARY KEY` would have failed against real data. It passed here only because
+  the verification container's table is empty -- a defect that would have shipped
+  green and failed on first contact with production. Now covered by two tests.
+- document_service constructs MemoryRecord at two sites (612, 1761). The approved
+  spec described the coupling as two-way; it is three-way. Dropping the CHECK
+  couples to those sites as well as to import_memories.
+
+
+What this does NOT prove
+------------------------
+
+- Concurrency during a real rollback window.
+- Rollback against a large, production-shaped table. The probe is one row.
+- Performance or behaviour at volume.
+
+Seeded-data correctness only.
+
+
+Operational note carried forward
+--------------------------------
+
+Rolling back 0069 after a second domain pack is deployed will refuse, because
+memory_records will hold a type the reinstated frozen vocabulary does not list.
+That is correct behaviour and matches 0068. The operational decision of what to
+do then -- stop, or migrate the data forward first -- has to be made in advance,
+not during an incident.

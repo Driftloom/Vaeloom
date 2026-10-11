@@ -137,3 +137,32 @@ performance at volume. Seeded-data correctness only.
 4. `VAELOOM_TEST_PG_URL` was exported as `postgresql://`, which SQLAlchemy resolves
    to the sync psycopg2 dialect -- 14 failures reading as broken tests that were one
    wrong URL scheme. Now `postgresql+asyncpg://`.
+
+---
+
+## 0069 closure (2026-11-11)
+
+All three gaps recorded above are closed, and verified against a live PostgreSQL
+rather than asserted. Full evidence in `evidence/verification/memory-0069.txt`.
+
+- **`recommendation_feedback` now has `workspace_id`.** Nullable and deliberately
+  un-backfilled. Learning filters on an exact workspace match, so legacy `NULL`
+  rows are quarantined and contribute nothing. `user_preference_vectors` is keyed
+  by `(user_id, tenant_id, workspace_id)`; legacy vectors are discarded because a
+  primary key column cannot be NULL, so they could not have been carried across.
+- **`import_memories` validates the whole batch before writing any of it**, through
+  the same `validate_memory_type` the create/update/supersede paths use. An
+  out-of-vocabulary type is 422, not a 5xx, and validating first is what makes the
+  batch atomic.
+- **`ck_memory_records_type_valid` is dropped.** The 24 literals were identical to
+  the seeded career pack, so the registry already governed that vocabulary.
+
+The guarantee is now **all four service write paths validate**, not three of four.
+Two `document_service` `MemoryRecord(...)` sites validate too -- they are the only
+guard left on `memory_records.type` now that the constraint is gone, and both
+currently write the constant `"document"`, so this changes no behaviour today. Its
+purpose is that a future edit to either constant cannot slip past the last check.
+
+The `AGENTS.md` note about "two sibling endpoints" taking `user_id` from the body
+was stale and is now false: `GET /{user_id}` already compared against the caller,
+and `POST /index` -- the one that did not -- returns 403.
