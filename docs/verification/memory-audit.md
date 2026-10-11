@@ -90,3 +90,50 @@ persistent facts).
      - `packages/agent-memory/semantic/` (Vector embeddings & semantic search)
      - `packages/agent-memory/graph/` (Entity & relationship knowledge graph)
      - `packages/agent-memory/policy/` (MemoryScopes contract enforcement)
+
+---
+
+## PostgreSQL verification status (2026-11-11)
+
+Migrations 0067 and 0068 had never been applied by a real PostgreSQL server. They
+now have. `pnpm verify:pg` starts a disposable `pgvector:pg16` on host port 5433,
+runs `scripts/verify_pg_migrations.py` against it, and removes the container and
+volume afterwards.
+
+**Result: 39 live-PostgreSQL tests pass, 0 skipped.** Ten of those were previously
+skipped for want of `VAELOOM_TEST_PG_URL` -- 6 in `test_rls_live_pg.py`, 4 in
+`test_ranking_weights_rls.py`. A skip is now a failure, not a pass.
+
+The rollback rehearsal this file previously described as the coverage for 0068 was
+**green by emptiness**: it downgraded against an empty `memories` table, so the one
+irreversible operation in the memory work -- re-adding `ck_memories_type_valid` and
+re-validating every row -- could not fail. It is now rehearsed against a real row
+holding an out-of-vocabulary type from a temporary domain pack. Observed on the
+passing run: `downgrade -1` exits 1 naming `ck_memories_type_valid` and `job_posting`.
+
+### What "verified" means, and does not
+
+Verified: the chain applies from empty to head; RLS isolates as specified; a
+downgrade over out-of-vocabulary data refuses for the right reason and succeeds once
+that data is gone; the round trip returns to head intact.
+
+**Not** verified: behaviour under concurrent load during a real rollback window,
+rollback against a large production-shaped `memories` table, or anything about
+performance at volume. Seeded-data correctness only.
+
+### Defects the first real run found
+
+1. `alembic` was migrating the wrong database. The verification script passed no
+   environment, so `alembic/env.py` resolved its DDL target from `apps/api/.env` --
+   a remote Supabase project -- while the script's `_proof`/`_test` guard checked a
+   URL alembic never read. Fixed, and `load_dotenv` now runs with `override=False`.
+2. The same mistake twice more: the pytest child followed the `--pg-url` flag while
+   alembic followed `VAELOOM_TARGET_URL`; and step 4's `downgrade -1` bypassed the
+   guarded wrapper entirely. One `_alembic_run` now builds the only alembic argv, and
+   AST-level tests fail the build if a new call site omits `env`.
+3. `alembic upgrade head` exiting 0 was treated as proof of success. Step 1 now
+   reads the applied head back out of the database and compares it with the head the
+   local migration graph resolves to.
+4. `VAELOOM_TEST_PG_URL` was exported as `postgresql://`, which SQLAlchemy resolves
+   to the sync psycopg2 dialect -- 14 failures reading as broken tests that were one
+   wrong URL scheme. Now `postgresql+asyncpg://`.
