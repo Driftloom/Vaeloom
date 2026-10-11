@@ -1,12 +1,12 @@
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 from httpx import Response
 
 from api.services.github_skills_sync import (
+    GitHubSkillSyncResult,
     parse_remote_skill_md,
     sync_skills_from_github,
-    RemoteSkillSummary,
-    GitHubSkillSyncResult,
 )
 
 
@@ -311,12 +311,16 @@ async def test_sync_github_rejects_other_users_workspace(client):
 
 
 @pytest.mark.asyncio
-async def test_sync_github_falls_back_to_the_users_own_workspace(client):
-    """No X-Workspace-Id: the route resolves the caller's own first workspace.
+async def test_sync_github_without_workspace_header_fails_closed(client):
+    """No X-Workspace-Id: the route refuses rather than picking a workspace.
 
-    Signup provisions a workspace, so the fallback succeeds rather than erroring.
-    This test documents that behaviour so a future change to the guard is
-    visible here.
+    This used to resolve the caller's first workspace by ``created_at`` and
+    return 200. A client that dropped the header then acted on a workspace it
+    never selected, and a caller who owns more than one could not tell which
+    one was used from the response. Signup provisioning a workspace is not a
+    reason to guess.
+
+    See ADR-046 for the decision to fail closed.
     """
     import uuid
 
@@ -332,14 +336,53 @@ async def test_sync_github_falls_back_to_the_users_own_workspace(client):
     with patch(
         "api.services.github_skills_sync.sync_skills_from_github",
         new=AsyncMock(return_value=mock_result),
-    ):
+    ) as mocked:
         res = await client.post(
             "/api/v1/capabilities/sync-github",
             json={"repository": "Driftloom/vaeloom-skills"},
             headers={"Authorization": f"Bearer {token}"},
         )
+    assert res.status_code == 400
+    assert "Workspace ID is required" in res.json()["detail"]
+    # No outbound fetch may be attempted for a request with no workspace.
+    mocked.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_sync_github_with_workspace_header_reaches_the_sync(client):
+    """Negative control for the fail-closed test above.
+
+    Proves the 400 is about the missing header specifically, not about the route
+    being broken for everyone.
+    """
+    import uuid
+
+    email = f"withws_{uuid.uuid4().hex[:8]}@test.com"
+    signup_res = await client.post(
+        "/api/v1/auth/signup",
+        json={"email": email, "password": "Password123!", "name": "With Header"},
+    )
+    assert signup_res.status_code == 201
+    token = signup_res.json()["access_token"]
+    auth = {"Authorization": f"Bearer {token}"}
+
+    ws_res = await client.post("/api/v1/workspaces", json={"name": "Header Space"}, headers=auth)
+    assert ws_res.status_code == 201
+    wid = ws_res.json()["id"]
+
+    mock_result = GitHubSkillSyncResult(repository="Driftloom/vaeloom-skills", ref="master")
+    with patch(
+        "api.services.github_skills_sync.sync_skills_from_github",
+        new=AsyncMock(return_value=mock_result),
+    ) as mocked:
+        res = await client.post(
+            "/api/v1/capabilities/sync-github",
+            json={"repository": "Driftloom/vaeloom-skills"},
+            headers={**auth, "X-Workspace-Id": wid},
+        )
     assert res.status_code == 200
     assert res.json()["persisted"] is False
+    mocked.assert_awaited()
 
 
 @pytest.mark.asyncio

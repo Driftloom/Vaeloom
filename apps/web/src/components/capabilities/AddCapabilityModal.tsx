@@ -29,6 +29,7 @@ import type {
   CapabilityDraftValidationResponse,
 } from '@/lib/api-client';
 import { getStoredCapabilities } from '@/lib/capabilities-data';
+import { SHELL_METACHARACTERS } from './connectors/types';
 import type { CapabilityCategory, CapabilityItem } from '@/lib/capabilities-data';
 
 // ─── Enumerated option types ─────────────────────────────────────────────────
@@ -108,7 +109,9 @@ const MCP_DENIED_COMMANDS = new Set([
   'pwsh',
   'pwsh.exe',
 ]);
-const MCP_SHELL_METACHARS = /[;&|`$><\r\n^%!]/;
+// Single source of truth for the argv guard, shared with the connector-create
+// path. It used to be a second copy here, and the connector copy was weaker.
+const MCP_SHELL_METACHARS = SHELL_METACHARACTERS;
 const MCP_INLINE_EXEC_FLAGS = new Set(['-c', '-e', '--eval', '-r']);
 const MCP_SCRIPT_INTERPRETERS = new Set([
   'python',

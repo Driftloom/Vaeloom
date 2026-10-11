@@ -350,8 +350,8 @@ export default function ConnectorSubpage() {
                   </div>
                 ) : tools.length === 0 ? (
                   <div className="py-8 text-center text-xs text-text-muted">
-                    No tools currently bridged through this connector. Click "Sync Tools" to
-                    register available operations.
+                    No tools currently bridged through this connector. Click &quot;Sync Tools&quot;
+                    to register available operations.
                   </div>
                 ) : (
                   <div className="space-y-3">

@@ -35,6 +35,7 @@ from ..services.skill_injection import WORKSPACE_AUTHORED_TRUST
 from ..tools.definitions import ALL_TOOLS, ToolDefinition
 from ..tools.executor import (
     WORKSPACE_DYNAMIC_TOOL_DEFS,
+    approval_gated_tools,
     execute_tool,
     invalidate_tool_enable_cache,
     register_dynamic_tool,
@@ -157,13 +158,13 @@ async def _verify_workspace_access(
         )
 
     if not workspace_id:
-        # Fallback to user's first workspace
-        res = await db.execute(
-            select(Workspace.id).where(Workspace.user_id == uid).order_by(Workspace.created_at.asc()).limit(1)
-        )
-        first_wid = res.scalar_one_or_none()
-        if first_wid is not None:
-            return first_wid
+        # Fail closed.
+        #
+        # This used to silently substitute the caller's first workspace by
+        # `created_at`. A client that dropped the `X-Workspace-Id` header then
+        # operated on a workspace it never selected and received a 200 to prove
+        # it worked. A cross-tenant write looks identical from the caller's side
+        # when they own more than one workspace.
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Workspace ID is required (X-Workspace-Id header or parameter)",
@@ -198,6 +199,41 @@ async def _verify_workspace_access(
     )
 
 
+async def _require_workspace_owner(
+    db: AsyncSession, user_id: str | None, workspace_id: str | uuid.UUID | None
+) -> uuid.UUID:
+    """Resolve the workspace and require that the caller owns it.
+
+    Ownership, not a role, is the privilege boundary available today.
+    ``services.auth_service._create_jwt`` does not put a ``roles`` claim in the
+    token, so ``dependencies.require_role`` would reject every real user with
+    403 -- the routes it guards today (``admin_console``, ``iam``, ``gdpr``)
+    are enterprise-only and mostly dormant. ``workspaces.user_id`` is real,
+    enforced data, so privileged capability operations gate on it.
+
+    Members keep read access and workspace-scoped configuration writes; the
+    owner alone can destroy a capability or dispatch its code.
+    """
+    wid = await _verify_workspace_access(db, user_id, workspace_id)
+    try:
+        uid = uuid.UUID(str(user_id))
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid user identity",
+        )
+
+    res = await db.execute(
+        select(Workspace.id).where(Workspace.id == wid, Workspace.user_id == uid)
+    )
+    if res.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the workspace owner may perform this operation",
+        )
+    return wid
+
+
 def _iso(value) -> str | None:
     return value.isoformat() if value else None
 
@@ -208,6 +244,52 @@ def _as_tags(raw: Any) -> list[str]:
     if isinstance(raw, str) and raw.strip():
         return [part.strip() for part in raw.split(",") if part.strip()]
     return []
+
+
+_SECRET_CONFIG_KEYS = frozenset(
+    {
+        "auth_token",
+        "api_key",
+        "apikey",
+        "access_token",
+        "refresh_token",
+        "client_secret",
+        "secret",
+        "password",
+        "private_key",
+        "token",
+        "authorization",
+    }
+)
+_REDACTED = "[redacted]"
+
+
+def _redact_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Strip credential-bearing keys from a config blob before it leaves the API.
+
+    ``config`` is an unvalidated JSONB column returned verbatim by
+    ``_serialize_cap`` on GET, GET-by-id, POST and PATCH. The draft validator
+    itself reasons about ``config["headers"]`` and ``config["env"]``, so those
+    are expected shapes -- and in practice they carry bearer tokens. Writes
+    still accept the real values; only the read path is redacted, so a
+    round-trip returns a marker rather than a secret.
+    """
+    if not isinstance(config, dict):
+        return config
+
+    out: dict[str, Any] = {}
+    for key, value in config.items():
+        if isinstance(key, str) and key.lower() in _SECRET_CONFIG_KEYS:
+            out[key] = _REDACTED
+        elif isinstance(value, dict):
+            out[key] = _redact_config(value)
+        elif isinstance(value, list):
+            out[key] = [
+                _redact_config(item) if isinstance(item, dict) else item for item in value
+            ]
+        else:
+            out[key] = value
+    return out
 
 
 def _serialize_cap(c: WorkspaceCapability) -> CapabilityResponse:
@@ -223,7 +305,7 @@ def _serialize_cap(c: WorkspaceCapability) -> CapabilityResponse:
         author=c.author or "Workspace Member",
         type=c.type or "custom",
         runtime=c.runtime or "system",
-        config=dict(c.config or {}),
+        config=_redact_config(dict(c.config or {})),
         created_at=_iso(c.created_at),
         updated_at=_iso(c.updated_at),
         usage_count=int(c.usage_count or 0),
@@ -1323,7 +1405,7 @@ async def delete_capability(
 ):
     """Delete a custom workspace capability."""
     user_id = _get_user_id(current_user)
-    wid = await _verify_workspace_access(db, user_id, workspace_id)
+    wid = await _require_workspace_owner(db, user_id, workspace_id)
 
     res = await db.execute(
         select(WorkspaceCapability).where(
@@ -1383,6 +1465,10 @@ async def test_capability(
 
     ``TestCapabilityResponse.executed`` states plainly whether anything was run,
     so a validation-only result can never be rendered as a live one.
+
+    Owner-only: this dispatches real tool code inside the API process, outside
+    the orchestrator's approval gate. Read-only categories (skills, agents,
+    plugins) validate and do not execute, so those never needed the boundary.
     """
     user_id = _get_user_id(current_user)
     wid = await _verify_workspace_access(db, user_id, workspace_id)
@@ -1399,6 +1485,19 @@ async def test_capability(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Capability not found",
         )
+
+    # Owner-only for tool dispatch, checked BEFORE the try below.
+    #
+    # The handler's `except Exception` converts anything raised inside it into
+    # a 200 with `status="error"`. An authorization failure raised there is
+    # therefore reported to the caller as success, which is a fail-open. Keep
+    # this check outside so the 403 propagates.
+    #
+    # Scoped to `category == "tool"` because that is the only branch that runs
+    # code. Skills, agents and plugins take the validation-only branches below,
+    # which execute nothing and stay open to ordinary members.
+    if cap.category == "tool":
+        await _require_workspace_owner(db, user_id, workspace_id)
 
     await record_usage(db, cap)
     await db.commit()
@@ -1430,11 +1529,40 @@ async def test_capability(
                     executed=False,
                 )
 
+            # An approval-gated tool may not be dispatched from this route.
+            #
+            # `approval_gated_tools()` is enforced only in the orchestrator loop,
+            # never inside `execute_tool`. Passing `agent_scopes=[..., "*"]` (as
+            # this handler did) made every scope check pass unconditionally, so
+            # any workspace member could invoke `draft_email`, `move_file`,
+            # `execute_code_sandbox` and the rest with an arbitrary payload and
+            # no approval record. A row naming a gated tool is trivially
+            # creatable: `POST /capabilities {"name":"draft_email",
+            # "category":"tool"}` returns 201 and deliberately allows shadowing.
+            if cap.name in approval_gated_tools():
+                return TestCapabilityResponse(
+                    status="approval_required",
+                    latency_ms=round((time.monotonic() - start_time) * 1000.0, 2),
+                    error=(
+                        f"'{cap.name}' is approval-gated and is not executed by this "
+                        "endpoint. Run it through the orchestrator, which enforces the "
+                        "approval gate before dispatch."
+                    ),
+                    output={
+                        "detail": "Nothing was executed.",
+                        "tool": cap.name,
+                        "approval_gated": True,
+                    },
+                    executed=False,
+                )
+
             out = await execute_tool(
                 tool=td,
                 params=payload.input,
                 agent_id="test_runner",
-                agent_scopes=[td.required_scope, "*"],
+                # Only the tool's own declared scope. The former "*" made every
+                # scope assertion in `execute_tool` vacuous.
+                agent_scopes=[td.required_scope],
                 workspace_id=str(wid),
             )
             elapsed_ms = (time.monotonic() - start_time) * 1000.0
@@ -1623,12 +1751,11 @@ async def sync_github_skills(
     ``services.github_skills_sync``). The result's ``persisted`` field is always
     ``False``. To install a candidate skill, POST it to ``/capabilities``.
 
-    Requires workspace membership, like every other capability route -- a remote
-    sweep is workspace-scoped because the caller uses the result to decide what
-    that workspace should be able to run.
+    Owner-only: this walks a remote repository tree and issues up to 200
+    outbound fetches, so it is not a workspace-member operation.
     """
     user_id = _get_user_id(current_user)
-    await _verify_workspace_access(db, user_id, workspace_id)
+    await _require_workspace_owner(db, user_id, workspace_id)
 
     from ..services.github_skills_sync import sync_skills_from_github
 

@@ -485,8 +485,8 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
                       </div>
                     ) : (
                       <p className="text-2xs text-text-muted">
-                        Click "Ping Server" to verify socket reachability and calculate response
-                        round-trip time.
+                        Click &quot;Ping Server&quot; to verify socket reachability and calculate
+                        response round-trip time.
                       </p>
                     )}
                   </div>

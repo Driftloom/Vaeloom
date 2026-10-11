@@ -459,7 +459,19 @@ export function readBuiltinServers(res: {
   return Array.isArray(servers) ? servers : [];
 }
 
-export const SHELL_METACHARACTERS = /[;&|`$><\n\r]/;
+/**
+ * Characters rejected anywhere in an argv entry before it is handed to a
+ * subprocess.
+ *
+ * This was previously a second, weaker definition (`/[;&|`$><\n\r]/`) living
+ * beside `MCP_SHELL_METACHARS` in `AddCapabilityModal`. Two answers to the
+ * same question, and the weaker one guarded the connector-create path --
+ * which is the path that actually spawns an MCP stdio subprocess. One
+ * definition now, and it is the stricter of the two: it adds `^`, `%` and
+ * `!`, which are all shell metacharacters with expansion or substitution
+ * behaviour depending on the shell the child happens to inherit.
+ */
+export const SHELL_METACHARACTERS = /[;&|`$><\r\n^%!]/;
 
 export type CommandParseResult = { ok: true; argv: string[] } | { ok: false; error: string };
 

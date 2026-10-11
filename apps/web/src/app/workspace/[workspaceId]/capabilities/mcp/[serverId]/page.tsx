@@ -100,7 +100,9 @@ export default function McpSubpage() {
     { revalidateOnFocus: false },
   );
 
-  const tools: McpToolInfo[] = toolsData ?? [];
+  // Stable identity: `toolsData ?? []` allocates a new array every render,
+  // which made this effect re-run on every render.
+  const tools: McpToolInfo[] = useMemo(() => toolsData ?? [], [toolsData]);
 
   React.useEffect(() => {
     if (tools.length > 0 && !selectedToolName) {
@@ -159,7 +161,7 @@ export default function McpSubpage() {
     } finally {
       setCallingTool(false);
     }
-  }, [configuredServer, selectedToolName, toolArgsPayload, workspaceId, toast]);
+  }, [configuredServer, selectedToolName, toolArgsPayload, toast]);
 
   const breadcrumbsBackUrl = `/workspace/${workspaceId}/capabilities?category=mcp`;
 

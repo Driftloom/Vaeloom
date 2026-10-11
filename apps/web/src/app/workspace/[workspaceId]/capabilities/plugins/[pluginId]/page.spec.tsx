@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import PluginSubpage from './page';
 import { pluginApi } from '@/lib/api-client';
 
@@ -39,6 +39,7 @@ jest.mock('@/lib/api-client', () => {
       }),
       setStatus: jest.fn().mockResolvedValue({ id: 'plug-summarizer', status: 'DISABLED' }),
       execute: jest.fn(),
+      delete: jest.fn().mockResolvedValue(undefined),
     },
   };
 });
@@ -71,6 +72,42 @@ describe('PluginSubpage', () => {
     const viewAllButton = screen.getByRole('button', { name: /View all Plugins/i });
     fireEvent.click(viewAllButton);
     expect(mockPush).toHaveBeenCalledWith('/workspace/ws-test-123/capabilities?category=plugins');
+  });
+
+  it('requires confirmation before an irreversible delete', async () => {
+    // This was the only destructive action in the capabilities feature that
+    // fired on a single click, with no dialog and no undo.
+    const deleted = jest.spyOn(pluginApi, 'delete');
+    render(<PluginSubpage />);
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1, name: /summarizer/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: /delete plugin/i }));
+    const dialog = await screen.findByRole('dialog', { name: /delete this plugin\?/i });
+    expect(deleted).not.toHaveBeenCalled();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: /keep plugin/i }));
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: /delete this plugin\?/i }),
+      ).not.toBeInTheDocument();
+    });
+    expect(deleted).not.toHaveBeenCalled();
+  });
+
+  it('deletes only after the confirmation is accepted', async () => {
+    const deleted = jest.spyOn(pluginApi, 'delete');
+    render(<PluginSubpage />);
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1, name: /summarizer/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /delete plugin/i }));
+    const dialog = await screen.findByRole('dialog', { name: /delete this plugin\?/i });
+    fireEvent.click(within(dialog).getByRole('button', { name: /^delete plugin$/i }));
+
+    await waitFor(() => expect(deleted).toHaveBeenCalledWith('plug-summarizer'));
   });
 
   describe('the execution probe', () => {

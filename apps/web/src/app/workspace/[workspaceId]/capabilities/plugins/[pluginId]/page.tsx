@@ -8,6 +8,7 @@ import {
   Badge,
   Breadcrumb,
   Button,
+  ConfirmationDialog,
   EmptyState,
   FormField,
   Spinner,
@@ -81,6 +82,7 @@ export default function PluginSubpage() {
   const [inputText, setInputText] = useState('Analyze this sample document payload.');
   const [runningTest, setRunningTest] = useState(false);
   const [testOutput, setTestOutput] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const {
     data: registry,
@@ -275,7 +277,7 @@ export default function PluginSubpage() {
                 <Badge variant={isActive ? 'success' : 'default'} size="sm">
                   {plugin.status}
                 </Badge>
-                <Button variant="danger" size="sm" onClick={() => void handleDelete()}>
+                <Button variant="danger" size="sm" onClick={() => setConfirmDelete(true)}>
                   Delete Plugin
                 </Button>
               </div>
@@ -384,6 +386,27 @@ export default function PluginSubpage() {
           </div>
         ) : null}
       </div>
+
+      {/* Every other destructive action in this feature confirms first
+          (SkillsView, McpServerCard, ConnectorModals). This was the only
+          one-click irreversible delete, with no undo. */}
+      <ConfirmationDialog
+        isOpen={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={() => {
+          setConfirmDelete(false);
+          void handleDelete();
+        }}
+        title="Delete this plugin?"
+        description={
+          plugin
+            ? `${plugin.name} will be removed from this workspace and will stop being available to any hook that referenced it. This cannot be undone.`
+            : 'This plugin will be removed from this workspace.'
+        }
+        confirmLabel="Delete plugin"
+        cancelLabel="Keep plugin"
+        variant="destructive"
+      />
     </div>
   );
 }

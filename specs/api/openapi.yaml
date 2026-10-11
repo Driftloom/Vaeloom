@@ -9599,7 +9599,14 @@ paths:
 
         ``TestCapabilityResponse.executed`` states plainly whether anything was run,
 
-        so a validation-only result can never be rendered as a live one.'
+        so a validation-only result can never be rendered as a live one.
+
+
+        Owner-only: this dispatches real tool code inside the API process, outside
+
+        the orchestrator''s approval gate. Read-only categories (skills, agents,
+
+        plugins) validate and do not execute, so those never needed the boundary.'
       operationId: test_capability_api_v1_capabilities__cap_id__test_post
       parameters:
       - name: cap_id
@@ -9663,11 +9670,9 @@ paths:
         ``False``. To install a candidate skill, POST it to ``/capabilities``.
 
 
-        Requires workspace membership, like every other capability route -- a remote
+        Owner-only: this walks a remote repository tree and issues up to 200
 
-        sweep is workspace-scoped because the caller uses the result to decide what
-
-        that workspace should be able to run.'
+        outbound fetches, so it is not a workspace-member operation.'
       operationId: sync_github_skills_api_v1_capabilities_sync_github_post
       parameters:
       - name: X-GitHub-Token
