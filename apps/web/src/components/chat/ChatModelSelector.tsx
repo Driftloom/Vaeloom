@@ -109,7 +109,7 @@ export function ChatModelSelector({
           role="dialog"
           aria-label="Model Selection Menu"
           data-testid="chat-model-selector-popover"
-          className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-80 sm:w-96 rounded-xl border border-border bg-surface-100 p-3 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150"
+          className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-80 sm:w-96 rounded-xl border border-border bg-surface-100 p-3 shadow-2xl z-50 animate-zoom-in-95 duration-150"
         >
           <div className="flex items-center justify-between border-b border-border/50 pb-2 mb-2">
             <div>

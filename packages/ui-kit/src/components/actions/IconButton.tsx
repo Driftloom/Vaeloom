@@ -12,12 +12,19 @@ export interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonEl
 }
 
 const variantStyles = {
-  primary: 'bg-action text-white hover:opacity-90 active:opacity-100',
+  // Foregrounds come from the `-fg` tokens, matching Button's `primary` and
+  // `danger`. These three previously hard-coded a white foreground, which made
+  // IconButton render a different colour from Button for the same variant
+  // across the 14 files that import it -- and was genuinely unreadable in two
+  // places: white on `bg-error` against the light theme's dark-red
+  // `--error-fg` pairing, and white on the high-contrast accent, which is pure
+  // #FFFF00 (~1.07:1).
+  primary: 'bg-action text-action-fg hover:opacity-90 active:opacity-100',
   secondary:
     'bg-surface text-text border border-border-subtle hover:border-border-strong hover:bg-surface-200',
   ghost: 'bg-transparent text-text-secondary hover:text-text hover:bg-surface-200',
-  danger: 'bg-error text-white hover:opacity-90',
-  ai: 'bg-accent text-white hover:opacity-90',
+  danger: 'bg-error text-error-fg hover:opacity-90',
+  ai: 'bg-accent text-accent-fg hover:opacity-90',
 };
 
 const sizeStyles = {

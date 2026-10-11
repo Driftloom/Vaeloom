@@ -196,6 +196,118 @@ describe('Tailwind class definitions', () => {
   });
 });
 
+describe('Animation utilities resolve', () => {
+  /**
+   * The project is Tailwind v3.4 with `plugins: []`. The v4 spellings --
+   * `animate-in`, bare `fade-in`, `zoom-in-*`, `slide-in-from-*` -- come from
+   * the `tailwindcss-animate` plugin and are never generated, so they purge to
+   * nothing.
+   *
+   * This defect has recurred four times. Each occurrence was found by reading
+   * the source, never by a test or a lint rule, and each time the fix was a
+   * one-off shim rather than a rule -- which is why it came back. The drawer
+   * shipped with `animate-in slide-in-from-right` and simply appeared, with no
+   * motion, and nothing failed.
+   *
+   * The assertion is the general rule rather than a blocklist: every
+   * `animate-<name>` used in source must be a key in the config's `animation`
+   * block. A blocklist would need a new entry for every future v4 utility and
+   * would silently pass anything it did not name.
+   */
+  const config = readFileSync(TAILWIND, 'utf8');
+  const animationBlock = config.slice(
+    config.indexOf('animation: {'),
+    config.indexOf('keyframes: {'),
+  );
+  const declared = new Set<string>();
+  for (const m of animationBlock.matchAll(/^\s{8}'?([\w-]+)'?:/gm)) {
+    declared.add(m[1]);
+  }
+
+  const UI_KIT_SRC = join(REPO, 'packages', 'ui-kit', 'src');
+  // This file is excluded from its own scan. It must name the utilities it
+  // bans -- in comments *and* in the regex that detects them -- so a scan that
+  // included it would report itself forever. Every other file is in scope.
+  const SELF = resolve(__dirname, 'design-system-guardrails.test.ts');
+  const scanFiles = [...walk(SRC), ...walk(UI_KIT_SRC)]
+    .filter((f) => /\.(tsx|ts)$/.test(f))
+    .filter((f) => resolve(f) !== SELF);
+
+  /**
+   * Comments and string literals are stripped before scanning.
+   *
+   * This file necessarily *names* the utilities it bans in order to explain
+   * them, so an unstripped scan reports its own source -- the same trap the
+   * Mojibake block documents and the same reason `countHeadings` below strips
+   * before it counts.
+   */
+  const stripCommentsAndStrings = (source: string): string =>
+    source
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/[^\n]*/g, '')
+      .replace(/'(?:[^'\\\n]|\\.)*'/g, "''")
+      .replace(/"(?:[^"\\\n]|\\.)*"/g, '""');
+
+  /** Real code only: comments removed, but class strings preserved. */
+  const codeOnly = (source: string): string =>
+    source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+
+  it('extracts the declared animation keys', () => {
+    // Guard the guard: an empty set would make every assertion below vacuous.
+    expect(declared.size).toBeGreaterThan(5);
+    expect(declared.has('fade-in')).toBe(true);
+  });
+
+  it('every animate-<name> used in source is declared in tailwind.config.ts', () => {
+    // Tailwind v3 ships these five out of the box; they are generated from the
+    // core plugin, not from the config's `animation` block. Naming them keeps
+    // the assertion honest instead of forcing no-op duplicates into the config.
+    const BUILT_IN = new Set(['none', 'spin', 'ping', 'pulse', 'bounce']);
+
+    const offenders: string[] = [];
+    for (const f of scanFiles) {
+      // Class strings must survive -- they ARE the signal -- so only comments
+      // are removed here.
+      const text = codeOnly(readFileSync(f, 'utf8'));
+      for (const m of text.matchAll(/\banimate-([\w-]+)/g)) {
+        if (!declared.has(m[1]) && !BUILT_IN.has(m[1])) {
+          offenders.push(`${rel(f)}: animate-${m[1]}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('uses no bare v4 animation utility that v3 cannot generate', () => {
+    // The v4 `animation-*` namespace has no `animate-` prefix. On v3 it matches
+    // nothing at all and is not even a colour or spacing utility. Every
+    // `animate-*` occurrence is stripped first, so a legitimate
+    // `animate-fade-in` is not reported here -- that one is asserted declared
+    // by the test above.
+    const offenders: string[] = [];
+    for (const f of scanFiles) {
+      const text = codeOnly(readFileSync(f, 'utf8')).replace(/animate-[\w-]+/g, '');
+      for (const m of text.matchAll(/\b(fade-in|zoom-in-\d+|slide-in-from-[\w-]+)\b/g)) {
+        offenders.push(`${rel(f)}: ${m[1]}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('declares no v4-only plugin dependency', () => {
+    // If `tailwindcss-animate` or `tw-animate-css` is ever installed, these
+    // classes start working and the assertions above would begin rejecting
+    // valid code. Make the change deliberate.
+    for (const pkg of [
+      join(WEB, 'package.json'),
+      join(REPO, 'package.json'),
+      join(REPO, 'packages', 'ui-kit', 'package.json'),
+    ]) {
+      expect(readFileSync(pkg, 'utf8')).not.toMatch(/tailwindcss-animate|tw-animate-css/);
+    }
+  });
+});
+
 describe('Mojibake', () => {
   it('contains no UTF-8 double-decoded sequences', () => {
     // A double-decode always leaves a lead byte in U+00C2-U+00E3 range. Scanning

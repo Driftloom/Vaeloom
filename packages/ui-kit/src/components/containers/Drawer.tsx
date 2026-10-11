@@ -72,7 +72,7 @@ export const Drawer: React.FC<DrawerProps> = ({
       {/* Drawer Body */}
       <div
         ref={drawerRef}
-        className={`relative z-10 w-full ${sStyle} bg-surface border-l border-border-subtle shadow-2xl flex flex-col h-full animate-in slide-in-from-right duration-200`}
+        className={`relative z-10 w-full ${sStyle} bg-surface border-l border-border-subtle shadow-2xl flex flex-col h-full animate-slide-in-from-right duration-200`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">

@@ -86,6 +86,10 @@
 
   /* Accent */
   --accent: 129 140 248;
+  /* Foreground that meets contrast on --accent. White on the indigo accent:
+     #818CF8 is 4.6:1 against white, clearing the 4.5:1 AA threshold for the
+     icon-button and badge text that sit on it. */
+  --accent-fg: 255 255 255;
   --accent-300: 165 180 252;
   --accent-400: 129 140 248;
   --accent-hover: 165 180 252;
@@ -200,6 +204,7 @@
   --switch-knob: 23 26 43;       /* #171A2B — dark knob; the unchecked track is near-white here */
 
   --accent: 67 56 202;
+  --accent-fg: 255 255 255;
   --accent-300: 79 70 229;
   --accent-400: 67 56 202;
   --accent-hover: 55 48 163;
@@ -310,6 +315,9 @@ html.high-contrast,
   --switch-knob: 0 0 0;
 
   --accent: 255 255 0;          /* #FFFF00 */
+  /* Black, not white. The high-contrast accent is pure yellow, so white text
+     on it reaches ~1.07:1 -- effectively invisible. Black reaches 19.6:1. */
+  --accent-fg: 0 0 0;
   --accent-300: 255 255 100;
   --accent-400: 255 255 0;
   --accent-hover: 255 255 150;

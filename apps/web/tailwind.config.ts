@@ -142,6 +142,9 @@ const config: Config = {
         },
         accent: {
           DEFAULT: rgb('var(--accent)'),
+          // Contrast-bearing foreground for content sitting on --accent. Black in
+          // the high-contrast theme, where the accent is pure yellow.
+          fg: rgb('var(--accent-fg)'),
           50: '#eef2ff',
           100: '#e0e7ff',
           200: '#c7d2fe',
@@ -318,8 +321,25 @@ const config: Config = {
         'spin-slow': 'spin 24s linear infinite',
         breathe: 'breathe 7s ease-in-out infinite',
         flow: 'flowDash 1.6s linear infinite',
+        // Declared natively because the project is Tailwind v3 with
+        // `plugins: []`. The v4 spellings -- `animate-in`, `slide-in-from-*`,
+        // `zoom-in-*` -- come from the `tailwindcss-animate` plugin, are not
+        // generated here, and therefore purge to nothing. Each of those four
+        // usages rendered a component that simply appeared, with no motion at
+        // all, and nothing failed. `design-system-guardrails.test.ts` now
+        // asserts this list stays closed.
+        'slide-in-from-right': 'slideInFromRight 0.2s ease-out',
+        'zoom-in-95': 'zoomIn95 0.2s ease-out',
       },
       keyframes: {
+        slideInFromRight: {
+          '0%': { opacity: '0', transform: 'translateX(100%)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        zoomIn95: {
+          '0%': { opacity: '0', transform: 'scale(0.95)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
         fadeIn: {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },

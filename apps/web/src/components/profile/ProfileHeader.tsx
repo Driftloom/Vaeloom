@@ -133,7 +133,7 @@ function ImportProfileModal({ workspaceId, onImported, onClose }: ImportProfileM
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       {/* Modal */}
-      <div className="relative w-full max-w-lg max-h-[90dvh] flex flex-col bg-surface rounded-2xl shadow-2xl border border-border overflow-hidden animate-fadeIn">
+      <div className="relative w-full max-w-lg max-h-[90dvh] flex flex-col bg-surface rounded-2xl shadow-2xl border border-border overflow-hidden animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
@@ -334,7 +334,7 @@ interface ImportSuccessProps {
 
 function ImportSuccessToast({ data, onClose }: ImportSuccessProps) {
   return (
-    <div className="mt-3 p-3 rounded-xl bg-success/10 border border-success/30 text-sm animate-fadeIn">
+    <div className="mt-3 p-3 rounded-xl bg-success/10 border border-success/30 text-sm animate-fade-in">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2">
           <CheckIcon size={16} className="text-success mt-0.5 shrink-0" />
@@ -464,7 +464,7 @@ export default function ProfileHeader({ profile, workspaceId, onUpdate }: Profil
           {/* Content */}
           <div className="flex-1 min-w-0 w-full">
             {isEditing ? (
-              <div className="space-y-4 max-w-lg animate-fadeIn">
+              <div className="space-y-4 max-w-lg animate-fade-in">
                 <div>
                   <label className="block text-xs font-mono uppercase tracking-wider text-text-dim mb-1">
                     Full Name

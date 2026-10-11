@@ -73,7 +73,7 @@ export function ChatMemoryDrawer({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-surface-100 border-l border-border h-full shadow-2xl flex flex-col p-4 space-y-3 animate-in slide-in-from-right duration-200"
+        className="w-full max-w-md bg-surface-100 border-l border-border h-full shadow-2xl flex flex-col p-4 space-y-3 animate-slide-in-from-right duration-200"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-label="Obsidian Memory Vault"

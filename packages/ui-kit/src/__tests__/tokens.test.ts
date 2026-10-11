@@ -276,11 +276,16 @@ describe('generated token JSON is in sync with globals.css', () => {
     //         measured count, not an estimate.
     //   113  + --switch-knob (the Switch resting-fill, added in all three theme
     //         blocks). counted once, not three times, because declaredNames()
-    //         dedupes — the three per-theme values are asserted individually by
+    //         dedupes �?" the three per-theme values are asserted individually by
     //         the Switch theme-parity test in components.test.tsx.
+    //   114  + --accent-fg. IconButton's `ai` variant hard-coded a white
+    //         foreground, which is ~1.07:1 on the high-contrast accent (pure
+    //         #FFFF00). Declared in all three theme blocks; the per-theme values
+    //         are asserted in IconButton.test.tsx.
     //
     // Bump deliberately, and note the delta in the commit.
-    expect(runtimeNames).toHaveLength(113);
+    expect(runtimeNames).toHaveLength(114);
+    expect(runtimeNames).toContain('--accent-fg');
     expect(runtimeNames).toContain('--primary-fg');
     expect(runtimeNames).toContain('--primary-700');
     expect(runtimeNames).toContain('--error-active');

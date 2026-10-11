@@ -93,7 +93,7 @@ export function ChatSessionInspectorPopover({
         <div
           role="dialog"
           aria-label="Session and Context Controls"
-          className="absolute right-0 top-full mt-2 z-50 w-80 rounded-xl border border-border/80 bg-surface-100 p-4 shadow-xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150"
+          className="absolute right-0 top-full mt-2 z-50 w-80 rounded-xl border border-border/80 bg-surface-100 p-4 shadow-xl backdrop-blur-md animate-zoom-in-95 duration-150"
         >
           <div className="flex items-center justify-between border-b border-border/50 pb-2.5 mb-3">
             <div>
