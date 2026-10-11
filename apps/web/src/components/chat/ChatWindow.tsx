@@ -11,6 +11,7 @@ import { ChatHeader } from './ChatHeader';
 import { ChatMessageList } from './ChatMessageList';
 import { ChatThreadRail } from './ChatThreadRail';
 import { ChatSubpagesNav, AgentSquadsView, ModelMatrixView } from './ChatSubpages';
+import { MemoryVaultExplorer } from './MemoryVaultExplorer';
 import { ChatMemoryDrawer } from './ChatMemoryDrawer';
 import { useChatStore } from './chat-store';
 import { useWorkspaceCapabilities } from '@/hooks/useWorkspace';
@@ -327,43 +328,14 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
         )}
 
         {store.activeTab === 'memory' && (
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 max-w-5xl mx-auto w-full">
-            <div className="border-b border-border/50 pb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-text flex items-center gap-2">
-                  <span>📌</span> Obsidian Vault & Memory Grounding
-                </h2>
-                <p className="text-xs text-text-dim mt-1">
-                  Workspace second-brain memory bank. Pinned messages and dynamic facts are
-                  referenced by all agents in this workspace.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => store.setIsMemoryDrawerOpen(true)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-action text-action-fg hover:bg-action-hover"
-              >
-                Inspect Vault Drawer
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-              <div className="p-4 rounded-xl border border-border/60 bg-surface-50 space-y-2">
-                <h3 className="text-sm font-semibold text-text">Memory Recall in Conversations</h3>
-                <p className="text-xs text-text-muted leading-relaxed">
-                  Every message can be pinned using the &ldquo;📌 Save to Vault&rdquo; action on
-                  agent turns. During prompt analysis, relevant memories are recalled and injected
-                  authoritatively into the agent loop.
-                </p>
-              </div>
-              <div className="p-4 rounded-xl border border-border/60 bg-surface-50 space-y-2">
-                <h3 className="text-sm font-semibold text-text">Obsidian Vault Compatibility</h3>
-                <p className="text-xs text-text-muted leading-relaxed">
-                  Markdown notes and knowledge graphs are synchronized with local
-                  Obsidian-compatible vault formats for complete data ownership.
-                </p>
-              </div>
-            </div>
-          </div>
+          <MemoryVaultExplorer
+            workspaceId={workspaceId}
+            onCiteMemory={(citation) => {
+              store.setInput(store.input ? `${store.input}\n\n${citation}` : citation);
+              store.setActiveTab('stream');
+            }}
+            onOpenVaultDrawer={() => store.setIsMemoryDrawerOpen(true)}
+          />
         )}
 
         <ChatMemoryDrawer
