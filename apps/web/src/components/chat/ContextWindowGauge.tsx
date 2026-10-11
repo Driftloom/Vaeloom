@@ -65,21 +65,21 @@ export function ContextWindowGauge({
   const pct = Math.min(100, Math.max(0, Math.round((totalTokens / safeMax) * 100)));
 
   // Color thresholds: <60% green, 60-75% amber, >75% red pulse
-  let colorClass = 'bg-emerald-500';
-  let textClass = 'text-emerald-400';
-  let badgeBorder = 'border-emerald-500/30';
-  let badgeBg = 'bg-emerald-950/20';
+  let colorClass = 'bg-success';
+  let textClass = 'text-success';
+  let badgeBorder = 'border-success/30';
+  let badgeBg = 'bg-success/10';
 
   if (pct >= 75) {
-    colorClass = 'bg-rose-500 animate-pulse';
-    textClass = 'text-rose-400';
-    badgeBorder = 'border-rose-500/40';
-    badgeBg = 'bg-rose-950/30';
+    colorClass = 'bg-error animate-pulse';
+    textClass = 'text-error';
+    badgeBorder = 'border-error/40';
+    badgeBg = 'bg-error/15';
   } else if (pct >= 60) {
-    colorClass = 'bg-amber-500';
-    textClass = 'text-amber-400';
-    badgeBorder = 'border-amber-500/30';
-    badgeBg = 'bg-amber-950/20';
+    colorClass = 'bg-warning';
+    textClass = 'text-warning';
+    badgeBorder = 'border-warning/30';
+    badgeBg = 'bg-warning/10';
   }
 
   return (
@@ -89,15 +89,15 @@ export function ContextWindowGauge({
     >
       <div className="flex items-center gap-1.5">
         <ZapIcon className={`w-3.5 h-3.5 ${textClass}`} />
-        <span className="font-mono text-zinc-300 font-medium">
+        <span className="font-mono text-text font-medium">
           {formatTokens(totalTokens)}
-          <span className="text-zinc-500">/{formatTokens(safeMax)}</span>
+          <span className="text-text-muted">/{formatTokens(safeMax)}</span>
         </span>
       </div>
 
       {/* Progress Track */}
       <div
-        className="w-16 h-1.5 rounded-full bg-zinc-800 overflow-hidden relative"
+        className="w-16 h-1.5 rounded-full bg-surface-200 overflow-hidden relative"
         role="progressbar"
         aria-valuenow={pct}
         aria-valuemin={0}
@@ -120,8 +120,8 @@ export function ContextWindowGauge({
           disabled={isCompacting}
           className={`flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors border ${
             pct >= 60
-              ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30'
-              : 'bg-zinc-800/80 hover:bg-zinc-700/80 text-zinc-400 hover:text-zinc-200 border-zinc-700/50'
+              ? 'bg-warning/10 hover:bg-warning/20 text-warning border-warning/30'
+              : 'bg-surface-200 hover:bg-surface-hover text-text-muted hover:text-text border-border'
           }`}
           title="Compact older conversation turns into episodic memory"
           aria-label="Compact conversation history"

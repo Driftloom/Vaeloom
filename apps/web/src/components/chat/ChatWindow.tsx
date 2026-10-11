@@ -270,6 +270,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
                     {...(store.commandsError ? { commandsError: store.commandsError } : {})}
                     onPickCommand={handlePickCommand}
                     onSend={(text) => void store.send(text)}
+                    activeAgent={store.selectedAgent}
                   />
                 }
                 onCopy={handleCopy}

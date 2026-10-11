@@ -171,7 +171,10 @@ describe('FDE Context Engineering & Foundation Model Matrix UI Suite', () => {
 
       // 4,500 / 32,768 = 14%
       expect(
-        container.querySelector('.text-emerald-400') || container.querySelector('.bg-emerald-500'),
+        container.querySelector('.text-success') ||
+          container.querySelector('.bg-success') ||
+          container.querySelector('.text-emerald-400') ||
+          container.querySelector('.bg-emerald-500'),
       ).toBeTruthy();
       expect(screen.getByText(/14%/i)).toBeInTheDocument();
       expect(screen.getByText(/4\.5k/i)).toBeInTheDocument();

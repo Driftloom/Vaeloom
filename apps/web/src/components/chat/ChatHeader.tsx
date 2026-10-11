@@ -134,6 +134,10 @@ export function ChatHeader({
           />
         )}
 
+        <span className="hidden text-xs text-text-dim xl:inline">
+          {agentCount === null ? 'Loading agents…' : `${agentCount} agents`}
+        </span>
+
         <ChatSessionInspectorPopover
           totalTokens={contextTotalTokens}
           maxTokens={contextMaxTokens}
