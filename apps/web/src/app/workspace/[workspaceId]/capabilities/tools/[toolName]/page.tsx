@@ -22,6 +22,7 @@ import { capabilitiesApi, type CapabilityTestResponse } from '@/lib/api-client';
 import { TOOL_DEFINITIONS_CATALOG, type ToolDefinitionItem } from '@/lib/tool-definitions-catalog';
 import { useToast } from '@/components/shared/Toast';
 import { PageHeader } from '@/components/shared/Page';
+import { CapabilitySubpageSkeleton } from '@/components/capabilities/CapabilitySubpageSkeleton';
 
 type SubTab = 'contract' | 'schema' | 'test';
 
@@ -60,7 +61,11 @@ export default function ToolSubpage() {
     );
   }, [allTools, decodedToolName]);
 
-  const { data: workspaceRows, mutate: mutateWorkspaceRows } = useSWR(
+  const {
+    data: workspaceRows,
+    isLoading: loadingWorkspaceRows,
+    mutate: mutateWorkspaceRows,
+  } = useSWR(
     workspaceId ? ['workspace-capabilities', workspaceId] : null,
     () => capabilitiesApi.list(undefined, workspaceId),
     { revalidateOnFocus: false, shouldRetryOnError: false },
@@ -156,7 +161,10 @@ export default function ToolSubpage() {
       toast({
         tone: res.status === 'success' ? 'success' : 'warning',
         title: `Validation result: ${res.status}`,
-        detail: `Duration: ${res.executionDurationMs ?? 10}ms`,
+        detail:
+          res.executionDurationMs == null
+            ? 'The server reported no duration for this validation.'
+            : `Duration: ${res.executionDurationMs}ms`,
       });
     } catch (err) {
       setTestError(err instanceof Error ? err.message : 'Execution failed.');
@@ -186,7 +194,7 @@ export default function ToolSubpage() {
 
   return (
     <div className="flex flex-col h-full min-h-0 bg-background text-text antialiased overflow-hidden">
-      <div className="shrink-0 px-4 sm:px-6 pt-4 border-b border-border-subtle bg-surface">
+      <div className="shrink-0 px-4 sm:px-6 pt-4 border-b border-border bg-surface">
         <PageHeader
           title={tool?.name ?? decodedToolName}
           description={
@@ -197,7 +205,10 @@ export default function ToolSubpage() {
           breadcrumb={<Breadcrumb items={breadcrumbItems} />}
           actions={
             <div className="flex items-center gap-3">
-              <Link href={breadcrumbsBackUrl}>
+              <Link
+                href={breadcrumbsBackUrl}
+                className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
+              >
                 <Button variant="secondary" size="sm">
                   Back to Tools
                 </Button>
@@ -218,7 +229,9 @@ export default function ToolSubpage() {
       </div>
 
       <div className="flex-1 min-h-0 min-w-0 overflow-y-auto p-4 sm:p-6">
-        {!tool ? (
+        {loadingWorkspaceRows && !tool ? (
+          <CapabilitySubpageSkeleton eyebrow="Tool Capability" />
+        ) : !tool ? (
           <div className="max-w-xl mx-auto py-12">
             <EmptyState
               title={`Tool "${decodedToolName}" not found`}
@@ -286,7 +299,11 @@ export default function ToolSubpage() {
                   </div>
                   <div>
                     <span className="text-text-muted">Trust Class:</span>
-                    <span className="ml-2 font-mono text-text">core_trusted</span>
+                    {tool.trustClass ? (
+                      <span className="ml-2 font-mono text-text">{tool.trustClass}</span>
+                    ) : (
+                      <span className="ml-2 text-text-muted">not reported by the registry</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -390,7 +407,9 @@ export default function ToolSubpage() {
                         variant={testResult.status === 'success' ? 'success' : 'warning'}
                         size="sm"
                       >
-                        {testResult.executionDurationMs ?? 12}ms
+                        {testResult.executionDurationMs == null
+                          ? 'no duration reported'
+                          : `${testResult.executionDurationMs}ms`}
                       </Badge>
                     </div>
                     <pre className="p-3 rounded bg-surface border border-border text-xs font-mono overflow-x-auto">

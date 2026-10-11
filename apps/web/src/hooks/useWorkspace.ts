@@ -1,5 +1,6 @@
 import useSWR from 'swr';
 import { request } from '../lib/api';
+import { capabilitiesApi, type SkillListItem } from '../lib/api-client';
 import type { Workspace, Agent, Memory, Connector } from '@vaeloom/shared-types';
 
 const fetcher = <T>(url: string) => request<T>(url);
@@ -67,6 +68,21 @@ export function useWorkspaceConnectors(workspaceId: string | undefined) {
 
   return {
     connectors: data ?? [],
+    isLoading,
+    isError: error,
+    mutate,
+  };
+}
+
+export function useWorkspaceCapabilities(workspaceId: string | undefined) {
+  const { data, error, isLoading, mutate } = useSWR<SkillListItem[]>(
+    workspaceId ? ['workspace-skills', workspaceId] : null,
+    () => capabilitiesApi.listSkills(workspaceId!),
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  );
+
+  return {
+    skills: data ?? [],
     isLoading,
     isError: error,
     mutate,

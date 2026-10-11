@@ -155,10 +155,10 @@ export const McpView: React.FC<McpViewProps> = ({
               role="tab"
               aria-selected={activeSubTab === 'inspector'}
               onClick={() => setActiveSubTab('inspector')}
-              className={`text-xs font-sans font-semibold pb-1 border-b-2 transition-colors flex items-center gap-1.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+              className={`text-xs font-sans font-semibold pb-1 border-b-2 transition-colors flex items-center gap-1.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
                 activeSubTab === 'inspector'
                   ? 'border-primary text-primary'
-                  : 'border-transparent text-text-muted hover:text-text'
+                  : 'border-transparent text-text-secondary hover:text-text'
               }`}
             >
               Inspector &amp; Tools
@@ -179,10 +179,10 @@ export const McpView: React.FC<McpViewProps> = ({
                   // Manifest was refreshed by hook on servers update
                 }
               }}
-              className={`text-xs font-sans font-semibold pb-1 border-b-2 transition-colors flex items-center gap-1.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+              className={`text-xs font-sans font-semibold pb-1 border-b-2 transition-colors flex items-center gap-1.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
                 activeSubTab === 'manifest'
                   ? 'border-primary text-primary'
-                  : 'border-transparent text-text-muted hover:text-text'
+                  : 'border-transparent text-text-secondary hover:text-text'
               }`}
             >
               mcp.json Manifest
@@ -203,7 +203,7 @@ export const McpView: React.FC<McpViewProps> = ({
             <div className="flex items-center gap-2">
               <Link
                 href={`/workspace/${workspaceId}/capabilities/mcp/${encodeURIComponent(selectedServer.id)}`}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface-elevated hover:bg-surface text-text font-medium text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface-elevated hover:bg-surface text-text font-medium text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
               >
                 <span>Open Full Page ↗</span>
               </Link>

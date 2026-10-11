@@ -151,7 +151,7 @@ export const ToolDetailDrawer: React.FC<ToolDetailDrawerProps> = ({
               <div className="shrink-0">
                 <Link
                   href={`/workspace/${workspaceId}/capabilities/tools/${encodeURIComponent(activeRow.name)}`}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface-elevated hover:bg-surface text-text font-medium text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface-elevated hover:bg-surface text-text font-medium text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
                 >
                   <span>Open Full Page ↗</span>
                 </Link>
@@ -174,7 +174,7 @@ export const ToolDetailDrawer: React.FC<ToolDetailDrawerProps> = ({
                     type="button"
                     onClick={() => onSelectTool(row.name)}
                     aria-pressed={isActive}
-                    className={`px-2.5 py-1 rounded-md text-xs font-mono font-medium transition-colors shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-surface ${
+                    className={`px-2.5 py-1 rounded-md text-xs font-mono font-medium transition-colors shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${
                       isActive
                         ? 'bg-action text-action-fg shadow-xs font-semibold'
                         : 'bg-surface-elevated text-text-secondary hover:text-text hover:bg-surface-hover border border-border'

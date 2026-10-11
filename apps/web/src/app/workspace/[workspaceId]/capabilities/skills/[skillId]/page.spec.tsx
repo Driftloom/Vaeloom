@@ -39,7 +39,8 @@ jest.mock('@/lib/api-client', () => {
           author: 'Vaeloom Core Team',
           type: 'core',
           config: {
-            doc: '# ATS Audit instructions',
+            // The server returns `markdown_doc`; `api.request` camelCases it.
+            markdownDoc: '# ATS Audit instructions',
             tags: ['ATS', 'Career'],
             autonomy: 'autonomous',
           },

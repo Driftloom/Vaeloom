@@ -77,8 +77,8 @@ async def _create_skill(client: AsyncClient, headers: dict, name: str, config: d
 class TestCatalogIntegrity:
     """Unit-level guarantees about the catalog itself, no HTTP involved."""
 
-    def test_catalog_has_thirty_three_bundled_skills(self):
-        assert len(SKILL_CATALOG) == 33
+    def test_catalog_has_thirty_nine_bundled_skills(self):
+        assert len(SKILL_CATALOG) == 39
         assert all(e.bundled is True for e in SKILL_CATALOG)
 
     def test_slugs_are_unique_and_non_empty(self):
@@ -259,7 +259,7 @@ class TestCatalogEndpoint:
         res = await client.get("/api/v1/capabilities/catalog", headers=headers)
         assert res.status_code == 200
         entries = res.json()
-        assert len(entries) == 33
+        assert len(entries) == 39
         assert len(entries) >= 12
         assert {e["slug"] for e in entries} == {e.slug for e in SKILL_CATALOG}
 
@@ -299,12 +299,12 @@ class TestCatalogEndpoint:
         )
         assert res.status_code == 200
         items = res.json()
-        assert len(items) == 33
+        assert len(items) == 39
 
         installed = [i for i in items if i["installed"]]
         browsable = [i for i in items if not i["installed"]]
         assert len(installed) == 1
-        assert len(browsable) == 32
+        assert len(browsable) == 38
 
         row = installed[0]
         assert row["name"] == "agent-building"
@@ -313,7 +313,12 @@ class TestCatalogEndpoint:
         assert row["enabled"] is True
         assert row["usage_count"] == 0
         assert row["last_used_at"] is None
-        assert row["trust_class"] == "core_trusted"
+        # The row was created with a workspace-supplied `markdown_doc`, so the
+        # runtime quarantines it as workspace-authored regardless of the row
+        # name matching a bundled catalog slug (`skill_injection.py`
+        # _build_enabled_skill). Reporting `core_trusted` here made the API's
+        # trust badge describe a document the runtime would not trust.
+        assert row["trust_class"] == "community"
         assert "## Mission" in row["markdown_doc"]
 
         for item in browsable:
@@ -989,3 +994,6 @@ class TestPlatformDomainExclusionAndSlashCommands:
         assert "alphafold" in PROHIBITED_EXTERNAL_DOMAINS
         assert "chembl" in PROHIBITED_EXTERNAL_DOMAINS
         assert "pdb" in PROHIBITED_EXTERNAL_DOMAINS
+        assert "plan-ceo-review" in PROHIBITED_EXTERNAL_DOMAINS
+        assert "agent-harness" in PROHIBITED_EXTERNAL_DOMAINS
+        assert "loop-engineering" in PROHIBITED_EXTERNAL_DOMAINS

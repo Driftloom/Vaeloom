@@ -11,6 +11,7 @@ import { useToast } from '@/components/shared/Toast';
 import { PageHeader } from '@/components/shared/Page';
 import { SkillDetailPane } from '@/components/capabilities/skills/SkillDetailPane';
 import { SkillPlaygroundDrawer } from '@/components/capabilities/skills/SkillPlaygroundDrawer';
+import { CapabilitySubpageSkeleton } from '@/components/capabilities/CapabilitySubpageSkeleton';
 import { isSkill, mergeSkillRows } from '@/components/capabilities/skills/skill-row-helpers';
 import type { SkillRow, SkillSaveOutcome } from '@/components/capabilities/skills/SkillCard';
 
@@ -95,8 +96,10 @@ export default function SkillSubpage() {
           version: selectedRow.item.version ?? '1.0.0',
           author: selectedRow.item.author ?? 'Catalog',
           type: selectedRow.item.source,
+          // `markdown_doc` is the key the runtime reads and the only one the
+          // server returns. Writing `doc` leaves the skill inert.
           config: {
-            doc: selectedRow.item.markdownDoc,
+            markdown_doc: selectedRow.item.markdownDoc,
             tags: selectedRow.item.tags,
             autonomy: selectedRow.item.autonomy,
             ...(selectedRow.item.requiredScope
@@ -134,7 +137,7 @@ export default function SkillSubpage() {
         return 'failed';
       }
       try {
-        await capabilitiesApi.update(selectedRow.item.id, { config: { doc } });
+        await capabilitiesApi.update(selectedRow.item.id, { config: { markdown_doc: doc } });
         void mutateSkills();
         toast({
           tone: 'success',
@@ -225,7 +228,7 @@ export default function SkillSubpage() {
 
   return (
     <div className="flex flex-col h-full min-h-0 bg-background text-text antialiased overflow-hidden">
-      <div className="shrink-0 px-4 sm:px-6 pt-4 border-b border-border-subtle bg-surface">
+      <div className="shrink-0 px-4 sm:px-6 pt-4 border-b border-border bg-surface">
         <PageHeader
           title={selectedRow?.item.name ?? decodedSkillId}
           description={
@@ -236,7 +239,10 @@ export default function SkillSubpage() {
           breadcrumb={<Breadcrumb items={breadcrumbItems} />}
           actions={
             <div className="flex items-center gap-2">
-              <Link href={breadcrumbsBackUrl}>
+              <Link
+                href={breadcrumbsBackUrl}
+                className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
+              >
                 <Button variant="secondary" size="sm">
                   Back to Skills
                 </Button>
@@ -252,7 +258,9 @@ export default function SkillSubpage() {
       </div>
 
       <div className="flex-1 min-h-0 min-w-0 overflow-y-auto">
-        {!isLoading && !selectedRow ? (
+        {isLoading && !selectedRow ? (
+          <CapabilitySubpageSkeleton eyebrow="Capability Skill" />
+        ) : !selectedRow ? (
           <div className="p-8 max-w-xl mx-auto">
             <EmptyState
               title={`Skill "${decodedSkillId}" not found`}

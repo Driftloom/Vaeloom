@@ -1467,6 +1467,252 @@ Use when requests contain: reference list builder, professional references, refe
 Markdown dossier containing: 1) Formatted Professional Reference Sheet, 2) Reference Alignment Matrix (who covers which competencies), 3) Advocate Outreach & Briefing Email Templates. Scope for this skill is \`memory.read\`.
 `,
   },
+  {
+    id: 'skill-resume-quantifier',
+    name: 'resume-quantifier',
+    category: 'skills',
+    tags: ['Career', 'Resume', 'Quantification', 'Metrics'],
+    description:
+      'Find opportunities to add metrics and estimate numbers when exact data unavailable.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: [
+      'resume quantifier',
+      'add metrics to resume',
+      'quantify achievements',
+      'quantify bullet points',
+      'estimate resume numbers',
+    ],
+    version: '1.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Resume Quantifier & Metric Extraction Framework
+
+## Mission
+Identify unmeasured tasks in candidate resumes and systematically extract or estimate truthful metrics (cost, time, scale, volume, percentage improvement).
+
+## Operating Rules
+1. Metric Discovery Probing: Ask targeted probing questions to uncover scale (team size, user count, query volume, request latency, budget).
+2. Conservative Estimation Modeling: When exact numbers are unknown, calculate conservative, defensible estimates based on known baselines.
+3. Scale & Baseline Grounding: Always frame metrics against a clear baseline (e.g., 'reduced latency from 450ms to 120ms').
+4. Business Impact Connection: Link technical engineering tasks directly to business value (revenue, cost, efficiency, compliance).
+5. Anti-Fabrication Guarantee: Never guess or invent numbers; mark estimated metrics with clear defensible methodologies.
+6. Strict Scope Discipline: Operates under authorized tool scope \`memory.read\` to review candidate experience records.
+
+## Triggers
+Use when requests contain: resume quantifier, add metrics to resume, quantify achievements, quantify bullet points, estimate resume numbers.
+
+## Output Contract
+Produces a Metric Discovery Audit with proposed questions, conservative estimation models, and quantified bullet revisions. Scope for this skill is \`memory.read\`.
+`,
+  },
+  {
+    id: 'skill-resume-bullet-writer',
+    name: 'resume-bullet-writer',
+    category: 'skills',
+    tags: ['Career', 'Resume', 'Bullets', 'Google XYZ', 'Writing'],
+    description:
+      'Transform weak resume bullets into achievement-focused statements with metrics and impact using Google XYZ formula.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: [
+      'resume bullet writer',
+      'write resume bullets',
+      'rewrite bullets',
+      'bullet points',
+      'resume bullet generator',
+    ],
+    version: '1.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Resume Bullet Writer & Google XYZ Impact Engine
+
+## Mission
+Transform weak, task-oriented resume bullets into achievement-focused, metric-driven statements using Google's XYZ formula and active power verbs.
+
+## Operating Rules
+1. Strict Google XYZ Architecture: Format bullets as 'Accomplished [X] as measured by [Y] by doing [Z]'.
+2. Active Power Verb Commencement: Begin every bullet with a high-impact, active past-tense verb (e.g., Architected, Spearheaded, Optimized, Accelerated).
+3. Mandatory Metric Quantification: Require specific numbers, percentages, time savings, or dollar amounts in every bullet.
+4. Zero Empty Buzzwords: Eliminate passive duty phrases ('responsible for', 'assisted with', 'worked on', 'helped to').
+5. Single-Concept Conciseness: Keep bullets tightly focused on one concrete outcome spanning 1 to 2 lines.
+6. Strict Grounding in Candidate Vault: Never invent metrics; extract authentic numbers from workspace records (\`memory.read\`).
+
+## Triggers
+Use when requests contain: resume bullet writer, write resume bullets, rewrite bullets, bullet points, resume bullet generator.
+
+## Output Contract
+Produces Before & After bullet transformation tables, extracted metric breakdowns, and copy-ready updated bullet points. Scope for this skill is \`memory.read\`.
+`,
+  },
+  {
+    id: 'skill-resume-tailor',
+    name: 'resume-tailor',
+    category: 'skills',
+    tags: ['Career', 'Resume', 'Tailoring', 'Customization'],
+    description:
+      'Customize resume for specific job postings while maintaining complete truthfulness and authentic candidate grounding.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: [
+      'resume tailor',
+      'tailor resume',
+      'customize resume for job',
+      'target resume',
+      'match resume to jd',
+    ],
+    version: '1.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Resume Tailor & Strategic Job Alignment Playbook
+
+## Mission
+Customize a candidate's master resume for a specific target job posting by reprioritizing relevant experiences and aligning terminology while preserving complete truthfulness.
+
+## Operating Rules
+1. Master Resume Grounding: Base all customizations strictly on the candidate's canonical master resume; never fabricate new roles or tools.
+2. Strategic Bullet Re-Ordering: Move the most directly relevant achievements to the top of each role's bullet list.
+3. Job Description Keyword Mirroring: Adopt the target employer's exact terminology for skills and methodologies the candidate has used.
+4. Honest Competency Boundaries: Highlight genuine transferable strengths without claiming unverified expertise.
+5. Length & Scannability Preservation: Maintain the resume within 1 to 2 pages without expanding bullet counts unnecessarily.
+6. Strict Scope Discipline: Operates under authorized tool scope \`memory.read\` to access master resume records.
+
+## Triggers
+Use when requests contain: resume tailor, tailor resume, customize resume for job, target resume, match resume to jd.
+
+## Output Contract
+Produces a customized resume markdown document, tailoring changelog, and keyword alignment confirmation. Scope for this skill is \`memory.read\`.
+`,
+  },
+  {
+    id: 'skill-resume-version-manager',
+    name: 'resume-version-manager',
+    category: 'skills',
+    tags: ['Career', 'Resume', 'Version Control', 'Organization'],
+    description:
+      'Track different resume versions, maintain master resume, and manage tailored versions across roles.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: [
+      'resume version manager',
+      'track resume versions',
+      'master resume',
+      'manage resumes',
+      'resume versions',
+    ],
+    version: '1.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Resume Version Manager & Branching Architecture
+
+## Mission
+Organize, track, and maintain a canonical Master Resume alongside targeted variations across different job titles, industries, and application deadlines.
+
+## Operating Rules
+1. Single Source of Truth: Maintain one comprehensive Master Resume containing all career achievements, projects, and metrics.
+2. Semantic Versioning & Changelogs: Assign clear version numbers (e.g., \`v2.4-swe-lead\`, \`v2.4-infra\`) and maintain a changelog table.
+3. Targeted Branching Taxonomy: Organize versions by role family, target industry, or specific high-priority applications.
+4. Deduplication & Synchronization: Ensure metric or role updates made in tailored versions are backported to the Master Resume.
+5. Standardized Naming Convention: Enforce standard file naming (\`Candidate_Name_TargetRole_Resume.pdf\`).
+6. Strict Scope Discipline: Operates under authorized tool scope \`memory.read\` to track and organize resume versions in workspace memory.
+
+## Triggers
+Use when requests contain: resume version manager, track resume versions, master resume, manage resumes, resume versions.
+
+## Output Contract
+Produces a Master Resume Inventory, version changelog table, and tailored version map. Scope for this skill is \`memory.read\`.
+`,
+  },
+  {
+    id: 'skill-tech-resume-optimizer',
+    name: 'tech-resume-optimizer',
+    category: 'skills',
+    tags: ['Career', 'Resume', 'Engineering', 'Technical', 'DevOps'],
+    description:
+      'Optimize resumes for software engineering, PM, and technical roles with system architecture and scale metrics.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: [
+      'tech resume optimizer',
+      'software engineer resume',
+      'tech resume',
+      'swe resume',
+      'developer resume',
+    ],
+    version: '1.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Tech Resume Optimizer & Software Engineering Architecture
+
+## Mission
+Optimize software engineering, DevOps, cloud, and data science resumes for technical depth, system architecture scope, and technical recruiter screening.
+
+## Operating Rules
+1. Modern Tech Stack Categorization: Group skills into Languages, Frameworks & Runtimes, Cloud & DevOps, Databases & Storage, and Distributed Systems.
+2. Architectural Scope & Scale Highlights: Explicitly cite request volume, throughput (RPS), dataset size (TB/PB), and latency bounds.
+3. Production Reliability & Impact Metrics: Highlight MTTR reduction, uptime improvements, CI/CD deployment frequency, and cost optimizations.
+4. System Ownership & Agency: Detail technical decisions, architectural trade-offs, and RFC proposals spearheaded by the candidate.
+5. Anti-Keyword-Stuffing Rigor: Contextualize technical tools within project bullets rather than ungrounded buzzword clouds.
+6. Strict Grounding in Candidate Vault: Source all engineering facts directly from workspace memory (\`memory.read\`).
+
+## Triggers
+Use when requests contain: tech resume optimizer, software engineer resume, tech resume, swe resume, developer resume.
+
+## Output Contract
+Produces a technical resume optimization report with Categorized Skills Section, Architecture Bullet Refinements, and Engineering Impact Score. Scope for this skill is \`memory.read\`.
+`,
+  },
+  {
+    id: 'skill-interview-prep-generator',
+    name: 'interview-prep-generator',
+    category: 'skills',
+    tags: ['Career', 'Interview', 'STAR', 'Coaching', 'Preparation'],
+    description:
+      'Generate STAR stories, practice questions, counter-probes, and talking points from candidate experience and job descriptions.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'memory.read',
+    triggers: [
+      'interview prep generator',
+      'interview preparation',
+      'behavioral interview prep',
+      'practice interview questions',
+      'star stories',
+    ],
+    version: '1.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Interview Prep Generator & Comprehensive Candidate Kit
+
+## Mission
+Synthesize comprehensive behavioral and technical interview preparation kits from candidate resumes and job descriptions, generating STAR story banks, anticipated counter-probes, and reverse interview questions.
+
+## Operating Rules
+1. Golden STAR Time Ratio: Structure behavioral answers adhering to the 15/10/60/15 rule (Situation 15%, Task 10%, Action 60%, Result 15%).
+2. Individual Agency Mandate: Enforce personal first-person ownership ('I architected', 'I decided') eliminating passive team masking ('we did').
+3. Level-Appropriate Calibration: Calibrate answers to target seniority (L4 execution, L5 technical leadership, L6 cross-org strategy).
+4. Failure & Scar Authenticity: Include genuine setbacks, trade-offs, and corrective retrospective actions for each story.
+5. Strategic Reverse Interview Questions: Generate 3 high-signal reverse questions that reveal company engineering culture, product bottlenecks, and team dynamics.
+6. Strict Scope Discipline: Operates under authorized tool scope \`memory.read\` to ground practice stories in verified workspace memories.
+
+## Triggers
+Use when requests contain: interview prep generator, interview preparation, behavioral interview prep, practice interview questions, star stories.
+
+## Output Contract
+Produces an interview preparation package with 5 STAR stories, anticipated tough interviewer probes with recommended responses, and 3 strategic reverse interview questions. Scope for this skill is \`memory.read\`.
+`,
+  },
 
   // ──────────────────────────────────────────────────────────────────────────
   // TOOLS (6 typed execution tools)

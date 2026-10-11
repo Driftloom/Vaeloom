@@ -72,19 +72,19 @@ export const Tabs: React.FC<TabsProps> = ({
     if (variant === 'pills') {
       return isActive
         ? 'bg-action text-action-fg font-medium shadow-sm'
-        : 'text-text-muted hover:text-text hover:bg-surface-hover';
+        : 'text-text-secondary hover:text-text hover:bg-surface-hover';
     }
 
     if (variant === 'underline') {
       return isActive
         ? 'text-primary border-b-2 border-primary font-semibold'
-        : 'text-text-muted hover:text-text border-b-2 border-transparent hover:border-border';
+        : 'text-text-secondary hover:text-text border-b-2 border-transparent hover:border-border';
     }
 
     // default variant
     return isActive
       ? 'bg-surface-elevated text-text font-medium border border-border/80 shadow-card'
-      : 'text-text-muted hover:text-text hover:bg-surface-hover';
+      : 'text-text-secondary hover:text-text hover:bg-surface-hover';
   };
 
   const containerClasses = {
@@ -115,7 +115,7 @@ export const Tabs: React.FC<TabsProps> = ({
             disabled={tab.disabled}
             onClick={() => !tab.disabled && handleTabChange(tab.id)}
             onKeyDown={(e) => handleKeyDown(e, idx)}
-            className={`inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 focus:ring-offset-background ${sizeClasses} ${getVariantClasses(isActive, tab.disabled)}`}
+            className={`inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${sizeClasses} ${getVariantClasses(isActive, tab.disabled)}`}
           >
             {tab.icon && <span className="shrink-0">{tab.icon}</span>}
             <span>{tab.label}</span>

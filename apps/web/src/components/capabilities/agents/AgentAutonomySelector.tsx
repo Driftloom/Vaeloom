@@ -45,10 +45,10 @@ export const AgentAutonomySelector: React.FC<AgentAutonomySelectorProps> = ({
               aria-checked={isActive}
               disabled={disabled}
               onClick={() => onAutonomyChange(option.value)}
-              className={`px-2 py-1 rounded-md transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-surface-elevated disabled:opacity-60 ${
+              className={`px-2 py-1 rounded-md transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-elevated disabled:opacity-60 ${
                 isActive
                   ? 'bg-primary/10 text-primary font-semibold shadow-xs'
-                  : 'text-text-muted hover:text-text'
+                  : 'text-text-secondary hover:text-text'
               }`}
             >
               {option.label}
@@ -123,7 +123,7 @@ export const AgentReactRoundsBudget: React.FC<AgentReactRoundsBudgetProps> = ({
               }
             }}
             onBlur={onCommitRounds}
-            className="w-16 bg-surface-elevated border border-border rounded px-2 py-1 text-xs font-mono text-text text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus:border-primary disabled:opacity-60"
+            className="w-16 bg-surface-elevated border border-border rounded px-2 py-1 text-xs font-mono text-text text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus:border-primary disabled:opacity-60"
           />
           <Badge
             variant={

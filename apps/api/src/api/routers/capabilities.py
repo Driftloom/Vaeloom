@@ -31,6 +31,7 @@ from ..services.skill_catalog_service import (
     is_bundled_skill,
     list_catalog,
 )
+from ..services.skill_injection import WORKSPACE_AUTHORED_TRUST
 from ..tools.definitions import ALL_TOOLS, ToolDefinition
 from ..tools.executor import (
     WORKSPACE_DYNAMIC_TOOL_DEFS,
@@ -236,6 +237,25 @@ def _config_autonomy(config: dict[str, Any]) -> str | None:
     return value if value in AUTONOMY_VALUES else None
 
 
+def _effective_trust_class(config: dict[str, Any], catalog) -> str | None:
+    """The trust class the runtime will actually apply to this row.
+
+    ``services/skill_injection.py`` downgrades to ``community`` whenever the
+    workspace supplied ``config["markdown_doc"]``, even when the row name still
+    matches a bundled catalog slug. Reporting ``core_trusted`` here instead made
+    the API's trust badge a statement about a document the runtime quarantines.
+    """
+    declared = config.get("trust_class")
+    if isinstance(declared, str) and declared.strip():
+        return declared
+    workspace_authored = isinstance(config.get("markdown_doc"), str) and bool(
+        config["markdown_doc"].strip()
+    )
+    if catalog and not workspace_authored:
+        return catalog.trust_class
+    return WORKSPACE_AUTHORED_TRUST
+
+
 def _to_list_item(c: WorkspaceCapability) -> SkillListItem:
     base = _serialize_cap(c)
     config = dict(c.config or {})
@@ -246,7 +266,7 @@ def _to_list_item(c: WorkspaceCapability) -> SkillListItem:
         tags=_as_tags(config.get("tags")),
         markdown_doc=config.get("markdown_doc") or (catalog.markdown_doc if catalog else None),
         required_scope=config.get("required_scope") or (catalog.required_scope if catalog else None),
-        trust_class=catalog.trust_class if catalog else config.get("trust_class"),
+        trust_class=_effective_trust_class(config, catalog),
         autonomy=_config_autonomy(config),
         triggers=_as_tags(config.get("triggers")) or (list(catalog.triggers) if catalog else []),
         bundled=catalog.bundled if catalog else False,
@@ -1532,7 +1552,7 @@ async def test_capability(
                     if val_res.violations and val_res.status == "error"
                     else None
                 ),
-                executed=True,
+                executed=False,
             )
 
         elapsed_ms = (time.monotonic() - start_time) * 1000.0

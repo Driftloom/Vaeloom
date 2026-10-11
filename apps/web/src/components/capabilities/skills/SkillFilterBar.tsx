@@ -94,10 +94,10 @@ export const SkillFilterBar: React.FC<SkillFilterBarProps> = ({
         <button
           type="button"
           onClick={() => onCategoryFilterChange('all')}
-          className={`px-2.5 py-1 rounded-full font-medium transition-colors border ${
+          className={`px-2.5 py-1 rounded-full font-medium transition-colors border cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
             categoryFilter === 'all'
-              ? 'bg-primary text-background border-primary'
-              : 'bg-surface-hover/60 text-text-secondary border-border/60 hover:text-text'
+              ? 'bg-action text-action-fg border-action shadow-xs font-semibold'
+              : 'bg-surface-elevated text-text-secondary border-border hover:text-text hover:bg-surface-hover'
           }`}
         >
           All ({totalFilteredCount})
@@ -105,10 +105,10 @@ export const SkillFilterBar: React.FC<SkillFilterBarProps> = ({
         <button
           type="button"
           onClick={() => onCategoryFilterChange('career')}
-          className={`px-2.5 py-1 rounded-full font-medium transition-colors border flex items-center gap-1 ${
+          className={`px-2.5 py-1 rounded-full font-medium transition-colors border flex items-center gap-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
             categoryFilter === 'career'
-              ? 'bg-primary text-background border-primary'
-              : 'bg-surface-hover/60 text-text-secondary border-border/60 hover:text-text'
+              ? 'bg-action text-action-fg border-action shadow-xs font-semibold'
+              : 'bg-surface-elevated text-text-secondary border-border hover:text-text hover:bg-surface-hover'
           }`}
         >
           <span>Career & ATS</span>
@@ -117,10 +117,10 @@ export const SkillFilterBar: React.FC<SkillFilterBarProps> = ({
         <button
           type="button"
           onClick={() => onCategoryFilterChange('agent')}
-          className={`px-2.5 py-1 rounded-full font-medium transition-colors border flex items-center gap-1 ${
+          className={`px-2.5 py-1 rounded-full font-medium transition-colors border flex items-center gap-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
             categoryFilter === 'agent'
-              ? 'bg-primary text-background border-primary'
-              : 'bg-surface-hover/60 text-text-secondary border-border/60 hover:text-text'
+              ? 'bg-action text-action-fg border-action shadow-xs font-semibold'
+              : 'bg-surface-elevated text-text-secondary border-border hover:text-text hover:bg-surface-hover'
           }`}
         >
           <span>Agent Architecture</span>
@@ -129,10 +129,10 @@ export const SkillFilterBar: React.FC<SkillFilterBarProps> = ({
         <button
           type="button"
           onClick={() => onCategoryFilterChange('engineering')}
-          className={`px-2.5 py-1 rounded-full font-medium transition-colors border flex items-center gap-1 ${
+          className={`px-2.5 py-1 rounded-full font-medium transition-colors border flex items-center gap-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
             categoryFilter === 'engineering'
-              ? 'bg-primary text-background border-primary'
-              : 'bg-surface-hover/60 text-text-secondary border-border/60 hover:text-text'
+              ? 'bg-action text-action-fg border-action shadow-xs font-semibold'
+              : 'bg-surface-elevated text-text-secondary border-border hover:text-text hover:bg-surface-hover'
           }`}
         >
           <span>Engineering Tools</span>

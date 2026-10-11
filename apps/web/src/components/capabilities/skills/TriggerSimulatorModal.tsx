@@ -119,7 +119,7 @@ export const TriggerSimulatorModal: React.FC<TriggerSimulatorModalProps> = ({
                 key={preset}
                 type="button"
                 onClick={() => setCandidateQuery(preset)}
-                className="px-2 py-0.5 rounded bg-surface-hover hover:bg-primary/10 hover:text-primary border border-border text-2xs transition-colors font-mono"
+                className="px-2 py-0.5 rounded bg-surface-hover hover:bg-primary/10 hover:text-primary border border-border text-2xs transition-colors font-mono cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
               >
                 &ldquo;{preset}&rdquo;
               </button>

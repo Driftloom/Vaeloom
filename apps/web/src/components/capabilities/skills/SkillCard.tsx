@@ -48,7 +48,7 @@ export const SkillCard: React.FC<SkillCardProps> = ({
         aria-current={isSelected ? 'true' : undefined}
         aria-label={row.item.name}
         onClick={() => onSelect(row.key)}
-        className="flex-1 min-w-0 text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-surface py-1"
+        className="flex-1 min-w-0 text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface py-1"
       >
         <span className="flex items-center gap-1.5">
           {!row.installed && <StatusDot status="idle" size="sm" label="Not installed" />}

@@ -94,7 +94,7 @@ export function ConnectorsDirectory({
               id="connector-category"
               value={selectedFilter}
               onChange={(event) => onFilterChange(event.target.value as ConnectorCategory)}
-              className="appearance-none bg-surface-elevated border border-border rounded-lg pl-3 pr-8 py-1.5 text-xs text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer font-sans"
+              className="appearance-none bg-surface-elevated border border-border rounded-lg pl-3 pr-8 py-1.5 text-xs text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 cursor-pointer font-sans"
             >
               {CATEGORY_FILTERS.map((filter) => (
                 <option key={filter.id} value={filter.id}>
@@ -127,7 +127,7 @@ export function ConnectorsDirectory({
             type="button"
             aria-pressed={selectedFilter === filter.id}
             onClick={() => onFilterChange(filter.id)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 whitespace-nowrap cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 whitespace-nowrap cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
               selectedFilter === filter.id
                 ? 'bg-action text-action-fg shadow-xs font-semibold'
                 : 'bg-surface-elevated hover:bg-surface-hover text-text-secondary hover:text-text border border-border'

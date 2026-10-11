@@ -64,7 +64,7 @@ export const ToolSuiteAccordion: React.FC<ToolSuiteAccordionProps> = ({
             id="tools-sort-select"
             value={sortBy}
             onChange={(e) => onSortChange(e.target.value as ToolSort)}
-            className="bg-surface-elevated text-text border border-border rounded px-2 py-1 text-xs font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
+            className="bg-surface-elevated text-text border border-border rounded px-2 py-1 text-xs font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 cursor-pointer"
           >
             <option value="most-used">Catalog order</option>
             <option value="alphabetical">A-Z</option>

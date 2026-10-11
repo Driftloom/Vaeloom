@@ -352,7 +352,7 @@ export const McpToolInspectPanel: React.FC<McpToolInspectPanelProps> = ({
                           onChange={(event) => setTestArgsJson(event.target.value)}
                           rows={3}
                           spellCheck={false}
-                          className="w-full p-2 rounded bg-surface-elevated border border-border font-mono text-xs text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent placeholder:text-text-muted"
+                          className="w-full p-2 rounded bg-surface-elevated border border-border font-mono text-xs text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 placeholder:text-text-muted"
                           placeholder='{ "query": "test" }'
                         />
                       </div>

@@ -1795,6 +1795,59 @@ paths:
         '429': *id001
       security:
       - BearerAuth: []
+  /api/v1/workspaces/{workspace_id}/conversations/{conversation_id}/compact:
+    post:
+      tags:
+      - conversations
+      summary: Compact Conversation History
+      description: Compact older turns of the conversation into an episodic summary
+        while preserving recent turns.
+      operationId: compact_conversation_history_api_v1_workspaces__workspace_id__conversations__conversation_id__compact_post
+      parameters:
+      - name: workspace_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Workspace Id
+      - name: conversation_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Conversation Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Unauthorized — missing or invalid Bearer JWT access token.
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
+                  detail:
+                    type: string
+                required:
+                - detail
+        '429': *id001
+      security:
+      - BearerAuth: []
   /api/v1/memories:
     get:
       tags:
@@ -2856,43 +2909,6 @@ paths:
         '429': *id001
       security:
       - BearerAuth: []
-  /api/v1/agents/models:
-    get:
-      tags:
-      - agents
-      summary: Get Model Catalog
-      description: Return model catalog with providers, tiers, pricing, and health
-        status.
-      operationId: get_model_catalog_api_v1_agents_models_get
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                additionalProperties: true
-                type: object
-                title: Response Get Model Catalog Api V1 Agents Models Get
-        '401':
-          description: Unauthorized — missing or invalid Bearer JWT access token.
-          content:
-            application/problem+json:
-              schema:
-                type: object
-                properties:
-                  type:
-                    type: string
-                  title:
-                    type: string
-                  status:
-                    type: integer
-                  detail:
-                    type: string
-                required:
-                - detail
-        '429': *id001
-      security:
-      - BearerAuth: []
   /api/v1/agents/commands:
     get:
       tags:
@@ -3137,6 +3153,58 @@ paths:
           content:
             application/json:
               schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Unauthorized — missing or invalid Bearer JWT access token.
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
+                  detail:
+                    type: string
+                required:
+                - detail
+        '429': *id001
+      security:
+      - BearerAuth: []
+  /api/v1/agents/models:
+    get:
+      tags:
+      - agents
+      summary: Get Models
+      description: Return authentic live foundation model matrix reporting platform-managed
+        vs BYOK availability.
+      operationId: get_models_api_v1_agents_models_get
+      parameters:
+      - name: workspace_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Workspace Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response Get Models Api V1 Agents Models Get
         '422':
           description: Validation Error
           content:
@@ -8120,7 +8188,7 @@ paths:
       tags:
       - connectors
       summary: List Composio Apps
-      description: List 260+ supported enterprise SaaS applications from the Composio
+      description: List 300+ supported enterprise SaaS applications from the Composio
         catalog.
       operationId: list_composio_apps_api_v1_connectors_composio_apps_get
       parameters:
@@ -8166,26 +8234,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
-        '401':
-          description: Unauthorized — missing or invalid Bearer JWT access token.
-          content:
-            application/problem+json:
-              schema:
-                type: object
-                properties:
-                  type:
-                    type: string
-                  title:
-                    type: string
-                  status:
-                    type: integer
-                  detail:
-                    type: string
-                required:
-                - detail
         '429': *id001
-      security:
-      - BearerAuth: []
+      security: []
   /api/v1/connectors/composio/auth-url:
     post:
       tags:
@@ -9168,6 +9218,50 @@ paths:
         '429': *id001
       security:
       - BearerAuth: []
+  /api/v1/capabilities/tools/definitions:
+    get:
+      tags:
+      - capabilities
+      summary: List Tool Definitions
+      description: 'Authoritative server-side tool definitions reflecting ALL_TOOLS.
+
+
+        Declared before ``/{cap_id}`` so literal path segment ``tools`` is not
+
+        matched as a capability id.'
+      operationId: list_tool_definitions_api_v1_capabilities_tools_definitions_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  additionalProperties: true
+                  type: object
+                type: array
+                title: Response List Tool Definitions Api V1 Capabilities Tools Definitions
+                  Get
+        '401':
+          description: Unauthorized — missing or invalid Bearer JWT access token.
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
+                  detail:
+                    type: string
+                required:
+                - detail
+        '429': *id001
+      security:
+      - BearerAuth: []
   /api/v1/capabilities/validate:
     post:
       tags:
@@ -9559,8 +9653,31 @@ paths:
       tags:
       - capabilities
       summary: Sync Github Skills
-      description: Sync and validate remote SKILL.md playbooks from a GitHub repository.
+      description: 'Validate remote SKILL.md playbooks from a GitHub repository.
+
+
+        Validation-only: nothing is persisted (see
+
+        ``services.github_skills_sync``). The result''s ``persisted`` field is always
+
+        ``False``. To install a candidate skill, POST it to ``/capabilities``.
+
+
+        Requires workspace membership, like every other capability route -- a remote
+
+        sweep is workspace-scoped because the caller uses the result to decide what
+
+        that workspace should be able to run.'
       operationId: sync_github_skills_api_v1_capabilities_sync_github_post
+      parameters:
+      - name: X-GitHub-Token
+        in: header
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: X-Github-Token
       requestBody:
         content:
           application/json:
@@ -9575,8 +9692,7 @@ paths:
           content:
             application/json:
               schema:
-                title: Response Sync Github Skills Api V1 Capabilities Sync Github
-                  Post
+                $ref: '#/components/schemas/GitHubSkillSyncResult'
         '422':
           description: Validation Error
           content:
@@ -22544,6 +22660,49 @@ components:
           title: Company
       type: object
       title: GenerateResumeRequest
+    GitHubSkillSyncResult:
+      properties:
+        repository:
+          type: string
+          title: Repository
+        ref:
+          type: string
+          title: Ref
+        skills_discovered:
+          type: integer
+          title: Skills Discovered
+          default: 0
+        skills_valid:
+          type: integer
+          title: Skills Valid
+          default: 0
+        skills_rejected:
+          type: integer
+          title: Skills Rejected
+          default: 0
+        skills:
+          items:
+            $ref: '#/components/schemas/RemoteSkillSummary'
+          type: array
+          title: Skills
+        errors:
+          items:
+            type: string
+          type: array
+          title: Errors
+        persisted:
+          type: boolean
+          title: Persisted
+          default: false
+        skills_truncated:
+          type: boolean
+          title: Skills Truncated
+          default: false
+      type: object
+      required:
+      - repository
+      - ref
+      title: GitHubSkillSyncResult
     GrantConsentRequest:
       properties:
         scope:
@@ -23173,34 +23332,11 @@ components:
       properties:
         type:
           type: string
-          enum:
-          - profile
-          - document
-          - career
-          - episodic
-          - preference
-          - working
-          - note
-          - fact
-          - project
-          - skill
-          - organization
-          - relationship
-          - event
-          - insight
-          - goal
-          - feedback
-          - decision
-          - knowledge
-          - reference
-          - contact
-          - financial
-          - health
-          - learning
-          - workflow
+          maxLength: 50
+          minLength: 1
           title: Type
-          description: One of 22 memory types (6 canonical + 16 enterprise additive
-            per CONT-P12 expand-contract 0027)
+          description: A memory type from an active domain pack; validated against
+            memory_type_packs at write time (0068), not against a literal here
         domain:
           anyOf:
           - type: string
@@ -23743,11 +23879,12 @@ components:
         type:
           anyOf:
           - type: string
-            maxLength: 100
+            maxLength: 50
             minLength: 1
           - type: 'null'
           title: Type
-          description: 22 types allowed; see 0027 ck_memories_type_valid
+          description: A memory type from an active domain pack; validated against
+            memory_type_packs at write time (0068) only when this field is set
         taxonomy_version:
           anyOf:
           - type: integer
@@ -25669,6 +25806,70 @@ components:
           title: Refresh Token
       type: object
       title: RefreshRequest
+    RemoteSkillSummary:
+      properties:
+        slug:
+          type: string
+          title: Slug
+        name:
+          type: string
+          title: Name
+        description:
+          type: string
+          title: Description
+        tags:
+          items:
+            type: string
+          type: array
+          title: Tags
+        required_scope:
+          type: string
+          title: Required Scope
+        autonomy:
+          type: string
+          title: Autonomy
+          default: suggest
+        trust_class:
+          type: string
+          title: Trust Class
+          default: community
+        triggers:
+          items:
+            type: string
+          type: array
+          title: Triggers
+        version:
+          type: string
+          title: Version
+          default: 1.0.0
+        author:
+          type: string
+          title: Author
+          default: GitHub Community
+        markdown_doc:
+          type: string
+          title: Markdown Doc
+        valid:
+          type: boolean
+          title: Valid
+          default: true
+        validation_status:
+          type: string
+          title: Validation Status
+          default: success
+        violations:
+          items:
+            type: string
+          type: array
+          title: Violations
+      type: object
+      required:
+      - slug
+      - name
+      - description
+      - required_scope
+      - markdown_doc
+      title: RemoteSkillSummary
     ResendVerificationRequest:
       properties:
         email:
@@ -26726,19 +26927,33 @@ components:
       properties:
         repository:
           type: string
+          maxLength: 200
+          minLength: 1
+          pattern: ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$
           title: Repository
+          description: Bare 'owner/repo' slug. URLs are rejected at the edge.
           default: Driftloom/vaeloom-skills
         ref:
           type: string
+          maxLength: 128
+          minLength: 1
           title: Ref
           default: master
-        auth_token:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Auth Token
+      additionalProperties: false
       type: object
       title: SyncGitHubSkillsRequest
+      description: 'Body for a remote SKILL.md validation sweep.
+
+
+        Deliberately carries no credential. A GitHub token used to read a private
+
+        repository arrives in the ``X-GitHub-Token`` header instead, because request
+
+        bodies are routinely captured by access logs, APM traces, and error
+
+        reporters -- a body-borne secret leaks into infrastructure it has no reason
+
+        to be in.'
     SyncStatusResponse:
       properties:
         connector_id:

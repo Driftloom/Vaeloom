@@ -67,7 +67,18 @@ export const McpServerCard: React.FC<McpServerCardProps> = ({
                 <Badge variant="mono" size="sm">
                   {String(server.config?.['transport'] ?? 'unspecified')}
                 </Badge>
-                <Badge variant={statusMeta.dot === 'error' ? 'error' : 'default'} size="sm">
+                <Badge
+                  variant={
+                    statusMeta.dot === 'error'
+                      ? 'error'
+                      : statusMeta.dot === 'warning'
+                        ? 'warning'
+                        : statusMeta.dot === 'active'
+                          ? 'success'
+                          : 'default'
+                  }
+                  size="sm"
+                >
                   {statusMeta.label}
                 </Badge>
                 {typeof toolCount === 'number' && (
@@ -150,7 +161,7 @@ export const McpServerCard: React.FC<McpServerCardProps> = ({
           type="button"
           onClick={onSelect}
           aria-current={isSelected ? 'true' : undefined}
-          className="flex items-center gap-2.5 min-w-0 flex-1 text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="flex items-center gap-2.5 min-w-0 flex-1 text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
         >
           <Tooltip content={`Status: ${isSyncing ? 'syncing' : statusMeta.label}`}>
             <StatusDot

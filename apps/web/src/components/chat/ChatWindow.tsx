@@ -13,7 +13,9 @@ import { ChatThreadRail } from './ChatThreadRail';
 import { ChatSubpagesNav, AgentSquadsView, ModelMatrixView } from './ChatSubpages';
 import { ChatMemoryDrawer } from './ChatMemoryDrawer';
 import { useChatStore } from './chat-store';
-import { MAX_INPUT_LENGTH, type MentionTarget } from './types';
+import { useWorkspaceCapabilities } from '@/hooks/useWorkspace';
+import { getAgentForSkill } from '@/components/capabilities/skills/SkillIntegrationBar';
+import { MAX_INPUT_LENGTH, type ChatSkill, type MentionTarget } from './types';
 
 /**
  * Chat composition shell.
@@ -35,7 +37,25 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   const docName = searchParams?.get('docName');
   const paramPrompt = searchParams?.get('prompt');
   const paramAgent = searchParams?.get('agent');
+  const paramSkill = searchParams?.get('skill');
+  const [activeSkill, setActiveSkill] = useState<string | null>(null);
   const { status: connectionStatus } = useRealtime();
+
+  const { skills: rawSkills } = useWorkspaceCapabilities(workspaceId);
+
+  const enabledSkills = useMemo<ChatSkill[]>(() => {
+    return (rawSkills ?? [])
+      .filter((s) => s.enabled)
+      .map((s) => ({
+        id: s.id,
+        name: s.name,
+        slug: s.slug || s.name.toLowerCase().replace(/[^a-z0-9-_]/g, '-'),
+        description: s.description || `Skill: ${s.name}`,
+        triggers: s.triggers,
+        enabled: s.enabled,
+        requiredScope: s.requiredScope,
+      }));
+  }, [rawSkills]);
 
   // Mobile drawer. Defaults closed: the old component defaulted it open, so a
   // phone loaded /chat behind an 82%-width thread list with no close button.
@@ -57,16 +77,42 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
     }
   }, [docName, docId, store.catalogState]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Deep-link integration from Skills & Capabilities Hub
+  // Deep-link integration from Skills & Capabilities Hub (?skill=... or ?agent=...)
   useEffect(() => {
-    if (paramAgent) {
-      store.setSelectedAgent(paramAgent);
+    if (paramSkill) {
+      const cleanSlug = paramSkill.replace(/^skill:/, '').trim();
+      if (cleanSlug) {
+        setActiveSkill(cleanSlug);
+        const matchedSkill = enabledSkills.find(
+          (s) => s.slug === cleanSlug || s.name.toLowerCase() === cleanSlug.toLowerCase(),
+        );
+        if (matchedSkill) {
+          const associatedAgent = getAgentForSkill(matchedSkill.name);
+          if (associatedAgent && !paramAgent) {
+            store.setSelectedAgent(associatedAgent.id);
+          }
+        }
+        if (!store.input) {
+          let promptToSet = `/skill:${cleanSlug} `;
+          if (paramPrompt) {
+            promptToSet = paramPrompt.startsWith(`/skill:${cleanSlug}`)
+              ? paramPrompt
+              : `/skill:${cleanSlug} ${paramPrompt}`;
+          }
+          store.setInput(promptToSet);
+          inputRef.current?.focus();
+        }
+      }
+    } else {
+      if (paramAgent) {
+        store.setSelectedAgent(paramAgent);
+      }
+      if (paramPrompt && !store.input) {
+        store.setInput(paramPrompt);
+        inputRef.current?.focus();
+      }
     }
-    if (paramPrompt && !store.input) {
-      store.setInput(paramPrompt);
-      inputRef.current?.focus();
-    }
-  }, [paramPrompt, paramAgent]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [paramSkill, paramPrompt, paramAgent, enabledSkills]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const streaming = store.messages.some((m) => m.status === 'streaming');
   const { handleScroll, scrollToBottom, showNewMessages } = useChatAutoScroll(
@@ -85,12 +131,22 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
 
   const mentionTargets = useMemo<MentionTarget[]>(() => {
     const colors = new Map(store.commands.map((c) => [c.agent, c.color]));
-    return canonicalAgents.map((a) => ({
+    const agentTargets: MentionTarget[] = canonicalAgents.map((a) => ({
       name: a.name,
       mission: a.mission,
       color: colors.get(a.name),
+      kind: 'agent',
     }));
-  }, [canonicalAgents, store.commands]);
+
+    const skillTargets: MentionTarget[] = enabledSkills.map((s) => ({
+      name: s.slug || s.name,
+      mission: s.description || `Skill: ${s.name}`,
+      kind: 'skill',
+      slug: s.slug || s.name,
+    }));
+
+    return [...agentTargets, ...skillTargets];
+  }, [canonicalAgents, store.commands, enabledSkills]);
 
   /** Tailwind bg-* class per agent, taken from the backend palette via the command list. */
   const agentColors = useMemo(() => {
@@ -244,6 +300,9 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
               inputRef={inputRef}
               selectedSquad={store.selectedSquad}
               onToggleSquadAgent={store.toggleSquadAgent}
+              enabledSkills={enabledSkills}
+              activeSkill={activeSkill}
+              onActiveSkillChange={setActiveSkill}
             />
           </>
         )}

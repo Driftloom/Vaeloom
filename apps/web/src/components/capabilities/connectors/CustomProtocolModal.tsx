@@ -58,10 +58,10 @@ export function CustomProtocolModal({
                 type="button"
                 aria-pressed={customType === type}
                 onClick={() => onCustomTypeChange(type)}
-                className={`py-1.5 px-2 rounded border text-center font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                className={`py-1.5 px-2 rounded border text-center font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
                   customType === type
                     ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border bg-surface text-text-muted hover:text-text hover:bg-surface-hover'
+                    : 'border-border bg-surface text-text-secondary hover:text-text hover:bg-surface-hover'
                 }`}
               >
                 {type === 'mcp' ? 'MCP server' : type === 'rest' ? 'REST API' : 'GraphQL API'}

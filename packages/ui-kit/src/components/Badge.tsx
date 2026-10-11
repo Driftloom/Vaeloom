@@ -17,7 +17,7 @@ export const Badge: React.FC<BadgeProps> = ({
   const base = 'inline-flex items-center gap-1 font-medium rounded-full border transition-colors';
 
   const variants: Record<string, string> = {
-    default: 'bg-surface-hover text-text-muted border-border',
+    default: 'bg-surface-hover text-text-secondary border-border',
     primary: 'bg-primary/10 text-primary border-primary/20',
     success: 'bg-success/10 text-success border-success/30',
     warning: 'bg-warning/10 text-warning border-warning/30',

@@ -360,6 +360,11 @@ function CapabilitiesContent() {
     };
     nonSkillRows.forEach((item) => {
       if (item.category === 'connectors') return;
+      // `mcp` is counted from the connector hook above and then from
+      // `nonSkillRows`, which also carries the four seeded MCP rows that
+      // `McpView` never receives. Counting both reported +4 over a badge whose
+      // whole job is to describe what the tab will actually list.
+      if (item.category === 'mcp') return;
       counts[item.category] += 1;
     });
     return counts;
@@ -432,8 +437,11 @@ function CapabilitiesContent() {
           version: row.item.version ?? '1.0.0',
           author: row.item.author ?? 'Catalog',
           type: row.item.source,
+          // `markdown_doc` is the key the runtime reads (`skill_injection.py`
+          // build_skill_directive) and the only one `GET /capabilities` returns.
+          // Writing `doc` here leaves the skill inert: it is never injected.
           config: {
-            doc: row.item.markdownDoc,
+            markdown_doc: row.item.markdownDoc,
             tags: row.item.tags,
             autonomy: row.item.autonomy,
             ...(row.item.requiredScope ? { required_scope: row.item.requiredScope } : {}),
@@ -474,7 +482,7 @@ function CapabilitiesContent() {
       }
 
       try {
-        await capabilitiesApi.update(row.item.id, { config: { doc } });
+        await capabilitiesApi.update(row.item.id, { config: { markdown_doc: doc } });
         void mutateSkills();
         toast({
           tone: 'success',
@@ -595,17 +603,32 @@ function CapabilitiesContent() {
         await capabilitiesApi.update(id, { enabled: nextState });
         void mutateServerRows();
       } catch (err) {
-        if (!isNotFound(err)) {
-          setNonSkillRows((prev) =>
-            prev.map((row) => (row.id === id ? { ...row, enabled: item.enabled } : row)),
-          );
+        // Roll the optimistic flip back on every failure, 404 included.
+        //
+        // A 404 used to be swallowed and fall through to the success toast.
+        // `nonSkillRows` is seeded from SEED_CAPABILITIES, so the seeded
+        // agents and plugins carry ids that are not server rows -- toggling one
+        // PATCHed nothing, got a 404, and still reported "Enabled organization".
+        setNonSkillRows((prev) =>
+          prev.map((row) => (row.id === id ? { ...row, enabled: item.enabled } : row)),
+        );
+
+        if (isNotFound(err)) {
           toast({
-            tone: 'error',
-            title: nextState ? `Could not enable ${item.name}` : `Could not disable ${item.name}`,
-            detail: errorMessage(err, 'The change was not saved.'),
+            tone: 'warning',
+            title: `${item.name} is not registered in this workspace`,
+            detail:
+              'Nothing was written. Install it as a capability first, then its enable state can be saved.',
           });
           return;
         }
+
+        toast({
+          tone: 'error',
+          title: nextState ? `Could not enable ${item.name}` : `Could not disable ${item.name}`,
+          detail: errorMessage(err, 'The change was not saved.'),
+        });
+        return;
       }
       toast({
         tone: nextState ? 'success' : 'warning',
@@ -832,7 +855,7 @@ function CapabilitiesContent() {
                 config: {
                   ...(newCap.metadata || {}),
                   parameters: newCap.inputSchema || {},
-                  doc: newCap.markdownDoc || '',
+                  markdown_doc: newCap.markdownDoc || '',
                   tags: newCap.tags || [],
                   autonomy: newCap.autonomy || 'autonomous',
                   ...(newCap.requiredScope ? { required_scope: newCap.requiredScope } : {}),

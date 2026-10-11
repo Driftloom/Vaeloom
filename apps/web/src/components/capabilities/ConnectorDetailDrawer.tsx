@@ -182,7 +182,7 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
               {workspaceId && (connectorId || row.id || row.provider) && (
                 <Link
                   href={`/workspace/${workspaceId}/capabilities/connectors/${encodeURIComponent(connectorId || row.id || row.provider)}`}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface-elevated hover:bg-surface text-text font-medium text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface-elevated hover:bg-surface text-text font-medium text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
                 >
                   <span>Open Full Page ↗</span>
                 </Link>
@@ -198,10 +198,10 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('overview')}
-              className={`py-2.5 px-3 text-xs font-medium border-b-2 transition-all ${
+              className={`py-2.5 px-3 text-xs font-medium border-b-2 transition-all rounded-t focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
                 activeTab === 'overview'
                   ? 'border-primary text-primary font-semibold'
-                  : 'border-transparent text-text-muted hover:text-text'
+                  : 'border-transparent text-text-secondary hover:text-text'
               }`}
             >
               Overview &amp; Permissions
@@ -209,10 +209,10 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('tools')}
-              className={`py-2.5 px-3 text-xs font-medium border-b-2 transition-all ${
+              className={`py-2.5 px-3 text-xs font-medium border-b-2 transition-all rounded-t focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
                 activeTab === 'tools'
                   ? 'border-primary text-primary font-semibold'
-                  : 'border-transparent text-text-muted hover:text-text'
+                  : 'border-transparent text-text-secondary hover:text-text'
               }`}
             >
               Tools &amp; Schemas {tools.length > 0 ? `(${tools.length})` : ''}
@@ -220,10 +220,10 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('security')}
-              className={`py-2.5 px-3 text-xs font-medium border-b-2 transition-all ${
+              className={`py-2.5 px-3 text-xs font-medium border-b-2 transition-all rounded-t focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
                 activeTab === 'security'
                   ? 'border-primary text-primary font-semibold'
-                  : 'border-transparent text-text-muted hover:text-text'
+                  : 'border-transparent text-text-secondary hover:text-text'
               }`}
             >
               Zero-Trust &amp; Health
@@ -392,12 +392,12 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
                 {/* Security Guarantees */}
                 <div className="rounded-xl border border-border bg-surface-elevated/40 p-4 space-y-3">
                   <h3 className="text-xs font-semibold text-text flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <span className="w-2 h-2 rounded-full bg-success" />
                     Zero-Trust Security Posture
                   </h3>
                   <div className="grid grid-cols-1 gap-2.5 text-2xs">
                     <div className="flex items-start gap-2">
-                      <span className="text-emerald-400">✓</span>
+                      <span className="text-success">✓</span>
                       <div>
                         <span className="font-semibold text-text">SSRF Protected:</span>
                         <p className="text-text-secondary">
@@ -407,7 +407,7 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
-                      <span className="text-emerald-400">✓</span>
+                      <span className="text-success">✓</span>
                       <div>
                         <span className="font-semibold text-text">Credential Encryption:</span>
                         <p className="text-text-secondary">
@@ -417,7 +417,7 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
-                      <span className="text-emerald-400">✓</span>
+                      <span className="text-success">✓</span>
                       <div>
                         <span className="font-semibold text-text">Webhook HMAC Verification:</span>
                         <p className="text-text-secondary">
@@ -427,7 +427,7 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
-                      <span className="text-emerald-400">✓</span>
+                      <span className="text-success">✓</span>
                       <div>
                         <span className="font-semibold text-text">Argv Tokenization:</span>
                         <p className="text-text-secondary">
@@ -461,9 +461,7 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
                           <span className="text-text-muted">Status:</span>
                           <span
                             className={
-                              healthStatus.status === 'healthy'
-                                ? 'text-emerald-400'
-                                : 'text-amber-400'
+                              healthStatus.status === 'healthy' ? 'text-success' : 'text-warning'
                             }
                           >
                             {healthStatus.status.toUpperCase()}

@@ -21,6 +21,7 @@ import { connectorsApi, type ConnectorItem, type McpToolInfo } from '@/lib/api-c
 import { MCP_CATALOG_TEMPLATES, type McpCatalogTemplate } from '@/components/capabilities/McpView';
 import { useToast } from '@/components/shared/Toast';
 import { PageHeader } from '@/components/shared/Page';
+import { CapabilitySubpageSkeleton } from '@/components/capabilities/CapabilitySubpageSkeleton';
 
 type SubTab = 'transport' | 'tools' | 'rpc';
 
@@ -50,8 +51,6 @@ export default function McpSubpage() {
     () => connectorsApi.list(workspaceId, 'mcp'),
     { revalidateOnFocus: false },
   );
-
-  const { data: builtinData } = useSWR('mcp-builtin-servers', () => connectorsApi.mcp.builtin());
 
   const configuredServer = useMemo<ConnectorItem | null>(() => {
     if (!mcpConnectors || !decodedServerId) return null;
@@ -178,7 +177,7 @@ export default function McpSubpage() {
 
   return (
     <div className="flex flex-col h-full min-h-0 bg-background text-text antialiased overflow-hidden">
-      <div className="shrink-0 px-4 sm:px-6 pt-4 border-b border-border-subtle bg-surface">
+      <div className="shrink-0 px-4 sm:px-6 pt-4 border-b border-border bg-surface">
         <PageHeader
           title={serverTitle}
           description={serverDescription}
@@ -186,7 +185,10 @@ export default function McpSubpage() {
           breadcrumb={<Breadcrumb items={breadcrumbItems} />}
           actions={
             <div className="flex items-center gap-3">
-              <Link href={breadcrumbsBackUrl}>
+              <Link
+                href={breadcrumbsBackUrl}
+                className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
+              >
                 <Button variant="secondary" size="sm">
                   Back to MCP
                 </Button>
@@ -207,7 +209,9 @@ export default function McpSubpage() {
       </div>
 
       <div className="flex-1 min-h-0 min-w-0 overflow-y-auto p-4 sm:p-6">
-        {!loadingConnectors && !configuredServer && !templateServer ? (
+        {loadingConnectors && !configuredServer && !templateServer ? (
+          <CapabilitySubpageSkeleton eyebrow="MCP Server" />
+        ) : !configuredServer && !templateServer ? (
           <div className="max-w-xl mx-auto py-12">
             <EmptyState
               title={`MCP Server "${decodedServerId}" not found`}
@@ -363,7 +367,7 @@ export default function McpSubpage() {
                       <select
                         value={selectedToolName}
                         onChange={(e) => setSelectedToolName(e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded border border-border bg-surface-elevated text-text font-mono"
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-surface-elevated text-text font-mono focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
                       >
                         {tools.map((t) => (
                           <option key={t.name} value={t.name}>

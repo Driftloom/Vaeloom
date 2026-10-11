@@ -19,6 +19,7 @@ import { connectorsApi, type ConnectorHealthResponse, type McpToolInfo } from '@
 import { useWorkspaceConnectors } from '../../../../../../hooks/useWorkspace';
 import { useToast } from '@/components/shared/Toast';
 import { PageHeader } from '@/components/shared/Page';
+import { CapabilitySubpageSkeleton } from '@/components/capabilities/CapabilitySubpageSkeleton';
 
 type StatusDotType = NonNullable<StatusDotProps['status']>;
 type SubTab = 'overview' | 'tools' | 'security' | 'health';
@@ -202,7 +203,7 @@ export default function ConnectorSubpage() {
 
   return (
     <div className="flex flex-col h-full min-h-0 bg-background text-text antialiased overflow-hidden">
-      <div className="shrink-0 px-4 sm:px-6 pt-4 border-b border-border-subtle bg-surface">
+      <div className="shrink-0 px-4 sm:px-6 pt-4 border-b border-border bg-surface">
         <PageHeader
           title={connectorTitle}
           description={connectorDesc}
@@ -210,7 +211,10 @@ export default function ConnectorSubpage() {
           breadcrumb={<Breadcrumb items={breadcrumbItems} />}
           actions={
             <div className="flex items-center gap-3">
-              <Link href={breadcrumbsBackUrl}>
+              <Link
+                href={breadcrumbsBackUrl}
+                className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
+              >
                 <Button variant="secondary" size="sm">
                   Back to Connectors
                 </Button>
@@ -229,7 +233,9 @@ export default function ConnectorSubpage() {
       </div>
 
       <div className="flex-1 min-h-0 min-w-0 overflow-y-auto p-4 sm:p-6">
-        {!isPageLoading && !connector ? (
+        {isPageLoading && !connector ? (
+          <CapabilitySubpageSkeleton eyebrow="Connector Integration" />
+        ) : !connector ? (
           <div className="max-w-xl mx-auto py-12">
             <EmptyState
               title={`Connector "${decodedConnectorId}" not found`}

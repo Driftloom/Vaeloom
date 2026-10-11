@@ -163,7 +163,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                 className={`py-1 rounded-md text-xs font-sans font-medium transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${
                   activeTypeFilter === tab.id
                     ? 'bg-primary/10 text-primary font-semibold'
-                    : 'text-text-muted hover:text-text'
+                    : 'text-text-secondary hover:text-text'
                 }`}
               >
                 {tab.label}

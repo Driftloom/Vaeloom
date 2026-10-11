@@ -31,6 +31,7 @@ import {
 } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 import { PageHeader } from '@/components/shared/Page';
+import { CapabilitySubpageSkeleton } from '@/components/capabilities/CapabilitySubpageSkeleton';
 
 function formatAgentTitle(name: string): string {
   const words = name.replace(/[_-]+/g, ' ').trim();
@@ -117,11 +118,15 @@ export default function AgentSubpage() {
       enabled: workspaceRow ? workspaceRow.enabled : (seed?.enabled ?? true),
       version: workspaceRow?.version || seed?.version || '1.0.0',
       author: workspaceRow?.author || seed?.author || 'Vaeloom Core Team',
+      // No invented fallback. `lib/capabilities-data.ts` is explicit that a
+      // scope the backend does not emit "fails closed at execution time with a
+      // permission error the user cannot act on", so guessing `tools.execute`
+      // here is worse than reporting that nothing was declared.
       requiredScope:
         catalogEntry?.tools?.[0]?.requiredScope ||
         workspaceRow?.config?.['required_scope'] ||
         seed?.requiredScope ||
-        'tools.execute',
+        null,
       defaultAutonomy:
         (catalogEntry?.defaultAutonomy as AutonomyMode) ||
         (seed?.autonomy as AutonomyMode) ||
@@ -252,7 +257,7 @@ export default function AgentSubpage() {
 
   return (
     <div className="flex flex-col h-full min-h-0 bg-background text-text antialiased overflow-hidden">
-      <div className="shrink-0 px-4 sm:px-6 pt-4 border-b border-border-subtle bg-surface">
+      <div className="shrink-0 px-4 sm:px-6 pt-4 border-b border-border bg-surface">
         <PageHeader
           title={selectedAgent?.title ?? decodedAgentId}
           description={
@@ -263,14 +268,20 @@ export default function AgentSubpage() {
           breadcrumb={<Breadcrumb items={breadcrumbItems} />}
           actions={
             <div className="flex items-center gap-3">
-              <Link href={breadcrumbsBackUrl}>
+              <Link
+                href={breadcrumbsBackUrl}
+                className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
+              >
                 <Button variant="secondary" size="sm">
                   Back to Agents
                 </Button>
               </Link>
               {selectedAgent && (
                 <>
-                  <Link href={`/workspace/${workspaceId}/chat?agent=${selectedAgent.name}`}>
+                  <Link
+                    href={`/workspace/${workspaceId}/chat?agent=${selectedAgent.name}`}
+                    className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
+                  >
                     <Button variant="secondary" size="sm">
                       Chat with Agent
                     </Button>
@@ -291,7 +302,9 @@ export default function AgentSubpage() {
       </div>
 
       <div className="flex-1 min-h-0 min-w-0 overflow-y-auto p-4 sm:p-6">
-        {!catalogLoading && !selectedAgent ? (
+        {catalogLoading && !selectedAgent ? (
+          <CapabilitySubpageSkeleton eyebrow="Agent Capability" />
+        ) : !selectedAgent ? (
           <div className="max-w-xl mx-auto py-12">
             <EmptyState
               title={`Agent "${decodedAgentId}" not found`}
@@ -321,9 +334,15 @@ export default function AgentSubpage() {
                 <Badge variant="primary" size="sm">
                   {selectedAgent.author}
                 </Badge>
-                <Badge variant="mono" size="sm">
-                  Scope: {String(selectedAgent.requiredScope)}
-                </Badge>
+                {selectedAgent.requiredScope ? (
+                  <Badge variant="mono" size="sm">
+                    Scope: {String(selectedAgent.requiredScope)}
+                  </Badge>
+                ) : (
+                  <Badge variant="default" size="sm">
+                    Scope not declared
+                  </Badge>
+                )}
                 <Badge variant={selectedAgent.enabled ? 'success' : 'default'} size="sm">
                   {selectedAgent.enabled ? 'Active' : 'Disabled'}
                 </Badge>
@@ -505,8 +524,13 @@ export default function AgentSubpage() {
                   <div className="p-4 rounded-lg border border-border-subtle bg-surface-elevated space-y-2 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-text">Diagnostic Output:</span>
-                      <Badge variant="success" size="sm">
-                        {testResult.executionDurationMs ?? 15}ms
+                      <Badge
+                        variant={testResult.status === 'success' ? 'success' : 'warning'}
+                        size="sm"
+                      >
+                        {testResult.executionDurationMs == null
+                          ? 'no duration reported'
+                          : `${testResult.executionDurationMs}ms`}
                       </Badge>
                     </div>
                     <pre className="p-3 rounded bg-surface border border-border text-xs font-mono overflow-x-auto">

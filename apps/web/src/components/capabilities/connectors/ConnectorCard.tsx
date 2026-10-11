@@ -43,7 +43,7 @@ export function CatalogCard({
       <button
         type="button"
         onClick={onSelect}
-        className="flex-1 w-full text-left p-4 pb-2 rounded-t-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+        className="flex-1 w-full text-left p-4 pb-2 rounded-t-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
       >
         <span className="flex items-start gap-3 min-w-0">
           <span className="w-10 h-10 rounded-xl bg-surface-elevated border border-border flex items-center justify-center p-2 shrink-0 group-hover:border-primary/40 transition-colors">

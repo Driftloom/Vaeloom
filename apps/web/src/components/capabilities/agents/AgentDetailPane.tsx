@@ -376,7 +376,7 @@ export const AgentDetailPane: React.FC<AgentDetailPaneProps> = ({
 
                 <Link
                   href={`/workspace/${workspaceId}/capabilities/agents/${encodeURIComponent(selectedAgent.name)}`}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface-elevated hover:bg-surface text-text font-medium text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface-elevated hover:bg-surface text-text font-medium text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
                 >
                   <span>Open Full Page ↗</span>
                 </Link>

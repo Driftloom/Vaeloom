@@ -1439,7 +1439,7 @@ function TagEditor({
               type="button"
               onClick={() => onRemove(tag)}
               aria-label={`Remove tag ${tag}`}
-              className="text-text-muted hover:text-text ml-0.5 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+              className="text-text-muted hover:text-text ml-0.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
             >
               ×
             </button>
@@ -1622,7 +1622,7 @@ function EditorPanel({
           <button
             type="button"
             onClick={onTogglePreview}
-            className="text-primary hover:underline rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+            className="text-primary hover:underline rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
           >
             {preview ? 'Edit source' : 'Preview rendered'}
           </button>
@@ -2427,7 +2427,7 @@ export function AddCapabilityModal({
                 type="button"
                 aria-label={`Remove environment variable ${entry.key}`}
                 onClick={() => setEnvList((prev) => prev.filter((_, idx) => idx !== index))}
-                className="text-text-muted hover:text-text rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+                className="text-text-muted hover:text-text rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
               >
                 ×
               </button>
@@ -2479,7 +2479,7 @@ export function AddCapabilityModal({
                   type="button"
                   aria-label={`Remove parameter ${param.name || index + 1}`}
                   onClick={() => setToolParams((prev) => prev.filter((_, i) => i !== index))}
-                  className="text-text-muted hover:text-danger rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+                  className="text-text-muted hover:text-danger rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
                 >
                   ×
                 </button>
@@ -2615,7 +2615,7 @@ export function AddCapabilityModal({
             type="button"
             onClick={onClose}
             aria-label="Close modal"
-            className="text-text-muted hover:text-text p-1 rounded-lg hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent shrink-0"
+            className="text-text-muted hover:text-text p-1 rounded-lg hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 shrink-0"
           >
             <svg
               className="w-4 h-4"
@@ -2839,7 +2839,7 @@ export function AddCapabilityModal({
                             setIssues([]);
                           }}
                           placeholder="e.g. code-synthesizer or ats-scoring"
-                          className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-accent"
+                          className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
                         />
                       )}
                     </FormField>

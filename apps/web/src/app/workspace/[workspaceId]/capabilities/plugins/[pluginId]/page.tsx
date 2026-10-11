@@ -21,6 +21,7 @@ import {
 import { pluginApi, type PluginResponse } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 import { PageHeader } from '@/components/shared/Page';
+import { CapabilitySubpageSkeleton } from '@/components/capabilities/CapabilitySubpageSkeleton';
 
 const BUILTIN_PLUGINS = [
   {
@@ -156,25 +157,35 @@ export default function PluginSubpage() {
     setRunningTest(true);
     setTestOutput(null);
     try {
-      // Simulate plugin execution
-      await new Promise((r) => setTimeout(r, 600));
-      setTestOutput(
-        JSON.stringify(
-          {
-            plugin: plugin.name,
-            status: 'EXECUTED',
-            inputLength: inputText.length,
-            result: {
-              tags: ['Analysis', 'Verified', plugin.name],
-              processed_at: new Date().toISOString(),
-              summary: `Processed input through ${(plugin as any).entrypoint ?? `${plugin.name}.py`}`,
-            },
-          },
-          null,
-          2,
-        ),
-      );
-      toast({ tone: 'success', title: `Executed ${plugin.name} successfully` });
+      // The real endpoint. This used to `setTimeout(600)` and render an
+      // invented `status: 'EXECUTED'` result with fabricated `tags`, then toast
+      // success — for code that never ran. `pluginApi.execute` has existed at
+      // `lib/api-client.ts` with zero callers until now.
+      const result = await pluginApi.execute(plugin.id, { input: { text: inputText } });
+
+      setTestOutput(JSON.stringify(result, null, 2));
+
+      // Only claim success when the server said so. A non-success status is
+      // reported as-is; `error_message` is the server's, not ours.
+      if (result.status === 'success') {
+        toast({ tone: 'success', title: `Executed ${plugin.name} successfully` });
+      } else {
+        toast({
+          tone: 'error',
+          title: `${plugin.name} returned "${result.status}"`,
+          detail: result.error_message ?? 'The server ran the plugin and did not report success.',
+        });
+      }
+    } catch (err) {
+      setTestOutput(null);
+      toast({
+        tone: 'error',
+        title: `Could not run ${plugin.name}`,
+        detail:
+          err instanceof Error
+            ? err.message
+            : 'The plugin was not executed and no result was recorded.',
+      });
     } finally {
       setRunningTest(false);
     }
@@ -196,7 +207,7 @@ export default function PluginSubpage() {
 
   return (
     <div className="flex flex-col h-full min-h-0 bg-background text-text antialiased overflow-hidden">
-      <div className="shrink-0 px-4 sm:px-6 pt-4 border-b border-border-subtle bg-surface">
+      <div className="shrink-0 px-4 sm:px-6 pt-4 border-b border-border bg-surface">
         <PageHeader
           title={plugin?.name ?? decodedPluginId}
           description={
@@ -207,7 +218,10 @@ export default function PluginSubpage() {
           breadcrumb={<Breadcrumb items={breadcrumbItems} />}
           actions={
             <div className="flex items-center gap-3">
-              <Link href={breadcrumbsBackUrl}>
+              <Link
+                href={breadcrumbsBackUrl}
+                className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
+              >
                 <Button variant="secondary" size="sm">
                   Back to Plugins
                 </Button>
@@ -228,7 +242,9 @@ export default function PluginSubpage() {
       </div>
 
       <div className="flex-1 min-h-0 min-w-0 overflow-y-auto p-4 sm:p-6">
-        {!loadingRegistry && !plugin ? (
+        {loadingRegistry && !plugin ? (
+          <CapabilitySubpageSkeleton eyebrow="Workspace Plugin" />
+        ) : !plugin ? (
           <div className="max-w-xl mx-auto py-12">
             <EmptyState
               title={`Plugin "${decodedPluginId}" not found`}

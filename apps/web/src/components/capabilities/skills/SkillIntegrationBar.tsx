@@ -137,7 +137,7 @@ export const SkillIntegrationBar: React.FC<SkillIntegrationBarProps> = ({ row, w
           {requiresMemory && (
             <Link
               href={`/workspace/${workspaceId}/memory`}
-              className="inline-flex items-center gap-1 text-2xs font-medium text-text-secondary hover:text-primary px-2.5 py-1 rounded-md border border-border hover:border-primary/40 bg-surface transition-colors"
+              className="inline-flex items-center gap-1 text-2xs font-medium text-text-secondary hover:text-primary px-2.5 py-1 rounded-md border border-border hover:border-primary/40 bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
             >
               <span>🧠 Vault Grounding</span>
             </Link>
@@ -146,7 +146,7 @@ export const SkillIntegrationBar: React.FC<SkillIntegrationBarProps> = ({ row, w
           {isDocumentSkill && (
             <Link
               href={`/workspace/${workspaceId}/files`}
-              className="inline-flex items-center gap-1 text-2xs font-medium text-text-secondary hover:text-primary px-2.5 py-1 rounded-md border border-border hover:border-primary/40 bg-surface transition-colors"
+              className="inline-flex items-center gap-1 text-2xs font-medium text-text-secondary hover:text-primary px-2.5 py-1 rounded-md border border-border hover:border-primary/40 bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
             >
               <span>📄 Documents Hub</span>
             </Link>

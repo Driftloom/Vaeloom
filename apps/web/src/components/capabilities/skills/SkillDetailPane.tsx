@@ -224,7 +224,7 @@ export const SkillDetailPane: React.FC<SkillDetailPaneProps> = ({
               {workspaceId && (selectedRow.slug || selectedRow.key) && (
                 <Link
                   href={`/workspace/${workspaceId}/capabilities/skills/${encodeURIComponent(selectedRow.slug || selectedRow.key)}`}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-surface-elevated hover:bg-surface text-text transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-surface-elevated hover:bg-surface text-text transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
                 >
                   <span>Open Full Page ↗</span>
                 </Link>
@@ -292,7 +292,7 @@ export const SkillDetailPane: React.FC<SkillDetailPaneProps> = ({
                   <FormField
                     label="Skill instructions (Markdown)"
                     error={saveError ?? undefined}
-                    hint="Saved to the workspace capability row when this skill is installed; stored in this browser only when it is not."
+                    hint="Saved to the workspace capability row. Skills must be installed before their instructions can be edited."
                   >
                     {({ id, errorId }: { id: string; errorId?: string }) => (
                       <Textarea

@@ -419,7 +419,7 @@ function PluginRow({
           {inspectHref && (
             <Link
               href={inspectHref}
-              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border border-border bg-surface-elevated hover:bg-surface text-text transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border border-border bg-surface-elevated hover:bg-surface text-text transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
             >
               <span>Inspect ↗</span>
             </Link>

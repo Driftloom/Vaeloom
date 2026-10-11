@@ -16,6 +16,8 @@
 import React from 'react';
 import { render, screen, fireEvent, act, within, waitFor } from '@testing-library/react';
 import CapabilitiesPage from './page';
+import { SEED_CAPABILITIES } from '@/lib/capabilities-data';
+import { isSkill } from '@/components/capabilities/skills/skill-row-helpers';
 
 // Six sibling panes, each of which mounts a full data load on tab activation.
 // The default 5s budget is below what one render costs when several suites run
@@ -516,7 +518,13 @@ describe('CapabilitiesPage', () => {
 
     // Installed, but disabled: it must still be counted and still be listed.
     expect(screen.getByRole('button', { name: /^Installed \(1\)/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Browse \(/i })).toHaveTextContent('Browse (33)');
+    // Derived, not a literal. The browsable set is every seed skill except the
+    // one the server now owns (`acceptance-criteria-review` merges into the
+    // installed row), plus `catalog-only-skill` which is not in the seed at all.
+    const seedSkills = SEED_CAPABILITIES.filter(isSkill).length;
+    expect(screen.getByRole('button', { name: /^Browse \(/i })).toHaveTextContent(
+      `Browse (${seedSkills - 1 + 1})`,
+    );
     expect(skillRowButton('acceptance-criteria-review')).toBeInTheDocument();
     expect(screen.getAllByText('Disabled').length).toBeGreaterThanOrEqual(1);
 
@@ -587,7 +595,7 @@ describe('CapabilitiesPage', () => {
     expect(docPatch).toHaveLength(1);
     expect(docPatch[0]?.id).toBe('srv-skill-1');
     expect(docPatch[0]?.body).toEqual({
-      config: { doc: '# Updated instructions\n\n- Custom rule 1' },
+      config: { markdown_doc: '# Updated instructions\n\n- Custom rule 1' },
     });
     expect(mockToast).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -619,7 +627,7 @@ describe('CapabilitiesPage', () => {
     await userEditDoc('# Schema must survive');
 
     expect(fakeDb.updates).toEqual([
-      { id: 'srv-skill-1', body: { config: { doc: '# Schema must survive' } } },
+      { id: 'srv-skill-1', body: { config: { markdown_doc: '# Schema must survive' } } },
     ]);
     // Nothing that could rename a property reached the server, and the stored
     // schema still has the author's spelling.
@@ -803,6 +811,34 @@ describe('CapabilitiesPage', () => {
     expect((fakeDb.creates[0]?.['config'] as Record<string, unknown>)['required_scope']).toBe(
       'memory.read,memory.write',
     );
+  });
+
+  it('registers the instruction body under `markdown_doc`, the key the runtime reads', async () => {
+    // The runtime resolves a skill's instructions from `config["markdown_doc"]`
+    // (`services/skill_injection.py` build_skill_directive) and from nowhere
+    // else. `config["doc"]` is accepted by the draft validator only, so an
+    // install that writes `doc` produces a skill that is listed, editable and
+    // reported as installed while never reaching a single agent prompt.
+    fakeDb.skills = [
+      catalogSkill({
+        name: 'catalog-only-skill',
+        slug: 'catalog-only-skill',
+        markdownDoc: '# Catalog Only\n\n## Mission\nInstall this.',
+      }),
+    ];
+    await renderSkills();
+    await openBrowse();
+
+    await act(async () => {
+      fireEvent.click(installButtonFor('catalog-only-skill'));
+    });
+
+    await waitFor(() => expect(fakeDb.creates.length).toBeGreaterThanOrEqual(1));
+    const config = fakeDb.creates[0]?.['config'] as Record<string, unknown>;
+
+    expect(config['markdown_doc']).toBe('# Catalog Only\n\n## Mission\nInstall this.');
+    // The validator-only alias must not be the sole carrier of the document.
+    expect(config['doc']).toBeUndefined();
   });
 
   it('writes the scope the user chose into the create payload, under the key the server reads', async () => {
@@ -1003,6 +1039,43 @@ describe('CapabilitiesPage', () => {
       'href',
       expect.stringContaining('/chat?agent='),
     );
+  });
+
+  it('does not report a successful toggle when the row is not on the server', async () => {
+    // Seeded agents carry ids that were never registered as workspace rows, so
+    // the PATCH 404s. The old handler swallowed the 404 and fell through to the
+    // success toast, telling the operator "Enabled organization" after writing
+    // nothing. The optimistic flip must also be rolled back.
+    await renderSkills();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('tab', { name: /Agents/i }));
+    });
+
+    const toggle = await screen.findByRole('switch', { name: 'Toggle organization' });
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+
+    await act(async () => {
+      fireEvent.click(toggle);
+    });
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tone: 'warning',
+          title: expect.stringContaining('not registered in this workspace'),
+        }),
+      );
+    });
+    expect(mockToast).not.toHaveBeenCalledWith(
+      expect.objectContaining({ title: expect.stringContaining('Enabled organization') }),
+    );
+    // The UI is put back where it started.
+    await waitFor(() => {
+      expect(screen.getByRole('switch', { name: 'Toggle organization' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      );
+    });
   });
 
   it('switches to the Tools tab and lists the seeded tools', async () => {

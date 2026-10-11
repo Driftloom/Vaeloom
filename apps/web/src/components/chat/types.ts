@@ -230,6 +230,16 @@ export interface Thread {
   messages: ChatMessage[];
 }
 
+export interface ChatSkill {
+  id?: string | null;
+  name: string;
+  slug: string;
+  description: string;
+  triggers?: string[];
+  enabled: boolean;
+  requiredScope?: string | null;
+}
+
 export interface SlashCommand {
   trigger: string;
   desc: string;
@@ -240,12 +250,16 @@ export interface SlashCommand {
    * byte-for-byte duplicate of the Python dict, which is guaranteed to drift.
    */
   color?: string;
+  isSkill?: boolean;
+  skillSlug?: string;
 }
 
 export interface MentionTarget {
   name: string;
   mission: string;
   color?: string;
+  kind?: 'agent' | 'skill';
+  slug?: string;
 }
 
 export const MAX_INPUT_LENGTH = 10000;

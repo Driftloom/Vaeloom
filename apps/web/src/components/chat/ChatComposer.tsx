@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import type { MentionTarget, SlashCommand } from './types';
+import type { ChatSkill, MentionTarget, SlashCommand } from './types';
 
 /** Auto-grow ceiling. Past this the textarea scrolls instead of growing, so the
  *  composer can never push the transcript off-screen. */
@@ -26,6 +26,9 @@ export interface ChatComposerProps {
   inputRef?: React.RefObject<HTMLTextAreaElement | null>;
   selectedSquad?: string[];
   onToggleSquadAgent?: (agentId: string) => void;
+  enabledSkills?: ChatSkill[];
+  activeSkill?: string | null;
+  onActiveSkillChange?: (skill: string | null) => void;
 }
 
 type PopupKind = 'slash' | 'mention';
@@ -96,7 +99,49 @@ export function ChatComposer(props: ChatComposerProps): JSX.Element {
     inputRef,
     selectedSquad,
     onToggleSquadAgent,
+    enabledSkills = [],
+    activeSkill: controlledActiveSkill,
+    onActiveSkillChange,
   } = props;
+
+  const [internalActiveSkill, setInternalActiveSkill] = useState<string | null>(null);
+  const activeSkill =
+    controlledActiveSkill !== undefined ? controlledActiveSkill : internalActiveSkill;
+  const setActiveSkill = useCallback(
+    (skill: string | null) => {
+      setInternalActiveSkill(skill);
+      onActiveSkillChange?.(skill);
+    },
+    [onActiveSkillChange],
+  );
+
+  useEffect(() => {
+    const skillMatch = value.match(/^\/skill:([a-zA-Z0-9_-]+)/);
+    const mentionMatch = value.match(/^@([a-zA-Z0-9_-]+):/);
+    const detected =
+      skillMatch?.[1] ||
+      (mentionMatch &&
+      enabledSkills.some((s) => s.slug === mentionMatch[1] || s.name === mentionMatch[1])
+        ? mentionMatch[1]
+        : null);
+    if (detected && detected !== activeSkill) {
+      setActiveSkill(detected);
+    }
+  }, [value, activeSkill, enabledSkills, setActiveSkill]);
+
+  const skillCommands = useMemo<SlashCommand[]>(() => {
+    return enabledSkills.map((skill) => ({
+      trigger: `/skill:${skill.slug}`,
+      desc: skill.description || `Execute ${skill.name} skill`,
+      agent: skill.name,
+      isSkill: true,
+      skillSlug: skill.slug,
+    }));
+  }, [enabledSkills]);
+
+  const allCommands = useMemo<SlashCommand[]>(() => {
+    return [...commands, ...skillCommands];
+  }, [commands, skillCommands]);
 
   const [popup, setPopup] = useState<PopupState | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -132,12 +177,12 @@ export function ChatComposer(props: ChatComposerProps): JSX.Element {
   const filteredCommands = useMemo(
     () =>
       lowered
-        ? commands.filter(
+        ? allCommands.filter(
             (c) =>
               c.trigger.toLowerCase().includes(lowered) || c.desc.toLowerCase().includes(lowered),
           )
-        : commands,
-    [commands, lowered],
+        : allCommands,
+    [allCommands, lowered],
   );
 
   const filteredAgents = useMemo(
@@ -224,12 +269,22 @@ export function ChatComposer(props: ChatComposerProps): JSX.Element {
       const c = filteredCommands[index];
       if (!c) return;
       onChange(`${value.slice(0, start)}${c.trigger} `);
-      if (c.agent) onSelectAgent(c.agent);
+      if (c.isSkill && c.skillSlug) {
+        setActiveSkill(c.skillSlug);
+      } else if (c.agent) {
+        onSelectAgent(c.agent);
+      }
     } else {
       const a = filteredAgents[index];
       if (!a) return;
-      onChange(`${value.slice(0, start)}@${a.name} `);
-      onSelectAgent(a.name);
+      if (a.kind === 'skill') {
+        const target = a.slug || a.name;
+        onChange(`${value.slice(0, start)}@${target}: `);
+        setActiveSkill(target);
+      } else {
+        onChange(`${value.slice(0, start)}@${a.name} `);
+        onSelectAgent(a.name);
+      }
     }
     setPopup(null);
     textareaRef.current?.focus();
@@ -280,7 +335,11 @@ export function ChatComposer(props: ChatComposerProps): JSX.Element {
   const agentOptions = useMemo((): MentionTarget[] => {
     const merged = new Map<string, string>();
     if (!mentionTargets.some((m) => m.name === 'auto')) merged.set('auto', 'Auto routing');
-    for (const m of mentionTargets) merged.set(m.name, m.mission);
+    for (const m of mentionTargets) {
+      if (m.kind !== 'skill') {
+        merged.set(m.name, m.mission);
+      }
+    }
     // The parent's selection can outlive the catalog it came from (agent removed
     // upstream); an unmatched value renders the select as blank.
     if (selectedAgent && !merged.has(selectedAgent)) merged.set(selectedAgent, 'Selected agent');
@@ -337,7 +396,13 @@ export function ChatComposer(props: ChatComposerProps): JSX.Element {
                     onMouseEnter={() => setPopup((p) => (p ? { ...p, activeIndex: i } : p))}
                     className={rowClasses(i === activeIndex)}
                   >
-                    <span className={badgeClasses}>{monogram(c.trigger)}</span>
+                    {c.isSkill ? (
+                      <span className="flex h-6 px-1.5 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary border border-primary/20 font-mono text-[10px] font-semibold uppercase tracking-wider">
+                        SKILL
+                      </span>
+                    ) : (
+                      <span className={badgeClasses}>{monogram(c.trigger)}</span>
+                    )}
                     <span className="shrink-0 font-mono text-sm text-text">{c.trigger}</span>
                     <span className="truncate text-xs text-text-dim">{c.desc}</span>
                   </div>
@@ -354,7 +419,7 @@ export function ChatComposer(props: ChatComposerProps): JSX.Element {
               >
                 {filteredAgents.map((a, i) => (
                   <div
-                    key={a.name}
+                    key={`${a.name}-${a.kind || 'agent'}`}
                     id={optionId(i)}
                     role="option"
                     aria-selected={i === activeIndex}
@@ -365,7 +430,13 @@ export function ChatComposer(props: ChatComposerProps): JSX.Element {
                     onMouseEnter={() => setPopup((p) => (p ? { ...p, activeIndex: i } : p))}
                     className={rowClasses(i === activeIndex)}
                   >
-                    <span className={badgeClasses}>{monogram(a.name)}</span>
+                    {a.kind === 'skill' ? (
+                      <span className="flex h-6 px-1.5 shrink-0 items-center justify-center rounded-md bg-accent/20 text-accent border border-accent/40 font-mono text-[10px] font-semibold uppercase tracking-wider">
+                        SKILL
+                      </span>
+                    ) : (
+                      <span className={badgeClasses}>{monogram(a.name)}</span>
+                    )}
                     <span className="shrink-0 text-sm text-text">@{a.name}</span>
                     <span className="truncate text-xs text-text-dim">{a.mission}</span>
                   </div>
@@ -380,6 +451,34 @@ export function ChatComposer(props: ChatComposerProps): JSX.Element {
             ) : null}
           </div>
         ) : null}
+
+        {activeSkill && (
+          <div className="mb-2 flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10px] uppercase font-mono text-text-dim">Active Skill:</span>
+            <span
+              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs bg-primary/10 text-primary border border-primary/30"
+              data-testid="active-skill-chip"
+            >
+              <span className="font-mono text-2xs">⚡</span>
+              <span className="font-medium font-mono">/skill:{activeSkill}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveSkill(null);
+                  if (value.startsWith(`/skill:${activeSkill} `)) {
+                    onChange(value.slice(`/skill:${activeSkill} `.length));
+                  } else if (value.startsWith(`/skill:${activeSkill}`)) {
+                    onChange(value.slice(`/skill:${activeSkill}`.length));
+                  }
+                }}
+                className="hover:opacity-75 text-[10px] ml-0.5"
+                aria-label={`Remove active skill ${activeSkill}`}
+              >
+                ✕
+              </button>
+            </span>
+          </div>
+        )}
 
         {attachment ? (
           <div className="mb-2 flex items-center gap-2 rounded-full border border-border/50 bg-surface px-3 py-1.5 text-xs">

@@ -120,7 +120,7 @@ class TestCapabilitiesE2E:
         assert test_data["output"]["tool"] == "custom_echo_tool"
         assert test_data["output"]["echo"] == {"message": "hello world"}
 
-        # 8b. Test skill capability endpoint (real diagnostic execution)
+        # 8b. Test skill capability endpoint (validation only -- nothing is dispatched)
         test_skill_res = await client.post(
             f"/api/v1/capabilities/{skill_id}/test",
             json={"input": {"message": "audit code for security vulnerabilities"}},
@@ -128,7 +128,12 @@ class TestCapabilitiesE2E:
         )
         assert test_skill_res.status_code == 200
         test_skill_data = test_skill_res.json()
-        assert test_skill_data["executed"] is True
+        # The skill branch parses the document, estimates its tokens, checks
+        # triggers and quarantines it. It runs no code, so it must not report
+        # `executed`. This used to assert True, which contradicted the
+        # endpoint's own docstring, the sibling NO_EXECUTABLE_RUNTIME branch,
+        # and `agents.py` for the same check.
+        assert test_skill_data["executed"] is False
         assert test_skill_data["status"] in ("success", "warning", "error")
         assert "latency_ms" in test_skill_data
         assert "output" in test_skill_data

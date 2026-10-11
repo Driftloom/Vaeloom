@@ -63,7 +63,7 @@ export const McpActivityLog: React.FC<McpActivityLogProps> = ({
             id="mcp-log-filter"
             value={logFilter}
             onChange={(event) => onLogFilterChange(event.target.value)}
-            className="bg-surface border border-border rounded-md px-2 py-0.5 text-xs font-sans text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent cursor-pointer"
+            className="bg-surface border border-border rounded-md px-2 py-0.5 text-xs font-sans text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 cursor-pointer"
           >
             <option value="all">All events</option>
             {installedServers.map((server) => (

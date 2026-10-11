@@ -52,10 +52,10 @@ export function ConnectorsHeader({
               role="tab"
               aria-selected={activeSubTab === tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer whitespace-nowrap flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
                 activeSubTab === tab.id
                   ? 'bg-action text-action-fg font-semibold shadow-xs'
-                  : 'text-text-muted hover:text-text'
+                  : 'text-text-secondary hover:text-text'
               }`}
             >
               {tab.label}
