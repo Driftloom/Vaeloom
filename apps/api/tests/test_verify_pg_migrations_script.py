@@ -576,8 +576,8 @@ def test_main_drives_every_step_in_order_with_stubbed_effects(monkeypatch, tmp_p
     assert [call["cmd"] for call in calls] == [
         ["alembic", "upgrade", "head"],
         [sys.executable, "-m", "pytest", *EXPECTED_LIVE_PG_SUITES, "-v", "-o", "addopts="],
-        ["alembic", "downgrade", "-1"],
-        ["alembic", "downgrade", "-1"],
+        ["alembic", "downgrade", "-2"],
+        ["alembic", "downgrade", "-2"],
         ["alembic", "upgrade", "head"],
         [sys.executable, "-m", "pytest", *EXPECTED_LIVE_PG_SUITES, "-v", "-o", "addopts="],
     ], f"the executed commands drifted: {[call['cmd'] for call in calls]!r}"
@@ -999,7 +999,7 @@ def test_step_4_downgrade_uses_the_guarded_invocation_path(monkeypatch):
     _context_for()
     script.step_4_downgrade_must_fail()
 
-    assert seen["arguments"] == ("downgrade", "-1")
+    assert seen["arguments"] == ("downgrade", "-2")
 
 
 def test_alembic_run_aborts_if_connecting_to_remote_host(monkeypatch):

@@ -233,18 +233,27 @@ def assert_downgrade_failed_as_expected(returncode: int, output: str) -> None:
     """
     _, probe_type, check_name = rollback_probe_literals()
 
+    # `downgrade -2` spans 0069 and 0068, and both reinstate a frozen vocabulary:
+    # 0069 on memory_records, 0068 on memories. Whichever refuses first, the proof
+    # is the same shape -- a *known* CHECK named, plus the offending value. Accepting
+    # either keeps the harness from being pinned to whichever revision happens to be
+    # head, while still rejecting every unrelated failure: a typo, a missing role or a
+    # permission error names none of these constraints.
+    known_checks = (check_name, "ck_memory_records_type_valid")
+    named_checks = [name for name in known_checks if name in output]
+
     problems: list[str] = []
     if returncode == 0:
         problems.append(
-            "`alembic downgrade -1` exited 0 with the probe row still in `memories`, so "
-            "the restored CHECK accepted a type it does not list. The safety boundary "
+            "`alembic downgrade` exited 0 with the probe row still present, so the "
+            "restored CHECK accepted a type it does not list. The safety boundary "
             "this step exists to prove is not there."
         )
-    if check_name not in output:
+    if not named_checks:
         problems.append(
-            f"the output never names the constraint '{check_name}', so the downgrade did "
-            "not fail on the restored memory-type CHECK. Failing for any other reason "
-            "(a typo, a missing role, a permission error) is not the proof."
+            f"the output never names a known memory-type CHECK ({', '.join(known_checks)}), "
+            "so the downgrade did not fail on a restored vocabulary. Failing for any "
+            "other reason (a typo, a missing role, a permission error) is not the proof."
         )
     if probe_type not in output:
         problems.append(
@@ -427,6 +436,7 @@ class _ProbeIds:
     user_id: uuid.UUID
     workspace_id: uuid.UUID
     memory_id: uuid.UUID
+    record_id: uuid.UUID
 
     @classmethod
     def for_target(cls, target_url: str) -> _ProbeIds:
@@ -435,6 +445,7 @@ class _ProbeIds:
             user_id=uuid.uuid5(PROBE_ID_NAMESPACE, f"probe:user:{database}"),
             workspace_id=uuid.uuid5(PROBE_ID_NAMESPACE, f"probe:workspace:{database}"),
             memory_id=uuid.uuid5(PROBE_ID_NAMESPACE, f"probe:memory:{database}"),
+            record_id=uuid.uuid5(PROBE_ID_NAMESPACE, f"probe:record:{database}"),
         )
 
 
@@ -485,6 +496,13 @@ def seed_rollback_probe(pg_url: str) -> None:
     colliding with the previous run's leftovers. The pack is written with
     ``ON CONFLICT DO UPDATE`` rather than ``DO NOTHING`` so the vocabulary on disk
     always matches the vocabulary the refusal assertion expects.
+
+    Two tables, not one. 0069 sits above 0068 and restores a *second* frozen
+    vocabulary on ``memory_records``, so a rollback spanning both revisions has to
+    be refused by both. Seeding only ``memories`` would let the run downgrade
+    straight past 0069 and never exercise the constraint that revision reinstates
+    -- and a probe that silently stops testing anything is precisely the shape of
+    bug this harness exists to catch.
     """
     slug, probe_type, _ = rollback_probe_literals()
     target = _effective_target_url(pg_url)
@@ -493,6 +511,7 @@ def seed_rollback_probe(pg_url: str) -> None:
     user_id = probe_ids.user_id
     workspace_id = probe_ids.workspace_id
     memory_id = probe_ids.memory_id
+    record_id = probe_ids.record_id
     email = f"verify-pg-migrations-{user_id}@verification.invalid"
 
     statements: list[tuple[str, Mapping[str, object]]] = [
@@ -501,7 +520,8 @@ def seed_rollback_probe(pg_url: str) -> None:
         # isolation this script is verifying. The teardown sets the same scope,
         # because it faces the same policies.
         *_scope_guc_statements(probe_ids),
-        ("DELETE FROM memories WHERE type = :probe_type", {"probe_type": probe_type}),
+        ("DELETE FROM memory_records WHERE type = :probe_type", {"probe_type": probe_type}),
+            ("DELETE FROM memories WHERE type = :probe_type", {"probe_type": probe_type}),
         (
             "INSERT INTO users (id, email, display_name, auth_provider, status, preferences)\n"
             "VALUES (:user_id, :email, :display_name, 'email', 'ACTIVE', '{}'::jsonb)\n"
@@ -557,6 +577,24 @@ def seed_rollback_probe(pg_url: str) -> None:
                 "slug": slug,
             },
         ),
+        # 0069's half. `memory_records` has no pack registry of its own, so the
+        # probe type is written directly; what is under test is that 0069's
+        # downgrade cannot reinstate ck_memory_records_type_valid while this row
+        # is present.
+        ("DELETE FROM memory_records WHERE type = :probe_type", {"probe_type": probe_type}),
+        (
+            "INSERT INTO memory_records (id, workspace_id, type, content, confidence, importance)\n"
+            "VALUES (:record_id, :workspace_id, :probe_type, CAST(:content AS jsonb), 1.0, 0.5)\n"
+            "ON CONFLICT (id) DO UPDATE\n"
+            "    SET type = EXCLUDED.type,\n"
+            "        content = EXCLUDED.content",
+            {
+                "record_id": record_id,
+                "workspace_id": workspace_id,
+                "probe_type": probe_type,
+                "content": '{"probe": "pg-verification"}',
+            },
+        ),
     ]
 
     _execute(target, statements)
@@ -588,13 +626,15 @@ def _remove_rollback_probe(pg_url: str) -> None:
         [
             *_scope_guc_statements(_ProbeIds.for_target(target)),
             ("DELETE FROM memory_type_packs WHERE slug = :slug", {"slug": slug}),
+            ("DELETE FROM memory_records WHERE type = :probe_type", {"probe_type": probe_type}),
             ("DELETE FROM memories WHERE type = :probe_type", {"probe_type": probe_type}),
         ],
     )
-    # _execute returns one row count per statement, so the two set_config
-    # preludes occupy the leading slots. Taken from the end so the counts keep
-    # their meaning if the prelude ever grows a statement.
-    _, _, packs_deleted, rows_deleted = row_counts
+    # _execute returns one row count per statement. Unpack from the end so the
+    # counts keep their meaning whatever the set_config prelude does -- it grew
+    # a statement when 0069 added the memory_records half of the probe, and a
+    # fixed-width unpack would then silently shift every count by one.
+    _, _, packs_deleted, records_deleted, rows_deleted = row_counts
 
     if packs_deleted != 1:
         raise RuntimeError(
@@ -602,6 +642,13 @@ def _remove_rollback_probe(pg_url: str) -> None:
             "1. Either the probe was never seeded -- in which case the refusal that "
             "step 5 checked was not about it -- or a previous run left the table in a "
             "state this script does not understand. Refusing to roll back anyway."
+        )
+    if records_deleted < 1:
+        raise RuntimeError(
+            f"removing the probe deleted {records_deleted} '{probe_type}' memory_records "
+            "rows, expected at least 1. 0069's downgrade reinstates "
+            "ck_memory_records_type_valid, so it would succeed only because the row "
+            "that made it fail was never there. Refusing to treat that as a pass."
         )
     if rows_deleted < 1:
         raise RuntimeError(
@@ -940,7 +987,7 @@ def step_4_downgrade_must_fail() -> None:
     boolean would leave that distinction to nobody.
     """
     context = _context()
-    completed = _alembic_run(context, "downgrade", "-1")
+    completed = _alembic_run(context, "downgrade", "-2")
     context.downgrade_returncode = completed.returncode
     context.downgrade_output = _merged_output(completed)
 
@@ -969,7 +1016,7 @@ def step_6_remove_probe_and_downgrade() -> None:
     """
     context = _context()
     _remove_rollback_probe(context.pg_url)
-    _alembic(context, "downgrade", "-1")
+    _alembic(context, "downgrade", "-2")
 
 
 def step_7_upgrade_head_again() -> None:

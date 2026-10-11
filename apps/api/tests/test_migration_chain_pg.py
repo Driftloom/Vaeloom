@@ -397,3 +397,119 @@ async def test_downgrade_check_constraint_accepts_canonical_career_type():
 
 
 import pathlib  # noqa: E402  (used by the tests above; imported late on purpose)
+
+
+
+
+# ---------------------------------------------------------------------------
+# 0069 -- workspace isolation for preference learning, and the retirement of the
+# second frozen vocabulary.
+#
+# These run only against a live PostgreSQL applied to head. They are the only
+# thing that proves the column exists, that the primary key actually changed,
+# and that the policies can SEE the new column -- an RLS policy still scoping on
+# user_id alone would leave the column decorative.
+# ---------------------------------------------------------------------------
+
+
+def _rev_0069_path() -> pathlib.Path:
+    return (
+        pathlib.Path(__file__).resolve().parents[1]
+        / "alembic"
+        / "versions"
+        / "0069_memory_workspace_isolation.py"
+    )
+
+
+async def test_0069_adds_a_nullable_workspace_to_recommendation_feedback():
+    nullable = await _query(
+        "SELECT is_nullable FROM information_schema.columns "
+        "WHERE table_name='recommendation_feedback' AND column_name='workspace_id';"
+    )
+    assert nullable == ["YES"], (
+        "workspace_id must be nullable so legacy rows are quarantined rather than "
+        f"backfilled with a guess; got {nullable}"
+    )
+
+
+async def test_0069_user_preference_vectors_is_keyed_by_workspace():
+    keys = await _query(
+        "SELECT a.attname FROM pg_index i "
+        "JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey) "
+        "WHERE i.indrelid = 'user_preference_vectors'::regclass AND i.indisprimary "
+        "ORDER BY array_position(i.indkey, a.attnum);"
+    )
+    assert keys == ["user_id", "tenant_id", "workspace_id"], (
+        f"preference vectors must be per-workspace; primary key is {keys}"
+    )
+
+
+async def test_0069_retires_the_second_frozen_vocabulary():
+    rows = await _query(
+        "SELECT conname FROM pg_constraint "
+        "WHERE conrelid='memory_records'::regclass "
+        "AND conname='ck_memory_records_type_valid';"
+    )
+    assert rows == [], (
+        "memory_records must be governed by the domain-pack registry, not a second "
+        f"frozen vocabulary; still present: {rows}"
+    )
+
+
+async def test_0069_policies_can_see_the_new_column():
+    # The whole point of the column. A policy scoping on user_id alone lets a rating
+    # in one workspace move the profile in another while looking perfectly correct.
+    for table in ("recommendation_feedback", "user_preference_vectors"):
+        defs = await _query(
+            "SELECT coalesce(string_agg(pg_get_expr(pol.polqual, pol.polrelid), ' '), '') "
+            "FROM pg_policy pol WHERE pol.polrelid = "
+            f"'{table}'::regclass AND pol.polname LIKE '%workspace%';"
+        )
+        assert defs, f"{table} has no workspace-scoped policy"
+        assert "app.workspace_id" in defs[0], (
+            f"{table} policy does not read app.workspace_id: {defs[0][:200]}"
+        )
+
+
+async def test_0069_keeps_rls_enabled_and_forced_on_every_touched_table():
+    for table in ("recommendation_feedback", "user_preference_vectors"):
+        # _query projects a single column, so concatenate in SQL rather than
+        # selecting two booleans and comparing to a tuple the helper cannot return.
+        state = await _query(
+            "SELECT relrowsecurity::text || '|' || relforcerowsecurity::text "
+            f"FROM pg_class WHERE relname='{table}';"
+        )
+        # Normalised: PostgreSQL renders booleans lowercase as `true`, and
+        # pinning the exact spelling would make this a test of formatting.
+        assert [value.lower() for value in state] == ["true|true"], (
+            f"{table} must keep RLS enabled AND forced; got {state}"
+        )
+
+
+def test_0069_downgrade_restores_the_identical_24_literals():
+    # Byte-identical to 0027, or the two vocabularies drift the moment someone
+    # edits one of them.
+    import importlib.util
+    import sys
+
+    spec = importlib.util.spec_from_file_location("rev_0069", _rev_0069_path())
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+    source_0027 = (
+        pathlib.Path(__file__).resolve().parents[1]
+        / "alembic"
+        / "versions"
+        / "0027_memory_taxonomy_expand_contract.py"
+    ).read_text(encoding="utf-8")
+    block = source_0027.split("ADD CONSTRAINT ck_memory_records_type_valid")[1]
+    literals = [
+        token.strip().strip("',")
+        for token in block.split("CHECK (type IN (")[1].split(")")[0].replace("\n", " ").split(",")
+    ]
+    literals = [value for value in literals if value]
+    assert tuple(literals) == module._FROZEN_TYPES, (
+        f"0069 restores {len(module._FROZEN_TYPES)} literals, 0027 declares "
+        f"{len(literals)}; symmetric difference: {set(literals) ^ set(module._FROZEN_TYPES)}"
+    )
