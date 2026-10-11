@@ -637,6 +637,22 @@ export function ChatComposer(props: ChatComposerProps): JSX.Element {
             }
             className="max-h-[120px] min-h-[24px] flex-1 resize-none bg-transparent py-2 text-sm placeholder:text-text-dim focus:outline-none"
           />
+          <button
+            type="button"
+            aria-label="Voice Input"
+            title="Voice input (transcription coming in Phase 4)"
+            onClick={() => {}}
+            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-transparent text-text-dim transition-colors hover:border-border/50 hover:bg-background hover:text-text motion-reduce:transition-none"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 003-3V5a3 3 0 10-6 0v6a3 3 0 003 3z"
+              />
+            </svg>
+          </button>
           {busy ? (
             <button
               type="button"
@@ -700,7 +716,13 @@ export function ChatComposer(props: ChatComposerProps): JSX.Element {
           </div>
           <span
             aria-live={nearLimit ? 'polite' : undefined}
-            className={`shrink-0 font-mono text-xs ${nearLimit ? 'text-error' : 'text-text-dim'}`}
+            className={`shrink-0 font-mono text-xs ${
+              nearLimit || length >= maxLength * 0.9
+                ? 'text-error'
+                : length >= maxLength * 0.75
+                  ? 'text-warning'
+                  : 'text-text-dim'
+            }`}
           >
             ~{Math.max(0, Math.ceil(length / 3.8))} tok · {length}/{maxLength}
           </span>
