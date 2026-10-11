@@ -49,25 +49,141 @@ export function ChatSubpagesNav({ activeTab, onTabChange }: ChatSubpagesNavProps
   );
 }
 
+export interface SquadPreset {
+  id: string;
+  name: string;
+  description: string;
+  badge: string;
+  agentIds: string[];
+}
+
+export const SQUAD_PRESETS: SquadPreset[] = [
+  {
+    id: 'executive_search',
+    name: 'Full Executive Search',
+    description:
+      'Executive resume framing, leadership narrative, and Bar Raiser interview strategy.',
+    badge: 'Executive',
+    agentIds: ['career_coach', 'resume_agent'],
+  },
+  {
+    id: 'ats_screener',
+    name: 'ATS & Technical Screener',
+    description:
+      'Parseability audit, semantic keyword density optimization, and technical qualification alignment.',
+    badge: 'Technical & ATS',
+    agentIds: ['ats_audit', 'resume_agent'],
+  },
+  {
+    id: 'career_transition',
+    name: 'Career Transition & Market Scout',
+    description:
+      'Identify transferable strengths, monitor verified company hiring portals, and draft recruiter outreach.',
+    badge: 'Market & Sourcing',
+    agentIds: ['job_scout', 'career_coach', 'app_agent'],
+  },
+];
+
 export interface AgentSquadsViewProps {
   selectedSquad: string[];
   onToggleAgent: (agentId: string) => void;
   onSelectSquad: (squad: string[]) => void;
+  onActivateSquad?: () => void;
 }
 
 export function AgentSquadsView({
   selectedSquad,
   onToggleAgent,
   onSelectSquad,
+  onActivateSquad,
 }: AgentSquadsViewProps): JSX.Element {
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 max-w-5xl mx-auto w-full">
-      <div className="border-b border-border/50 pb-4">
-        <h2 className="text-lg font-semibold text-text">Specialist Agent Squads</h2>
-        <p className="text-xs text-text-dim mt-1">
-          Configure specialized agents to run in parallel. Each agent focuses on a distinct domain
-          of your career campaign, followed by an executive synthesis.
-        </p>
+      <div className="border-b border-border/50 pb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-text">Specialist Agent Squads</h2>
+          <p className="text-xs text-text-dim mt-1">
+            Configure specialized agents to run in parallel. Each agent focuses on a distinct domain
+            of your career campaign, followed by an executive synthesis.
+          </p>
+        </div>
+        {onActivateSquad && (
+          <button
+            type="button"
+            onClick={onActivateSquad}
+            className="self-start md:self-auto px-4 py-2 rounded-lg text-xs font-semibold bg-action text-action-fg hover:bg-action-hover transition-colors shadow-xs flex items-center gap-1.5"
+          >
+            <span>💬</span>
+            <span>Activate Squad in Chat</span>
+          </button>
+        )}
+      </div>
+
+      {/* Preset Squad Configurations */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+            Squad Presets (1-Click Strategy)
+          </h3>
+          <span className="text-[11px] font-mono text-text-dim">
+            Selected: {selectedSquad.length} {selectedSquad.length === 1 ? 'agent' : 'agents'}
+          </span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {SQUAD_PRESETS.map((preset) => {
+            const isMatch =
+              preset.agentIds.length === selectedSquad.length &&
+              preset.agentIds.every((id) => selectedSquad.includes(id));
+            return (
+              <div
+                key={preset.id}
+                className={`p-3.5 rounded-xl border transition-all flex flex-col justify-between ${
+                  isMatch
+                    ? 'border-action bg-action/10 ring-1 ring-action/40'
+                    : 'border-border/60 bg-surface-50 hover:bg-surface-hover/70'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-semibold text-text">{preset.name}</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-200 border border-border/50 text-text-dim">
+                      {preset.badge}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-text-muted leading-relaxed mb-3">
+                    {preset.description}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label={`Select ${preset.name}`}
+                  onClick={() => onSelectSquad(preset.agentIds)}
+                  className={`w-full py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                    isMatch
+                      ? 'border-action bg-action text-action-fg'
+                      : 'border-border/60 bg-surface-100 hover:bg-surface-200 text-text'
+                  }`}
+                >
+                  {isMatch ? '✓ Active Preset' : 'Apply Preset'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Execution Pipeline Visualizer */}
+      <div className="p-3.5 rounded-xl border border-border/60 bg-surface-50/50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2 text-text">
+          <span className="text-action">⚡</span>
+          <span className="font-medium">Execution Pipeline:</span>
+          <span className="text-text-muted">Parallel Specialized Ingestion</span>
+          <span className="text-text-dim">→</span>
+          <span className="text-text-muted">Executive Synthesis</span>
+          <span className="text-text-dim">→</span>
+          <span className="text-success font-medium">Authoritative Output</span>
+        </div>
+        <span className="text-[11px] font-mono text-text-dim">Async Orchestrated</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

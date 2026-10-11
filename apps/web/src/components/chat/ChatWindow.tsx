@@ -312,6 +312,7 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             selectedSquad={store.selectedSquad}
             onToggleAgent={store.toggleSquadAgent}
             onSelectSquad={store.setSelectedSquad}
+            onActivateSquad={() => store.setActiveTab('stream')}
           />
         )}
 
