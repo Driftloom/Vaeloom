@@ -98,3 +98,66 @@ memory_records will hold a type the reinstated frozen vocabulary does not list.
 That is correct behaviour and matches 0068. The operational decision of what to
 do then -- stop, or migrate the data forward first -- has to be made in advance,
 not during an incident.
+---
+
+## Addendum: a privilege escalation this migration introduced, and closed
+
+The first working version of 0069 created a workspace-scoped RLS policy BESIDE the
+pre-existing user+tenant one. PostgreSQL ORs multiple PERMISSIVE policies for the
+same command, so the effective predicate on recommendation_feedback became
+
+    (user_id = me AND tenant_id = mine) OR (workspace_id = my_workspace)
+
+The second branch names no user_id at all. Any member of a workspace could read,
+update and insert every other member's rows, and because user_id is whatever the
+caller supplies on INSERT, could file fabricated ratings in a victim's name. That
+is a worse leak than the cross-workspace one 0069 was written to close, introduced
+by closing it.
+
+It shipped green because nothing tested for it: the existing policy test asserted
+that a workspace policy *existed* and mentioned app.workspace_id, which a policy
+sitting beside another one satisfies perfectly well. A test written to prevent the
+defect was structurally unable to see it.
+
+Fixed. 0069 now DROPS the pre-0069 policies instead of adding beside them, and its
+own policy scopes on tenant AND workspace AND user -- workspace scoping answers
+"whose workspace", not "whose row". Downgrade restores the replaced policies,
+because a table left with no policy at all is an outage: RLS with zero policies
+denies every row.
+
+Verified against a live database: exactly one policy remains on each table, and it
+reads app.user_id.
+
+    recommendation_feedback | p_recommendation_feedback_workspace_isolation
+
+Two new tests detect widening specifically: one asserts the pre-0069 policy is
+gone, the other that the surviving policy reads app.user_id. The vacuous test that
+claimed to cover the primary-key defect -- which asserted a result without ever
+setting up the condition -- is replaced by one that asserts the ordering.
+
+Three further defects in the same review, all of the shape "changed the schema,
+did not change the behaviour it governs":
+
+- POST /feedback never populated workspace_id, so every row stayed NULL and the
+  quarantine was indistinguishable from "never recorded". Now threaded from
+  authenticated context.
+- The learning aggregate in ranking_weights still read WHERE user_id = :user_id.
+  That is the actual cross-workspace leak, and it was left open in the one query
+  that reads feedback -- the defect the entire migration exists to close. Now
+  scoped by workspace, with legacy NULL rows excluded rather than counted
+  everywhere.
+- Two preference-vector upserts in approval.py omitted the column 0069 made NOT
+  NULL and conflicted on a key it removed. Both raised; the second sat inside
+  suppress(Exception) and the outer handler logged at debug. Approvals had quietly
+  stopped updating preference vectors, with no error and no failing test.
+
+Also fixed: POST /import never mapped MemoryTypeRejected, so an out-of-vocabulary
+type escaped as a 500. It is 422 now, like create, update and supersede.
+
+And a SQL error of my own, caught by the harness refusing to pass: CREATE POLICY
+takes one parenthesised expression per clause, so `USING (a) AND (b)` parses as
+`USING (a)` followed by stray `AND`. upgrade() wrapped it correctly; downgrade()
+did not.
+
+Final state: 50 live-PostgreSQL tests pass with 0 skipped, and pnpm verify:pg is
+green across all nine steps.
