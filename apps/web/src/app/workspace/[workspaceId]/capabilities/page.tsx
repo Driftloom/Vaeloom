@@ -6,14 +6,8 @@ import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { Banner, Button, SearchField, TabPanel, Tabs } from '@vaeloom/ui-kit';
 import type { TabItem } from '@vaeloom/ui-kit';
-import { CapabilityCategory, getStorageHealth } from '@/lib/capabilities-data';
+import { CapabilityCategory, SEED_CAPABILITIES } from '@/lib/capabilities-data';
 import type { CapabilityItem, CapabilityAutonomy } from '@/lib/capabilities-data';
-import {
-  getStoredCapabilities,
-  setStoredCapabilityEnabled,
-  saveCustomCapability,
-  deleteCustomCapability,
-} from '@/lib/capabilities-data';
 import { useToast } from '@/components/shared/Toast';
 import { PageHeader } from '@/components/shared/Page';
 import {
@@ -23,7 +17,6 @@ import {
   capabilityConfigMarkdownDoc,
   capabilityConfigTags,
   capabilityConfigRequiredScope,
-  type SkillListItem,
 } from '@/lib/api-client';
 import { useWorkspaceConnectors } from '../../../../hooks/useWorkspace';
 import { SkillsView } from '@/components/capabilities/SkillsView';
@@ -34,25 +27,10 @@ import type {
   SkillSort,
   SkillTab,
 } from '@/components/capabilities/SkillsView';
+import { isSkill, mergeSkillRows } from '@/components/capabilities/skills/skill-row-helpers';
 import { CapabilitiesWorkbenchSkeleton } from '@/components/capabilities/CapabilitiesWorkbenchSkeleton';
 
 // ─── Code-split heavy panes (plan E4) ────────────────────────────────────────
-//
-// This route is one screen with six category panes plus a create/import modal,
-// but `TabPanel` mounts ONLY the active pane (it returns null otherwise) and the
-// modal is closed on first paint. Importing every pane statically — Connectors
-// 100 kB, Mcp 84 kB, Agents 43 kB, Tools 36 kB, Plugins 14 kB, modal 114 kB —
-// forced ~391 kB of that code into the route's initial chunk even though the user
-// sees exactly one pane. Measured on a production build, the route chunk drops
-// from 88 kB to 22.6 kB and its First-Load JS from 271 kB to 159 kB.
-//
-// SkillsView stays static because it is the default pane: first paint is then
-// un-suspended and the entry chunk carries only the shell plus this one view. The
-// rest are `next/dynamic` chunks loaded the first time their tab opens. The modal
-// is dynamic AND mounts only while open (see the gated render below), so its
-// 114 kB never lands on the initial path. Each lazy pane falls back to the same
-// workbench skeleton the route already uses, so a lazy pane and the shell never
-// render two different loaders.
 const paneFallback = () => <CapabilitiesWorkbenchSkeleton />;
 
 const ConnectorsView = dynamic(
@@ -88,20 +66,6 @@ const AddCapabilityModal = dynamic(
 
 // ─── Category vocabulary (defect B) ──────────────────────────────────────────
 
-/**
- * The one place the server's category vocabulary is reconciled with the UI's.
- *
- * WHY two tables instead of one plus an inverse scan: the exported
- * `CapabilityCategory` is PLURAL ('skills') because five sibling views and the
- * URL contract depend on it, and it is not mine to rename. The backend's
- * `VALID_CATEGORIES` is SINGULAR ('skill'). A single table plus a reverse scan
- * has to break ties between `skill` and `skills` by insertion order, which is
- * invisible at the definition site and silently changes behaviour if anyone
- * reorders the object -- so `toServerCategory` could send a plural category the
- * server rejects, while `item.category === 'skills'` matched no stored row at
- * all. Both directions are now written out, so the singular value the server
- * accepts is readable at the call site instead of inferred.
- */
 const UI_TO_SERVER_CATEGORY: Record<CapabilityCategory, string> = {
   agents: 'agent',
   skills: 'skill',
@@ -161,12 +125,6 @@ const CATEGORY_SEARCH_PLACEHOLDER: Record<CapabilityCategory, string> = {
   agents: 'Search agents',
 };
 
-/**
- * Unrecognised categories are not silently absorbed into 'skills': a row the
- * server sent under a vocabulary this build does not know is a contract change,
- * and reporting it as a skill would file a server regression under the wrong
- * category's counts.
- */
 function toUiCategory(serverCategory: string | null | undefined): CapabilityCategory | null {
   if (typeof serverCategory !== 'string') return null;
   return SERVER_TO_UI_CATEGORY[serverCategory] ?? null;
@@ -186,167 +144,6 @@ function isConflict(err: unknown): boolean {
 
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof Error && err.message ? err.message : fallback;
-}
-
-// ─── Skill row mapping (defects C, D, E) ─────────────────────────────────────
-
-const VALID_SOURCES = new Set<CapabilityItem['source']>([
-  'built-in',
-  'learned',
-  'custom',
-  'mcp',
-  'community',
-]);
-
-function toSource(raw: string | null | undefined): CapabilityItem['source'] {
-  return typeof raw === 'string' && VALID_SOURCES.has(raw as CapabilityItem['source'])
-    ? (raw as CapabilityItem['source'])
-    : 'custom';
-}
-
-const VALID_AUTONOMY = new Set<string>(['suggest', 'autonomous', 'approval_required']);
-
-const VALID_TRUST_CLASSES = new Set<string>([
-  'core_trusted',
-  'first_party',
-  'community',
-  'mcp.read',
-  'mcp.workspace.write',
-  'mcp.external.write',
-  'untrusted',
-]);
-
-/**
- * Trust class and autonomy are `string | null` on the wire precisely so an
- * undeclared value stays undeclared. Converting null here is how the UI ended up
- * presenting a hard-coded 'first_party' / 'autonomous' as if the server had
- * classified the capability; the detail pane prints "Not declared by the server"
- * instead.
- */
-function toAutonomy(raw: string | null | undefined): CapabilityAutonomy | undefined {
-  return typeof raw === 'string' && VALID_AUTONOMY.has(raw)
-    ? (raw as CapabilityAutonomy)
-    : undefined;
-}
-
-function readTags(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.filter((tag): tag is string => typeof tag === 'string' && tag.trim() !== '');
-}
-
-/**
- * `installed` -- not `enabled` -- is the single definition of "this workspace has
- * this skill". The catalog contributes rows with `installed: false` and a null id,
- * so every branch that needs a row to exist server-side must check `installed`
- * before it touches `id`.
- */
-function mapSkillRow(server: SkillListItem): SkillRow {
-  const installed = server.installed === true;
-  const config = server.config as Record<string, unknown> | undefined;
-  const slug = server.slug ?? (typeof server.name === 'string' ? server.name : null);
-  const parameters = config?.['parameters'];
-
-  const item: CapabilityItem = {
-    id: server.id ?? `catalog:${slug ?? server.name}`,
-    name: server.name,
-    category: 'skills',
-    tags: readTags(server.tags).length
-      ? readTags(server.tags)
-      : capabilityConfigTags(server.config),
-    description: server.description ?? '',
-    // A catalog row has no workspace enablement to report, so it renders as
-    // not-enabled rather than borrowing the seed's flag.
-    enabled: installed ? server.enabled : false,
-    source: toSource(server.type),
-    usageCount: typeof server.usageCount === 'number' ? server.usageCount : 0,
-    lastUsedAt: server.lastUsedAt ?? null,
-    markdownDoc: server.markdownDoc ?? capabilityConfigMarkdownDoc(server.config) ?? '',
-    triggers: Array.isArray(server.triggers) ? server.triggers : [],
-    inputSchema:
-      parameters && typeof parameters === 'object' && !Array.isArray(parameters)
-        ? (parameters as Record<string, unknown>)
-        : undefined,
-  };
-
-  if (server.requiredScope) item.requiredScope = server.requiredScope;
-  // `CapabilityItem.trustClass` is a closed union, so an unrecognised server value
-  // is dropped rather than widened into a claim the runtime does not support.
-  if (server.trustClass && VALID_TRUST_CLASSES.has(server.trustClass)) {
-    item.trustClass = server.trustClass as CapabilityItem['trustClass'];
-  }
-  const autonomy = toAutonomy(server.autonomy);
-  if (autonomy) item.autonomy = autonomy;
-  if (server.version) item.version = server.version;
-  if (server.author) item.author = server.author;
-
-  return {
-    key: installed ? (server.id as string) : `catalog:${slug ?? server.name}`,
-    item,
-    installed,
-    bundled: server.bundled === true,
-    slug,
-    serverBacked: installed && typeof server.id === 'string',
-  };
-}
-
-/**
- * The merge direction is the defect: `{...existing, ...serverRow}` let the DB
- * row win every field, which erased a doc the user had just written whenever the
- * list refetched. The server owns identity, enablement and telemetry; the local
- * store only gets to supply what the server does not have.
- */
-function mergeSkillRows(localRows: CapabilityItem[], serverRows: SkillListItem[]): SkillRow[] {
-  const byId = new Map<string, CapabilityItem>();
-  const byName = new Map<string, CapabilityItem>();
-  for (const row of localRows) {
-    byId.set(row.id, row);
-    byName.set(row.name, row);
-  }
-
-  const consumed = new Set<string>();
-  const merged: SkillRow[] = serverRows.map((server) => {
-    const local = (server.id !== null ? byId.get(server.id) : undefined) ?? byName.get(server.name);
-    if (local) consumed.add(local.id);
-
-    const row = mapSkillRow(server);
-    if (!local) return row;
-
-    const item = row.item;
-    const localTriggers = local.triggers ?? [];
-    if (item.markdownDoc === '' && local.markdownDoc) item.markdownDoc = local.markdownDoc;
-    if (item.inputSchema === undefined && local.inputSchema) item.inputSchema = local.inputSchema;
-    if ((item.triggers?.length ?? 0) === 0 && localTriggers.length > 0) {
-      item.triggers = localTriggers;
-    }
-    row.item = item;
-    return row;
-  });
-
-  // Local-only capabilities have no server row at all. They are reported as
-  // NOT installed rather than optimistically counted: the definition of
-  // installed is "the workspace registry holds a row", and a localStorage entry
-  // is not that registry.
-  for (const local of localRows) {
-    if (consumed.has(local.id)) continue;
-    merged.push({
-      key: local.id,
-      item: local,
-      installed: false,
-      bundled: isSeedSkill(local),
-      slug: local.id.startsWith('skill-') ? local.id.slice('skill-'.length) : null,
-      serverBacked: false,
-    });
-  }
-
-  return merged;
-}
-
-function isSeedSkill(item: CapabilityItem): boolean {
-  return item.source === 'built-in' || item.source === 'learned';
-}
-
-function isSkill(item: CapabilityItem): boolean {
-  return item.category === 'skills';
 }
 
 const isInstalledRow = (row: SkillRow): boolean => row.installed;
@@ -386,10 +183,7 @@ function CapabilitiesContent() {
   const workspaceId = (params?.['workspaceId'] as string) || 'default-workspace';
   const { toast } = useToast();
 
-  const [localCapabilities, setLocalCapabilities] = useState<CapabilityItem[]>(() =>
-    getStoredCapabilities(workspaceId),
-  );
-  const [storageHealth, setStorageHealth] = useState(() => getStorageHealth());
+  const seedSkills = useMemo(() => SEED_CAPABILITIES.filter(isSkill), []);
 
   const urlCategory = searchParams?.get('category') || searchParams?.get('tab');
   const validUrlCategory =
@@ -440,11 +234,6 @@ function CapabilitiesContent() {
 
   const { connectors: liveConnectors } = useWorkspaceConnectors(workspaceId);
 
-  /**
-   * Installed skills and the catalog in one response. The backend owns this merge,
-   * so the page never re-implements it -- a client-side join is how the two lists
-   * came to disagree about what was installed.
-   */
   const {
     data: serverSkills,
     error: skillsError,
@@ -462,20 +251,15 @@ function CapabilitiesContent() {
     { revalidateOnFocus: false, shouldRetryOnError: false },
   );
 
-  // MCP has no row in `capabilities`; McpView reads the connectors endpoint
-  // directly. This only produces the tab badge, and it reads a real `type`
-  // rather than pattern-matching a provider name for the substring "mcp".
   const { data: mcpConnectors } = useSWR(
     workspaceId ? ['workspace-mcp-count', workspaceId] : null,
     () => connectorsApi.list(workspaceId, 'mcp'),
     { revalidateOnFocus: false, shouldRetryOnError: false },
   );
 
-  const localSkills = useMemo(() => localCapabilities.filter(isSkill), [localCapabilities]);
-
   const allSkills = useMemo(
-    () => mergeSkillRows(localSkills, serverSkills ?? []),
-    [localSkills, serverSkills],
+    () => mergeSkillRows(seedSkills, serverSkills ?? []),
+    [seedSkills, serverSkills],
   );
 
   const installedCount = useMemo(() => countInstalled(allSkills), [allSkills]);
@@ -496,19 +280,10 @@ function CapabilitiesContent() {
     return visibleSkillRows[0]?.key ?? '';
   }, [visibleSkillRows, selectedSkillKey]);
 
-  // Rows for the non-skill categories keep the seed + workspace-row shape the
-  // sibling views already consume. They are untouched by the skill merge.
   const [nonSkillRows, setNonSkillRows] = useState<CapabilityItem[]>(() =>
-    getStoredCapabilities(workspaceId).filter((item) => !isSkill(item)),
+    SEED_CAPABILITIES.filter((item) => !isSkill(item)),
   );
 
-  /**
-   * Rows the server filed under a category this build does not know.
-   *
-   * Counted outside the `setState` updater on purpose: an updater body runs during
-   * React's render phase, so a counter mutated inside it is still 0 when the code
-   * right after it tries to read it.
-   */
   const unknownCategoryCount = useMemo(
     () => (serverRows ?? []).filter((row) => !toUiCategory(row.category)).length,
     [serverRows],
@@ -520,9 +295,6 @@ function CapabilitiesContent() {
       const next = [...prev];
       for (const row of serverRows) {
         const mapped = toUiCategory(row.category);
-        // An unrecognised category is not filed under one it does not belong to.
-        // `unknownCategoryCount` reports it, because dropping it silently is how a
-        // server vocabulary change looks like data loss on the user's side.
         if (!mapped) continue;
         const item: CapabilityItem = {
           id: row.id,
@@ -531,7 +303,7 @@ function CapabilitiesContent() {
           tags: capabilityConfigTags(row.config),
           description: row.description ?? '',
           enabled: row.enabled,
-          source: toSource(row.type),
+          source: (row.type as CapabilityItem['source']) || 'custom',
           usageCount: typeof row.usageCount === 'number' ? row.usageCount : 0,
           lastUsedAt: row.lastUsedAt ?? null,
           markdownDoc: capabilityConfigMarkdownDoc(row.config) ?? '',
@@ -542,8 +314,6 @@ function CapabilitiesContent() {
         if (row.author) item.author = row.author;
         const index = next.findIndex((existing) => existing.id === row.id);
         if (index >= 0) {
-          // The server row owns the doc when it has one; the local copy only fills
-          // the gap for a seeded capability the server has no documentation for.
           const localDoc = next[index]?.markdownDoc ?? '';
           next[index] = { ...next[index], ...item, markdownDoc: item.markdownDoc || localDoc };
         } else {
@@ -559,14 +329,6 @@ function CapabilitiesContent() {
     [liveCatalog],
   );
 
-  /**
-   * Agents get their scopes and autonomy from the agent catalog, which is the
-   * only place those values exist for a built-in agent. Nothing else is
-   * synthesized here: the MCP-connector block that used to live in this effect
-   * invented `mcp-*` capabilities, their usage counts and their markdown from the
-   * connectors hook, and duplicated McpView's real endpoint with numbers nobody
-   * measured.
-   */
   useEffect(() => {
     const agents = liveCatalog?.agents;
     if (!agents || !Array.isArray(agents) || agents.length === 0) return;
@@ -580,15 +342,12 @@ function CapabilitiesContent() {
         return {
           ...item,
           requiredScope: live.tools?.[0]?.requiredScope ?? item.requiredScope,
-          autonomy: toAutonomy(live.defaultAutonomy) ?? item.autonomy,
+          autonomy: (live.defaultAutonomy as CapabilityAutonomy) ?? item.autonomy,
           toolsUsed: live.toolNames ?? item.toolsUsed,
         };
       }),
     );
-    // `liveCatalogKey` rather than the object so a stable SWR reference does not
-    // re-run this on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liveCatalogKey]);
+  }, [liveCatalogKey, liveCatalog]);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<CapabilityCategory, number> = {
@@ -621,28 +380,6 @@ function CapabilitiesContent() {
     [allSkills],
   );
 
-  /**
-   * The storage helpers disagree about their return type: the enable/delete
-   * helpers hand back the re-read merged list, `saveCustomCapability` returns
-   * nothing. Both are re-read here so the local mirror and the banner always come
-   * from the same source rather than from a partially updated snapshot.
-   *
-   * Health is captured immediately after the write and BEFORE the re-read, because
-   * `getStoredCapabilities()` clears the recorded error as its first statement --
-   * reading afterwards would erase a failed write and report success.
-   */
-  const syncLocalStorage = useCallback(
-    (mutate: (workspaceId: string) => unknown) => {
-      mutate(workspaceId);
-      const writeHealth = getStorageHealth();
-      const merged = getStoredCapabilities(workspaceId);
-      const readHealth = getStorageHealth();
-      setLocalCapabilities(merged);
-      setStorageHealth(writeHealth.ok ? readHealth : writeHealth);
-    },
-    [workspaceId],
-  );
-
   const handleToggleSkill = useCallback(
     async (key: string, next: boolean) => {
       const row = findSkillRow(key);
@@ -650,12 +387,9 @@ function CapabilitiesContent() {
       const name = row.item.name;
 
       if (!row.serverBacked || row.item.id === null) {
-        // Nothing to write server-side. Say so rather than reporting a workspace
-        // change that did not happen.
-        syncLocalStorage((id) => setStoredCapabilityEnabled(id, row.item.id, next));
         toast({
           tone: 'warning',
-          title: `${next ? 'Enabled' : 'Disabled'} ${name} in this browser only`,
+          title: `Cannot ${next ? 'enable' : 'disable'} ${name}`,
           detail:
             'This skill has no workspace capability row, so nothing was written to the server.',
         });
@@ -665,7 +399,6 @@ function CapabilitiesContent() {
       setPendingSkillKey(key);
       try {
         await capabilitiesApi.update(row.item.id, { enabled: next });
-        syncLocalStorage((id) => setStoredCapabilityEnabled(id, row.item.id, next));
         void mutateSkills();
         toast({
           tone: next ? 'success' : 'warning',
@@ -673,25 +406,16 @@ function CapabilitiesContent() {
           detail: 'Saved to the workspace capability row.',
         });
       } catch (err) {
-        if (!isNotFound(err)) {
-          toast({
-            tone: 'error',
-            title: `Could not ${next ? 'enable' : 'disable'} ${name}`,
-            detail: errorMessage(err, 'The workspace was not changed.'),
-          });
-          return;
-        }
-        syncLocalStorage((id) => setStoredCapabilityEnabled(id, row.item.id, next));
         toast({
-          tone: 'warning',
-          title: `${next ? 'Enabled' : 'Disabled'} ${name} in this browser only`,
-          detail: 'The server has no row for this skill (404), so nothing was written remotely.',
+          tone: 'error',
+          title: `Could not ${next ? 'enable' : 'disable'} ${name}`,
+          detail: errorMessage(err, 'The workspace was not changed.'),
         });
       } finally {
         setPendingSkillKey(null);
       }
     },
-    [findSkillRow, mutateSkills, syncLocalStorage, toast],
+    [findSkillRow, mutateSkills, toast],
   );
 
   const handleInstallSkill = useCallback(
@@ -712,9 +436,6 @@ function CapabilitiesContent() {
             doc: row.item.markdownDoc,
             tags: row.item.tags,
             autonomy: row.item.autonomy,
-            // The catalog entry declares the scope this skill runs under, and
-            // POST stores only what it is given, so a bare register installs a
-            // capability with no scope at all.
             ...(row.item.requiredScope ? { required_scope: row.item.requiredScope } : {}),
           },
         });
@@ -737,64 +458,46 @@ function CapabilitiesContent() {
     [findSkillRow, mutateSkills, toast],
   );
 
-  /**
-   * Saving a doc used to write localStorage and then report "Changes persisted
-   * to workspace configuration", which was false. A skill that has a server row is
-   * now written with PATCH; only a genuinely local capability falls back to the
-   * browser, and the toast says which of the two happened.
-   */
   const handleSaveSkillDoc = useCallback(
     async (key: string, doc: string): Promise<SkillSaveOutcome> => {
       const row = findSkillRow(key);
       if (!row) return 'failed';
 
-      if (row.serverBacked && row.item.id !== null) {
-        try {
-          // Only `doc` is sent. `config` is merged server-side, and sending the
-          // camel-cased `parameters` back would corrupt the stored JSON Schema.
-          await capabilitiesApi.update(row.item.id, { config: { doc } });
-          syncLocalStorage((id) => saveCustomCapability(id, { ...row.item, markdownDoc: doc }));
-          void mutateSkills();
-          toast({
-            tone: 'success',
-            title: `Saved instructions for ${row.item.name}`,
-            detail: 'Written to the workspace capability row.',
-          });
-          return 'server';
-        } catch (err) {
-          if (!isNotFound(err)) {
-            toast({
-              tone: 'error',
-              title: `Could not save ${row.item.name}`,
-              detail: errorMessage(err, 'The workspace was not changed.'),
-            });
-            return 'failed';
-          }
-          toast({
-            tone: 'warning',
-            title: `Saved ${row.item.name} in this browser only`,
-            detail: 'The server has no row for this skill (404).',
-          });
-        }
+      if (!row.serverBacked || row.item.id === null) {
+        toast({
+          tone: 'error',
+          title: `Could not save instructions for ${row.item.name}`,
+          detail:
+            'This skill has no workspace capability row, so it was not persisted to the workspace.',
+        });
+        return 'failed';
       }
 
-      syncLocalStorage((id) => saveCustomCapability(id, { ...row.item, markdownDoc: doc }));
-      toast({
-        tone: 'warning',
-        title: `Saved instructions for ${row.item.name} in this browser only`,
-        detail:
-          'This skill has no workspace capability row, so it was not persisted to the workspace.',
-      });
-      return 'local';
+      try {
+        await capabilitiesApi.update(row.item.id, { config: { doc } });
+        void mutateSkills();
+        toast({
+          tone: 'success',
+          title: `Saved instructions for ${row.item.name}`,
+          detail: 'Written to the workspace capability row.',
+        });
+        return 'server';
+      } catch (err) {
+        toast({
+          tone: 'error',
+          title: `Could not save ${row.item.name}`,
+          detail: errorMessage(err, 'The workspace was not changed.'),
+        });
+        return 'failed';
+      }
     },
-    [findSkillRow, mutateSkills, syncLocalStorage, toast],
+    [findSkillRow, mutateSkills, toast],
   );
 
   const handleDeleteSkill = useCallback(
     async (key: string) => {
       const row = findSkillRow(key);
       if (!row || row.item.id === null) {
-        syncLocalStorage((id) => deleteCustomCapability(id, key));
         toast({
           tone: 'info',
           title: 'Removed from this browser',
@@ -825,7 +528,6 @@ function CapabilitiesContent() {
         }
       }
 
-      syncLocalStorage((id) => deleteCustomCapability(id, row.item.id));
       setSelectedSkillKey('');
       void mutateSkills();
       toast({
@@ -834,7 +536,7 @@ function CapabilitiesContent() {
         detail: 'Removed from this workspace.',
       });
     },
-    [findSkillRow, mutateSkills, syncLocalStorage, toast],
+    [findSkillRow, mutateSkills, toast],
   );
 
   const handleCopySkillDoc = useCallback(
@@ -885,13 +587,18 @@ function CapabilitiesContent() {
       if (!item) return;
       const nextState = !item.enabled;
 
-      syncLocalStorage((workspace) => setStoredCapabilityEnabled(workspace, id, nextState));
+      setNonSkillRows((prev) =>
+        prev.map((row) => (row.id === id ? { ...row, enabled: nextState } : row)),
+      );
+
       try {
         await capabilitiesApi.update(id, { enabled: nextState });
         void mutateServerRows();
       } catch (err) {
         if (!isNotFound(err)) {
-          syncLocalStorage((workspace) => setStoredCapabilityEnabled(workspace, id, item.enabled));
+          setNonSkillRows((prev) =>
+            prev.map((row) => (row.id === id ? { ...row, enabled: item.enabled } : row)),
+          );
           toast({
             tone: 'error',
             title: nextState ? `Could not enable ${item.name}` : `Could not disable ${item.name}`,
@@ -906,7 +613,7 @@ function CapabilitiesContent() {
         detail: 'Applies to new agent sessions in this workspace.',
       });
     },
-    [nonSkillRows, syncLocalStorage, mutateServerRows, toast],
+    [nonSkillRows, mutateServerRows, toast],
   );
 
   const handleCategoryChange = useCallback((id: string) => {
@@ -942,24 +649,6 @@ function CapabilitiesContent() {
         />
       </div>
 
-      {/*
-        A corrupt or over-quota local store used to fall back to the seed with an
-        empty catch, so custom capabilities silently vanished and the user was
-        told nothing. `getStorageHealth()` records why; this says so out loud.
-      */}
-      {!storageHealth.ok && (
-        <div className="shrink-0 px-4 sm:px-6 pt-3">
-          <Banner
-            variant="danger"
-            title="Local capability store is unreadable"
-            description={storageHealth.error ?? 'The browser store could not be read.'}
-          />
-        </div>
-      )}
-
-      {/* A catalog fetch failure only costs live agent enrichment, so it is a
-          notice rather than a page-level error: the stored and workspace
-          capabilities below are still real. */}
       {unknownCategoryCount > 0 && (
         <div className="shrink-0 px-4 sm:px-6 pt-3">
           <Banner
@@ -989,13 +678,7 @@ function CapabilitiesContent() {
               onChange={setSearchQuery}
               onClear={() => setSearchQuery('')}
               placeholder={CATEGORY_SEARCH_PLACEHOLDER[selectedCategory]}
-              // The placeholder changes with the category, so it cannot be the
-              // accessible name: an unstable name breaks voice control and makes
-              // the field unlabelled for screen readers on 5 of 6 tabs.
               aria-label="Search capabilities"
-              // `useKeyboardShortcuts` focuses `[data-search-input]` for the `/`
-              // shortcut. The attribute existed nowhere, so the advertised key
-              // did nothing.
               data-search-input
               className="text-xs"
             />
@@ -1012,10 +695,6 @@ function CapabilitiesContent() {
               />
             </div>
 
-            {/*
-              No `aria-label`: it would override the visible words and leave
-              voice-control users with a name they cannot see on screen.
-            */}
             <Button
               data-new-item
               size="sm"
@@ -1122,6 +801,7 @@ function CapabilitiesContent() {
           className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden"
         >
           <PluginsView
+            workspaceId={workspaceId}
             plugins={nonSkillRows.filter((item) => item.category === 'plugins')}
             searchQuery={searchQuery}
             onTogglePlugin={(id) => void handleToggleCapability(id)}
@@ -1155,13 +835,6 @@ function CapabilitiesContent() {
                   doc: newCap.markdownDoc || '',
                   tags: newCap.tags || [],
                   autonomy: newCap.autonomy || 'autonomous',
-                  // After the metadata spread, and named for the wire, because
-                  // `CreateCapabilityRequest` has no top-level `required_scope`
-                  // and Pydantic drops unknown fields: `config.required_scope` is
-                  // the only place a POST can put it, and it is the only key the
-                  // list endpoint reads back (`routers/capabilities.py`). Reading
-                  // the field the user chose rather than a metadata entry also
-                  // means a scope cannot be lost to a rename on the modal side.
                   ...(newCap.requiredScope ? { required_scope: newCap.requiredScope } : {}),
                 },
               });
@@ -1169,20 +842,14 @@ function CapabilitiesContent() {
               void mutateServerRows();
               void mutateSkills();
             } catch (err) {
-              // Keep the local record so the authoring is not lost, but say plainly
-              // that the workspace copy was not written.
-              syncLocalStorage((id) => saveCustomCapability(id, newCap));
               toast({
-                tone: 'warning',
-                title: `Saved locally only: ${newCap.name}`,
+                tone: 'error',
+                title: `Could not create ${newCap.name}`,
                 detail: `${errorMessage(err, 'The server write failed.')} It was not registered in this workspace.`,
               });
               return;
             }
-            syncLocalStorage((id) => saveCustomCapability(id, newCap));
             setSelectedCategory(newCap.category);
-            // Selecting by the id the server minted: the row only exists once the
-            // refetch lands, and `activeSkillKey` picks it up when it does.
             setSelectedSkillKey(newCap.id);
             toast({
               tone: 'success',
@@ -1196,16 +863,6 @@ function CapabilitiesContent() {
               urlParts[urlParts.length - 1]?.replace(/\.git$/, '') || 'remote-capability';
             const cleanName = rawName.toLowerCase().replace(/[^a-z0-9-_]/g, '-');
 
-            // The one and only import path. Vaeloom has no remote compiler or
-            // fetcher, so this records the source URL against a real server row and
-            // says exactly that. It must not claim to have compiled anything, and
-            // it must not fall back to a local-only record that looks identical to
-            // a successful import.
-            //
-            // This layer produces the failure message and the modal presents it.
-            // Nothing awaits the handler that calls this, so a re-throw here would
-            // have no owner: it either becomes an unhandled rejection or, once
-            // swallowed, leaves the modal closing on a failure it cannot see.
             let created;
             try {
               created = await capabilitiesApi.create({
@@ -1247,12 +904,6 @@ function CapabilitiesContent() {
   );
 }
 
-/**
- * The route is a master/detail surface, so the fallback mirrors that shape. It
- * is the same component `loading.tsx` renders: the two are shown at the same
- * moment for the same data, so there is nothing for them to independently get
- * right.
- */
 export default function CapabilitiesPage() {
   return (
     <Suspense fallback={<CapabilitiesWorkbenchSkeleton />}>

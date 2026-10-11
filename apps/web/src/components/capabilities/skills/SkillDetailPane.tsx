@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import {
   Badge,
   Button,
@@ -219,6 +220,14 @@ export const SkillDetailPane: React.FC<SkillDetailPaneProps> = ({
                 <Button size="sm" variant="ghost" onClick={() => onDeleteRequest(selectedRow)}>
                   Delete
                 </Button>
+              )}
+              {workspaceId && (selectedRow.slug || selectedRow.key) && (
+                <Link
+                  href={`/workspace/${workspaceId}/capabilities/skills/${encodeURIComponent(selectedRow.slug || selectedRow.key)}`}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-surface-elevated hover:bg-surface text-text transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  <span>Open Full Page ↗</span>
+                </Link>
               )}
             </>
           )}

@@ -5060,6 +5060,22 @@ export const capabilitiesApi = {
     return apiClient.get<SkillCatalogEntry[]>('/capabilities/catalog', { category });
   },
   /**
+   * Authoritative tool definitions directly from the backend ALL_TOOLS registry.
+   */
+  listToolDefinitions(): Promise<
+    Array<{
+      name: string;
+      description: string;
+      required_scope: string;
+      category: string;
+      trust_class: string;
+      input_schema: Record<string, unknown>;
+      output_schema: Record<string, unknown>;
+    }>
+  > {
+    return apiClient.get('/capabilities/tools/definitions');
+  },
+  /**
    * Installed skills merged with the catalog in one request.
    *
    * Saves the page a fetch-then-join: it would otherwise have to reconcile the

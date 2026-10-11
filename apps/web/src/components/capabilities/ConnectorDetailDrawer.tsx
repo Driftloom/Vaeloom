@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { Badge, Button, Spinner, StatusDot, Tooltip } from '@vaeloom/ui-kit';
 import { connectorsApi, type ConnectorHealthResponse, type McpToolInfo } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
@@ -68,8 +69,8 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
     if (!connectorId || !workspaceId) return;
     setLoadingTools(true);
     try {
-      const res = await connectorsApi.mcp.tools(connectorId, workspaceId);
-      const list = Array.isArray(res?.tools) ? res.tools : [];
+      const res = await connectorsApi.mcp.listTools(connectorId);
+      const list = Array.isArray(res) ? res : [];
       setTools(list);
     } catch {
       setTools([]);
@@ -90,10 +91,11 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
     try {
       const res = await connectorsApi.health(connectorId);
       setHealthStatus(res);
+      const latency = (res as any).latency_ms ?? (res as any).latencyMs ?? 0;
       toast({
         tone: res.status === 'healthy' ? 'success' : 'warning',
         title: `Health Check: ${res.status.toUpperCase()}`,
-        detail: `Probe completed in ${res.latency_ms ?? 0}ms.`,
+        detail: `Probe completed in ${latency}ms.`,
       });
     } catch (err) {
       toast({
@@ -162,7 +164,7 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
                   </Badge>
                   {connected ? (
                     <Badge variant="success" size="sm" className="flex items-center gap-1">
-                      <StatusDot status="active" size="xs" />
+                      <StatusDot status="active" size="sm" />
                       Connected
                     </Badge>
                   ) : (
@@ -176,9 +178,19 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
                 </p>
               </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close drawer">
-              Close
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              {workspaceId && (connectorId || row.id || row.provider) && (
+                <Link
+                  href={`/workspace/${workspaceId}/capabilities/connectors/${encodeURIComponent(connectorId || row.id || row.provider)}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface-elevated hover:bg-surface text-text font-medium text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  <span>Open Full Page ↗</span>
+                </Link>
+              )}
+              <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close drawer">
+                Close
+              </Button>
+            </div>
           </div>
 
           {/* Subtabs Bar */}
@@ -232,10 +244,12 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
                   </p>
                 </div>
 
-                {/* Permissions & Scopes */}
+                {/* Scopes & Permissions */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-semibold text-text">Permissions</h4>
+                    <span className="text-2xs font-semibold uppercase tracking-wider text-text-muted">
+                      Permissions
+                    </span>
                     <span className="text-2xs font-mono text-text-muted">
                       {row.scopes.length} declared
                     </span>
@@ -260,15 +274,17 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
                     </>
                   ) : (
                     <p className="text-2xs text-text-muted bg-surface-elevated/40 p-3 rounded-xl border border-border">
-                      This catalog entry declares no scope list. The provider&apos;s consent screen
-                      is the only authority on what will be requested.
+                      This connector declares no scope list. The provider will ask for what its own
+                      app registration requires.
                     </p>
                   )}
                 </div>
 
                 {/* Swarm Agent Assignments */}
                 <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-text">Agent assignment</h4>
+                  <span className="text-2xs font-semibold uppercase tracking-wider text-text-muted">
+                    Agent Swarm Access
+                  </span>
                   {row.assignedAgents.length > 0 ? (
                     <div className="flex flex-wrap gap-1.5">
                       {row.assignedAgents.map((agent) => (
@@ -279,8 +295,8 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
                     </div>
                   ) : (
                     <p className="text-2xs text-text-muted bg-surface-elevated/40 p-3 rounded-xl border border-border">
-                      No agent assignment is declared for this catalog row. The orchestrator may
-                      still route to it if the capability matches a task.
+                      No agent assignment is declared for this connector. Available to general
+                      orchestrator loop and custom ReAct pipelines.
                     </p>
                   )}
                 </div>
@@ -325,7 +341,9 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
                             {tool.name}
                           </span>
                           <div className="flex items-center gap-1.5">
-                            {tool.approval_gated && (
+                            {Boolean(
+                              (tool as any).approval_gated || (tool as any).approvalGated,
+                            ) && (
                               <Badge variant="warning" size="sm">
                                 🔒 HITL Approval Gated
                               </Badge>
@@ -340,13 +358,17 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
                             {tool.description}
                           </p>
                         )}
-                        {tool.input_schema && (
+                        {Boolean((tool as any).input_schema || (tool as any).inputSchema) && (
                           <div className="mt-2 pt-2 border-t border-border/60">
                             <span className="text-2xs font-mono text-text-muted block mb-1">
                               Parameters Schema:
                             </span>
                             <pre className="p-2 rounded bg-background border border-border/40 font-mono text-2xs text-text-muted overflow-x-auto max-h-36">
-                              {JSON.stringify(tool.input_schema, null, 2)}
+                              {JSON.stringify(
+                                (tool as any).input_schema || (tool as any).inputSchema,
+                                null,
+                                2,
+                              )}
                             </pre>
                           </div>
                         )}
@@ -449,12 +471,17 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
                         </div>
                         <div className="flex justify-between">
                           <span className="text-text-muted">Latency:</span>
-                          <span className="text-text">{healthStatus.latency_ms ?? 0}ms</span>
+                          <span className="text-text">
+                            {(healthStatus as any).latency_ms ??
+                              (healthStatus as any).latencyMs ??
+                              0}
+                            ms
+                          </span>
                         </div>
-                        {healthStatus.version && (
+                        {(healthStatus as any).version && (
                           <div className="flex justify-between">
                             <span className="text-text-muted">Version:</span>
-                            <span className="text-text">{healthStatus.version}</span>
+                            <span className="text-text">{(healthStatus as any).version}</span>
                           </div>
                         )}
                       </div>

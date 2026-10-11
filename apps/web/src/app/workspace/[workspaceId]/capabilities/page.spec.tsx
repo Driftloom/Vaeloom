@@ -41,6 +41,21 @@ jest.mock('../../../../components/shared/Toast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
 
+let mockSeedCapabilities: Array<Record<string, unknown>> = (
+  jest.requireActual('@/lib/capabilities-data') as {
+    SEED_CAPABILITIES: Array<Record<string, unknown>>;
+  }
+).SEED_CAPABILITIES;
+jest.mock('@/lib/capabilities-data', () => {
+  const actual = jest.requireActual('@/lib/capabilities-data');
+  return {
+    ...actual,
+    get SEED_CAPABILITIES() {
+      return mockSeedCapabilities;
+    },
+  };
+});
+
 // ─── Fake server ─────────────────────────────────────────────────────────────
 
 type MockRow = Record<string, unknown> & {
@@ -356,6 +371,11 @@ describe('CapabilitiesPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     localStorage.clear();
+    mockSeedCapabilities = (
+      jest.requireActual('@/lib/capabilities-data') as {
+        SEED_CAPABILITIES: Array<Record<string, unknown>>;
+      }
+    ).SEED_CAPABILITIES;
     fakeDb.skills = [];
     fakeDb.updates = [];
     fakeDb.creates = [];
@@ -607,19 +627,20 @@ describe('CapabilitiesPage', () => {
     expect(Object.keys(stored.properties)).toEqual(['resume_text', 'max_results']);
   });
 
-  it('falls back to the browser and says so when the skill has no server row', async () => {
+  it('rejects editing instructions when the skill has no server row', async () => {
     await renderSkills();
     await openBrowse();
     await userClickRow('accessibility-testing');
 
-    await userEditDoc('# Local only edit');
+    await userEditDoc('# Local only edit', { expectSaved: false });
 
     expect(fakeDb.updates).toHaveLength(0);
+    expect(screen.getByText(/Nothing was written/i)).toBeInTheDocument();
     expect(mockToast).toHaveBeenCalledWith(
       expect.objectContaining({
-        tone: 'warning',
-        title: expect.stringContaining('in this browser only'),
-        detail: expect.stringContaining('not persisted to the workspace'),
+        tone: 'error',
+        title: expect.stringContaining('Could not save instructions for accessibility-testing'),
+        detail: expect.stringContaining('no workspace capability row'),
       }),
     );
   });
@@ -643,20 +664,21 @@ describe('CapabilitiesPage', () => {
     );
   });
 
-  it('tells the user a 404 save landed in the browser only', async () => {
+  it('reports failure when updating a missing server capability (404)', async () => {
     fakeDb.skills = [installedSkill({ id: 'srv-skill-1', name: 'acceptance-criteria-review' })];
     await renderSkills();
     await userClickRow('acceptance-criteria-review');
 
     capsApi()['update'].mockRejectedValueOnce(httpError(404, 'Capability not found'));
 
-    await userEditDoc('# Local fallback');
+    await userEditDoc('# Local fallback', { expectSaved: false });
 
+    expect(screen.getByText(/Nothing was written/i)).toBeInTheDocument();
     expect(mockToast).toHaveBeenCalledWith(
       expect.objectContaining({
-        tone: 'warning',
-        title: expect.stringContaining('in this browser only'),
-        detail: expect.stringContaining('404'),
+        tone: 'error',
+        title: expect.stringContaining('Could not save acceptance-criteria-review'),
+        detail: expect.stringContaining('Capability not found'),
       }),
     );
   });
@@ -910,13 +932,7 @@ describe('CapabilitiesPage', () => {
 
   it('reports an empty catalog as its own condition with a create call to action', async () => {
     fakeDb.skills = [];
-    localStorage.setItem(
-      `vaeloom.capabilities.dismissed.ws-test-123`,
-      JSON.stringify({
-        v: 1,
-        data: (await import('@/lib/capabilities-data')).SEED_CAPABILITIES.map((s) => s.id),
-      }),
-    );
+    mockSeedCapabilities = [];
     await renderSkills();
 
     expect(screen.getByText('No skills available')).toBeInTheDocument();
@@ -951,16 +967,16 @@ describe('CapabilitiesPage', () => {
     expect(await screen.findByText('Live agent catalog unavailable')).toBeInTheDocument();
   });
 
-  it('banners a corrupt local store rather than silently reverting to the seed', async () => {
-    // A version this build cannot read: the reader refuses instead of guessing.
+  it('ignores corrupt legacy localStorage data and does not render the unreadable banner', async () => {
+    // Legacy local store is no longer read; corrupt data in localStorage does not cause an unreadable banner.
     localStorage.setItem(
       'vaeloom.capabilities.dismissed.ws-test-123',
       JSON.stringify({ v: 99, data: [] }),
     );
     await renderSkills();
 
-    expect(screen.getByText('Local capability store is unreadable')).toBeInTheDocument();
-    expect(screen.getByText(/newer app version/)).toBeInTheDocument();
+    expect(screen.queryByText('Local capability store is unreadable')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Capabilities' })).toBeInTheDocument();
   });
 
   // ─── Sibling views keep working ────────────────────────────────────────────

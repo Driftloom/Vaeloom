@@ -832,6 +832,31 @@ async def list_catalog_capabilities(
     return [catalog_to_wire(e) for e in list_catalog(category)]
 
 
+@router.get("/tools/definitions", response_model=list[dict[str, Any]])
+async def list_tool_definitions(
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Authoritative server-side tool definitions reflecting ALL_TOOLS.
+
+    Declared before ``/{cap_id}`` so literal path segment ``tools`` is not
+    matched as a capability id.
+    """
+    _ = (db, current_user)
+    return [
+        {
+            "name": td.name,
+            "description": td.description,
+            "required_scope": td.required_scope,
+            "category": td.category,
+            "trust_class": td.trust_class,
+            "input_schema": td.input_schema,
+            "output_schema": td.output_schema,
+        }
+        for td in ALL_TOOLS.values()
+    ]
+
+
 def _derive_draft_status(ledger: _RuleLedger, category_validator: str | None) -> str:
     if any(v.severity == "hard" for v in ledger.violations):
         return "error"

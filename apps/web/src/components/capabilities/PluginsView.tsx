@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useMemo, useState } from 'react';
+import Link from 'next/link';
 import useSWR from 'swr';
 import { Badge, Button, EmptyState, ErrorState, Skeleton, Switch, Tooltip } from '@vaeloom/ui-kit';
 import { CapabilityItem, formatRelativeTime } from '@/lib/capabilities-data';
@@ -8,10 +9,13 @@ import { useToast } from '@/components/shared/Toast';
 import { pluginApi, type PluginResponse } from '@/lib/api-client';
 
 export interface PluginsViewProps {
+  workspaceId?: string;
   plugins: CapabilityItem[];
   searchQuery?: string;
   onTogglePlugin: (id: string) => void;
   onOpenGitImport: () => void;
+  gitImportError?: string | null;
+  onClearGitImportError?: () => void;
 }
 
 const SWR_KEY = 'plugin-registry';
@@ -25,15 +29,14 @@ type PendingSet = ReadonlySet<string>;
 /**
  * A plugin's declared icon, or a monogram built from its name.
  *
- * The previous renderer returned one hard-coded glyph for every workspace
- * plugin, so a row could not be told apart from any other. A monogram is derived
- * from data the server actually sent rather than from an invented icon set.
+ * The monogram is derived from data the server actually sent rather than
+ * from an invented icon set, preserving 3-layer token fidelity.
  */
 function PluginTile({ icon, name }: { icon?: string; name: string }) {
   const usable = icon && !/^https?:\/\//i.test(icon) && icon.length <= 4 ? icon : null;
   return (
     <span
-      className="w-10 h-10 rounded-xl bg-surface-elevated border border-border flex items-center justify-center shrink-0 mt-0.5 shadow-xs font-mono text-sm font-semibold text-text-secondary"
+      className="w-10 h-10 rounded-xl bg-surface-elevated border border-border flex items-center justify-center shrink-0 mt-0.5 shadow-xs font-mono text-sm font-semibold text-text-secondary select-none"
       aria-hidden="true"
     >
       {usable ?? (name.trim().charAt(0).toUpperCase() || '?')}
@@ -43,8 +46,8 @@ function PluginTile({ icon, name }: { icon?: string; name: string }) {
 
 function statusVariant(status: string): 'success' | 'warning' | 'error' | 'default' {
   if (status === ACTIVE_STATUS) return 'success';
-  if (status === 'FAILED') return 'error';
-  if (status === 'REGISTERED') return 'warning';
+  if (status === 'FAILED' || status === 'ERROR') return 'error';
+  if (status === 'REGISTERED' || status === 'PENDING') return 'warning';
   return 'default';
 }
 
@@ -61,10 +64,13 @@ function matches(
 }
 
 export const PluginsView: React.FC<PluginsViewProps> = ({
+  workspaceId,
   plugins,
   searchQuery = '',
   onTogglePlugin,
   onOpenGitImport,
+  gitImportError = null,
+  onClearGitImportError,
 }) => {
   const { toast } = useToast();
 
@@ -103,14 +109,8 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
   }, []);
 
   /**
-   * Toggle a registry row through the one status field the server actually
-   * stores. `plugin_service.execute` refuses a `DISABLED` row with a 403, so this
-   * flag is load-bearing rather than decorative.
-   *
-   * The two-switch "Desktop UI" / "Agent Runtime" columns are gone: they both
-   * called the same handler and both rendered the same boolean, while the
-   * `PluginStatus` enum has exactly four members and no lifecycle split. There is
-   * no second flag to persist.
+   * Toggle a registry row through the one status field the server actually stores.
+   * `plugin_service.execute` refuses a `DISABLED` row with a 403.
    */
   const handleToggleRegistered = useCallback(
     async (plugin: PluginResponse, enabled: boolean) => {
@@ -144,8 +144,6 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
 
   const handleToggleWorkspace = useCallback(
     (plugin: CapabilityItem) => {
-      // The page's handler owns this write and reverts its own state on failure;
-      // the switch is disabled for the round trip so it cannot be double-fired.
       setToggleError(null);
       setPending(plugin.id, true);
       onTogglePlugin(plugin.id);
@@ -162,6 +160,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
 
   return (
     <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-background text-text overflow-y-auto overscroll-y-contain pb-16 antialiased">
+      {/* ── Subheader ── */}
       <div className="px-5 py-3 border-b border-border bg-surface flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 shadow-xs">
         <p className="text-xs text-text-secondary font-sans leading-relaxed max-w-3xl">
           Plugins registered with <code className="font-mono">GET /api/v1/plugins</code> and the
@@ -170,7 +169,12 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
         </p>
 
         <div className="flex items-center gap-2 shrink-0">
-          <Button variant="secondary" size="sm" onClick={onOpenGitImport}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onOpenGitImport}
+            aria-label="Register new plugin from Git repository"
+          >
             Register from Git
           </Button>
           <Tooltip content="Re-fetch the plugin registry from the server">
@@ -179,6 +183,9 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
               size="sm"
               onClick={() => void mutateRegistry()}
               loading={registryLoading}
+              disabled={registryLoading}
+              aria-label="Refresh plugin registry"
+              aria-busy={registryLoading}
             >
               Refresh
             </Button>
@@ -187,6 +194,16 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
       </div>
 
       <div className="flex-1 p-4 sm:p-6 min-w-0 space-y-6">
+        {/* ── Resilient Git Import Error State ── */}
+        {gitImportError && (
+          <ErrorState
+            title="Git plugin import was not completed"
+            message={gitImportError}
+            onRetry={onClearGitImportError ?? onOpenGitImport}
+            actionText={onClearGitImportError ? 'Dismiss' : 'Retry Git Import'}
+          />
+        )}
+
         {toggleError && (
           <ErrorState
             title="Plugin change was not applied"
@@ -262,6 +279,11 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
                   { label: 'updated', value: formatRelativeTime(plugin.updated_at) },
                 ]}
                 icon={plugin.icon}
+                inspectHref={
+                  workspaceId
+                    ? `/workspace/${workspaceId}/capabilities/plugins/${encodeURIComponent(plugin.id || plugin.name)}`
+                    : undefined
+                }
                 switchLabel={`Set ${plugin.name} ${plugin.status === ACTIVE_STATUS ? 'to disabled' : 'to active'}`}
                 switchChecked={plugin.status !== DISABLED_STATUS}
                 switchDisabled={pendingIds.has(plugin.id)}
@@ -302,6 +324,11 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
                   { label: 'runs', value: String(plugin.usageCount) },
                   { label: 'last used', value: formatRelativeTime(plugin.lastUsedAt) },
                 ]}
+                inspectHref={
+                  workspaceId
+                    ? `/workspace/${workspaceId}/capabilities/plugins/${encodeURIComponent(plugin.id || plugin.name)}`
+                    : undefined
+                }
                 switchLabel={`Set ${plugin.name} ${plugin.enabled ? 'to disabled' : 'to enabled'}`}
                 switchChecked={plugin.enabled}
                 switchDisabled={pendingIds.has(plugin.id)}
@@ -343,6 +370,7 @@ function PluginRow({
   badges,
   facts,
   icon,
+  inspectHref,
   switchLabel,
   switchChecked,
   switchDisabled,
@@ -353,6 +381,7 @@ function PluginRow({
   badges: React.ReactNode;
   facts: { label: string; value: string | null }[];
   icon?: string;
+  inspectHref?: string;
   switchLabel: string;
   switchChecked: boolean;
   switchDisabled: boolean;
@@ -360,8 +389,6 @@ function PluginRow({
 }) {
   return (
     <li className="px-4 sm:px-5 py-4 hover:bg-surface-hover transition-colors">
-      {/* Stacks under 640px instead of forcing a 540px minimum width into a
-          horizontal scroller, which left the switch off-screen on a phone. */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
         <div className="flex items-start gap-3.5 min-w-0">
           <PluginTile icon={icon} name={title} />
@@ -388,7 +415,20 @@ function PluginRow({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 self-start">
+        <div className="flex items-center gap-2 shrink-0 self-start" aria-busy={switchDisabled}>
+          {inspectHref && (
+            <Link
+              href={inspectHref}
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border border-border bg-surface-elevated hover:bg-surface text-text transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              <span>Inspect ↗</span>
+            </Link>
+          )}
+          {switchDisabled && (
+            <span className="text-2xs font-sans text-text-muted animate-pulse" aria-live="polite">
+              Updating...
+            </span>
+          )}
           <span className="text-2xs font-sans text-text-muted">Active</span>
           <Switch
             checked={switchChecked}
