@@ -1,6 +1,6 @@
 import type { ModelOption } from './types';
 import { ChatModelSelector } from './ChatModelSelector';
-import { ContextWindowGauge } from './ContextWindowGauge';
+import { ChatSessionInspectorPopover } from './ChatSessionInspectorPopover';
 
 export interface ChatHeaderProps {
   workspaceId: string;
@@ -52,9 +52,6 @@ export function ChatHeader({
   onCompact,
   isCompacting,
 }: ChatHeaderProps): JSX.Element {
-  // `RealtimeProvider` seeds `status = 'connected'` before a socket exists, so
-  // pulsing it as healthy green during `connecting` reported a health the
-  // transport had not earned yet.
   const statusDot =
     connectionStatus === 'connected'
       ? 'bg-success'
@@ -65,7 +62,8 @@ export function ChatHeader({
   const isAuto = agentName === 'auto';
 
   return (
-    <div className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border/40 px-4 md:px-6">
+    <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border/40 px-3 md:px-5 bg-surface-50/30">
+      {/* Identity & Navigation Zone */}
       <div className="flex min-w-0 items-center gap-2">
         <button
           type="button"
@@ -74,7 +72,7 @@ export function ChatHeader({
           aria-expanded={drawerOpen}
           aria-controls="chat-thread-rail"
           data-chat-drawer-trigger=""
-          className="-ml-2 rounded-lg p-2 text-text transition-colors hover:bg-surface-hover motion-reduce:transition-none md:hidden"
+          className="-ml-1 rounded-lg p-1.5 text-text transition-colors hover:bg-surface-hover motion-reduce:transition-none md:hidden"
         >
           <svg
             aria-hidden="true"
@@ -88,52 +86,44 @@ export function ChatHeader({
           </svg>
         </button>
 
-        <h1 className="text-sm font-medium text-text">Chat</h1>
+        <h1 className="text-sm font-semibold text-text">Chat</h1>
 
         <span className="hidden font-mono text-xs text-text-dim sm:inline">
           · {workspaceId.slice(0, 8)}
         </span>
 
-        {/* Never hidden: this is the only signal of which agent is answering. */}
+        {/* Resilient Agent Badge: guaranteed min-width to avoid collapsing to a dot */}
         <span
-          className={`inline-flex max-w-[6rem] items-center gap-1.5 truncate rounded-full border px-2 py-0.5 text-xs sm:max-w-[10rem] ${
-            isAuto ? 'border-border/50 text-text-dim' : 'border-action bg-action text-action-fg'
+          className={`inline-flex min-w-[4.25rem] max-w-[8rem] sm:max-w-[12rem] items-center gap-1.5 truncate rounded-full border px-2.5 py-0.5 text-xs font-medium transition-all ${
+            isAuto
+              ? 'border-border/60 bg-surface-100 text-text-dim'
+              : 'border-action/60 bg-action/15 text-action-fg'
           }`}
+          title={`Active Agent: ${isAuto ? 'Auto' : agentName}`}
         >
           <span
             aria-hidden="true"
-            className={`h-1.5 w-1.5 shrink-0 rounded-full ${isAuto ? 'bg-text-dim' : 'bg-action-fg'}`}
+            className={`h-1.5 w-1.5 shrink-0 rounded-full ${isAuto ? 'bg-text-dim' : 'bg-action'}`}
           />
           <span className="truncate">{isAuto ? 'Auto' : agentName}</span>
         </span>
 
         {selectedSquad.length > 1 && (
-          <span className="hidden sm:inline-flex items-center gap-1 rounded-full border border-action/40 bg-action/10 px-2 py-0.5 text-xs text-action font-mono">
+          <span className="hidden md:inline-flex items-center gap-1 rounded-full border border-action/40 bg-action/10 px-2 py-0.5 text-xs text-action font-mono">
             ⚡ Squad: {selectedSquad.length}
           </span>
         )}
 
         {connectionStatus !== undefined && (
-          <span className="hidden items-center gap-1.5 rounded-full border border-border bg-surface-50 px-2 py-0.5 font-mono text-xs sm:inline-flex">
+          <span className="hidden sm:inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border/60 bg-surface-100 px-2.5 py-0.5 font-mono text-xs">
             <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${statusDot}`} />
             <span className="text-text-muted">{connectionStatus}</span>
           </span>
         )}
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5">
-        {contextTotalTokens !== undefined && contextMaxTokens !== undefined && (
-          <div className="hidden lg:block">
-            <ContextWindowGauge
-              totalTokens={contextTotalTokens}
-              maxTokens={contextMaxTokens}
-              modelId={selectedModel ?? 'default'}
-              onCompact={onCompact}
-              isCompacting={isCompacting}
-            />
-          </div>
-        )}
-
+      {/* Action Zone: Model Selector, Session Inspector Popover, New Chat */}
+      <div className="flex shrink-0 items-center gap-2">
         {selectedModel && onSelectModel && availableModels && (
           <ChatModelSelector
             selectedModel={selectedModel}
@@ -144,45 +134,22 @@ export function ChatHeader({
           />
         )}
 
-        {onToggleMemoryDrawer && (
-          <button
-            type="button"
-            onClick={onToggleMemoryDrawer}
-            title="Open Obsidian Vault & Memory Grounding drawer"
-            aria-label="Open Memory Vault"
-            className="rounded-lg border border-border/50 px-2 py-1 text-xs transition-colors hover:bg-surface-hover text-text inline-flex items-center gap-1"
-          >
-            <span aria-hidden="true">📌</span>
-            <span className="hidden lg:inline text-text-muted">Vault</span>
-          </button>
-        )}
-
-        {/* Count only. This previously appended a hardcoded "· QA gate" on every
-            render — the backend sends no gate state with the chat header, so it
-            asserted a capability that was never reported. Agent count is real
-            wire data and null-guarded while loading. */}
-        <span className="hidden text-xs text-text-dim xl:inline">
-          {agentCount === null ? 'Loading agents…' : `${agentCount} agents`}
-        </span>
-
-        <label
-          title="Route through a durable Temporal workflow so long runs survive a page refresh"
-          className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border/50 px-2 py-1 text-xs transition-colors hover:bg-surface-hover motion-reduce:transition-none"
-        >
-          <input
-            type="checkbox"
-            checked={durableMode}
-            onChange={(e) => onDurableModeChange(e.target.checked)}
-            className="accent-action"
-            aria-label="Durable mode"
-          />
-          <span className="hidden sm:inline">Durable</span>
-        </label>
+        <ChatSessionInspectorPopover
+          totalTokens={contextTotalTokens}
+          maxTokens={contextMaxTokens}
+          modelId={selectedModel ?? 'default'}
+          durableMode={durableMode}
+          onDurableModeChange={onDurableModeChange}
+          onCompact={onCompact}
+          isCompacting={isCompacting}
+          onToggleMemoryDrawer={onToggleMemoryDrawer}
+          agentCount={agentCount}
+        />
 
         <button
           type="button"
           onClick={onNewChat}
-          className="rounded-full border border-border/50 px-2.5 py-1.5 text-xs transition-colors hover:bg-surface-hover sm:px-3 motion-reduce:transition-none"
+          className="rounded-lg border border-border/70 bg-surface-100 px-3 py-1.5 text-xs font-medium text-text transition-colors hover:bg-surface-hover hover:border-border active:bg-surface-200 motion-reduce:transition-none"
         >
           New chat
         </button>
