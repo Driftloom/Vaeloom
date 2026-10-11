@@ -98,6 +98,79 @@ function parseGroundedContext(text: string): GroundedContextInfo | null {
   return { context, content, hasDocuments, hasMemories };
 }
 
+export interface ThoughtProcessInfo {
+  thoughts: string | null;
+  content: string;
+  isStreaming: boolean;
+}
+
+export function parseThoughts(text: string, isStreamingMessage: boolean): ThoughtProcessInfo {
+  const match = text.match(/<thought>([\s\S]*?)(?:<\/thought>|$)/);
+  if (!match) {
+    return { thoughts: null, content: text, isStreaming: false };
+  }
+  const thoughts = match[1].trim();
+  const hasClosing = text.includes('</thought>');
+  const content = text.replace(/<thought>[\s\S]*?(?:<\/thought>|$)/, '').trim();
+  return {
+    thoughts: thoughts || null,
+    content,
+    isStreaming: isStreamingMessage && !hasClosing,
+  };
+}
+
+export function ReActThoughtAccordion({
+  thoughts,
+  isStreaming = false,
+}: {
+  thoughts: string;
+  isStreaming?: boolean;
+}): JSX.Element {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="mb-2.5 rounded-lg border border-border/60 bg-surface-50/70 overflow-hidden text-xs">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-label="Toggle thinking process"
+        className="w-full flex items-center justify-between px-3 py-2 text-text-muted hover:text-text hover:bg-surface-100/50 transition-colors text-left font-mono"
+      >
+        <span className="flex items-center gap-2">
+          <span
+            className={`w-2 h-2 rounded-full ${
+              isStreaming ? 'bg-action animate-ping' : 'bg-primary'
+            }`}
+          />
+          <span className="font-medium text-text">Thinking Process</span>
+          {isStreaming && (
+            <span className="text-[10px] text-action uppercase tracking-wider font-semibold">
+              Reasoning...
+            </span>
+          )}
+        </span>
+        <span className="flex items-center gap-1.5 text-text-dim text-[11px]">
+          <span>{isOpen ? 'Hide' : 'Show'}</span>
+          <svg
+            className={`w-3.5 h-3.5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </span>
+      </button>
+      {isOpen && (
+        <div className="px-3.5 py-2.5 border-t border-border/40 bg-surface-100/40 text-text-muted leading-relaxed font-mono text-[11px] whitespace-pre-wrap max-h-64 overflow-y-auto">
+          {thoughts}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AttachmentChip({ attachment }: { attachment: Attachment }) {
   return (
     <li className="text-2xs border border-border/50 rounded-full px-3 py-1 bg-surface-50">
@@ -233,7 +306,11 @@ function ChatMessageItemComponent({
   const isUser = message.role === 'user';
   const isError = message.status === 'error';
   const confidence = message.confidence;
+  const isStreaming = message.status === 'streaming';
   const groundedContext = !isUser ? parseGroundedContext(message.text) : null;
+  const thoughtInfo = !isUser
+    ? parseThoughts(groundedContext ? groundedContext.content : message.text, isStreaming)
+    : null;
   const isGroundedInDocument =
     (message.citations && message.citations.length > 0) ||
     Boolean(message.metadata?.['grounded_in_documents']) ||
@@ -456,10 +533,16 @@ function ChatMessageItemComponent({
           </div>
         ) : (
           <div className="relative">
+            {thoughtInfo?.thoughts && (
+              <ReActThoughtAccordion
+                thoughts={thoughtInfo.thoughts}
+                isStreaming={thoughtInfo.isStreaming}
+              />
+            )}
             {message.parallelOutputs && Object.keys(message.parallelOutputs).length > 0 ? (
               <ParallelAgentStreamCard
                 parallelOutputs={message.parallelOutputs}
-                synthesisText={message.text}
+                synthesisText={thoughtInfo?.content || message.text}
                 isStreaming={message.status === 'streaming'}
                 onSelectAgent={(agent) => onSend(`@${agent} `)}
               />
@@ -489,13 +572,11 @@ function ChatMessageItemComponent({
                     {groundedContext.context}
                   </pre>
                 </details>
-                {groundedContext.content ? (
-                  <ChatMarkdown>{groundedContext.content}</ChatMarkdown>
-                ) : null}
+                {thoughtInfo?.content ? <ChatMarkdown>{thoughtInfo.content}</ChatMarkdown> : null}
               </>
-            ) : (
-              <ChatMarkdown>{message.text}</ChatMarkdown>
-            )}
+            ) : thoughtInfo?.content ? (
+              <ChatMarkdown>{thoughtInfo.content}</ChatMarkdown>
+            ) : null}
             {message.status === 'streaming' && (
               <>
                 {/* A bare styled span announces nothing. The caret carries the
@@ -538,31 +619,40 @@ function ChatMessageItemComponent({
         )}
 
         {!isUser && message.toolCalls && message.toolCalls.length > 0 && (
-          <ul className="mt-3 border-l-2 border-dashed border-border/60 pl-3 space-y-1">
-            {message.toolCalls.map((t, i) => (
-              <li key={`${t.name}-${i}`} className="flex items-center gap-2 text-xs font-mono">
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    t.status === 'done'
-                      ? 'bg-success'
-                      : t.status === 'error'
-                        ? 'bg-error'
-                        : 'bg-warning'
-                  }`}
-                />
-                <span className="text-text">
-                  {t.name}
-                  <span className="text-text-dim">
+          <div
+            aria-label="Tool execution ladder"
+            className="mt-3 rounded-lg border border-border/50 bg-surface-50/50 p-2.5 font-mono text-xs"
+          >
+            <div className="text-2xs text-text-dim uppercase tracking-wider mb-2 font-semibold flex items-center justify-between">
+              <span>Tool Execution Ladder</span>
+              <span>
+                {message.toolCalls.length} step{message.toolCalls.length === 1 ? '' : 's'}
+              </span>
+            </div>
+            <ul className="space-y-1.5 border-l-2 border-dashed border-border/60 pl-3">
+              {message.toolCalls.map((t, i) => (
+                <li key={`${t.name}-${i}`} className="flex items-center gap-2 text-xs">
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                      t.status === 'done'
+                        ? 'bg-success'
+                        : t.status === 'error'
+                          ? 'bg-error'
+                          : 'bg-warning animate-pulse'
+                    }`}
+                  />
+                  <span className="text-text font-medium">{t.name}</span>
+                  <span className="text-text-dim ml-auto text-2xs">
                     {/* No duration reported means no duration shown. The old
                         renderer printed a hardcoded 240ms/350ms here, which reads
                         as a measurement and is not one. */}
                     {t.status}
                     {t.latencyMs !== undefined ? ` · ${t.latencyMs}ms` : ''}
                   </span>
-                </span>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         {!isUser && message.plan && message.plan.subtasks.length > 0 && (
