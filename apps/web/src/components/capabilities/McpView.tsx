@@ -71,6 +71,21 @@ export const McpView: React.FC<McpViewProps> = ({
     handleFormatConfig,
   } = useMcpServers({ workspaceId, searchQuery });
 
+  // role="tablist" obliges the tab pattern: a single tab stop, arrow keys to
+  // move between tabs, and panels linked back to their tab. The roles and
+  // aria-selected were present but none of that was, so Tab walked both tabs,
+  // arrows did nothing, and assistive tech had no panel to associate with
+  // either tab.
+  const handleSubTabKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault();
+    const next = activeSubTab === 'inspector' ? 'manifest' : 'inspector';
+    setActiveSubTab(next);
+    document
+      .getElementById(next === 'inspector' ? 'mcp-tab-inspector' : 'mcp-tab-manifest')
+      ?.focus();
+  };
+
   return (
     <div className="flex-1 flex flex-col lg:flex-row min-h-0 min-w-0 bg-background text-text overflow-hidden">
       {/* ── Left column: installed servers + catalogs ── */}
@@ -149,11 +164,19 @@ export const McpView: React.FC<McpViewProps> = ({
       {/* ── Right column: inspector / manifest ── */}
       <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-background text-text overflow-hidden">
         <div className="border-b border-border bg-surface px-4 py-2 flex items-center justify-between gap-3 shrink-0 flex-wrap">
-          <div className="flex items-center gap-4 min-w-0" role="tablist" aria-label="MCP pane">
+          <div
+            className="flex items-center gap-4 min-w-0"
+            role="tablist"
+            aria-label="MCP pane"
+            onKeyDown={handleSubTabKeyDown}
+          >
             <button
               type="button"
               role="tab"
+              id="mcp-tab-inspector"
               aria-selected={activeSubTab === 'inspector'}
+              aria-controls="mcp-panel-inspector"
+              tabIndex={activeSubTab === 'inspector' ? 0 : -1}
               onClick={() => setActiveSubTab('inspector')}
               className={`text-xs font-sans font-semibold pb-1 border-b-2 transition-colors flex items-center gap-1.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
                 activeSubTab === 'inspector'
@@ -172,7 +195,10 @@ export const McpView: React.FC<McpViewProps> = ({
             <button
               type="button"
               role="tab"
+              id="mcp-tab-manifest"
               aria-selected={activeSubTab === 'manifest'}
+              aria-controls="mcp-panel-manifest"
+              tabIndex={activeSubTab === 'manifest' ? 0 : -1}
               onClick={() => {
                 setActiveSubTab('manifest');
                 if (!isEditorDirty) {
@@ -231,7 +257,12 @@ export const McpView: React.FC<McpViewProps> = ({
         <h2 className="sr-only">{paneTitle}</h2>
 
         {activeSubTab === 'inspector' ? (
-          <div className="flex-1 flex flex-col min-h-0 overflow-y-auto overscroll-y-contain pb-16">
+          <div
+            role="tabpanel"
+            id="mcp-panel-inspector"
+            aria-labelledby="mcp-tab-inspector"
+            className="flex-1 flex flex-col min-h-0 overflow-y-auto overscroll-y-contain pb-16"
+          >
             <McpToolInspectPanel
               selectedServer={selectedServer}
               serverTools={serverTools}
@@ -250,14 +281,16 @@ export const McpView: React.FC<McpViewProps> = ({
             />
           </div>
         ) : (
-          <McpManifestTab
-            configText={mcpConfigText}
-            onChangeText={(val) => {
-              setMcpConfigText(val);
-              setIsEditorDirty(true);
-            }}
-            manifestOmissions={manifestOmissions}
-          />
+          <div role="tabpanel" id="mcp-panel-manifest" aria-labelledby="mcp-tab-manifest">
+            <McpManifestTab
+              configText={mcpConfigText}
+              onChangeText={(val) => {
+                setMcpConfigText(val);
+                setIsEditorDirty(true);
+              }}
+              manifestOmissions={manifestOmissions}
+            />
+          </div>
         )}
 
         <McpActivityLog

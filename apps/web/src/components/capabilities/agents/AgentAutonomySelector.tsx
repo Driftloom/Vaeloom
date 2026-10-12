@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Badge, Tooltip } from '@vaeloom/ui-kit';
+import { Badge } from '@vaeloom/ui-kit';
 import {
   CAPABILITY_MAX_REACT_ROUNDS_KEY,
   MAX_REACT_ROUNDS,
@@ -29,33 +29,95 @@ export const AgentAutonomySelector: React.FC<AgentAutonomySelectorProps> = ({
   disabled = false,
   onAutonomyChange,
 }) => {
+  const groupRef = React.useRef<HTMLFieldSetElement>(null);
+  const hintId = React.useId();
+
+  // A radiogroup is one tab stop, navigated with arrows, per the ARIA pattern.
+  // These buttons declared role="radio" but sat in a plain fieldset with no
+  // radiogroup owner and every option individually tabbable, so Tab walked the
+  // whole set and arrow keys did nothing.
+  const options = AUTONOMY_OPTIONS;
+  const selectedIndex = Math.max(
+    0,
+    options.findIndex((o) => o.value === autonomyMode),
+  );
+
+  const focusAt = (index: number) => {
+    const clamped = (index + options.length) % options.length;
+    const next = options[clamped];
+    if (!next) return;
+    onAutonomyChange(next.value);
+    const buttons = groupRef.current?.querySelectorAll<HTMLButtonElement>('button[role="radio"]');
+    buttons?.[clamped]?.focus();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLFieldSetElement>) => {
+    switch (e.key) {
+      case 'ArrowRight':
+      case 'ArrowDown':
+        e.preventDefault();
+        focusAt(selectedIndex + 1);
+        break;
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        e.preventDefault();
+        focusAt(selectedIndex - 1);
+        break;
+      case 'Home':
+        e.preventDefault();
+        focusAt(0);
+        break;
+      case 'End':
+        e.preventDefault();
+        focusAt(options.length - 1);
+        break;
+      default:
+        break;
+    }
+  };
+
   return (
     <fieldset
-      className="flex items-center p-0.5 rounded-lg bg-surface-elevated border border-border"
+      ref={groupRef}
+      // role="radiogroup" is the owner the role="radio" children were missing.
+      role="radiogroup"
       aria-label="Agent autonomy"
+      onKeyDown={handleKeyDown}
+      className="flex items-center p-0.5 rounded-lg bg-surface-elevated border border-border"
     >
       <legend className="sr-only">Agent autonomy</legend>
-      {AUTONOMY_OPTIONS.map((option) => {
+      {options.map((option, index) => {
         const isActive = autonomyMode === option.value;
         return (
-          <Tooltip key={option.value} content={option.hint}>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={isActive}
-              disabled={disabled}
-              onClick={() => onAutonomyChange(option.value)}
-              className={`px-2 py-1 rounded-md transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-elevated disabled:opacity-60 ${
-                isActive
-                  ? 'bg-primary/10 text-primary font-semibold shadow-xs'
-                  : 'text-text-secondary hover:text-text'
-              }`}
-            >
-              {option.label}
-            </button>
-          </Tooltip>
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={isActive}
+            // Roving tabindex: exactly one stop for the whole group.
+            tabIndex={index === selectedIndex ? 0 : -1}
+            disabled={disabled}
+            onClick={() => onAutonomyChange(option.value)}
+            // The hint moved off Tooltip. Tooltip wraps its child in a div,
+            // which sat between the group and each radio and broke ownership;
+            // it also only appears on hover, so it was never announced. As a
+            // describedby reference it reaches assistive tech and still shows
+            // on focus, with title covering mouse users.
+            aria-describedby={hintId}
+            title={option.hint}
+            className={`px-2 py-1 rounded-md transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-elevated disabled:opacity-60 ${
+              isActive
+                ? 'bg-primary/10 text-primary font-semibold shadow-xs'
+                : 'text-text-secondary hover:text-text'
+            }`}
+          >
+            {option.label}
+          </button>
         );
       })}
+      <span id={hintId} className="sr-only">
+        {options.find((o) => o.value === autonomyMode)?.hint ?? ''}
+      </span>
     </fieldset>
   );
 };
