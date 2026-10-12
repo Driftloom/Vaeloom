@@ -53,6 +53,25 @@ jobs:
       - name: Jest unit/component tests
         run: pnpm test
 
+      # Coverage is a separate step on purpose. `pnpm test` runs jest without
+      # --coverage, and jest only evaluates coverageThreshold when it is
+      # collecting coverage, so folding this into the step above would have
+      # looked enforced while still checking nothing.
+      - name: Coverage gate
+        run: |
+          pnpm --filter @vaeloom/ui-kit test:coverage
+          pnpm --filter @vaeloom/web test:coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: |
+            apps/web/coverage
+            packages/ui-kit/coverage
+          if-no-files-found: ignore
+
   e2e:
     if: github.event_name != 'workflow_dispatch'
     # Pinned, not `ubuntu-latest`: `toHaveScreenshot` rasterizes text with the

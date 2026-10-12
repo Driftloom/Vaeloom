@@ -12,6 +12,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "jest --passWithNoTests",
+    "test:coverage": "jest --coverage --passWithNoTests",
     "test:e2e": "playwright test --grep-invert \"visual baselines\"",
     "test:e2e:visual": "playwright test --grep \"visual baselines\"",
     "test:e2e:all": "playwright test",
